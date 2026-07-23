@@ -1,11 +1,17 @@
 import type { ZodType } from 'zod'
 import { db } from './db'
-import { RekeningSchema, TransactieSchema, type Rekening, type Transactie } from './schema'
+import {
+  CategorieSchema,
+  RekeningSchema,
+  TransactieSchema,
+  type Categorie,
+  type Rekening,
+  type Transactie,
+} from './schema'
 import { pasGebeurtenisToe } from './sync/lokaal'
 
 // De repository is de enige weg naar de database. Alle schrijfacties worden
-// eerst gevalideerd en lopen daarna via het append-only logboek, zodat elke
-// wijziging bewaard blijft en klaar is voor synchronisatie.
+// eerst gevalideerd en lopen daarna via het append-only logboek.
 
 // --- Schrijven ---
 export async function bewaarTransactie(tx: Transactie): Promise<void> {
@@ -16,6 +22,11 @@ export async function bewaarTransactie(tx: Transactie): Promise<void> {
 export async function bewaarRekening(rekening: Rekening): Promise<void> {
   const geldig = RekeningSchema.parse(rekening)
   await pasGebeurtenisToe({ type: 'rekening.bewaard', payload: geldig })
+}
+
+export async function bewaarCategorie(categorie: Categorie): Promise<void> {
+  const geldig = CategorieSchema.parse(categorie)
+  await pasGebeurtenisToe({ type: 'categorie.bewaard', payload: geldig })
 }
 
 export async function verwijderTransactie(id: string): Promise<void> {
@@ -54,4 +65,9 @@ export async function laadTransacties(): Promise<LeesResultaat<Transactie>> {
 export async function laadRekeningen(): Promise<LeesResultaat<Rekening>> {
   const ruw = await db.rekeningen.toArray()
   return valideerLijst(ruw, RekeningSchema)
+}
+
+export async function laadCategorieen(): Promise<LeesResultaat<Categorie>> {
+  const ruw = await db.categorieen.toArray()
+  return valideerLijst(ruw, CategorieSchema)
 }

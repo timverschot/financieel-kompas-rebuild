@@ -23,8 +23,7 @@ export async function haalToestelId(): Promise<string> {
   return id
 }
 
-// Past één gebeurtenis toe op de huidige staat (voor eigen, nieuwe wijzigingen -
-// die zijn lokaal altijd de nieuwste).
+// Past één gebeurtenis toe op de huidige staat (voor eigen, nieuwe wijzigingen).
 async function pasStaatToe(regel: Logregel): Promise<void> {
   const g = regel.gebeurtenis
   switch (g.type) {
@@ -40,6 +39,12 @@ async function pasStaatToe(regel: Logregel): Promise<void> {
     case 'rekening.verwijderd':
       await db.rekeningen.delete(g.payload.id)
       break
+    case 'categorie.bewaard':
+      await db.categorieen.put(g.payload)
+      break
+    case 'categorie.verwijderd':
+      await db.categorieen.delete(g.payload.id)
+      break
   }
 }
 
@@ -48,7 +53,7 @@ async function pasStaatToe(regel: Logregel): Promise<void> {
 // database-transactie, zodat logboek en staat nooit uit elkaar lopen.
 export async function pasGebeurtenisToe(gebeurtenis: Gebeurtenis): Promise<void> {
   const geldig = GebeurtenisSchema.parse(gebeurtenis)
-  await db.transaction('rw', db.events, db.transacties, db.rekeningen, db.meta, async () => {
+  await db.transaction('rw', db.events, db.transacties, db.rekeningen, db.categorieen, db.meta, async () => {
     const toestelId = await haalToestelId()
     const volg = ((await leesMeta<number>('volgnummer')) ?? 0) + 1
     await schrijfMeta('volgnummer', volg)
@@ -65,14 +70,16 @@ export async function pasGebeurtenisToe(gebeurtenis: Gebeurtenis): Promise<void>
 }
 
 // Herbouwt de volledige staat uit het logboek. Nodig na het binnenhalen van
-// wijzigingen van andere toestellen, zodat alles conflictvrij samenkomt.
+// wijzigingen van andere toestellen.
 export async function herbouwStaat(): Promise<void> {
   const regels = await db.events.toArray()
   const staat = pasToe(regels)
-  await db.transaction('rw', db.rekeningen, db.transacties, async () => {
+  await db.transaction('rw', db.rekeningen, db.transacties, db.categorieen, async () => {
     await db.rekeningen.clear()
     await db.transacties.clear()
+    await db.categorieen.clear()
     await db.rekeningen.bulkPut([...staat.rekeningen.values()])
     await db.transacties.bulkPut([...staat.transacties.values()])
+    await db.categorieen.bulkPut([...staat.categorieen.values()])
   })
 }

@@ -7,6 +7,7 @@ import { db } from './data/db'
 beforeEach(async () => {
   await db.transacties.clear()
   await db.rekeningen.clear()
+  await db.categorieen.clear()
   await db.events.clear()
   await db.meta.clear()
 })
@@ -42,7 +43,7 @@ describe('App', () => {
     expect(screen.queryByText('Boodschappen')).toBeNull()
   })
 
-  it('voegt een nieuwe rekening toe en toont ze in de lijst', async () => {
+  it('voegt een nieuwe rekening toe en maakt ze beschikbaar', async () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Saldo')
@@ -51,7 +52,17 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Beginsaldo (€)'), '100')
     await user.click(screen.getByRole('button', { name: 'Rekening toevoegen' }))
 
-    // De nieuwe rekening is meteen beschikbaar als keuze in het transactieformulier.
     expect(await screen.findByRole('option', { name: 'Spaarrekening' })).toBeInTheDocument()
+  })
+
+  it('voegt een nieuwe categorie toe en maakt ze beschikbaar', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
+    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
+
+    expect(await screen.findByRole('option', { name: 'Vervoer' })).toBeInTheDocument()
   })
 })

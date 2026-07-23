@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import type { Rekening, Transactie } from './data/schema'
+import type { Categorie, Rekening, Transactie } from './data/schema'
 import {
+  bewaarCategorie,
   bewaarRekening,
   bewaarTransactie,
+  laadCategorieen,
   laadRekeningen,
   laadTransacties,
   verwijderTransactie,
@@ -14,6 +16,7 @@ import { DriveBackend } from './data/sync/drive/driveBackend'
 import { vraagToken } from './data/sync/drive/auth'
 import { TransactieFormulier } from './components/TransactieFormulier'
 import { RekeningFormulier } from './components/RekeningFormulier'
+import { CategorieFormulier } from './components/CategorieFormulier'
 import { formatEuro } from './utils/format'
 
 const container: CSSProperties = {
@@ -32,10 +35,12 @@ const knop: CSSProperties = {
 }
 
 const kop: CSSProperties = { fontSize: '1rem', marginBottom: '0.25rem' }
+const scheiding: CSSProperties = { margin: '1.5rem 0', border: 'none', borderTop: '1px solid #eee' }
 
 export function App() {
   const [transacties, setTransacties] = useState<Transactie[] | null>(null)
   const [rekeningen, setRekeningen] = useState<Rekening[]>([])
+  const [categorieen, setCategorieen] = useState<Categorie[]>([])
   const [ongeldig, setOngeldig] = useState(0)
   const [verbonden, setVerbonden] = useState(false)
   const [bezig, setBezig] = useState(false)
@@ -43,21 +48,23 @@ export function App() {
   const backendRef = useRef<DriveBackend | null>(null)
 
   async function herlaad() {
-    const [tx, rk] = await Promise.all([laadTransacties(), laadRekeningen()])
+    const [tx, rk, cat] = await Promise.all([laadTransacties(), laadRekeningen(), laadCategorieen()])
     setTransacties(tx.geldig)
     setOngeldig(tx.ongeldig)
     setRekeningen(rk.geldig)
+    setCategorieen(cat.geldig)
   }
 
   useEffect(() => {
     let actief = true
     async function laad() {
       await seedIndienLeeg()
-      const [tx, rk] = await Promise.all([laadTransacties(), laadRekeningen()])
+      const [tx, rk, cat] = await Promise.all([laadTransacties(), laadRekeningen(), laadCategorieen()])
       if (!actief) return
       setTransacties(tx.geldig)
       setOngeldig(tx.ongeldig)
       setRekeningen(rk.geldig)
+      setCategorieen(cat.geldig)
     }
     void laad()
     return () => {
@@ -72,6 +79,11 @@ export function App() {
 
   async function voegRekeningToe(r: Rekening) {
     await bewaarRekening(r)
+    await herlaad()
+  }
+
+  async function voegCategorieToe(c: Categorie) {
+    await bewaarCategorie(c)
     await herlaad()
   }
 
@@ -120,6 +132,8 @@ export function App() {
     )
   }
 
+  const categorieNaam = (id?: string) => (id ? categorieen.find((c) => c.id === id)?.naam : undefined)
+
   const totaalSaldo =
     rekeningen.reduce((som, r) => som + r.beginsaldo, 0) +
     transacties.reduce((som, t) => som + t.bedrag, 0)
@@ -128,7 +142,7 @@ export function App() {
     <main style={container}>
       <h1 style={{ marginBottom: 0 }}>Financieel Kompas</h1>
       <p style={{ color: '#666', marginTop: 4 }}>
-        Rekeningen en transacties beheren — met schemabewaking, backup en synchronisatie
+        Rekeningen, categorieën en transacties — met schemabewaking, backup en synchronisatie
       </p>
 
       {ongeldig > 0 && (
@@ -165,38 +179,62 @@ export function App() {
         <RekeningFormulier onToevoegen={voegRekeningToe} />
       </section>
 
-      <hr style={{ margin: '1.5rem 0', border: 'none', borderTop: '1px solid #eee' }} />
+      <hr style={scheiding} />
+
+      <section>
+        <h2 style={kop}>Categorieën</h2>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {categorieen.map((c) => (
+            <li key={c.id} style={{ padding: '0.3rem 0', borderBottom: '1px solid #f0f0f0' }}>
+              {c.naam}
+            </li>
+          ))}
+        </ul>
+        <CategorieFormulier onToevoegen={voegCategorieToe} />
+      </section>
+
+      <hr style={scheiding} />
 
       <section>
         <h2 style={kop}>Transactie toevoegen</h2>
-        <TransactieFormulier onToevoegen={voegTransactieToe} rekeningen={rekeningen} />
+        <TransactieFormulier
+          onToevoegen={voegTransactieToe}
+          rekeningen={rekeningen}
+          categorieen={categorieen}
+        />
       </section>
 
       <ul style={{ listStyle: 'none', padding: 0, marginTop: '1.5rem' }}>
-        {transacties.map((t) => (
-          <li
-            key={t.id}
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '0.5rem 0',
-              borderBottom: '1px solid #eee',
-            }}
-          >
-            <span>{t.omschrijving}</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span style={{ color: t.bedrag < 0 ? '#c0392b' : '#27ae60' }}>{formatEuro(t.bedrag)}</span>
-              <button
-                aria-label={`Verwijder ${t.omschrijving}`}
-                onClick={() => verwijder(t.id)}
-                style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}
-              >
-                ×
-              </button>
-            </span>
-          </li>
-        ))}
+        {transacties.map((t) => {
+          const cat = categorieNaam(t.categorieId)
+          return (
+            <li
+              key={t.id}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '0.5rem 0',
+                borderBottom: '1px solid #eee',
+              }}
+            >
+              <span>
+                {t.omschrijving}
+                {cat && <span style={{ color: '#999', fontSize: '0.85rem' }}> · {cat}</span>}
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ color: t.bedrag < 0 ? '#c0392b' : '#27ae60' }}>{formatEuro(t.bedrag)}</span>
+                <button
+                  aria-label={`Verwijder ${t.omschrijving}`}
+                  onClick={() => verwijder(t.id)}
+                  style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}
+                >
+                  ×
+                </button>
+              </span>
+            </li>
+          )
+        })}
       </ul>
 
       <p
@@ -212,7 +250,7 @@ export function App() {
         <span>{formatEuro(totaalSaldo)}</span>
       </p>
 
-      <hr style={{ margin: '1.5rem 0', border: 'none', borderTop: '1px solid #eee' }} />
+      <hr style={scheiding} />
 
       <div>
         {!verbonden ? (

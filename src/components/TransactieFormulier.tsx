@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
-import type { Rekening, Transactie } from '../data/schema'
+import type { Categorie, Rekening, Transactie } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 
 const vandaag = () => new Date().toISOString().slice(0, 10)
@@ -15,19 +15,22 @@ const veld: CSSProperties = {
 const rij: CSSProperties = { marginBottom: '0.6rem' }
 
 // Invoerformulier voor een transactie. De gebruiker typt een positief bedrag,
-// kiest 'Uitgave' of 'Inkomst' en op welke rekening de transactie staat.
+// kiest 'Uitgave' of 'Inkomst', op welke rekening, en optioneel een categorie.
 export function TransactieFormulier({
   onToevoegen,
   rekeningen,
+  categorieen,
 }: {
   onToevoegen: (t: Transactie) => Promise<void> | void
   rekeningen: Rekening[]
+  categorieen: Categorie[]
 }) {
   const [omschrijving, setOmschrijving] = useState('')
   const [bedrag, setBedrag] = useState('')
   const [datum, setDatum] = useState(vandaag())
   const [soort, setSoort] = useState<'uitgave' | 'inkomst'>('uitgave')
   const [rekeningId, setRekeningId] = useState(rekeningen[0]?.id ?? '')
+  const [categorieId, setCategorieId] = useState('')
 
   const bedragGetal = Number.parseFloat(bedrag.replace(',', '.'))
   const geldig =
@@ -45,11 +48,13 @@ export function TransactieFormulier({
       omschrijving: omschrijving.trim(),
       bedrag: soort === 'uitgave' ? -bedragGetal : bedragGetal,
       rekeningId,
+      ...(categorieId ? { categorieId } : {}),
     }
     await onToevoegen(t)
     setOmschrijving('')
     setBedrag('')
     setSoort('uitgave')
+    setCategorieId('')
     setDatum(vandaag())
   }
 
@@ -80,6 +85,17 @@ export function TransactieFormulier({
           {rekeningen.map((r) => (
             <option key={r.id} value={r.id}>
               {r.naam}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div style={rij}>
+        <label htmlFor="categorie">Categorie</label>
+        <select id="categorie" style={veld} value={categorieId} onChange={(e) => setCategorieId(e.target.value)}>
+          <option value="">Geen categorie</option>
+          {categorieen.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.naam}
             </option>
           ))}
         </select>

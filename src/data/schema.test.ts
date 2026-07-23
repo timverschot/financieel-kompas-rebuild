@@ -4,8 +4,12 @@ import { TransactieSchema } from './schema'
 const geldig = { id: 't1', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 2400, rekeningId: 'r1' }
 
 describe('TransactieSchema', () => {
-  it('aanvaardt een geldige transactie', () => {
+  it('aanvaardt een geldige transactie zonder categorie (optioneel)', () => {
     expect(TransactieSchema.safeParse(geldig).success).toBe(true)
+  })
+
+  it('aanvaardt een geldige transactie mét categorie', () => {
+    expect(TransactieSchema.safeParse({ ...geldig, categorieId: 'cat-1' }).success).toBe(true)
   })
 
   it('weigert een bedrag dat geen getal is', () => {

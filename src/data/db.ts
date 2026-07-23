@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Rekening, Transactie } from './schema'
+import type { Categorie, Rekening, Transactie } from './schema'
 import type { Logregel, MetaRegel } from './sync/events'
 import { nieuwId } from './sync/id'
 
@@ -10,6 +10,7 @@ export class FinancieelKompasDB extends Dexie {
   transacties!: Table<Transactie, string>
   events!: Table<Logregel, string>
   meta!: Table<MetaRegel, string>
+  categorieen!: Table<Categorie, string>
 
   constructor() {
     super('financieel-kompas')
@@ -23,8 +24,7 @@ export class FinancieelKompasDB extends Dexie {
     // Versie 2 - Fase 2: het append-only logboek (events) en een
     // sleutel/waarde-opslag (meta). Bij de upgrade krijgen bestaande records uit
     // Fase 1 alsnog een gebeurtenis, zodat het logboek de volledige geschiedenis
-    // bevat en er niets verloren gaat. Dit is meteen een echt bewijs van het
-    // migratiesysteem in de praktijk.
+    // bevat en er niets verloren gaat.
     this.version(2)
       .stores({
         rekeningen: 'id, naam',
@@ -59,6 +59,17 @@ export class FinancieelKompasDB extends Dexie {
         }
         await trans.table('meta').put({ sleutel: 'volgnummer', waarde: volg })
       })
+
+    // Versie 3 - categorieën. Nieuwe tabel + een index op categorieId bij
+    // transacties. Bestaande transacties hebben nog geen categorie; dat mag
+    // (het veld is optioneel), dus er is geen omzetting van data nodig.
+    this.version(3).stores({
+      rekeningen: 'id, naam',
+      transacties: 'id, rekeningId, datum, categorieId',
+      events: 'id, toestelId, volgnummer',
+      meta: 'sleutel',
+      categorieen: 'id, naam',
+    })
   }
 }
 
