@@ -36,6 +36,8 @@ import {
   verwijderTransactie,
 } from './data/repository'
 import { seedIndienLeeg } from './data/seed'
+import { exporteerBackup, importeerBackup } from './data/backup'
+import { vraagBlijvendeOpslag } from './data/opslag'
 import { synchroniseer } from './data/sync/sync'
 import { DriveBackend } from './data/sync/drive/driveBackend'
 import { vraagToken } from './data/sync/drive/auth'
@@ -98,6 +100,7 @@ export function App() {
   const [bewerkCategorie, setBewerkCategorie] = useState<Categorie | null>(null)
   const [bewerkRekening, setBewerkRekening] = useState<Rekening | null>(null)
   const [maand, setMaand] = useState(huidigeMaand())
+  const [backupTekst, setBackupTekst] = useState<string | null>(null)
   const backendRef = useRef<DriveBackend | null>(null)
 
   async function herlaad() {
@@ -152,6 +155,38 @@ export function App() {
       actief = false
     }
   }, [])
+
+  // Vraag de browser om je gegevens niet zomaar te wissen (belangrijk op iOS).
+  useEffect(() => {
+    void vraagBlijvendeOpslag()
+  }, [])
+
+  async function exporteerNu() {
+    const json = await exporteerBackup()
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `financieel-kompas-backup-${new Date().toISOString().slice(0, 10)}.json`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+    setBackupTekst('Back-up gedownload.')
+  }
+
+  async function herstelUitBestand(bestand: File) {
+    try {
+      const tekst = await bestand.text()
+      const r = await importeerBackup(tekst)
+      await herlaad()
+      setBackupTekst(
+        `Hersteld: ${r.toegevoegd} toegevoegd, ${r.overgeslagen} al aanwezig, ${r.ongeldig} ongeldig.`,
+      )
+    } catch (e) {
+      setBackupTekst('Herstellen mislukte: ' + (e instanceof Error ? e.message : 'onbekende fout'))
+    }
+  }
 
   async function slaTransactieOp(t: Transactie) {
     await bewaarTransactie(t)
@@ -530,6 +565,35 @@ export function App() {
       <hr style={scheiding} />
 
       <IndexatieCalculator />
+
+      <hr style={scheiding} />
+
+      <section>
+        <h2 style={kop}>Back-up &amp; herstel</h2>
+        <p style={{ color: '#888', marginTop: 0 }}>
+          Een los vangnet op je eigen toestel, onafhankelijk van Google Drive. Bewaar het
+          bestand op een veilige plek; herstellen voegt enkel toe en overschrijft nooit.
+        </p>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button style={knop} onClick={exporteerNu}>
+            Exporteer back-up
+          </button>
+          <label style={{ ...knop, display: 'inline-block' }}>
+            Herstel uit back-up
+            <input
+              type="file"
+              accept="application/json"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) void herstelUitBestand(f)
+                e.target.value = ''
+              }}
+            />
+          </label>
+        </div>
+        {backupTekst && <p style={{ color: '#666', marginTop: '0.75rem' }}>{backupTekst}</p>}
+      </section>
 
       <hr style={scheiding} />
 
