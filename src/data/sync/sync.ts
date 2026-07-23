@@ -10,17 +10,16 @@ export type SyncResultaat = { gepusht: number; opgehaald: number; ongeldig: numb
 export async function synchroniseer(backend: SyncBackend): Promise<SyncResultaat> {
   const toestelId = await haalToestelId()
 
-  // --- PUSH: eigen regels die nog niet verstuurd zijn ---
+  // --- PUSH: het volledige eigen logboek versturen zodra er iets nieuw is.
+  // (Compactie: één bestand per toestel dat overschreven wordt, i.p.v. een nieuw
+  // bestand per sync.) ---
   const laatstGepusht = (await leesMeta<number>('laatstGepushtVolgnummer')) ?? 0
-  const teVersturen = await db.events
-    .where('toestelId')
-    .equals(toestelId)
-    .and((r) => r.volgnummer > laatstGepusht)
-    .sortBy('volgnummer')
+  const eigen = await db.events.where('toestelId').equals(toestelId).sortBy('volgnummer')
+  const nieuwEigen = eigen.filter((r) => r.volgnummer > laatstGepusht)
 
-  if (teVersturen.length > 0) {
-    await backend.stuur(toestelId, teVersturen)
-    await schrijfMeta('laatstGepushtVolgnummer', teVersturen[teVersturen.length - 1].volgnummer)
+  if (nieuwEigen.length > 0) {
+    await backend.stuur(toestelId, eigen)
+    await schrijfMeta('laatstGepushtVolgnummer', eigen[eigen.length - 1].volgnummer)
   }
 
   // --- PULL: alle regels ophalen, nieuwe eruit halen, valideren en toepassen ---
@@ -42,5 +41,5 @@ export async function synchroniseer(backend: SyncBackend): Promise<SyncResultaat
     await herbouwStaat()
   }
 
-  return { gepusht: teVersturen.length, opgehaald: nieuw.length, ongeldig }
+  return { gepusht: nieuwEigen.length, opgehaald: nieuw.length, ongeldig }
 }

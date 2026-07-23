@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from '../db'
 import { bewaarTransactie, laadTransacties } from '../repository'
-import { GeheugenBackend } from './backend'
+import { GeheugenBackend, type SyncBackend } from './backend'
 import { synchroniseer } from './sync'
 import type { Logregel } from './events'
 
@@ -73,5 +73,28 @@ describe('synchroniseer', () => {
 
     expect(res.ongeldig).toBe(1)
     expect((await laadTransacties()).geldig).toHaveLength(0)
+  })
+
+  it('stuurt bij elke push het volledige eigen logboek (compactie)', async () => {
+    const verstuurd: Logregel[][] = []
+    const backend: SyncBackend = {
+      async haalOp() {
+        return []
+      },
+      async stuur(_toestelId, regels) {
+        verstuurd.push(regels)
+      },
+    }
+
+    await bewaarTransactie({ id: 't1', datum: '2026-07-01', omschrijving: 'Een', bedrag: 100, rekeningId: 'r1' })
+    await synchroniseer(backend)
+    await bewaarTransactie({ id: 't2', datum: '2026-07-02', omschrijving: 'Twee', bedrag: 200, rekeningId: 'r1' })
+    const res = await synchroniseer(backend)
+
+    // Tweede push telt enkel de nieuwe wijziging, maar stuurt het VOLLEDIGE
+    // logboek (t1 + t2), niet enkel t2 - zodat één bestand het geheel bevat.
+    expect(res.gepusht).toBe(1)
+    expect(verstuurd[0]).toHaveLength(1)
+    expect(verstuurd[1]).toHaveLength(2)
   })
 })

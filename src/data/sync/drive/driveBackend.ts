@@ -2,10 +2,13 @@ import type { SyncBackend } from '../backend'
 import type { Logregel } from '../events'
 import { vraagToken } from './auth'
 
-// De Google Drive-implementatie van de abstracte SyncBackend. Ze schrijft de
-// logregels als losse, append-only bestanden in een backup-map in je Drive, en
-// leest ze weer uit. Omdat het steeds dezelfde gebruiker en dezelfde app is,
-// ziet elk van je toestellen elkaars bestanden - de basis van de synchronisatie.
+// De Google Drive-implementatie van de abstracte SyncBackend. Elk toestel houdt
+// precies ÉÉN bestand bij in een backup-map in je Drive: 'log-<toestelId>.json',
+// met zijn volledige eigen logboek. Bij een push wordt dat ene bestand
+// overschreven (compactie), zodat het aantal bestanden nooit ongecontroleerd
+// groeit. Omdat elk toestel enkel zijn eigen bestand aanraakt, kan het niets van
+// een ander toestel kwijtmaken; en omdat de lokale database de bron van waarheid
+// is, herstelt een mislukte schrijfbeurt zich vanzelf bij de volgende push.
 const MAP_NAAM = 'Financieel Kompas Backup'
 const API = 'https://www.googleapis.com/drive/v3'
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3'
@@ -46,11 +49,32 @@ export class DriveBackend implements SyncBackend {
     return this.mapId
   }
 
-  async stuur(toestelId: string, regels: Logregel[]): Promise<void> {
-    if (regels.length === 0) return
-    const mapId = await this.zorgVoorMap()
+  // Zoekt het bestand-id van een bestand met een bepaalde naam in de backup-map.
+  private async vindBestandId(mapId: string, naam: string): Promise<string | null> {
+    const q = `name='${naam}' and '${mapId}' in parents and trashed=false`
+    const res = await driveFetch(`${API}/files?q=${encodeURIComponent(q)}&fields=files(id)&spaces=drive`)
+    const data = (await res.json()) as { files: { id: string }[] }
+    return data.files[0]?.id ?? null
+  }
 
-    const metadata = { name: `log-${toestelId}-${Date.now()}.json`, parents: [mapId] }
+  async stuur(toestelId: string, alleEigenRegels: Logregel[]): Promise<void> {
+    const mapId = await this.zorgVoorMap()
+    const naam = `log-${toestelId}.json`
+    const inhoud = JSON.stringify(alleEigenRegels)
+    const bestaandId = await this.vindBestandId(mapId, naam)
+
+    if (bestaandId) {
+      // Bestaat al: enkel de inhoud vervangen.
+      await driveFetch(`${UPLOAD}/files/${bestaandId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: inhoud,
+      })
+      return
+    }
+
+    // Nog niet: aanmaken met naam + inhoud in één multipart-verzoek.
+    const metadata = { name: naam, parents: [mapId] }
     const grens = 'grens' + Math.random().toString(36).slice(2)
     const body =
       `--${grens}\r\n` +
@@ -58,7 +82,7 @@ export class DriveBackend implements SyncBackend {
       JSON.stringify(metadata) +
       `\r\n--${grens}\r\n` +
       'Content-Type: application/json\r\n\r\n' +
-      JSON.stringify(regels) +
+      inhoud +
       `\r\n--${grens}--`
 
     await driveFetch(`${UPLOAD}/files?uploadType=multipart&fields=id`, {
@@ -71,13 +95,27 @@ export class DriveBackend implements SyncBackend {
   async haalOp(): Promise<Logregel[]> {
     const mapId = await this.zorgVoorMap()
     const q = `'${mapId}' in parents and trashed=false`
-    const lijst = await driveFetch(
-      `${API}/files?q=${encodeURIComponent(q)}&fields=files(id)&spaces=drive&pageSize=1000`,
-    )
-    const data = (await lijst.json()) as { files: { id: string }[] }
+
+    // Alle bestanden oplijsten, met paginatie: boven één pagina (1000) blijven we
+    // 'nextPageToken' volgen, zodat er nooit bestanden stil wegvallen.
+    const bestanden: { id: string }[] = []
+    let pageToken: string | undefined
+    do {
+      const params = new URLSearchParams({
+        q,
+        fields: 'nextPageToken,files(id)',
+        spaces: 'drive',
+        pageSize: '1000',
+      })
+      if (pageToken) params.set('pageToken', pageToken)
+      const lijst = await driveFetch(`${API}/files?${params.toString()}`)
+      const data = (await lijst.json()) as { nextPageToken?: string; files: { id: string }[] }
+      bestanden.push(...data.files)
+      pageToken = data.nextPageToken
+    } while (pageToken)
 
     const alle: Logregel[] = []
-    for (const bestand of data.files) {
+    for (const bestand of bestanden) {
       const inhoud = await driveFetch(`${API}/files/${bestand.id}?alt=media`)
       const regels = (await inhoud.json()) as unknown
       if (Array.isArray(regels)) alle.push(...(regels as Logregel[]))
