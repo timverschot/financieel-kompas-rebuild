@@ -4,6 +4,7 @@ import {
   CategorieSchema,
   DossierSchema,
   GedeeldeKostSchema,
+  OverboekingSchema,
   RekeningSchema,
   SpaardoelSchema,
   SubcategorieSchema,
@@ -35,6 +36,8 @@ export const GebeurtenisSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('spaardoel.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
   z.object({ type: z.literal('subcategorie.bewaard'), payload: SubcategorieSchema }),
   z.object({ type: z.literal('subcategorie.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
+  z.object({ type: z.literal('overboeking.bewaard'), payload: OverboekingSchema }),
+  z.object({ type: z.literal('overboeking.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
 ])
 export type Gebeurtenis = z.infer<typeof GebeurtenisSchema>
 

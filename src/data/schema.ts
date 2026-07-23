@@ -9,10 +9,21 @@ import { z } from 'zod'
 // ontstaan bij optellen (het klassieke 0,1 + 0,2 ≠ 0,3). Bij weergave/invoer
 // wordt omgerekend via de helpers in utils/format.ts.
 
+// De types rekening. De sleutels ('betaal', ...) zijn taal-onafhankelijk en
+// worden pas bij weergave vertaald; de opgeslagen waarde blijft altijd de sleutel.
+export const REKENING_TYPES = ['betaal', 'spaar', 'termijn', 'effecten', 'cash'] as const
+export type RekeningType = (typeof REKENING_TYPES)[number]
+
 export const RekeningSchema = z.object({
   id: z.string().min(1),
   naam: z.string().min(1),
   beginsaldo: z.number().int(), // in centen
+  // Alle onderstaande velden zijn optioneel, zodat bestaande rekeningen (van vóór
+  // deze uitbreiding) geldig blijven zonder migratie.
+  type: z.enum(REKENING_TYPES).optional(),
+  rekeningnummer: z.string().optional(), // IBAN of ander rekeningnummer
+  rubriek: z.string().optional(), // vrije rubriek-/groepsnaam
+  gearchiveerd: z.boolean().optional(), // afgesloten/oud: verborgen in keuzelijsten
 })
 export type Rekening = z.infer<typeof RekeningSchema>
 
@@ -123,3 +134,17 @@ export const SpaardoelSchema = z.object({
   kleur: z.string().optional(),
 })
 export type Spaardoel = z.infer<typeof SpaardoelSchema>
+
+// Een interne overboeking tussen twee EIGEN rekeningen. Dit is geen inkomst of
+// uitgave: het geld verlaat je vermogen niet, het verschuift enkel. Daarom telt
+// een overboeking nooit mee in het maandoverzicht, de budgetten of de grafieken.
+// 'bedrag' is altijd positief (in centen); de richting zit in van/naar.
+export const OverboekingSchema = z.object({
+  id: z.string().min(1),
+  datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  vanRekeningId: z.string().min(1),
+  naarRekeningId: z.string().min(1),
+  bedrag: z.number().int().positive(),
+  omschrijving: z.string().optional(),
+})
+export type Overboeking = z.infer<typeof OverboekingSchema>

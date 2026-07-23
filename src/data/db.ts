@@ -4,6 +4,7 @@ import type {
   Categorie,
   Dossier,
   GedeeldeKost,
+  Overboeking,
   Rekening,
   Spaardoel,
   Subcategorie,
@@ -30,6 +31,7 @@ export class FinancieelKompasDB extends Dexie {
   terugkerendePosten!: Table<TerugkerendePost, string>
   spaardoelen!: Table<Spaardoel, string>
   subcategorieen!: Table<Subcategorie, string>
+  overboekingen!: Table<Overboeking, string>
 
   constructor() {
     super('financieel-kompas')
@@ -221,6 +223,24 @@ export class FinancieelKompasDB extends Dexie {
       terugkerendePosten: 'id',
       spaardoelen: 'id, naam',
       subcategorieen: 'id, categorieId',
+    })
+
+    // Versie 11 - interne overboekingen tussen eigen rekeningen. Nieuwe tabel;
+    // geen omzetting van bestaande data nodig.
+    this.version(11).stores({
+      rekeningen: 'id, naam',
+      transacties: 'id, rekeningId, datum, categorieId',
+      events: 'id, toestelId, volgnummer',
+      meta: 'sleutel',
+      categorieen: 'id, naam',
+      budgetten: 'id, categorieId',
+      dossiers: 'id, naam',
+      gedeeldeKosten: 'id, dossierId, verrekeningId',
+      verrekeningen: 'id, dossierId',
+      terugkerendePosten: 'id',
+      spaardoelen: 'id, naam',
+      subcategorieen: 'id, categorieId',
+      overboekingen: 'id, datum',
     })
   }
 }

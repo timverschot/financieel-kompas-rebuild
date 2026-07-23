@@ -5,6 +5,7 @@ import {
   CategorieSchema,
   DossierSchema,
   GedeeldeKostSchema,
+  OverboekingSchema,
   RekeningSchema,
   SpaardoelSchema,
   SubcategorieSchema,
@@ -15,6 +16,7 @@ import {
   type Categorie,
   type Dossier,
   type GedeeldeKost,
+  type Overboeking,
   type Rekening,
   type Spaardoel,
   type Subcategorie,
@@ -88,6 +90,15 @@ export async function bewaarSubcategorie(sub: Subcategorie): Promise<void> {
 
 export async function verwijderSubcategorie(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'subcategorie.verwijderd', payload: { id } })
+}
+
+export async function bewaarOverboeking(o: Overboeking): Promise<void> {
+  const geldig = OverboekingSchema.parse(o)
+  await pasGebeurtenisToe({ type: 'overboeking.bewaard', payload: geldig })
+}
+
+export async function verwijderOverboeking(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'overboeking.verwijderd', payload: { id } })
 }
 
 export async function verwijderTransactie(id: string): Promise<void> {
@@ -176,4 +187,8 @@ export async function laadSpaardoelen(): Promise<LeesResultaat<Spaardoel>> {
 
 export async function laadSubcategorieen(): Promise<LeesResultaat<Subcategorie>> {
   return valideerLijst(await db.subcategorieen.toArray(), SubcategorieSchema)
+}
+
+export async function laadOverboekingen(): Promise<LeesResultaat<Overboeking>> {
+  return valideerLijst(await db.overboekingen.toArray(), OverboekingSchema)
 }

@@ -16,6 +16,7 @@ beforeEach(async () => {
     db.terugkerendePosten.clear(),
     db.spaardoelen.clear(),
     db.subcategorieen.clear(),
+    db.overboekingen.clear(),
     db.events.clear(),
     db.meta.clear(),
   ])
@@ -77,12 +78,12 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await user.type(screen.getByLabelText('Rekeningnaam'), 'Spaarrekening')
+    await user.type(screen.getByLabelText('Rekeningnaam'), 'Vakantiepot')
     await user.type(screen.getByLabelText('Beginsaldo (€)'), '100')
     await user.click(screen.getByRole('button', { name: 'Rekening toevoegen' }))
 
-    // Spaarrekening verschijnt nu als keuze in de rekening-selecties.
-    expect((await screen.findAllByRole('option', { name: 'Spaarrekening' })).length).toBeGreaterThan(0)
+    // Vakantiepot verschijnt nu als keuze in de rekening-selecties.
+    expect((await screen.findAllByRole('option', { name: 'Vakantiepot' })).length).toBeGreaterThan(0)
   })
 
   it('maakt een vaste post aan en boekt hem in voor de maand', async () => {
@@ -197,12 +198,12 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await user.type(screen.getByLabelText('Rekeningnaam'), 'Spaarrekening')
+    await user.type(screen.getByLabelText('Rekeningnaam'), 'Vakantiepot')
     await user.click(screen.getByRole('button', { name: 'Rekening toevoegen' }))
-    expect((await screen.findAllByRole('option', { name: 'Spaarrekening' })).length).toBeGreaterThan(0)
+    expect((await screen.findAllByRole('option', { name: 'Vakantiepot' })).length).toBeGreaterThan(0)
 
-    await user.click(screen.getByRole('button', { name: 'Verwijder rekening Spaarrekening' }))
-    await waitFor(() => expect(screen.queryAllByRole('option', { name: 'Spaarrekening' })).toHaveLength(0))
+    await user.click(screen.getByRole('button', { name: 'Verwijder rekening Vakantiepot' }))
+    await waitFor(() => expect(screen.queryAllByRole('option', { name: 'Vakantiepot' })).toHaveLength(0))
   })
 
   it('verwijdert een budget', async () => {

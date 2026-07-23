@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { BudgetSchema, TransactieSchema } from './schema'
+import { BudgetSchema, OverboekingSchema, RekeningSchema, TransactieSchema } from './schema'
 
 const geldig = { id: 't1', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 2400, rekeningId: 'r1' }
 
@@ -51,6 +51,48 @@ describe('TransactieSchema - splitsing', () => {
   it('aanvaardt een deelregel met enkel een omschrijving (vrije tekst, geen categorie)', () => {
     const vrij = { ...gesplitst, regels: [{ omschrijving: 'Brood', bedrag: -500 }] }
     expect(TransactieSchema.safeParse(vrij).success).toBe(true)
+  })
+})
+
+describe('RekeningSchema', () => {
+  it('aanvaardt een eenvoudige rekening (zonder de nieuwe velden) — bestaande data blijft geldig', () => {
+    expect(RekeningSchema.safeParse({ id: 'r1', naam: 'Zicht', beginsaldo: 1000 }).success).toBe(true)
+  })
+
+  it('aanvaardt een rekening met type, rekeningnummer, rubriek en archiefvlag', () => {
+    const r = {
+      id: 'r1',
+      naam: 'Spaar',
+      beginsaldo: 500000,
+      type: 'spaar',
+      rekeningnummer: 'BE68 5390 0754 7034',
+      rubriek: 'Reserve',
+      gearchiveerd: false,
+    }
+    expect(RekeningSchema.safeParse(r).success).toBe(true)
+  })
+
+  it('weigert een onbekend type', () => {
+    expect(RekeningSchema.safeParse({ id: 'r1', naam: 'X', beginsaldo: 0, type: 'crypto' }).success).toBe(false)
+  })
+})
+
+describe('OverboekingSchema', () => {
+  const geldigeOverboeking = {
+    id: 'o1',
+    datum: '2026-07-01',
+    vanRekeningId: 'r1',
+    naarRekeningId: 'r2',
+    bedrag: 5000,
+  }
+
+  it('aanvaardt een geldige overboeking', () => {
+    expect(OverboekingSchema.safeParse(geldigeOverboeking).success).toBe(true)
+  })
+
+  it('weigert een negatief of nul bedrag', () => {
+    expect(OverboekingSchema.safeParse({ ...geldigeOverboeking, bedrag: 0 }).success).toBe(false)
+    expect(OverboekingSchema.safeParse({ ...geldigeOverboeking, bedrag: -100 }).success).toBe(false)
   })
 })
 

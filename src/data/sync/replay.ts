@@ -3,6 +3,7 @@ import type {
   Categorie,
   Dossier,
   GedeeldeKost,
+  Overboeking,
   Rekening,
   Spaardoel,
   Subcategorie,
@@ -24,6 +25,7 @@ export type Staat = {
   terugkerendePosten: Map<string, TerugkerendePost>
   spaardoelen: Map<string, Spaardoel>
   subcategorieen: Map<string, Subcategorie>
+  overboekingen: Map<string, Overboeking>
 }
 
 // Het HLC-stempel van een logregel, met terugval op 'tijdstip' voor oude regels
@@ -57,6 +59,7 @@ export function pasToe(regels: Logregel[]): Staat {
     terugkerendePosten: new Map(),
     spaardoelen: new Map(),
     subcategorieen: new Map(),
+    overboekingen: new Map(),
   }
   for (const r of gesorteerd) {
     const g = r.gebeurtenis
@@ -120,6 +123,12 @@ export function pasToe(regels: Logregel[]): Staat {
         break
       case 'subcategorie.verwijderd':
         staat.subcategorieen.delete(g.payload.id)
+        break
+      case 'overboeking.bewaard':
+        staat.overboekingen.set(g.payload.id, g.payload)
+        break
+      case 'overboeking.verwijderd':
+        staat.overboekingen.delete(g.payload.id)
         break
     }
   }

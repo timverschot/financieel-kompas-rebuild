@@ -5,6 +5,7 @@ import type {
   Categorie,
   Dossier,
   GedeeldeKost,
+  Overboeking,
   Rekening,
   Spaardoel,
   Subcategorie,
@@ -18,6 +19,7 @@ import {
   bewaarDossier,
   bewaarGedeeldeKost,
   bewaarRekening,
+  bewaarOverboeking,
   bewaarSpaardoel,
   bewaarSubcategorie,
   bewaarTerugkerendePost,
@@ -30,6 +32,7 @@ import {
   laadCategorieen,
   laadDossiers,
   laadGedeeldeKosten,
+  laadOverboekingen,
   laadRekeningen,
   laadSpaardoelen,
   laadSubcategorieen,
@@ -39,6 +42,7 @@ import {
   verwijderBudget,
   verwijderCategorie,
   verwijderGedeeldeKost,
+  verwijderOverboeking,
   verwijderRekening,
   verwijderTerugkerendePost,
   verwijderTransactie,
@@ -50,7 +54,7 @@ import { synchroniseer } from './data/sync/sync'
 import { DriveBackend } from './data/sync/drive/driveBackend'
 import { vraagToken, heeftOoitVerbonden } from './data/sync/drive/auth'
 import { TransactieFormulier } from './components/TransactieFormulier'
-import { RekeningFormulier } from './components/RekeningFormulier'
+import { RekeningFormulier, REKENING_TYPE_LABEL } from './components/RekeningFormulier'
 import { CategorieFormulier } from './components/CategorieFormulier'
 import { BudgetFormulier } from './components/BudgetFormulier'
 import { DossierSectie } from './components/DossierSectie'
@@ -60,6 +64,7 @@ import { Donut } from './components/Donut'
 import { StaafGrafiek } from './components/StaafGrafiek'
 import { IndexatieCalculator } from './components/IndexatieCalculator'
 import { TerugkerendeSectie } from './components/TerugkerendeSectie'
+import { OverboekingSectie } from './components/OverboekingSectie'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { saldoVerrekening } from './utils/dossier'
 import { nieuwId } from './data/sync/id'
@@ -69,6 +74,7 @@ import { uitgavenPerMaand } from './utils/maandverloop'
 import { labelVanCategorie } from './data/categorieen/resolve'
 import { stelSubcategorieenIn } from './data/categorieen/zoek'
 import { formatEuro } from './utils/format'
+import { useT, TALEN } from './i18n'
 
 const container: CSSProperties = {
   fontFamily: 'system-ui, sans-serif',
@@ -110,6 +116,7 @@ export function App() {
   const [terugkerendePosten, setTerugkerendePosten] = useState<TerugkerendePost[]>([])
   const [spaardoelen, setSpaardoelen] = useState<Spaardoel[]>([])
   const [subcategorieen, setSubcategorieen] = useState<Subcategorie[]>([])
+  const [overboekingen, setOverboekingen] = useState<Overboeking[]>([])
   const [ongeldig, setOngeldig] = useState(0)
   const [verbonden, setVerbonden] = useState(false)
   const [bezig, setBezig] = useState(false)
@@ -117,12 +124,16 @@ export function App() {
   const [bewerkTransactie, setBewerkTransactie] = useState<Transactie | null>(null)
   const [bewerkCategorie, setBewerkCategorie] = useState<Categorie | null>(null)
   const [bewerkRekening, setBewerkRekening] = useState<Rekening | null>(null)
+  const [bewerkOverboeking, setBewerkOverboeking] = useState<Overboeking | null>(null)
   const [maand, setMaand] = useState(huidigeMaand())
   const [backupTekst, setBackupTekst] = useState<string | null>(null)
+  const [undoInfo, setUndoInfo] = useState<{ boodschap: string; herstel: () => Promise<void> } | null>(null)
   const backendRef = useRef<DriveBackend | null>(null)
+  const undoTimer = useRef<number | null>(null)
+  const { t, taal, zetTaal } = useT()
 
   async function herlaad() {
-    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc] = await Promise.all([
+    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob] = await Promise.all([
       laadTransacties(),
       laadRekeningen(),
       laadCategorieen(),
@@ -133,6 +144,7 @@ export function App() {
       laadTerugkerendePosten(),
       laadSpaardoelen(),
       laadSubcategorieen(),
+      laadOverboekingen(),
     ])
     setTransacties(tx.geldig)
     setOngeldig(tx.ongeldig)
@@ -145,13 +157,36 @@ export function App() {
     setTerugkerendePosten(tkp.geldig)
     setSpaardoelen(sp.geldig)
     setSubcategorieen(subc.geldig)
+    setOverboekingen(ob.geldig)
   }
+
+  // Toon een korte "ongedaan maken"-melding na een verwijdering. Herstellen is
+  // dankzij het append-only logboek eenvoudig: we bewaren het verwijderde item
+  // gewoon opnieuw (met dezelfde id), waardoor het weer verschijnt.
+  function toonUndo(boodschap: string, herstel: () => Promise<void>) {
+    if (undoTimer.current) window.clearTimeout(undoTimer.current)
+    setUndoInfo({ boodschap, herstel })
+    undoTimer.current = window.setTimeout(() => setUndoInfo(null), 8000)
+  }
+
+  async function undoNu() {
+    if (!undoInfo) return
+    const herstel = undoInfo.herstel
+    setUndoInfo(null)
+    if (undoTimer.current) window.clearTimeout(undoTimer.current)
+    await herstel()
+    await herlaad()
+  }
+
+  useEffect(() => () => {
+    if (undoTimer.current) window.clearTimeout(undoTimer.current)
+  }, [])
 
   useEffect(() => {
     let actief = true
     async function laad() {
       await seedIndienLeeg()
-      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc] = await Promise.all([
+      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob] = await Promise.all([
         laadTransacties(),
         laadRekeningen(),
         laadCategorieen(),
@@ -162,6 +197,7 @@ export function App() {
         laadTerugkerendePosten(),
         laadSpaardoelen(),
         laadSubcategorieen(),
+        laadOverboekingen(),
       ])
       if (!actief) return
       setTransacties(tx.geldig)
@@ -175,6 +211,7 @@ export function App() {
       setTerugkerendePosten(tkp.geldig)
       setSpaardoelen(sp.geldig)
       setSubcategorieen(subc.geldig)
+      setOverboekingen(ob.geldig)
     }
     void laad()
     return () => {
@@ -296,18 +333,42 @@ export function App() {
   }
 
   async function verwijderRek(id: string) {
+    const oud = rekeningen.find((r) => r.id === id)
     await verwijderRekening(id)
     await herlaad()
+    if (oud) toonUndo(t('Rekening verwijderd'), () => bewaarRekening(oud))
+  }
+
+  async function archiveerRekening(r: Rekening, archiveer: boolean) {
+    await bewaarRekening({ ...r, gearchiveerd: archiveer })
+    await herlaad()
+  }
+
+  async function voegOverboekingToe(o: Overboeking) {
+    await bewaarOverboeking(o)
+    await herlaad()
+    setBewerkOverboeking(null)
+  }
+
+  async function verwijderOverboekingH(id: string) {
+    const oud = overboekingen.find((o) => o.id === id)
+    await verwijderOverboeking(id)
+    await herlaad()
+    if (oud) toonUndo(t('Overboeking verwijderd'), () => bewaarOverboeking(oud))
   }
 
   async function verwijderCat(id: string) {
+    const oud = categorieen.find((c) => c.id === id)
     await verwijderCategorie(id)
     await herlaad()
+    if (oud) toonUndo(t('Categorie verwijderd'), () => bewaarCategorie(oud))
   }
 
   async function verwijderBud(id: string) {
+    const oud = budgetten.find((b) => b.id === id)
     await verwijderBudget(id)
     await herlaad()
+    if (oud) toonUndo(t('Budget verwijderd'), () => bewaarBudget(oud))
   }
 
   async function voegBudgetToe(b: Budget) {
@@ -326,13 +387,17 @@ export function App() {
   }
 
   async function verwijderDoss(id: string) {
+    const oud = dossiers.find((d) => d.id === id)
     await verwijderDossier(id)
     await herlaad()
+    if (oud) toonUndo(t('Dossier verwijderd'), () => bewaarDossier(oud))
   }
 
   async function verwijderKost(id: string) {
+    const oud = gedeeldeKosten.find((k) => k.id === id)
     await verwijderGedeeldeKost(id)
     await herlaad()
+    if (oud) toonUndo(t('Kost verwijderd'), () => bewaarGedeeldeKost(oud))
   }
 
   async function voegSpaardoelToe(d: Spaardoel) {
@@ -341,8 +406,10 @@ export function App() {
   }
 
   async function verwijderSpaardoelH(id: string) {
+    const oud = spaardoelen.find((s) => s.id === id)
     await verwijderSpaardoel(id)
     await herlaad()
+    if (oud) toonUndo(t('Spaardoel verwijderd'), () => bewaarSpaardoel(oud))
   }
 
   async function voegSubcategorieToe(categorieId: string, naam: string) {
@@ -356,8 +423,10 @@ export function App() {
   }
 
   async function verwijderSubcategorieH(id: string) {
+    const oud = subcategorieen.find((s) => s.id === id)
     await verwijderSubcategorie(id)
     await herlaad()
+    if (oud) toonUndo(t('Subcategorie verwijderd'), () => bewaarSubcategorie(oud))
   }
 
   async function voegTerugkerendToe(p: TerugkerendePost) {
@@ -366,8 +435,10 @@ export function App() {
   }
 
   async function verwijderTerugkerend(id: string) {
+    const oud = terugkerendePosten.find((p) => p.id === id)
     await verwijderTerugkerendePost(id)
     await herlaad()
+    if (oud) toonUndo(t('Vaste post verwijderd'), () => bewaarTerugkerendePost(oud))
   }
 
   async function boekTerugkerend(post: TerugkerendePost) {
@@ -397,8 +468,10 @@ export function App() {
   }
 
   async function verwijder(id: string) {
+    const oud = transacties?.find((t) => t.id === id)
     await verwijderTransactie(id)
     await herlaad()
+    if (oud) toonUndo(t('Transactie verwijderd'), () => bewaarTransactie(oud))
   }
 
   async function verbindEnSynchroniseer() {
@@ -451,14 +524,31 @@ export function App() {
   const perCategorie = uitgavenPerCategorie(transacties, categorieen, maand)
   const perInkomsten = inkomstenPerCategorie(transacties, categorieen, maand)
   const handelaars = [...new Set(transacties.map((t) => t.omschrijving).filter((s) => s.trim().length > 0))]
+  // Gearchiveerde rekeningen blijven in het overzicht staan, maar verdwijnen uit
+  // de keuzelijsten waar je nieuwe dingen aan koppelt.
+  const actieveRekeningen = rekeningen.filter((r) => !r.gearchiveerd)
   const maandVerloop = uitgavenPerMaand(transacties, maand, 6)
 
   return (
     <main style={container}>
       <h1 style={{ marginBottom: 0 }}>Financieel Kompas</h1>
-      <p style={{ color: '#666', marginTop: 4 }}>
-        Rekeningen, categorieën, budgetten en transacties — met backup en synchronisatie
-      </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+        <p style={{ color: '#666', marginTop: 4 }}>
+          {t('Rekeningen, categorieën, budgetten en transacties — met backup en synchronisatie')}
+        </p>
+        <select
+          aria-label={t('Taal')}
+          value={taal}
+          onChange={(e) => zetTaal(e.target.value as typeof taal)}
+          style={{ padding: '0.25rem', borderRadius: 6, border: '1px solid #ccc' }}
+        >
+          {TALEN.map((tl) => (
+            <option key={tl.waarde} value={tl.waarde}>
+              {tl.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {ongeldig > 0 && (
         <p style={{ background: '#fff5f5', border: '1px solid #f5c6cb', borderRadius: 8, padding: '0.5rem 0.75rem' }}>
@@ -468,7 +558,7 @@ export function App() {
 
       <ErrorBoundary naam="Maandoverzicht">
       <section>
-        <h2 style={kop}>Maandoverzicht</h2>
+        <h2 style={kop}>{t('Maandoverzicht')}</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
           <button style={knop} aria-label="Vorige maand" onClick={() => setMaand(verschuifMaand(maand, -1))}>
             ‹
@@ -479,15 +569,15 @@ export function App() {
           </button>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.15rem 0' }}>
-          <span>Inkomsten</span>
+          <span>{t('Inkomsten')}</span>
           <span style={{ color: '#27ae60' }}>{formatEuro(inkomsten)}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.15rem 0' }}>
-          <span>Uitgaven</span>
+          <span>{t('Uitgaven')}</span>
           <span style={{ color: '#c0392b' }}>{formatEuro(uitgaven)}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.15rem 0', fontWeight: 'bold' }}>
-          <span>Netto</span>
+          <span>{t('Netto')}</span>
           <span>{formatEuro(inkomsten - uitgaven)}</span>
         </div>
         {perCategorie.length > 0 && (
@@ -513,33 +603,60 @@ export function App() {
       <hr style={scheiding} />
 
       <section>
-        <h2 style={kop}>Rekeningen</h2>
+        <h2 style={kop}>{t('Rekeningen')}</h2>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {rekeningen.map((r) => (
-            <li
-              key={r.id}
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.3rem 0', borderBottom: '1px solid #f0f0f0' }}
-            >
-              <span>{r.naam}</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <span style={{ color: '#888' }}>startsaldo {formatEuro(r.beginsaldo)}</span>
-                <button aria-label={`Bewerk rekening ${r.naam}`} onClick={() => setBewerkRekening(r)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
-                  ✎
-                </button>
-                <button aria-label={`Verwijder rekening ${r.naam}`} onClick={() => verwijderRek(r.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
-                  ×
-                </button>
-              </span>
-            </li>
-          ))}
+          {rekeningen.map((r) => {
+            const meta = [REKENING_TYPE_LABEL[r.type ?? 'betaal'], r.rubriek, r.rekeningnummer].filter(Boolean).join(' · ')
+            return (
+              <li key={r.id} style={{ padding: '0.35rem 0', borderBottom: '1px solid #f0f0f0', opacity: r.gearchiveerd ? 0.55 : 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>
+                    {r.naam}
+                    {r.gearchiveerd && <span style={{ color: '#888', fontSize: '0.8rem' }}> · gearchiveerd</span>}
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <span style={{ color: '#888' }}>startsaldo {formatEuro(r.beginsaldo)}</span>
+                    <button aria-label={`Bewerk rekening ${r.naam}`} onClick={() => setBewerkRekening(r)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
+                      ✎
+                    </button>
+                    <button
+                      aria-label={r.gearchiveerd ? `Herstel rekening ${r.naam}` : `Archiveer rekening ${r.naam}`}
+                      onClick={() => archiveerRekening(r, !r.gearchiveerd)}
+                      style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer', fontSize: '0.8rem' }}
+                    >
+                      {r.gearchiveerd ? 'herstel' : 'archiveer'}
+                    </button>
+                    <button aria-label={`Verwijder rekening ${r.naam}`} onClick={() => verwijderRek(r.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
+                      ×
+                    </button>
+                  </span>
+                </div>
+                {meta && <div style={{ color: '#999', fontSize: '0.8rem' }}>{meta}</div>}
+              </li>
+            )
+          })}
         </ul>
         <RekeningFormulier onOpslaan={slaRekeningOp} onAnnuleer={() => setBewerkRekening(null)} bewerken={bewerkRekening} />
       </section>
 
       <hr style={scheiding} />
 
+      <ErrorBoundary naam="Overboekingen">
+        <OverboekingSectie
+          overboekingen={overboekingen}
+          rekeningen={actieveRekeningen}
+          bewerken={bewerkOverboeking}
+          onOpslaan={voegOverboekingToe}
+          onVerwijderen={verwijderOverboekingH}
+          onBewerk={setBewerkOverboeking}
+          onStopBewerken={() => setBewerkOverboeking(null)}
+        />
+      </ErrorBoundary>
+
+      <hr style={scheiding} />
+
       <section>
-        <h2 style={kop}>Categorieën</h2>
+        <h2 style={kop}>{t('Categorieën')}</h2>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {categorieen.map((c) => (
             <li
@@ -576,7 +693,7 @@ export function App() {
 
       <ErrorBoundary naam="Budgetten">
       <section>
-        <h2 style={kop}>Budgetten</h2>
+        <h2 style={kop}>{t('Budgetten')}</h2>
         <p style={{ color: '#888', marginTop: 0 }}>voor {maandLabel(maand)}</p>
         {budgetten.length === 0 && <p style={{ color: '#888' }}>Nog geen budgetten ingesteld.</p>}
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -621,7 +738,7 @@ export function App() {
       <ErrorBoundary naam="Vaste lasten">
         <TerugkerendeSectie
           posten={terugkerendePosten}
-          rekeningen={rekeningen}
+          rekeningen={actieveRekeningen}
           categorieen={categorieen}
           transacties={transacties}
           maand={maand}
@@ -639,7 +756,7 @@ export function App() {
         <TransactieFormulier
           onOpslaan={slaTransactieOp}
           onAnnuleer={() => setBewerkTransactie(null)}
-          rekeningen={rekeningen}
+          rekeningen={actieveRekeningen}
           categorieen={categorieen}
           handelaars={handelaars}
           bewerken={bewerkTransactie}
@@ -690,7 +807,7 @@ export function App() {
       </ul>
 
       <p style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '1.2rem', marginTop: '1rem' }}>
-        <span>Saldo</span>
+        <span>{t('Saldo')}</span>
         <span>{formatEuro(totaalSaldo)}</span>
       </p>
 
@@ -714,7 +831,7 @@ export function App() {
       <ErrorBoundary naam="Spaardoelen">
         <SpaardoelSectie
           spaardoelen={spaardoelen}
-          rekeningen={rekeningen}
+          rekeningen={actieveRekeningen}
           transacties={transacties}
           onOpslaan={voegSpaardoelToe}
           onVerwijderen={verwijderSpaardoelH}
@@ -770,6 +887,36 @@ export function App() {
         )}
         {statusTekst && <p style={{ color: '#666', marginTop: '0.75rem' }}>{statusTekst}</p>}
       </div>
+
+      {undoInfo && (
+        <div
+          role="status"
+          style={{
+            position: 'fixed',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            bottom: 20,
+            background: '#333',
+            color: '#fff',
+            padding: '0.6rem 1rem',
+            borderRadius: 8,
+            display: 'flex',
+            gap: '1rem',
+            alignItems: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+            zIndex: 1000,
+            maxWidth: '90%',
+          }}
+        >
+          <span>{undoInfo.boodschap}</span>
+          <button
+            onClick={() => void undoNu()}
+            style={{ background: 'none', border: 'none', color: '#8ec5ff', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            {t('Ongedaan maken')}
+          </button>
+        </div>
+      )}
     </main>
   )
 }
