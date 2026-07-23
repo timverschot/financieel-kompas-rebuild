@@ -72,6 +72,18 @@ export async function verwijderTransactie(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'transactie.verwijderd', payload: { id } })
 }
 
+export async function verwijderRekening(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'rekening.verwijderd', payload: { id } })
+}
+
+export async function verwijderCategorie(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'categorie.verwijderd', payload: { id } })
+}
+
+export async function verwijderBudget(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'budget.verwijderd', payload: { id } })
+}
+
 export async function verwijderGedeeldeKost(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'gedeeldekost.verwijderd', payload: { id } })
 }

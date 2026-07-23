@@ -156,4 +156,58 @@ describe('App', () => {
     expect(await screen.findByText('Niets te verrekenen')).toBeInTheDocument()
     expect(screen.getByText('Vastgelegde afrekeningen')).toBeInTheDocument()
   })
+
+  it('verwijdert een categorie', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
+    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
+    expect((await screen.findAllByRole('option', { name: 'Vervoer' })).length).toBeGreaterThan(0)
+
+    await user.click(screen.getByRole('button', { name: 'Verwijder categorie Vervoer' }))
+    await waitFor(() => expect(screen.queryAllByRole('option', { name: 'Vervoer' })).toHaveLength(0))
+  })
+
+  it('hernoemt een bestaande categorie', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.click(screen.getByRole('button', { name: 'Bewerk categorie Voeding' }))
+    const naam = screen.getByLabelText('Categorienaam')
+    await user.clear(naam)
+    await user.type(naam, 'Eten')
+    await user.click(screen.getByRole('button', { name: 'Categorie wijzigen' }))
+
+    expect((await screen.findAllByRole('option', { name: 'Eten' })).length).toBeGreaterThan(0)
+  })
+
+  it('verwijdert een rekening', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.type(screen.getByLabelText('Rekeningnaam'), 'Spaarrekening')
+    await user.click(screen.getByRole('button', { name: 'Rekening toevoegen' }))
+    expect((await screen.findAllByRole('option', { name: 'Spaarrekening' })).length).toBeGreaterThan(0)
+
+    await user.click(screen.getByRole('button', { name: 'Verwijder rekening Spaarrekening' }))
+    await waitFor(() => expect(screen.queryAllByRole('option', { name: 'Spaarrekening' })).toHaveLength(0))
+  })
+
+  it('verwijdert een budget', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
+    await user.type(screen.getByLabelText('Maandbudget (€)'), '400')
+    await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
+    await screen.findByRole('progressbar', { name: 'Voeding' })
+
+    await user.click(screen.getByRole('button', { name: 'Verwijder budget Voeding' }))
+    await waitFor(() => expect(screen.queryByRole('progressbar', { name: 'Voeding' })).toBeNull())
+  })
 })

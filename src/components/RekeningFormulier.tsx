@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
 import type { Rekening } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
@@ -12,25 +12,35 @@ const veld: CSSProperties = {
 }
 const rij: CSSProperties = { marginBottom: '0.6rem' }
 
-// Formulier om een nieuwe rekening aan te maken. Het beginsaldo is optioneel
-// (leeg = 0) en telt mee in het totaalsaldo.
+// Formulier om een rekening aan te maken of te bewerken (naam + beginsaldo).
 export function RekeningFormulier({
-  onToevoegen,
+  onOpslaan,
+  onAnnuleer,
+  bewerken,
 }: {
-  onToevoegen: (r: Rekening) => Promise<void> | void
+  onOpslaan: (r: Rekening) => Promise<void> | void
+  onAnnuleer?: () => void
+  bewerken?: Rekening | null
 }) {
   const [naam, setNaam] = useState('')
   const [beginsaldo, setBeginsaldo] = useState('')
   const geldig = naam.trim().length > 0
 
+  useEffect(() => {
+    if (bewerken) {
+      setNaam(bewerken.naam)
+      setBeginsaldo(String(bewerken.beginsaldo).replace('.', ','))
+    } else {
+      setNaam('')
+      setBeginsaldo('')
+    }
+  }, [bewerken])
+
   async function verzend(e: FormEvent) {
     e.preventDefault()
     if (!geldig) return
     const n = Number.parseFloat(beginsaldo.replace(',', '.'))
-    const r: Rekening = { id: nieuwId(), naam: naam.trim(), beginsaldo: Number.isFinite(n) ? n : 0 }
-    await onToevoegen(r)
-    setNaam('')
-    setBeginsaldo('')
+    await onOpslaan({ id: bewerken ? bewerken.id : nieuwId(), naam: naam.trim(), beginsaldo: Number.isFinite(n) ? n : 0 })
   }
 
   return (
@@ -61,8 +71,17 @@ export function RekeningFormulier({
           cursor: geldig ? 'pointer' : 'not-allowed',
         }}
       >
-        Rekening toevoegen
+        {bewerken ? 'Rekening wijzigen' : 'Rekening toevoegen'}
       </button>
+      {bewerken && onAnnuleer && (
+        <button
+          type="button"
+          onClick={onAnnuleer}
+          style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}
+        >
+          Annuleer
+        </button>
+      )}
     </form>
   )
 }

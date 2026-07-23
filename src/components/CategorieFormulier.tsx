@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
 import type { Categorie } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
@@ -11,20 +11,27 @@ const veld: CSSProperties = {
   boxSizing: 'border-box',
 }
 
-// Formulier om een nieuwe categorie aan te maken.
+// Formulier om een categorie aan te maken of te hernoemen.
 export function CategorieFormulier({
-  onToevoegen,
+  onOpslaan,
+  onAnnuleer,
+  bewerken,
 }: {
-  onToevoegen: (c: Categorie) => Promise<void> | void
+  onOpslaan: (c: Categorie) => Promise<void> | void
+  onAnnuleer?: () => void
+  bewerken?: Categorie | null
 }) {
   const [naam, setNaam] = useState('')
   const geldig = naam.trim().length > 0
 
+  useEffect(() => {
+    setNaam(bewerken ? bewerken.naam : '')
+  }, [bewerken])
+
   async function verzend(e: FormEvent) {
     e.preventDefault()
     if (!geldig) return
-    await onToevoegen({ id: nieuwId(), naam: naam.trim() })
-    setNaam('')
+    await onOpslaan({ id: bewerken ? bewerken.id : nieuwId(), naam: naam.trim() })
   }
 
   return (
@@ -44,8 +51,17 @@ export function CategorieFormulier({
           cursor: geldig ? 'pointer' : 'not-allowed',
         }}
       >
-        Categorie toevoegen
+        {bewerken ? 'Categorie wijzigen' : 'Categorie toevoegen'}
       </button>
+      {bewerken && onAnnuleer && (
+        <button
+          type="button"
+          onClick={onAnnuleer}
+          style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}
+        >
+          Annuleer
+        </button>
+      )}
     </form>
   )
 }

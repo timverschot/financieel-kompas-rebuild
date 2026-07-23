@@ -27,7 +27,10 @@ import {
   laadTerugkerendePosten,
   laadTransacties,
   laadVerrekeningen,
+  verwijderBudget,
+  verwijderCategorie,
   verwijderGedeeldeKost,
+  verwijderRekening,
   verwijderTerugkerendePost,
   verwijderTransactie,
 } from './data/repository'
@@ -91,6 +94,8 @@ export function App() {
   const [bezig, setBezig] = useState(false)
   const [statusTekst, setStatusTekst] = useState<string | null>(null)
   const [bewerkTransactie, setBewerkTransactie] = useState<Transactie | null>(null)
+  const [bewerkCategorie, setBewerkCategorie] = useState<Categorie | null>(null)
+  const [bewerkRekening, setBewerkRekening] = useState<Rekening | null>(null)
   const [maand, setMaand] = useState(huidigeMaand())
   const backendRef = useRef<DriveBackend | null>(null)
 
@@ -153,13 +158,30 @@ export function App() {
     setBewerkTransactie(null)
   }
 
-  async function voegRekeningToe(r: Rekening) {
+  async function slaRekeningOp(r: Rekening) {
     await bewaarRekening(r)
+    await herlaad()
+    setBewerkRekening(null)
+  }
+
+  async function slaCategorieOp(c: Categorie) {
+    await bewaarCategorie(c)
+    await herlaad()
+    setBewerkCategorie(null)
+  }
+
+  async function verwijderRek(id: string) {
+    await verwijderRekening(id)
     await herlaad()
   }
 
-  async function voegCategorieToe(c: Categorie) {
-    await bewaarCategorie(c)
+  async function verwijderCat(id: string) {
+    await verwijderCategorie(id)
+    await herlaad()
+  }
+
+  async function verwijderBud(id: string) {
+    await verwijderBudget(id)
     await herlaad()
   }
 
@@ -327,13 +349,24 @@ export function App() {
         <h2 style={kop}>Rekeningen</h2>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {rekeningen.map((r) => (
-            <li key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0', borderBottom: '1px solid #f0f0f0' }}>
+            <li
+              key={r.id}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.3rem 0', borderBottom: '1px solid #f0f0f0' }}
+            >
               <span>{r.naam}</span>
-              <span style={{ color: '#888' }}>startsaldo {formatEuro(r.beginsaldo)}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <span style={{ color: '#888' }}>startsaldo {formatEuro(r.beginsaldo)}</span>
+                <button aria-label={`Bewerk rekening ${r.naam}`} onClick={() => setBewerkRekening(r)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
+                  ✎
+                </button>
+                <button aria-label={`Verwijder rekening ${r.naam}`} onClick={() => verwijderRek(r.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
+                  ×
+                </button>
+              </span>
             </li>
           ))}
         </ul>
-        <RekeningFormulier onToevoegen={voegRekeningToe} />
+        <RekeningFormulier onOpslaan={slaRekeningOp} onAnnuleer={() => setBewerkRekening(null)} bewerken={bewerkRekening} />
       </section>
 
       <hr style={scheiding} />
@@ -342,12 +375,23 @@ export function App() {
         <h2 style={kop}>Categorieën</h2>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {categorieen.map((c) => (
-            <li key={c.id} style={{ padding: '0.3rem 0', borderBottom: '1px solid #f0f0f0' }}>
-              {c.naam}
+            <li
+              key={c.id}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.3rem 0', borderBottom: '1px solid #f0f0f0' }}
+            >
+              <span>{c.naam}</span>
+              <span style={{ display: 'flex', gap: '0.6rem' }}>
+                <button aria-label={`Bewerk categorie ${c.naam}`} onClick={() => setBewerkCategorie(c)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
+                  ✎
+                </button>
+                <button aria-label={`Verwijder categorie ${c.naam}`} onClick={() => verwijderCat(c.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
+                  ×
+                </button>
+              </span>
             </li>
           ))}
         </ul>
-        <CategorieFormulier onToevoegen={voegCategorieToe} />
+        <CategorieFormulier onOpslaan={slaCategorieOp} onAnnuleer={() => setBewerkCategorie(null)} bewerken={bewerkCategorie} />
       </section>
 
       <hr style={scheiding} />
@@ -364,10 +408,15 @@ export function App() {
             const kleur = uitgegeven > b.bedrag ? '#c0392b' : uitgegeven >= b.bedrag * 0.8 ? '#e67e22' : '#27ae60'
             return (
               <li key={b.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid #f0f0f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>{naam}</span>
-                  <span style={{ color: '#666' }}>
-                    {formatEuro(uitgegeven)} / {formatEuro(b.bedrag)}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <span style={{ color: '#666' }}>
+                      {formatEuro(uitgegeven)} / {formatEuro(b.bedrag)}
+                    </span>
+                    <button aria-label={`Verwijder budget ${naam}`} onClick={() => verwijderBud(b.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
+                      ×
+                    </button>
                   </span>
                 </div>
                 <div
