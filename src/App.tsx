@@ -52,6 +52,7 @@ import { saldoVerrekening } from './utils/dossier'
 import { nieuwId } from './data/sync/id'
 import { uitgavenInMaand } from './utils/budget'
 import { maandInkomsten, maandUitgaven, uitgavenPerCategorie } from './utils/overzicht'
+import { labelVanCategorie } from './data/categorieen/resolve'
 import { formatEuro } from './utils/format'
 
 const container: CSSProperties = {
@@ -386,7 +387,7 @@ export function App() {
     )
   }
 
-  const categorieNaam = (id?: string) => (id ? categorieen.find((c) => c.id === id)?.naam : undefined)
+  const categorieNaam = (id?: string) => labelVanCategorie(id, categorieen)
   const totaalSaldo =
     rekeningen.reduce((som, r) => som + r.beginsaldo, 0) +
     transacties.reduce((som, t) => som + t.bedrag, 0)

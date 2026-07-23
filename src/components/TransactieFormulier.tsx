@@ -3,6 +3,7 @@ import type { CSSProperties, FormEvent } from 'react'
 import type { Categorie, Rekening, Transactie } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
+import { CategorieKiezer } from './CategorieKiezer'
 
 const vandaag = () => new Date().toISOString().slice(0, 10)
 
@@ -109,15 +110,11 @@ export function TransactieFormulier({
         </select>
       </div>
       <div style={rij}>
-        <label htmlFor="categorie">Categorie</label>
-        <select id="categorie" style={veld} value={categorieId} onChange={(e) => setCategorieId(e.target.value)}>
-          <option value="">Geen categorie</option>
-          {categorieen.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.naam}
-            </option>
-          ))}
-        </select>
+        <CategorieKiezer
+          waarde={categorieId || undefined}
+          onKies={(id) => setCategorieId(id ?? '')}
+          gebruikerCategorieen={categorieen}
+        />
       </div>
       <div style={rij}>
         <label style={{ marginRight: '1rem' }}>
