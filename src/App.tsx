@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { Transactie } from './data/schema'
 import { laadTransacties } from './data/repository'
 import { seedIndienLeeg } from './data/seed'
+import { synchroniseer } from './data/sync/sync'
+import { DriveBackend } from './data/sync/drive/driveBackend'
+import { vraagToken } from './data/sync/drive/auth'
 import { formatEuro } from './utils/format'
 
 const container: CSSProperties = {
@@ -12,9 +15,27 @@ const container: CSSProperties = {
   padding: '0 1rem',
 }
 
+const knop: CSSProperties = {
+  padding: '0.5rem 0.9rem',
+  borderRadius: 8,
+  border: '1px solid #ccc',
+  background: '#f7f7f7',
+  cursor: 'pointer',
+}
+
 export function App() {
   const [transacties, setTransacties] = useState<Transactie[] | null>(null)
   const [ongeldig, setOngeldig] = useState(0)
+  const [verbonden, setVerbonden] = useState(false)
+  const [bezig, setBezig] = useState(false)
+  const [statusTekst, setStatusTekst] = useState<string | null>(null)
+  const backendRef = useRef<DriveBackend | null>(null)
+
+  async function herlaad() {
+    const res = await laadTransacties()
+    setTransacties(res.geldig)
+    setOngeldig(res.ongeldig)
+  }
 
   useEffect(() => {
     let actief = true
@@ -31,6 +52,37 @@ export function App() {
     }
   }, [])
 
+  async function verbindEnSynchroniseer() {
+    setBezig(true)
+    setStatusTekst(null)
+    try {
+      await vraagToken(true) // opent zo nodig het Google-aanmeldvenster
+      setVerbonden(true)
+      if (!backendRef.current) backendRef.current = new DriveBackend()
+      const r = await synchroniseer(backendRef.current)
+      await herlaad()
+      setStatusTekst(`Gesynchroniseerd: ${r.gepusht} verstuurd, ${r.opgehaald} opgehaald.`)
+    } catch (e) {
+      setStatusTekst('Verbinden mislukte: ' + (e instanceof Error ? e.message : 'onbekende fout'))
+    } finally {
+      setBezig(false)
+    }
+  }
+
+  async function synchroniseerNu() {
+    if (!backendRef.current) return
+    setBezig(true)
+    try {
+      const r = await synchroniseer(backendRef.current)
+      await herlaad()
+      setStatusTekst(`Gesynchroniseerd: ${r.gepusht} verstuurd, ${r.opgehaald} opgehaald.`)
+    } catch (e) {
+      setStatusTekst('Synchroniseren mislukte: ' + (e instanceof Error ? e.message : 'onbekende fout'))
+    } finally {
+      setBezig(false)
+    }
+  }
+
   if (transacties === null) {
     return (
       <main style={container}>
@@ -46,7 +98,7 @@ export function App() {
     <main style={container}>
       <h1 style={{ marginBottom: 0 }}>Financieel Kompas</h1>
       <p style={{ color: '#666', marginTop: 4 }}>
-        Fase 2 — elke wijziging wordt als logboek bewaard (klaar voor Drive-sync)
+        Fase 2 — database met schemabewaking en synchronisatie via Google Drive
       </p>
 
       {ongeldig > 0 && (
@@ -91,6 +143,21 @@ export function App() {
         <span>Saldo</span>
         <span>{formatEuro(saldo)}</span>
       </p>
+
+      <hr style={{ margin: '1.5rem 0', border: 'none', borderTop: '1px solid #eee' }} />
+
+      <div>
+        {!verbonden ? (
+          <button style={knop} onClick={verbindEnSynchroniseer} disabled={bezig}>
+            {bezig ? 'Bezig…' : 'Verbind met Google Drive'}
+          </button>
+        ) : (
+          <button style={knop} onClick={synchroniseerNu} disabled={bezig}>
+            {bezig ? 'Bezig…' : 'Synchroniseer nu'}
+          </button>
+        )}
+        {statusTekst && <p style={{ color: '#666', marginTop: '0.75rem' }}>{statusTekst}</p>}
+      </div>
     </main>
   )
 }
