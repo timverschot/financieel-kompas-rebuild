@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
 import type { Categorie, Rekening, Transactie } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
@@ -14,16 +14,21 @@ const veld: CSSProperties = {
 }
 const rij: CSSProperties = { marginBottom: '0.6rem' }
 
-// Invoerformulier voor een transactie. De gebruiker typt een positief bedrag,
-// kiest 'Uitgave' of 'Inkomst', op welke rekening, en optioneel een categorie.
+// Invoerformulier voor een transactie. Werkt zowel voor toevoegen als bewerken:
+// wanneer 'bewerken' een transactie bevat, worden de velden ermee gevuld en
+// slaan we op met dezelfde id (het logboek laat die nieuwste versie winnen).
 export function TransactieFormulier({
-  onToevoegen,
+  onOpslaan,
+  onAnnuleer,
   rekeningen,
   categorieen,
+  bewerken,
 }: {
-  onToevoegen: (t: Transactie) => Promise<void> | void
+  onOpslaan: (t: Transactie) => Promise<void> | void
+  onAnnuleer?: () => void
   rekeningen: Rekening[]
   categorieen: Categorie[]
+  bewerken?: Transactie | null
 }) {
   const [omschrijving, setOmschrijving] = useState('')
   const [bedrag, setBedrag] = useState('')
@@ -31,6 +36,24 @@ export function TransactieFormulier({
   const [soort, setSoort] = useState<'uitgave' | 'inkomst'>('uitgave')
   const [rekeningId, setRekeningId] = useState(rekeningen[0]?.id ?? '')
   const [categorieId, setCategorieId] = useState('')
+
+  // Vul of leeg de velden wanneer we van modus wisselen (bewerken <-> toevoegen).
+  useEffect(() => {
+    if (bewerken) {
+      setOmschrijving(bewerken.omschrijving)
+      setBedrag(String(Math.abs(bewerken.bedrag)).replace('.', ','))
+      setSoort(bewerken.bedrag < 0 ? 'uitgave' : 'inkomst')
+      setDatum(bewerken.datum)
+      setRekeningId(bewerken.rekeningId)
+      setCategorieId(bewerken.categorieId ?? '')
+    } else {
+      setOmschrijving('')
+      setBedrag('')
+      setSoort('uitgave')
+      setDatum(vandaag())
+      setCategorieId('')
+    }
+  }, [bewerken])
 
   const bedragGetal = Number.parseFloat(bedrag.replace(',', '.'))
   const geldig =
@@ -43,19 +66,14 @@ export function TransactieFormulier({
     e.preventDefault()
     if (!geldig) return
     const t: Transactie = {
-      id: nieuwId(),
+      id: bewerken ? bewerken.id : nieuwId(),
       datum,
       omschrijving: omschrijving.trim(),
       bedrag: soort === 'uitgave' ? -bedragGetal : bedragGetal,
       rekeningId,
       ...(categorieId ? { categorieId } : {}),
     }
-    await onToevoegen(t)
-    setOmschrijving('')
-    setBedrag('')
-    setSoort('uitgave')
-    setCategorieId('')
-    setDatum(vandaag())
+    await onOpslaan(t)
   }
 
   return (
@@ -119,8 +137,17 @@ export function TransactieFormulier({
           cursor: geldig ? 'pointer' : 'not-allowed',
         }}
       >
-        Toevoegen
+        {bewerken ? 'Wijzigen' : 'Toevoegen'}
       </button>
+      {bewerken && onAnnuleer && (
+        <button
+          type="button"
+          onClick={onAnnuleer}
+          style={{ marginLeft: '0.5rem', padding: '0.5rem 0.9rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}
+        >
+          Annuleer
+        </button>
+      )}
     </form>
   )
 }

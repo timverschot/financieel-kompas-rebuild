@@ -43,6 +43,20 @@ describe('App', () => {
     expect(screen.queryByText('Boodschappen')).toBeNull()
   })
 
+  it('bewerkt een bestaande transactie en past het saldo aan (Huur 950 -> 1000: saldo 1080)', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Huur')
+
+    await user.click(screen.getByRole('button', { name: 'Bewerk Huur' }))
+    const bedrag = screen.getByLabelText('Bedrag (€)')
+    await user.clear(bedrag)
+    await user.type(bedrag, '1000')
+    await user.click(screen.getByRole('button', { name: 'Wijzigen' }))
+
+    expect(await screen.findByText(/1[.\s]?080/)).toBeInTheDocument()
+  })
+
   it('voegt een nieuwe rekening toe en maakt ze beschikbaar', async () => {
     const user = userEvent.setup()
     render(<App />)

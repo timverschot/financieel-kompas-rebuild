@@ -46,6 +46,7 @@ export function App() {
   const [bezig, setBezig] = useState(false)
   const [statusTekst, setStatusTekst] = useState<string | null>(null)
   const backendRef = useRef<DriveBackend | null>(null)
+  const [bewerkTransactie, setBewerkTransactie] = useState<Transactie | null>(null)
 
   async function herlaad() {
     const [tx, rk, cat] = await Promise.all([laadTransacties(), laadRekeningen(), laadCategorieen()])
@@ -72,9 +73,10 @@ export function App() {
     }
   }, [])
 
-  async function voegTransactieToe(t: Transactie) {
+  async function slaTransactieOp(t: Transactie) {
     await bewaarTransactie(t)
     await herlaad()
+    setBewerkTransactie(null)
   }
 
   async function voegRekeningToe(r: Rekening) {
@@ -196,11 +198,13 @@ export function App() {
       <hr style={scheiding} />
 
       <section>
-        <h2 style={kop}>Transactie toevoegen</h2>
+        <h2 style={kop}>{bewerkTransactie ? 'Transactie bewerken' : 'Transactie toevoegen'}</h2>
         <TransactieFormulier
-          onToevoegen={voegTransactieToe}
+          onOpslaan={slaTransactieOp}
+          onAnnuleer={() => setBewerkTransactie(null)}
           rekeningen={rekeningen}
           categorieen={categorieen}
+          bewerken={bewerkTransactie}
         />
       </section>
 
@@ -224,6 +228,13 @@ export function App() {
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <span style={{ color: t.bedrag < 0 ? '#c0392b' : '#27ae60' }}>{formatEuro(t.bedrag)}</span>
+                <button
+                  aria-label={`Bewerk ${t.omschrijving}`}
+                  onClick={() => setBewerkTransactie(t)}
+                  style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer', fontSize: '1rem' }}
+                >
+                  ✎
+                </button>
                 <button
                   aria-label={`Verwijder ${t.omschrijving}`}
                   onClick={() => verwijder(t.id)}
