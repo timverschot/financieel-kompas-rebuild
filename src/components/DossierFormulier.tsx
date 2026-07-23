@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
 import type { Dossier } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
+import { useT } from '../i18n'
 
 const veld: CSSProperties = {
   display: 'block',
@@ -15,6 +16,7 @@ const rij: CSSProperties = { marginBottom: '0.6rem' }
 // Formulier om een nieuw dossier aan te maken, met de verdeelsleutel (percentage
 // dat jij draagt).
 export function DossierFormulier({ onOpslaan }: { onOpslaan: (d: Dossier) => Promise<void> | void }) {
+  const { t } = useT()
   const [naam, setNaam] = useState('')
   const [aandeel, setAandeel] = useState('')
 
@@ -33,11 +35,11 @@ export function DossierFormulier({ onOpslaan }: { onOpslaan: (d: Dossier) => Pro
   return (
     <form onSubmit={verzend} style={{ marginTop: '0.75rem' }}>
       <div style={rij}>
-        <label htmlFor="dossiernaam">Dossiernaam</label>
+        <label htmlFor="dossiernaam">{t('Dossiernaam')}</label>
         <input id="dossiernaam" style={veld} value={naam} onChange={(e) => setNaam(e.target.value)} />
       </div>
       <div style={rij}>
-        <label htmlFor="aandeel">Aandeel jij (%)</label>
+        <label htmlFor="aandeel">{t('Aandeel jij (%)')}</label>
         <input
           id="aandeel"
           style={veld}
@@ -58,7 +60,7 @@ export function DossierFormulier({ onOpslaan }: { onOpslaan: (d: Dossier) => Pro
           cursor: geldig ? 'pointer' : 'not-allowed',
         }}
       >
-        Dossier toevoegen
+        {t('Dossier toevoegen')}
       </button>
     </form>
   )

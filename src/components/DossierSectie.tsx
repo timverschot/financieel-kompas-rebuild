@@ -5,6 +5,7 @@ import { DossierFormulier } from './DossierFormulier'
 import { GedeeldeKostFormulier } from './GedeeldeKostFormulier'
 import { saldoVerrekening } from '../utils/dossier'
 import { formatEuro } from '../utils/format'
+import { useT, type Vertaler } from '../i18n'
 
 const veld: CSSProperties = {
   display: 'block',
@@ -14,11 +15,11 @@ const veld: CSSProperties = {
   boxSizing: 'border-box',
 }
 
-function verrekentekst(netto: number): string {
+function verrekentekst(t: Vertaler, netto: number): string {
   // netto is in centen (geheel getal): positief = partner is jou verschuldigd.
-  if (netto > 0) return `Partner is jou ${formatEuro(netto)} verschuldigd`
-  if (netto < 0) return `Jij bent partner ${formatEuro(-netto)} verschuldigd`
-  return 'Niets te verrekenen'
+  if (netto > 0) return t('Partner is jou {bedrag} verschuldigd', { bedrag: formatEuro(netto) })
+  if (netto < 0) return t('Jij bent partner {bedrag} verschuldigd', { bedrag: formatEuro(-netto) })
+  return t('Niets te verrekenen')
 }
 
 // De volledige Dossiers-sectie: kies, maak of verwijder een dossier, beheer de
@@ -43,6 +44,7 @@ export function DossierSectie({
   onKostVerwijderen: (id: string) => Promise<void> | void
   onAfrekenen: (dossier: Dossier, openKosten: GedeeldeKost[]) => Promise<void> | void
 }) {
+  const { t } = useT()
   const [geselecteerd, setGeselecteerd] = useState('')
   const [bewerkKost, setBewerkKost] = useState<GedeeldeKost | null>(null)
 
@@ -69,23 +71,23 @@ export function DossierSectie({
 
   return (
     <section>
-      <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>Dossiers (gedeelde kosten)</h2>
-      {dossiers.length === 0 && <p style={{ color: '#888' }}>Nog geen dossiers. Maak er hieronder een aan.</p>}
+      <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{t('Dossiers (gedeelde kosten)')}</h2>
+      {dossiers.length === 0 && <p style={{ color: '#888' }}>{t('Nog geen dossiers. Maak er hieronder een aan.')}</p>}
 
       {dossiers.length > 0 && (
         <div style={{ marginBottom: '0.5rem' }}>
-          <label htmlFor="dossierkeuze">Gekozen dossier</label>
+          <label htmlFor="dossierkeuze">{t('Gekozen dossier')}</label>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <select id="dossierkeuze" style={{ ...veld, flex: 1 }} value={geselecteerd} onChange={(e) => setGeselecteerd(e.target.value)}>
               {dossiers.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.naam} (jij {d.aandeelJij}%)
+                  {d.naam} {t('(jij {p}%)', { p: d.aandeelJij })}
                 </option>
               ))}
             </select>
             {dossier && (
               <button
-                aria-label={`Verwijder dossier ${dossier.naam}`}
+                aria-label={t('Verwijder dossier {naam}', { naam: dossier.naam })}
                 onClick={() => onDossierVerwijderen(dossier.id)}
                 style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.2rem' }}
               >
@@ -116,16 +118,16 @@ export function DossierSectie({
                   {k.omschrijving}
                   <span style={{ color: '#999', fontSize: '0.85rem' }}>
                     {' '}
-                    · betaald door {k.betaaldDoor === 'jij' ? 'jou' : 'partner'}
+                    · {t('betaald door {wie}', { wie: k.betaaldDoor === 'jij' ? t('jou') : t('partner') })}
                   </span>
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                   <span>{formatEuro(k.bedrag)}</span>
-                  <button aria-label={`Bewerk kost ${k.omschrijving}`} onClick={() => setBewerkKost(k)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
+                  <button aria-label={t('Bewerk kost {naam}', { naam: k.omschrijving })} onClick={() => setBewerkKost(k)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
                     ✎
                   </button>
                   <button
-                    aria-label={`Verwijder kost ${k.omschrijving}`}
+                    aria-label={t('Verwijder kost {naam}', { naam: k.omschrijving })}
                     onClick={() => onKostVerwijderen(k.id)}
                     style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}
                   >
@@ -136,7 +138,7 @@ export function DossierSectie({
             ))}
           </ul>
 
-          <p style={{ fontWeight: 'bold', marginTop: '0.75rem' }}>{verrekentekst(netto)}</p>
+          <p style={{ fontWeight: 'bold', marginTop: '0.75rem' }}>{verrekentekst(t, netto)}</p>
 
           <button
             onClick={() => onAfrekenen(dossier, openKosten)}
@@ -149,7 +151,7 @@ export function DossierSectie({
               cursor: openKosten.length === 0 ? 'not-allowed' : 'pointer',
             }}
           >
-            Leg afrekening vast
+            {t('Leg afrekening vast')}
           </button>
 
           <GedeeldeKostFormulier
@@ -161,12 +163,12 @@ export function DossierSectie({
 
           {geschiedenis.length > 0 && (
             <div style={{ marginTop: '1rem' }}>
-              <h3 style={{ fontSize: '0.9rem', margin: '0 0 0.25rem' }}>Vastgelegde afrekeningen</h3>
+              <h3 style={{ fontSize: '0.9rem', margin: '0 0 0.25rem' }}>{t('Vastgelegde afrekeningen')}</h3>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {geschiedenis.map((v) => (
                   <li key={v.id} style={{ display: 'flex', justifyContent: 'space-between', color: '#666', padding: '0.2rem 0' }}>
                     <span>{v.datum}</span>
-                    <span>{verrekentekst(v.bedrag)}</span>
+                    <span>{verrekentekst(t, v.bedrag)}</span>
                   </li>
                 ))}
               </ul>

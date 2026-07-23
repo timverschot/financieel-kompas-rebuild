@@ -3,6 +3,7 @@ import type { CSSProperties, FormEvent } from 'react'
 import type { Budget, Categorie } from '../data/schema'
 import { invoerNaarCenten } from '../utils/format'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
+import { useT } from '../i18n'
 
 const veld: CSSProperties = {
   display: 'block',
@@ -22,6 +23,7 @@ export function BudgetFormulier({
   categorieen: Categorie[]
   onOpslaan: (b: Budget) => Promise<void> | void
 }) {
+  const { t } = useT()
   const [categorieId, setCategorieId] = useState(INGEBOUWDE_CATEGORIEEN[0]?.id ?? '')
   const [bedrag, setBedrag] = useState('')
 
@@ -38,14 +40,14 @@ export function BudgetFormulier({
   return (
     <form onSubmit={verzend} style={{ marginTop: '0.75rem' }}>
       <div style={rij}>
-        <label htmlFor="budgetcategorie">Budgetcategorie</label>
+        <label htmlFor="budgetcategorie">{t('Budgetcategorie')}</label>
         <select
           id="budgetcategorie"
           style={veld}
           value={categorieId}
           onChange={(e) => setCategorieId(e.target.value)}
         >
-          <optgroup label="Hoofdcategorieën">
+          <optgroup label={t('Hoofdcategorieën')}>
             {INGEBOUWDE_CATEGORIEEN.map((h) => (
               <option key={h.id} value={h.id}>
                 {h.naam}
@@ -53,7 +55,7 @@ export function BudgetFormulier({
             ))}
           </optgroup>
           {categorieen.length > 0 && (
-            <optgroup label="Eigen categorieën">
+            <optgroup label={t('Eigen categorieën')}>
               {categorieen.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.naam}
@@ -64,7 +66,7 @@ export function BudgetFormulier({
         </select>
       </div>
       <div style={rij}>
-        <label htmlFor="maandbudget">Maandbudget (€)</label>
+        <label htmlFor="maandbudget">{t('Maandbudget (€)')}</label>
         <input
           id="maandbudget"
           style={veld}
@@ -85,7 +87,7 @@ export function BudgetFormulier({
           cursor: geldig ? 'pointer' : 'not-allowed',
         }}
       >
-        Budget instellen
+        {t('Budget instellen')}
       </button>
     </form>
   )

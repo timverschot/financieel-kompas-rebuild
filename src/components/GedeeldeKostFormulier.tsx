@@ -3,6 +3,7 @@ import type { CSSProperties, FormEvent } from 'react'
 import type { GedeeldeKost } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
+import { useT } from '../i18n'
 
 const vandaag = () => new Date().toISOString().slice(0, 10)
 
@@ -27,6 +28,7 @@ export function GedeeldeKostFormulier({
   onAnnuleer?: () => void
   bewerken?: GedeeldeKost | null
 }) {
+  const { t } = useT()
   const [omschrijving, setOmschrijving] = useState('')
   const [bedrag, setBedrag] = useState('')
   const [datum, setDatum] = useState(vandaag())
@@ -65,24 +67,24 @@ export function GedeeldeKostFormulier({
   return (
     <form onSubmit={verzend} style={{ marginTop: '0.75rem' }}>
       <div style={rij}>
-        <label htmlFor="kostomschrijving">Kostomschrijving</label>
+        <label htmlFor="kostomschrijving">{t('Kostomschrijving')}</label>
         <input id="kostomschrijving" style={veld} value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} />
       </div>
       <div style={rij}>
-        <label htmlFor="kostbedrag">Kostbedrag (€)</label>
+        <label htmlFor="kostbedrag">{t('Kostbedrag (€)')}</label>
         <input id="kostbedrag" style={veld} inputMode="decimal" placeholder="0,00" value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
       </div>
       <div style={rij}>
-        <label htmlFor="kostdatum">Datum</label>
+        <label htmlFor="kostdatum">{t('Datum')}</label>
         <input id="kostdatum" type="date" style={veld} value={datum} onChange={(e) => setDatum(e.target.value)} />
       </div>
       <div style={rij}>
-        <span style={{ marginRight: '0.75rem' }}>Betaald door:</span>
+        <span style={{ marginRight: '0.75rem' }}>{t('Betaald door:')}</span>
         <label style={{ marginRight: '1rem' }}>
-          <input type="radio" name="betaalddoor" checked={betaaldDoor === 'jij'} onChange={() => setBetaaldDoor('jij')} /> Jij
+          <input type="radio" name="betaalddoor" checked={betaaldDoor === 'jij'} onChange={() => setBetaaldDoor('jij')} /> {t('Jij')}
         </label>
         <label>
-          <input type="radio" name="betaalddoor" checked={betaaldDoor === 'partner'} onChange={() => setBetaaldDoor('partner')} /> Partner
+          <input type="radio" name="betaalddoor" checked={betaaldDoor === 'partner'} onChange={() => setBetaaldDoor('partner')} /> {t('Partner')}
         </label>
       </div>
       <button
@@ -96,7 +98,7 @@ export function GedeeldeKostFormulier({
           cursor: geldig ? 'pointer' : 'not-allowed',
         }}
       >
-        {bewerken ? 'Kost wijzigen' : 'Kost toevoegen'}
+        {bewerken ? t('Kost wijzigen') : t('Kost toevoegen')}
       </button>
       {bewerken && onAnnuleer && (
         <button
@@ -104,7 +106,7 @@ export function GedeeldeKostFormulier({
           onClick={onAnnuleer}
           style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}
         >
-          Annuleer
+          {t('Annuleer')}
         </button>
       )}
     </form>

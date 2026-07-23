@@ -3,6 +3,7 @@ import type { CSSProperties, FormEvent } from 'react'
 import type { Overboeking, Rekening } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer, formatEuro } from '../utils/format'
+import { useT } from '../i18n'
 
 const veld: CSSProperties = {
   display: 'block',
@@ -36,6 +37,7 @@ export function OverboekingSectie({
   onBewerk: (o: Overboeking) => void
   onStopBewerken: () => void
 }) {
+  const { t } = useT()
   const [vanId, setVanId] = useState('')
   const [naarId, setNaarId] = useState('')
   const [bedrag, setBedrag] = useState('')
@@ -66,7 +68,7 @@ export function OverboekingSectie({
   const geldig =
     vanId.length > 0 && naarId.length > 0 && vanId !== naarId && Number.isFinite(centen) && centen > 0
 
-  const naam = (id: string) => rekeningen.find((r) => r.id === id)?.naam ?? 'onbekende rekening'
+  const naam = (id: string) => rekeningen.find((r) => r.id === id)?.naam ?? t('onbekende rekening')
 
   async function verzend(e: FormEvent) {
     e.preventDefault()
@@ -90,11 +92,11 @@ export function OverboekingSectie({
 
   return (
     <section>
-      <h2 style={kop}>Overboekingen</h2>
-      <p style={{ color: '#888', marginTop: 0 }}>Geld verschuiven tussen je eigen rekeningen (geen inkomst of uitgave).</p>
+      <h2 style={kop}>{t('Overboekingen')}</h2>
+      <p style={{ color: '#888', marginTop: 0 }}>{t('Geld verschuiven tussen je eigen rekeningen (geen inkomst of uitgave).')}</p>
 
       {rekeningen.length < 2 ? (
-        <p style={{ color: '#888' }}>Je hebt minstens twee rekeningen nodig om over te boeken.</p>
+        <p style={{ color: '#888' }}>{t('Je hebt minstens twee rekeningen nodig om over te boeken.')}</p>
       ) : (
         <>
           <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 0.75rem' }}>
@@ -110,10 +112,10 @@ export function OverboekingSectie({
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                   <span>{formatEuro(o.bedrag)}</span>
-                  <button aria-label={`Bewerk overboeking ${naam(o.vanRekeningId)} naar ${naam(o.naarRekeningId)}`} onClick={() => onBewerk(o)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
+                  <button aria-label={t('Bewerk overboeking {van} naar {naar}', { van: naam(o.vanRekeningId), naar: naam(o.naarRekeningId) })} onClick={() => onBewerk(o)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
                     ✎
                   </button>
-                  <button aria-label={`Verwijder overboeking ${naam(o.vanRekeningId)} naar ${naam(o.naarRekeningId)}`} onClick={() => onVerwijderen(o.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
+                  <button aria-label={t('Verwijder overboeking {van} naar {naar}', { van: naam(o.vanRekeningId), naar: naam(o.naarRekeningId) })} onClick={() => onVerwijderen(o.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
                     ×
                   </button>
                 </span>
@@ -123,9 +125,9 @@ export function OverboekingSectie({
 
           <form onSubmit={verzend}>
             <div style={rij}>
-              <label htmlFor="ob-van">Van rekening</label>
+              <label htmlFor="ob-van">{t('Van rekening')}</label>
               <select id="ob-van" style={veld} value={vanId} onChange={(e) => setVanId(e.target.value)}>
-                <option value="">— kies —</option>
+                <option value="">{t('— kies —')}</option>
                 {rekeningen.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.naam}
@@ -134,9 +136,9 @@ export function OverboekingSectie({
               </select>
             </div>
             <div style={rij}>
-              <label htmlFor="ob-naar">Naar rekening</label>
+              <label htmlFor="ob-naar">{t('Naar rekening')}</label>
               <select id="ob-naar" style={veld} value={naarId} onChange={(e) => setNaarId(e.target.value)}>
-                <option value="">— kies —</option>
+                <option value="">{t('— kies —')}</option>
                 {rekeningen.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.naam}
@@ -145,10 +147,10 @@ export function OverboekingSectie({
               </select>
             </div>
             {vanId && naarId && vanId === naarId && (
-              <p style={{ color: '#c0392b', margin: '0 0 0.6rem' }}>Kies twee verschillende rekeningen.</p>
+              <p style={{ color: '#c0392b', margin: '0 0 0.6rem' }}>{t('Kies twee verschillende rekeningen.')}</p>
             )}
             <div style={rij}>
-              <label htmlFor="ob-bedrag">Over te boeken bedrag (€)</label>
+              <label htmlFor="ob-bedrag">{t('Over te boeken bedrag (€)')}</label>
               <input
                 id="ob-bedrag"
                 style={veld}
@@ -159,15 +161,15 @@ export function OverboekingSectie({
               />
             </div>
             <div style={rij}>
-              <label htmlFor="ob-datum">Datum overboeking</label>
+              <label htmlFor="ob-datum">{t('Datum overboeking')}</label>
               <input id="ob-datum" type="date" style={veld} value={datum} onChange={(e) => setDatum(e.target.value)} />
             </div>
             <div style={rij}>
-              <label htmlFor="ob-oms">Omschrijving</label>
+              <label htmlFor="ob-oms">{t('Omschrijving')}</label>
               <input
                 id="ob-oms"
                 style={veld}
-                placeholder="optioneel"
+                placeholder={t('optioneel')}
                 value={omschrijving}
                 onChange={(e) => setOmschrijving(e.target.value)}
               />
@@ -183,7 +185,7 @@ export function OverboekingSectie({
                 cursor: geldig ? 'pointer' : 'not-allowed',
               }}
             >
-              {bewerken ? 'Overboeking wijzigen' : 'Overboeking toevoegen'}
+              {bewerken ? t('Overboeking wijzigen') : t('Overboeking toevoegen')}
             </button>
             {bewerken && (
               <button
@@ -191,7 +193,7 @@ export function OverboekingSectie({
                 onClick={onStopBewerken}
                 style={{ marginLeft: '0.5rem', padding: '0.5rem 0.9rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}
               >
-                Annuleer
+                {t('Annuleer')}
               </button>
             )}
           </form>

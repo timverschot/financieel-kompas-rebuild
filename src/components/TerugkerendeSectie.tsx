@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react'
 import type { Categorie, Rekening, TerugkerendePost, Transactie } from '../data/schema'
 import { TerugkerendePostFormulier } from './TerugkerendePostFormulier'
 import { formatEuro } from '../utils/format'
+import { useT } from '../i18n'
 
 const knop: CSSProperties = {
   padding: '0.3rem 0.7rem',
@@ -35,6 +36,7 @@ export function TerugkerendeSectie({
   onVerwijderen: (id: string) => Promise<void> | void
   onBoek: (p: TerugkerendePost) => Promise<void> | void
 }) {
+  const { t } = useT()
   const [bewerken, setBewerken] = useState<TerugkerendePost | null>(null)
 
   async function opslaan(p: TerugkerendePost) {
@@ -44,12 +46,12 @@ export function TerugkerendeSectie({
 
   return (
     <section>
-      <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>Vaste lasten</h2>
-      <p style={{ color: '#888', marginTop: 0 }}>Inboeken voor {maandLabel}</p>
+      <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{t('Vaste lasten')}</h2>
+      <p style={{ color: '#888', marginTop: 0 }}>{t('Inboeken voor {maand}', { maand: maandLabel })}</p>
 
       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
         {posten.map((p) => {
-          const geboekt = transacties.some((t) => t.id === `tk-${p.id}-${maand}`)
+          const geboekt = transacties.some((tx) => tx.id === `tk-${p.id}-${maand}`)
           return (
             <li
               key={p.id}
@@ -65,22 +67,22 @@ export function TerugkerendeSectie({
                 {p.omschrijving}
                 <span style={{ color: '#999', fontSize: '0.85rem' }}>
                   {' '}
-                  · {formatEuro(p.bedrag)} · dag {p.dag}
+                  · {t('{bedrag} · dag {dag}', { bedrag: formatEuro(p.bedrag), dag: p.dag })}
                 </span>
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                 {geboekt ? (
-                  <span style={{ color: '#27ae60' }}>Geboekt ✓</span>
+                  <span style={{ color: '#27ae60' }}>{t('Geboekt ✓')}</span>
                 ) : (
                   <button style={knop} onClick={() => onBoek(p)}>
-                    Boek in
+                    {t('Boek in')}
                   </button>
                 )}
-                <button aria-label={`Bewerk vaste post ${p.omschrijving}`} onClick={() => setBewerken(p)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
+                <button aria-label={t('Bewerk vaste post {naam}', { naam: p.omschrijving })} onClick={() => setBewerken(p)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
                   ✎
                 </button>
                 <button
-                  aria-label={`Verwijder vaste post ${p.omschrijving}`}
+                  aria-label={t('Verwijder vaste post {naam}', { naam: p.omschrijving })}
                   onClick={() => onVerwijderen(p.id)}
                   style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}
                 >

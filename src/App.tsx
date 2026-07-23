@@ -238,7 +238,7 @@ export function App() {
         setVerbonden(true)
         const r = await synchroniseer(backendRef.current)
         await herlaad()
-        if (actief) setStatusTekst(`Automatisch gesynchroniseerd: ${r.gepusht} verstuurd, ${r.opgehaald} opgehaald.`)
+        if (actief) setStatusTekst(t('Automatisch gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald.', { gepusht: r.gepusht, opgehaald: r.opgehaald }))
       } catch {
         // Stil laten mislukken: geen storende melding bij het opstarten.
       }
@@ -298,7 +298,7 @@ export function App() {
     a.click()
     a.remove()
     URL.revokeObjectURL(url)
-    setBackupTekst('Back-up gedownload.')
+    setBackupTekst(t('Back-up gedownload.'))
   }
 
   async function herstelUitBestand(bestand: File) {
@@ -307,10 +307,14 @@ export function App() {
       const r = await importeerBackup(tekst)
       await herlaad()
       setBackupTekst(
-        `Hersteld: ${r.toegevoegd} toegevoegd, ${r.overgeslagen} al aanwezig, ${r.ongeldig} ongeldig.`,
+        t('Hersteld: {toegevoegd} toegevoegd, {overgeslagen} al aanwezig, {ongeldig} ongeldig.', {
+          toegevoegd: r.toegevoegd,
+          overgeslagen: r.overgeslagen,
+          ongeldig: r.ongeldig,
+        }),
       )
     } catch (e) {
-      setBackupTekst('Herstellen mislukte: ' + (e instanceof Error ? e.message : 'onbekende fout'))
+      setBackupTekst(t('Herstellen mislukte: {fout}', { fout: e instanceof Error ? e.message : t('onbekende fout') }))
     }
   }
 
@@ -483,9 +487,9 @@ export function App() {
       if (!backendRef.current) backendRef.current = new DriveBackend()
       const r = await synchroniseer(backendRef.current)
       await herlaad()
-      setStatusTekst(`Gesynchroniseerd: ${r.gepusht} verstuurd, ${r.opgehaald} opgehaald.`)
+      setStatusTekst(t('Gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald.', { gepusht: r.gepusht, opgehaald: r.opgehaald }))
     } catch (e) {
-      setStatusTekst('Verbinden mislukte: ' + (e instanceof Error ? e.message : 'onbekende fout'))
+      setStatusTekst(t('Verbinden mislukte: {fout}', { fout: e instanceof Error ? e.message : t('onbekende fout') }))
     } finally {
       setBezig(false)
     }
@@ -497,9 +501,9 @@ export function App() {
     try {
       const r = await synchroniseer(backendRef.current)
       await herlaad()
-      setStatusTekst(`Gesynchroniseerd: ${r.gepusht} verstuurd, ${r.opgehaald} opgehaald.`)
+      setStatusTekst(t('Gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald.', { gepusht: r.gepusht, opgehaald: r.opgehaald }))
     } catch (e) {
-      setStatusTekst('Synchroniseren mislukte: ' + (e instanceof Error ? e.message : 'onbekende fout'))
+      setStatusTekst(t('Synchroniseren mislukte: {fout}', { fout: e instanceof Error ? e.message : t('onbekende fout') }))
     } finally {
       setBezig(false)
     }
@@ -509,7 +513,7 @@ export function App() {
     return (
       <main style={container}>
         <h1 style={{ marginBottom: 0 }}>Financieel Kompas</h1>
-        <p style={{ color: '#666' }}>Laden…</p>
+        <p style={{ color: '#666' }}>{t('Laden…')}</p>
       </main>
     )
   }
@@ -552,7 +556,7 @@ export function App() {
 
       {ongeldig > 0 && (
         <p style={{ background: '#fff5f5', border: '1px solid #f5c6cb', borderRadius: 8, padding: '0.5rem 0.75rem' }}>
-          Let op: {ongeldig} record(s) werden overgeslagen omdat ze niet aan het schema voldeden.
+          {t('Let op: {n} record(s) werden overgeslagen omdat ze niet aan het schema voldeden.', { n: ongeldig })}
         </p>
       )}
 
@@ -560,11 +564,11 @@ export function App() {
       <section>
         <h2 style={kop}>{t('Maandoverzicht')}</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-          <button style={knop} aria-label="Vorige maand" onClick={() => setMaand(verschuifMaand(maand, -1))}>
+          <button style={knop} aria-label={t('Vorige maand')} onClick={() => setMaand(verschuifMaand(maand, -1))}>
             ‹
           </button>
           <span style={{ minWidth: 120, textAlign: 'center' }}>{maandLabel(maand)}</span>
-          <button style={knop} aria-label="Volgende maand" onClick={() => setMaand(verschuifMaand(maand, 1))}>
+          <button style={knop} aria-label={t('Volgende maand')} onClick={() => setMaand(verschuifMaand(maand, 1))}>
             ›
           </button>
         </div>
@@ -588,13 +592,13 @@ export function App() {
 
         {perInkomsten.length > 0 && (
           <div style={{ marginTop: '0.75rem' }}>
-            <p style={{ color: '#888', margin: '0 0 0.25rem' }}>Inkomsten per categorie</p>
+            <p style={{ color: '#888', margin: '0 0 0.25rem' }}>{t('Inkomsten per categorie')}</p>
             <Donut items={perInkomsten} middenLabel="inkomsten" />
           </div>
         )}
 
         <div style={{ marginTop: '1rem' }}>
-          <p style={{ color: '#888', margin: '0 0 0.25rem' }}>Uitgaven per maand</p>
+          <p style={{ color: '#888', margin: '0 0 0.25rem' }}>{t('Uitgaven per maand')}</p>
           <StaafGrafiek data={maandVerloop} />
         </div>
       </section>
@@ -606,27 +610,27 @@ export function App() {
         <h2 style={kop}>{t('Rekeningen')}</h2>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {rekeningen.map((r) => {
-            const meta = [REKENING_TYPE_LABEL[r.type ?? 'betaal'], r.rubriek, r.rekeningnummer].filter(Boolean).join(' · ')
+            const meta = [t(REKENING_TYPE_LABEL[r.type ?? 'betaal']), r.rubriek, r.rekeningnummer].filter(Boolean).join(' · ')
             return (
               <li key={r.id} style={{ padding: '0.35rem 0', borderBottom: '1px solid #f0f0f0', opacity: r.gearchiveerd ? 0.55 : 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>
                     {r.naam}
-                    {r.gearchiveerd && <span style={{ color: '#888', fontSize: '0.8rem' }}> · gearchiveerd</span>}
+                    {r.gearchiveerd && <span style={{ color: '#888', fontSize: '0.8rem' }}> · {t('gearchiveerd')}</span>}
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <span style={{ color: '#888' }}>startsaldo {formatEuro(r.beginsaldo)}</span>
-                    <button aria-label={`Bewerk rekening ${r.naam}`} onClick={() => setBewerkRekening(r)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
+                    <span style={{ color: '#888' }}>{t('startsaldo {saldo}', { saldo: formatEuro(r.beginsaldo) })}</span>
+                    <button aria-label={t('Bewerk rekening {naam}', { naam: r.naam })} onClick={() => setBewerkRekening(r)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
                       ✎
                     </button>
                     <button
-                      aria-label={r.gearchiveerd ? `Herstel rekening ${r.naam}` : `Archiveer rekening ${r.naam}`}
+                      aria-label={r.gearchiveerd ? t('Herstel rekening {naam}', { naam: r.naam }) : t('Archiveer rekening {naam}', { naam: r.naam })}
                       onClick={() => archiveerRekening(r, !r.gearchiveerd)}
                       style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer', fontSize: '0.8rem' }}
                     >
-                      {r.gearchiveerd ? 'herstel' : 'archiveer'}
+                      {r.gearchiveerd ? t('herstel') : t('archiveer')}
                     </button>
-                    <button aria-label={`Verwijder rekening ${r.naam}`} onClick={() => verwijderRek(r.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
+                    <button aria-label={t('Verwijder rekening {naam}', { naam: r.naam })} onClick={() => verwijderRek(r.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
                       ×
                     </button>
                   </span>
@@ -665,10 +669,10 @@ export function App() {
             >
               <span>{c.naam}</span>
               <span style={{ display: 'flex', gap: '0.6rem' }}>
-                <button aria-label={`Bewerk categorie ${c.naam}`} onClick={() => setBewerkCategorie(c)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
+                <button aria-label={t('Bewerk categorie {naam}', { naam: c.naam })} onClick={() => setBewerkCategorie(c)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
                   ✎
                 </button>
-                <button aria-label={`Verwijder categorie ${c.naam}`} onClick={() => verwijderCat(c.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
+                <button aria-label={t('Verwijder categorie {naam}', { naam: c.naam })} onClick={() => verwijderCat(c.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
                   ×
                 </button>
               </span>
@@ -694,8 +698,8 @@ export function App() {
       <ErrorBoundary naam="Budgetten">
       <section>
         <h2 style={kop}>{t('Budgetten')}</h2>
-        <p style={{ color: '#888', marginTop: 0 }}>voor {maandLabel(maand)}</p>
-        {budgetten.length === 0 && <p style={{ color: '#888' }}>Nog geen budgetten ingesteld.</p>}
+        <p style={{ color: '#888', marginTop: 0 }}>{t('voor {maand}', { maand: maandLabel(maand) })}</p>
+        {budgetten.length === 0 && <p style={{ color: '#888' }}>{t('Nog geen budgetten ingesteld.')}</p>}
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {budgetten.map((b) => {
             const naam = categorieNaam(b.categorieId) ?? '—'
@@ -710,7 +714,7 @@ export function App() {
                     <span style={{ color: '#666' }}>
                       {formatEuro(uitgegeven)} / {formatEuro(b.bedrag)}
                     </span>
-                    <button aria-label={`Verwijder budget ${naam}`} onClick={() => verwijderBud(b.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
+                    <button aria-label={t('Verwijder budget {naam}', { naam })} onClick={() => verwijderBud(b.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
                       ×
                     </button>
                   </span>
@@ -752,7 +756,7 @@ export function App() {
       <hr style={scheiding} />
 
       <section>
-        <h2 style={kop}>{bewerkTransactie ? 'Transactie bewerken' : 'Transactie toevoegen'}</h2>
+        <h2 style={kop}>{bewerkTransactie ? t('Transactie bewerken') : t('Transactie toevoegen')}</h2>
         <TransactieFormulier
           onOpslaan={slaTransactieOp}
           onAnnuleer={() => setBewerkTransactie(null)}
@@ -764,14 +768,14 @@ export function App() {
       </section>
 
       <ul style={{ listStyle: 'none', padding: 0, marginTop: '1.5rem' }}>
-        {transacties.map((t) => {
+        {transacties.map((tx) => {
           const cat =
-            t.regels && t.regels.length > 0
-              ? `gesplitst · ${t.regels.length} categorieën`
-              : categorieNaam(t.categorieId)
+            tx.regels && tx.regels.length > 0
+              ? t('gesplitst · {n} categorieën', { n: tx.regels.length })
+              : categorieNaam(tx.categorieId)
           return (
             <li
-              key={t.id}
+              key={tx.id}
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -781,21 +785,21 @@ export function App() {
               }}
             >
               <span>
-                {t.omschrijving}
+                {tx.omschrijving}
                 {cat && <span style={{ color: '#999', fontSize: '0.85rem' }}> · {cat}</span>}
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <span style={{ color: t.bedrag < 0 ? '#c0392b' : '#27ae60' }}>{formatEuro(t.bedrag)}</span>
+                <span style={{ color: tx.bedrag < 0 ? '#c0392b' : '#27ae60' }}>{formatEuro(tx.bedrag)}</span>
                 <button
-                  aria-label={`Bewerk ${t.omschrijving}`}
-                  onClick={() => setBewerkTransactie(t)}
+                  aria-label={t('Bewerk {oms}', { oms: tx.omschrijving })}
+                  onClick={() => setBewerkTransactie(tx)}
                   style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer', fontSize: '1rem' }}
                 >
                   ✎
                 </button>
                 <button
-                  aria-label={`Verwijder ${t.omschrijving}`}
-                  onClick={() => verwijder(t.id)}
+                  aria-label={t('Verwijder {oms}', { oms: tx.omschrijving })}
+                  onClick={() => verwijder(tx.id)}
                   style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}
                 >
                   ×
@@ -847,17 +851,16 @@ export function App() {
       <hr style={scheiding} />
 
       <section>
-        <h2 style={kop}>Back-up &amp; herstel</h2>
+        <h2 style={kop}>{t('Back-up & herstel')}</h2>
         <p style={{ color: '#888', marginTop: 0 }}>
-          Een los vangnet op je eigen toestel, onafhankelijk van Google Drive. Bewaar het
-          bestand op een veilige plek; herstellen voegt enkel toe en overschrijft nooit.
+          {t('Een los vangnet op je eigen toestel, onafhankelijk van Google Drive. Bewaar het bestand op een veilige plek; herstellen voegt enkel toe en overschrijft nooit.')}
         </p>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <button style={knop} onClick={exporteerNu}>
-            Exporteer back-up
+            {t('Exporteer back-up')}
           </button>
           <label style={{ ...knop, display: 'inline-block' }}>
-            Herstel uit back-up
+            {t('Herstel uit back-up')}
             <input
               type="file"
               accept="application/json"
@@ -878,11 +881,11 @@ export function App() {
       <div>
         {!verbonden ? (
           <button style={knop} onClick={verbindEnSynchroniseer} disabled={bezig}>
-            {bezig ? 'Bezig…' : 'Verbind met Google Drive'}
+            {bezig ? t('Bezig…') : t('Verbind met Google Drive')}
           </button>
         ) : (
           <button style={knop} onClick={synchroniseerNu} disabled={bezig}>
-            {bezig ? 'Bezig…' : 'Synchroniseer nu'}
+            {bezig ? t('Bezig…') : t('Synchroniseer nu')}
           </button>
         )}
         {statusTekst && <p style={{ color: '#666', marginTop: '0.75rem' }}>{statusTekst}</p>}

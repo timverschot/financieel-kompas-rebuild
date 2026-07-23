@@ -3,6 +3,7 @@ import type { CSSProperties, FormEvent } from 'react'
 import type { Categorie, Rekening, TerugkerendePost } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
+import { useT } from '../i18n'
 
 const veld: CSSProperties = {
   display: 'block',
@@ -27,6 +28,7 @@ export function TerugkerendePostFormulier({
   onAnnuleer?: () => void
   bewerken?: TerugkerendePost | null
 }) {
+  const { t } = useT()
   const [omschrijving, setOmschrijving] = useState('')
   const [bedrag, setBedrag] = useState('')
   const [soort, setSoort] = useState<'uitgave' | 'inkomst'>('uitgave')
@@ -78,15 +80,15 @@ export function TerugkerendePostFormulier({
   return (
     <form onSubmit={verzend} style={{ marginTop: '0.75rem' }}>
       <div style={rij}>
-        <label htmlFor="vaste-omschrijving">Vaste omschrijving</label>
+        <label htmlFor="vaste-omschrijving">{t('Vaste omschrijving')}</label>
         <input id="vaste-omschrijving" style={veld} value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} />
       </div>
       <div style={rij}>
-        <label htmlFor="vast-bedrag">Vast bedrag (€)</label>
+        <label htmlFor="vast-bedrag">{t('Vast bedrag (€)')}</label>
         <input id="vast-bedrag" style={veld} inputMode="decimal" placeholder="0,00" value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
       </div>
       <div style={rij}>
-        <label htmlFor="vaste-rekening">Vaste rekening</label>
+        <label htmlFor="vaste-rekening">{t('Vaste rekening')}</label>
         <select id="vaste-rekening" style={veld} value={rekeningId} onChange={(e) => setRekeningId(e.target.value)}>
           {rekeningen.map((r) => (
             <option key={r.id} value={r.id}>
@@ -96,9 +98,9 @@ export function TerugkerendePostFormulier({
         </select>
       </div>
       <div style={rij}>
-        <label htmlFor="vaste-categorie">Vaste categorie</label>
+        <label htmlFor="vaste-categorie">{t('Vaste categorie')}</label>
         <select id="vaste-categorie" style={veld} value={categorieId} onChange={(e) => setCategorieId(e.target.value)}>
-          <option value="">Geen categorie</option>
+          <option value="">{t('Geen categorie')}</option>
           {categorieen.map((c) => (
             <option key={c.id} value={c.id}>
               {c.naam}
@@ -107,15 +109,15 @@ export function TerugkerendePostFormulier({
         </select>
       </div>
       <div style={rij}>
-        <label htmlFor="vaste-dag">Dag van de maand</label>
+        <label htmlFor="vaste-dag">{t('Dag van de maand')}</label>
         <input id="vaste-dag" style={veld} inputMode="numeric" value={dag} onChange={(e) => setDag(e.target.value)} />
       </div>
       <div style={rij}>
         <label style={{ marginRight: '1rem' }}>
-          <input type="radio" name="vastsoort" checked={soort === 'uitgave'} onChange={() => setSoort('uitgave')} /> Uitgave
+          <input type="radio" name="vastsoort" checked={soort === 'uitgave'} onChange={() => setSoort('uitgave')} /> {t('Uitgave')}
         </label>
         <label>
-          <input type="radio" name="vastsoort" checked={soort === 'inkomst'} onChange={() => setSoort('inkomst')} /> Inkomst
+          <input type="radio" name="vastsoort" checked={soort === 'inkomst'} onChange={() => setSoort('inkomst')} /> {t('Inkomst')}
         </label>
       </div>
       <button
@@ -129,7 +131,7 @@ export function TerugkerendePostFormulier({
           cursor: geldig ? 'pointer' : 'not-allowed',
         }}
       >
-        {bewerken ? 'Vaste post wijzigen' : 'Vaste post toevoegen'}
+        {bewerken ? t('Vaste post wijzigen') : t('Vaste post toevoegen')}
       </button>
       {bewerken && onAnnuleer && (
         <button
@@ -137,7 +139,7 @@ export function TerugkerendePostFormulier({
           onClick={onAnnuleer}
           style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}
         >
-          Annuleer
+          {t('Annuleer')}
         </button>
       )}
     </form>

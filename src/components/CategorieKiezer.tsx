@@ -4,6 +4,7 @@ import type { Categorie } from '../data/schema'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
 import { zoekItems } from '../data/categorieen/zoek'
 import { labelVanCategorie } from '../data/categorieen/resolve'
+import { useT } from '../i18n'
 
 // Vanaf hoeveel letters we in de items/subcategorieën beginnen te zoeken.
 const ZOEK_VANAF = 2
@@ -32,6 +33,7 @@ export function CategorieKiezer({
   onKies: (id: string | undefined) => void
   gebruikerCategorieen: Categorie[]
 }) {
+  const { t } = useT()
   const [zoek, setZoek] = useState('')
   const [open, setOpen] = useState(false)
   const [hoog, setHoog] = useState(0)
@@ -57,7 +59,7 @@ export function CategorieKiezer({
         suggesties.push({ id: it.id, titel: it.naam, sub: it.hoofdNaam })
       }
       for (const c of gebruikerCategorieen) {
-        if (c.naam.toLowerCase().includes(term)) suggesties.push({ id: c.id, titel: c.naam, sub: 'eigen' })
+        if (c.naam.toLowerCase().includes(term)) suggesties.push({ id: c.id, titel: c.naam, sub: t('eigen') })
       }
     } else {
       // Nog geen twee letters: toon de hoofdcategorieën als snelkeuze.
@@ -100,25 +102,25 @@ export function CategorieKiezer({
   return (
     <div style={{ position: 'relative' }}>
       <p style={{ margin: '0 0 0.25rem', color: '#555', fontSize: '0.9rem' }}>
-        Categorie: <strong>{gekozenLabel ?? 'Geen'}</strong>
+        {t('Categorie:')} <strong>{gekozenLabel ?? t('Geen')}</strong>
         {waarde && (
           <button
             type="button"
             onClick={() => kies(undefined)}
             style={{ marginLeft: '0.5rem', border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer' }}
           >
-            wissen
+            {t('wissen')}
           </button>
         )}
       </p>
       <input
-        aria-label="Zoek categorie of item"
+        aria-label={t('Zoek categorie of item')}
         role="combobox"
         aria-expanded={open && zichtbaar.length > 0}
         aria-autocomplete="list"
         style={invoer}
         value={zoek}
-        placeholder="Typ om te zoeken (vanaf 2 letters)…"
+        placeholder={t('Typ om te zoeken (vanaf 2 letters)…')}
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onChange={(e) => {

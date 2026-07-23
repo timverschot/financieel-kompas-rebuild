@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import { bouwEffectieveBoom } from '../data/categorieen/effectief'
 import type { Subcategorie } from '../data/schema'
+import { useT } from '../i18n'
 
 const rijKnop: CSSProperties = {
   display: 'block',
@@ -38,6 +39,7 @@ export function CategorieBoom({
   onWijzigen: (id: string, categorieId: string, naam: string) => void
   onVerwijderen: (id: string) => void
 }) {
+  const { t } = useT()
   const boom = bouwEffectieveBoom(aanpassingen)
   const [openHoofd, setOpenHoofd] = useState<Set<string>>(new Set())
   const [openCat, setOpenCat] = useState<Set<string>>(new Set())
@@ -66,9 +68,9 @@ export function CategorieBoom({
 
   return (
     <section>
-      <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>Alle categorieën</h2>
+      <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{t('Alle categorieën')}</h2>
       <p style={{ color: '#888', marginTop: 0 }}>
-        Vouw open om te bekijken. Voeg subcategorieën toe of hernoem bestaande.
+        {t('Vouw open om te bekijken. Voeg subcategorieën toe of hernoem bestaande.')}
       </p>
 
       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -78,7 +80,7 @@ export function CategorieBoom({
           return (
             <li key={h.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
               <button type="button" aria-expanded={hOpen} onClick={() => wissel(openHoofd, setOpenHoofd, h.id)} style={{ ...rijKnop, fontWeight: 600 }}>
-                {hOpen ? '▾' : '▸'} {h.icoon} {h.naam} <span style={{ color: '#999', fontWeight: 400 }}>· {aantal} items</span>
+                {hOpen ? '▾' : '▸'} {h.icoon} {h.naam} <span style={{ color: '#999', fontWeight: 400 }}>· {t('{n} items', { n: aantal })}</span>
               </button>
 
               {hOpen && (
@@ -96,19 +98,19 @@ export function CategorieBoom({
                               <li key={it.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.1rem 0', fontSize: '0.9rem' }}>
                                 {bewerkId === it.id ? (
                                   <>
-                                    <input aria-label={`Nieuwe naam voor ${it.naam}`} style={{ ...veld, flex: 1 }} value={bewerkTekst} onChange={(e) => setBewerkTekst(e.target.value)} />
-                                    <button type="button" style={miniKnop} onClick={() => bewaarHernoeming(c.id)}>Bewaar</button>
+                                    <input aria-label={t('Nieuwe naam voor {naam}', { naam: it.naam })} style={{ ...veld, flex: 1 }} value={bewerkTekst} onChange={(e) => setBewerkTekst(e.target.value)} />
+                                    <button type="button" style={miniKnop} onClick={() => bewaarHernoeming(c.id)}>{t('Bewaar')}</button>
                                     <button type="button" style={miniKnop} onClick={() => setBewerkId(null)}>×</button>
                                   </>
                                 ) : (
                                   <>
                                     <span style={{ flex: 1, color: '#555' }}>
                                       {it.naam}
-                                      {it.eigen && <span style={{ color: '#c56a1f' }}> · eigen</span>}
+                                      {it.eigen && <span style={{ color: '#c56a1f' }}> · {t('eigen')}</span>}
                                     </span>
-                                    <button type="button" aria-label={`Wijzig ${it.naam}`} onClick={() => { setBewerkId(it.id); setBewerkTekst(it.naam) }} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>✎</button>
+                                    <button type="button" aria-label={t('Wijzig {naam}', { naam: it.naam })} onClick={() => { setBewerkId(it.id); setBewerkTekst(it.naam) }} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>✎</button>
                                     {it.eigen && (
-                                      <button type="button" aria-label={`Verwijder ${it.naam}`} onClick={() => onVerwijderen(it.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1rem' }}>×</button>
+                                      <button type="button" aria-label={t('Verwijder {naam}', { naam: it.naam })} onClick={() => onVerwijderen(it.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1rem' }}>×</button>
                                     )}
                                   </>
                                 )}
@@ -118,12 +120,12 @@ export function CategorieBoom({
                             <li style={{ paddingTop: '0.2rem' }}>
                               {toevoegCatId === c.id ? (
                                 <span style={{ display: 'flex', gap: '0.4rem' }}>
-                                  <input aria-label={`Nieuwe subcategorie in ${c.naam}`} style={{ ...veld, flex: 1 }} value={toevoegTekst} onChange={(e) => setToevoegTekst(e.target.value)} placeholder="Naam subcategorie" />
-                                  <button type="button" style={miniKnop} onClick={() => bewaarToevoeging(c.id)}>Toevoegen</button>
+                                  <input aria-label={t('Nieuwe subcategorie in {naam}', { naam: c.naam })} style={{ ...veld, flex: 1 }} value={toevoegTekst} onChange={(e) => setToevoegTekst(e.target.value)} placeholder={t('Naam subcategorie')} />
+                                  <button type="button" style={miniKnop} onClick={() => bewaarToevoeging(c.id)}>{t('Toevoegen')}</button>
                                   <button type="button" style={miniKnop} onClick={() => setToevoegCatId(null)}>×</button>
                                 </span>
                               ) : (
-                                <button type="button" aria-label={`Voeg subcategorie toe aan ${c.naam}`} onClick={() => { setToevoegCatId(c.id); setToevoegTekst('') }} style={{ ...miniKnop, color: '#3F8A58' }}>+ subcategorie</button>
+                                <button type="button" aria-label={t('Voeg subcategorie toe aan {naam}', { naam: c.naam })} onClick={() => { setToevoegCatId(c.id); setToevoegTekst('') }} style={{ ...miniKnop, color: '#3F8A58' }}>{t('+ subcategorie')}</button>
                               )}
                             </li>
                           </ul>

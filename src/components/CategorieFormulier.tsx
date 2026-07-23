@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
 import type { Categorie } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
+import { useT } from '../i18n'
 
 const veld: CSSProperties = {
   display: 'block',
@@ -21,6 +22,7 @@ export function CategorieFormulier({
   onAnnuleer?: () => void
   bewerken?: Categorie | null
 }) {
+  const { t } = useT()
   const [naam, setNaam] = useState('')
   const geldig = naam.trim().length > 0
 
@@ -37,7 +39,7 @@ export function CategorieFormulier({
   return (
     <form onSubmit={verzend} style={{ marginTop: '0.75rem' }}>
       <div style={{ marginBottom: '0.6rem' }}>
-        <label htmlFor="categorienaam">Categorienaam</label>
+        <label htmlFor="categorienaam">{t('Categorienaam')}</label>
         <input id="categorienaam" style={veld} value={naam} onChange={(e) => setNaam(e.target.value)} />
       </div>
       <button
@@ -51,7 +53,7 @@ export function CategorieFormulier({
           cursor: geldig ? 'pointer' : 'not-allowed',
         }}
       >
-        {bewerken ? 'Categorie wijzigen' : 'Categorie toevoegen'}
+        {bewerken ? t('Categorie wijzigen') : t('Categorie toevoegen')}
       </button>
       {bewerken && onAnnuleer && (
         <button
@@ -59,7 +61,7 @@ export function CategorieFormulier({
           onClick={onAnnuleer}
           style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}
         >
-          Annuleer
+          {t('Annuleer')}
         </button>
       )}
     </form>

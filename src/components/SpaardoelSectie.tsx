@@ -4,6 +4,7 @@ import type { Rekening, Spaardoel, Transactie } from '../data/schema'
 import { SpaardoelFormulier } from './SpaardoelFormulier'
 import { spaardoelVoortgang } from '../utils/spaardoel'
 import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
+import { useT } from '../i18n'
 
 const kop: CSSProperties = { fontSize: '1rem', marginBottom: '0.25rem' }
 
@@ -23,6 +24,7 @@ export function SpaardoelSectie({
   onOpslaan: (d: Spaardoel) => Promise<void> | void
   onVerwijderen: (id: string) => Promise<void> | void
 }) {
+  const { t } = useT()
   const [bewerk, setBewerk] = useState<Spaardoel | null>(null)
   const [bedragInvoer, setBedragInvoer] = useState<Record<string, string>>({})
 
@@ -46,10 +48,10 @@ export function SpaardoelSectie({
 
   return (
     <section>
-      <h2 style={kop}>Spaardoelen</h2>
-      <p style={{ color: '#888', marginTop: 0 }}>Langetermijndoelen — buffers, grote aankopen, schuldenvrij.</p>
+      <h2 style={kop}>{t('Spaardoelen')}</h2>
+      <p style={{ color: '#888', marginTop: 0 }}>{t('Langetermijndoelen — buffers, grote aankopen, schuldenvrij.')}</p>
 
-      {spaardoelen.length === 0 && <p style={{ color: '#888' }}>Nog geen doelen. Voeg je eerste doel toe!</p>}
+      {spaardoelen.length === 0 && <p style={{ color: '#888' }}>{t('Nog geen doelen. Voeg je eerste doel toe!')}</p>}
 
       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
         {spaardoelen.map((d) => {
@@ -62,12 +64,12 @@ export function SpaardoelSectie({
                 <strong>{d.naam}</strong>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                   <span style={{ color: '#666' }}>
-                    {formatEuro(v.huidig)} van {formatEuro(v.doel)}
+                    {t('{a} van {b}', { a: formatEuro(v.huidig), b: formatEuro(v.doel) })}
                   </span>
-                  <button aria-label={`Bewerk doel ${d.naam}`} onClick={() => setBewerk(d)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
+                  <button aria-label={t('Bewerk doel {naam}', { naam: d.naam })} onClick={() => setBewerk(d)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
                     ✎
                   </button>
-                  <button aria-label={`Verwijder doel ${d.naam}`} onClick={() => onVerwijderen(d.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
+                  <button aria-label={t('Verwijder doel {naam}', { naam: d.naam })} onClick={() => onVerwijderen(d.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
                     ×
                   </button>
                 </span>
@@ -83,20 +85,20 @@ export function SpaardoelSectie({
                 <div style={{ height: '100%', width: `${v.fractie * 100}%`, background: kleur }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: '#888', fontSize: '0.85rem', marginTop: 2 }}>
-                <span>nog {formatEuro(v.resterend)}</span>
+                <span>{t('nog {bedrag}', { bedrag: formatEuro(v.resterend) })}</span>
                 <span>
-                  {d.maandbedrag ? `${formatEuro(d.maandbedrag)}/mnd` : ''}
-                  {d.doeldatum ? ` · tegen ${d.doeldatum}` : ''}
+                  {d.maandbedrag ? t('{bedrag}/mnd', { bedrag: formatEuro(d.maandbedrag) }) : ''}
+                  {d.doeldatum ? t(' · tegen {datum}', { datum: d.doeldatum }) : ''}
                 </span>
               </div>
 
               {manueel && (
                 <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginTop: '0.4rem' }}>
                   <input
-                    aria-label={`Huidig bedrag ${d.naam}`}
+                    aria-label={t('Huidig bedrag {naam}', { naam: d.naam })}
                     style={{ flex: 1, padding: '0.3rem', boxSizing: 'border-box' }}
                     inputMode="decimal"
-                    placeholder="Huidig bedrag"
+                    placeholder={t('Huidig bedrag')}
                     value={bedragInvoer[d.id] ?? centenNaarInvoer(d.huidigBedrag)}
                     onChange={(e) => setBedragInvoer((m) => ({ ...m, [d.id]: e.target.value }))}
                   />
@@ -105,7 +107,7 @@ export function SpaardoelSectie({
                     onClick={() => werkBedragBij(d)}
                     style={{ padding: '0.3rem 0.7rem', borderRadius: 8, border: '1px solid #ccc', background: '#eef2f7', cursor: 'pointer' }}
                   >
-                    Bedrag bijwerken
+                    {t('Bedrag bijwerken')}
                   </button>
                 </div>
               )}

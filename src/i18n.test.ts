@@ -6,9 +6,14 @@ describe('vertaal', () => {
     expect(vertaal('nl', 'Rekeningen')).toBe('Rekeningen')
   })
 
+  it('vertaalt naar het Engels en Frans wanneer de vertaling bestaat', () => {
+    expect(vertaal('en', 'Rekeningen')).toBe('Accounts')
+    expect(vertaal('fr', 'Budgetten')).toBe('Budgets')
+  })
+
   it('valt terug op het Nederlands als een vertaling nog ontbreekt', () => {
-    expect(vertaal('en', 'Rekeningen')).toBe('Rekeningen')
-    expect(vertaal('fr', 'Budgetten')).toBe('Budgetten')
+    expect(vertaal('en', 'Een niet-vertaalde tekst')).toBe('Een niet-vertaalde tekst')
+    expect(vertaal('fr', 'Een niet-vertaalde tekst')).toBe('Een niet-vertaalde tekst')
   })
 
   it('vult parameters in de tekst in', () => {
