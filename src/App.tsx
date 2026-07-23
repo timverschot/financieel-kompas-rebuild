@@ -1,30 +1,66 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import type { CSSProperties } from 'react'
+import type { Transactie } from './data/schema'
+import { laadTransacties } from './data/repository'
+import { seedIndienLeeg } from './data/seed'
+import { formatEuro } from './utils/format'
 
-// Een klein, getypeerd datamodel. TypeScript bewaakt dat elk 'bedrag' echt een
-// getal is en elke transactie de juiste velden heeft - fouten worden gevangen
-// vóór de app draait, in plaats van als crash bij de gebruiker.
-export type Transactie = {
-  id: string
-  omschrijving: string
-  bedrag: number // positief = inkomst, negatief = uitgave
+const container: CSSProperties = {
+  fontFamily: 'system-ui, sans-serif',
+  maxWidth: 480,
+  margin: '2rem auto',
+  padding: '0 1rem',
 }
 
-const beginTransacties: Transactie[] = [
-  { id: '1', omschrijving: 'Loon', bedrag: 2400 },
-  { id: '2', omschrijving: 'Huur', bedrag: -950 },
-  { id: '3', omschrijving: 'Boodschappen', bedrag: -320 },
-]
-
 export function App() {
-  const [transacties] = useState<Transactie[]>(beginTransacties)
+  const [transacties, setTransacties] = useState<Transactie[] | null>(null)
+  const [ongeldig, setOngeldig] = useState(0)
+
+  useEffect(() => {
+    let actief = true
+    async function laad() {
+      await seedIndienLeeg()
+      const res = await laadTransacties()
+      if (!actief) return
+      setTransacties(res.geldig)
+      setOngeldig(res.ongeldig)
+    }
+    void laad()
+    return () => {
+      actief = false
+    }
+  }, [])
+
+  if (transacties === null) {
+    return (
+      <main style={container}>
+        <h1 style={{ marginBottom: 0 }}>Financieel Kompas</h1>
+        <p style={{ color: '#666' }}>Laden…</p>
+      </main>
+    )
+  }
+
   const saldo = transacties.reduce((som, t) => som + t.bedrag, 0)
 
   return (
-    <main style={{ fontFamily: 'system-ui, sans-serif', maxWidth: 480, margin: '2rem auto', padding: '0 1rem' }}>
+    <main style={container}>
       <h1 style={{ marginBottom: 0 }}>Financieel Kompas</h1>
       <p style={{ color: '#666', marginTop: 4 }}>
-        Fase 0 — nieuwe fundering (React + TypeScript + buildstap)
+        Fase 1 — data uit de database (IndexedDB) met schemabewaking
       </p>
+
+      {ongeldig > 0 && (
+        <p
+          style={{
+            background: '#fff5f5',
+            border: '1px solid #f5c6cb',
+            borderRadius: 8,
+            padding: '0.5rem 0.75rem',
+          }}
+        >
+          Let op: {ongeldig} record(s) werden overgeslagen omdat ze niet aan het schema voldeden.
+        </p>
+      )}
 
       <ul style={{ listStyle: 'none', padding: 0 }}>
         {transacties.map((t) => (
@@ -57,8 +93,4 @@ export function App() {
       </p>
     </main>
   )
-}
-
-export function formatEuro(bedrag: number): string {
-  return new Intl.NumberFormat('nl-BE', { style: 'currency', currency: 'EUR' }).format(bedrag)
 }
