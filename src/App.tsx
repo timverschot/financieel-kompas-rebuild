@@ -47,6 +47,7 @@ import { CategorieFormulier } from './components/CategorieFormulier'
 import { BudgetFormulier } from './components/BudgetFormulier'
 import { DossierSectie } from './components/DossierSectie'
 import { CategorieBoom } from './components/CategorieBoom'
+import { Donut } from './components/Donut'
 import { IndexatieCalculator } from './components/IndexatieCalculator'
 import { TerugkerendeSectie } from './components/TerugkerendeSectie'
 import { saldoVerrekening } from './utils/dossier'
@@ -435,14 +436,9 @@ export function App() {
           <span>{formatEuro(inkomsten - uitgaven)}</span>
         </div>
         {perCategorie.length > 0 && (
-          <ul style={{ listStyle: 'none', padding: 0, marginTop: '0.5rem' }}>
-            {perCategorie.map((c) => (
-              <li key={c.naam} style={{ display: 'flex', justifyContent: 'space-between', color: '#666', padding: '0.15rem 0' }}>
-                <span>{c.naam}</span>
-                <span>{formatEuro(c.bedrag)}</span>
-              </li>
-            ))}
-          </ul>
+          <div style={{ marginTop: '0.75rem' }}>
+            <Donut items={perCategorie} />
+          </div>
         )}
       </section>
 
