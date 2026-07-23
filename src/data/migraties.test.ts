@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { euroNaarCenten, gebeurtenisNaarCenten } from './migraties'
+import { euroNaarCenten, gebeurtenisNaarCenten, transactieNaarCenten } from './migraties'
 
 describe('euroNaarCenten', () => {
   it('zet euro om naar centen', () => {
@@ -34,5 +34,52 @@ describe('gebeurtenisNaarCenten', () => {
     const g = { type: 'budget.bewaard', payload: { id: 'b1', bedrag: 40 } }
     gebeurtenisNaarCenten(g)
     expect(g.payload.bedrag).toBe(40) // origineel ongewijzigd
+  })
+
+  it('zet ook de split-regels van een gesplitste transactie om', () => {
+    const g = {
+      type: 'transactie.bewaard',
+      payload: {
+        id: 't1',
+        bedrag: -50,
+        regels: [
+          { categorieId: 'c1', bedrag: -30 },
+          { categorieId: 'c2', bedrag: -20 },
+        ],
+      },
+    }
+    const om = gebeurtenisNaarCenten(g)
+    expect(om.payload.bedrag).toBe(-5000)
+    expect(om.payload.regels).toEqual([
+      { categorieId: 'c1', bedrag: -3000 },
+      { categorieId: 'c2', bedrag: -2000 },
+    ])
+    // Origineel ongemoeid.
+    expect(g.payload.regels[0].bedrag).toBe(-30)
+  })
+})
+
+describe('transactieNaarCenten', () => {
+  it('zet het totaalbedrag én de regels om', () => {
+    const t = {
+      id: 't1',
+      bedrag: -50,
+      regels: [
+        { categorieId: 'c1', bedrag: -30 },
+        { categorieId: 'c2', bedrag: -20 },
+      ],
+    }
+    const om = transactieNaarCenten(t)
+    expect(om.bedrag).toBe(-5000)
+    expect(om.regels).toEqual([
+      { categorieId: 'c1', bedrag: -3000 },
+      { categorieId: 'c2', bedrag: -2000 },
+    ])
+    expect(t.bedrag).toBe(-50) // origineel ongewijzigd
+  })
+
+  it('werkt ook voor een transactie zonder regels', () => {
+    const t = { id: 't2', bedrag: 24 }
+    expect(transactieNaarCenten(t).bedrag).toBe(2400)
   })
 })

@@ -13,7 +13,7 @@ import type {
 } from './schema'
 import type { Logregel, MetaRegel } from './sync/events'
 import { nieuwId } from './sync/id'
-import { euroNaarCenten, gebeurtenisNaarCenten } from './migraties'
+import { euroNaarCenten, gebeurtenisNaarCenten, transactieNaarCenten } from './migraties'
 
 // De echte database in de browser (IndexedDB), via Dexie. Dit is de bron van
 // waarheid op je toestel: snel, offline, en met echte garanties.
@@ -173,7 +173,16 @@ export class FinancieelKompasDB extends Dexie {
           .modify((r: { beginsaldo: number }) => {
             r.beginsaldo = euroNaarCenten(r.beginsaldo)
           })
-        for (const tabel of ['transacties', 'budgetten', 'gedeeldeKosten', 'verrekeningen', 'terugkerendePosten']) {
+        // Transacties apart: naast het totaalbedrag ook de split-regels omzetten.
+        await trans
+          .table('transacties')
+          .toCollection()
+          .modify((t: Record<string, unknown>) => {
+            const omgezet = transactieNaarCenten(t)
+            t.bedrag = omgezet.bedrag
+            if ('regels' in omgezet) t.regels = omgezet.regels
+          })
+        for (const tabel of ['budgetten', 'gedeeldeKosten', 'verrekeningen', 'terugkerendePosten']) {
           await trans
             .table(tabel)
             .toCollection()

@@ -60,6 +60,7 @@ import { Donut } from './components/Donut'
 import { StaafGrafiek } from './components/StaafGrafiek'
 import { IndexatieCalculator } from './components/IndexatieCalculator'
 import { TerugkerendeSectie } from './components/TerugkerendeSectie'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { saldoVerrekening } from './utils/dossier'
 import { nieuwId } from './data/sync/id'
 import { uitgavenInMaand } from './utils/budget'
@@ -150,7 +151,7 @@ export function App() {
     let actief = true
     async function laad() {
       await seedIndienLeeg()
-      const [tx, rk, cat, bud, dos, kos, ver, tkp] = await Promise.all([
+      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc] = await Promise.all([
         laadTransacties(),
         laadRekeningen(),
         laadCategorieen(),
@@ -159,6 +160,8 @@ export function App() {
         laadGedeeldeKosten(),
         laadVerrekeningen(),
         laadTerugkerendePosten(),
+        laadSpaardoelen(),
+        laadSubcategorieen(),
       ])
       if (!actief) return
       setTransacties(tx.geldig)
@@ -170,6 +173,8 @@ export function App() {
       setGedeeldeKosten(kos.geldig)
       setVerrekeningen(ver.geldig)
       setTerugkerendePosten(tkp.geldig)
+      setSpaardoelen(sp.geldig)
+      setSubcategorieen(subc.geldig)
     }
     void laad()
     return () => {
@@ -461,6 +466,7 @@ export function App() {
         </p>
       )}
 
+      <ErrorBoundary naam="Maandoverzicht">
       <section>
         <h2 style={kop}>Maandoverzicht</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
@@ -502,6 +508,7 @@ export function App() {
           <StaafGrafiek data={maandVerloop} />
         </div>
       </section>
+      </ErrorBoundary>
 
       <hr style={scheiding} />
 
@@ -556,15 +563,18 @@ export function App() {
 
       <hr style={scheiding} />
 
-      <CategorieBoom
-        aanpassingen={subcategorieen}
-        onToevoegen={voegSubcategorieToe}
-        onWijzigen={wijzigSubcategorie}
-        onVerwijderen={verwijderSubcategorieH}
-      />
+      <ErrorBoundary naam="Categorieën">
+        <CategorieBoom
+          aanpassingen={subcategorieen}
+          onToevoegen={voegSubcategorieToe}
+          onWijzigen={wijzigSubcategorie}
+          onVerwijderen={verwijderSubcategorieH}
+        />
+      </ErrorBoundary>
 
       <hr style={scheiding} />
 
+      <ErrorBoundary naam="Budgetten">
       <section>
         <h2 style={kop}>Budgetten</h2>
         <p style={{ color: '#888', marginTop: 0 }}>voor {maandLabel(maand)}</p>
@@ -604,20 +614,23 @@ export function App() {
         </ul>
         {categorieen.length > 0 && <BudgetFormulier categorieen={categorieen} onOpslaan={voegBudgetToe} />}
       </section>
+      </ErrorBoundary>
 
       <hr style={scheiding} />
 
-      <TerugkerendeSectie
-        posten={terugkerendePosten}
-        rekeningen={rekeningen}
-        categorieen={categorieen}
-        transacties={transacties}
-        maand={maand}
-        maandLabel={maandLabel(maand)}
-        onOpslaan={voegTerugkerendToe}
-        onVerwijderen={verwijderTerugkerend}
-        onBoek={boekTerugkerend}
-      />
+      <ErrorBoundary naam="Vaste lasten">
+        <TerugkerendeSectie
+          posten={terugkerendePosten}
+          rekeningen={rekeningen}
+          categorieen={categorieen}
+          transacties={transacties}
+          maand={maand}
+          maandLabel={maandLabel(maand)}
+          onOpslaan={voegTerugkerendToe}
+          onVerwijderen={verwijderTerugkerend}
+          onBoek={boekTerugkerend}
+        />
+      </ErrorBoundary>
 
       <hr style={scheiding} />
 
@@ -683,30 +696,36 @@ export function App() {
 
       <hr style={scheiding} />
 
-      <DossierSectie
-        dossiers={dossiers}
-        kosten={gedeeldeKosten}
-        verrekeningen={verrekeningen}
-        onDossierOpslaan={voegDossierToe}
-        onDossierVerwijderen={verwijderDoss}
-        onKostOpslaan={voegGedeeldeKostToe}
-        onKostVerwijderen={verwijderKost}
-        onAfrekenen={legAfrekeningVast}
-      />
+      <ErrorBoundary naam="Dossiers">
+        <DossierSectie
+          dossiers={dossiers}
+          kosten={gedeeldeKosten}
+          verrekeningen={verrekeningen}
+          onDossierOpslaan={voegDossierToe}
+          onDossierVerwijderen={verwijderDoss}
+          onKostOpslaan={voegGedeeldeKostToe}
+          onKostVerwijderen={verwijderKost}
+          onAfrekenen={legAfrekeningVast}
+        />
+      </ErrorBoundary>
 
       <hr style={scheiding} />
 
-      <SpaardoelSectie
-        spaardoelen={spaardoelen}
-        rekeningen={rekeningen}
-        transacties={transacties}
-        onOpslaan={voegSpaardoelToe}
-        onVerwijderen={verwijderSpaardoelH}
-      />
+      <ErrorBoundary naam="Spaardoelen">
+        <SpaardoelSectie
+          spaardoelen={spaardoelen}
+          rekeningen={rekeningen}
+          transacties={transacties}
+          onOpslaan={voegSpaardoelToe}
+          onVerwijderen={verwijderSpaardoelH}
+        />
+      </ErrorBoundary>
 
       <hr style={scheiding} />
 
-      <IndexatieCalculator />
+      <ErrorBoundary naam="Indexatie">
+        <IndexatieCalculator />
+      </ErrorBoundary>
 
       <hr style={scheiding} />
 

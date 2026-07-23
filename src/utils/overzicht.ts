@@ -5,16 +5,26 @@ import { categorieBedragen } from './transactie'
 // Zuivere functies voor het maandoverzicht. 'maand' is in het formaat 'JJJJ-MM'.
 // Los gehouden zodat ze deterministisch getest kunnen worden.
 
+// Inkomsten en uitgaven tellen op REGELNIVEAU (via categorieBedragen), net zoals
+// de donut per categorie. Zo blijft het maandtotaal altijd gelijk aan de som van
+// de grafiek-segmenten, ook bij een gesplitst ticket met een positieve regel
+// (bv. statiegeld of korting) tussen de uitgaven.
 export function maandInkomsten(transacties: Transactie[], maand: string): number {
-  return transacties
-    .filter((t) => t.bedrag > 0 && t.datum.startsWith(maand))
-    .reduce((som, t) => som + t.bedrag, 0)
+  let som = 0
+  for (const t of transacties) {
+    if (!t.datum.startsWith(maand)) continue
+    for (const regel of categorieBedragen(t)) if (regel.bedrag > 0) som += regel.bedrag
+  }
+  return som
 }
 
 export function maandUitgaven(transacties: Transactie[], maand: string): number {
-  return transacties
-    .filter((t) => t.bedrag < 0 && t.datum.startsWith(maand))
-    .reduce((som, t) => som + Math.abs(t.bedrag), 0)
+  let som = 0
+  for (const t of transacties) {
+    if (!t.datum.startsWith(maand)) continue
+    for (const regel of categorieBedragen(t)) if (regel.bedrag < 0) som += Math.abs(regel.bedrag)
+  }
+  return som
 }
 
 export type CategorieUitgave = { naam: string; bedrag: number; kleur: string | null }

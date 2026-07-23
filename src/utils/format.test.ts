@@ -23,6 +23,18 @@ describe('invoerNaarCenten', () => {
   it('geeft NaN bij ongeldige invoer', () => {
     expect(Number.isNaN(invoerNaarCenten('abc'))).toBe(true)
   })
+
+  it('leest de Belgische notatie met duizendtalpunt en komma (1.234,50 -> 123450)', () => {
+    expect(invoerNaarCenten('1.234,50')).toBe(123450)
+  })
+
+  it('weigert trailing rommel (12abc -> NaN)', () => {
+    expect(Number.isNaN(invoerNaarCenten('12abc'))).toBe(true)
+  })
+
+  it('negeert spaties rond het bedrag', () => {
+    expect(invoerNaarCenten('  12,50 ')).toBe(1250)
+  })
 })
 
 describe('centenNaarInvoer', () => {

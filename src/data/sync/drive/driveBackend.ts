@@ -116,9 +116,15 @@ export class DriveBackend implements SyncBackend {
 
     const alle: Logregel[] = []
     for (const bestand of bestanden) {
-      const inhoud = await driveFetch(`${API}/files/${bestand.id}?alt=media`)
-      const regels = (await inhoud.json()) as unknown
-      if (Array.isArray(regels)) alle.push(...(regels as Logregel[]))
+      // Eén beschadigd of onleesbaar logbestand (bv. een half afgebroken upload)
+      // mag de hele sync niet blokkeren: overslaan en verdergaan met de rest.
+      try {
+        const inhoud = await driveFetch(`${API}/files/${bestand.id}?alt=media`)
+        const regels = (await inhoud.json()) as unknown
+        if (Array.isArray(regels)) alle.push(...(regels as Logregel[]))
+      } catch (e) {
+        console.error('Drive-logbestand overgeslagen (niet leesbaar):', bestand.id, e)
+      }
     }
     return alle
   }

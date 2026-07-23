@@ -1,6 +1,6 @@
 import { db } from './db'
 import { LogregelSchema, type Logregel } from './sync/events'
-import { herbouwStaat } from './sync/lokaal'
+import { herbouwStaat, verwerkOntvangenHlc } from './sync/lokaal'
 
 // Een onafhankelijk vangnet, los van Google Drive: de volledige geschiedenis
 // (het append-only logboek) als één JSON-bestand dat de gebruiker zelf kan
@@ -65,6 +65,10 @@ export async function importeerBackup(json: string): Promise<ImportResultaat> {
 
   if (nieuw.length > 0) {
     await db.events.bulkPut(nieuw)
+    // Werk de eigen logische klok bij op basis van de herstelde gebeurtenissen,
+    // net zoals bij een sync. Anders kan een wijziging ná het herstel een lager
+    // klokstempel krijgen en vóór de herstelde data geordend worden.
+    await verwerkOntvangenHlc(nieuw.map((r) => ({ l: r.hlcL ?? r.tijdstip, c: r.hlcC ?? 0 })))
     await herbouwStaat()
   }
   return { toegevoegd: nieuw.length, overgeslagen, ongeldig }
