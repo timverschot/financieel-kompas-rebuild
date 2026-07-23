@@ -2,6 +2,7 @@ import { db } from '../db'
 import { pasToe } from './replay'
 import { GebeurtenisSchema, type Gebeurtenis, type Logregel } from './events'
 import { nieuwId } from './id'
+import { lokaleStap, ontvangstStap, type Stempel } from './hlc'
 
 // --- Sleutel/waarde-opslag (meta) ---
 export async function leesMeta<T>(sleutel: string): Promise<T | undefined> {
@@ -113,16 +114,32 @@ export async function pasGebeurtenisToe(gebeurtenis: Gebeurtenis): Promise<void>
     const toestelId = await haalToestelId()
     const volg = ((await leesMeta<number>('volgnummer')) ?? 0) + 1
     await schrijfMeta('volgnummer', volg)
+    const nu = Date.now()
+    const vorigeHlc = (await leesMeta<Stempel>('hlc')) ?? { l: 0, c: 0 }
+    const stempel = lokaleStap(vorigeHlc, nu)
+    await schrijfMeta('hlc', stempel)
     const regel: Logregel = {
       id: nieuwId(),
       toestelId,
       volgnummer: volg,
-      tijdstip: Date.now(),
+      tijdstip: nu,
+      hlcL: stempel.l,
+      hlcC: stempel.c,
       gebeurtenis: geldig,
     }
     await db.events.put(regel)
     await pasStaatToe(regel)
   })
+}
+
+// Werk de eigen hybride logische klok bij nadat wijzigingen van andere toestellen
+// zijn binnengekomen, zodat volgende eigen wijzigingen er zeker ná geordend worden.
+export async function verwerkOntvangenHlc(stempels: Stempel[]): Promise<void> {
+  if (stempels.length === 0) return
+  const nu = Date.now()
+  let state = (await leesMeta<Stempel>('hlc')) ?? { l: 0, c: 0 }
+  for (const s of stempels) state = ontvangstStap(state, s, nu)
+  await schrijfMeta('hlc', state)
 }
 
 // Herbouwt de volledige staat uit het logboek. Nodig na het binnenhalen van

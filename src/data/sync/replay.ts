@@ -9,6 +9,7 @@ import type {
   Verrekening,
 } from '../schema'
 import type { Logregel } from './events'
+import { vergelijkStempel, type Stempel } from './hlc'
 
 export type Staat = {
   rekeningen: Map<string, Rekening>
@@ -21,10 +22,18 @@ export type Staat = {
   terugkerendePosten: Map<string, TerugkerendePost>
 }
 
-// Bepaalt de volgorde van twee logregels: eerst op tijd, dan op toestel, dan op
-// volgnummer.
+// Het HLC-stempel van een logregel, met terugval op 'tijdstip' voor oude regels
+// die nog geen stempel hebben.
+function stempelVan(r: Logregel): Stempel {
+  return { l: r.hlcL ?? r.tijdstip, c: r.hlcC ?? 0 }
+}
+
+// Bepaalt de volgorde van twee logregels: eerst op het hybride-logische-klok-
+// stempel (causaliteit wint, ongeacht klokverschil), dan op toestel, dan op
+// volgnummer, zodat de volgorde volledig deterministisch is.
 function vergelijk(a: Logregel, b: Logregel): number {
-  if (a.tijdstip !== b.tijdstip) return a.tijdstip - b.tijdstip
+  const s = vergelijkStempel(stempelVan(a), stempelVan(b))
+  if (s !== 0) return s
   if (a.toestelId !== b.toestelId) return a.toestelId < b.toestelId ? -1 : 1
   return a.volgnummer - b.volgnummer
 }

@@ -1,7 +1,7 @@
 import { db } from '../db'
 import type { SyncBackend } from './backend'
 import { LogregelSchema, type Logregel } from './events'
-import { haalToestelId, herbouwStaat, leesMeta, schrijfMeta } from './lokaal'
+import { haalToestelId, herbouwStaat, leesMeta, schrijfMeta, verwerkOntvangenHlc } from './lokaal'
 
 export type SyncResultaat = { gepusht: number; opgehaald: number; ongeldig: number }
 
@@ -38,6 +38,7 @@ export async function synchroniseer(backend: SyncBackend): Promise<SyncResultaat
 
   if (nieuw.length > 0) {
     await db.events.bulkPut(nieuw)
+    await verwerkOntvangenHlc(nieuw.map((r) => ({ l: r.hlcL ?? r.tijdstip, c: r.hlcC ?? 0 })))
     await herbouwStaat()
   }
 

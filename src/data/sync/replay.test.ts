@@ -32,4 +32,35 @@ describe('pasToe (samenvoegen / last-writer-wins)', () => {
     expect(pasToe([a, b]).transacties.get('t1')?.omschrijving).toBe('Van B')
     expect(pasToe([b, a]).transacties.get('t1')?.omschrijving).toBe('Van B')
   })
+
+  it('laat de causaal latere wijziging winnen, ook als haar wandklok achterloopt', () => {
+    // Toestel X bewaart 'Eerst' met een HOGE wandklok (1000) maar een LAAG HLC-stempel (5).
+    // Toestel Y had die wijziging al gezien en bewaart daarna 'Later' met een LAGERE
+    // wandklok (50 — de klok van Y loopt achter) maar een HOGER HLC-stempel (6).
+    const eerst = regel({
+      toestelId: 'X',
+      tijdstip: 1000,
+      hlcL: 5,
+      hlcC: 0,
+      gebeurtenis: { type: 'transactie.bewaard', payload: tx('t1', 'Eerst', 100) },
+    })
+    const later = regel({
+      toestelId: 'Y',
+      tijdstip: 50,
+      hlcL: 6,
+      hlcC: 0,
+      gebeurtenis: { type: 'transactie.bewaard', payload: tx('t1', 'Later', 200) },
+    })
+    // Op de pure wandklok zou 'Eerst' (1000) winnen — fout. Met de HLC wint 'Later' (6 > 5).
+    expect(pasToe([eerst, later]).transacties.get('t1')?.omschrijving).toBe('Later')
+    expect(pasToe([later, eerst]).transacties.get('t1')?.omschrijving).toBe('Later')
+  })
+
+  it('valt terug op tijdstip voor oude regels zonder HLC-stempel', () => {
+    // Regels zonder hlcL/hlcC (bv. van vóór deze versie) moeten nog exact zoals
+    // vroeger op tijdstip geordend worden.
+    const oud = regel({ tijdstip: 1, gebeurtenis: { type: 'transactie.bewaard', payload: tx('t1', 'Oud', 1) } })
+    const nieuw = regel({ tijdstip: 2, gebeurtenis: { type: 'transactie.bewaard', payload: tx('t1', 'Nieuw', 2) } })
+    expect(pasToe([oud, nieuw]).transacties.get('t1')?.omschrijving).toBe('Nieuw')
+  })
 })

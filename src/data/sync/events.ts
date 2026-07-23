@@ -33,12 +33,18 @@ export const GebeurtenisSchema = z.discriminatedUnion('type', [
 export type Gebeurtenis = z.infer<typeof GebeurtenisSchema>
 
 // Een logregel is een gebeurtenis mét herkomst: welk toestel, het hoeveelste
-// wijziging van dat toestel (volgnummer), en wanneer (tijdstip).
+// wijziging van dat toestel (volgnummer), en wanneer (tijdstip). 'hlcL'/'hlcC'
+// vormen samen het hybride-logische-klok-stempel dat de samenvoeg-volgorde bepaalt
+// (zie hlc.ts). Ze zijn optioneel voor terugwaartse compatibiliteit: oudere
+// logregels (of back-ups van vóór deze versie) missen ze; bij het ordenen valt de
+// app dan terug op 'tijdstip'.
 export const LogregelSchema = z.object({
   id: z.string().min(1),
   toestelId: z.string().min(1),
   volgnummer: z.number().int().nonnegative(),
   tijdstip: z.number(),
+  hlcL: z.number().optional(),
+  hlcC: z.number().int().nonnegative().optional(),
   gebeurtenis: GebeurtenisSchema,
 })
 export type Logregel = z.infer<typeof LogregelSchema>
