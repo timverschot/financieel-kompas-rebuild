@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { Transactie } from './data/schema'
-import { laadTransacties } from './data/repository'
+import { bewaarTransactie, laadTransacties, verwijderTransactie } from './data/repository'
 import { seedIndienLeeg } from './data/seed'
 import { synchroniseer } from './data/sync/sync'
 import { DriveBackend } from './data/sync/drive/driveBackend'
 import { vraagToken } from './data/sync/drive/auth'
+import { TransactieFormulier } from './components/TransactieFormulier'
 import { formatEuro } from './utils/format'
 
 const container: CSSProperties = {
@@ -51,6 +52,16 @@ export function App() {
       actief = false
     }
   }, [])
+
+  async function voegToe(t: Transactie) {
+    await bewaarTransactie(t)
+    await herlaad()
+  }
+
+  async function verwijder(id: string) {
+    await verwijderTransactie(id)
+    await herlaad()
+  }
 
   async function verbindEnSynchroniseer() {
     setBezig(true)
@@ -98,7 +109,7 @@ export function App() {
     <main style={container}>
       <h1 style={{ marginBottom: 0 }}>Financieel Kompas</h1>
       <p style={{ color: '#666', marginTop: 4 }}>
-        Fase 2 — database met schemabewaking en synchronisatie via Google Drive
+        Transacties beheren — met schemabewaking, backup en synchronisatie
       </p>
 
       {ongeldig > 0 && (
@@ -114,19 +125,31 @@ export function App() {
         </p>
       )}
 
-      <ul style={{ listStyle: 'none', padding: 0 }}>
+      <TransactieFormulier onToevoegen={voegToe} />
+
+      <ul style={{ listStyle: 'none', padding: 0, marginTop: '1.5rem' }}>
         {transacties.map((t) => (
           <li
             key={t.id}
             style={{
               display: 'flex',
               justifyContent: 'space-between',
+              alignItems: 'center',
               padding: '0.5rem 0',
               borderBottom: '1px solid #eee',
             }}
           >
             <span>{t.omschrijving}</span>
-            <span style={{ color: t.bedrag < 0 ? '#c0392b' : '#27ae60' }}>{formatEuro(t.bedrag)}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={{ color: t.bedrag < 0 ? '#c0392b' : '#27ae60' }}>{formatEuro(t.bedrag)}</span>
+              <button
+                aria-label={`Verwijder ${t.omschrijving}`}
+                onClick={() => verwijder(t.id)}
+                style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}
+              >
+                ×
+              </button>
+            </span>
           </li>
         ))}
       </ul>
