@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
 import { zoekItems } from '../data/categorieen/zoek'
 import type { PlatItem } from '../data/categorieen/zoek'
+import { useT } from '../i18n'
 
 const ZOEK_VANAF = 2
 const MAX = 8
@@ -28,6 +29,7 @@ export function ItemZoeker({
   onKiesItem: (item: PlatItem) => void
   registerInput?: (el: HTMLInputElement | null) => void
 }) {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   const [hoog, setHoog] = useState(0)
   const hoogRef = useRef(0)
@@ -68,11 +70,11 @@ export function ItemZoeker({
   return (
     <div style={{ position: 'relative' }}>
       <input
-        aria-label="Item zoeken"
+        aria-label={t('Item zoeken')}
         ref={registerInput}
         style={veld}
         autoComplete="off"
-        placeholder="Zoek een product (vanaf 2 letters)…"
+        placeholder={t('Zoek een product (vanaf 2 letters)…')}
         value={waarde}
         onChange={(e) => {
           onTekst(e.target.value)

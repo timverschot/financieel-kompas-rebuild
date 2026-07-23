@@ -7,6 +7,7 @@ import { labelVanCategorie } from '../data/categorieen/resolve'
 import { CategorieKiezer } from './CategorieKiezer'
 import { HandelaarVeld } from './HandelaarVeld'
 import { ItemZoeker } from './ItemZoeker'
+import { useT } from '../i18n'
 
 const vandaag = () => new Date().toISOString().slice(0, 10)
 
@@ -64,6 +65,7 @@ export function TransactieFormulier({
   handelaars: string[]
   bewerken?: Transactie | null
 }) {
+  const { t } = useT()
   const [omschrijving, setOmschrijving] = useState('')
   const [bedrag, setBedrag] = useState('')
   const [datum, setDatum] = useState(vandaag())
@@ -198,12 +200,12 @@ export function TransactieFormulier({
   return (
     <form onSubmit={verzend} style={{ marginTop: '1rem' }}>
       <div style={rij}>
-        <label htmlFor="handelaar">Handelaar / winkel</label>
+        <label htmlFor="handelaar">{t('Handelaar / winkel')}</label>
         <HandelaarVeld id="handelaar" waarde={omschrijving} onWijzig={setOmschrijving} suggestiesBron={handelaars} />
       </div>
 
       <div style={rij}>
-        <label htmlFor="bedrag">Bedrag (€){gesplitst ? ' — totaal van het ticket' : ''}</label>
+        <label htmlFor="bedrag">{t('Bedrag (€)')}{gesplitst ? t(' — totaal van het ticket') : ''}</label>
         <input
           id="bedrag"
           style={veld}
@@ -216,8 +218,7 @@ export function TransactieFormulier({
 
       <div style={rij}>
         <label>
-          <input type="checkbox" checked={gesplitst} onChange={(e) => setGesplitst(e.target.checked)} /> Kassaticket
-          splitsen
+          <input type="checkbox" checked={gesplitst} onChange={(e) => setGesplitst(e.target.checked)} /> {t('Kassaticket splitsen')}
         </label>
       </div>
 
@@ -245,7 +246,7 @@ export function TransactieFormulier({
                   />
                 </div>
                 <input
-                  aria-label="Deelbedrag"
+                  aria-label={t('Deelbedrag')}
                   style={{ ...veld, marginTop: 0, width: 90 }}
                   inputMode="decimal"
                   placeholder="0,00"
@@ -256,7 +257,7 @@ export function TransactieFormulier({
                 {kassaRegels.length > 1 && (
                   <button
                     type="button"
-                    aria-label={`Verwijder regel ${i + 1}`}
+                    aria-label={t('Verwijder regel {n}', { n: i + 1 })}
                     onClick={() => verwijderRegel(r.sleutel)}
                     style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.2rem' }}
                   >
@@ -272,16 +273,16 @@ export function TransactieFormulier({
             onClick={() => voegRegelToe()}
             style={{ padding: '0.3rem 0.7rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}
           >
-            + Regel toevoegen
+            {t('+ Regel toevoegen')}
           </button>
 
           <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem' }}>
-            Verdeeld: <strong>{formatEuro(verdeeld)}</strong> van <strong>{formatEuro(totaalCenten)}</strong>{' '}
+            {t('Verdeeld:')} <strong>{formatEuro(verdeeld)}</strong> {t('van')} <strong>{formatEuro(totaalCenten)}</strong>{' '}
             {Math.abs(verschil) < 1 ? (
               <span style={{ color: '#27ae60' }}>✓</span>
             ) : (
               <span style={{ color: verschil < 0 ? '#c0392b' : '#e67e22' }}>
-                (nog {formatEuro(verschil)})
+                {t('(nog {bedrag})', { bedrag: formatEuro(verschil) })}
               </span>
             )}
           </p>
@@ -289,11 +290,11 @@ export function TransactieFormulier({
       )}
 
       <div style={rij}>
-        <label htmlFor="datum">Datum</label>
+        <label htmlFor="datum">{t('Datum')}</label>
         <input id="datum" type="date" style={veld} value={datum} onChange={(e) => setDatum(e.target.value)} />
       </div>
       <div style={rij}>
-        <label htmlFor="rekening">Rekening</label>
+        <label htmlFor="rekening">{t('Rekening')}</label>
         <select id="rekening" style={veld} value={rekeningId} onChange={(e) => setRekeningId(e.target.value)}>
           {rekeningen.map((r) => (
             <option key={r.id} value={r.id}>
@@ -304,10 +305,10 @@ export function TransactieFormulier({
       </div>
       <div style={rij}>
         <label style={{ marginRight: '1rem' }}>
-          <input type="radio" name="soort" checked={soort === 'uitgave'} onChange={() => setSoort('uitgave')} /> Uitgave
+          <input type="radio" name="soort" checked={soort === 'uitgave'} onChange={() => setSoort('uitgave')} /> {t('Uitgave')}
         </label>
         <label>
-          <input type="radio" name="soort" checked={soort === 'inkomst'} onChange={() => setSoort('inkomst')} /> Inkomst
+          <input type="radio" name="soort" checked={soort === 'inkomst'} onChange={() => setSoort('inkomst')} /> {t('Inkomst')}
         </label>
       </div>
       <button
@@ -321,7 +322,7 @@ export function TransactieFormulier({
           cursor: geldig ? 'pointer' : 'not-allowed',
         }}
       >
-        {bewerken ? 'Wijzigen' : 'Toevoegen'}
+        {bewerken ? t('Wijzigen') : t('Toevoegen')}
       </button>
       {bewerken && onAnnuleer && (
         <button
@@ -329,7 +330,7 @@ export function TransactieFormulier({
           onClick={onAnnuleer}
           style={{ marginLeft: '0.5rem', padding: '0.5rem 0.9rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}
         >
-          Annuleer
+          {t('Annuleer')}
         </button>
       )}
     </form>

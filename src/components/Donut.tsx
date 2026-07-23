@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { donutSegmenten, type DonutInvoer } from '../utils/donut'
 import { formatEuro } from '../utils/format'
+import { useT } from '../i18n'
 
 // Geometrie van de donut.
 const GROOTTE = 180
@@ -28,6 +29,7 @@ const swatch: CSSProperties = { display: 'inline-block', width: 12, height: 12, 
 // Donutgrafiek van bedragen per (hoofd)categorie, met legende. De kleuren komen
 // uit hetzelfde data-object als de cijfers.
 export function Donut({ items, middenLabel = 'uitgaven' }: { items: DonutInvoer[]; middenLabel?: string }) {
+  const { t } = useT()
   const segmenten = donutSegmenten(items)
   if (segmenten.length === 0) return null
   const totaal = segmenten.reduce((s, seg) => s + seg.bedrag, 0)
@@ -35,7 +37,7 @@ export function Donut({ items, middenLabel = 'uitgaven' }: { items: DonutInvoer[
 
   return (
     <div>
-      <svg viewBox={`0 0 ${GROOTTE} ${GROOTTE}`} width={GROOTTE} height={GROOTTE} role="img" aria-label={`${middenLabel} per categorie`}>
+      <svg viewBox={`0 0 ${GROOTTE} ${GROOTTE}`} width={GROOTTE} height={GROOTTE} role="img" aria-label={t('{label} per categorie', { label: t(middenLabel) })}>
         {enkel ? (
           <circle
             cx={MIDDEN}
@@ -49,7 +51,7 @@ export function Donut({ items, middenLabel = 'uitgaven' }: { items: DonutInvoer[
           segmenten.map((seg) => <path key={seg.naam} d={segmentPad(seg.start, seg.eind)} fill={seg.kleur} />)
         )}
         <text x={MIDDEN} y={MIDDEN - 4} textAnchor="middle" style={{ fontSize: 11, fill: '#888' }}>
-          {middenLabel}
+          {t(middenLabel)}
         </text>
         <text x={MIDDEN} y={MIDDEN + 12} textAnchor="middle" style={{ fontSize: 14, fontWeight: 700, fill: '#333' }}>
           {formatEuro(totaal)}
