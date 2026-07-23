@@ -21,6 +21,7 @@ import { RekeningFormulier } from './components/RekeningFormulier'
 import { CategorieFormulier } from './components/CategorieFormulier'
 import { BudgetFormulier } from './components/BudgetFormulier'
 import { uitgavenInMaand } from './utils/budget'
+import { maandInkomsten, maandUitgaven, uitgavenPerCategorie } from './utils/overzicht'
 import { formatEuro } from './utils/format'
 
 const container: CSSProperties = {
@@ -173,6 +174,10 @@ export function App() {
     rekeningen.reduce((som, r) => som + r.beginsaldo, 0) +
     transacties.reduce((som, t) => som + t.bedrag, 0)
 
+  const inkomsten = maandInkomsten(transacties, maand)
+  const uitgaven = maandUitgaven(transacties, maand)
+  const perCategorie = uitgavenPerCategorie(transacties, categorieen, maand)
+
   return (
     <main style={container}>
       <h1 style={{ marginBottom: 0 }}>Financieel Kompas</h1>
@@ -185,6 +190,43 @@ export function App() {
           Let op: {ongeldig} record(s) werden overgeslagen omdat ze niet aan het schema voldeden.
         </p>
       )}
+
+      <section>
+        <h2 style={kop}>Maandoverzicht</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+          <button style={knop} aria-label="Vorige maand" onClick={() => setMaand(verschuifMaand(maand, -1))}>
+            ‹
+          </button>
+          <span style={{ minWidth: 120, textAlign: 'center' }}>{maandLabel(maand)}</span>
+          <button style={knop} aria-label="Volgende maand" onClick={() => setMaand(verschuifMaand(maand, 1))}>
+            ›
+          </button>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.15rem 0' }}>
+          <span>Inkomsten</span>
+          <span style={{ color: '#27ae60' }}>{formatEuro(inkomsten)}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.15rem 0' }}>
+          <span>Uitgaven</span>
+          <span style={{ color: '#c0392b' }}>{formatEuro(uitgaven)}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.15rem 0', fontWeight: 'bold' }}>
+          <span>Netto</span>
+          <span>{formatEuro(inkomsten - uitgaven)}</span>
+        </div>
+        {perCategorie.length > 0 && (
+          <ul style={{ listStyle: 'none', padding: 0, marginTop: '0.5rem' }}>
+            {perCategorie.map((c) => (
+              <li key={c.naam} style={{ display: 'flex', justifyContent: 'space-between', color: '#666', padding: '0.15rem 0' }}>
+                <span>{c.naam}</span>
+                <span>{formatEuro(c.bedrag)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <hr style={scheiding} />
 
       <section>
         <h2 style={kop}>Rekeningen</h2>
@@ -217,15 +259,7 @@ export function App() {
 
       <section>
         <h2 style={kop}>Budgetten</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-          <button style={knop} aria-label="Vorige maand" onClick={() => setMaand(verschuifMaand(maand, -1))}>
-            ‹
-          </button>
-          <span style={{ minWidth: 120, textAlign: 'center' }}>{maandLabel(maand)}</span>
-          <button style={knop} aria-label="Volgende maand" onClick={() => setMaand(verschuifMaand(maand, 1))}>
-            ›
-          </button>
-        </div>
+        <p style={{ color: '#888', marginTop: 0 }}>voor {maandLabel(maand)}</p>
         {budgetten.length === 0 && <p style={{ color: '#888' }}>Nog geen budgetten ingesteld.</p>}
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {budgetten.map((b) => {

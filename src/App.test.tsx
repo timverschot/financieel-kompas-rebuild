@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { App } from './App'
@@ -8,15 +8,22 @@ beforeEach(async () => {
   await db.transacties.clear()
   await db.rekeningen.clear()
   await db.categorieen.clear()
+  await db.budgetten.clear()
   await db.events.clear()
   await db.meta.clear()
 })
 
+// Zoekt het bedrag binnen de Saldo-regel, zodat het niet verwart met andere
+// bedragen elders op het scherm (zoals het netto in het maandoverzicht).
+function saldoRegel(): HTMLElement {
+  return screen.getByText('Saldo').closest('p') as HTMLElement
+}
+
 describe('App', () => {
-  it('laadt transacties uit de database en toont het juiste saldo (2400 - 950 - 320 = 1130)', async () => {
+  it('laadt transacties en toont het juiste totaalsaldo (2400 - 950 - 320 = 1130)', async () => {
     render(<App />)
-    expect(await screen.findByText('Saldo')).toBeInTheDocument()
-    expect(await screen.findByText(/1[.\s]?130/)).toBeInTheDocument()
+    await screen.findByText('Saldo')
+    expect(saldoRegel()).toHaveTextContent(/1[.\s]?130/)
   })
 
   it('voegt een uitgave toe en verlaagt het saldo (1130 - 15 = 1115)', async () => {
@@ -29,7 +36,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
 
     expect(await screen.findByText('Boek')).toBeInTheDocument()
-    expect(await screen.findByText(/1[.\s]?115/)).toBeInTheDocument()
+    await waitFor(() => expect(saldoRegel()).toHaveTextContent(/1[.\s]?115/))
   })
 
   it('verwijdert een transactie en past het saldo aan (na wissen van Boodschappen: 1450)', async () => {
@@ -39,7 +46,7 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: 'Verwijder Boodschappen' }))
 
-    expect(await screen.findByText(/1[.\s]?450/)).toBeInTheDocument()
+    await waitFor(() => expect(saldoRegel()).toHaveTextContent(/1[.\s]?450/))
     expect(screen.queryByText('Boodschappen')).toBeNull()
   })
 
@@ -54,7 +61,7 @@ describe('App', () => {
     await user.type(bedrag, '1000')
     await user.click(screen.getByRole('button', { name: 'Wijzigen' }))
 
-    expect(await screen.findByText(/1[.\s]?080/)).toBeInTheDocument()
+    await waitFor(() => expect(saldoRegel()).toHaveTextContent(/1[.\s]?080/))
   })
 
   it('voegt een nieuwe rekening toe en maakt ze beschikbaar', async () => {
@@ -79,6 +86,11 @@ describe('App', () => {
 
     // 'Vervoer' verschijnt nu als keuze (in het transactie- én budgetformulier).
     expect((await screen.findAllByRole('option', { name: 'Vervoer' })).length).toBeGreaterThan(0)
+  })
+
+  it('toont een maandoverzicht met een netto-regel', async () => {
+    render(<App />)
+    expect(await screen.findByText('Netto')).toBeInTheDocument()
   })
 
   it('stelt een budget in en toont een voortgangsbalk voor de categorie', async () => {
