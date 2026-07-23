@@ -1,9 +1,11 @@
 import type { ZodType } from 'zod'
 import { db } from './db'
 import {
+  BudgetSchema,
   CategorieSchema,
   RekeningSchema,
   TransactieSchema,
+  type Budget,
   type Categorie,
   type Rekening,
   type Transactie,
@@ -27,6 +29,11 @@ export async function bewaarRekening(rekening: Rekening): Promise<void> {
 export async function bewaarCategorie(categorie: Categorie): Promise<void> {
   const geldig = CategorieSchema.parse(categorie)
   await pasGebeurtenisToe({ type: 'categorie.bewaard', payload: geldig })
+}
+
+export async function bewaarBudget(budget: Budget): Promise<void> {
+  const geldig = BudgetSchema.parse(budget)
+  await pasGebeurtenisToe({ type: 'budget.bewaard', payload: geldig })
 }
 
 export async function verwijderTransactie(id: string): Promise<void> {
@@ -58,16 +65,17 @@ function valideerLijst<T>(ruw: unknown[], schema: ZodType<T>): LeesResultaat<T> 
 }
 
 export async function laadTransacties(): Promise<LeesResultaat<Transactie>> {
-  const ruw = await db.transacties.toArray()
-  return valideerLijst(ruw, TransactieSchema)
+  return valideerLijst(await db.transacties.toArray(), TransactieSchema)
 }
 
 export async function laadRekeningen(): Promise<LeesResultaat<Rekening>> {
-  const ruw = await db.rekeningen.toArray()
-  return valideerLijst(ruw, RekeningSchema)
+  return valideerLijst(await db.rekeningen.toArray(), RekeningSchema)
 }
 
 export async function laadCategorieen(): Promise<LeesResultaat<Categorie>> {
-  const ruw = await db.categorieen.toArray()
-  return valideerLijst(ruw, CategorieSchema)
+  return valideerLijst(await db.categorieen.toArray(), CategorieSchema)
+}
+
+export async function laadBudgetten(): Promise<LeesResultaat<Budget>> {
+  return valideerLijst(await db.budgetten.toArray(), BudgetSchema)
 }

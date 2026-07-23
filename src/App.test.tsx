@@ -77,6 +77,19 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
     await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
 
-    expect(await screen.findByRole('option', { name: 'Vervoer' })).toBeInTheDocument()
+    // 'Vervoer' verschijnt nu als keuze (in het transactie- én budgetformulier).
+    expect((await screen.findAllByRole('option', { name: 'Vervoer' })).length).toBeGreaterThan(0)
+  })
+
+  it('stelt een budget in en toont een voortgangsbalk voor de categorie', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
+    await user.type(screen.getByLabelText('Maandbudget (€)'), '400')
+    await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
+
+    expect(await screen.findByRole('progressbar', { name: 'Voeding' })).toBeInTheDocument()
   })
 })

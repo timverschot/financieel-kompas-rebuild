@@ -1,10 +1,11 @@
-import type { Categorie, Rekening, Transactie } from '../schema'
+import type { Budget, Categorie, Rekening, Transactie } from '../schema'
 import type { Logregel } from './events'
 
 export type Staat = {
   rekeningen: Map<string, Rekening>
   transacties: Map<string, Transactie>
   categorieen: Map<string, Categorie>
+  budgetten: Map<string, Budget>
 }
 
 // Bepaalt de volgorde van twee logregels: eerst op tijd, dan op toestel, dan op
@@ -18,11 +19,15 @@ function vergelijk(a: Logregel, b: Logregel): number {
 
 // Zuivere functie: gegeven alle logregels, bereken de uiteindelijke staat. De
 // regels worden op volgorde gezet en dan toegepast, zodat de laatste wijziging
-// wint (last-writer-wins). Dezelfde invoer geeft altijd dezelfde uitkomst - de
-// basis van conflictvrije synchronisatie tussen toestellen.
+// wint (last-writer-wins). Dezelfde invoer geeft altijd dezelfde uitkomst.
 export function pasToe(regels: Logregel[]): Staat {
   const gesorteerd = [...regels].sort(vergelijk)
-  const staat: Staat = { rekeningen: new Map(), transacties: new Map(), categorieen: new Map() }
+  const staat: Staat = {
+    rekeningen: new Map(),
+    transacties: new Map(),
+    categorieen: new Map(),
+    budgetten: new Map(),
+  }
   for (const r of gesorteerd) {
     const g = r.gebeurtenis
     switch (g.type) {
@@ -43,6 +48,12 @@ export function pasToe(regels: Logregel[]): Staat {
         break
       case 'categorie.verwijderd':
         staat.categorieen.delete(g.payload.id)
+        break
+      case 'budget.bewaard':
+        staat.budgetten.set(g.payload.id, g.payload)
+        break
+      case 'budget.verwijderd':
+        staat.budgetten.delete(g.payload.id)
         break
     }
   }

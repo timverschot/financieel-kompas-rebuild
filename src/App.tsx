@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import type { Categorie, Rekening, Transactie } from './data/schema'
+import type { Budget, Categorie, Rekening, Transactie } from './data/schema'
 import {
+  bewaarBudget,
   bewaarCategorie,
   bewaarRekening,
   bewaarTransactie,
+  laadBudgetten,
   laadCategorieen,
   laadRekeningen,
   laadTransacties,
@@ -17,6 +19,8 @@ import { vraagToken } from './data/sync/drive/auth'
 import { TransactieFormulier } from './components/TransactieFormulier'
 import { RekeningFormulier } from './components/RekeningFormulier'
 import { CategorieFormulier } from './components/CategorieFormulier'
+import { BudgetFormulier } from './components/BudgetFormulier'
+import { uitgavenInMaand } from './utils/budget'
 import { formatEuro } from './utils/format'
 
 const container: CSSProperties = {
@@ -25,7 +29,6 @@ const container: CSSProperties = {
   margin: '2rem auto',
   padding: '0 1rem',
 }
-
 const knop: CSSProperties = {
   padding: '0.5rem 0.9rem',
   borderRadius: 8,
@@ -33,39 +36,65 @@ const knop: CSSProperties = {
   background: '#f7f7f7',
   cursor: 'pointer',
 }
-
 const kop: CSSProperties = { fontSize: '1rem', marginBottom: '0.25rem' }
 const scheiding: CSSProperties = { margin: '1.5rem 0', border: 'none', borderTop: '1px solid #eee' }
+
+const huidigeMaand = () => new Date().toISOString().slice(0, 7)
+
+function verschuifMaand(maand: string, delta: number): string {
+  const [jaar, m] = maand.split('-').map(Number)
+  const d = new Date(jaar, m - 1 + delta, 1)
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+}
+
+function maandLabel(maand: string): string {
+  const [jaar, m] = maand.split('-').map(Number)
+  return new Intl.DateTimeFormat('nl-BE', { month: 'long', year: 'numeric' }).format(new Date(jaar, m - 1, 1))
+}
 
 export function App() {
   const [transacties, setTransacties] = useState<Transactie[] | null>(null)
   const [rekeningen, setRekeningen] = useState<Rekening[]>([])
   const [categorieen, setCategorieen] = useState<Categorie[]>([])
+  const [budgetten, setBudgetten] = useState<Budget[]>([])
   const [ongeldig, setOngeldig] = useState(0)
   const [verbonden, setVerbonden] = useState(false)
   const [bezig, setBezig] = useState(false)
   const [statusTekst, setStatusTekst] = useState<string | null>(null)
-  const backendRef = useRef<DriveBackend | null>(null)
   const [bewerkTransactie, setBewerkTransactie] = useState<Transactie | null>(null)
+  const [maand, setMaand] = useState(huidigeMaand())
+  const backendRef = useRef<DriveBackend | null>(null)
 
   async function herlaad() {
-    const [tx, rk, cat] = await Promise.all([laadTransacties(), laadRekeningen(), laadCategorieen()])
+    const [tx, rk, cat, bud] = await Promise.all([
+      laadTransacties(),
+      laadRekeningen(),
+      laadCategorieen(),
+      laadBudgetten(),
+    ])
     setTransacties(tx.geldig)
     setOngeldig(tx.ongeldig)
     setRekeningen(rk.geldig)
     setCategorieen(cat.geldig)
+    setBudgetten(bud.geldig)
   }
 
   useEffect(() => {
     let actief = true
     async function laad() {
       await seedIndienLeeg()
-      const [tx, rk, cat] = await Promise.all([laadTransacties(), laadRekeningen(), laadCategorieen()])
+      const [tx, rk, cat, bud] = await Promise.all([
+        laadTransacties(),
+        laadRekeningen(),
+        laadCategorieen(),
+        laadBudgetten(),
+      ])
       if (!actief) return
       setTransacties(tx.geldig)
       setOngeldig(tx.ongeldig)
       setRekeningen(rk.geldig)
       setCategorieen(cat.geldig)
+      setBudgetten(bud.geldig)
     }
     void laad()
     return () => {
@@ -86,6 +115,11 @@ export function App() {
 
   async function voegCategorieToe(c: Categorie) {
     await bewaarCategorie(c)
+    await herlaad()
+  }
+
+  async function voegBudgetToe(b: Budget) {
+    await bewaarBudget(b)
     await herlaad()
   }
 
@@ -135,7 +169,6 @@ export function App() {
   }
 
   const categorieNaam = (id?: string) => (id ? categorieen.find((c) => c.id === id)?.naam : undefined)
-
   const totaalSaldo =
     rekeningen.reduce((som, r) => som + r.beginsaldo, 0) +
     transacties.reduce((som, t) => som + t.bedrag, 0)
@@ -144,18 +177,11 @@ export function App() {
     <main style={container}>
       <h1 style={{ marginBottom: 0 }}>Financieel Kompas</h1>
       <p style={{ color: '#666', marginTop: 4 }}>
-        Rekeningen, categorieën en transacties — met schemabewaking, backup en synchronisatie
+        Rekeningen, categorieën, budgetten en transacties — met backup en synchronisatie
       </p>
 
       {ongeldig > 0 && (
-        <p
-          style={{
-            background: '#fff5f5',
-            border: '1px solid #f5c6cb',
-            borderRadius: 8,
-            padding: '0.5rem 0.75rem',
-          }}
-        >
+        <p style={{ background: '#fff5f5', border: '1px solid #f5c6cb', borderRadius: 8, padding: '0.5rem 0.75rem' }}>
           Let op: {ongeldig} record(s) werden overgeslagen omdat ze niet aan het schema voldeden.
         </p>
       )}
@@ -164,15 +190,7 @@ export function App() {
         <h2 style={kop}>Rekeningen</h2>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {rekeningen.map((r) => (
-            <li
-              key={r.id}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                padding: '0.3rem 0',
-                borderBottom: '1px solid #f0f0f0',
-              }}
-            >
+            <li key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0', borderBottom: '1px solid #f0f0f0' }}>
               <span>{r.naam}</span>
               <span style={{ color: '#888' }}>startsaldo {formatEuro(r.beginsaldo)}</span>
             </li>
@@ -193,6 +211,51 @@ export function App() {
           ))}
         </ul>
         <CategorieFormulier onToevoegen={voegCategorieToe} />
+      </section>
+
+      <hr style={scheiding} />
+
+      <section>
+        <h2 style={kop}>Budgetten</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+          <button style={knop} aria-label="Vorige maand" onClick={() => setMaand(verschuifMaand(maand, -1))}>
+            ‹
+          </button>
+          <span style={{ minWidth: 120, textAlign: 'center' }}>{maandLabel(maand)}</span>
+          <button style={knop} aria-label="Volgende maand" onClick={() => setMaand(verschuifMaand(maand, 1))}>
+            ›
+          </button>
+        </div>
+        {budgetten.length === 0 && <p style={{ color: '#888' }}>Nog geen budgetten ingesteld.</p>}
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {budgetten.map((b) => {
+            const naam = categorieNaam(b.categorieId) ?? '—'
+            const uitgegeven = uitgavenInMaand(transacties, b.categorieId, maand)
+            const fractie = Math.min(uitgegeven / b.bedrag, 1)
+            const kleur = uitgegeven > b.bedrag ? '#c0392b' : uitgegeven >= b.bedrag * 0.8 ? '#e67e22' : '#27ae60'
+            return (
+              <li key={b.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid #f0f0f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{naam}</span>
+                  <span style={{ color: '#666' }}>
+                    {formatEuro(uitgegeven)} / {formatEuro(b.bedrag)}
+                  </span>
+                </div>
+                <div
+                  role="progressbar"
+                  aria-label={naam}
+                  aria-valuenow={Math.round(uitgegeven)}
+                  aria-valuemin={0}
+                  aria-valuemax={Math.round(b.bedrag)}
+                  style={{ height: 8, background: '#eee', borderRadius: 4, marginTop: 4, overflow: 'hidden' }}
+                >
+                  <div style={{ height: '100%', width: `${fractie * 100}%`, background: kleur }} />
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+        {categorieen.length > 0 && <BudgetFormulier categorieen={categorieen} onOpslaan={voegBudgetToe} />}
       </section>
 
       <hr style={scheiding} />
@@ -248,15 +311,7 @@ export function App() {
         })}
       </ul>
 
-      <p
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          fontWeight: 'bold',
-          fontSize: '1.2rem',
-          marginTop: '1rem',
-        }}
-      >
+      <p style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '1.2rem', marginTop: '1rem' }}>
         <span>Saldo</span>
         <span>{formatEuro(totaalSaldo)}</span>
       </p>

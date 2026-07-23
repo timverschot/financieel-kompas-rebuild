@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { CategorieSchema, RekeningSchema, TransactieSchema } from '../schema'
+import { BudgetSchema, CategorieSchema, RekeningSchema, TransactieSchema } from '../schema'
 
 // Een gebeurtenis beschrijft één wijziging. We slaan nooit data over of
 // overschrijven; we voegen alleen gebeurtenissen toe (append-only).
@@ -10,6 +10,8 @@ export const GebeurtenisSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('rekening.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
   z.object({ type: z.literal('categorie.bewaard'), payload: CategorieSchema }),
   z.object({ type: z.literal('categorie.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
+  z.object({ type: z.literal('budget.bewaard'), payload: BudgetSchema }),
+  z.object({ type: z.literal('budget.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
 ])
 export type Gebeurtenis = z.infer<typeof GebeurtenisSchema>
 

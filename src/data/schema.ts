@@ -23,8 +23,13 @@ export const TransactieSchema = z.object({
   omschrijving: z.string(),
   bedrag: z.number().finite(), // positief = inkomst, negatief = uitgave
   rekeningId: z.string().min(1),
-  // Optioneel: bestaande transacties zonder categorie blijven geldig, zodat er
-  // niets verloren gaat.
   categorieId: z.string().min(1).optional(),
 })
 export type Transactie = z.infer<typeof TransactieSchema>
+
+export const BudgetSchema = z.object({
+  id: z.string().min(1),
+  categorieId: z.string().min(1),
+  bedrag: z.number().finite().positive(), // maandbudget, altijd positief
+})
+export type Budget = z.infer<typeof BudgetSchema>

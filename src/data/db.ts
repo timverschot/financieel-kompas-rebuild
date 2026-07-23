@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Categorie, Rekening, Transactie } from './schema'
+import type { Budget, Categorie, Rekening, Transactie } from './schema'
 import type { Logregel, MetaRegel } from './sync/events'
 import { nieuwId } from './sync/id'
 
@@ -11,6 +11,7 @@ export class FinancieelKompasDB extends Dexie {
   events!: Table<Logregel, string>
   meta!: Table<MetaRegel, string>
   categorieen!: Table<Categorie, string>
+  budgetten!: Table<Budget, string>
 
   constructor() {
     super('financieel-kompas')
@@ -21,10 +22,9 @@ export class FinancieelKompasDB extends Dexie {
       transacties: 'id, rekeningId, datum',
     })
 
-    // Versie 2 - Fase 2: het append-only logboek (events) en een
-    // sleutel/waarde-opslag (meta). Bij de upgrade krijgen bestaande records uit
-    // Fase 1 alsnog een gebeurtenis, zodat het logboek de volledige geschiedenis
-    // bevat en er niets verloren gaat.
+    // Versie 2 - Fase 2: het append-only logboek (events) en sleutel/waarde
+    // (meta). Bij de upgrade krijgen bestaande records uit Fase 1 alsnog een
+    // gebeurtenis, zodat het logboek de volledige geschiedenis bevat.
     this.version(2)
       .stores({
         rekeningen: 'id, naam',
@@ -60,15 +60,24 @@ export class FinancieelKompasDB extends Dexie {
         await trans.table('meta').put({ sleutel: 'volgnummer', waarde: volg })
       })
 
-    // Versie 3 - categorieën. Nieuwe tabel + een index op categorieId bij
-    // transacties. Bestaande transacties hebben nog geen categorie; dat mag
-    // (het veld is optioneel), dus er is geen omzetting van data nodig.
+    // Versie 3 - categorieën.
     this.version(3).stores({
       rekeningen: 'id, naam',
       transacties: 'id, rekeningId, datum, categorieId',
       events: 'id, toestelId, volgnummer',
       meta: 'sleutel',
       categorieen: 'id, naam',
+    })
+
+    // Versie 4 - budgetten per categorie. Nieuwe tabel; geen omzetting van
+    // bestaande data nodig.
+    this.version(4).stores({
+      rekeningen: 'id, naam',
+      transacties: 'id, rekeningId, datum, categorieId',
+      events: 'id, toestelId, volgnummer',
+      meta: 'sleutel',
+      categorieen: 'id, naam',
+      budgetten: 'id, categorieId',
     })
   }
 }
