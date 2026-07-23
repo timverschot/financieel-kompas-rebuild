@@ -97,6 +97,18 @@ export const TerugkerendePostSchema = z.object({
 })
 export type TerugkerendePost = z.infer<typeof TerugkerendePostSchema>
 
+// Een door de gebruiker toegevoegde of gewijzigde subcategorie (item) bovenop de
+// vaste, ingebouwde categorieboom. 'categorieId' is de mid-categorie (cat-*)
+// waaronder het valt. Is 'id' gelijk aan een ingebouwd item, dan overschrijft
+// deze aanpassing dat item (bv. een hernoeming); anders is het een nieuw item.
+export const SubcategorieSchema = z.object({
+  id: z.string().min(1),
+  naam: z.string().min(1),
+  categorieId: z.string().min(1),
+  synoniemen: z.array(z.string()).optional(),
+})
+export type Subcategorie = z.infer<typeof SubcategorieSchema>
+
 // Een spaardoel: een langetermijndoel met een doelbedrag. Het huidige bedrag
 // wordt manueel bijgehouden, of - als er een rekening aan gekoppeld is - afgeleid
 // uit het saldo van die rekening. Bedragen in centen.

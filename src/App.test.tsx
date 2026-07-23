@@ -15,6 +15,7 @@ beforeEach(async () => {
     db.verrekeningen.clear(),
     db.terugkerendePosten.clear(),
     db.spaardoelen.clear(),
+    db.subcategorieen.clear(),
     db.events.clear(),
     db.meta.clear(),
   ])

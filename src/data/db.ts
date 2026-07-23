@@ -6,6 +6,7 @@ import type {
   GedeeldeKost,
   Rekening,
   Spaardoel,
+  Subcategorie,
   TerugkerendePost,
   Transactie,
   Verrekening,
@@ -28,6 +29,7 @@ export class FinancieelKompasDB extends Dexie {
   verrekeningen!: Table<Verrekening, string>
   terugkerendePosten!: Table<TerugkerendePost, string>
   spaardoelen!: Table<Spaardoel, string>
+  subcategorieen!: Table<Subcategorie, string>
 
   constructor() {
     super('financieel-kompas')
@@ -194,6 +196,22 @@ export class FinancieelKompasDB extends Dexie {
       verrekeningen: 'id, dossierId',
       terugkerendePosten: 'id',
       spaardoelen: 'id, naam',
+    })
+
+    // Versie 10 - subcategorieën (gebruikersaanpassingen op de categorieboom).
+    this.version(10).stores({
+      rekeningen: 'id, naam',
+      transacties: 'id, rekeningId, datum, categorieId',
+      events: 'id, toestelId, volgnummer',
+      meta: 'sleutel',
+      categorieen: 'id, naam',
+      budgetten: 'id, categorieId',
+      dossiers: 'id, naam',
+      gedeeldeKosten: 'id, dossierId, verrekeningId',
+      verrekeningen: 'id, dossierId',
+      terugkerendePosten: 'id',
+      spaardoelen: 'id, naam',
+      subcategorieen: 'id, categorieId',
     })
   }
 }

@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { INGEBOUWDE_CATEGORIEEN } from './ingebouwd'
-import { PLATTE_ITEMS, itemPerId, zoekItems } from './zoek'
+import { PLATTE_ITEMS, itemPerId, zoekItems, stelSubcategorieenIn } from './zoek'
 
 describe('ingebouwde categorieboom', () => {
   it('heeft 14 hoofdcategorieën', () => {
@@ -53,5 +53,20 @@ describe('zoekItems', () => {
 
   it('respecteert de limiet', () => {
     expect(zoekItems('e', 5).length).toBeLessThanOrEqual(5)
+  })
+})
+
+describe('gebruikersaanpassingen (register)', () => {
+  afterEach(() => stelSubcategorieenIn([])) // register terugzetten naar de basis
+
+  it('vindt een toegevoegde subcategorie via zoeken en via id', () => {
+    stelSubcategorieenIn([{ id: 'x1', naam: 'Kefir', categorieId: 'cat-zuivel-en-kaas' }])
+    expect(itemPerId('x1')?.hoofdNaam).toBe('Voeding')
+    expect(zoekItems('kefir').map((i) => i.naam)).toContain('Kefir')
+  })
+
+  it('toont een hernoeming van een ingebouwd item', () => {
+    stelSubcategorieenIn([{ id: 'i-eieren-4688', naam: 'Bio-eieren', categorieId: 'cat-zuivel-en-kaas' }])
+    expect(itemPerId('i-eieren-4688')?.naam).toBe('Bio-eieren')
   })
 })

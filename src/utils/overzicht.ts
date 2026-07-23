@@ -25,10 +25,11 @@ export type CategorieUitgave = { naam: string; bedrag: number; kleur: string | n
 // categorie onder zichzelf, en transacties zonder categorie onder 'Zonder
 // categorie'. De kleur (van de hoofdcategorie) komt uit hetzelfde data-object,
 // zodat grafieken later dezelfde kleur als de cijfers gebruiken.
-export function uitgavenPerCategorie(
+function groepeerPerCategorie(
   transacties: Transactie[],
   categorieen: Categorie[],
   maand: string,
+  wilInkomst: boolean,
 ): CategorieUitgave[] {
   const perGroep = new Map<string, { naam: string; kleur: string | null; bedrag: number }>()
   for (const t of transacties) {
@@ -36,7 +37,8 @@ export function uitgavenPerCategorie(
     // Splits de transactie uit in haar deelregels (of één regel als ze niet
     // gesplitst is), zodat elke categorie exact zijn deel krijgt.
     for (const regel of categorieBedragen(t)) {
-      if (regel.bedrag < 0) {
+      const past = wilInkomst ? regel.bedrag > 0 : regel.bedrag < 0
+      if (past) {
         const groep = groepVanCategorie(regel.categorieId, categorieen)
         const bestaand = perGroep.get(groep.sleutel)
         if (bestaand) bestaand.bedrag += Math.abs(regel.bedrag)
@@ -48,4 +50,12 @@ export function uitgavenPerCategorie(
   return [...perGroep.values()]
     .map((g) => ({ naam: g.naam, bedrag: g.bedrag, kleur: g.kleur }))
     .sort((a, b) => b.bedrag - a.bedrag)
+}
+
+export function uitgavenPerCategorie(transacties: Transactie[], categorieen: Categorie[], maand: string): CategorieUitgave[] {
+  return groepeerPerCategorie(transacties, categorieen, maand, false)
+}
+
+export function inkomstenPerCategorie(transacties: Transactie[], categorieen: Categorie[], maand: string): CategorieUitgave[] {
+  return groepeerPerCategorie(transacties, categorieen, maand, true)
 }

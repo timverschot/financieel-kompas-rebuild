@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { maandInkomsten, maandUitgaven, uitgavenPerCategorie } from './overzicht'
+import { inkomstenPerCategorie, maandInkomsten, maandUitgaven, uitgavenPerCategorie } from './overzicht'
 import type { Categorie, Transactie } from '../data/schema'
 
 const tx = (over: Partial<Transactie>): Transactie => ({
@@ -39,6 +39,12 @@ describe('maandoverzicht', () => {
       { naam: 'Voeding', bedrag: 300, kleur: null },
       { naam: 'Wonen', bedrag: 200, kleur: null },
       { naam: 'Zonder categorie', bedrag: 100, kleur: null },
+    ])
+  })
+
+  it('telt de inkomsten per categorie', () => {
+    expect(inkomstenPerCategorie(lijst, categorieen, '2026-07')).toEqual([
+      { naam: 'Zonder categorie', bedrag: 2000, kleur: null },
     ])
   })
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type {
   Budget,
@@ -7,6 +7,7 @@ import type {
   GedeeldeKost,
   Rekening,
   Spaardoel,
+  Subcategorie,
   TerugkerendePost,
   Transactie,
   Verrekening,
@@ -18,17 +19,20 @@ import {
   bewaarGedeeldeKost,
   bewaarRekening,
   bewaarSpaardoel,
+  bewaarSubcategorie,
   bewaarTerugkerendePost,
   bewaarTransactie,
   bewaarVerrekening,
   verwijderDossier,
   verwijderSpaardoel,
+  verwijderSubcategorie,
   laadBudgetten,
   laadCategorieen,
   laadDossiers,
   laadGedeeldeKosten,
   laadRekeningen,
   laadSpaardoelen,
+  laadSubcategorieen,
   laadTerugkerendePosten,
   laadTransacties,
   laadVerrekeningen,
@@ -53,13 +57,16 @@ import { DossierSectie } from './components/DossierSectie'
 import { SpaardoelSectie } from './components/SpaardoelSectie'
 import { CategorieBoom } from './components/CategorieBoom'
 import { Donut } from './components/Donut'
+import { StaafGrafiek } from './components/StaafGrafiek'
 import { IndexatieCalculator } from './components/IndexatieCalculator'
 import { TerugkerendeSectie } from './components/TerugkerendeSectie'
 import { saldoVerrekening } from './utils/dossier'
 import { nieuwId } from './data/sync/id'
 import { uitgavenInMaand } from './utils/budget'
-import { maandInkomsten, maandUitgaven, uitgavenPerCategorie } from './utils/overzicht'
+import { inkomstenPerCategorie, maandInkomsten, maandUitgaven, uitgavenPerCategorie } from './utils/overzicht'
+import { uitgavenPerMaand } from './utils/maandverloop'
 import { labelVanCategorie } from './data/categorieen/resolve'
+import { stelSubcategorieenIn } from './data/categorieen/zoek'
 import { formatEuro } from './utils/format'
 
 const container: CSSProperties = {
@@ -101,6 +108,7 @@ export function App() {
   const [verrekeningen, setVerrekeningen] = useState<Verrekening[]>([])
   const [terugkerendePosten, setTerugkerendePosten] = useState<TerugkerendePost[]>([])
   const [spaardoelen, setSpaardoelen] = useState<Spaardoel[]>([])
+  const [subcategorieen, setSubcategorieen] = useState<Subcategorie[]>([])
   const [ongeldig, setOngeldig] = useState(0)
   const [verbonden, setVerbonden] = useState(false)
   const [bezig, setBezig] = useState(false)
@@ -113,7 +121,7 @@ export function App() {
   const backendRef = useRef<DriveBackend | null>(null)
 
   async function herlaad() {
-    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp] = await Promise.all([
+    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc] = await Promise.all([
       laadTransacties(),
       laadRekeningen(),
       laadCategorieen(),
@@ -123,6 +131,7 @@ export function App() {
       laadVerrekeningen(),
       laadTerugkerendePosten(),
       laadSpaardoelen(),
+      laadSubcategorieen(),
     ])
     setTransacties(tx.geldig)
     setOngeldig(tx.ongeldig)
@@ -134,6 +143,7 @@ export function App() {
     setVerrekeningen(ver.geldig)
     setTerugkerendePosten(tkp.geldig)
     setSpaardoelen(sp.geldig)
+    setSubcategorieen(subc.geldig)
   }
 
   useEffect(() => {
@@ -231,6 +241,10 @@ export function App() {
     }
   }, [verbonden])
 
+  // Houd het categorie-register in sync met je aanpassingen, zodat zoeken,
+  // weergave en oprollen de toegevoegde/hernoemde subcategorieën meteen tonen.
+  useMemo(() => stelSubcategorieenIn(subcategorieen), [subcategorieen])
+
   async function exporteerNu() {
     const json = await exporteerBackup()
     const blob = new Blob([json], { type: 'application/json' })
@@ -326,6 +340,21 @@ export function App() {
     await herlaad()
   }
 
+  async function voegSubcategorieToe(categorieId: string, naam: string) {
+    await bewaarSubcategorie({ id: nieuwId(), naam, categorieId })
+    await herlaad()
+  }
+
+  async function wijzigSubcategorie(id: string, categorieId: string, naam: string) {
+    await bewaarSubcategorie({ id, naam, categorieId })
+    await herlaad()
+  }
+
+  async function verwijderSubcategorieH(id: string) {
+    await verwijderSubcategorie(id)
+    await herlaad()
+  }
+
   async function voegTerugkerendToe(p: TerugkerendePost) {
     await bewaarTerugkerendePost(p)
     await herlaad()
@@ -415,7 +444,9 @@ export function App() {
   const inkomsten = maandInkomsten(transacties, maand)
   const uitgaven = maandUitgaven(transacties, maand)
   const perCategorie = uitgavenPerCategorie(transacties, categorieen, maand)
+  const perInkomsten = inkomstenPerCategorie(transacties, categorieen, maand)
   const handelaars = [...new Set(transacties.map((t) => t.omschrijving).filter((s) => s.trim().length > 0))]
+  const maandVerloop = uitgavenPerMaand(transacties, maand, 6)
 
   return (
     <main style={container}>
@@ -458,6 +489,18 @@ export function App() {
             <Donut items={perCategorie} />
           </div>
         )}
+
+        {perInkomsten.length > 0 && (
+          <div style={{ marginTop: '0.75rem' }}>
+            <p style={{ color: '#888', margin: '0 0 0.25rem' }}>Inkomsten per categorie</p>
+            <Donut items={perInkomsten} middenLabel="inkomsten" />
+          </div>
+        )}
+
+        <div style={{ marginTop: '1rem' }}>
+          <p style={{ color: '#888', margin: '0 0 0.25rem' }}>Uitgaven per maand</p>
+          <StaafGrafiek data={maandVerloop} />
+        </div>
       </section>
 
       <hr style={scheiding} />
@@ -513,7 +556,12 @@ export function App() {
 
       <hr style={scheiding} />
 
-      <CategorieBoom />
+      <CategorieBoom
+        aanpassingen={subcategorieen}
+        onToevoegen={voegSubcategorieToe}
+        onWijzigen={wijzigSubcategorie}
+        onVerwijderen={verwijderSubcategorieH}
+      />
 
       <hr style={scheiding} />
 

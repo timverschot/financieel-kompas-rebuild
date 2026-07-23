@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
 import type { Budget, Categorie } from '../data/schema'
 import { invoerNaarCenten } from '../utils/format'
+import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
 
 const veld: CSSProperties = {
   display: 'block',
@@ -21,7 +22,7 @@ export function BudgetFormulier({
   categorieen: Categorie[]
   onOpslaan: (b: Budget) => Promise<void> | void
 }) {
-  const [categorieId, setCategorieId] = useState(categorieen[0]?.id ?? '')
+  const [categorieId, setCategorieId] = useState(INGEBOUWDE_CATEGORIEEN[0]?.id ?? '')
   const [bedrag, setBedrag] = useState('')
 
   const bedragCenten = invoerNaarCenten(bedrag)
@@ -44,11 +45,22 @@ export function BudgetFormulier({
           value={categorieId}
           onChange={(e) => setCategorieId(e.target.value)}
         >
-          {categorieen.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.naam}
-            </option>
-          ))}
+          <optgroup label="Hoofdcategorieën">
+            {INGEBOUWDE_CATEGORIEEN.map((h) => (
+              <option key={h.id} value={h.id}>
+                {h.naam}
+              </option>
+            ))}
+          </optgroup>
+          {categorieen.length > 0 && (
+            <optgroup label="Eigen categorieën">
+              {categorieen.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.naam}
+                </option>
+              ))}
+            </optgroup>
+          )}
         </select>
       </div>
       <div style={rij}>

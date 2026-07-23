@@ -27,6 +27,15 @@ describe('uitgavenInMaand', () => {
     expect(uitgavenInMaand([], 'c1', '2026-07')).toBe(0)
   })
 
+  it('rolt op: een budget op een hoofdcategorie vangt de onderliggende items', () => {
+    const lijst = [
+      tx({ id: 'a', bedrag: -500, categorieId: 'i-brood--wit-9238', datum: '2026-07-03' }), // item onder Voeding
+      tx({ id: 'b', bedrag: -300, categorieId: 'ov-voeding', datum: '2026-07-05' }), // de hoofdcategorie zelf
+      tx({ id: 'c', bedrag: -200, categorieId: 'ov-drank', datum: '2026-07-06' }), // andere hoofdcategorie
+    ]
+    expect(uitgavenInMaand(lijst, 'ov-voeding', '2026-07')).toBe(800)
+  })
+
   it('telt enkel het deel van een gesplitste transactie dat bij de categorie hoort', () => {
     const gesplitst = tx({
       id: 's',

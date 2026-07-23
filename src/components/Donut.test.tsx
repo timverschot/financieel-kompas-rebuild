@@ -14,7 +14,7 @@ describe('Donut', () => {
     )
     expect(screen.getByText('Voeding')).toBeInTheDocument()
     expect(screen.getByText('Wonen')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Uitgaven per categorie' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'uitgaven per categorie' })).toBeInTheDocument()
   })
 
   it('toont niets bij lege data', () => {
