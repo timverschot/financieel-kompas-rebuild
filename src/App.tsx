@@ -40,7 +40,7 @@ import { exporteerBackup, importeerBackup } from './data/backup'
 import { vraagBlijvendeOpslag } from './data/opslag'
 import { synchroniseer } from './data/sync/sync'
 import { DriveBackend } from './data/sync/drive/driveBackend'
-import { vraagToken } from './data/sync/drive/auth'
+import { vraagToken, heeftOoitVerbonden } from './data/sync/drive/auth'
 import { TransactieFormulier } from './components/TransactieFormulier'
 import { RekeningFormulier } from './components/RekeningFormulier'
 import { CategorieFormulier } from './components/CategorieFormulier'
@@ -160,6 +160,65 @@ export function App() {
   useEffect(() => {
     void vraagBlijvendeOpslag()
   }, [])
+
+  // Bij het opstarten: als je ooit verbond, stil (zonder venster) opnieuw
+  // verbinden en meteen synchroniseren. Mislukt dit, dan blijf je gewoon lokaal
+  // werken en kan je later handmatig verbinden.
+  useEffect(() => {
+    if (!heeftOoitVerbonden()) return
+    let actief = true
+    void (async () => {
+      try {
+        await vraagToken(false)
+        if (!actief) return
+        if (!backendRef.current) backendRef.current = new DriveBackend()
+        setVerbonden(true)
+        const r = await synchroniseer(backendRef.current)
+        await herlaad()
+        if (actief) setStatusTekst(`Automatisch gesynchroniseerd: ${r.gepusht} verstuurd, ${r.opgehaald} opgehaald.`)
+      } catch {
+        // Stil laten mislukken: geen storende melding bij het opstarten.
+      }
+    })()
+    return () => {
+      actief = false
+    }
+  }, [])
+
+  // Zodra je verbonden bent: automatisch synchroniseren. Periodiek, én meteen
+  // wanneer je de app wegklikt of naar de achtergrond stuurt - zo staat je laatste
+  // wijziging veilig in de back-up nog vóór je het tabblad sluit.
+  useEffect(() => {
+    if (!verbonden) return
+    const backend = backendRef.current
+    if (!backend) return
+
+    let bezigMetSync = false
+    async function stilleSync() {
+      if (bezigMetSync) return
+      bezigMetSync = true
+      try {
+        const r = await synchroniseer(backend!)
+        if (r.gepusht > 0 || r.opgehaald > 0) await herlaad()
+      } catch {
+        // Stil: een mislukte auto-sync mag de gebruiker niet storen.
+      } finally {
+        bezigMetSync = false
+      }
+    }
+
+    const interval = window.setInterval(() => void stilleSync(), 45_000)
+    const bijVerlaten = () => {
+      if (document.visibilityState === 'hidden') void stilleSync()
+    }
+    document.addEventListener('visibilitychange', bijVerlaten)
+    window.addEventListener('pagehide', bijVerlaten)
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', bijVerlaten)
+      window.removeEventListener('pagehide', bijVerlaten)
+    }
+  }, [verbonden])
 
   async function exporteerNu() {
     const json = await exporteerBackup()

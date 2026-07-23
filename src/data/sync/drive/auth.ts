@@ -25,6 +25,28 @@ let tokenClient: TokenClient | null = null
 let huidigToken: { waarde: string; verlooptOp: number } | null = null
 let wachtend: { resolve: (t: string) => void; reject: (e: Error) => void } | null = null
 
+// We bewaren het token zelf NOOIT op schijf (dat is veiliger). We onthouden enkel
+// dat de gebruiker ooit verbond, zodat de app bij het opstarten stil - zonder
+// venster - een vers token kan vragen (dat lukt zolang de Google-sessie actief is
+// en de toegang eerder werd gegeven).
+const OOIT_VERBONDEN_SLEUTEL = 'fk_ooit_verbonden'
+
+function onthoudVerbonden(): void {
+  try {
+    localStorage.setItem(OOIT_VERBONDEN_SLEUTEL, '1')
+  } catch {
+    // localStorage niet beschikbaar (bv. in tests): stil negeren.
+  }
+}
+
+export function heeftOoitVerbonden(): boolean {
+  try {
+    return localStorage.getItem(OOIT_VERBONDEN_SLEUTEL) === '1'
+  } catch {
+    return false
+  }
+}
+
 // Laadt het Google-aanmeldscript eenmalig.
 function laadGis(): Promise<void> {
   if (gisLaden) return gisLaden
@@ -55,6 +77,7 @@ async function zorgVoorClient(): Promise<TokenClient> {
           return
         }
         huidigToken = { waarde: r.access_token, verlooptOp: Date.now() + (r.expires_in ?? 3600) * 1000 }
+        onthoudVerbonden()
         w.resolve(r.access_token)
       },
       error_callback: () => {
@@ -85,4 +108,9 @@ export async function vraagToken(interactief: boolean): Promise<string> {
 
 export function meldAf(): void {
   huidigToken = null
+  try {
+    localStorage.removeItem(OOIT_VERBONDEN_SLEUTEL)
+  } catch {
+    // stil negeren
+  }
 }
