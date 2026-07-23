@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
-import type { GedeeldeKost, Kind } from '../data/schema'
+import type { Categorie, GedeeldeKost, Kind } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
+import { CategorieKiezer } from './CategorieKiezer'
 import { useT } from '../i18n'
 
 const vandaag = () => new Date().toISOString().slice(0, 10)
@@ -17,17 +18,20 @@ const veld: CSSProperties = {
 const rij: CSSProperties = { marginBottom: '0.6rem' }
 
 // Formulier om een gedeelde kost toe te voegen of te bewerken. Een kost kan aan
-// één of meer kinderen gekoppeld worden, en optioneel een eigen verdeel-percentage
-// krijgen dat de dossier-/categorie-standaard overschrijft.
+// één of meer kinderen gekoppeld worden, een categorie en kostentype krijgen, en
+// optioneel een eigen verdeel-percentage dat de dossier-/categorie-standaard
+// overschrijft.
 export function GedeeldeKostFormulier({
   dossierId,
   kinderen,
+  categorieen,
   onOpslaan,
   onAnnuleer,
   bewerken,
 }: {
   dossierId: string
   kinderen: Kind[]
+  categorieen: Categorie[]
   onOpslaan: (k: GedeeldeKost) => Promise<void> | void
   onAnnuleer?: () => void
   bewerken?: GedeeldeKost | null
@@ -38,6 +42,8 @@ export function GedeeldeKostFormulier({
   const [datum, setDatum] = useState(vandaag())
   const [betaaldDoor, setBetaaldDoor] = useState<'jij' | 'partner'>('jij')
   const [kindIds, setKindIds] = useState<string[]>([])
+  const [categorieId, setCategorieId] = useState('')
+  const [kostenType, setKostenType] = useState<'gewoon' | 'buitengewoon'>('gewoon')
   const [aandeelOverride, setAandeelOverride] = useState('')
 
   useEffect(() => {
@@ -47,6 +53,8 @@ export function GedeeldeKostFormulier({
       setDatum(bewerken.datum)
       setBetaaldDoor(bewerken.betaaldDoor)
       setKindIds(bewerken.kindIds ?? [])
+      setCategorieId(bewerken.categorieId ?? '')
+      setKostenType(bewerken.kostenType ?? 'gewoon')
       setAandeelOverride(typeof bewerken.aandeelJijOverride === 'number' ? String(bewerken.aandeelJijOverride) : '')
     } else {
       setOmschrijving('')
@@ -54,6 +62,8 @@ export function GedeeldeKostFormulier({
       setDatum(vandaag())
       setBetaaldDoor('jij')
       setKindIds([])
+      setCategorieId('')
+      setKostenType('gewoon')
       setAandeelOverride('')
     }
   }, [bewerken])
@@ -77,11 +87,11 @@ export function GedeeldeKostFormulier({
       bedrag: bedragCenten,
       betaaldDoor,
       datum,
+      kostenType,
       ...(kindIds.length > 0 ? { kindIds } : {}),
+      ...(categorieId ? { categorieId } : {}),
       ...(heeftOverride ? { aandeelJijOverride: override } : {}),
-      // Velden die dit formulier (nog) niet beheert, blijven behouden bij bewerken.
-      ...(bewerken?.categorieId ? { categorieId: bewerken.categorieId } : {}),
-      ...(bewerken?.kostenType ? { kostenType: bewerken.kostenType } : {}),
+      // Behoud de koppeling aan een afrekening bij het bewerken.
       ...(bewerken?.verrekeningId ? { verrekeningId: bewerken.verrekeningId } : {}),
     })
   }
@@ -95,6 +105,16 @@ export function GedeeldeKostFormulier({
       <div style={rij}>
         <label htmlFor="kostbedrag">{t('Kostbedrag (€)')}</label>
         <input id="kostbedrag" style={veld} inputMode="decimal" placeholder="0,00" value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
+      </div>
+      <div style={rij}>
+        <label htmlFor="kosttype">{t('Soort kost')}</label>
+        <select id="kosttype" style={veld} value={kostenType} onChange={(e) => setKostenType(e.target.value as 'gewoon' | 'buitengewoon')}>
+          <option value="gewoon">{t('Gewone kost')}</option>
+          <option value="buitengewoon">{t('Buitengewone kost')}</option>
+        </select>
+      </div>
+      <div style={rij}>
+        <CategorieKiezer waarde={categorieId || undefined} onKies={(id) => setCategorieId(id ?? '')} gebruikerCategorieen={categorieen} />
       </div>
       {kinderen.length > 0 && (
         <div style={rij}>

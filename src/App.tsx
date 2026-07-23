@@ -861,6 +861,7 @@ export function App() {
           kosten={gedeeldeKosten}
           verrekeningen={verrekeningen}
           kinderen={kinderen}
+          categorieen={categorieen}
           onDossierOpslaan={voegDossierToe}
           onDossierVerwijderen={verwijderDoss}
           onKostOpslaan={voegGedeeldeKostToe}

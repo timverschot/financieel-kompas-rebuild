@@ -1,12 +1,17 @@
 import type { Dossier, GedeeldeKost } from '../data/schema'
+import { groepVanCategorie } from '../data/categorieen/resolve'
 
 // Bepaalt het effectieve percentage dat JIJ voor één kost draagt, volgens de
 // verdeel-hiërarchie: een eigen percentage op de kost wint, anders een percentage
-// dat per categorie is ingesteld op het dossier, en anders de dossier-standaard.
+// dat per categorie is ingesteld op het dossier (waarbij een kost op een
+// subcategorie/item oprolt naar haar hoofdcategorie), en anders de dossier-standaard.
 export function effectiefAandeel(dossier: Dossier, kost: GedeeldeKost): number {
   if (typeof kost.aandeelJijOverride === 'number') return kost.aandeelJijOverride
-  if (kost.categorieId && dossier.categorieAandelen && kost.categorieId in dossier.categorieAandelen) {
-    return dossier.categorieAandelen[kost.categorieId]
+  const splits = dossier.categorieAandelen
+  if (kost.categorieId && splits) {
+    if (kost.categorieId in splits) return splits[kost.categorieId]
+    const groep = groepVanCategorie(kost.categorieId, []).sleutel
+    if (groep && groep in splits) return splits[groep]
   }
   return dossier.aandeelJij
 }

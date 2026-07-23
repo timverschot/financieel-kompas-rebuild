@@ -271,6 +271,15 @@ const en: Record<string, string> = {
   'leeg = standaard van het dossier': 'empty = case default',
   'voor {namen}': 'for {namen}',
   'jij {p}%': 'you {p}%',
+  'Soort kost': 'Type of expense',
+  'Gewone kost': 'Ordinary expense',
+  'Buitengewone kost': 'Extraordinary expense',
+  'buitengewoon': 'extraordinary',
+  'Verdeling per categorie': 'Split per category',
+  'Standaard draag jij {p}%. Stel hier per categorie een afwijkend percentage in.':
+    'By default you bear {p}%. Set a different percentage per category here.',
+  'Verwijder verdeling {naam}': 'Remove split {naam}',
+  'Percentage jij': 'Your percentage',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -525,6 +534,15 @@ const fr: Record<string, string> = {
   'leeg = standaard van het dossier': 'vide = valeur par défaut du dossier',
   'voor {namen}': 'pour {namen}',
   'jij {p}%': 'vous {p}%',
+  'Soort kost': 'Type de frais',
+  'Gewone kost': 'Frais ordinaires',
+  'Buitengewone kost': 'Frais extraordinaires',
+  'buitengewoon': 'extraordinaire',
+  'Verdeling per categorie': 'Répartition par catégorie',
+  'Standaard draag jij {p}%. Stel hier per categorie een afwijkend percentage in.':
+    'Par défaut vous supportez {p}%. Définissez ici un pourcentage différent par catégorie.',
+  'Verwijder verdeling {naam}': 'Supprimer la répartition {naam}',
+  'Percentage jij': 'Votre pourcentage',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 

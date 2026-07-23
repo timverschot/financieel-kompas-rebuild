@@ -55,6 +55,12 @@ describe('effectiefAandeel (verdeel-hiërarchie)', () => {
   it('laat een eigen percentage op de kost alles overschrijven', () => {
     expect(effectiefAandeel(dossier, kost({ categorieId: 'ov-kleding', aandeelJijOverride: 40 }))).toBe(40)
   })
+
+  it('rolt een kost op een item op naar de hoofdcategorie-verdeling', () => {
+    const d: Dossier = { id: 'd1', naam: 'K', aandeelJij: 52, categorieAandelen: { 'ov-voeding': 60 } }
+    // 'i-brood--wit-9238' is een item onder de hoofdcategorie Voeding (ov-voeding).
+    expect(effectiefAandeel(d, kost({ categorieId: 'i-brood--wit-9238' }))).toBe(60)
+  })
 })
 
 describe('saldoVerrekeningDossier', () => {
