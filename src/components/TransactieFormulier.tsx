@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
 import type { Categorie, Rekening, Transactie } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
+import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 
 const vandaag = () => new Date().toISOString().slice(0, 10)
 
@@ -41,7 +42,7 @@ export function TransactieFormulier({
   useEffect(() => {
     if (bewerken) {
       setOmschrijving(bewerken.omschrijving)
-      setBedrag(String(Math.abs(bewerken.bedrag)).replace('.', ','))
+      setBedrag(centenNaarInvoer(Math.abs(bewerken.bedrag)))
       setSoort(bewerken.bedrag < 0 ? 'uitgave' : 'inkomst')
       setDatum(bewerken.datum)
       setRekeningId(bewerken.rekeningId)
@@ -55,11 +56,11 @@ export function TransactieFormulier({
     }
   }, [bewerken])
 
-  const bedragGetal = Number.parseFloat(bedrag.replace(',', '.'))
+  const bedragCenten = invoerNaarCenten(bedrag)
   const geldig =
     omschrijving.trim().length > 0 &&
-    Number.isFinite(bedragGetal) &&
-    bedragGetal > 0 &&
+    Number.isFinite(bedragCenten) &&
+    bedragCenten > 0 &&
     rekeningId.length > 0
 
   async function verzend(e: FormEvent) {
@@ -69,7 +70,7 @@ export function TransactieFormulier({
       id: bewerken ? bewerken.id : nieuwId(),
       datum,
       omschrijving: omschrijving.trim(),
-      bedrag: soort === 'uitgave' ? -bedragGetal : bedragGetal,
+      bedrag: soort === 'uitgave' ? -bedragCenten : bedragCenten,
       rekeningId,
       ...(categorieId ? { categorieId } : {}),
     }

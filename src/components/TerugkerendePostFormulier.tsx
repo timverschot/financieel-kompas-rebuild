@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
 import type { Categorie, Rekening, TerugkerendePost } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
+import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 
 const veld: CSSProperties = {
   display: 'block',
@@ -12,15 +13,19 @@ const veld: CSSProperties = {
 }
 const rij: CSSProperties = { marginBottom: '0.6rem' }
 
-// Formulier om een vaste (terugkerende) post aan te maken.
+// Formulier om een vaste (terugkerende) post aan te maken of te bewerken.
 export function TerugkerendePostFormulier({
   rekeningen,
   categorieen,
   onOpslaan,
+  onAnnuleer,
+  bewerken,
 }: {
   rekeningen: Rekening[]
   categorieen: Categorie[]
   onOpslaan: (p: TerugkerendePost) => Promise<void> | void
+  onAnnuleer?: () => void
+  bewerken?: TerugkerendePost | null
 }) {
   const [omschrijving, setOmschrijving] = useState('')
   const [bedrag, setBedrag] = useState('')
@@ -29,12 +34,29 @@ export function TerugkerendePostFormulier({
   const [categorieId, setCategorieId] = useState('')
   const [dag, setDag] = useState('1')
 
-  const bedragGetal = Number.parseFloat(bedrag.replace(',', '.'))
+  useEffect(() => {
+    if (bewerken) {
+      setOmschrijving(bewerken.omschrijving)
+      setBedrag(centenNaarInvoer(Math.abs(bewerken.bedrag)))
+      setSoort(bewerken.bedrag < 0 ? 'uitgave' : 'inkomst')
+      setRekeningId(bewerken.rekeningId)
+      setCategorieId(bewerken.categorieId ?? '')
+      setDag(String(bewerken.dag))
+    } else {
+      setOmschrijving('')
+      setBedrag('')
+      setSoort('uitgave')
+      setCategorieId('')
+      setDag('1')
+    }
+  }, [bewerken])
+
+  const bedragCenten = invoerNaarCenten(bedrag)
   const dagGetal = Number.parseInt(dag, 10)
   const geldig =
     omschrijving.trim().length > 0 &&
-    Number.isFinite(bedragGetal) &&
-    bedragGetal > 0 &&
+    Number.isFinite(bedragCenten) &&
+    bedragCenten > 0 &&
     rekeningId.length > 0 &&
     Number.isInteger(dagGetal) &&
     dagGetal >= 1 &&
@@ -44,18 +66,13 @@ export function TerugkerendePostFormulier({
     e.preventDefault()
     if (!geldig) return
     await onOpslaan({
-      id: nieuwId(),
+      id: bewerken ? bewerken.id : nieuwId(),
       omschrijving: omschrijving.trim(),
-      bedrag: soort === 'uitgave' ? -bedragGetal : bedragGetal,
+      bedrag: soort === 'uitgave' ? -bedragCenten : bedragCenten,
       rekeningId,
       dag: dagGetal,
       ...(categorieId ? { categorieId } : {}),
     })
-    setOmschrijving('')
-    setBedrag('')
-    setSoort('uitgave')
-    setCategorieId('')
-    setDag('1')
   }
 
   return (
@@ -112,8 +129,17 @@ export function TerugkerendePostFormulier({
           cursor: geldig ? 'pointer' : 'not-allowed',
         }}
       >
-        Vaste post toevoegen
+        {bewerken ? 'Vaste post wijzigen' : 'Vaste post toevoegen'}
       </button>
+      {bewerken && onAnnuleer && (
+        <button
+          type="button"
+          onClick={onAnnuleer}
+          style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}
+        >
+          Annuleer
+        </button>
+      )}
     </form>
   )
 }

@@ -15,18 +15,21 @@ const veld: CSSProperties = {
 }
 
 function verrekentekst(netto: number): string {
-  if (netto > 0.005) return `Partner is jou ${formatEuro(netto)} verschuldigd`
-  if (netto < -0.005) return `Jij bent partner ${formatEuro(-netto)} verschuldigd`
+  // netto is in centen (geheel getal): positief = partner is jou verschuldigd.
+  if (netto > 0) return `Partner is jou ${formatEuro(netto)} verschuldigd`
+  if (netto < 0) return `Jij bent partner ${formatEuro(-netto)} verschuldigd`
   return 'Niets te verrekenen'
 }
 
-// De volledige Dossiers-sectie: kies of maak een dossier, beheer de open
-// gedeelde kosten, leg een afrekening vast, en bekijk de geschiedenis.
+// De volledige Dossiers-sectie: kies, maak of verwijder een dossier, beheer de
+// open gedeelde kosten (toevoegen/bewerken/verwijderen), leg een afrekening vast,
+// en bekijk de geschiedenis.
 export function DossierSectie({
   dossiers,
   kosten,
   verrekeningen,
   onDossierOpslaan,
+  onDossierVerwijderen,
   onKostOpslaan,
   onKostVerwijderen,
   onAfrekenen,
@@ -35,11 +38,13 @@ export function DossierSectie({
   kosten: GedeeldeKost[]
   verrekeningen: Verrekening[]
   onDossierOpslaan: (d: Dossier) => Promise<void> | void
+  onDossierVerwijderen: (id: string) => Promise<void> | void
   onKostOpslaan: (k: GedeeldeKost) => Promise<void> | void
   onKostVerwijderen: (id: string) => Promise<void> | void
   onAfrekenen: (dossier: Dossier, openKosten: GedeeldeKost[]) => Promise<void> | void
 }) {
   const [geselecteerd, setGeselecteerd] = useState('')
+  const [bewerkKost, setBewerkKost] = useState<GedeeldeKost | null>(null)
 
   useEffect(() => {
     if (dossiers.length === 0) {
@@ -57,6 +62,11 @@ export function DossierSectie({
     ? verrekeningen.filter((v) => v.dossierId === dossier.id).sort((a, b) => (a.datum < b.datum ? 1 : -1))
     : []
 
+  async function kostOpslaan(k: GedeeldeKost) {
+    await onKostOpslaan(k)
+    setBewerkKost(null)
+  }
+
   return (
     <section>
       <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>Dossiers (gedeelde kosten)</h2>
@@ -65,13 +75,24 @@ export function DossierSectie({
       {dossiers.length > 0 && (
         <div style={{ marginBottom: '0.5rem' }}>
           <label htmlFor="dossierkeuze">Gekozen dossier</label>
-          <select id="dossierkeuze" style={veld} value={geselecteerd} onChange={(e) => setGeselecteerd(e.target.value)}>
-            {dossiers.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.naam} (jij {d.aandeelJij}%)
-              </option>
-            ))}
-          </select>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <select id="dossierkeuze" style={{ ...veld, flex: 1 }} value={geselecteerd} onChange={(e) => setGeselecteerd(e.target.value)}>
+              {dossiers.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.naam} (jij {d.aandeelJij}%)
+                </option>
+              ))}
+            </select>
+            {dossier && (
+              <button
+                aria-label={`Verwijder dossier ${dossier.naam}`}
+                onClick={() => onDossierVerwijderen(dossier.id)}
+                style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.2rem' }}
+              >
+                ×
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -98,8 +119,11 @@ export function DossierSectie({
                     · betaald door {k.betaaldDoor === 'jij' ? 'jou' : 'partner'}
                   </span>
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                   <span>{formatEuro(k.bedrag)}</span>
+                  <button aria-label={`Bewerk kost ${k.omschrijving}`} onClick={() => setBewerkKost(k)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
+                    ✎
+                  </button>
                   <button
                     aria-label={`Verwijder kost ${k.omschrijving}`}
                     onClick={() => onKostVerwijderen(k.id)}
@@ -128,7 +152,12 @@ export function DossierSectie({
             Leg afrekening vast
           </button>
 
-          <GedeeldeKostFormulier dossierId={dossier.id} onOpslaan={onKostOpslaan} />
+          <GedeeldeKostFormulier
+            dossierId={dossier.id}
+            onOpslaan={kostOpslaan}
+            onAnnuleer={() => setBewerkKost(null)}
+            bewerken={bewerkKost}
+          />
 
           {geschiedenis.length > 0 && (
             <div style={{ marginTop: '1rem' }}>

@@ -5,12 +5,18 @@ import { App } from './App'
 import { db } from './data/db'
 
 beforeEach(async () => {
-  await db.transacties.clear()
-  await db.rekeningen.clear()
-  await db.categorieen.clear()
-  await db.budgetten.clear()
-  await db.events.clear()
-  await db.meta.clear()
+  await Promise.all([
+    db.transacties.clear(),
+    db.rekeningen.clear(),
+    db.categorieen.clear(),
+    db.budgetten.clear(),
+    db.dossiers.clear(),
+    db.gedeeldeKosten.clear(),
+    db.verrekeningen.clear(),
+    db.terugkerendePosten.clear(),
+    db.events.clear(),
+    db.meta.clear(),
+  ])
 })
 
 // Zoekt het bedrag binnen de Saldo-regel, zodat het niet verwart met andere
@@ -209,5 +215,59 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: 'Verwijder budget Voeding' }))
     await waitFor(() => expect(screen.queryByRole('progressbar', { name: 'Voeding' })).toBeNull())
+  })
+
+  it('bewerkt een vaste post', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.type(screen.getByLabelText('Vaste omschrijving'), 'Netflix')
+    await user.type(screen.getByLabelText('Vast bedrag (€)'), '15')
+    await user.click(screen.getByRole('button', { name: 'Vaste post toevoegen' }))
+
+    await user.click(await screen.findByRole('button', { name: 'Bewerk vaste post Netflix' }))
+    const oms = screen.getByLabelText('Vaste omschrijving')
+    await user.clear(oms)
+    await user.type(oms, 'Disney')
+    await user.click(screen.getByRole('button', { name: 'Vaste post wijzigen' }))
+
+    expect(await screen.findByText('Disney')).toBeInTheDocument()
+  })
+
+  it('bewerkt een gedeelde kost', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
+    await user.type(screen.getByLabelText('Aandeel jij (%)'), '50')
+    await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
+
+    await user.type(await screen.findByLabelText('Kostomschrijving'), 'Schoolreis')
+    await user.type(screen.getByLabelText('Kostbedrag (€)'), '100')
+    await user.click(screen.getByRole('button', { name: 'Kost toevoegen' }))
+
+    await user.click(await screen.findByRole('button', { name: 'Bewerk kost Schoolreis' }))
+    const oms = screen.getByLabelText('Kostomschrijving')
+    await user.clear(oms)
+    await user.type(oms, 'Kamp')
+    await user.click(screen.getByRole('button', { name: 'Kost wijzigen' }))
+
+    expect(await screen.findByText('Kamp')).toBeInTheDocument()
+  })
+
+  it('verwijdert een dossier', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
+    await user.type(screen.getByLabelText('Aandeel jij (%)'), '50')
+    await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
+
+    await user.click(await screen.findByRole('button', { name: 'Verwijder dossier Kinderen' }))
+
+    expect(await screen.findByText(/Nog geen dossiers/)).toBeInTheDocument()
   })
 })

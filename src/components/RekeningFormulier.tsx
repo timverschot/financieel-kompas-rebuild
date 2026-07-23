@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
 import type { Rekening } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
+import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 
 const veld: CSSProperties = {
   display: 'block',
@@ -29,7 +30,7 @@ export function RekeningFormulier({
   useEffect(() => {
     if (bewerken) {
       setNaam(bewerken.naam)
-      setBeginsaldo(String(bewerken.beginsaldo).replace('.', ','))
+      setBeginsaldo(centenNaarInvoer(bewerken.beginsaldo))
     } else {
       setNaam('')
       setBeginsaldo('')
@@ -39,8 +40,8 @@ export function RekeningFormulier({
   async function verzend(e: FormEvent) {
     e.preventDefault()
     if (!geldig) return
-    const n = Number.parseFloat(beginsaldo.replace(',', '.'))
-    await onOpslaan({ id: bewerken ? bewerken.id : nieuwId(), naam: naam.trim(), beginsaldo: Number.isFinite(n) ? n : 0 })
+    const centen = invoerNaarCenten(beginsaldo)
+    await onOpslaan({ id: bewerken ? bewerken.id : nieuwId(), naam: naam.trim(), beginsaldo: Number.isFinite(centen) ? centen : 0 })
   }
 
   return (

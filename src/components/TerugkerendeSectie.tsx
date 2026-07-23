@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { Categorie, Rekening, TerugkerendePost, Transactie } from '../data/schema'
 import { TerugkerendePostFormulier } from './TerugkerendePostFormulier'
@@ -12,7 +13,7 @@ const knop: CSSProperties = {
 }
 
 // Sectie voor vaste (terugkerende) lasten: overzicht, inboeken voor de gekozen
-// maand, en een formulier om een nieuwe vaste post toe te voegen.
+// maand, en een formulier om een vaste post toe te voegen of te bewerken.
 export function TerugkerendeSectie({
   posten,
   rekeningen,
@@ -34,6 +35,13 @@ export function TerugkerendeSectie({
   onVerwijderen: (id: string) => Promise<void> | void
   onBoek: (p: TerugkerendePost) => Promise<void> | void
 }) {
+  const [bewerken, setBewerken] = useState<TerugkerendePost | null>(null)
+
+  async function opslaan(p: TerugkerendePost) {
+    await onOpslaan(p)
+    setBewerken(null)
+  }
+
   return (
     <section>
       <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>Vaste lasten</h2>
@@ -60,7 +68,7 @@ export function TerugkerendeSectie({
                   · {formatEuro(p.bedrag)} · dag {p.dag}
                 </span>
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                 {geboekt ? (
                   <span style={{ color: '#27ae60' }}>Geboekt ✓</span>
                 ) : (
@@ -68,6 +76,9 @@ export function TerugkerendeSectie({
                     Boek in
                   </button>
                 )}
+                <button aria-label={`Bewerk vaste post ${p.omschrijving}`} onClick={() => setBewerken(p)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
+                  ✎
+                </button>
                 <button
                   aria-label={`Verwijder vaste post ${p.omschrijving}`}
                   onClick={() => onVerwijderen(p.id)}
@@ -81,7 +92,13 @@ export function TerugkerendeSectie({
         })}
       </ul>
 
-      <TerugkerendePostFormulier rekeningen={rekeningen} categorieen={categorieen} onOpslaan={onOpslaan} />
+      <TerugkerendePostFormulier
+        rekeningen={rekeningen}
+        categorieen={categorieen}
+        onOpslaan={opslaan}
+        onAnnuleer={() => setBewerken(null)}
+        bewerken={bewerken}
+      />
     </section>
   )
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import { indexeerBedrag } from '../utils/indexatie'
-import { formatEuro } from '../utils/format'
+import { formatEuro, invoerNaarCenten } from '../utils/format'
 
 const veld: CSSProperties = {
   display: 'block',
@@ -23,11 +23,11 @@ export function IndexatieCalculator() {
   const [aanvang, setAanvang] = useState('')
   const [nieuw, setNieuw] = useState('')
 
-  const b = getal(basis)
+  const bCenten = invoerNaarCenten(basis) // basisbedrag in centen
   const a = getal(aanvang)
   const n = getal(nieuw)
-  const geldig = [b, a, n].every(Number.isFinite) && b > 0 && a > 0 && n > 0
-  const resultaat = geldig ? indexeerBedrag(b, a, n) : null
+  const geldig = [bCenten, a, n].every(Number.isFinite) && bCenten > 0 && a > 0 && n > 0
+  const resultaat = geldig ? indexeerBedrag(bCenten, a, n) : null
 
   return (
     <section>

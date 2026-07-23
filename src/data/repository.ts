@@ -88,6 +88,10 @@ export async function verwijderGedeeldeKost(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'gedeeldekost.verwijderd', payload: { id } })
 }
 
+export async function verwijderDossier(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'dossier.verwijderd', payload: { id } })
+}
+
 // --- Lezen ---
 // Bij het laden controleren we elk record opnieuw. Een corrupt of onverwacht
 // record wordt overgeslagen én geteld, in plaats van de app te laten crashen of

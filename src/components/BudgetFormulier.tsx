@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
 import type { Budget, Categorie } from '../data/schema'
+import { invoerNaarCenten } from '../utils/format'
 
 const veld: CSSProperties = {
   display: 'block',
@@ -23,13 +24,13 @@ export function BudgetFormulier({
   const [categorieId, setCategorieId] = useState(categorieen[0]?.id ?? '')
   const [bedrag, setBedrag] = useState('')
 
-  const bedragGetal = Number.parseFloat(bedrag.replace(',', '.'))
-  const geldig = categorieId.length > 0 && Number.isFinite(bedragGetal) && bedragGetal > 0
+  const bedragCenten = invoerNaarCenten(bedrag)
+  const geldig = categorieId.length > 0 && Number.isFinite(bedragCenten) && bedragCenten > 0
 
   async function verzend(e: FormEvent) {
     e.preventDefault()
     if (!geldig) return
-    await onOpslaan({ id: `budget-${categorieId}`, categorieId, bedrag: bedragGetal })
+    await onOpslaan({ id: `budget-${categorieId}`, categorieId, bedrag: bedragCenten })
     setBedrag('')
   }
 

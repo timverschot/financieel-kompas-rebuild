@@ -19,6 +19,7 @@ import {
   bewaarTerugkerendePost,
   bewaarTransactie,
   bewaarVerrekening,
+  verwijderDossier,
   laadBudgetten,
   laadCategorieen,
   laadDossiers,
@@ -197,6 +198,11 @@ export function App() {
 
   async function voegGedeeldeKostToe(k: GedeeldeKost) {
     await bewaarGedeeldeKost(k)
+    await herlaad()
+  }
+
+  async function verwijderDoss(id: string) {
+    await verwijderDossier(id)
     await herlaad()
   }
 
@@ -515,6 +521,7 @@ export function App() {
         kosten={gedeeldeKosten}
         verrekeningen={verrekeningen}
         onDossierOpslaan={voegDossierToe}
+        onDossierVerwijderen={verwijderDoss}
         onKostOpslaan={voegGedeeldeKostToe}
         onKostVerwijderen={verwijderKost}
         onAfrekenen={legAfrekeningVast}

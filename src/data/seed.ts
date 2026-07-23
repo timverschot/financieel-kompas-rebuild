@@ -13,7 +13,8 @@ export async function seedIndienLeeg(): Promise<void> {
   await bewaarCategorie({ id: 'cat-wonen', naam: 'Huisvesting' })
   await bewaarCategorie({ id: 'cat-voeding', naam: 'Voeding' })
 
-  await bewaarTransactie({ id: 't1', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 2400, rekeningId: 'r1', categorieId: 'cat-inkomsten' })
-  await bewaarTransactie({ id: 't2', datum: '2026-07-03', omschrijving: 'Huur', bedrag: -950, rekeningId: 'r1', categorieId: 'cat-wonen' })
-  await bewaarTransactie({ id: 't3', datum: '2026-07-05', omschrijving: 'Boodschappen', bedrag: -320, rekeningId: 'r1', categorieId: 'cat-voeding' })
+  // Bedragen in centen: €2400,00 / -€950,00 / -€320,00.
+  await bewaarTransactie({ id: 't1', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 240000, rekeningId: 'r1', categorieId: 'cat-inkomsten' })
+  await bewaarTransactie({ id: 't2', datum: '2026-07-03', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', categorieId: 'cat-wonen' })
+  await bewaarTransactie({ id: 't3', datum: '2026-07-05', omschrijving: 'Boodschappen', bedrag: -32000, rekeningId: 'r1', categorieId: 'cat-voeding' })
 }

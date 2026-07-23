@@ -11,6 +11,7 @@ import type {
 } from './schema'
 import type { Logregel, MetaRegel } from './sync/events'
 import { nieuwId } from './sync/id'
+import { euroNaarCenten, gebeurtenisNaarCenten } from './migraties'
 
 // De echte database in de browser (IndexedDB), via Dexie. Dit is de bron van
 // waarheid op je toestel: snel, offline, en met echte garanties.
@@ -134,6 +135,49 @@ export class FinancieelKompasDB extends Dexie {
       verrekeningen: 'id, dossierId',
       terugkerendePosten: 'id',
     })
+
+    // Versie 8 - geld in gehele centen. De schema-indexen blijven gelijk, maar
+    // alle bestaande bedragen (in euro's, drijvende komma) worden eenmalig
+    // omgezet naar centen: zowel in het logboek (elke gebeurtenis-payload) als
+    // in de afgeleide staat-tabellen. Zo lopen logboek en staat niet uit elkaar.
+    this.version(8)
+      .stores({
+        rekeningen: 'id, naam',
+        transacties: 'id, rekeningId, datum, categorieId',
+        events: 'id, toestelId, volgnummer',
+        meta: 'sleutel',
+        categorieen: 'id, naam',
+        budgetten: 'id, categorieId',
+        dossiers: 'id, naam',
+        gedeeldeKosten: 'id, dossierId, verrekeningId',
+        verrekeningen: 'id, dossierId',
+        terugkerendePosten: 'id',
+      })
+      .upgrade(async (trans) => {
+        // 1) Logboek: het geldveld in elke gebeurtenis-payload naar centen.
+        const events = await trans.table('events').toArray()
+        for (const e of events) {
+          const nieuweGebeurtenis = gebeurtenisNaarCenten(e.gebeurtenis)
+          if (nieuweGebeurtenis !== e.gebeurtenis) {
+            await trans.table('events').put({ ...e, gebeurtenis: nieuweGebeurtenis })
+          }
+        }
+        // 2) Staat-tabellen: het bedrag rechtstreeks omzetten.
+        await trans
+          .table('rekeningen')
+          .toCollection()
+          .modify((r: { beginsaldo: number }) => {
+            r.beginsaldo = euroNaarCenten(r.beginsaldo)
+          })
+        for (const tabel of ['transacties', 'budgetten', 'gedeeldeKosten', 'verrekeningen', 'terugkerendePosten']) {
+          await trans
+            .table(tabel)
+            .toCollection()
+            .modify((x: { bedrag: number }) => {
+              x.bedrag = euroNaarCenten(x.bedrag)
+            })
+        }
+      })
   }
 }
 
