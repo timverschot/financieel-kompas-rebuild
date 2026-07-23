@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
-import type { Transactie } from '../data/schema'
+import type { Rekening, Transactie } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 
 const vandaag = () => new Date().toISOString().slice(0, 10)
@@ -14,21 +14,27 @@ const veld: CSSProperties = {
 }
 const rij: CSSProperties = { marginBottom: '0.6rem' }
 
-// Eenvoudig invoerformulier. De gebruiker typt een positief bedrag en kiest
-// 'Uitgave' of 'Inkomst'; wij zetten dat om naar een negatief of positief
-// bedrag. Zo hoeft niemand met minustekens te werken.
+// Invoerformulier voor een transactie. De gebruiker typt een positief bedrag,
+// kiest 'Uitgave' of 'Inkomst' en op welke rekening de transactie staat.
 export function TransactieFormulier({
   onToevoegen,
+  rekeningen,
 }: {
   onToevoegen: (t: Transactie) => Promise<void> | void
+  rekeningen: Rekening[]
 }) {
   const [omschrijving, setOmschrijving] = useState('')
   const [bedrag, setBedrag] = useState('')
   const [datum, setDatum] = useState(vandaag())
   const [soort, setSoort] = useState<'uitgave' | 'inkomst'>('uitgave')
+  const [rekeningId, setRekeningId] = useState(rekeningen[0]?.id ?? '')
 
   const bedragGetal = Number.parseFloat(bedrag.replace(',', '.'))
-  const geldig = omschrijving.trim().length > 0 && Number.isFinite(bedragGetal) && bedragGetal > 0
+  const geldig =
+    omschrijving.trim().length > 0 &&
+    Number.isFinite(bedragGetal) &&
+    bedragGetal > 0 &&
+    rekeningId.length > 0
 
   async function verzend(e: FormEvent) {
     e.preventDefault()
@@ -38,7 +44,7 @@ export function TransactieFormulier({
       datum,
       omschrijving: omschrijving.trim(),
       bedrag: soort === 'uitgave' ? -bedragGetal : bedragGetal,
-      rekeningId: 'r1',
+      rekeningId,
     }
     await onToevoegen(t)
     setOmschrijving('')
@@ -67,6 +73,16 @@ export function TransactieFormulier({
       <div style={rij}>
         <label htmlFor="datum">Datum</label>
         <input id="datum" type="date" style={veld} value={datum} onChange={(e) => setDatum(e.target.value)} />
+      </div>
+      <div style={rij}>
+        <label htmlFor="rekening">Rekening</label>
+        <select id="rekening" style={veld} value={rekeningId} onChange={(e) => setRekeningId(e.target.value)}>
+          {rekeningen.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.naam}
+            </option>
+          ))}
+        </select>
       </div>
       <div style={rij}>
         <label style={{ marginRight: '1rem' }}>

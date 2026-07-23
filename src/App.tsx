@@ -1,12 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import type { Transactie } from './data/schema'
-import { bewaarTransactie, laadTransacties, verwijderTransactie } from './data/repository'
+import type { Rekening, Transactie } from './data/schema'
+import {
+  bewaarRekening,
+  bewaarTransactie,
+  laadRekeningen,
+  laadTransacties,
+  verwijderTransactie,
+} from './data/repository'
 import { seedIndienLeeg } from './data/seed'
 import { synchroniseer } from './data/sync/sync'
 import { DriveBackend } from './data/sync/drive/driveBackend'
 import { vraagToken } from './data/sync/drive/auth'
 import { TransactieFormulier } from './components/TransactieFormulier'
+import { RekeningFormulier } from './components/RekeningFormulier'
 import { formatEuro } from './utils/format'
 
 const container: CSSProperties = {
@@ -24,8 +31,11 @@ const knop: CSSProperties = {
   cursor: 'pointer',
 }
 
+const kop: CSSProperties = { fontSize: '1rem', marginBottom: '0.25rem' }
+
 export function App() {
   const [transacties, setTransacties] = useState<Transactie[] | null>(null)
+  const [rekeningen, setRekeningen] = useState<Rekening[]>([])
   const [ongeldig, setOngeldig] = useState(0)
   const [verbonden, setVerbonden] = useState(false)
   const [bezig, setBezig] = useState(false)
@@ -33,19 +43,21 @@ export function App() {
   const backendRef = useRef<DriveBackend | null>(null)
 
   async function herlaad() {
-    const res = await laadTransacties()
-    setTransacties(res.geldig)
-    setOngeldig(res.ongeldig)
+    const [tx, rk] = await Promise.all([laadTransacties(), laadRekeningen()])
+    setTransacties(tx.geldig)
+    setOngeldig(tx.ongeldig)
+    setRekeningen(rk.geldig)
   }
 
   useEffect(() => {
     let actief = true
     async function laad() {
       await seedIndienLeeg()
-      const res = await laadTransacties()
+      const [tx, rk] = await Promise.all([laadTransacties(), laadRekeningen()])
       if (!actief) return
-      setTransacties(res.geldig)
-      setOngeldig(res.ongeldig)
+      setTransacties(tx.geldig)
+      setOngeldig(tx.ongeldig)
+      setRekeningen(rk.geldig)
     }
     void laad()
     return () => {
@@ -53,8 +65,13 @@ export function App() {
     }
   }, [])
 
-  async function voegToe(t: Transactie) {
+  async function voegTransactieToe(t: Transactie) {
     await bewaarTransactie(t)
+    await herlaad()
+  }
+
+  async function voegRekeningToe(r: Rekening) {
+    await bewaarRekening(r)
     await herlaad()
   }
 
@@ -103,13 +120,15 @@ export function App() {
     )
   }
 
-  const saldo = transacties.reduce((som, t) => som + t.bedrag, 0)
+  const totaalSaldo =
+    rekeningen.reduce((som, r) => som + r.beginsaldo, 0) +
+    transacties.reduce((som, t) => som + t.bedrag, 0)
 
   return (
     <main style={container}>
       <h1 style={{ marginBottom: 0 }}>Financieel Kompas</h1>
       <p style={{ color: '#666', marginTop: 4 }}>
-        Transacties beheren — met schemabewaking, backup en synchronisatie
+        Rekeningen en transacties beheren — met schemabewaking, backup en synchronisatie
       </p>
 
       {ongeldig > 0 && (
@@ -125,7 +144,33 @@ export function App() {
         </p>
       )}
 
-      <TransactieFormulier onToevoegen={voegToe} />
+      <section>
+        <h2 style={kop}>Rekeningen</h2>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {rekeningen.map((r) => (
+            <li
+              key={r.id}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                padding: '0.3rem 0',
+                borderBottom: '1px solid #f0f0f0',
+              }}
+            >
+              <span>{r.naam}</span>
+              <span style={{ color: '#888' }}>startsaldo {formatEuro(r.beginsaldo)}</span>
+            </li>
+          ))}
+        </ul>
+        <RekeningFormulier onToevoegen={voegRekeningToe} />
+      </section>
+
+      <hr style={{ margin: '1.5rem 0', border: 'none', borderTop: '1px solid #eee' }} />
+
+      <section>
+        <h2 style={kop}>Transactie toevoegen</h2>
+        <TransactieFormulier onToevoegen={voegTransactieToe} rekeningen={rekeningen} />
+      </section>
 
       <ul style={{ listStyle: 'none', padding: 0, marginTop: '1.5rem' }}>
         {transacties.map((t) => (
@@ -164,7 +209,7 @@ export function App() {
         }}
       >
         <span>Saldo</span>
-        <span>{formatEuro(saldo)}</span>
+        <span>{formatEuro(totaalSaldo)}</span>
       </p>
 
       <hr style={{ margin: '1.5rem 0', border: 'none', borderTop: '1px solid #eee' }} />

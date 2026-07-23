@@ -41,4 +41,17 @@ describe('App', () => {
     expect(await screen.findByText(/1[.\s]?450/)).toBeInTheDocument()
     expect(screen.queryByText('Boodschappen')).toBeNull()
   })
+
+  it('voegt een nieuwe rekening toe en toont ze in de lijst', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.type(screen.getByLabelText('Rekeningnaam'), 'Spaarrekening')
+    await user.type(screen.getByLabelText('Beginsaldo (€)'), '100')
+    await user.click(screen.getByRole('button', { name: 'Rekening toevoegen' }))
+
+    // De nieuwe rekening is meteen beschikbaar als keuze in het transactieformulier.
+    expect(await screen.findByRole('option', { name: 'Spaarrekening' })).toBeInTheDocument()
+  })
 })
