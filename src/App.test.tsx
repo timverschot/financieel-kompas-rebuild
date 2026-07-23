@@ -37,7 +37,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await user.type(screen.getByLabelText('Omschrijving'), 'Boek')
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Boek')
     await user.type(screen.getByLabelText('Bedrag (€)'), '15')
     await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
 

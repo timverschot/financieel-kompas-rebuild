@@ -10,7 +10,13 @@ export type CategorieBedrag = { categorieId?: string; bedrag: number }
 // moedertransactie (een bekende valkuil uit v1).
 export function categorieBedragen(t: Transactie): CategorieBedrag[] {
   if (t.regels && t.regels.length > 0) {
-    return t.regels.map((r) => ({ categorieId: r.categorieId, bedrag: r.bedrag }))
+    const lijnen = t.regels.map((r) => ({ categorieId: r.categorieId, bedrag: r.bedrag }))
+    // Dekt de itemisatie niet het volledige totaal, dan telt het restbedrag mee
+    // als 'zonder categorie', zodat de som van de regels altijd het totaal is.
+    const som = lijnen.reduce((s, r) => s + r.bedrag, 0)
+    const rest = t.bedrag - som
+    if (rest !== 0) lijnen.push({ categorieId: undefined, bedrag: rest })
+    return lijnen
   }
   return [{ categorieId: t.categorieId, bedrag: t.bedrag }]
 }

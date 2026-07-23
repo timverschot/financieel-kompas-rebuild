@@ -43,9 +43,14 @@ describe('TransactieSchema - splitsing', () => {
     expect(TransactieSchema.safeParse(gesplitst).success).toBe(true)
   })
 
-  it('weigert een splitsing die niet optelt tot het totaal', () => {
-    const fout = { ...gesplitst, regels: [{ bedrag: -300 }, { bedrag: -100 }] }
-    expect(TransactieSchema.safeParse(fout).success).toBe(false)
+  it('aanvaardt ook een gedeeltelijke splitsing (het restbedrag wordt later aangevuld)', () => {
+    const partieel = { ...gesplitst, regels: [{ categorieId: 'ov-voeding', bedrag: -300 }] }
+    expect(TransactieSchema.safeParse(partieel).success).toBe(true)
+  })
+
+  it('aanvaardt een deelregel met enkel een omschrijving (vrije tekst, geen categorie)', () => {
+    const vrij = { ...gesplitst, regels: [{ omschrijving: 'Brood', bedrag: -500 }] }
+    expect(TransactieSchema.safeParse(vrij).success).toBe(true)
   })
 })
 

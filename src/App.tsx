@@ -396,6 +396,7 @@ export function App() {
   const inkomsten = maandInkomsten(transacties, maand)
   const uitgaven = maandUitgaven(transacties, maand)
   const perCategorie = uitgavenPerCategorie(transacties, categorieen, maand)
+  const handelaars = [...new Set(transacties.map((t) => t.omschrijving).filter((s) => s.trim().length > 0))]
 
   return (
     <main style={container}>
@@ -565,6 +566,7 @@ export function App() {
           onAnnuleer={() => setBewerkTransactie(null)}
           rekeningen={rekeningen}
           categorieen={categorieen}
+          handelaars={handelaars}
           bewerken={bewerkTransactie}
         />
       </section>

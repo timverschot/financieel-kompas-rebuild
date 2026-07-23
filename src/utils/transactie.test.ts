@@ -30,4 +30,15 @@ describe('categorieBedragen', () => {
       { categorieId: 'ov-huishouden-en-verzorging', bedrag: -2000 },
     ])
   })
+
+  it('vult een niet-verdeeld restbedrag aan als zonder categorie', () => {
+    const partieel: Transactie = {
+      ...basis, // totaal -5000
+      regels: [{ categorieId: 'ov-voeding', bedrag: -3000 }],
+    }
+    expect(categorieBedragen(partieel)).toEqual([
+      { categorieId: 'ov-voeding', bedrag: -3000 },
+      { categorieId: undefined, bedrag: -2000 },
+    ])
+  })
 })
