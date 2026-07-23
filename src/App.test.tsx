@@ -6,6 +6,8 @@ import { db } from './data/db'
 beforeEach(async () => {
   await db.transacties.clear()
   await db.rekeningen.clear()
+  await db.events.clear()
+  await db.meta.clear()
 })
 
 describe('App', () => {

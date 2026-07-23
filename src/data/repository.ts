@@ -1,25 +1,25 @@
 import type { ZodType } from 'zod'
 import { db } from './db'
 import { RekeningSchema, TransactieSchema, type Rekening, type Transactie } from './schema'
+import { pasGebeurtenisToe } from './sync/lokaal'
 
-// De repository is de enige weg naar de database. Alle schrijf- en leesacties
-// lopen hierlangs, zodat validatie nooit overgeslagen kan worden.
+// De repository is de enige weg naar de database. Alle schrijfacties worden
+// eerst gevalideerd en lopen daarna via het append-only logboek, zodat elke
+// wijziging bewaard blijft en klaar is voor synchronisatie.
 
 // --- Schrijven ---
-// Elke schrijfactie wordt eerst gevalideerd. Ongeldige data gooit een fout en
-// komt de database niet in.
 export async function bewaarTransactie(tx: Transactie): Promise<void> {
   const geldig = TransactieSchema.parse(tx)
-  await db.transacties.put(geldig)
+  await pasGebeurtenisToe({ type: 'transactie.bewaard', payload: geldig })
 }
 
 export async function bewaarRekening(rekening: Rekening): Promise<void> {
   const geldig = RekeningSchema.parse(rekening)
-  await db.rekeningen.put(geldig)
+  await pasGebeurtenisToe({ type: 'rekening.bewaard', payload: geldig })
 }
 
 export async function verwijderTransactie(id: string): Promise<void> {
-  await db.transacties.delete(id)
+  await pasGebeurtenisToe({ type: 'transactie.verwijderd', payload: { id } })
 }
 
 // --- Lezen ---

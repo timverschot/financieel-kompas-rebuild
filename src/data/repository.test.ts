@@ -6,6 +6,8 @@ import type { Transactie } from './schema'
 beforeEach(async () => {
   await db.transacties.clear()
   await db.rekeningen.clear()
+  await db.events.clear()
+  await db.meta.clear()
 })
 
 const t1: Transactie = { id: 't1', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 2400, rekeningId: 'r1' }

@@ -46,7 +46,7 @@ export function App() {
     <main style={container}>
       <h1 style={{ marginBottom: 0 }}>Financieel Kompas</h1>
       <p style={{ color: '#666', marginTop: 4 }}>
-        Fase 1 — data uit de database (IndexedDB) met schemabewaking
+        Fase 2 — elke wijziging wordt als logboek bewaard (klaar voor Drive-sync)
       </p>
 
       {ongeldig > 0 && (
