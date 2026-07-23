@@ -4,6 +4,7 @@ import type {
   Dossier,
   GedeeldeKost,
   Rekening,
+  Spaardoel,
   TerugkerendePost,
   Transactie,
   Verrekening,
@@ -20,6 +21,7 @@ export type Staat = {
   gedeeldeKosten: Map<string, GedeeldeKost>
   verrekeningen: Map<string, Verrekening>
   terugkerendePosten: Map<string, TerugkerendePost>
+  spaardoelen: Map<string, Spaardoel>
 }
 
 // Het HLC-stempel van een logregel, met terugval op 'tijdstip' voor oude regels
@@ -51,6 +53,7 @@ export function pasToe(regels: Logregel[]): Staat {
     gedeeldeKosten: new Map(),
     verrekeningen: new Map(),
     terugkerendePosten: new Map(),
+    spaardoelen: new Map(),
   }
   for (const r of gesorteerd) {
     const g = r.gebeurtenis
@@ -102,6 +105,12 @@ export function pasToe(regels: Logregel[]): Staat {
         break
       case 'terugkerendepost.verwijderd':
         staat.terugkerendePosten.delete(g.payload.id)
+        break
+      case 'spaardoel.bewaard':
+        staat.spaardoelen.set(g.payload.id, g.payload)
+        break
+      case 'spaardoel.verwijderd':
+        staat.spaardoelen.delete(g.payload.id)
         break
     }
   }

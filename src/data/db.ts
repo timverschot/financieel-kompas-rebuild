@@ -5,6 +5,7 @@ import type {
   Dossier,
   GedeeldeKost,
   Rekening,
+  Spaardoel,
   TerugkerendePost,
   Transactie,
   Verrekening,
@@ -26,6 +27,7 @@ export class FinancieelKompasDB extends Dexie {
   gedeeldeKosten!: Table<GedeeldeKost, string>
   verrekeningen!: Table<Verrekening, string>
   terugkerendePosten!: Table<TerugkerendePost, string>
+  spaardoelen!: Table<Spaardoel, string>
 
   constructor() {
     super('financieel-kompas')
@@ -178,6 +180,21 @@ export class FinancieelKompasDB extends Dexie {
             })
         }
       })
+
+    // Versie 9 - spaardoelen. Nieuwe tabel; geen omzetting van bestaande data nodig.
+    this.version(9).stores({
+      rekeningen: 'id, naam',
+      transacties: 'id, rekeningId, datum, categorieId',
+      events: 'id, toestelId, volgnummer',
+      meta: 'sleutel',
+      categorieen: 'id, naam',
+      budgetten: 'id, categorieId',
+      dossiers: 'id, naam',
+      gedeeldeKosten: 'id, dossierId, verrekeningId',
+      verrekeningen: 'id, dossierId',
+      terugkerendePosten: 'id',
+      spaardoelen: 'id, naam',
+    })
   }
 }
 

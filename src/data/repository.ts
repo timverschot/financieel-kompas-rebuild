@@ -6,6 +6,7 @@ import {
   DossierSchema,
   GedeeldeKostSchema,
   RekeningSchema,
+  SpaardoelSchema,
   TerugkerendePostSchema,
   TransactieSchema,
   VerrekeningSchema,
@@ -14,6 +15,7 @@ import {
   type Dossier,
   type GedeeldeKost,
   type Rekening,
+  type Spaardoel,
   type TerugkerendePost,
   type Transactie,
   type Verrekening,
@@ -66,6 +68,15 @@ export async function bewaarTerugkerendePost(post: TerugkerendePost): Promise<vo
 
 export async function verwijderTerugkerendePost(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'terugkerendepost.verwijderd', payload: { id } })
+}
+
+export async function bewaarSpaardoel(doel: Spaardoel): Promise<void> {
+  const geldig = SpaardoelSchema.parse(doel)
+  await pasGebeurtenisToe({ type: 'spaardoel.bewaard', payload: geldig })
+}
+
+export async function verwijderSpaardoel(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'spaardoel.verwijderd', payload: { id } })
 }
 
 export async function verwijderTransactie(id: string): Promise<void> {
@@ -146,4 +157,8 @@ export async function laadVerrekeningen(): Promise<LeesResultaat<Verrekening>> {
 
 export async function laadTerugkerendePosten(): Promise<LeesResultaat<TerugkerendePost>> {
   return valideerLijst(await db.terugkerendePosten.toArray(), TerugkerendePostSchema)
+}
+
+export async function laadSpaardoelen(): Promise<LeesResultaat<Spaardoel>> {
+  return valideerLijst(await db.spaardoelen.toArray(), SpaardoelSchema)
 }

@@ -96,3 +96,18 @@ export const TerugkerendePostSchema = z.object({
   dag: z.number().int().min(1).max(28),
 })
 export type TerugkerendePost = z.infer<typeof TerugkerendePostSchema>
+
+// Een spaardoel: een langetermijndoel met een doelbedrag. Het huidige bedrag
+// wordt manueel bijgehouden, of - als er een rekening aan gekoppeld is - afgeleid
+// uit het saldo van die rekening. Bedragen in centen.
+export const SpaardoelSchema = z.object({
+  id: z.string().min(1),
+  naam: z.string().min(1),
+  doelbedrag: z.number().int().positive(),
+  huidigBedrag: z.number().int(), // manueel bijgehouden bedrag
+  doeldatum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn').optional(),
+  gekoppeldeRekeningId: z.string().min(1).optional(),
+  maandbedrag: z.number().int().positive().optional(), // maandelijks streefbedrag
+  kleur: z.string().optional(),
+})
+export type Spaardoel = z.infer<typeof SpaardoelSchema>

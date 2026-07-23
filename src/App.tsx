@@ -6,6 +6,7 @@ import type {
   Dossier,
   GedeeldeKost,
   Rekening,
+  Spaardoel,
   TerugkerendePost,
   Transactie,
   Verrekening,
@@ -16,15 +17,18 @@ import {
   bewaarDossier,
   bewaarGedeeldeKost,
   bewaarRekening,
+  bewaarSpaardoel,
   bewaarTerugkerendePost,
   bewaarTransactie,
   bewaarVerrekening,
   verwijderDossier,
+  verwijderSpaardoel,
   laadBudgetten,
   laadCategorieen,
   laadDossiers,
   laadGedeeldeKosten,
   laadRekeningen,
+  laadSpaardoelen,
   laadTerugkerendePosten,
   laadTransacties,
   laadVerrekeningen,
@@ -46,6 +50,7 @@ import { RekeningFormulier } from './components/RekeningFormulier'
 import { CategorieFormulier } from './components/CategorieFormulier'
 import { BudgetFormulier } from './components/BudgetFormulier'
 import { DossierSectie } from './components/DossierSectie'
+import { SpaardoelSectie } from './components/SpaardoelSectie'
 import { CategorieBoom } from './components/CategorieBoom'
 import { Donut } from './components/Donut'
 import { IndexatieCalculator } from './components/IndexatieCalculator'
@@ -95,6 +100,7 @@ export function App() {
   const [gedeeldeKosten, setGedeeldeKosten] = useState<GedeeldeKost[]>([])
   const [verrekeningen, setVerrekeningen] = useState<Verrekening[]>([])
   const [terugkerendePosten, setTerugkerendePosten] = useState<TerugkerendePost[]>([])
+  const [spaardoelen, setSpaardoelen] = useState<Spaardoel[]>([])
   const [ongeldig, setOngeldig] = useState(0)
   const [verbonden, setVerbonden] = useState(false)
   const [bezig, setBezig] = useState(false)
@@ -107,7 +113,7 @@ export function App() {
   const backendRef = useRef<DriveBackend | null>(null)
 
   async function herlaad() {
-    const [tx, rk, cat, bud, dos, kos, ver, tkp] = await Promise.all([
+    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp] = await Promise.all([
       laadTransacties(),
       laadRekeningen(),
       laadCategorieen(),
@@ -116,6 +122,7 @@ export function App() {
       laadGedeeldeKosten(),
       laadVerrekeningen(),
       laadTerugkerendePosten(),
+      laadSpaardoelen(),
     ])
     setTransacties(tx.geldig)
     setOngeldig(tx.ongeldig)
@@ -126,6 +133,7 @@ export function App() {
     setGedeeldeKosten(kos.geldig)
     setVerrekeningen(ver.geldig)
     setTerugkerendePosten(tkp.geldig)
+    setSpaardoelen(sp.geldig)
   }
 
   useEffect(() => {
@@ -305,6 +313,16 @@ export function App() {
 
   async function verwijderKost(id: string) {
     await verwijderGedeeldeKost(id)
+    await herlaad()
+  }
+
+  async function voegSpaardoelToe(d: Spaardoel) {
+    await bewaarSpaardoel(d)
+    await herlaad()
+  }
+
+  async function verwijderSpaardoelH(id: string) {
+    await verwijderSpaardoel(id)
     await herlaad()
   }
 
@@ -626,6 +644,16 @@ export function App() {
         onKostOpslaan={voegGedeeldeKostToe}
         onKostVerwijderen={verwijderKost}
         onAfrekenen={legAfrekeningVast}
+      />
+
+      <hr style={scheiding} />
+
+      <SpaardoelSectie
+        spaardoelen={spaardoelen}
+        rekeningen={rekeningen}
+        transacties={transacties}
+        onOpslaan={voegSpaardoelToe}
+        onVerwijderen={verwijderSpaardoelH}
       />
 
       <hr style={scheiding} />
