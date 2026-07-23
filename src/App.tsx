@@ -5,6 +5,7 @@ import type {
   Categorie,
   Dossier,
   GedeeldeKost,
+  Kind,
   Overboeking,
   Rekening,
   Spaardoel,
@@ -18,6 +19,7 @@ import {
   bewaarCategorie,
   bewaarDossier,
   bewaarGedeeldeKost,
+  bewaarKind,
   bewaarRekening,
   bewaarOverboeking,
   bewaarSpaardoel,
@@ -32,6 +34,7 @@ import {
   laadCategorieen,
   laadDossiers,
   laadGedeeldeKosten,
+  laadKinderen,
   laadOverboekingen,
   laadRekeningen,
   laadSpaardoelen,
@@ -42,6 +45,7 @@ import {
   verwijderBudget,
   verwijderCategorie,
   verwijderGedeeldeKost,
+  verwijderKind,
   verwijderOverboeking,
   verwijderRekening,
   verwijderTerugkerendePost,
@@ -58,6 +62,7 @@ import { RekeningFormulier, REKENING_TYPE_LABEL } from './components/RekeningFor
 import { CategorieFormulier } from './components/CategorieFormulier'
 import { BudgetFormulier } from './components/BudgetFormulier'
 import { DossierSectie } from './components/DossierSectie'
+import { KinderenSectie } from './components/KinderenSectie'
 import { SpaardoelSectie } from './components/SpaardoelSectie'
 import { CategorieBoom } from './components/CategorieBoom'
 import { Donut } from './components/Donut'
@@ -66,7 +71,7 @@ import { IndexatieCalculator } from './components/IndexatieCalculator'
 import { TerugkerendeSectie } from './components/TerugkerendeSectie'
 import { OverboekingSectie } from './components/OverboekingSectie'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { saldoVerrekening } from './utils/dossier'
+import { saldoVerrekeningDossier } from './utils/dossier'
 import { nieuwId } from './data/sync/id'
 import { uitgavenInMaand } from './utils/budget'
 import { inkomstenPerCategorie, maandInkomsten, maandUitgaven, uitgavenPerCategorie } from './utils/overzicht'
@@ -117,6 +122,7 @@ export function App() {
   const [spaardoelen, setSpaardoelen] = useState<Spaardoel[]>([])
   const [subcategorieen, setSubcategorieen] = useState<Subcategorie[]>([])
   const [overboekingen, setOverboekingen] = useState<Overboeking[]>([])
+  const [kinderen, setKinderen] = useState<Kind[]>([])
   const [ongeldig, setOngeldig] = useState(0)
   const [verbonden, setVerbonden] = useState(false)
   const [bezig, setBezig] = useState(false)
@@ -133,7 +139,7 @@ export function App() {
   const { t, taal, zetTaal } = useT()
 
   async function herlaad() {
-    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob] = await Promise.all([
+    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki] = await Promise.all([
       laadTransacties(),
       laadRekeningen(),
       laadCategorieen(),
@@ -145,6 +151,7 @@ export function App() {
       laadSpaardoelen(),
       laadSubcategorieen(),
       laadOverboekingen(),
+      laadKinderen(),
     ])
     setTransacties(tx.geldig)
     setOngeldig(tx.ongeldig)
@@ -158,6 +165,7 @@ export function App() {
     setSpaardoelen(sp.geldig)
     setSubcategorieen(subc.geldig)
     setOverboekingen(ob.geldig)
+    setKinderen(ki.geldig)
   }
 
   // Toon een korte "ongedaan maken"-melding na een verwijdering. Herstellen is
@@ -186,7 +194,7 @@ export function App() {
     let actief = true
     async function laad() {
       await seedIndienLeeg()
-      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob] = await Promise.all([
+      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki] = await Promise.all([
         laadTransacties(),
         laadRekeningen(),
         laadCategorieen(),
@@ -198,6 +206,7 @@ export function App() {
         laadSpaardoelen(),
         laadSubcategorieen(),
         laadOverboekingen(),
+        laadKinderen(),
       ])
       if (!actief) return
       setTransacties(tx.geldig)
@@ -212,6 +221,7 @@ export function App() {
       setSpaardoelen(sp.geldig)
       setSubcategorieen(subc.geldig)
       setOverboekingen(ob.geldig)
+      setKinderen(ki.geldig)
     }
     void laad()
     return () => {
@@ -361,6 +371,23 @@ export function App() {
     if (oud) toonUndo(t('Overboeking verwijderd'), () => bewaarOverboeking(oud))
   }
 
+  async function voegKindToe(naam: string) {
+    await bewaarKind({ id: nieuwId(), naam })
+    await herlaad()
+  }
+
+  async function wijzigKind(id: string, naam: string) {
+    await bewaarKind({ id, naam })
+    await herlaad()
+  }
+
+  async function verwijderKindH(id: string) {
+    const oud = kinderen.find((k) => k.id === id)
+    await verwijderKind(id)
+    await herlaad()
+    if (oud) toonUndo(t('Kind verwijderd'), () => bewaarKind(oud))
+  }
+
   async function verwijderCat(id: string) {
     const oud = categorieen.find((c) => c.id === id)
     await verwijderCategorie(id)
@@ -461,7 +488,7 @@ export function App() {
 
   async function legAfrekeningVast(dossier: Dossier, openKosten: GedeeldeKost[]) {
     if (openKosten.length === 0) return
-    const bedrag = saldoVerrekening(dossier.aandeelJij, openKosten)
+    const bedrag = saldoVerrekeningDossier(dossier, openKosten)
     const verId = nieuwId()
     const datum = new Date().toISOString().slice(0, 10)
     await bewaarVerrekening({ id: verId, dossierId: dossier.id, datum, bedrag })
@@ -817,11 +844,23 @@ export function App() {
 
       <hr style={scheiding} />
 
+      <ErrorBoundary naam="Kinderen">
+        <KinderenSectie
+          kinderen={kinderen}
+          onToevoegen={voegKindToe}
+          onWijzigen={wijzigKind}
+          onVerwijderen={verwijderKindH}
+        />
+      </ErrorBoundary>
+
+      <hr style={scheiding} />
+
       <ErrorBoundary naam="Dossiers">
         <DossierSectie
           dossiers={dossiers}
           kosten={gedeeldeKosten}
           verrekeningen={verrekeningen}
+          kinderen={kinderen}
           onDossierOpslaan={voegDossierToe}
           onDossierVerwijderen={verwijderDoss}
           onKostOpslaan={voegGedeeldeKostToe}

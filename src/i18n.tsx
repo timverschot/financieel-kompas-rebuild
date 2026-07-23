@@ -257,6 +257,20 @@ const en: Record<string, string> = {
   'Overboeking wijzigen': 'Update transfer',
   'Overboeking toevoegen': 'Add transfer',
   'onbekende rekening': 'unknown account',
+  // Kinderen & dossier-uitbreidingen (Ronde 2)
+  'Kinderen': 'Children',
+  'Stel je kinderen één keer in; je kan gedeelde kosten eraan koppelen.': 'Set up your children once; you can link shared expenses to them.',
+  'Nog geen kinderen ingesteld.': 'No children set up yet.',
+  'Naam kind': 'Child name',
+  'Kind toevoegen': 'Add child',
+  'Wijzig kind {naam}': 'Edit child {naam}',
+  'Verwijder kind {naam}': 'Delete child {naam}',
+  'Kind verwijderd': 'Child deleted',
+  'Voor wie? (optioneel)': 'For whom? (optional)',
+  'Eigen verdeling (% jij, optioneel)': 'Custom split (% you, optional)',
+  'leeg = standaard van het dossier': 'empty = case default',
+  'voor {namen}': 'for {namen}',
+  'jij {p}%': 'you {p}%',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -497,6 +511,20 @@ const fr: Record<string, string> = {
   'Overboeking wijzigen': 'Modifier le virement',
   'Overboeking toevoegen': 'Ajouter un virement',
   'onbekende rekening': 'compte inconnu',
+  // Kinderen & dossier-uitbreidingen (Ronde 2)
+  'Kinderen': 'Enfants',
+  'Stel je kinderen één keer in; je kan gedeelde kosten eraan koppelen.': 'Configurez vos enfants une fois ; vous pouvez y associer des frais partagés.',
+  'Nog geen kinderen ingesteld.': 'Aucun enfant configuré.',
+  'Naam kind': 'Nom de l’enfant',
+  'Kind toevoegen': 'Ajouter un enfant',
+  'Wijzig kind {naam}': 'Modifier l’enfant {naam}',
+  'Verwijder kind {naam}': 'Supprimer l’enfant {naam}',
+  'Kind verwijderd': 'Enfant supprimé',
+  'Voor wie? (optioneel)': 'Pour qui ? (optionnel)',
+  'Eigen verdeling (% jij, optioneel)': 'Répartition personnalisée (% vous, optionnel)',
+  'leeg = standaard van het dossier': 'vide = valeur par défaut du dossier',
+  'voor {namen}': 'pour {namen}',
+  'jij {p}%': 'vous {p}%',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 

@@ -4,6 +4,7 @@ import type {
   Categorie,
   Dossier,
   GedeeldeKost,
+  Kind,
   Overboeking,
   Rekening,
   Spaardoel,
@@ -32,6 +33,7 @@ export class FinancieelKompasDB extends Dexie {
   spaardoelen!: Table<Spaardoel, string>
   subcategorieen!: Table<Subcategorie, string>
   overboekingen!: Table<Overboeking, string>
+  kinderen!: Table<Kind, string>
 
   constructor() {
     super('financieel-kompas')
@@ -241,6 +243,25 @@ export class FinancieelKompasDB extends Dexie {
       spaardoelen: 'id, naam',
       subcategorieen: 'id, categorieId',
       overboekingen: 'id, datum',
+    })
+
+    // Versie 12 - kinderen (globale lijst voor de dossiers-module). Nieuwe tabel;
+    // geen omzetting van bestaande data nodig.
+    this.version(12).stores({
+      rekeningen: 'id, naam',
+      transacties: 'id, rekeningId, datum, categorieId',
+      events: 'id, toestelId, volgnummer',
+      meta: 'sleutel',
+      categorieen: 'id, naam',
+      budgetten: 'id, categorieId',
+      dossiers: 'id, naam',
+      gedeeldeKosten: 'id, dossierId, verrekeningId',
+      verrekeningen: 'id, dossierId',
+      terugkerendePosten: 'id',
+      spaardoelen: 'id, naam',
+      subcategorieen: 'id, categorieId',
+      overboekingen: 'id, datum',
+      kinderen: 'id, naam',
     })
   }
 }

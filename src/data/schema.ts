@@ -64,12 +64,25 @@ export const BudgetSchema = z.object({
 })
 export type Budget = z.infer<typeof BudgetSchema>
 
+// Een kind (of algemener: een partij) waaraan gedeelde kosten toegewezen kunnen
+// worden. Globale lijst, herbruikbaar in elk dossier. De naam is de weergave; de
+// id is de taal-onafhankelijke sleutel.
+export const KindSchema = z.object({
+  id: z.string().min(1),
+  naam: z.string().min(1),
+})
+export type Kind = z.infer<typeof KindSchema>
+
 // Een dossier voor gedeelde kosten (bv. tussen co-ouders). 'aandeelJij' is het
-// percentage (0-100) van elke kost dat jij hoort te dragen.
+// STANDAARD-percentage (0-100) van elke kost dat jij hoort te dragen. Dit kan per
+// categorie overschreven worden via 'categorieAandelen' (categorie-id -> jouw %),
+// en per losse kost via 'aandeelJijOverride'. Zo krijg je de verdeel-hiërarchie
+// dossier -> categorie -> kost.
 export const DossierSchema = z.object({
   id: z.string().min(1),
   naam: z.string().min(1),
   aandeelJij: z.number().min(0).max(100),
+  categorieAandelen: z.record(z.string(), z.number().min(0).max(100)).optional(),
 })
 export type Dossier = z.infer<typeof DossierSchema>
 
@@ -83,6 +96,13 @@ export const GedeeldeKostSchema = z.object({
   // Zodra een kost in een afrekening is vastgelegd, verwijst dit naar die
   // afrekening. Open (nog niet afgerekende) kosten hebben dit veld niet.
   verrekeningId: z.string().min(1).optional(),
+  // Uitbreidingen (allemaal optioneel, zodat bestaande kosten geldig blijven):
+  // aan welke kinderen de kost hoort, een (optionele) categorie, het kostentype,
+  // en een eigen verdeel-percentage dat de dossier-/categorie-standaard overschrijft.
+  kindIds: z.array(z.string()).optional(),
+  categorieId: z.string().min(1).optional(),
+  kostenType: z.enum(['gewoon', 'buitengewoon']).optional(),
+  aandeelJijOverride: z.number().min(0).max(100).optional(),
 })
 export type GedeeldeKost = z.infer<typeof GedeeldeKostSchema>
 

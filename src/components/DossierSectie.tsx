@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
-import type { Dossier, GedeeldeKost, Verrekening } from '../data/schema'
+import type { Dossier, GedeeldeKost, Kind, Verrekening } from '../data/schema'
 import { DossierFormulier } from './DossierFormulier'
 import { GedeeldeKostFormulier } from './GedeeldeKostFormulier'
-import { saldoVerrekening } from '../utils/dossier'
+import { saldoVerrekeningDossier } from '../utils/dossier'
 import { formatEuro } from '../utils/format'
 import { useT, type Vertaler } from '../i18n'
 
@@ -29,6 +29,7 @@ export function DossierSectie({
   dossiers,
   kosten,
   verrekeningen,
+  kinderen,
   onDossierOpslaan,
   onDossierVerwijderen,
   onKostOpslaan,
@@ -38,6 +39,7 @@ export function DossierSectie({
   dossiers: Dossier[]
   kosten: GedeeldeKost[]
   verrekeningen: Verrekening[]
+  kinderen: Kind[]
   onDossierOpslaan: (d: Dossier) => Promise<void> | void
   onDossierVerwijderen: (id: string) => Promise<void> | void
   onKostOpslaan: (k: GedeeldeKost) => Promise<void> | void
@@ -45,6 +47,8 @@ export function DossierSectie({
   onAfrekenen: (dossier: Dossier, openKosten: GedeeldeKost[]) => Promise<void> | void
 }) {
   const { t } = useT()
+  const kindNamen = (ids?: string[]) =>
+    (ids ?? []).map((id) => kinderen.find((k) => k.id === id)?.naam).filter(Boolean).join(', ')
   const [geselecteerd, setGeselecteerd] = useState('')
   const [bewerkKost, setBewerkKost] = useState<GedeeldeKost | null>(null)
 
@@ -59,7 +63,7 @@ export function DossierSectie({
   const dossier = dossiers.find((d) => d.id === geselecteerd) ?? null
   const alleKosten = dossier ? kosten.filter((k) => k.dossierId === dossier.id) : []
   const openKosten = alleKosten.filter((k) => !k.verrekeningId)
-  const netto = dossier ? saldoVerrekening(dossier.aandeelJij, openKosten) : 0
+  const netto = dossier ? saldoVerrekeningDossier(dossier, openKosten) : 0
   const geschiedenis = dossier
     ? verrekeningen.filter((v) => v.dossierId === dossier.id).sort((a, b) => (a.datum < b.datum ? 1 : -1))
     : []
@@ -119,6 +123,8 @@ export function DossierSectie({
                   <span style={{ color: '#999', fontSize: '0.85rem' }}>
                     {' '}
                     · {t('betaald door {wie}', { wie: k.betaaldDoor === 'jij' ? t('jou') : t('partner') })}
+                    {k.kindIds && k.kindIds.length > 0 && ` · ${t('voor {namen}', { namen: kindNamen(k.kindIds) })}`}
+                    {typeof k.aandeelJijOverride === 'number' && ` · ${t('jij {p}%', { p: k.aandeelJijOverride })}`}
                   </span>
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -156,6 +162,7 @@ export function DossierSectie({
 
           <GedeeldeKostFormulier
             dossierId={dossier.id}
+            kinderen={kinderen}
             onOpslaan={kostOpslaan}
             onAnnuleer={() => setBewerkKost(null)}
             bewerken={bewerkKost}

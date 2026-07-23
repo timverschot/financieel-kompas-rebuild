@@ -1,24 +1,44 @@
-import type { GedeeldeKost } from '../data/schema'
+import type { Dossier, GedeeldeKost } from '../data/schema'
 
-// Berekent de verrekening van een dossier. 'aandeelJij' is het percentage van
-// elke kost dat jij hoort te dragen. Bedragen zijn in centen; het resultaat is
-// het bedrag (in centen, afgerond) dat de partner jou verschuldigd is (positief),
-// of dat jij de partner verschuldigd bent (negatief). Er wordt pas op het einde
-// afgerond, zodat tussentijdse deel-centen de uitkomst niet laten afdrijven.
-// Zuivere functie, zodat ze los en deterministisch getest kan worden.
-export function saldoVerrekening(aandeelJij: number, kosten: GedeeldeKost[]): number {
-  let netto = 0
+// Bepaalt het effectieve percentage dat JIJ voor één kost draagt, volgens de
+// verdeel-hiërarchie: een eigen percentage op de kost wint, anders een percentage
+// dat per categorie is ingesteld op het dossier, en anders de dossier-standaard.
+export function effectiefAandeel(dossier: Dossier, kost: GedeeldeKost): number {
+  if (typeof kost.aandeelJijOverride === 'number') return kost.aandeelJijOverride
+  if (kost.categorieId && dossier.categorieAandelen && kost.categorieId in dossier.categorieAandelen) {
+    return dossier.categorieAandelen[kost.categorieId]
+  }
+  return dossier.aandeelJij
+}
+
+// Zuivere kern: netto verrekening voor een reeks kosten, waarbij het percentage
+// per kost bepaald wordt door 'aandeelVan'. Bedragen in centen; er wordt pas op
+// het einde afgerond, zodat tussentijdse deel-centen de uitkomst niet laten
+// afdrijven. Positief = partner is jou verschuldigd, negatief = jij de partner.
+function netto(kosten: GedeeldeKost[], aandeelVan: (k: GedeeldeKost) => number): number {
+  let som = 0
   for (const k of kosten) {
-    const jouwAandeel = k.bedrag * (aandeelJij / 100)
+    const jouwAandeel = k.bedrag * (aandeelVan(k) / 100)
     const partnerAandeel = k.bedrag - jouwAandeel
     if (k.betaaldDoor === 'jij') {
       // Jij betaalde alles, maar hoefde maar jouw aandeel te dragen -> partner
       // is jou zijn deel verschuldigd.
-      netto += partnerAandeel
+      som += partnerAandeel
     } else {
       // Partner betaalde alles -> jij bent jouw aandeel verschuldigd.
-      netto -= jouwAandeel
+      som -= jouwAandeel
     }
   }
-  return Math.round(netto)
+  return Math.round(som)
+}
+
+// Verrekening met één vast percentage voor alle kosten (de eenvoudige variant).
+export function saldoVerrekening(aandeelJij: number, kosten: GedeeldeKost[]): number {
+  return netto(kosten, () => aandeelJij)
+}
+
+// Verrekening voor een volledig dossier, waarbij elke kost zijn effectieve
+// percentage krijgt volgens de hiërarchie (kost-override -> categorie -> standaard).
+export function saldoVerrekeningDossier(dossier: Dossier, kosten: GedeeldeKost[]): number {
+  return netto(kosten, (k) => effectiefAandeel(dossier, k))
 }

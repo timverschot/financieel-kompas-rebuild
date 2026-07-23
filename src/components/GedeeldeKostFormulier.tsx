@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
-import type { GedeeldeKost } from '../data/schema'
+import type { GedeeldeKost, Kind } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { useT } from '../i18n'
@@ -16,14 +16,18 @@ const veld: CSSProperties = {
 }
 const rij: CSSProperties = { marginBottom: '0.6rem' }
 
-// Formulier om een gedeelde kost toe te voegen of te bewerken.
+// Formulier om een gedeelde kost toe te voegen of te bewerken. Een kost kan aan
+// één of meer kinderen gekoppeld worden, en optioneel een eigen verdeel-percentage
+// krijgen dat de dossier-/categorie-standaard overschrijft.
 export function GedeeldeKostFormulier({
   dossierId,
+  kinderen,
   onOpslaan,
   onAnnuleer,
   bewerken,
 }: {
   dossierId: string
+  kinderen: Kind[]
   onOpslaan: (k: GedeeldeKost) => Promise<void> | void
   onAnnuleer?: () => void
   bewerken?: GedeeldeKost | null
@@ -33,6 +37,8 @@ export function GedeeldeKostFormulier({
   const [bedrag, setBedrag] = useState('')
   const [datum, setDatum] = useState(vandaag())
   const [betaaldDoor, setBetaaldDoor] = useState<'jij' | 'partner'>('jij')
+  const [kindIds, setKindIds] = useState<string[]>([])
+  const [aandeelOverride, setAandeelOverride] = useState('')
 
   useEffect(() => {
     if (bewerken) {
@@ -40,20 +46,30 @@ export function GedeeldeKostFormulier({
       setBedrag(centenNaarInvoer(bewerken.bedrag))
       setDatum(bewerken.datum)
       setBetaaldDoor(bewerken.betaaldDoor)
+      setKindIds(bewerken.kindIds ?? [])
+      setAandeelOverride(typeof bewerken.aandeelJijOverride === 'number' ? String(bewerken.aandeelJijOverride) : '')
     } else {
       setOmschrijving('')
       setBedrag('')
       setDatum(vandaag())
       setBetaaldDoor('jij')
+      setKindIds([])
+      setAandeelOverride('')
     }
   }, [bewerken])
 
   const bedragCenten = invoerNaarCenten(bedrag)
   const geldig = omschrijving.trim().length > 0 && Number.isFinite(bedragCenten) && bedragCenten > 0
 
+  function wisselKind(id: string) {
+    setKindIds((huidig) => (huidig.includes(id) ? huidig.filter((x) => x !== id) : [...huidig, id]))
+  }
+
   async function verzend(e: FormEvent) {
     e.preventDefault()
     if (!geldig) return
+    const override = Number.parseFloat(aandeelOverride.replace(',', '.'))
+    const heeftOverride = Number.isFinite(override) && override >= 0 && override <= 100
     await onOpslaan({
       id: bewerken ? bewerken.id : nieuwId(),
       dossierId: bewerken ? bewerken.dossierId : dossierId,
@@ -61,6 +77,12 @@ export function GedeeldeKostFormulier({
       bedrag: bedragCenten,
       betaaldDoor,
       datum,
+      ...(kindIds.length > 0 ? { kindIds } : {}),
+      ...(heeftOverride ? { aandeelJijOverride: override } : {}),
+      // Velden die dit formulier (nog) niet beheert, blijven behouden bij bewerken.
+      ...(bewerken?.categorieId ? { categorieId: bewerken.categorieId } : {}),
+      ...(bewerken?.kostenType ? { kostenType: bewerken.kostenType } : {}),
+      ...(bewerken?.verrekeningId ? { verrekeningId: bewerken.verrekeningId } : {}),
     })
   }
 
@@ -74,6 +96,18 @@ export function GedeeldeKostFormulier({
         <label htmlFor="kostbedrag">{t('Kostbedrag (€)')}</label>
         <input id="kostbedrag" style={veld} inputMode="decimal" placeholder="0,00" value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
       </div>
+      {kinderen.length > 0 && (
+        <div style={rij}>
+          <span style={{ display: 'block', marginBottom: 2 }}>{t('Voor wie? (optioneel)')}</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+            {kinderen.map((k) => (
+              <label key={k.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                <input type="checkbox" checked={kindIds.includes(k.id)} onChange={() => wisselKind(k.id)} /> {k.naam}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
       <div style={rij}>
         <label htmlFor="kostdatum">{t('Datum')}</label>
         <input id="kostdatum" type="date" style={veld} value={datum} onChange={(e) => setDatum(e.target.value)} />
@@ -86,6 +120,10 @@ export function GedeeldeKostFormulier({
         <label>
           <input type="radio" name="betaalddoor" checked={betaaldDoor === 'partner'} onChange={() => setBetaaldDoor('partner')} /> {t('Partner')}
         </label>
+      </div>
+      <div style={rij}>
+        <label htmlFor="kost-override">{t('Eigen verdeling (% jij, optioneel)')}</label>
+        <input id="kost-override" style={veld} inputMode="decimal" placeholder={t('leeg = standaard van het dossier')} value={aandeelOverride} onChange={(e) => setAandeelOverride(e.target.value)} />
       </div>
       <button
         type="submit"

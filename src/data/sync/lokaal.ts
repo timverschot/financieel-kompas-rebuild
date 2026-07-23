@@ -38,6 +38,7 @@ const SCHRIJF_TABELLEN = () => [
   db.spaardoelen,
   db.subcategorieen,
   db.overboekingen,
+  db.kinderen,
   db.meta,
 ]
 
@@ -54,6 +55,7 @@ const STAAT_TABELLEN = () => [
   db.spaardoelen,
   db.subcategorieen,
   db.overboekingen,
+  db.kinderen,
 ]
 
 // Past één gebeurtenis toe op de huidige staat (voor eigen, nieuwe wijzigingen).
@@ -126,6 +128,12 @@ async function pasStaatToe(regel: Logregel): Promise<void> {
     case 'overboeking.verwijderd':
       await db.overboekingen.delete(g.payload.id)
       break
+    case 'kind.bewaard':
+      await db.kinderen.put(g.payload)
+      break
+    case 'kind.verwijderd':
+      await db.kinderen.delete(g.payload.id)
+      break
   }
 }
 
@@ -183,6 +191,7 @@ export async function herbouwStaat(): Promise<void> {
     await db.spaardoelen.clear()
     await db.subcategorieen.clear()
     await db.overboekingen.clear()
+    await db.kinderen.clear()
     await db.rekeningen.bulkPut([...staat.rekeningen.values()])
     await db.transacties.bulkPut([...staat.transacties.values()])
     await db.categorieen.bulkPut([...staat.categorieen.values()])
@@ -194,5 +203,6 @@ export async function herbouwStaat(): Promise<void> {
     await db.spaardoelen.bulkPut([...staat.spaardoelen.values()])
     await db.subcategorieen.bulkPut([...staat.subcategorieen.values()])
     await db.overboekingen.bulkPut([...staat.overboekingen.values()])
+    await db.kinderen.bulkPut([...staat.kinderen.values()])
   })
 }

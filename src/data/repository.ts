@@ -5,6 +5,7 @@ import {
   CategorieSchema,
   DossierSchema,
   GedeeldeKostSchema,
+  KindSchema,
   OverboekingSchema,
   RekeningSchema,
   SpaardoelSchema,
@@ -16,6 +17,7 @@ import {
   type Categorie,
   type Dossier,
   type GedeeldeKost,
+  type Kind,
   type Overboeking,
   type Rekening,
   type Spaardoel,
@@ -99,6 +101,15 @@ export async function bewaarOverboeking(o: Overboeking): Promise<void> {
 
 export async function verwijderOverboeking(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'overboeking.verwijderd', payload: { id } })
+}
+
+export async function bewaarKind(k: Kind): Promise<void> {
+  const geldig = KindSchema.parse(k)
+  await pasGebeurtenisToe({ type: 'kind.bewaard', payload: geldig })
+}
+
+export async function verwijderKind(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'kind.verwijderd', payload: { id } })
 }
 
 export async function verwijderTransactie(id: string): Promise<void> {
@@ -191,4 +202,8 @@ export async function laadSubcategorieen(): Promise<LeesResultaat<Subcategorie>>
 
 export async function laadOverboekingen(): Promise<LeesResultaat<Overboeking>> {
   return valideerLijst(await db.overboekingen.toArray(), OverboekingSchema)
+}
+
+export async function laadKinderen(): Promise<LeesResultaat<Kind>> {
+  return valideerLijst(await db.kinderen.toArray(), KindSchema)
 }
