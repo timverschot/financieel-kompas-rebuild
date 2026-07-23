@@ -20,31 +20,52 @@ declare global {
   }
 }
 
+type Token = { waarde: string; verlooptOp: number }
+
 let gisLaden: Promise<void> | null = null
 let tokenClient: TokenClient | null = null
-let huidigToken: { waarde: string; verlooptOp: number } | null = null
+let huidigToken: Token | null = null
 let wachtend: { resolve: (t: string) => void; reject: (e: Error) => void } | null = null
 
-// We bewaren het token zelf NOOIT op schijf (dat is veiliger). We onthouden enkel
-// dat de gebruiker ooit verbond, zodat de app bij het opstarten stil - zonder
-// venster - een vers token kan vragen (dat lukt zolang de Google-sessie actief is
-// en de toegang eerder werd gegeven).
-const OOIT_VERBONDEN_SLEUTEL = 'fk_ooit_verbonden'
+// Google geeft in deze browser-opzet enkel een kortlevend toegangstoken (~1 uur)
+// en géén refresh-token; een volledig onzichtbare vernieuwing zonder klik is niet
+// mogelijk. Om te vermijden dat je bij elke herlaad opnieuw moet klikken, bewaren
+// we het token (met zijn vervaltijd) lokaal in de browser. Zolang het geldig is,
+// hergebruikt de app het meteen — zonder venster. Na het verlopen volstaat één
+// klik om te herverbinden (zonder opnieuw toestemming te geven).
+//
+// Afweging: het gaat om een kortlevend token met enkel toegang tot de eigen
+// back-upmap (scope drive.file). Voor persoonlijk gebruik is dat een verantwoorde
+// keuze. Bij afmelden wordt het gewist.
+const TOKEN_SLEUTEL = 'fk_drive_token'
 
-function onthoudVerbonden(): void {
+function bewaarTokenLokaal(token: Token): void {
   try {
-    localStorage.setItem(OOIT_VERBONDEN_SLEUTEL, '1')
+    localStorage.setItem(TOKEN_SLEUTEL, JSON.stringify(token))
   } catch {
     // localStorage niet beschikbaar (bv. in tests): stil negeren.
   }
 }
 
-export function heeftOoitVerbonden(): boolean {
+function laadTokenLokaal(): Token | null {
   try {
-    return localStorage.getItem(OOIT_VERBONDEN_SLEUTEL) === '1'
+    const ruw = localStorage.getItem(TOKEN_SLEUTEL)
+    if (!ruw) return null
+    const t = JSON.parse(ruw) as Token
+    if (typeof t?.waarde === 'string' && typeof t?.verlooptOp === 'number') return t
+    return null
   } catch {
-    return false
+    return null
   }
+}
+
+// Herstel een eventueel eerder bewaard token meteen bij het laden van de module,
+// zodat een herlaad of nieuw venster binnen het uur meteen verbonden is.
+huidigToken = laadTokenLokaal()
+
+// True zolang we een geldig, niet-bijna-verlopen token hebben.
+export function heeftOoitVerbonden(): boolean {
+  return laadTokenLokaal() !== null
 }
 
 // Laadt het Google-aanmeldscript eenmalig.
@@ -77,7 +98,7 @@ async function zorgVoorClient(): Promise<TokenClient> {
           return
         }
         huidigToken = { waarde: r.access_token, verlooptOp: Date.now() + (r.expires_in ?? 3600) * 1000 }
-        onthoudVerbonden()
+        bewaarTokenLokaal(huidigToken)
         w.resolve(r.access_token)
       },
       error_callback: () => {
@@ -95,21 +116,30 @@ export function isAangemeld(): boolean {
   return huidigToken !== null && huidigToken.verlooptOp > Date.now() + 10_000
 }
 
-// Vraagt een geldig toegangstoken. 'interactief' opent zo nodig het
-// aanmeldvenster (moet vanuit een knopklik gebeuren).
+// Vraagt een geldig toegangstoken.
+// - Is er een geldig (bewaard) token? Dan meteen teruggeven, zonder venster.
+// - Zo niet en 'interactief' is true (vanuit een knopklik): open Google om te
+//   (her)verbinden. Voor wie eerder toegang gaf toont Google geen toestemmings-
+//   scherm meer.
+// - Zo niet en niet-interactief: we openen NOOIT zelf een venster (dat zou door
+//   de browser geblokkeerd worden buiten een klik) en melden dat herverbinden
+//   nodig is. De auto-sync vangt dit stil op; de gebruiker klikt gewoon opnieuw.
 export async function vraagToken(interactief: boolean): Promise<string> {
   if (huidigToken && huidigToken.verlooptOp > Date.now() + 10_000) return huidigToken.waarde
+  if (!interactief) throw new Error('Geen geldig token; opnieuw verbinden nodig.')
   const client = await zorgVoorClient()
   return new Promise<string>((resolve, reject) => {
     wachtend = { resolve, reject }
-    client.requestAccessToken({ prompt: interactief ? 'consent' : '' })
+    // Lege prompt = geen toestemmingsscherm forceren; Google toont het enkel de
+    // allereerste keer of wanneer de toegang werd ingetrokken.
+    client.requestAccessToken({ prompt: '' })
   })
 }
 
 export function meldAf(): void {
   huidigToken = null
   try {
-    localStorage.removeItem(OOIT_VERBONDEN_SLEUTEL)
+    localStorage.removeItem(TOKEN_SLEUTEL)
   } catch {
     // stil negeren
   }
