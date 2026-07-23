@@ -4,6 +4,7 @@ import type {
   Dossier,
   GedeeldeKost,
   Rekening,
+  TerugkerendePost,
   Transactie,
   Verrekening,
 } from '../schema'
@@ -17,11 +18,11 @@ export type Staat = {
   dossiers: Map<string, Dossier>
   gedeeldeKosten: Map<string, GedeeldeKost>
   verrekeningen: Map<string, Verrekening>
+  terugkerendePosten: Map<string, TerugkerendePost>
 }
 
 // Bepaalt de volgorde van twee logregels: eerst op tijd, dan op toestel, dan op
-// volgnummer. Zo is de volgorde volledig bepaald en verschilt ze nooit tussen
-// toestellen.
+// volgnummer.
 function vergelijk(a: Logregel, b: Logregel): number {
   if (a.tijdstip !== b.tijdstip) return a.tijdstip - b.tijdstip
   if (a.toestelId !== b.toestelId) return a.toestelId < b.toestelId ? -1 : 1
@@ -40,6 +41,7 @@ export function pasToe(regels: Logregel[]): Staat {
     dossiers: new Map(),
     gedeeldeKosten: new Map(),
     verrekeningen: new Map(),
+    terugkerendePosten: new Map(),
   }
   for (const r of gesorteerd) {
     const g = r.gebeurtenis
@@ -85,6 +87,12 @@ export function pasToe(regels: Logregel[]): Staat {
         break
       case 'verrekening.verwijderd':
         staat.verrekeningen.delete(g.payload.id)
+        break
+      case 'terugkerendepost.bewaard':
+        staat.terugkerendePosten.set(g.payload.id, g.payload)
+        break
+      case 'terugkerendepost.verwijderd':
+        staat.terugkerendePosten.delete(g.payload.id)
         break
     }
   }

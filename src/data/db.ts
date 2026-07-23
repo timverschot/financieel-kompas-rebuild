@@ -5,6 +5,7 @@ import type {
   Dossier,
   GedeeldeKost,
   Rekening,
+  TerugkerendePost,
   Transactie,
   Verrekening,
 } from './schema'
@@ -23,6 +24,7 @@ export class FinancieelKompasDB extends Dexie {
   dossiers!: Table<Dossier, string>
   gedeeldeKosten!: Table<GedeeldeKost, string>
   verrekeningen!: Table<Verrekening, string>
+  terugkerendePosten!: Table<TerugkerendePost, string>
 
   constructor() {
     super('financieel-kompas')
@@ -117,6 +119,20 @@ export class FinancieelKompasDB extends Dexie {
       dossiers: 'id, naam',
       gedeeldeKosten: 'id, dossierId, verrekeningId',
       verrekeningen: 'id, dossierId',
+    })
+
+    // Versie 7 - terugkerende (vaste) posten. Nieuwe tabel; geen omzetting nodig.
+    this.version(7).stores({
+      rekeningen: 'id, naam',
+      transacties: 'id, rekeningId, datum, categorieId',
+      events: 'id, toestelId, volgnummer',
+      meta: 'sleutel',
+      categorieen: 'id, naam',
+      budgetten: 'id, categorieId',
+      dossiers: 'id, naam',
+      gedeeldeKosten: 'id, dossierId, verrekeningId',
+      verrekeningen: 'id, dossierId',
+      terugkerendePosten: 'id',
     })
   }
 }

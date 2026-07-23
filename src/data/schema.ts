@@ -64,3 +64,16 @@ export const VerrekeningSchema = z.object({
   bedrag: z.number().finite(), // positief = partner was jou verschuldigd
 })
 export type Verrekening = z.infer<typeof VerrekeningSchema>
+
+// Een terugkerende (vaste) post, bv. huur of een abonnement. 'dag' is de dag van
+// de maand (1-28, zodat elke maand gedekt is). Bij het inboeken wordt hij een
+// gewone transactie.
+export const TerugkerendePostSchema = z.object({
+  id: z.string().min(1),
+  omschrijving: z.string().min(1),
+  bedrag: z.number().finite(), // positief = inkomst, negatief = uitgave
+  rekeningId: z.string().min(1),
+  categorieId: z.string().min(1).optional(),
+  dag: z.number().int().min(1).max(28),
+})
+export type TerugkerendePost = z.infer<typeof TerugkerendePostSchema>

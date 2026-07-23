@@ -33,7 +33,20 @@ const SCHRIJF_TABELLEN = () => [
   db.dossiers,
   db.gedeeldeKosten,
   db.verrekeningen,
+  db.terugkerendePosten,
   db.meta,
+]
+
+// De tabellen die de huidige staat bevatten (afgeleid uit het logboek).
+const STAAT_TABELLEN = () => [
+  db.rekeningen,
+  db.transacties,
+  db.categorieen,
+  db.budgetten,
+  db.dossiers,
+  db.gedeeldeKosten,
+  db.verrekeningen,
+  db.terugkerendePosten,
 ]
 
 // Past één gebeurtenis toe op de huidige staat (voor eigen, nieuwe wijzigingen).
@@ -82,6 +95,12 @@ async function pasStaatToe(regel: Logregel): Promise<void> {
     case 'verrekening.verwijderd':
       await db.verrekeningen.delete(g.payload.id)
       break
+    case 'terugkerendepost.bewaard':
+      await db.terugkerendePosten.put(g.payload)
+      break
+    case 'terugkerendepost.verwijderd':
+      await db.terugkerendePosten.delete(g.payload.id)
+      break
   }
 }
 
@@ -111,24 +130,22 @@ export async function pasGebeurtenisToe(gebeurtenis: Gebeurtenis): Promise<void>
 export async function herbouwStaat(): Promise<void> {
   const regels = await db.events.toArray()
   const staat = pasToe(regels)
-  await db.transaction(
-    'rw',
-    [db.rekeningen, db.transacties, db.categorieen, db.budgetten, db.dossiers, db.gedeeldeKosten, db.verrekeningen],
-    async () => {
-      await db.rekeningen.clear()
-      await db.transacties.clear()
-      await db.categorieen.clear()
-      await db.budgetten.clear()
-      await db.dossiers.clear()
-      await db.gedeeldeKosten.clear()
-      await db.verrekeningen.clear()
-      await db.rekeningen.bulkPut([...staat.rekeningen.values()])
-      await db.transacties.bulkPut([...staat.transacties.values()])
-      await db.categorieen.bulkPut([...staat.categorieen.values()])
-      await db.budgetten.bulkPut([...staat.budgetten.values()])
-      await db.dossiers.bulkPut([...staat.dossiers.values()])
-      await db.gedeeldeKosten.bulkPut([...staat.gedeeldeKosten.values()])
-      await db.verrekeningen.bulkPut([...staat.verrekeningen.values()])
-    },
-  )
+  await db.transaction('rw', STAAT_TABELLEN(), async () => {
+    await db.rekeningen.clear()
+    await db.transacties.clear()
+    await db.categorieen.clear()
+    await db.budgetten.clear()
+    await db.dossiers.clear()
+    await db.gedeeldeKosten.clear()
+    await db.verrekeningen.clear()
+    await db.terugkerendePosten.clear()
+    await db.rekeningen.bulkPut([...staat.rekeningen.values()])
+    await db.transacties.bulkPut([...staat.transacties.values()])
+    await db.categorieen.bulkPut([...staat.categorieen.values()])
+    await db.budgetten.bulkPut([...staat.budgetten.values()])
+    await db.dossiers.bulkPut([...staat.dossiers.values()])
+    await db.gedeeldeKosten.bulkPut([...staat.gedeeldeKosten.values()])
+    await db.verrekeningen.bulkPut([...staat.verrekeningen.values()])
+    await db.terugkerendePosten.bulkPut([...staat.terugkerendePosten.values()])
+  })
 }

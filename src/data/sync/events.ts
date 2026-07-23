@@ -5,6 +5,7 @@ import {
   DossierSchema,
   GedeeldeKostSchema,
   RekeningSchema,
+  TerugkerendePostSchema,
   TransactieSchema,
   VerrekeningSchema,
 } from '../schema'
@@ -26,6 +27,8 @@ export const GebeurtenisSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('gedeeldekost.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
   z.object({ type: z.literal('verrekening.bewaard'), payload: VerrekeningSchema }),
   z.object({ type: z.literal('verrekening.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
+  z.object({ type: z.literal('terugkerendepost.bewaard'), payload: TerugkerendePostSchema }),
+  z.object({ type: z.literal('terugkerendepost.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
 ])
 export type Gebeurtenis = z.infer<typeof GebeurtenisSchema>
 

@@ -6,6 +6,7 @@ import {
   DossierSchema,
   GedeeldeKostSchema,
   RekeningSchema,
+  TerugkerendePostSchema,
   TransactieSchema,
   VerrekeningSchema,
   type Budget,
@@ -13,6 +14,7 @@ import {
   type Dossier,
   type GedeeldeKost,
   type Rekening,
+  type TerugkerendePost,
   type Transactie,
   type Verrekening,
 } from './schema'
@@ -55,6 +57,15 @@ export async function bewaarGedeeldeKost(kost: GedeeldeKost): Promise<void> {
 export async function bewaarVerrekening(verrekening: Verrekening): Promise<void> {
   const geldig = VerrekeningSchema.parse(verrekening)
   await pasGebeurtenisToe({ type: 'verrekening.bewaard', payload: geldig })
+}
+
+export async function bewaarTerugkerendePost(post: TerugkerendePost): Promise<void> {
+  const geldig = TerugkerendePostSchema.parse(post)
+  await pasGebeurtenisToe({ type: 'terugkerendepost.bewaard', payload: geldig })
+}
+
+export async function verwijderTerugkerendePost(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'terugkerendepost.verwijderd', payload: { id } })
 }
 
 export async function verwijderTransactie(id: string): Promise<void> {
@@ -115,4 +126,8 @@ export async function laadGedeeldeKosten(): Promise<LeesResultaat<GedeeldeKost>>
 
 export async function laadVerrekeningen(): Promise<LeesResultaat<Verrekening>> {
   return valideerLijst(await db.verrekeningen.toArray(), VerrekeningSchema)
+}
+
+export async function laadTerugkerendePosten(): Promise<LeesResultaat<TerugkerendePost>> {
+  return valideerLijst(await db.terugkerendePosten.toArray(), TerugkerendePostSchema)
 }

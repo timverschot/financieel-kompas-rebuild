@@ -73,7 +73,22 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Beginsaldo (€)'), '100')
     await user.click(screen.getByRole('button', { name: 'Rekening toevoegen' }))
 
-    expect(await screen.findByRole('option', { name: 'Spaarrekening' })).toBeInTheDocument()
+    // Spaarrekening verschijnt nu als keuze in de rekening-selecties.
+    expect((await screen.findAllByRole('option', { name: 'Spaarrekening' })).length).toBeGreaterThan(0)
+  })
+
+  it('maakt een vaste post aan en boekt hem in voor de maand', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.type(screen.getByLabelText('Vaste omschrijving'), 'Netflix')
+    await user.type(screen.getByLabelText('Vast bedrag (€)'), '15')
+    await user.click(screen.getByRole('button', { name: 'Vaste post toevoegen' }))
+
+    await user.click(await screen.findByRole('button', { name: 'Boek in' }))
+
+    expect(await screen.findByText('Geboekt ✓')).toBeInTheDocument()
   })
 
   it('voegt een nieuwe categorie toe en maakt ze beschikbaar', async () => {

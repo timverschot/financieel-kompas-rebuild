@@ -6,6 +6,7 @@ import type {
   Dossier,
   GedeeldeKost,
   Rekening,
+  TerugkerendePost,
   Transactie,
   Verrekening,
 } from './data/schema'
@@ -15,6 +16,7 @@ import {
   bewaarDossier,
   bewaarGedeeldeKost,
   bewaarRekening,
+  bewaarTerugkerendePost,
   bewaarTransactie,
   bewaarVerrekening,
   laadBudgetten,
@@ -22,9 +24,11 @@ import {
   laadDossiers,
   laadGedeeldeKosten,
   laadRekeningen,
+  laadTerugkerendePosten,
   laadTransacties,
   laadVerrekeningen,
   verwijderGedeeldeKost,
+  verwijderTerugkerendePost,
   verwijderTransactie,
 } from './data/repository'
 import { seedIndienLeeg } from './data/seed'
@@ -37,6 +41,7 @@ import { CategorieFormulier } from './components/CategorieFormulier'
 import { BudgetFormulier } from './components/BudgetFormulier'
 import { DossierSectie } from './components/DossierSectie'
 import { IndexatieCalculator } from './components/IndexatieCalculator'
+import { TerugkerendeSectie } from './components/TerugkerendeSectie'
 import { saldoVerrekening } from './utils/dossier'
 import { nieuwId } from './data/sync/id'
 import { uitgavenInMaand } from './utils/budget'
@@ -80,6 +85,7 @@ export function App() {
   const [dossiers, setDossiers] = useState<Dossier[]>([])
   const [gedeeldeKosten, setGedeeldeKosten] = useState<GedeeldeKost[]>([])
   const [verrekeningen, setVerrekeningen] = useState<Verrekening[]>([])
+  const [terugkerendePosten, setTerugkerendePosten] = useState<TerugkerendePost[]>([])
   const [ongeldig, setOngeldig] = useState(0)
   const [verbonden, setVerbonden] = useState(false)
   const [bezig, setBezig] = useState(false)
@@ -89,7 +95,7 @@ export function App() {
   const backendRef = useRef<DriveBackend | null>(null)
 
   async function herlaad() {
-    const [tx, rk, cat, bud, dos, kos, ver] = await Promise.all([
+    const [tx, rk, cat, bud, dos, kos, ver, tkp] = await Promise.all([
       laadTransacties(),
       laadRekeningen(),
       laadCategorieen(),
@@ -97,6 +103,7 @@ export function App() {
       laadDossiers(),
       laadGedeeldeKosten(),
       laadVerrekeningen(),
+      laadTerugkerendePosten(),
     ])
     setTransacties(tx.geldig)
     setOngeldig(tx.ongeldig)
@@ -106,13 +113,14 @@ export function App() {
     setDossiers(dos.geldig)
     setGedeeldeKosten(kos.geldig)
     setVerrekeningen(ver.geldig)
+    setTerugkerendePosten(tkp.geldig)
   }
 
   useEffect(() => {
     let actief = true
     async function laad() {
       await seedIndienLeeg()
-      const [tx, rk, cat, bud, dos, kos, ver] = await Promise.all([
+      const [tx, rk, cat, bud, dos, kos, ver, tkp] = await Promise.all([
         laadTransacties(),
         laadRekeningen(),
         laadCategorieen(),
@@ -120,6 +128,7 @@ export function App() {
         laadDossiers(),
         laadGedeeldeKosten(),
         laadVerrekeningen(),
+        laadTerugkerendePosten(),
       ])
       if (!actief) return
       setTransacties(tx.geldig)
@@ -130,6 +139,7 @@ export function App() {
       setDossiers(dos.geldig)
       setGedeeldeKosten(kos.geldig)
       setVerrekeningen(ver.geldig)
+      setTerugkerendePosten(tkp.geldig)
     }
     void laad()
     return () => {
@@ -170,6 +180,30 @@ export function App() {
 
   async function verwijderKost(id: string) {
     await verwijderGedeeldeKost(id)
+    await herlaad()
+  }
+
+  async function voegTerugkerendToe(p: TerugkerendePost) {
+    await bewaarTerugkerendePost(p)
+    await herlaad()
+  }
+
+  async function verwijderTerugkerend(id: string) {
+    await verwijderTerugkerendePost(id)
+    await herlaad()
+  }
+
+  async function boekTerugkerend(post: TerugkerendePost) {
+    const dag = String(post.dag).padStart(2, '0')
+    const t: Transactie = {
+      id: `tk-${post.id}-${maand}`,
+      datum: `${maand}-${dag}`,
+      omschrijving: post.omschrijving,
+      bedrag: post.bedrag,
+      rekeningId: post.rekeningId,
+      ...(post.categorieId ? { categorieId: post.categorieId } : {}),
+    }
+    await bewaarTransactie(t)
     await herlaad()
   }
 
@@ -352,6 +386,20 @@ export function App() {
         </ul>
         {categorieen.length > 0 && <BudgetFormulier categorieen={categorieen} onOpslaan={voegBudgetToe} />}
       </section>
+
+      <hr style={scheiding} />
+
+      <TerugkerendeSectie
+        posten={terugkerendePosten}
+        rekeningen={rekeningen}
+        categorieen={categorieen}
+        transacties={transacties}
+        maand={maand}
+        maandLabel={maandLabel(maand)}
+        onOpslaan={voegTerugkerendToe}
+        onVerwijderen={verwijderTerugkerend}
+        onBoek={boekTerugkerend}
+      />
 
       <hr style={scheiding} />
 
