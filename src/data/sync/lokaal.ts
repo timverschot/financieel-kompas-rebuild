@@ -23,6 +23,19 @@ export async function haalToestelId(): Promise<string> {
   return id
 }
 
+// De tabellen die bij een schrijfactie betrokken zijn.
+const SCHRIJF_TABELLEN = () => [
+  db.events,
+  db.transacties,
+  db.rekeningen,
+  db.categorieen,
+  db.budgetten,
+  db.dossiers,
+  db.gedeeldeKosten,
+  db.verrekeningen,
+  db.meta,
+]
+
 // Past één gebeurtenis toe op de huidige staat (voor eigen, nieuwe wijzigingen).
 async function pasStaatToe(regel: Logregel): Promise<void> {
   const g = regel.gebeurtenis
@@ -63,6 +76,12 @@ async function pasStaatToe(regel: Logregel): Promise<void> {
     case 'gedeeldekost.verwijderd':
       await db.gedeeldeKosten.delete(g.payload.id)
       break
+    case 'verrekening.bewaard':
+      await db.verrekeningen.put(g.payload)
+      break
+    case 'verrekening.verwijderd':
+      await db.verrekeningen.delete(g.payload.id)
+      break
   }
 }
 
@@ -71,24 +90,20 @@ async function pasStaatToe(regel: Logregel): Promise<void> {
 // database-transactie, zodat logboek en staat nooit uit elkaar lopen.
 export async function pasGebeurtenisToe(gebeurtenis: Gebeurtenis): Promise<void> {
   const geldig = GebeurtenisSchema.parse(gebeurtenis)
-  await db.transaction(
-    'rw',
-    [db.events, db.transacties, db.rekeningen, db.categorieen, db.budgetten, db.dossiers, db.gedeeldeKosten, db.meta],
-    async () => {
-      const toestelId = await haalToestelId()
-      const volg = ((await leesMeta<number>('volgnummer')) ?? 0) + 1
-      await schrijfMeta('volgnummer', volg)
-      const regel: Logregel = {
-        id: nieuwId(),
-        toestelId,
-        volgnummer: volg,
-        tijdstip: Date.now(),
-        gebeurtenis: geldig,
-      }
-      await db.events.put(regel)
-      await pasStaatToe(regel)
-    },
-  )
+  await db.transaction('rw', SCHRIJF_TABELLEN(), async () => {
+    const toestelId = await haalToestelId()
+    const volg = ((await leesMeta<number>('volgnummer')) ?? 0) + 1
+    await schrijfMeta('volgnummer', volg)
+    const regel: Logregel = {
+      id: nieuwId(),
+      toestelId,
+      volgnummer: volg,
+      tijdstip: Date.now(),
+      gebeurtenis: geldig,
+    }
+    await db.events.put(regel)
+    await pasStaatToe(regel)
+  })
 }
 
 // Herbouwt de volledige staat uit het logboek. Nodig na het binnenhalen van
@@ -98,7 +113,7 @@ export async function herbouwStaat(): Promise<void> {
   const staat = pasToe(regels)
   await db.transaction(
     'rw',
-    [db.rekeningen, db.transacties, db.categorieen, db.budgetten, db.dossiers, db.gedeeldeKosten],
+    [db.rekeningen, db.transacties, db.categorieen, db.budgetten, db.dossiers, db.gedeeldeKosten, db.verrekeningen],
     async () => {
       await db.rekeningen.clear()
       await db.transacties.clear()
@@ -106,12 +121,14 @@ export async function herbouwStaat(): Promise<void> {
       await db.budgetten.clear()
       await db.dossiers.clear()
       await db.gedeeldeKosten.clear()
+      await db.verrekeningen.clear()
       await db.rekeningen.bulkPut([...staat.rekeningen.values()])
       await db.transacties.bulkPut([...staat.transacties.values()])
       await db.categorieen.bulkPut([...staat.categorieen.values()])
       await db.budgetten.bulkPut([...staat.budgetten.values()])
       await db.dossiers.bulkPut([...staat.dossiers.values()])
       await db.gedeeldeKosten.bulkPut([...staat.gedeeldeKosten.values()])
+      await db.verrekeningen.bulkPut([...staat.verrekeningen.values()])
     },
   )
 }

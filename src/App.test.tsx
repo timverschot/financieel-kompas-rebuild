@@ -121,4 +121,24 @@ describe('App', () => {
 
     expect(await screen.findByText(/Partner is jou/)).toHaveTextContent(/50/)
   })
+
+  it('legt een afrekening vast en zet de openstaande verrekening op nul', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
+    await user.type(screen.getByLabelText('Aandeel jij (%)'), '50')
+    await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
+
+    await user.type(await screen.findByLabelText('Kostomschrijving'), 'Schoolreis')
+    await user.type(screen.getByLabelText('Kostbedrag (€)'), '100')
+    await user.click(screen.getByRole('button', { name: 'Kost toevoegen' }))
+    await screen.findByText(/Partner is jou/)
+
+    await user.click(screen.getByRole('button', { name: 'Leg afrekening vast' }))
+
+    expect(await screen.findByText('Niets te verrekenen')).toBeInTheDocument()
+    expect(screen.getByText('Vastgelegde afrekeningen')).toBeInTheDocument()
+  })
 })

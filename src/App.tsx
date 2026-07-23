@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import type { Budget, Categorie, Dossier, GedeeldeKost, Rekening, Transactie } from './data/schema'
+import type {
+  Budget,
+  Categorie,
+  Dossier,
+  GedeeldeKost,
+  Rekening,
+  Transactie,
+  Verrekening,
+} from './data/schema'
 import {
   bewaarBudget,
   bewaarCategorie,
@@ -8,12 +16,14 @@ import {
   bewaarGedeeldeKost,
   bewaarRekening,
   bewaarTransactie,
+  bewaarVerrekening,
   laadBudgetten,
   laadCategorieen,
   laadDossiers,
   laadGedeeldeKosten,
   laadRekeningen,
   laadTransacties,
+  laadVerrekeningen,
   verwijderGedeeldeKost,
   verwijderTransactie,
 } from './data/repository'
@@ -26,6 +36,8 @@ import { RekeningFormulier } from './components/RekeningFormulier'
 import { CategorieFormulier } from './components/CategorieFormulier'
 import { BudgetFormulier } from './components/BudgetFormulier'
 import { DossierSectie } from './components/DossierSectie'
+import { saldoVerrekening } from './utils/dossier'
+import { nieuwId } from './data/sync/id'
 import { uitgavenInMaand } from './utils/budget'
 import { maandInkomsten, maandUitgaven, uitgavenPerCategorie } from './utils/overzicht'
 import { formatEuro } from './utils/format'
@@ -66,6 +78,7 @@ export function App() {
   const [budgetten, setBudgetten] = useState<Budget[]>([])
   const [dossiers, setDossiers] = useState<Dossier[]>([])
   const [gedeeldeKosten, setGedeeldeKosten] = useState<GedeeldeKost[]>([])
+  const [verrekeningen, setVerrekeningen] = useState<Verrekening[]>([])
   const [ongeldig, setOngeldig] = useState(0)
   const [verbonden, setVerbonden] = useState(false)
   const [bezig, setBezig] = useState(false)
@@ -75,13 +88,14 @@ export function App() {
   const backendRef = useRef<DriveBackend | null>(null)
 
   async function herlaad() {
-    const [tx, rk, cat, bud, dos, kos] = await Promise.all([
+    const [tx, rk, cat, bud, dos, kos, ver] = await Promise.all([
       laadTransacties(),
       laadRekeningen(),
       laadCategorieen(),
       laadBudgetten(),
       laadDossiers(),
       laadGedeeldeKosten(),
+      laadVerrekeningen(),
     ])
     setTransacties(tx.geldig)
     setOngeldig(tx.ongeldig)
@@ -90,19 +104,21 @@ export function App() {
     setBudgetten(bud.geldig)
     setDossiers(dos.geldig)
     setGedeeldeKosten(kos.geldig)
+    setVerrekeningen(ver.geldig)
   }
 
   useEffect(() => {
     let actief = true
     async function laad() {
       await seedIndienLeeg()
-      const [tx, rk, cat, bud, dos, kos] = await Promise.all([
+      const [tx, rk, cat, bud, dos, kos, ver] = await Promise.all([
         laadTransacties(),
         laadRekeningen(),
         laadCategorieen(),
         laadBudgetten(),
         laadDossiers(),
         laadGedeeldeKosten(),
+        laadVerrekeningen(),
       ])
       if (!actief) return
       setTransacties(tx.geldig)
@@ -112,6 +128,7 @@ export function App() {
       setBudgetten(bud.geldig)
       setDossiers(dos.geldig)
       setGedeeldeKosten(kos.geldig)
+      setVerrekeningen(ver.geldig)
     }
     void laad()
     return () => {
@@ -152,6 +169,18 @@ export function App() {
 
   async function verwijderKost(id: string) {
     await verwijderGedeeldeKost(id)
+    await herlaad()
+  }
+
+  async function legAfrekeningVast(dossier: Dossier, openKosten: GedeeldeKost[]) {
+    if (openKosten.length === 0) return
+    const bedrag = saldoVerrekening(dossier.aandeelJij, openKosten)
+    const verId = nieuwId()
+    const datum = new Date().toISOString().slice(0, 10)
+    await bewaarVerrekening({ id: verId, dossierId: dossier.id, datum, bedrag })
+    for (const k of openKosten) {
+      await bewaarGedeeldeKost({ ...k, verrekeningId: verId })
+    }
     await herlaad()
   }
 
@@ -386,9 +415,11 @@ export function App() {
       <DossierSectie
         dossiers={dossiers}
         kosten={gedeeldeKosten}
+        verrekeningen={verrekeningen}
         onDossierOpslaan={voegDossierToe}
         onKostOpslaan={voegGedeeldeKostToe}
         onKostVerwijderen={verwijderKost}
+        onAfrekenen={legAfrekeningVast}
       />
 
       <hr style={scheiding} />

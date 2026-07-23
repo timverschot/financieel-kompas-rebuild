@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
-import type { Dossier, GedeeldeKost } from '../data/schema'
+import type { Dossier, GedeeldeKost, Verrekening } from '../data/schema'
 import { DossierFormulier } from './DossierFormulier'
 import { GedeeldeKostFormulier } from './GedeeldeKostFormulier'
 import { saldoVerrekening } from '../utils/dossier'
@@ -14,24 +14,33 @@ const veld: CSSProperties = {
   boxSizing: 'border-box',
 }
 
-// De volledige Dossiers-sectie: kies of maak een dossier, beheer de gedeelde
-// kosten ervan, en zie de automatische verrekening.
+function verrekentekst(netto: number): string {
+  if (netto > 0.005) return `Partner is jou ${formatEuro(netto)} verschuldigd`
+  if (netto < -0.005) return `Jij bent partner ${formatEuro(-netto)} verschuldigd`
+  return 'Niets te verrekenen'
+}
+
+// De volledige Dossiers-sectie: kies of maak een dossier, beheer de open
+// gedeelde kosten, leg een afrekening vast, en bekijk de geschiedenis.
 export function DossierSectie({
   dossiers,
   kosten,
+  verrekeningen,
   onDossierOpslaan,
   onKostOpslaan,
   onKostVerwijderen,
+  onAfrekenen,
 }: {
   dossiers: Dossier[]
   kosten: GedeeldeKost[]
+  verrekeningen: Verrekening[]
   onDossierOpslaan: (d: Dossier) => Promise<void> | void
   onKostOpslaan: (k: GedeeldeKost) => Promise<void> | void
   onKostVerwijderen: (id: string) => Promise<void> | void
+  onAfrekenen: (dossier: Dossier, openKosten: GedeeldeKost[]) => Promise<void> | void
 }) {
   const [geselecteerd, setGeselecteerd] = useState('')
 
-  // Zorg dat er altijd een geldig dossier geselecteerd is zodra er dossiers zijn.
   useEffect(() => {
     if (dossiers.length === 0) {
       setGeselecteerd('')
@@ -41,14 +50,12 @@ export function DossierSectie({
   }, [dossiers, geselecteerd])
 
   const dossier = dossiers.find((d) => d.id === geselecteerd) ?? null
-  const kostenVan = dossier ? kosten.filter((k) => k.dossierId === dossier.id) : []
-  const netto = dossier ? saldoVerrekening(dossier.aandeelJij, kostenVan) : 0
-  const verrekentekst =
-    netto > 0.005
-      ? `Partner is jou ${formatEuro(netto)} verschuldigd`
-      : netto < -0.005
-        ? `Jij bent partner ${formatEuro(-netto)} verschuldigd`
-        : 'Niets te verrekenen'
+  const alleKosten = dossier ? kosten.filter((k) => k.dossierId === dossier.id) : []
+  const openKosten = alleKosten.filter((k) => !k.verrekeningId)
+  const netto = dossier ? saldoVerrekening(dossier.aandeelJij, openKosten) : 0
+  const geschiedenis = dossier
+    ? verrekeningen.filter((v) => v.dossierId === dossier.id).sort((a, b) => (a.datum < b.datum ? 1 : -1))
+    : []
 
   return (
     <section>
@@ -73,7 +80,7 @@ export function DossierSectie({
       {dossier && (
         <div style={{ marginTop: '1rem' }}>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {kostenVan.map((k) => (
+            {openKosten.map((k) => (
               <li
                 key={k.id}
                 style={{
@@ -105,9 +112,37 @@ export function DossierSectie({
             ))}
           </ul>
 
-          <p style={{ fontWeight: 'bold', marginTop: '0.75rem' }}>{verrekentekst}</p>
+          <p style={{ fontWeight: 'bold', marginTop: '0.75rem' }}>{verrekentekst(netto)}</p>
+
+          <button
+            onClick={() => onAfrekenen(dossier, openKosten)}
+            disabled={openKosten.length === 0}
+            style={{
+              padding: '0.4rem 0.8rem',
+              borderRadius: 8,
+              border: '1px solid #ccc',
+              background: openKosten.length === 0 ? '#f2f2f2' : '#f3eef7',
+              cursor: openKosten.length === 0 ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Leg afrekening vast
+          </button>
 
           <GedeeldeKostFormulier dossierId={dossier.id} onOpslaan={onKostOpslaan} />
+
+          {geschiedenis.length > 0 && (
+            <div style={{ marginTop: '1rem' }}>
+              <h3 style={{ fontSize: '0.9rem', margin: '0 0 0.25rem' }}>Vastgelegde afrekeningen</h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {geschiedenis.map((v) => (
+                  <li key={v.id} style={{ display: 'flex', justifyContent: 'space-between', color: '#666', padding: '0.2rem 0' }}>
+                    <span>{v.datum}</span>
+                    <span>{verrekentekst(v.bedrag)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </section>

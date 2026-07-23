@@ -1,4 +1,12 @@
-import type { Budget, Categorie, Dossier, GedeeldeKost, Rekening, Transactie } from '../schema'
+import type {
+  Budget,
+  Categorie,
+  Dossier,
+  GedeeldeKost,
+  Rekening,
+  Transactie,
+  Verrekening,
+} from '../schema'
 import type { Logregel } from './events'
 
 export type Staat = {
@@ -8,6 +16,7 @@ export type Staat = {
   budgetten: Map<string, Budget>
   dossiers: Map<string, Dossier>
   gedeeldeKosten: Map<string, GedeeldeKost>
+  verrekeningen: Map<string, Verrekening>
 }
 
 // Bepaalt de volgorde van twee logregels: eerst op tijd, dan op toestel, dan op
@@ -30,6 +39,7 @@ export function pasToe(regels: Logregel[]): Staat {
     budgetten: new Map(),
     dossiers: new Map(),
     gedeeldeKosten: new Map(),
+    verrekeningen: new Map(),
   }
   for (const r of gesorteerd) {
     const g = r.gebeurtenis
@@ -69,6 +79,12 @@ export function pasToe(regels: Logregel[]): Staat {
         break
       case 'gedeeldekost.verwijderd':
         staat.gedeeldeKosten.delete(g.payload.id)
+        break
+      case 'verrekening.bewaard':
+        staat.verrekeningen.set(g.payload.id, g.payload)
+        break
+      case 'verrekening.verwijderd':
+        staat.verrekeningen.delete(g.payload.id)
         break
     }
   }

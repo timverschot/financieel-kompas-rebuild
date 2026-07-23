@@ -50,5 +50,17 @@ export const GedeeldeKostSchema = z.object({
   bedrag: z.number().finite().positive(),
   betaaldDoor: z.enum(['jij', 'partner']),
   datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  // Zodra een kost in een afrekening is vastgelegd, verwijst dit naar die
+  // afrekening. Open (nog niet afgerekende) kosten hebben dit veld niet.
+  verrekeningId: z.string().min(1).optional(),
 })
 export type GedeeldeKost = z.infer<typeof GedeeldeKostSchema>
+
+// Een vastgelegde afrekening: een momentopname van het te verrekenen bedrag.
+export const VerrekeningSchema = z.object({
+  id: z.string().min(1),
+  dossierId: z.string().min(1),
+  datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  bedrag: z.number().finite(), // positief = partner was jou verschuldigd
+})
+export type Verrekening = z.infer<typeof VerrekeningSchema>

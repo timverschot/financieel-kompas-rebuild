@@ -1,5 +1,13 @@
 import Dexie, { type Table } from 'dexie'
-import type { Budget, Categorie, Dossier, GedeeldeKost, Rekening, Transactie } from './schema'
+import type {
+  Budget,
+  Categorie,
+  Dossier,
+  GedeeldeKost,
+  Rekening,
+  Transactie,
+  Verrekening,
+} from './schema'
 import type { Logregel, MetaRegel } from './sync/events'
 import { nieuwId } from './sync/id'
 
@@ -14,6 +22,7 @@ export class FinancieelKompasDB extends Dexie {
   budgetten!: Table<Budget, string>
   dossiers!: Table<Dossier, string>
   gedeeldeKosten!: Table<GedeeldeKost, string>
+  verrekeningen!: Table<Verrekening, string>
 
   constructor() {
     super('financieel-kompas')
@@ -93,6 +102,21 @@ export class FinancieelKompasDB extends Dexie {
       budgetten: 'id, categorieId',
       dossiers: 'id, naam',
       gedeeldeKosten: 'id, dossierId',
+    })
+
+    // Versie 6 - afrekeningen: een tabel voor vastgelegde verrekeningen, en een
+    // extra index op gedeeldeKosten (verrekeningId) om open vs afgerekende
+    // kosten te onderscheiden. Bestaande data blijft ongemoeid.
+    this.version(6).stores({
+      rekeningen: 'id, naam',
+      transacties: 'id, rekeningId, datum, categorieId',
+      events: 'id, toestelId, volgnummer',
+      meta: 'sleutel',
+      categorieen: 'id, naam',
+      budgetten: 'id, categorieId',
+      dossiers: 'id, naam',
+      gedeeldeKosten: 'id, dossierId, verrekeningId',
+      verrekeningen: 'id, dossierId',
     })
   }
 }

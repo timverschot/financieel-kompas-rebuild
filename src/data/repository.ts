@@ -7,12 +7,14 @@ import {
   GedeeldeKostSchema,
   RekeningSchema,
   TransactieSchema,
+  VerrekeningSchema,
   type Budget,
   type Categorie,
   type Dossier,
   type GedeeldeKost,
   type Rekening,
   type Transactie,
+  type Verrekening,
 } from './schema'
 import { pasGebeurtenisToe } from './sync/lokaal'
 
@@ -48,6 +50,11 @@ export async function bewaarDossier(dossier: Dossier): Promise<void> {
 export async function bewaarGedeeldeKost(kost: GedeeldeKost): Promise<void> {
   const geldig = GedeeldeKostSchema.parse(kost)
   await pasGebeurtenisToe({ type: 'gedeeldekost.bewaard', payload: geldig })
+}
+
+export async function bewaarVerrekening(verrekening: Verrekening): Promise<void> {
+  const geldig = VerrekeningSchema.parse(verrekening)
+  await pasGebeurtenisToe({ type: 'verrekening.bewaard', payload: geldig })
 }
 
 export async function verwijderTransactie(id: string): Promise<void> {
@@ -104,4 +111,8 @@ export async function laadDossiers(): Promise<LeesResultaat<Dossier>> {
 
 export async function laadGedeeldeKosten(): Promise<LeesResultaat<GedeeldeKost>> {
   return valideerLijst(await db.gedeeldeKosten.toArray(), GedeeldeKostSchema)
+}
+
+export async function laadVerrekeningen(): Promise<LeesResultaat<Verrekening>> {
+  return valideerLijst(await db.verrekeningen.toArray(), VerrekeningSchema)
 }
