@@ -22,14 +22,31 @@ export const CategorieSchema = z.object({
 })
 export type Categorie = z.infer<typeof CategorieSchema>
 
-export const TransactieSchema = z.object({
-  id: z.string().min(1),
-  datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
-  omschrijving: z.string(),
-  bedrag: z.number().int(), // in centen; positief = inkomst, negatief = uitgave
-  rekeningId: z.string().min(1),
+// Eén deelregel van een gesplitste transactie (kassaticket): een stuk van het
+// totaalbedrag met zijn eigen (optionele) categorie. Bedrag in centen, met
+// hetzelfde teken als het totaal.
+export const TransactieRegelSchema = z.object({
   categorieId: z.string().min(1).optional(),
+  bedrag: z.number().int(),
 })
+export type TransactieRegel = z.infer<typeof TransactieRegelSchema>
+
+export const TransactieSchema = z
+  .object({
+    id: z.string().min(1),
+    datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+    omschrijving: z.string(),
+    bedrag: z.number().int(), // in centen; positief = inkomst, negatief = uitgave
+    rekeningId: z.string().min(1),
+    categorieId: z.string().min(1).optional(),
+    // Optionele uitsplitsing over meerdere categorieën. Is deze aanwezig, dan moet
+    // de som van de deelregels exact gelijk zijn aan 'bedrag'.
+    regels: z.array(TransactieRegelSchema).optional(),
+  })
+  .refine(
+    (t) => !t.regels || t.regels.length === 0 || t.regels.reduce((s, r) => s + r.bedrag, 0) === t.bedrag,
+    { message: 'De som van de deelregels moet gelijk zijn aan het totaalbedrag.' },
+  )
 export type Transactie = z.infer<typeof TransactieSchema>
 
 export const BudgetSchema = z.object({

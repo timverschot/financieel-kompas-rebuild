@@ -26,6 +26,29 @@ describe('TransactieSchema', () => {
   })
 })
 
+describe('TransactieSchema - splitsing', () => {
+  const gesplitst = {
+    id: 't1',
+    datum: '2026-07-01',
+    omschrijving: 'Colruyt',
+    bedrag: -500,
+    rekeningId: 'r1',
+    regels: [
+      { categorieId: 'ov-voeding', bedrag: -300 },
+      { bedrag: -200 },
+    ],
+  }
+
+  it('aanvaardt een splitsing waarvan de regels optellen tot het totaal', () => {
+    expect(TransactieSchema.safeParse(gesplitst).success).toBe(true)
+  })
+
+  it('weigert een splitsing die niet optelt tot het totaal', () => {
+    const fout = { ...gesplitst, regels: [{ bedrag: -300 }, { bedrag: -100 }] }
+    expect(TransactieSchema.safeParse(fout).success).toBe(false)
+  })
+})
+
 describe('BudgetSchema', () => {
   it('aanvaardt een geldig budget', () => {
     expect(BudgetSchema.safeParse({ id: 'b1', categorieId: 'c1', bedrag: 400 }).success).toBe(true)

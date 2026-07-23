@@ -41,4 +41,22 @@ describe('maandoverzicht', () => {
       { naam: 'Zonder categorie', bedrag: 100, kleur: null },
     ])
   })
+
+  it('splitst een gesplitste transactie uit over de juiste categorieën', () => {
+    const gesplitst: Transactie = {
+      id: 's',
+      datum: '2026-07-08',
+      omschrijving: 'Colruyt',
+      bedrag: -500,
+      rekeningId: 'r1',
+      regels: [
+        { categorieId: 'c1', bedrag: -300 },
+        { categorieId: 'c2', bedrag: -200 },
+      ],
+    }
+    expect(uitgavenPerCategorie([gesplitst], categorieen, '2026-07')).toEqual([
+      { naam: 'Voeding', bedrag: 300, kleur: null },
+      { naam: 'Wonen', bedrag: 200, kleur: null },
+    ])
+  })
 })

@@ -1,5 +1,6 @@
 import type { Categorie, Transactie } from '../data/schema'
 import { groepVanCategorie } from '../data/categorieen/resolve'
+import { categorieBedragen } from './transactie'
 
 // Zuivere functies voor het maandoverzicht. 'maand' is in het formaat 'JJJJ-MM'.
 // Los gehouden zodat ze deterministisch getest kunnen worden.
@@ -31,11 +32,16 @@ export function uitgavenPerCategorie(
 ): CategorieUitgave[] {
   const perGroep = new Map<string, { naam: string; kleur: string | null; bedrag: number }>()
   for (const t of transacties) {
-    if (t.bedrag < 0 && t.datum.startsWith(maand)) {
-      const groep = groepVanCategorie(t.categorieId, categorieen)
-      const bestaand = perGroep.get(groep.sleutel)
-      if (bestaand) bestaand.bedrag += Math.abs(t.bedrag)
-      else perGroep.set(groep.sleutel, { naam: groep.naam, kleur: groep.kleur, bedrag: Math.abs(t.bedrag) })
+    if (!t.datum.startsWith(maand)) continue
+    // Splits de transactie uit in haar deelregels (of één regel als ze niet
+    // gesplitst is), zodat elke categorie exact zijn deel krijgt.
+    for (const regel of categorieBedragen(t)) {
+      if (regel.bedrag < 0) {
+        const groep = groepVanCategorie(regel.categorieId, categorieen)
+        const bestaand = perGroep.get(groep.sleutel)
+        if (bestaand) bestaand.bedrag += Math.abs(regel.bedrag)
+        else perGroep.set(groep.sleutel, { naam: groep.naam, kleur: groep.kleur, bedrag: Math.abs(regel.bedrag) })
+      }
     }
   }
 

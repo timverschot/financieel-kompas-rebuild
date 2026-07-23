@@ -571,7 +571,10 @@ export function App() {
 
       <ul style={{ listStyle: 'none', padding: 0, marginTop: '1.5rem' }}>
         {transacties.map((t) => {
-          const cat = categorieNaam(t.categorieId)
+          const cat =
+            t.regels && t.regels.length > 0
+              ? `gesplitst · ${t.regels.length} categorieën`
+              : categorieNaam(t.categorieId)
           return (
             <li
               key={t.id}

@@ -26,4 +26,18 @@ describe('uitgavenInMaand', () => {
   it('geeft 0 wanneer er niets past', () => {
     expect(uitgavenInMaand([], 'c1', '2026-07')).toBe(0)
   })
+
+  it('telt enkel het deel van een gesplitste transactie dat bij de categorie hoort', () => {
+    const gesplitst = tx({
+      id: 's',
+      datum: '2026-07-08',
+      bedrag: -500,
+      regels: [
+        { categorieId: 'c1', bedrag: -300 },
+        { categorieId: 'c2', bedrag: -200 },
+      ],
+    })
+    expect(uitgavenInMaand([gesplitst], 'c1', '2026-07')).toBe(300)
+    expect(uitgavenInMaand([gesplitst], 'c2', '2026-07')).toBe(200)
+  })
 })
