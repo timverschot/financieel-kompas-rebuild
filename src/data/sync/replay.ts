@@ -1,4 +1,4 @@
-import type { Budget, Categorie, Rekening, Transactie } from '../schema'
+import type { Budget, Categorie, Dossier, GedeeldeKost, Rekening, Transactie } from '../schema'
 import type { Logregel } from './events'
 
 export type Staat = {
@@ -6,6 +6,8 @@ export type Staat = {
   transacties: Map<string, Transactie>
   categorieen: Map<string, Categorie>
   budgetten: Map<string, Budget>
+  dossiers: Map<string, Dossier>
+  gedeeldeKosten: Map<string, GedeeldeKost>
 }
 
 // Bepaalt de volgorde van twee logregels: eerst op tijd, dan op toestel, dan op
@@ -18,8 +20,7 @@ function vergelijk(a: Logregel, b: Logregel): number {
 }
 
 // Zuivere functie: gegeven alle logregels, bereken de uiteindelijke staat. De
-// regels worden op volgorde gezet en dan toegepast, zodat de laatste wijziging
-// wint (last-writer-wins). Dezelfde invoer geeft altijd dezelfde uitkomst.
+// laatste wijziging wint (last-writer-wins).
 export function pasToe(regels: Logregel[]): Staat {
   const gesorteerd = [...regels].sort(vergelijk)
   const staat: Staat = {
@@ -27,6 +28,8 @@ export function pasToe(regels: Logregel[]): Staat {
     transacties: new Map(),
     categorieen: new Map(),
     budgetten: new Map(),
+    dossiers: new Map(),
+    gedeeldeKosten: new Map(),
   }
   for (const r of gesorteerd) {
     const g = r.gebeurtenis
@@ -54,6 +57,18 @@ export function pasToe(regels: Logregel[]): Staat {
         break
       case 'budget.verwijderd':
         staat.budgetten.delete(g.payload.id)
+        break
+      case 'dossier.bewaard':
+        staat.dossiers.set(g.payload.id, g.payload)
+        break
+      case 'dossier.verwijderd':
+        staat.dossiers.delete(g.payload.id)
+        break
+      case 'gedeeldekost.bewaard':
+        staat.gedeeldeKosten.set(g.payload.id, g.payload)
+        break
+      case 'gedeeldekost.verwijderd':
+        staat.gedeeldeKosten.delete(g.payload.id)
         break
     }
   }

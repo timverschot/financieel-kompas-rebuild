@@ -3,10 +3,14 @@ import { db } from './db'
 import {
   BudgetSchema,
   CategorieSchema,
+  DossierSchema,
+  GedeeldeKostSchema,
   RekeningSchema,
   TransactieSchema,
   type Budget,
   type Categorie,
+  type Dossier,
+  type GedeeldeKost,
   type Rekening,
   type Transactie,
 } from './schema'
@@ -36,8 +40,22 @@ export async function bewaarBudget(budget: Budget): Promise<void> {
   await pasGebeurtenisToe({ type: 'budget.bewaard', payload: geldig })
 }
 
+export async function bewaarDossier(dossier: Dossier): Promise<void> {
+  const geldig = DossierSchema.parse(dossier)
+  await pasGebeurtenisToe({ type: 'dossier.bewaard', payload: geldig })
+}
+
+export async function bewaarGedeeldeKost(kost: GedeeldeKost): Promise<void> {
+  const geldig = GedeeldeKostSchema.parse(kost)
+  await pasGebeurtenisToe({ type: 'gedeeldekost.bewaard', payload: geldig })
+}
+
 export async function verwijderTransactie(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'transactie.verwijderd', payload: { id } })
+}
+
+export async function verwijderGedeeldeKost(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'gedeeldekost.verwijderd', payload: { id } })
 }
 
 // --- Lezen ---
@@ -78,4 +96,12 @@ export async function laadCategorieen(): Promise<LeesResultaat<Categorie>> {
 
 export async function laadBudgetten(): Promise<LeesResultaat<Budget>> {
   return valideerLijst(await db.budgetten.toArray(), BudgetSchema)
+}
+
+export async function laadDossiers(): Promise<LeesResultaat<Dossier>> {
+  return valideerLijst(await db.dossiers.toArray(), DossierSchema)
+}
+
+export async function laadGedeeldeKosten(): Promise<LeesResultaat<GedeeldeKost>> {
+  return valideerLijst(await db.gedeeldeKosten.toArray(), GedeeldeKostSchema)
 }

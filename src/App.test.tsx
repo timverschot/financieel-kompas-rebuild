@@ -104,4 +104,21 @@ describe('App', () => {
 
     expect(await screen.findByRole('progressbar', { name: 'Voeding' })).toBeInTheDocument()
   })
+
+  it('maakt een dossier, voegt een gedeelde kost toe en verrekent (50/50, jij betaalt 100 -> partner 50)', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
+    await user.type(screen.getByLabelText('Aandeel jij (%)'), '50')
+    await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
+
+    // Het dossier wordt automatisch geselecteerd; het kostformulier verschijnt.
+    await user.type(await screen.findByLabelText('Kostomschrijving'), 'Schoolreis')
+    await user.type(screen.getByLabelText('Kostbedrag (€)'), '100')
+    await user.click(screen.getByRole('button', { name: 'Kost toevoegen' }))
+
+    expect(await screen.findByText(/Partner is jou/)).toHaveTextContent(/50/)
+  })
 })

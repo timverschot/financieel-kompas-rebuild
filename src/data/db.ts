@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Budget, Categorie, Rekening, Transactie } from './schema'
+import type { Budget, Categorie, Dossier, GedeeldeKost, Rekening, Transactie } from './schema'
 import type { Logregel, MetaRegel } from './sync/events'
 import { nieuwId } from './sync/id'
 
@@ -12,6 +12,8 @@ export class FinancieelKompasDB extends Dexie {
   meta!: Table<MetaRegel, string>
   categorieen!: Table<Categorie, string>
   budgetten!: Table<Budget, string>
+  dossiers!: Table<Dossier, string>
+  gedeeldeKosten!: Table<GedeeldeKost, string>
 
   constructor() {
     super('financieel-kompas')
@@ -78,6 +80,19 @@ export class FinancieelKompasDB extends Dexie {
       meta: 'sleutel',
       categorieen: 'id, naam',
       budgetten: 'id, categorieId',
+    })
+
+    // Versie 5 - Dossiers-module: dossiers voor gedeelde kosten + de gedeelde
+    // kosten zelf. Nieuwe tabellen; geen omzetting van bestaande data nodig.
+    this.version(5).stores({
+      rekeningen: 'id, naam',
+      transacties: 'id, rekeningId, datum, categorieId',
+      events: 'id, toestelId, volgnummer',
+      meta: 'sleutel',
+      categorieen: 'id, naam',
+      budgetten: 'id, categorieId',
+      dossiers: 'id, naam',
+      gedeeldeKosten: 'id, dossierId',
     })
   }
 }

@@ -33,3 +33,22 @@ export const BudgetSchema = z.object({
   bedrag: z.number().finite().positive(), // maandbudget, altijd positief
 })
 export type Budget = z.infer<typeof BudgetSchema>
+
+// Een dossier voor gedeelde kosten (bv. tussen co-ouders). 'aandeelJij' is het
+// percentage (0-100) van elke kost dat jij hoort te dragen.
+export const DossierSchema = z.object({
+  id: z.string().min(1),
+  naam: z.string().min(1),
+  aandeelJij: z.number().min(0).max(100),
+})
+export type Dossier = z.infer<typeof DossierSchema>
+
+export const GedeeldeKostSchema = z.object({
+  id: z.string().min(1),
+  dossierId: z.string().min(1),
+  omschrijving: z.string(),
+  bedrag: z.number().finite().positive(),
+  betaaldDoor: z.enum(['jij', 'partner']),
+  datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+})
+export type GedeeldeKost = z.infer<typeof GedeeldeKostSchema>

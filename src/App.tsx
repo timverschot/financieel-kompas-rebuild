@@ -1,15 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import type { Budget, Categorie, Rekening, Transactie } from './data/schema'
+import type { Budget, Categorie, Dossier, GedeeldeKost, Rekening, Transactie } from './data/schema'
 import {
   bewaarBudget,
   bewaarCategorie,
+  bewaarDossier,
+  bewaarGedeeldeKost,
   bewaarRekening,
   bewaarTransactie,
   laadBudgetten,
   laadCategorieen,
+  laadDossiers,
+  laadGedeeldeKosten,
   laadRekeningen,
   laadTransacties,
+  verwijderGedeeldeKost,
   verwijderTransactie,
 } from './data/repository'
 import { seedIndienLeeg } from './data/seed'
@@ -20,6 +25,7 @@ import { TransactieFormulier } from './components/TransactieFormulier'
 import { RekeningFormulier } from './components/RekeningFormulier'
 import { CategorieFormulier } from './components/CategorieFormulier'
 import { BudgetFormulier } from './components/BudgetFormulier'
+import { DossierSectie } from './components/DossierSectie'
 import { uitgavenInMaand } from './utils/budget'
 import { maandInkomsten, maandUitgaven, uitgavenPerCategorie } from './utils/overzicht'
 import { formatEuro } from './utils/format'
@@ -58,6 +64,8 @@ export function App() {
   const [rekeningen, setRekeningen] = useState<Rekening[]>([])
   const [categorieen, setCategorieen] = useState<Categorie[]>([])
   const [budgetten, setBudgetten] = useState<Budget[]>([])
+  const [dossiers, setDossiers] = useState<Dossier[]>([])
+  const [gedeeldeKosten, setGedeeldeKosten] = useState<GedeeldeKost[]>([])
   const [ongeldig, setOngeldig] = useState(0)
   const [verbonden, setVerbonden] = useState(false)
   const [bezig, setBezig] = useState(false)
@@ -67,28 +75,34 @@ export function App() {
   const backendRef = useRef<DriveBackend | null>(null)
 
   async function herlaad() {
-    const [tx, rk, cat, bud] = await Promise.all([
+    const [tx, rk, cat, bud, dos, kos] = await Promise.all([
       laadTransacties(),
       laadRekeningen(),
       laadCategorieen(),
       laadBudgetten(),
+      laadDossiers(),
+      laadGedeeldeKosten(),
     ])
     setTransacties(tx.geldig)
     setOngeldig(tx.ongeldig)
     setRekeningen(rk.geldig)
     setCategorieen(cat.geldig)
     setBudgetten(bud.geldig)
+    setDossiers(dos.geldig)
+    setGedeeldeKosten(kos.geldig)
   }
 
   useEffect(() => {
     let actief = true
     async function laad() {
       await seedIndienLeeg()
-      const [tx, rk, cat, bud] = await Promise.all([
+      const [tx, rk, cat, bud, dos, kos] = await Promise.all([
         laadTransacties(),
         laadRekeningen(),
         laadCategorieen(),
         laadBudgetten(),
+        laadDossiers(),
+        laadGedeeldeKosten(),
       ])
       if (!actief) return
       setTransacties(tx.geldig)
@@ -96,6 +110,8 @@ export function App() {
       setRekeningen(rk.geldig)
       setCategorieen(cat.geldig)
       setBudgetten(bud.geldig)
+      setDossiers(dos.geldig)
+      setGedeeldeKosten(kos.geldig)
     }
     void laad()
     return () => {
@@ -121,6 +137,21 @@ export function App() {
 
   async function voegBudgetToe(b: Budget) {
     await bewaarBudget(b)
+    await herlaad()
+  }
+
+  async function voegDossierToe(d: Dossier) {
+    await bewaarDossier(d)
+    await herlaad()
+  }
+
+  async function voegGedeeldeKostToe(k: GedeeldeKost) {
+    await bewaarGedeeldeKost(k)
+    await herlaad()
+  }
+
+  async function verwijderKost(id: string) {
+    await verwijderGedeeldeKost(id)
     await herlaad()
   }
 
@@ -349,6 +380,16 @@ export function App() {
         <span>Saldo</span>
         <span>{formatEuro(totaalSaldo)}</span>
       </p>
+
+      <hr style={scheiding} />
+
+      <DossierSectie
+        dossiers={dossiers}
+        kosten={gedeeldeKosten}
+        onDossierOpslaan={voegDossierToe}
+        onKostOpslaan={voegGedeeldeKostToe}
+        onKostVerwijderen={verwijderKost}
+      />
 
       <hr style={scheiding} />
 

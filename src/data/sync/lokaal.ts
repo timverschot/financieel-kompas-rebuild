@@ -51,6 +51,18 @@ async function pasStaatToe(regel: Logregel): Promise<void> {
     case 'budget.verwijderd':
       await db.budgetten.delete(g.payload.id)
       break
+    case 'dossier.bewaard':
+      await db.dossiers.put(g.payload)
+      break
+    case 'dossier.verwijderd':
+      await db.dossiers.delete(g.payload.id)
+      break
+    case 'gedeeldekost.bewaard':
+      await db.gedeeldeKosten.put(g.payload)
+      break
+    case 'gedeeldekost.verwijderd':
+      await db.gedeeldeKosten.delete(g.payload.id)
+      break
   }
 }
 
@@ -61,7 +73,7 @@ export async function pasGebeurtenisToe(gebeurtenis: Gebeurtenis): Promise<void>
   const geldig = GebeurtenisSchema.parse(gebeurtenis)
   await db.transaction(
     'rw',
-    [db.events, db.transacties, db.rekeningen, db.categorieen, db.budgetten, db.meta],
+    [db.events, db.transacties, db.rekeningen, db.categorieen, db.budgetten, db.dossiers, db.gedeeldeKosten, db.meta],
     async () => {
       const toestelId = await haalToestelId()
       const volg = ((await leesMeta<number>('volgnummer')) ?? 0) + 1
@@ -84,14 +96,22 @@ export async function pasGebeurtenisToe(gebeurtenis: Gebeurtenis): Promise<void>
 export async function herbouwStaat(): Promise<void> {
   const regels = await db.events.toArray()
   const staat = pasToe(regels)
-  await db.transaction('rw', db.rekeningen, db.transacties, db.categorieen, db.budgetten, async () => {
-    await db.rekeningen.clear()
-    await db.transacties.clear()
-    await db.categorieen.clear()
-    await db.budgetten.clear()
-    await db.rekeningen.bulkPut([...staat.rekeningen.values()])
-    await db.transacties.bulkPut([...staat.transacties.values()])
-    await db.categorieen.bulkPut([...staat.categorieen.values()])
-    await db.budgetten.bulkPut([...staat.budgetten.values()])
-  })
+  await db.transaction(
+    'rw',
+    [db.rekeningen, db.transacties, db.categorieen, db.budgetten, db.dossiers, db.gedeeldeKosten],
+    async () => {
+      await db.rekeningen.clear()
+      await db.transacties.clear()
+      await db.categorieen.clear()
+      await db.budgetten.clear()
+      await db.dossiers.clear()
+      await db.gedeeldeKosten.clear()
+      await db.rekeningen.bulkPut([...staat.rekeningen.values()])
+      await db.transacties.bulkPut([...staat.transacties.values()])
+      await db.categorieen.bulkPut([...staat.categorieen.values()])
+      await db.budgetten.bulkPut([...staat.budgetten.values()])
+      await db.dossiers.bulkPut([...staat.dossiers.values()])
+      await db.gedeeldeKosten.bulkPut([...staat.gedeeldeKosten.values()])
+    },
+  )
 }
