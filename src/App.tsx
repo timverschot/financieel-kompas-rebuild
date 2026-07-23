@@ -46,6 +46,7 @@ import { RekeningFormulier } from './components/RekeningFormulier'
 import { CategorieFormulier } from './components/CategorieFormulier'
 import { BudgetFormulier } from './components/BudgetFormulier'
 import { DossierSectie } from './components/DossierSectie'
+import { CategorieBoom } from './components/CategorieBoom'
 import { IndexatieCalculator } from './components/IndexatieCalculator'
 import { TerugkerendeSectie } from './components/TerugkerendeSectie'
 import { saldoVerrekening } from './utils/dossier'
@@ -494,6 +495,10 @@ export function App() {
         </ul>
         <CategorieFormulier onOpslaan={slaCategorieOp} onAnnuleer={() => setBewerkCategorie(null)} bewerken={bewerkCategorie} />
       </section>
+
+      <hr style={scheiding} />
+
+      <CategorieBoom />
 
       <hr style={scheiding} />
 
