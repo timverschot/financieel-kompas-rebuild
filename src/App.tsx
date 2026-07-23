@@ -36,6 +36,7 @@ import { RekeningFormulier } from './components/RekeningFormulier'
 import { CategorieFormulier } from './components/CategorieFormulier'
 import { BudgetFormulier } from './components/BudgetFormulier'
 import { DossierSectie } from './components/DossierSectie'
+import { IndexatieCalculator } from './components/IndexatieCalculator'
 import { saldoVerrekening } from './utils/dossier'
 import { nieuwId } from './data/sync/id'
 import { uitgavenInMaand } from './utils/budget'
@@ -421,6 +422,10 @@ export function App() {
         onKostVerwijderen={verwijderKost}
         onAfrekenen={legAfrekeningVast}
       />
+
+      <hr style={scheiding} />
+
+      <IndexatieCalculator />
 
       <hr style={scheiding} />
 
