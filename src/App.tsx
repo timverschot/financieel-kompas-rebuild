@@ -79,6 +79,7 @@ import { synchroniseer } from './data/sync/sync'
 import { DriveBackend } from './data/sync/drive/driveBackend'
 import { vraagToken, heeftOoitVerbonden } from './data/sync/drive/auth'
 import { TransactieFormulier } from './components/TransactieFormulier'
+import { TransactieLijst } from './components/TransactieLijst'
 import { RekeningFormulier, REKENING_TYPE_LABEL } from './components/RekeningFormulier'
 import { CategorieFormulier } from './components/CategorieFormulier'
 import { BudgetFormulier } from './components/BudgetFormulier'
@@ -948,48 +949,17 @@ export function App() {
         />
       </section>
 
-      <ul style={{ listStyle: 'none', padding: 0, marginTop: '1.5rem' }}>
-        {transacties.map((tx) => {
-          const cat =
-            tx.regels && tx.regels.length > 0
-              ? t('gesplitst · {n} categorieën', { n: tx.regels.length })
-              : categorieNaam(tx.categorieId)
-          return (
-            <li
-              key={tx.id}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '0.5rem 0',
-                borderBottom: '1px solid #eee',
-              }}
-            >
-              <span>
-                {tx.omschrijving}
-                {cat && <span style={{ color: '#999', fontSize: '0.85rem' }}> · {cat}</span>}
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <span style={{ color: tx.bedrag < 0 ? '#c0392b' : '#27ae60' }}>{formatEuro(tx.bedrag)}</span>
-                <button
-                  aria-label={t('Bewerk {oms}', { oms: tx.omschrijving })}
-                  onClick={() => setBewerkTransactie(tx)}
-                  style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer', fontSize: '1rem' }}
-                >
-                  ✎
-                </button>
-                <button
-                  aria-label={t('Verwijder {oms}', { oms: tx.omschrijving })}
-                  onClick={() => verwijder(tx.id)}
-                  style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}
-                >
-                  ×
-                </button>
-              </span>
-            </li>
-          )
-        })}
-      </ul>
+      <div style={{ marginTop: '1.5rem' }}>
+        <ErrorBoundary naam="Transactielijst">
+          <TransactieLijst
+            transacties={transacties}
+            categorieen={categorieen}
+            rekeningen={actieveRekeningen}
+            onBewerk={setBewerkTransactie}
+            onVerwijder={verwijder}
+          />
+        </ErrorBoundary>
+      </div>
 
       <p style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '1.2rem', marginTop: '1rem' }}>
         <span>{t('Saldo')}</span>

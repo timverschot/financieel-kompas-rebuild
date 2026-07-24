@@ -422,6 +422,23 @@ const en: Record<string, string> = {
   'verlopen': 'expired',
   'nog {n} dag(en)': '{n} day(s) left',
   'nog {n} maand(en)': '{n} month(s) left',
+  // Zoeken & filteren over transacties (Ronde 3 · Brok H)
+  'Zoek in transacties': 'Search transactions',
+  'Zoek op omschrijving…': 'Search by description…',
+  'Richting': 'Direction',
+  'Alles': 'All',
+  'Alle rekeningen': 'All accounts',
+  'Hoofdcategorie': 'Main category',
+  'Subcategorie': 'Subcategory',
+  'Alle subcategorieën': 'All subcategories',
+  'Van': 'From',
+  'Tot': 'To',
+  'Wis filters': 'Clear filters',
+  '{n} transactie(s) gevonden': '{n} transaction(s) found',
+  '{n} transactie(s) getoond': '{n} transaction(s) shown',
+  'Geen transacties gevonden.': 'No transactions found.',
+  'Toon oudere transacties ({n} ouder dan {maanden} maanden)': 'Show older transactions ({n} older than {maanden} months)',
+  'Toon enkel recente maanden': 'Show only recent months',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -827,6 +844,23 @@ const fr: Record<string, string> = {
   'verlopen': 'expiré',
   'nog {n} dag(en)': '{n} jour(s) restant(s)',
   'nog {n} maand(en)': '{n} mois restant(s)',
+  // Zoeken & filteren over transacties (Ronde 3 · Brok H)
+  'Zoek in transacties': 'Rechercher des transactions',
+  'Zoek op omschrijving…': 'Rechercher par description…',
+  'Richting': 'Sens',
+  'Alles': 'Tout',
+  'Alle rekeningen': 'Tous les comptes',
+  'Hoofdcategorie': 'Catégorie principale',
+  'Subcategorie': 'Sous-catégorie',
+  'Alle subcategorieën': 'Toutes les sous-catégories',
+  'Van': 'Du',
+  'Tot': 'Au',
+  'Wis filters': 'Effacer les filtres',
+  '{n} transactie(s) gevonden': '{n} transaction(s) trouvée(s)',
+  '{n} transactie(s) getoond': '{n} transaction(s) affichée(s)',
+  'Geen transacties gevonden.': 'Aucune transaction trouvée.',
+  'Toon oudere transacties ({n} ouder dan {maanden} maanden)': 'Afficher les transactions plus anciennes ({n} de plus de {maanden} mois)',
+  'Toon enkel recente maanden': 'Afficher uniquement les mois récents',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 
