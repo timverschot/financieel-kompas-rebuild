@@ -4,6 +4,7 @@ import type { Categorie, GedeeldeKost, Kind } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { CategorieKiezer } from './CategorieKiezer'
+import { verkleinAfbeelding } from '../utils/afbeelding'
 import { useT } from '../i18n'
 
 const vandaag = () => new Date().toISOString().slice(0, 10)
@@ -45,6 +46,8 @@ export function GedeeldeKostFormulier({
   const [categorieId, setCategorieId] = useState('')
   const [kostenType, setKostenType] = useState<'gewoon' | 'buitengewoon'>('gewoon')
   const [aandeelOverride, setAandeelOverride] = useState('')
+  const [bonnetje, setBonnetje] = useState('')
+  const [bezigBon, setBezigBon] = useState(false)
 
   useEffect(() => {
     if (bewerken) {
@@ -56,6 +59,7 @@ export function GedeeldeKostFormulier({
       setCategorieId(bewerken.categorieId ?? '')
       setKostenType(bewerken.kostenType ?? 'gewoon')
       setAandeelOverride(typeof bewerken.aandeelJijOverride === 'number' ? String(bewerken.aandeelJijOverride) : '')
+      setBonnetje(bewerken.bonnetje ?? '')
     } else {
       setOmschrijving('')
       setBedrag('')
@@ -65,6 +69,7 @@ export function GedeeldeKostFormulier({
       setCategorieId('')
       setKostenType('gewoon')
       setAandeelOverride('')
+      setBonnetje('')
     }
   }, [bewerken])
 
@@ -91,9 +96,22 @@ export function GedeeldeKostFormulier({
       ...(kindIds.length > 0 ? { kindIds } : {}),
       ...(categorieId ? { categorieId } : {}),
       ...(heeftOverride ? { aandeelJijOverride: override } : {}),
-      // Behoud de koppeling aan een afrekening bij het bewerken.
+      ...(bonnetje ? { bonnetje } : {}),
+      // Behoud de koppeling aan een afrekening en de afgerekend-status bij bewerken.
       ...(bewerken?.verrekeningId ? { verrekeningId: bewerken.verrekeningId } : {}),
+      ...(bewerken?.afgerekend ? { afgerekend: true } : {}),
     })
+  }
+
+  async function kiesBonnetje(bestand: File) {
+    setBezigBon(true)
+    try {
+      setBonnetje(await verkleinAfbeelding(bestand))
+    } catch {
+      // stil: een mislukte bon mag het toevoegen niet blokkeren.
+    } finally {
+      setBezigBon(false)
+    }
   }
 
   return (
@@ -144,6 +162,33 @@ export function GedeeldeKostFormulier({
       <div style={rij}>
         <label htmlFor="kost-override">{t('Eigen verdeling (% jij, optioneel)')}</label>
         <input id="kost-override" style={veld} inputMode="decimal" placeholder={t('leeg = standaard van het dossier')} value={aandeelOverride} onChange={(e) => setAandeelOverride(e.target.value)} />
+      </div>
+      <div style={rij}>
+        <label htmlFor="kost-bon">{t('Bon/factuur (optioneel)')}</label>
+        {bonnetje ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: 2 }}>
+            {bonnetje.startsWith('data:image') && (
+              <img src={bonnetje} alt={t('Bon/factuur')} style={{ maxHeight: 60, borderRadius: 6, border: '1px solid #eee' }} />
+            )}
+            <a href={bonnetje} target="_blank" rel="noreferrer" style={{ color: '#2c6cb0' }}>{t('bekijken')}</a>
+            <button type="button" onClick={() => setBonnetje('')} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer' }}>
+              {t('verwijderen')}
+            </button>
+          </div>
+        ) : (
+          <input
+            id="kost-bon"
+            type="file"
+            accept="image/*,application/pdf"
+            style={{ marginTop: 2 }}
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) void kiesBonnetje(f)
+              e.target.value = ''
+            }}
+          />
+        )}
+        {bezigBon && <span style={{ color: '#888', fontSize: '0.85rem' }}> {t('bezig…')}</span>}
       </div>
       <button
         type="submit"

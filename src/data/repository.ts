@@ -67,6 +67,10 @@ export async function bewaarVerrekening(verrekening: Verrekening): Promise<void>
   await pasGebeurtenisToe({ type: 'verrekening.bewaard', payload: geldig })
 }
 
+export async function verwijderVerrekening(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'verrekening.verwijderd', payload: { id } })
+}
+
 export async function bewaarTerugkerendePost(post: TerugkerendePost): Promise<void> {
   const geldig = TerugkerendePostSchema.parse(post)
   await pasGebeurtenisToe({ type: 'terugkerendepost.bewaard', payload: geldig })

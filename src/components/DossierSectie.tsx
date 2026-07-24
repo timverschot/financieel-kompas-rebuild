@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { Categorie, Dossier, GedeeldeKost, Kind, Verrekening } from '../data/schema'
 import { DossierFormulier } from './DossierFormulier'
 import { GedeeldeKostFormulier } from './GedeeldeKostFormulier'
 import { CategorieKiezer } from './CategorieKiezer'
 import { saldoVerrekeningDossier } from '../utils/dossier'
+import { isOpenKost, kostenVoorAfrekening, type AfrekeningFilter } from '../utils/afrekening'
+import { verrekenTekst, afrekeningSamenvatting } from '../utils/afrekeningTekst'
+import { exporteerAfrekeningPDF } from '../utils/afrekeningPdf'
 import { labelVanCategorie } from '../data/categorieen/resolve'
 import { formatEuro } from '../utils/format'
-import { useT, type Vertaler } from '../i18n'
+import { useT } from '../i18n'
 
 const veld: CSSProperties = {
   display: 'block',
@@ -16,17 +19,12 @@ const veld: CSSProperties = {
   marginTop: 2,
   boxSizing: 'border-box',
 }
+const blok: CSSProperties = { background: '#faf9f7', border: '1px solid #eee', borderRadius: 8, padding: '0.6rem', marginBottom: '0.75rem' }
 
-function verrekentekst(t: Vertaler, netto: number): string {
-  // netto is in centen (geheel getal): positief = partner is jou verschuldigd.
-  if (netto > 0) return t('Partner is jou {bedrag} verschuldigd', { bedrag: formatEuro(netto) })
-  if (netto < 0) return t('Jij bent partner {bedrag} verschuldigd', { bedrag: formatEuro(-netto) })
-  return t('Niets te verrekenen')
-}
-
-// De volledige Dossiers-sectie: kies, maak of verwijder een dossier, beheer de
-// open gedeelde kosten (toevoegen/bewerken/verwijderen), leg een afrekening vast,
-// en bekijk de geschiedenis.
+// De volledige Dossiers-sectie: kies/maak/verwijder een dossier, stel de verdeling
+// per categorie in, beheer de open kosten, en genereer niet-blokkerende
+// afrekeningen over een gekozen periode + kinderen. Een afrekening blokkeert niets;
+// pas als je ze als 'overgemaakt' markeert, worden de kosten afgerekend.
 export function DossierSectie({
   dossiers,
   kosten,
@@ -37,7 +35,9 @@ export function DossierSectie({
   onDossierVerwijderen,
   onKostOpslaan,
   onKostVerwijderen,
-  onAfrekenen,
+  onGenereer,
+  onMarkeerOvergemaakt,
+  onVerwijderAfrekening,
 }: {
   dossiers: Dossier[]
   kosten: GedeeldeKost[]
@@ -48,19 +48,30 @@ export function DossierSectie({
   onDossierVerwijderen: (id: string) => Promise<void> | void
   onKostOpslaan: (k: GedeeldeKost) => Promise<void> | void
   onKostVerwijderen: (id: string) => Promise<void> | void
-  onAfrekenen: (dossier: Dossier, openKosten: GedeeldeKost[]) => Promise<void> | void
+  onGenereer: (dossier: Dossier, filter: AfrekeningFilter) => Promise<void> | void
+  onMarkeerOvergemaakt: (v: Verrekening, overgemaakt: boolean) => Promise<void> | void
+  onVerwijderAfrekening: (id: string) => Promise<void> | void
 }) {
   const { t } = useT()
+  const [geselecteerd, setGeselecteerd] = useState('')
+  const [bewerkKost, setBewerkKost] = useState<GedeeldeKost | null>(null)
   const [splitCat, setSplitCat] = useState('')
   const [splitPct, setSplitPct] = useState('')
+  const [afrVan, setAfrVan] = useState('')
+  const [afrTot, setAfrTot] = useState('')
+  const [afrKindIds, setAfrKindIds] = useState<string[]>([])
+  const [gekopieerd, setGekopieerd] = useState('')
+
+  const dossier = dossiers.find((d) => d.id === geselecteerd) ?? (dossiers[0] ?? null)
+  const dossierId = dossier?.id ?? ''
+
   const kindNamen = (ids?: string[]) =>
     (ids ?? []).map((id) => kinderen.find((k) => k.id === id)?.naam).filter(Boolean).join(', ')
 
   async function voegSplitToe() {
     const pct = Number.parseFloat(splitPct.replace(',', '.'))
     if (!dossier || !splitCat || !Number.isFinite(pct) || pct < 0 || pct > 100) return
-    const nieuw = { ...(dossier.categorieAandelen ?? {}), [splitCat]: pct }
-    await onDossierOpslaan({ ...dossier, categorieAandelen: nieuw })
+    await onDossierOpslaan({ ...dossier, categorieAandelen: { ...(dossier.categorieAandelen ?? {}), [splitCat]: pct } })
     setSplitCat('')
     setSplitPct('')
   }
@@ -71,28 +82,51 @@ export function DossierSectie({
     delete nieuw[catId]
     await onDossierOpslaan({ ...dossier, categorieAandelen: nieuw })
   }
-  const [geselecteerd, setGeselecteerd] = useState('')
-  const [bewerkKost, setBewerkKost] = useState<GedeeldeKost | null>(null)
 
-  useEffect(() => {
-    if (dossiers.length === 0) {
-      setGeselecteerd('')
-    } else if (!dossiers.some((d) => d.id === geselecteerd)) {
-      setGeselecteerd(dossiers[0].id)
+  function wisselAfrKind(id: string) {
+    setAfrKindIds((huidig) => (huidig.includes(id) ? huidig.filter((x) => x !== id) : [...huidig, id]))
+  }
+
+  async function kopieerSamenvatting(v: Verrekening) {
+    if (!dossier) return
+    try {
+      await navigator.clipboard.writeText(afrekeningSamenvatting(t, dossier, v, kosten, kinderen))
+      setGekopieerd(v.id)
+      window.setTimeout(() => setGekopieerd(''), 2000)
+    } catch {
+      // klembord niet beschikbaar: stil negeren.
     }
-  }, [dossiers, geselecteerd])
+  }
 
-  const dossier = dossiers.find((d) => d.id === geselecteerd) ?? null
+  async function exportPdf(v: Verrekening) {
+    if (!dossier) return
+    await exporteerAfrekeningPDF(t, dossier, v, kosten, kinderen)
+  }
+
   const alleKosten = dossier ? kosten.filter((k) => k.dossierId === dossier.id) : []
-  const openKosten = alleKosten.filter((k) => !k.verrekeningId)
-  const netto = dossier ? saldoVerrekeningDossier(dossier, openKosten) : 0
-  const geschiedenis = dossier
+  const openKosten = alleKosten.filter(isOpenKost)
+  const openSaldo = dossier ? saldoVerrekeningDossier(dossier, openKosten) : 0
+
+  const filter: AfrekeningFilter = {
+    ...(afrVan ? { periodeVan: afrVan } : {}),
+    ...(afrTot ? { periodeTot: afrTot } : {}),
+    ...(afrKindIds.length > 0 ? { kindIds: afrKindIds } : {}),
+  }
+  const selectie = dossier ? kostenVoorAfrekening(kosten, dossier.id, filter) : []
+  const selectieSaldo = dossier ? saldoVerrekeningDossier(dossier, selectie) : 0
+
+  const afrekeningen = dossier
     ? verrekeningen.filter((v) => v.dossierId === dossier.id).sort((a, b) => (a.datum < b.datum ? 1 : -1))
     : []
 
   async function kostOpslaan(k: GedeeldeKost) {
     await onKostOpslaan(k)
     setBewerkKost(null)
+  }
+
+  async function genereerNu() {
+    if (!dossier || selectie.length === 0) return
+    await onGenereer(dossier, filter)
   }
 
   return (
@@ -104,7 +138,7 @@ export function DossierSectie({
         <div style={{ marginBottom: '0.5rem' }}>
           <label htmlFor="dossierkeuze">{t('Gekozen dossier')}</label>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <select id="dossierkeuze" style={{ ...veld, flex: 1 }} value={geselecteerd} onChange={(e) => setGeselecteerd(e.target.value)}>
+            <select id="dossierkeuze" style={{ ...veld, flex: 1 }} value={dossierId} onChange={(e) => setGeselecteerd(e.target.value)}>
               {dossiers.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.naam} {t('(jij {p}%)', { p: d.aandeelJij })}
@@ -128,7 +162,8 @@ export function DossierSectie({
 
       {dossier && (
         <div style={{ marginTop: '1rem' }}>
-          <div style={{ marginBottom: '0.75rem', background: '#faf9f7', border: '1px solid #eee', borderRadius: 8, padding: '0.6rem' }}>
+          {/* Verdeling per categorie */}
+          <div style={blok}>
             <h3 style={{ fontSize: '0.9rem', margin: '0 0 0.15rem' }}>{t('Verdeling per categorie')}</h3>
             <p style={{ color: '#888', margin: '0 0 0.4rem', fontSize: '0.85rem' }}>
               {t('Standaard draag jij {p}%. Stel hier per categorie een afwijkend percentage in.', { p: dossier.aandeelJij })}
@@ -160,17 +195,12 @@ export function DossierSectie({
             </div>
           </div>
 
+          {/* Open kosten */}
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {openKosten.map((k) => (
               <li
                 key={k.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '0.4rem 0',
-                  borderBottom: '1px solid #f0f0f0',
-                }}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: '1px solid #f0f0f0' }}
               >
                 <span>
                   {k.omschrijving}
@@ -185,14 +215,15 @@ export function DossierSectie({
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                   <span>{formatEuro(k.bedrag)}</span>
+                  {k.bonnetje && (
+                    <a href={k.bonnetje} target="_blank" rel="noreferrer" style={{ color: '#2c6cb0', fontSize: '0.85rem' }}>
+                      {t('bon')}
+                    </a>
+                  )}
                   <button aria-label={t('Bewerk kost {naam}', { naam: k.omschrijving })} onClick={() => setBewerkKost(k)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
                     ✎
                   </button>
-                  <button
-                    aria-label={t('Verwijder kost {naam}', { naam: k.omschrijving })}
-                    onClick={() => onKostVerwijderen(k.id)}
-                    style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}
-                  >
+                  <button aria-label={t('Verwijder kost {naam}', { naam: k.omschrijving })} onClick={() => onKostVerwijderen(k.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
                     ×
                   </button>
                 </span>
@@ -200,21 +231,9 @@ export function DossierSectie({
             ))}
           </ul>
 
-          <p style={{ fontWeight: 'bold', marginTop: '0.75rem' }}>{verrekentekst(t, netto)}</p>
-
-          <button
-            onClick={() => onAfrekenen(dossier, openKosten)}
-            disabled={openKosten.length === 0}
-            style={{
-              padding: '0.4rem 0.8rem',
-              borderRadius: 8,
-              border: '1px solid #ccc',
-              background: openKosten.length === 0 ? '#f2f2f2' : '#f3eef7',
-              cursor: openKosten.length === 0 ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {t('Leg afrekening vast')}
-          </button>
+          <p style={{ fontWeight: 'bold', marginTop: '0.75rem' }}>
+            {t('Openstaand')}: {verrekenTekst(t, openSaldo)}
+          </p>
 
           <GedeeldeKostFormulier
             dossierId={dossier.id}
@@ -225,16 +244,86 @@ export function DossierSectie({
             bewerken={bewerkKost}
           />
 
-          {geschiedenis.length > 0 && (
+          {/* Nieuwe afrekening genereren */}
+          <div style={{ ...blok, marginTop: '1rem' }}>
+            <h3 style={{ fontSize: '0.9rem', margin: '0 0 0.15rem' }}>{t('Nieuwe afrekening')}</h3>
+            <p style={{ color: '#888', margin: '0 0 0.4rem', fontSize: '0.85rem' }}>
+              {t('Kies een periode en (optioneel) kinderen. Dit blokkeert niets — je kan meerdere afrekeningen maken.')}
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <label style={{ flex: 1, minWidth: 120 }}>
+                <span style={{ fontSize: '0.85rem', color: '#555' }}>{t('Periode van')}</span>
+                <input type="date" style={veld} value={afrVan} onChange={(e) => setAfrVan(e.target.value)} />
+              </label>
+              <label style={{ flex: 1, minWidth: 120 }}>
+                <span style={{ fontSize: '0.85rem', color: '#555' }}>{t('Periode tot')}</span>
+                <input type="date" style={veld} value={afrTot} onChange={(e) => setAfrTot(e.target.value)} />
+              </label>
+            </div>
+            {kinderen.length > 0 && (
+              <div style={{ marginTop: '0.4rem' }}>
+                <span style={{ fontSize: '0.85rem', color: '#555' }}>{t('Voor welke kinderen? (leeg = allemaal)')}</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: 2 }}>
+                  {kinderen.map((k) => (
+                    <label key={k.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <input type="checkbox" checked={afrKindIds.includes(k.id)} onChange={() => wisselAfrKind(k.id)} /> {k.naam}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            <p style={{ margin: '0.5rem 0', fontSize: '0.9rem' }}>
+              {t('In deze selectie: {n} kost(en), {saldo}', { n: selectie.length, saldo: verrekenTekst(t, selectieSaldo) })}
+            </p>
+            <button
+              type="button"
+              onClick={genereerNu}
+              disabled={selectie.length === 0}
+              style={{
+                padding: '0.4rem 0.8rem',
+                borderRadius: 8,
+                border: '1px solid #ccc',
+                background: selectie.length === 0 ? '#f2f2f2' : '#f3eef7',
+                cursor: selectie.length === 0 ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {t('Genereer afrekening')}
+            </button>
+          </div>
+
+          {/* Afrekeningen */}
+          {afrekeningen.length > 0 && (
             <div style={{ marginTop: '1rem' }}>
-              <h3 style={{ fontSize: '0.9rem', margin: '0 0 0.25rem' }}>{t('Vastgelegde afrekeningen')}</h3>
+              <h3 style={{ fontSize: '0.9rem', margin: '0 0 0.25rem' }}>{t('Afrekeningen')}</h3>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {geschiedenis.map((v) => (
-                  <li key={v.id} style={{ display: 'flex', justifyContent: 'space-between', color: '#666', padding: '0.2rem 0' }}>
-                    <span>{v.datum}</span>
-                    <span>{verrekentekst(t, v.bedrag)}</span>
-                  </li>
-                ))}
+                {afrekeningen.map((v) => {
+                  const periode = v.periodeVan || v.periodeTot ? `${v.periodeVan ?? '…'} – ${v.periodeTot ?? '…'}` : t('alle periodes')
+                  const wie = v.kindIds && v.kindIds.length > 0 ? kindNamen(v.kindIds) : t('alle kinderen')
+                  return (
+                    <li key={v.id} style={{ padding: '0.4rem 0', borderBottom: '1px solid #f0f0f0', opacity: v.overgemaakt ? 0.7 : 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>{verrekenTekst(t, v.bedrag)}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                          <label style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                            <input type="checkbox" checked={!!v.overgemaakt} onChange={(e) => onMarkeerOvergemaakt(v, e.target.checked)} /> {t('Overgemaakt')}
+                          </label>
+                          <button type="button" onClick={() => kopieerSamenvatting(v)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer', fontSize: '0.85rem' }}>
+                            {gekopieerd === v.id ? t('Gekopieerd ✓') : t('Kopieer')}
+                          </button>
+                          <button type="button" onClick={() => exportPdf(v)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer', fontSize: '0.85rem' }}>
+                            PDF
+                          </button>
+                          <button aria-label={t('Verwijder afrekening {datum}', { datum: v.datum })} onClick={() => onVerwijderAfrekening(v.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
+                            ×
+                          </button>
+                        </span>
+                      </div>
+                      <div style={{ color: '#999', fontSize: '0.8rem' }}>
+                        {v.datum} · {periode} · {wie}
+                      </div>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           )}

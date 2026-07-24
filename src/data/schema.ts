@@ -103,15 +103,31 @@ export const GedeeldeKostSchema = z.object({
   categorieId: z.string().min(1).optional(),
   kostenType: z.enum(['gewoon', 'buitengewoon']).optional(),
   aandeelJijOverride: z.number().min(0).max(100).optional(),
+  // Losse afgerekend-status: staat los van het genereren van een afrekening.
+  // Een kost is pas 'afgerekend' als de bijhorende afrekening als overgemaakt is
+  // gemarkeerd. Zolang dat niet zo is, telt ze mee in het openstaande saldo.
+  afgerekend: z.boolean().optional(),
+  // Bon/factuur als (verkleinde) data-URL. Bewust optioneel en klein gehouden.
+  bonnetje: z.string().optional(),
 })
 export type GedeeldeKost = z.infer<typeof GedeeldeKostSchema>
 
-// Een vastgelegde afrekening: een momentopname van het te verrekenen bedrag.
+// Een afrekening: een momentopname van het te verrekenen bedrag over een gekozen
+// periode en (optioneel) voor bepaalde kinderen. Het genereren blokkeert niets —
+// meerdere afrekeningen mogen naast elkaar bestaan. Pas als je ze als
+// 'overgemaakt' markeert, worden de opgenomen kosten afgerekend (en tellen ze niet
+// meer mee in het openstaande saldo). 'kostIds' is de momentopname van welke kosten
+// deze afrekening dekt.
 export const VerrekeningSchema = z.object({
   id: z.string().min(1),
   dossierId: z.string().min(1),
   datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
   bedrag: z.number().int(), // in centen; positief = partner was jou verschuldigd
+  periodeVan: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  periodeTot: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  kindIds: z.array(z.string()).optional(),
+  kostIds: z.array(z.string()).optional(),
+  overgemaakt: z.boolean().optional(),
 })
 export type Verrekening = z.infer<typeof VerrekeningSchema>
 

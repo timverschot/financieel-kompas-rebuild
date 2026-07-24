@@ -144,10 +144,11 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Kostbedrag (€)'), '100')
     await user.click(screen.getByRole('button', { name: 'Kost toevoegen' }))
 
-    expect(await screen.findByText(/Partner is jou/)).toHaveTextContent(/50/)
+    const regels = await screen.findAllByText(/Partner is jou/)
+    expect(regels[0]).toHaveTextContent(/50/)
   })
 
-  it('legt een afrekening vast en zet de openstaande verrekening op nul', async () => {
+  it('genereert een afrekening en verrekent de open kosten na overmaken', async () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Saldo')
@@ -159,12 +160,13 @@ describe('App', () => {
     await user.type(await screen.findByLabelText('Kostomschrijving'), 'Schoolreis')
     await user.type(screen.getByLabelText('Kostbedrag (€)'), '100')
     await user.click(screen.getByRole('button', { name: 'Kost toevoegen' }))
-    await screen.findByText(/Partner is jou/)
+    await screen.findAllByText(/Partner is jou/)
 
-    await user.click(screen.getByRole('button', { name: 'Leg afrekening vast' }))
+    await user.click(screen.getByRole('button', { name: 'Genereer afrekening' }))
+    expect(await screen.findByText('Afrekeningen')).toBeInTheDocument()
 
-    expect(await screen.findByText('Niets te verrekenen')).toBeInTheDocument()
-    expect(screen.getByText('Vastgelegde afrekeningen')).toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox', { name: 'Overgemaakt' }))
+    await waitFor(() => expect(screen.getAllByText(/Niets te verrekenen/).length).toBeGreaterThan(0))
   })
 
   it('verwijdert een categorie', async () => {

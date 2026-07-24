@@ -280,6 +280,33 @@ const en: Record<string, string> = {
     'By default you bear {p}%. Set a different percentage per category here.',
   'Verwijder verdeling {naam}': 'Remove split {naam}',
   'Percentage jij': 'Your percentage',
+  // Modulaire afrekening (Ronde 2 · Brok C)
+  'Openstaand': 'Outstanding',
+  'Nieuwe afrekening': 'New settlement',
+  'Kies een periode en (optioneel) kinderen. Dit blokkeert niets — je kan meerdere afrekeningen maken.':
+    'Choose a period and (optionally) children. This blocks nothing — you can make several settlements.',
+  'Periode van': 'Period from',
+  'Periode tot': 'Period to',
+  'Voor welke kinderen? (leeg = allemaal)': 'For which children? (empty = all)',
+  'In deze selectie: {n} kost(en), {saldo}': 'In this selection: {n} expense(s), {saldo}',
+  'Genereer afrekening': 'Generate settlement',
+  'Afrekeningen': 'Settlements',
+  'alle periodes': 'all periods',
+  'alle kinderen': 'all children',
+  'Overgemaakt': 'Transferred',
+  'Verwijder afrekening {datum}': 'Delete settlement {datum}',
+  // PDF, samenvatting & bonnetje (Ronde 2 · Brok D)
+  'Bon/factuur (optioneel)': 'Receipt/invoice (optional)',
+  'Bon/factuur': 'Receipt/invoice',
+  'bekijken': 'view',
+  'verwijderen': 'remove',
+  'bezig…': 'working…',
+  'Kopieer': 'Copy',
+  'Gekopieerd ✓': 'Copied ✓',
+  'bon': 'receipt',
+  'Afrekening — {naam}': 'Settlement — {naam}',
+  'Periode': 'Period',
+  'Resultaat': 'Result',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -543,6 +570,33 @@ const fr: Record<string, string> = {
     'Par défaut vous supportez {p}%. Définissez ici un pourcentage différent par catégorie.',
   'Verwijder verdeling {naam}': 'Supprimer la répartition {naam}',
   'Percentage jij': 'Votre pourcentage',
+  // Modulaire afrekening (Ronde 2 · Brok C)
+  'Openstaand': 'À régler',
+  'Nieuwe afrekening': 'Nouveau décompte',
+  'Kies een periode en (optioneel) kinderen. Dit blokkeert niets — je kan meerdere afrekeningen maken.':
+    'Choisissez une période et (facultatif) des enfants. Cela ne bloque rien — vous pouvez faire plusieurs décomptes.',
+  'Periode van': 'Période du',
+  'Periode tot': 'Période au',
+  'Voor welke kinderen? (leeg = allemaal)': 'Pour quels enfants ? (vide = tous)',
+  'In deze selectie: {n} kost(en), {saldo}': 'Dans cette sélection : {n} frais, {saldo}',
+  'Genereer afrekening': 'Générer le décompte',
+  'Afrekeningen': 'Décomptes',
+  'alle periodes': 'toutes les périodes',
+  'alle kinderen': 'tous les enfants',
+  'Overgemaakt': 'Payé',
+  'Verwijder afrekening {datum}': 'Supprimer le décompte {datum}',
+  // PDF, samenvatting & bonnetje (Ronde 2 · Brok D)
+  'Bon/factuur (optioneel)': 'Reçu/facture (optionnel)',
+  'Bon/factuur': 'Reçu/facture',
+  'bekijken': 'voir',
+  'verwijderen': 'supprimer',
+  'bezig…': 'en cours…',
+  'Kopieer': 'Copier',
+  'Gekopieerd ✓': 'Copié ✓',
+  'bon': 'reçu',
+  'Afrekening — {naam}': 'Décompte — {naam}',
+  'Periode': 'Période',
+  'Resultaat': 'Résultat',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 

@@ -50,6 +50,7 @@ import {
   verwijderRekening,
   verwijderTerugkerendePost,
   verwijderTransactie,
+  verwijderVerrekening,
 } from './data/repository'
 import { seedIndienLeeg } from './data/seed'
 import { exporteerBackup, importeerBackup } from './data/backup'
@@ -72,6 +73,7 @@ import { TerugkerendeSectie } from './components/TerugkerendeSectie'
 import { OverboekingSectie } from './components/OverboekingSectie'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { saldoVerrekeningDossier } from './utils/dossier'
+import { kostenVoorAfrekening, type AfrekeningFilter } from './utils/afrekening'
 import { nieuwId } from './data/sync/id'
 import { uitgavenInMaand } from './utils/budget'
 import { inkomstenPerCategorie, maandInkomsten, maandUitgaven, uitgavenPerCategorie } from './utils/overzicht'
@@ -486,15 +488,40 @@ export function App() {
     await herlaad()
   }
 
-  async function legAfrekeningVast(dossier: Dossier, openKosten: GedeeldeKost[]) {
-    if (openKosten.length === 0) return
-    const bedrag = saldoVerrekeningDossier(dossier, openKosten)
-    const verId = nieuwId()
+  // Genereer een afrekening als momentopname over de gekozen periode + kinderen.
+  // Dit blokkeert niets: de kosten blijven open tot je de afrekening als
+  // 'overgemaakt' markeert.
+  async function genereerAfrekening(dossier: Dossier, filter: AfrekeningFilter) {
+    const gedekt = kostenVoorAfrekening(gedeeldeKosten, dossier.id, filter)
+    const bedrag = saldoVerrekeningDossier(dossier, gedekt)
     const datum = new Date().toISOString().slice(0, 10)
-    await bewaarVerrekening({ id: verId, dossierId: dossier.id, datum, bedrag })
-    for (const k of openKosten) {
-      await bewaarGedeeldeKost({ ...k, verrekeningId: verId })
+    await bewaarVerrekening({
+      id: nieuwId(),
+      dossierId: dossier.id,
+      datum,
+      bedrag,
+      ...(filter.periodeVan ? { periodeVan: filter.periodeVan } : {}),
+      ...(filter.periodeTot ? { periodeTot: filter.periodeTot } : {}),
+      ...(filter.kindIds && filter.kindIds.length > 0 ? { kindIds: filter.kindIds } : {}),
+      kostIds: gedekt.map((k) => k.id),
+      overgemaakt: false,
+    })
+    await herlaad()
+  }
+
+  // Markeer een afrekening als (niet) overgemaakt. De gedekte kosten worden mee
+  // afgerekend (of terug opengezet), zodat het openstaande saldo klopt.
+  async function markeerOvergemaakt(v: Verrekening, overgemaakt: boolean) {
+    for (const id of v.kostIds ?? []) {
+      const k = gedeeldeKosten.find((x) => x.id === id)
+      if (k) await bewaarGedeeldeKost({ ...k, afgerekend: overgemaakt })
     }
+    await bewaarVerrekening({ ...v, overgemaakt })
+    await herlaad()
+  }
+
+  async function verwijderAfrekening(id: string) {
+    await verwijderVerrekening(id)
     await herlaad()
   }
 
@@ -866,7 +893,9 @@ export function App() {
           onDossierVerwijderen={verwijderDoss}
           onKostOpslaan={voegGedeeldeKostToe}
           onKostVerwijderen={verwijderKost}
-          onAfrekenen={legAfrekeningVast}
+          onGenereer={genereerAfrekening}
+          onMarkeerOvergemaakt={markeerOvergemaakt}
+          onVerwijderAfrekening={verwijderAfrekening}
         />
       </ErrorBoundary>
 
