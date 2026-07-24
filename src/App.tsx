@@ -86,7 +86,7 @@ import { BudgetFormulier } from './components/BudgetFormulier'
 import { DossierSectie } from './components/DossierSectie'
 import { LeningSectie } from './components/LeningSectie'
 import { GarantieSectie } from './components/GarantieSectie'
-import { KinderenSectie } from './components/KinderenSectie'
+import { InstellingenSectie } from './components/InstellingenSectie'
 import { SpaardoelSectie } from './components/SpaardoelSectie'
 import { CategorieBoom } from './components/CategorieBoom'
 import { Donut } from './components/Donut'
@@ -104,7 +104,7 @@ import { uitgavenPerMaand } from './utils/maandverloop'
 import { labelVanCategorie } from './data/categorieen/resolve'
 import { stelSubcategorieenIn } from './data/categorieen/zoek'
 import { formatEuro } from './utils/format'
-import { useT, TALEN } from './i18n'
+import { useT } from './i18n'
 
 const container: CSSProperties = {
   fontFamily: 'system-ui, sans-serif',
@@ -718,23 +718,9 @@ export function App() {
   return (
     <main style={container}>
       <h1 style={{ marginBottom: 0 }}>Financieel Kompas</h1>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-        <p style={{ color: '#666', marginTop: 4 }}>
-          {t('Rekeningen, categorieën, budgetten en transacties — met backup en synchronisatie')}
-        </p>
-        <select
-          aria-label={t('Taal')}
-          value={taal}
-          onChange={(e) => zetTaal(e.target.value as typeof taal)}
-          style={{ padding: '0.25rem', borderRadius: 6, border: '1px solid #ccc' }}
-        >
-          {TALEN.map((tl) => (
-            <option key={tl.waarde} value={tl.waarde}>
-              {tl.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <p style={{ color: '#666', marginTop: 4 }}>
+        {t('Rekeningen, categorieën, budgetten en transacties — met backup en synchronisatie')}
+      </p>
 
       {ongeldig > 0 && (
         <p style={{ background: '#fff5f5', border: '1px solid #f5c6cb', borderRadius: 8, padding: '0.5rem 0.75rem' }}>
@@ -968,17 +954,6 @@ export function App() {
 
       <hr style={scheiding} />
 
-      <ErrorBoundary naam="Kinderen">
-        <KinderenSectie
-          kinderen={kinderen}
-          onToevoegen={voegKindToe}
-          onWijzigen={wijzigKind}
-          onVerwijderen={verwijderKindH}
-        />
-      </ErrorBoundary>
-
-      <hr style={scheiding} />
-
       <ErrorBoundary naam="Dossiers">
         <DossierSectie
           dossiers={dossiers}
@@ -1046,46 +1021,24 @@ export function App() {
 
       <hr style={scheiding} />
 
-      <section>
-        <h2 style={kop}>{t('Back-up & herstel')}</h2>
-        <p style={{ color: '#888', marginTop: 0 }}>
-          {t('Een los vangnet op je eigen toestel, onafhankelijk van Google Drive. Bewaar het bestand op een veilige plek; herstellen voegt enkel toe en overschrijft nooit.')}
-        </p>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <button style={knop} onClick={exporteerNu}>
-            {t('Exporteer back-up')}
-          </button>
-          <label style={{ ...knop, display: 'inline-block' }}>
-            {t('Herstel uit back-up')}
-            <input
-              type="file"
-              accept="application/json"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (f) void herstelUitBestand(f)
-                e.target.value = ''
-              }}
-            />
-          </label>
-        </div>
-        {backupTekst && <p style={{ color: '#666', marginTop: '0.75rem' }}>{backupTekst}</p>}
-      </section>
-
-      <hr style={scheiding} />
-
-      <div>
-        {!verbonden ? (
-          <button style={knop} onClick={verbindEnSynchroniseer} disabled={bezig}>
-            {bezig ? t('Bezig…') : t('Verbind met Google Drive')}
-          </button>
-        ) : (
-          <button style={knop} onClick={synchroniseerNu} disabled={bezig}>
-            {bezig ? t('Bezig…') : t('Synchroniseer nu')}
-          </button>
-        )}
-        {statusTekst && <p style={{ color: '#666', marginTop: '0.75rem' }}>{statusTekst}</p>}
-      </div>
+      <ErrorBoundary naam="Instellingen">
+        <InstellingenSectie
+          taal={taal}
+          zetTaal={zetTaal}
+          verbonden={verbonden}
+          bezig={bezig}
+          statusTekst={statusTekst}
+          onVerbind={verbindEnSynchroniseer}
+          onSynchroniseer={synchroniseerNu}
+          backupTekst={backupTekst}
+          onExporteer={exporteerNu}
+          onHerstel={herstelUitBestand}
+          kinderen={kinderen}
+          onKindToevoegen={voegKindToe}
+          onKindWijzigen={wijzigKind}
+          onKindVerwijderen={verwijderKindH}
+        />
+      </ErrorBoundary>
 
       {undoInfo && (
         <div
