@@ -1,0 +1,39 @@
+import js from '@eslint/js'
+import globals from 'globals'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+import tseslint from 'typescript-eslint'
+
+// Lint-configuratie (flat config) voor de herbouw. Bewust pragmatisch: de
+// aanbevolen regels van JS + TypeScript + React-hooks, zodat echte fouten
+// (verkeerd hook-gebruik, ongebruikte variabelen, enz.) opvallen zonder een
+// stortvloed aan stijl-ruis. Draait via `npm run lint`, ook in de CI.
+export default tseslint.config(
+  { ignores: ['dist', 'coverage', 'node_modules'] },
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: { ...globals.browser, ...globals.node },
+    },
+    plugins: {
+      'react-hooks': reactHooks,
+      'react-refresh': reactRefresh,
+    },
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      // Sta bewust weggegooide, met een underscore geprefixte namen toe
+      // (bv. `const { weg: _weg, ...rest } = x`).
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
+    },
+  },
+  {
+    // Testbestanden mogen wat losser zijn (bv. `any` in mock-props).
+    files: ['**/*.test.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+)

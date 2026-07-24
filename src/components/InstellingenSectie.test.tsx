@@ -1,9 +1,10 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
+import type { ComponentProps } from 'react'
 import { InstellingenSectie } from './InstellingenSectie'
 
-function toon(props: Record<string, unknown> = {}) {
+function toon(props: Partial<ComponentProps<typeof InstellingenSectie>> = {}) {
   const handlers = {
     taal: 'nl' as const,
     zetTaal: vi.fn(),
@@ -21,7 +22,7 @@ function toon(props: Record<string, unknown> = {}) {
     onKindVerwijderen: vi.fn(),
     ...props,
   }
-  render(<InstellingenSectie {...(handlers as never)} />)
+  render(<InstellingenSectie {...(handlers as ComponentProps<typeof InstellingenSectie>)} />)
   return handlers
 }
 
