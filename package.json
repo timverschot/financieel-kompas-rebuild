@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@sentry/react": "^8.55.2",
     "@zxing/browser": "^0.1.5",
     "dexie": "^4.0.8",
     "jspdf": "^4.2.1",

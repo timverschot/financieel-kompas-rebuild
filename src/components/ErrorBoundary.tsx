@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { meldFout } from '../sentry'
 
 type Props = {
   children: ReactNode
@@ -22,6 +23,8 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, info: ErrorInfo) {
     const waar = this.props.naam ? ` (${this.props.naam})` : ''
     console.error('Onverwachte fout opgevangen door ErrorBoundary' + waar + ':', error, info)
+    // Meld de fout aan crash-rapportage (no-op zolang er geen Sentry-DSN is ingesteld).
+    meldFout(error, { sectie: this.props.naam ?? '(root)', componentStack: info.componentStack })
   }
 
   private herstel = () => this.setState({ hasError: false })
