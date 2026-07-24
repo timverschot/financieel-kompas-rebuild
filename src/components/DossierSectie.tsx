@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import type { CSSProperties } from 'react'
-import type { Categorie, Dossier, GedeeldeKost, Kind, Verrekening } from '../data/schema'
+import type { Categorie, Dossier, GedeeldeKost, Kind, Kindrekening, Kindrekeningpost, Verrekening } from '../data/schema'
 import { DossierFormulier } from './DossierFormulier'
 import { GedeeldeKostFormulier } from './GedeeldeKostFormulier'
+import { KindrekeningSectie } from './KindrekeningSectie'
 import { CategorieKiezer } from './CategorieKiezer'
 import { saldoVerrekeningDossier } from '../utils/dossier'
 import { isOpenKost, kostenVoorAfrekening, type AfrekeningFilter } from '../utils/afrekening'
@@ -31,6 +32,8 @@ export function DossierSectie({
   verrekeningen,
   kinderen,
   categorieen,
+  kindrekeningen,
+  kindrekeningposten,
   onDossierOpslaan,
   onDossierVerwijderen,
   onKostOpslaan,
@@ -38,12 +41,18 @@ export function DossierSectie({
   onGenereer,
   onMarkeerOvergemaakt,
   onVerwijderAfrekening,
+  onKindrekeningOpslaan,
+  onKindrekeningVerwijderen,
+  onKindrekeningPostOpslaan,
+  onKindrekeningPostVerwijderen,
 }: {
   dossiers: Dossier[]
   kosten: GedeeldeKost[]
   verrekeningen: Verrekening[]
   kinderen: Kind[]
   categorieen: Categorie[]
+  kindrekeningen: Kindrekening[]
+  kindrekeningposten: Kindrekeningpost[]
   onDossierOpslaan: (d: Dossier) => Promise<void> | void
   onDossierVerwijderen: (id: string) => Promise<void> | void
   onKostOpslaan: (k: GedeeldeKost) => Promise<void> | void
@@ -51,6 +60,10 @@ export function DossierSectie({
   onGenereer: (dossier: Dossier, filter: AfrekeningFilter) => Promise<void> | void
   onMarkeerOvergemaakt: (v: Verrekening, overgemaakt: boolean) => Promise<void> | void
   onVerwijderAfrekening: (id: string) => Promise<void> | void
+  onKindrekeningOpslaan: (kr: Kindrekening) => Promise<void> | void
+  onKindrekeningVerwijderen: (id: string) => Promise<void> | void
+  onKindrekeningPostOpslaan: (p: Kindrekeningpost) => Promise<void> | void
+  onKindrekeningPostVerwijderen: (id: string) => Promise<void> | void
 }) {
   const { t } = useT()
   const [geselecteerd, setGeselecteerd] = useState('')
@@ -118,6 +131,9 @@ export function DossierSectie({
   const afrekeningen = dossier
     ? verrekeningen.filter((v) => v.dossierId === dossier.id).sort((a, b) => (a.datum < b.datum ? 1 : -1))
     : []
+
+  const kindrekening = dossier ? (kindrekeningen.find((k) => k.dossierId === dossier.id) ?? null) : null
+  const potPosten = kindrekening ? kindrekeningposten.filter((p) => p.kindrekeningId === kindrekening.id) : []
 
   async function kostOpslaan(k: GedeeldeKost) {
     await onKostOpslaan(k)
@@ -327,6 +343,19 @@ export function DossierSectie({
               </ul>
             </div>
           )}
+
+          {/* Kindrekening: de gezamenlijke pot als tweede manier van afrekenen. */}
+          <KindrekeningSectie
+            dossier={dossier}
+            kindrekening={kindrekening}
+            posten={potPosten}
+            kinderen={kinderen}
+            categorieen={categorieen}
+            onOpslaan={onKindrekeningOpslaan}
+            onVerwijderen={onKindrekeningVerwijderen}
+            onPostOpslaan={onKindrekeningPostOpslaan}
+            onPostVerwijderen={onKindrekeningPostVerwijderen}
+          />
         </div>
       )}
     </section>

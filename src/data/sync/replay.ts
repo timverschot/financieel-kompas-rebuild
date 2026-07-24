@@ -4,6 +4,8 @@ import type {
   Dossier,
   GedeeldeKost,
   Kind,
+  Kindrekening,
+  Kindrekeningpost,
   Overboeking,
   Rekening,
   Spaardoel,
@@ -28,6 +30,8 @@ export type Staat = {
   subcategorieen: Map<string, Subcategorie>
   overboekingen: Map<string, Overboeking>
   kinderen: Map<string, Kind>
+  kindrekeningen: Map<string, Kindrekening>
+  kindrekeningposten: Map<string, Kindrekeningpost>
 }
 
 // Het HLC-stempel van een logregel, met terugval op 'tijdstip' voor oude regels
@@ -63,6 +67,8 @@ export function pasToe(regels: Logregel[]): Staat {
     subcategorieen: new Map(),
     overboekingen: new Map(),
     kinderen: new Map(),
+    kindrekeningen: new Map(),
+    kindrekeningposten: new Map(),
   }
   for (const r of gesorteerd) {
     const g = r.gebeurtenis
@@ -138,6 +144,18 @@ export function pasToe(regels: Logregel[]): Staat {
         break
       case 'kind.verwijderd':
         staat.kinderen.delete(g.payload.id)
+        break
+      case 'kindrekening.bewaard':
+        staat.kindrekeningen.set(g.payload.id, g.payload)
+        break
+      case 'kindrekening.verwijderd':
+        staat.kindrekeningen.delete(g.payload.id)
+        break
+      case 'kindrekeningpost.bewaard':
+        staat.kindrekeningposten.set(g.payload.id, g.payload)
+        break
+      case 'kindrekeningpost.verwijderd':
+        staat.kindrekeningposten.delete(g.payload.id)
         break
     }
   }

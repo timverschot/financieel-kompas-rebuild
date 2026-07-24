@@ -6,6 +6,8 @@ import {
   DossierSchema,
   GedeeldeKostSchema,
   KindSchema,
+  KindrekeningSchema,
+  KindrekeningpostSchema,
   OverboekingSchema,
   RekeningSchema,
   SpaardoelSchema,
@@ -18,6 +20,8 @@ import {
   type Dossier,
   type GedeeldeKost,
   type Kind,
+  type Kindrekening,
+  type Kindrekeningpost,
   type Overboeking,
   type Rekening,
   type Spaardoel,
@@ -116,6 +120,24 @@ export async function verwijderKind(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'kind.verwijderd', payload: { id } })
 }
 
+export async function bewaarKindrekening(kr: Kindrekening): Promise<void> {
+  const geldig = KindrekeningSchema.parse(kr)
+  await pasGebeurtenisToe({ type: 'kindrekening.bewaard', payload: geldig })
+}
+
+export async function verwijderKindrekening(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'kindrekening.verwijderd', payload: { id } })
+}
+
+export async function bewaarKindrekeningpost(post: Kindrekeningpost): Promise<void> {
+  const geldig = KindrekeningpostSchema.parse(post)
+  await pasGebeurtenisToe({ type: 'kindrekeningpost.bewaard', payload: geldig })
+}
+
+export async function verwijderKindrekeningpost(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'kindrekeningpost.verwijderd', payload: { id } })
+}
+
 export async function verwijderTransactie(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'transactie.verwijderd', payload: { id } })
 }
@@ -210,4 +232,12 @@ export async function laadOverboekingen(): Promise<LeesResultaat<Overboeking>> {
 
 export async function laadKinderen(): Promise<LeesResultaat<Kind>> {
   return valideerLijst(await db.kinderen.toArray(), KindSchema)
+}
+
+export async function laadKindrekeningen(): Promise<LeesResultaat<Kindrekening>> {
+  return valideerLijst(await db.kindrekeningen.toArray(), KindrekeningSchema)
+}
+
+export async function laadKindrekeningposten(): Promise<LeesResultaat<Kindrekeningpost>> {
+  return valideerLijst(await db.kindrekeningposten.toArray(), KindrekeningpostSchema)
 }

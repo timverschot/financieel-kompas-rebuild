@@ -6,6 +6,8 @@ import type {
   Dossier,
   GedeeldeKost,
   Kind,
+  Kindrekening,
+  Kindrekeningpost,
   Overboeking,
   Rekening,
   Spaardoel,
@@ -20,6 +22,8 @@ import {
   bewaarDossier,
   bewaarGedeeldeKost,
   bewaarKind,
+  bewaarKindrekening,
+  bewaarKindrekeningpost,
   bewaarRekening,
   bewaarOverboeking,
   bewaarSpaardoel,
@@ -35,6 +39,8 @@ import {
   laadDossiers,
   laadGedeeldeKosten,
   laadKinderen,
+  laadKindrekeningen,
+  laadKindrekeningposten,
   laadOverboekingen,
   laadRekeningen,
   laadSpaardoelen,
@@ -46,6 +52,8 @@ import {
   verwijderCategorie,
   verwijderGedeeldeKost,
   verwijderKind,
+  verwijderKindrekening,
+  verwijderKindrekeningpost,
   verwijderOverboeking,
   verwijderRekening,
   verwijderTerugkerendePost,
@@ -125,6 +133,8 @@ export function App() {
   const [subcategorieen, setSubcategorieen] = useState<Subcategorie[]>([])
   const [overboekingen, setOverboekingen] = useState<Overboeking[]>([])
   const [kinderen, setKinderen] = useState<Kind[]>([])
+  const [kindrekeningen, setKindrekeningen] = useState<Kindrekening[]>([])
+  const [kindrekeningposten, setKindrekeningposten] = useState<Kindrekeningpost[]>([])
   const [ongeldig, setOngeldig] = useState(0)
   const [verbonden, setVerbonden] = useState(false)
   const [bezig, setBezig] = useState(false)
@@ -141,7 +151,7 @@ export function App() {
   const { t, taal, zetTaal } = useT()
 
   async function herlaad() {
-    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki] = await Promise.all([
+    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp] = await Promise.all([
       laadTransacties(),
       laadRekeningen(),
       laadCategorieen(),
@@ -154,6 +164,8 @@ export function App() {
       laadSubcategorieen(),
       laadOverboekingen(),
       laadKinderen(),
+      laadKindrekeningen(),
+      laadKindrekeningposten(),
     ])
     setTransacties(tx.geldig)
     setOngeldig(tx.ongeldig)
@@ -168,6 +180,8 @@ export function App() {
     setSubcategorieen(subc.geldig)
     setOverboekingen(ob.geldig)
     setKinderen(ki.geldig)
+    setKindrekeningen(kr.geldig)
+    setKindrekeningposten(krp.geldig)
   }
 
   // Toon een korte "ongedaan maken"-melding na een verwijdering. Herstellen is
@@ -196,7 +210,7 @@ export function App() {
     let actief = true
     async function laad() {
       await seedIndienLeeg()
-      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki] = await Promise.all([
+      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp] = await Promise.all([
         laadTransacties(),
         laadRekeningen(),
         laadCategorieen(),
@@ -209,6 +223,8 @@ export function App() {
         laadSubcategorieen(),
         laadOverboekingen(),
         laadKinderen(),
+        laadKindrekeningen(),
+        laadKindrekeningposten(),
       ])
       if (!actief) return
       setTransacties(tx.geldig)
@@ -224,6 +240,8 @@ export function App() {
       setSubcategorieen(subc.geldig)
       setOverboekingen(ob.geldig)
       setKinderen(ki.geldig)
+      setKindrekeningen(kr.geldig)
+      setKindrekeningposten(krp.geldig)
     }
     void laad()
     return () => {
@@ -523,6 +541,39 @@ export function App() {
   async function verwijderAfrekening(id: string) {
     await verwijderVerrekening(id)
     await herlaad()
+  }
+
+  // --- Kindrekening (gezamenlijke pot) ---
+  async function kindrekeningOpslaan(kr: Kindrekening) {
+    await bewaarKindrekening(kr)
+    await herlaad()
+  }
+
+  // Een pot uitzetten verwijdert ook haar bewegingen; ongedaan maken zet beide terug.
+  async function kindrekeningVerwijderen(id: string) {
+    const oud = kindrekeningen.find((k) => k.id === id)
+    const oudePosten = kindrekeningposten.filter((p) => p.kindrekeningId === id)
+    await verwijderKindrekening(id)
+    for (const p of oudePosten) await verwijderKindrekeningpost(p.id)
+    await herlaad()
+    if (oud) {
+      toonUndo(t('Kindrekening uitgezet'), async () => {
+        await bewaarKindrekening(oud)
+        for (const p of oudePosten) await bewaarKindrekeningpost(p)
+      })
+    }
+  }
+
+  async function kindrekeningPostOpslaan(p: Kindrekeningpost) {
+    await bewaarKindrekeningpost(p)
+    await herlaad()
+  }
+
+  async function kindrekeningPostVerwijderen(id: string) {
+    const oud = kindrekeningposten.find((p) => p.id === id)
+    await verwijderKindrekeningpost(id)
+    await herlaad()
+    if (oud) toonUndo(t('Beweging verwijderd'), () => bewaarKindrekeningpost(oud))
   }
 
   async function verwijder(id: string) {
@@ -889,6 +940,8 @@ export function App() {
           verrekeningen={verrekeningen}
           kinderen={kinderen}
           categorieen={categorieen}
+          kindrekeningen={kindrekeningen}
+          kindrekeningposten={kindrekeningposten}
           onDossierOpslaan={voegDossierToe}
           onDossierVerwijderen={verwijderDoss}
           onKostOpslaan={voegGedeeldeKostToe}
@@ -896,6 +949,10 @@ export function App() {
           onGenereer={genereerAfrekening}
           onMarkeerOvergemaakt={markeerOvergemaakt}
           onVerwijderAfrekening={verwijderAfrekening}
+          onKindrekeningOpslaan={kindrekeningOpslaan}
+          onKindrekeningVerwijderen={kindrekeningVerwijderen}
+          onKindrekeningPostOpslaan={kindrekeningPostOpslaan}
+          onKindrekeningPostVerwijderen={kindrekeningPostVerwijderen}
         />
       </ErrorBoundary>
 

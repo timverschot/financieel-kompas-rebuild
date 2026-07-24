@@ -184,3 +184,43 @@ export const OverboekingSchema = z.object({
   omschrijving: z.string().optional(),
 })
 export type Overboeking = z.infer<typeof OverboekingSchema>
+
+// Een kindrekening: een gezamenlijke pot bij een dossier waar beide ouders
+// periodiek op storten en waaruit gedeelde kosten rechtstreeks betaald worden.
+// Dit is een tweede manier van afrekenen naast het verschil-model, en is kiesbaar
+// per dossier (hoogstens één pot per dossier). 'beginsaldo' is het startsaldo van
+// de pot (centen). De maandbijdrage per ouder is de afgesproken periodieke storting
+// (basisbedrag in centen); ze kan geïndexeerd worden via de Belgische formule
+// (aanvangsindex + huidige index). 'bijdrageStart' is de eerste maand van de
+// afspraak, gebruikt om te tonen wie achterloopt met storten.
+export const KindrekeningSchema = z.object({
+  id: z.string().min(1),
+  dossierId: z.string().min(1),
+  naam: z.string().min(1),
+  beginsaldo: z.number().int(), // in centen
+  maandbijdrageJij: z.number().int().nonnegative().optional(),
+  maandbijdragePartner: z.number().int().nonnegative().optional(),
+  bijdrageStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  aanvangsindex: z.number().positive().optional(),
+  huidigeIndex: z.number().positive().optional(),
+})
+export type Kindrekening = z.infer<typeof KindrekeningSchema>
+
+// Eén beweging op de kindrekening: een storting (door een ouder) of een uitgave
+// (een kost betaald vanuit de pot). 'bedrag' is altijd positief (in centen); de
+// richting zit in 'soort'. Bij een storting zegt 'door' welke ouder stortte; bij
+// een uitgave kan de post aan kinderen/een categorie gekoppeld worden en een
+// bon/factuur dragen.
+export const KindrekeningpostSchema = z.object({
+  id: z.string().min(1),
+  kindrekeningId: z.string().min(1),
+  datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  soort: z.enum(['storting', 'uitgave']),
+  bedrag: z.number().int().positive(), // in centen
+  door: z.enum(['jij', 'partner']).optional(),
+  omschrijving: z.string().optional(),
+  kindIds: z.array(z.string()).optional(),
+  categorieId: z.string().min(1).optional(),
+  bonnetje: z.string().optional(),
+})
+export type Kindrekeningpost = z.infer<typeof KindrekeningpostSchema>
