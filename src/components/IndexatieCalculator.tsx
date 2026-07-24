@@ -34,7 +34,7 @@ export function IndexatieCalculator() {
   return (
     <section>
       <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{t('Alimentatie-indexatie')}</h2>
-      <p style={{ color: '#888', marginTop: 0 }}>
+      <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>
         {t('Geïndexeerd bedrag = basisbedrag × nieuwe index / aanvangsindex (Belgische formule).')}
       </p>
 

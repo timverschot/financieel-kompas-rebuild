@@ -134,18 +134,18 @@ export function GarantieFormulier({
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <label style={{ flex: 1, minWidth: 120 }}>
-          <span style={{ fontSize: '0.85rem', color: '#555' }}>{t('Aankoopdatum')}</span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Aankoopdatum')}</span>
           <input type="date" style={veld} value={aankoopdatum} onChange={(e) => setAankoopdatum(e.target.value)} />
         </label>
         <label style={{ flex: 1, minWidth: 120 }}>
-          <span style={{ fontSize: '0.85rem', color: '#555' }}>{t('Prijs € (optioneel)')}</span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Prijs € (optioneel)')}</span>
           <input style={veld} inputMode="decimal" placeholder="0,00" value={prijs} onChange={(e) => setPrijs(e.target.value)} />
         </label>
       </div>
       <div style={{ ...rij, marginTop: '0.4rem' }}>
         <label htmlFor="gar-maanden">{t('Garantie in maanden')}</label>
         <input id="gar-maanden" style={veld} inputMode="numeric" value={maanden} onChange={(e) => setMaanden(e.target.value)} />
-        <span style={{ color: '#888', fontSize: '0.8rem' }}>{t('24 = wettelijk (2 jaar); tweedehands minstens 12; langere commerciële garantie mag ook.')}</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{t('24 = wettelijk (2 jaar); tweedehands minstens 12; langere commerciële garantie mag ook.')}</span>
       </div>
       <div style={rij}>
         <label htmlFor="gar-notitie">{t('Notitie (optioneel)')}</label>
@@ -156,10 +156,10 @@ export function GarantieFormulier({
         {bonnetje ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: 2 }}>
             {bonnetje.startsWith('data:image') && (
-              <img src={bonnetje} alt={t('Bon/factuur')} style={{ maxHeight: 60, borderRadius: 6, border: '1px solid #eee' }} />
+              <img src={bonnetje} alt={t('Bon/factuur')} style={{ maxHeight: 60, borderRadius: 6, border: '1px solid var(--border)' }} />
             )}
-            <a href={bonnetje} target="_blank" rel="noreferrer" style={{ color: '#2c6cb0' }}>{t('bekijken')}</a>
-            <button type="button" onClick={() => setBonnetje('')} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer' }}>
+            <a href={bonnetje} target="_blank" rel="noreferrer" style={{ color: 'var(--info)' }}>{t('bekijken')}</a>
+            <button type="button" onClick={() => setBonnetje('')} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer' }}>
               {t('verwijderen')}
             </button>
           </div>
@@ -176,7 +176,7 @@ export function GarantieFormulier({
             }}
           />
         )}
-        {bezigBon && <span style={{ color: '#888', fontSize: '0.85rem' }}> {t('bezig…')}</span>}
+        {bezigBon && <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}> {t('bezig…')}</span>}
       </div>
       <button
         type="submit"
@@ -184,8 +184,8 @@ export function GarantieFormulier({
         style={{
           padding: '0.4rem 0.8rem',
           borderRadius: 8,
-          border: '1px solid #ccc',
-          background: geldig ? '#eef7ee' : '#f2f2f2',
+          border: '1px solid var(--border-strong)',
+          background: geldig ? 'var(--positive-soft)' : 'var(--surface-2)',
           cursor: geldig ? 'pointer' : 'not-allowed',
         }}
       >
@@ -195,7 +195,7 @@ export function GarantieFormulier({
         <button
           type="button"
           onClick={onAnnuleer}
-          style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}
+          style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
         >
           {t('Annuleer')}
         </button>

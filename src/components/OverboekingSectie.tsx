@@ -93,29 +93,29 @@ export function OverboekingSectie({
   return (
     <section>
       <h2 style={kop}>{t('Overboekingen')}</h2>
-      <p style={{ color: '#888', marginTop: 0 }}>{t('Geld verschuiven tussen je eigen rekeningen (geen inkomst of uitgave).')}</p>
+      <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>{t('Geld verschuiven tussen je eigen rekeningen (geen inkomst of uitgave).')}</p>
 
       {rekeningen.length < 2 ? (
-        <p style={{ color: '#888' }}>{t('Je hebt minstens twee rekeningen nodig om over te boeken.')}</p>
+        <p style={{ color: 'var(--text-muted)' }}>{t('Je hebt minstens twee rekeningen nodig om over te boeken.')}</p>
       ) : (
         <>
           <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 0.75rem' }}>
             {gesorteerd.map((o) => (
               <li
                 key={o.id}
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.35rem 0', borderBottom: '1px solid #f0f0f0' }}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.35rem 0', borderBottom: '1px solid var(--border)' }}
               >
                 <span>
                   {naam(o.vanRekeningId)} → {naam(o.naarRekeningId)}
-                  {o.omschrijving && <span style={{ color: '#999', fontSize: '0.85rem' }}> · {o.omschrijving}</span>}
-                  <span style={{ color: '#999', fontSize: '0.85rem' }}> · {o.datum}</span>
+                  {o.omschrijving && <span style={{ color: 'var(--text-subtle)', fontSize: '0.85rem' }}> · {o.omschrijving}</span>}
+                  <span style={{ color: 'var(--text-subtle)', fontSize: '0.85rem' }}> · {o.datum}</span>
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                   <span>{formatEuro(o.bedrag)}</span>
-                  <button aria-label={t('Bewerk overboeking {van} naar {naar}', { van: naam(o.vanRekeningId), naar: naam(o.naarRekeningId) })} onClick={() => onBewerk(o)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
+                  <button aria-label={t('Bewerk overboeking {van} naar {naar}', { van: naam(o.vanRekeningId), naar: naam(o.naarRekeningId) })} onClick={() => onBewerk(o)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>
                     ✎
                   </button>
-                  <button aria-label={t('Verwijder overboeking {van} naar {naar}', { van: naam(o.vanRekeningId), naar: naam(o.naarRekeningId) })} onClick={() => onVerwijderen(o.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
+                  <button aria-label={t('Verwijder overboeking {van} naar {naar}', { van: naam(o.vanRekeningId), naar: naam(o.naarRekeningId) })} onClick={() => onVerwijderen(o.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>
                     ×
                   </button>
                 </span>
@@ -147,7 +147,7 @@ export function OverboekingSectie({
               </select>
             </div>
             {vanId && naarId && vanId === naarId && (
-              <p style={{ color: '#c0392b', margin: '0 0 0.6rem' }}>{t('Kies twee verschillende rekeningen.')}</p>
+              <p style={{ color: 'var(--negative)', margin: '0 0 0.6rem' }}>{t('Kies twee verschillende rekeningen.')}</p>
             )}
             <div style={rij}>
               <label htmlFor="ob-bedrag">{t('Over te boeken bedrag (€)')}</label>
@@ -180,8 +180,8 @@ export function OverboekingSectie({
               style={{
                 padding: '0.5rem 0.9rem',
                 borderRadius: 8,
-                border: '1px solid #ccc',
-                background: geldig ? '#eef2f7' : '#f2f2f2',
+                border: '1px solid var(--border-strong)',
+                background: geldig ? 'var(--info-soft)' : 'var(--surface-2)',
                 cursor: geldig ? 'pointer' : 'not-allowed',
               }}
             >
@@ -191,7 +191,7 @@ export function OverboekingSectie({
               <button
                 type="button"
                 onClick={onStopBewerken}
-                style={{ marginLeft: '0.5rem', padding: '0.5rem 0.9rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}
+                style={{ marginLeft: '0.5rem', padding: '0.5rem 0.9rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
               >
                 {t('Annuleer')}
               </button>

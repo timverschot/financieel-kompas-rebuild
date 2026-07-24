@@ -82,8 +82,8 @@ export function BudgetFormulier({
         style={{
           padding: '0.4rem 0.8rem',
           borderRadius: 8,
-          border: '1px solid #ccc',
-          background: geldig ? '#eef2f7' : '#f2f2f2',
+          border: '1px solid var(--border-strong)',
+          background: geldig ? 'var(--info-soft)' : 'var(--surface-2)',
           cursor: geldig ? 'pointer' : 'not-allowed',
         }}
       >

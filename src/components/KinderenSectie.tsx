@@ -11,8 +11,8 @@ const veld: CSSProperties = {
   boxSizing: 'border-box',
 }
 const miniKnop: CSSProperties = {
-  border: '1px solid #ccc',
-  background: '#f7f7f7',
+  border: '1px solid var(--border-strong)',
+  background: 'var(--surface-2)',
   borderRadius: 6,
   cursor: 'pointer',
   fontSize: '0.8rem',
@@ -53,13 +53,13 @@ export function KinderenSectie({
   return (
     <section>
       <h2 style={kop}>{t('Kinderen')}</h2>
-      <p style={{ color: '#888', marginTop: 0 }}>{t('Stel je kinderen één keer in; je kan gedeelde kosten eraan koppelen.')}</p>
+      <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>{t('Stel je kinderen één keer in; je kan gedeelde kosten eraan koppelen.')}</p>
 
-      {kinderen.length === 0 && <p style={{ color: '#888' }}>{t('Nog geen kinderen ingesteld.')}</p>}
+      {kinderen.length === 0 && <p style={{ color: 'var(--text-muted)' }}>{t('Nog geen kinderen ingesteld.')}</p>}
 
       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
         {kinderen.map((k) => (
-          <li key={k.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.3rem 0', borderBottom: '1px solid #f0f0f0' }}>
+          <li key={k.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.3rem 0', borderBottom: '1px solid var(--border)' }}>
             {bewerkId === k.id ? (
               <>
                 <input aria-label={t('Nieuwe naam voor {naam}', { naam: k.naam })} style={{ ...veld, flex: 1, marginTop: 0 }} value={bewerkTekst} onChange={(e) => setBewerkTekst(e.target.value)} />
@@ -69,8 +69,8 @@ export function KinderenSectie({
             ) : (
               <>
                 <span style={{ flex: 1 }}>{k.naam}</span>
-                <button type="button" aria-label={t('Wijzig kind {naam}', { naam: k.naam })} onClick={() => { setBewerkId(k.id); setBewerkTekst(k.naam) }} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>✎</button>
-                <button type="button" aria-label={t('Verwijder kind {naam}', { naam: k.naam })} onClick={() => onVerwijderen(k.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
+                <button type="button" aria-label={t('Wijzig kind {naam}', { naam: k.naam })} onClick={() => { setBewerkId(k.id); setBewerkTekst(k.naam) }} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>✎</button>
+                <button type="button" aria-label={t('Verwijder kind {naam}', { naam: k.naam })} onClick={() => onVerwijderen(k.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
               </>
             )}
           </li>
@@ -82,7 +82,7 @@ export function KinderenSectie({
         <button
           type="submit"
           disabled={!nieuw.trim()}
-          style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid #ccc', background: nieuw.trim() ? '#eef2f7' : '#f2f2f2', cursor: nieuw.trim() ? 'pointer' : 'not-allowed' }}
+          style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: nieuw.trim() ? 'var(--info-soft)' : 'var(--surface-2)', cursor: nieuw.trim() ? 'pointer' : 'not-allowed' }}
         >
           {t('Kind toevoegen')}
         </button>

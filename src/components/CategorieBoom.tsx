@@ -15,8 +15,8 @@ const rijKnop: CSSProperties = {
   fontSize: '0.95rem',
 }
 const miniKnop: CSSProperties = {
-  border: '1px solid #ccc',
-  background: '#f7f7f7',
+  border: '1px solid var(--border-strong)',
+  background: 'var(--surface-2)',
   borderRadius: 6,
   cursor: 'pointer',
   fontSize: '0.8rem',
@@ -69,7 +69,7 @@ export function CategorieBoom({
   return (
     <section>
       <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{t('Alle categorieën')}</h2>
-      <p style={{ color: '#888', marginTop: 0 }}>
+      <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>
         {t('Vouw open om te bekijken. Voeg subcategorieën toe of hernoem bestaande.')}
       </p>
 
@@ -78,9 +78,9 @@ export function CategorieBoom({
           const hOpen = openHoofd.has(h.id)
           const aantal = h.categorieen.reduce((s, c) => s + c.items.length, 0)
           return (
-            <li key={h.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+            <li key={h.id} style={{ borderBottom: '1px solid var(--border)' }}>
               <button type="button" aria-expanded={hOpen} onClick={() => wissel(openHoofd, setOpenHoofd, h.id)} style={{ ...rijKnop, fontWeight: 600 }}>
-                {hOpen ? '▾' : '▸'} {h.icoon} {h.naam} <span style={{ color: '#999', fontWeight: 400 }}>· {t('{n} items', { n: aantal })}</span>
+                {hOpen ? '▾' : '▸'} {h.icoon} {h.naam} <span style={{ color: 'var(--text-subtle)', fontWeight: 400 }}>· {t('{n} items', { n: aantal })}</span>
               </button>
 
               {hOpen && (
@@ -90,7 +90,7 @@ export function CategorieBoom({
                     return (
                       <li key={c.id}>
                         <button type="button" aria-expanded={cOpen} onClick={() => wissel(openCat, setOpenCat, c.id)} style={rijKnop}>
-                          {cOpen ? '▾' : '▸'} {c.naam} <span style={{ color: '#aaa' }}>({c.items.length})</span>
+                          {cOpen ? '▾' : '▸'} {c.naam} <span style={{ color: 'var(--text-subtle)' }}>({c.items.length})</span>
                         </button>
                         {cOpen && (
                           <ul style={{ listStyle: 'none', padding: '0 0 0.3rem 1.2rem', margin: 0 }}>
@@ -104,13 +104,13 @@ export function CategorieBoom({
                                   </>
                                 ) : (
                                   <>
-                                    <span style={{ flex: 1, color: '#555' }}>
+                                    <span style={{ flex: 1, color: 'var(--text-muted)' }}>
                                       {it.naam}
-                                      {it.eigen && <span style={{ color: '#c56a1f' }}> · {t('eigen')}</span>}
+                                      {it.eigen && <span style={{ color: 'var(--accent-strong)' }}> · {t('eigen')}</span>}
                                     </span>
-                                    <button type="button" aria-label={t('Wijzig {naam}', { naam: it.naam })} onClick={() => { setBewerkId(it.id); setBewerkTekst(it.naam) }} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>✎</button>
+                                    <button type="button" aria-label={t('Wijzig {naam}', { naam: it.naam })} onClick={() => { setBewerkId(it.id); setBewerkTekst(it.naam) }} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>✎</button>
                                     {it.eigen && (
-                                      <button type="button" aria-label={t('Verwijder {naam}', { naam: it.naam })} onClick={() => onVerwijderen(it.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1rem' }}>×</button>
+                                      <button type="button" aria-label={t('Verwijder {naam}', { naam: it.naam })} onClick={() => onVerwijderen(it.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1rem' }}>×</button>
                                     )}
                                   </>
                                 )}
@@ -125,7 +125,7 @@ export function CategorieBoom({
                                   <button type="button" style={miniKnop} onClick={() => setToevoegCatId(null)}>×</button>
                                 </span>
                               ) : (
-                                <button type="button" aria-label={t('Voeg subcategorie toe aan {naam}', { naam: c.naam })} onClick={() => { setToevoegCatId(c.id); setToevoegTekst('') }} style={{ ...miniKnop, color: '#3F8A58' }}>{t('+ subcategorie')}</button>
+                                <button type="button" aria-label={t('Voeg subcategorie toe aan {naam}', { naam: c.naam })} onClick={() => { setToevoegCatId(c.id); setToevoegTekst('') }} style={{ ...miniKnop, color: 'var(--positive)' }}>{t('+ subcategorie')}</button>
                               )}
                             </li>
                           </ul>

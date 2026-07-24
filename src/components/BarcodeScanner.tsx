@@ -63,7 +63,7 @@ export function BarcodeScanner({
     >
       <p style={{ color: '#fff', marginTop: 0 }}>{t('Richt de camera op de streepjescode')}</p>
       <video ref={videoRef} style={{ width: '100%', maxWidth: 420, borderRadius: 12, background: '#000' }} muted playsInline />
-      {fout && <p style={{ color: '#ffb4b4', maxWidth: 420, textAlign: 'center' }}>{t('Camera niet beschikbaar: {fout}', { fout })}</p>}
+      {fout && <p style={{ color: 'var(--negative)', maxWidth: 420, textAlign: 'center' }}>{t('Camera niet beschikbaar: {fout}', { fout })}</p>}
       <button
         type="button"
         onClick={onSluiten}

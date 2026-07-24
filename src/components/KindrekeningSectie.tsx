@@ -16,7 +16,7 @@ const veld: CSSProperties = {
   marginTop: 2,
   boxSizing: 'border-box',
 }
-const blok: CSSProperties = { background: '#f5f8f5', border: '1px solid #e4ede4', borderRadius: 8, padding: '0.6rem', marginBottom: '0.75rem' }
+const blok: CSSProperties = { background: 'var(--positive-soft)', border: '1px solid var(--positive-soft)', borderRadius: 8, padding: '0.6rem', marginBottom: '0.75rem' }
 
 const vandaag = () => new Date().toISOString().slice(0, 10)
 
@@ -109,10 +109,10 @@ export function KindrekeningSectie({
     return (
       <div style={{ ...blok, marginTop: '1rem' }}>
         <h3 style={{ fontSize: '0.9rem', margin: '0 0 0.15rem' }}>{t('Kindrekening (gezamenlijke pot)')}</h3>
-        <p style={{ color: '#888', margin: '0 0 0.5rem', fontSize: '0.85rem' }}>
+        <p style={{ color: 'var(--text-muted)', margin: '0 0 0.5rem', fontSize: '0.85rem' }}>
           {t('Een gezamenlijke pot waarop beide ouders storten en waaruit kosten rechtstreeks betaald worden. Een tweede manier van afrekenen naast het verschil-model.')}
         </p>
-        <button type="button" onClick={zetAan} style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid #ccc', background: '#eef7ee', cursor: 'pointer' }}>
+        <button type="button" onClick={zetAan} style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--positive-soft)', cursor: 'pointer' }}>
           {t('Kindrekening aanzetten')}
         </button>
       </div>
@@ -143,7 +143,7 @@ export function KindrekeningSectie({
         <button
           aria-label={t('Kindrekening uitzetten')}
           onClick={() => onVerwijderen(kindrekening.id)}
-          style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.2rem' }}
+          style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.2rem' }}
         >
           ×
         </button>
@@ -161,42 +161,42 @@ export function KindrekeningSectie({
       {/* Maandbijdrage-afspraak (met indexatie) */}
       <div style={{ marginBottom: '0.5rem' }}>
         {(kindrekening.maandbijdrageJij || kindrekening.maandbijdragePartner) && !toonAfspraak && (
-          <p style={{ margin: '0 0 0.25rem', fontSize: '0.85rem', color: '#555' }}>
+          <p style={{ margin: '0 0 0.25rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
             {t('Maandbijdrage')}: {t('jij {jij}', { jij: formatEuro(geindexeerdJij) })}, {t('partner {partner}', { partner: formatEuro(geindexeerdPartner) })}
             {heeftIndex && ` · ${t('geïndexeerd')}`}
           </p>
         )}
-        <button type="button" onClick={() => setToonAfspraak((v) => !v)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer', fontSize: '0.85rem', padding: 0 }}>
+        <button type="button" onClick={() => setToonAfspraak((v) => !v)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer', fontSize: '0.85rem', padding: 0 }}>
           {toonAfspraak ? t('Afspraak verbergen') : t('Maandbijdrage-afspraak instellen')}
         </button>
       </div>
 
       {toonAfspraak && (
-        <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 8, padding: '0.6rem', marginBottom: '0.75rem' }}>
-          <p style={{ color: '#888', margin: '0 0 0.4rem', fontSize: '0.85rem' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem', marginBottom: '0.75rem' }}>
+          <p style={{ color: 'var(--text-muted)', margin: '0 0 0.4rem', fontSize: '0.85rem' }}>
             {t('De afgesproken maandelijkse storting per ouder. Vul een aanvangs- en huidige index in om de bijdrage te indexeren (Belgische formule).')}
           </p>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <label style={{ flex: 1, minWidth: 110 }}>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>{t('Bijdrage jij (€/maand)')}</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Bijdrage jij (€/maand)')}</span>
               <input style={veld} inputMode="decimal" placeholder="0,00" value={bijJij} onChange={(e) => setBijJij(e.target.value)} />
             </label>
             <label style={{ flex: 1, minWidth: 110 }}>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>{t('Bijdrage partner (€/maand)')}</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Bijdrage partner (€/maand)')}</span>
               <input style={veld} inputMode="decimal" placeholder="0,00" value={bijPartner} onChange={(e) => setBijPartner(e.target.value)} />
             </label>
           </div>
           <label style={{ display: 'block', marginTop: '0.4rem' }}>
-            <span style={{ fontSize: '0.85rem', color: '#555' }}>{t('Startdatum afspraak')}</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Startdatum afspraak')}</span>
             <input type="date" style={veld} value={start} onChange={(e) => setStart(e.target.value)} />
           </label>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.4rem' }}>
             <label style={{ flex: 1, minWidth: 110 }}>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>{t('Aanvangsindex (optioneel)')}</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Aanvangsindex (optioneel)')}</span>
               <input style={veld} inputMode="decimal" value={aanvang} onChange={(e) => setAanvang(e.target.value)} />
             </label>
             <label style={{ flex: 1, minWidth: 110 }}>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>{t('Huidige index (optioneel)')}</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Huidige index (optioneel)')}</span>
               <input style={veld} inputMode="decimal" value={huidig} onChange={(e) => setHuidig(e.target.value)} />
             </label>
           </div>
@@ -205,7 +205,7 @@ export function KindrekeningSectie({
               {t('Geïndexeerde bijdrage jij: {bedrag}', { bedrag: formatEuro(voorbeeldJij) })}
             </p>
           )}
-          <button type="button" onClick={bewaarAfspraak} style={{ marginTop: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid #ccc', background: '#eef7ee', cursor: 'pointer' }}>
+          <button type="button" onClick={bewaarAfspraak} style={{ marginTop: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--positive-soft)', cursor: 'pointer' }}>
             {t('Afspraak bewaren')}
           </button>
         </div>
@@ -215,13 +215,13 @@ export function KindrekeningSectie({
       {bewegingen.length > 0 && (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {bewegingen.map((p) => (
-            <li key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.35rem 0', borderBottom: '1px solid #eef0ee' }}>
+            <li key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.35rem 0', borderBottom: '1px solid var(--positive-soft)' }}>
               <span style={{ fontSize: '0.9rem' }}>
-                <span style={{ color: p.soort === 'storting' ? '#1f7a3d' : '#b34a2f' }}>
+                <span style={{ color: p.soort === 'storting' ? 'var(--positive)' : 'var(--negative)' }}>
                   {p.soort === 'storting' ? '▲' : '▼'}
                 </span>{' '}
                 {p.omschrijving || (p.soort === 'storting' ? t('Storting') : t('Uitgave'))}
-                <span style={{ color: '#999', fontSize: '0.8rem' }}>
+                <span style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>
                   {' '}· {p.datum}
                   {p.soort === 'storting' && ` · ${t('door {wie}', { wie: p.door === 'partner' ? t('partner') : t('jou') })}`}
                   {p.categorieId && ` · ${labelVanCategorie(p.categorieId, categorieen) ?? ''}`}
@@ -229,18 +229,18 @@ export function KindrekeningSectie({
                 </span>
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <span style={{ color: p.soort === 'storting' ? '#1f7a3d' : '#b34a2f' }}>
+                <span style={{ color: p.soort === 'storting' ? 'var(--positive)' : 'var(--negative)' }}>
                   {p.soort === 'storting' ? '+' : '−'}{formatEuro(p.bedrag)}
                 </span>
                 {p.bonnetje && (
-                  <a href={p.bonnetje} target="_blank" rel="noreferrer" style={{ color: '#2c6cb0', fontSize: '0.85rem' }}>
+                  <a href={p.bonnetje} target="_blank" rel="noreferrer" style={{ color: 'var(--info)', fontSize: '0.85rem' }}>
                     {t('bon')}
                   </a>
                 )}
-                <button aria-label={t('Bewerk beweging')} onClick={() => setBewerkPost(p)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
+                <button aria-label={t('Bewerk beweging')} onClick={() => setBewerkPost(p)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>
                   ✎
                 </button>
-                <button aria-label={t('Verwijder beweging')} onClick={() => onPostVerwijderen(p.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
+                <button aria-label={t('Verwijder beweging')} onClick={() => onPostVerwijderen(p.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>
                   ×
                 </button>
               </span>

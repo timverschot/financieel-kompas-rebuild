@@ -94,7 +94,7 @@ export function ItemZoeker({
             padding: 0,
             maxHeight: 200,
             overflowY: 'auto',
-            border: '1px solid #ddd',
+            border: '1px solid var(--border-strong)',
             borderRadius: 8,
             background: 'white',
             position: 'absolute',
@@ -116,13 +116,13 @@ export function ItemZoeker({
                   textAlign: 'left',
                   padding: '0.3rem 0.5rem',
                   border: 'none',
-                  borderBottom: '1px solid #f2f2f2',
-                  background: i === gemarkeerd ? '#eef2fb' : 'white',
+                  borderBottom: '1px solid var(--surface-2)',
+                  background: i === gemarkeerd ? 'var(--info-soft)' : 'white',
                   cursor: 'pointer',
                   fontSize: '0.85rem',
                 }}
               >
-                {it.naam} <span style={{ color: '#999' }}>· {it.hoofdNaam}</span>
+                {it.naam} <span style={{ color: 'var(--text-subtle)' }}>· {it.hoofdNaam}</span>
               </button>
             </li>
           ))}

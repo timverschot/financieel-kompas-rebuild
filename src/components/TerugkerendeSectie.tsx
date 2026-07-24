@@ -8,8 +8,8 @@ import { useT } from '../i18n'
 const knop: CSSProperties = {
   padding: '0.3rem 0.7rem',
   borderRadius: 8,
-  border: '1px solid #ccc',
-  background: '#eef2f7',
+  border: '1px solid var(--border-strong)',
+  background: 'var(--info-soft)',
   cursor: 'pointer',
 }
 
@@ -47,7 +47,7 @@ export function TerugkerendeSectie({
   return (
     <section>
       <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{t('Vaste lasten')}</h2>
-      <p style={{ color: '#888', marginTop: 0 }}>{t('Inboeken voor {maand}', { maand: maandLabel })}</p>
+      <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>{t('Inboeken voor {maand}', { maand: maandLabel })}</p>
 
       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
         {posten.map((p) => {
@@ -60,31 +60,31 @@ export function TerugkerendeSectie({
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 padding: '0.4rem 0',
-                borderBottom: '1px solid #f0f0f0',
+                borderBottom: '1px solid var(--border)',
               }}
             >
               <span>
                 {p.omschrijving}
-                <span style={{ color: '#999', fontSize: '0.85rem' }}>
+                <span style={{ color: 'var(--text-subtle)', fontSize: '0.85rem' }}>
                   {' '}
                   · {t('{bedrag} · dag {dag}', { bedrag: formatEuro(p.bedrag), dag: p.dag })}
                 </span>
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                 {geboekt ? (
-                  <span style={{ color: '#27ae60' }}>{t('Geboekt ✓')}</span>
+                  <span style={{ color: 'var(--positive)' }}>{t('Geboekt ✓')}</span>
                 ) : (
                   <button style={knop} onClick={() => onBoek(p)}>
                     {t('Boek in')}
                   </button>
                 )}
-                <button aria-label={t('Bewerk vaste post {naam}', { naam: p.omschrijving })} onClick={() => setBewerken(p)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
+                <button aria-label={t('Bewerk vaste post {naam}', { naam: p.omschrijving })} onClick={() => setBewerken(p)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>
                   ✎
                 </button>
                 <button
                   aria-label={t('Verwijder vaste post {naam}', { naam: p.omschrijving })}
                   onClick={() => onVerwijderen(p.id)}
-                  style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}
+                  style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}
                 >
                   ×
                 </button>

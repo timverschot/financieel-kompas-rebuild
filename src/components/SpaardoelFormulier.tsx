@@ -111,12 +111,12 @@ export function SpaardoelFormulier({
       <button
         type="submit"
         disabled={!geldig}
-        style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid #ccc', background: geldig ? '#eef7ee' : '#f2f2f2', cursor: geldig ? 'pointer' : 'not-allowed' }}
+        style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: geldig ? 'var(--positive-soft)' : 'var(--surface-2)', cursor: geldig ? 'pointer' : 'not-allowed' }}
       >
         {bewerken ? t('Doel wijzigen') : t('Doel toevoegen')}
       </button>
       {bewerken && onAnnuleer && (
-        <button type="button" onClick={onAnnuleer} style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}>
+        <button type="button" onClick={onAnnuleer} style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}>
           {t('Annuleer')}
         </button>
       )}

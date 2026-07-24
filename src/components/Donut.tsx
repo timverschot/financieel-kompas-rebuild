@@ -50,10 +50,10 @@ export function Donut({ items, middenLabel = 'uitgaven' }: { items: DonutInvoer[
         ) : (
           segmenten.map((seg) => <path key={seg.naam} d={segmentPad(seg.start, seg.eind)} fill={seg.kleur} />)
         )}
-        <text x={MIDDEN} y={MIDDEN - 4} textAnchor="middle" style={{ fontSize: 11, fill: '#888' }}>
+        <text x={MIDDEN} y={MIDDEN - 4} textAnchor="middle" style={{ fontSize: 11, fill: 'var(--text-muted)' }}>
           {t(middenLabel)}
         </text>
-        <text x={MIDDEN} y={MIDDEN + 12} textAnchor="middle" style={{ fontSize: 14, fontWeight: 700, fill: '#333' }}>
+        <text x={MIDDEN} y={MIDDEN + 12} textAnchor="middle" style={{ fontSize: 14, fontWeight: 700, fill: 'var(--text)' }}>
           {formatEuro(totaal)}
         </text>
       </svg>
@@ -63,8 +63,8 @@ export function Donut({ items, middenLabel = 'uitgaven' }: { items: DonutInvoer[
           <li key={seg.naam} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.15rem 0' }}>
             <span style={{ ...swatch, background: seg.kleur }} />
             <span style={{ flex: 1 }}>{seg.naam}</span>
-            <span style={{ color: '#666' }}>{formatEuro(seg.bedrag)}</span>
-            <span style={{ color: '#aaa', width: 44, textAlign: 'right' }}>{Math.round(seg.fractie * 100)}%</span>
+            <span style={{ color: 'var(--text-muted)' }}>{formatEuro(seg.bedrag)}</span>
+            <span style={{ color: 'var(--text-subtle)', width: 44, textAlign: 'right' }}>{Math.round(seg.fractie * 100)}%</span>
           </li>
         ))}
       </ul>

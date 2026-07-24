@@ -11,7 +11,7 @@ const vandaag = () => new Date().toISOString().slice(0, 10)
 const STANDAARD_MAANDEN = 6
 
 const veld: CSSProperties = { display: 'block', width: '100%', padding: '0.4rem', marginTop: 2, boxSizing: 'border-box' }
-const filterBlok: CSSProperties = { background: '#faf9f7', border: '1px solid #eee', borderRadius: 8, padding: '0.6rem', marginBottom: '0.75rem' }
+const filterBlok: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem', marginBottom: '0.75rem' }
 
 // De transactielijst met zoek-/filterbalk en een historiek-venster. Standaard
 // toont ze enkel de recente maanden (ouder op aanvraag); zodra je zoekt of filtert,
@@ -72,7 +72,7 @@ export function TransactieLijst({
         />
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
           <label style={{ flex: 1, minWidth: 130 }}>
-            <span style={{ fontSize: '0.8rem', color: '#555' }}>{t('Richting')}</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Richting')}</span>
             <select style={veld} value={filter.richting ?? ''} onChange={(e) => zet({ richting: (e.target.value || undefined) as TxFilter['richting'] })}>
               <option value="">{t('Alles')}</option>
               <option value="in">{t('Inkomsten')}</option>
@@ -80,7 +80,7 @@ export function TransactieLijst({
             </select>
           </label>
           <label style={{ flex: 1, minWidth: 130 }}>
-            <span style={{ fontSize: '0.8rem', color: '#555' }}>{t('Rekening')}</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Rekening')}</span>
             <select style={veld} value={filter.rekeningId ?? ''} onChange={(e) => zet({ rekeningId: e.target.value || undefined })}>
               <option value="">{t('Alle rekeningen')}</option>
               {rekeningen.map((r) => (
@@ -91,7 +91,7 @@ export function TransactieLijst({
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
           <label style={{ flex: 1, minWidth: 130 }}>
-            <span style={{ fontSize: '0.8rem', color: '#555' }}>{t('Hoofdcategorie')}</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Hoofdcategorie')}</span>
             <select
               style={veld}
               value={filter.hoofdId ?? ''}
@@ -112,7 +112,7 @@ export function TransactieLijst({
           </label>
           {subOpties.length > 0 && (
             <label style={{ flex: 1, minWidth: 130 }}>
-              <span style={{ fontSize: '0.8rem', color: '#555' }}>{t('Subcategorie')}</span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Subcategorie')}</span>
               <select style={veld} value={filter.catId ?? ''} onChange={(e) => zet({ catId: e.target.value || undefined })}>
                 <option value="">{t('Alle subcategorieën')}</option>
                 {subOpties.map((c) => (
@@ -124,22 +124,22 @@ export function TransactieLijst({
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem', alignItems: 'flex-end' }}>
           <label style={{ flex: 1, minWidth: 120 }}>
-            <span style={{ fontSize: '0.8rem', color: '#555' }}>{t('Van')}</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Van')}</span>
             <input type="date" style={veld} value={filter.van ?? ''} onChange={(e) => zet({ van: e.target.value || undefined })} />
           </label>
           <label style={{ flex: 1, minWidth: 120 }}>
-            <span style={{ fontSize: '0.8rem', color: '#555' }}>{t('Tot')}</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Tot')}</span>
             <input type="date" style={veld} value={filter.tot ?? ''} onChange={(e) => zet({ tot: e.target.value || undefined })} />
           </label>
           {actief && (
-            <button type="button" onClick={wis} style={{ padding: '0.4rem 0.7rem', borderRadius: 8, border: '1px solid #ccc', background: '#f2f2f2', cursor: 'pointer' }}>
+            <button type="button" onClick={wis} style={{ padding: '0.4rem 0.7rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}>
               {t('Wis filters')}
             </button>
           )}
         </div>
       </div>
 
-      <p style={{ color: '#888', fontSize: '0.85rem', margin: '0 0 0.25rem' }}>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '0 0 0.25rem' }}>
         {actief
           ? t('{n} transactie(s) gevonden', { n: gesorteerd.length })
           : t('{n} transactie(s) getoond', { n: zichtbaar.length })}
@@ -149,31 +149,31 @@ export function TransactieLijst({
         {zichtbaar.map((tx) => {
           const cat = tx.regels && tx.regels.length > 0 ? t('gesplitst · {n} categorieën', { n: tx.regels.length }) : categorieNaam(tx.categorieId)
           return (
-            <li key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #eee' }}>
+            <li key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
               <span>
                 {tx.omschrijving}
-                <span style={{ color: '#999', fontSize: '0.85rem' }}>
+                <span style={{ color: 'var(--text-subtle)', fontSize: '0.85rem' }}>
                   {' '}· {tx.datum}
                   {cat && ` · ${cat}`}
                 </span>
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <span style={{ color: tx.bedrag < 0 ? '#c0392b' : '#27ae60' }}>{formatEuro(tx.bedrag)}</span>
-                <button aria-label={t('Bewerk {oms}', { oms: tx.omschrijving })} onClick={() => onBewerk(tx)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer', fontSize: '1rem' }}>✎</button>
-                <button aria-label={t('Verwijder {oms}', { oms: tx.omschrijving })} onClick={() => onVerwijder(tx.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
+                <span style={{ color: tx.bedrag < 0 ? 'var(--negative)' : 'var(--positive)' }}>{formatEuro(tx.bedrag)}</span>
+                <button aria-label={t('Bewerk {oms}', { oms: tx.omschrijving })} onClick={() => onBewerk(tx)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer', fontSize: '1rem' }}>✎</button>
+                <button aria-label={t('Verwijder {oms}', { oms: tx.omschrijving })} onClick={() => onVerwijder(tx.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
               </span>
             </li>
           )
         })}
       </ul>
 
-      {zichtbaar.length === 0 && <p style={{ color: '#888' }}>{t('Geen transacties gevonden.')}</p>}
+      {zichtbaar.length === 0 && <p style={{ color: 'var(--text-muted)' }}>{t('Geen transacties gevonden.')}</p>}
 
       {venster && verborgen > 0 && (
         <button
           type="button"
           onClick={() => setToonAlles(true)}
-          style={{ marginTop: '0.6rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}
+          style={{ marginTop: '0.6rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
         >
           {t('Toon oudere transacties ({n} ouder dan {maanden} maanden)', { n: verborgen, maanden: STANDAARD_MAANDEN })}
         </button>
@@ -182,7 +182,7 @@ export function TransactieLijst({
         <button
           type="button"
           onClick={() => setToonAlles(false)}
-          style={{ marginTop: '0.6rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}
+          style={{ marginTop: '0.6rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
         >
           {t('Toon enkel recente maanden')}
         </button>

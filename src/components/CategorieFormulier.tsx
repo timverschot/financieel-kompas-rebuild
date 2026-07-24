@@ -48,8 +48,8 @@ export function CategorieFormulier({
         style={{
           padding: '0.4rem 0.8rem',
           borderRadius: 8,
-          border: '1px solid #ccc',
-          background: geldig ? '#f3eef7' : '#f2f2f2',
+          border: '1px solid var(--border-strong)',
+          background: geldig ? 'var(--accent-soft)' : 'var(--surface-2)',
           cursor: geldig ? 'pointer' : 'not-allowed',
         }}
       >
@@ -59,7 +59,7 @@ export function CategorieFormulier({
         <button
           type="button"
           onClick={onAnnuleer}
-          style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}
+          style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
         >
           {t('Annuleer')}
         </button>

@@ -37,9 +37,9 @@ export class ErrorBoundary extends Component<Props, State> {
             fontFamily: 'system-ui, sans-serif',
             margin: '1rem 0',
             padding: '0.75rem 1rem',
-            border: '1px solid #f5c6cb',
+            border: '1px solid var(--negative)',
             borderRadius: 8,
-            background: '#fff5f5',
+            background: 'var(--negative-soft)',
           }}
         >
           <p style={{ margin: '0 0 0.5rem' }}>
@@ -51,8 +51,8 @@ export class ErrorBoundary extends Component<Props, State> {
             style={{
               padding: '0.4rem 0.8rem',
               borderRadius: 8,
-              border: '1px solid #ccc',
-              background: '#f7f7f7',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface-2)',
               cursor: 'pointer',
             }}
           >

@@ -101,13 +101,13 @@ export function CategorieKiezer({
 
   return (
     <div style={{ position: 'relative' }}>
-      <p style={{ margin: '0 0 0.25rem', color: '#555', fontSize: '0.9rem' }}>
+      <p style={{ margin: '0 0 0.25rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
         {t('Categorie:')} <strong>{gekozenLabel ?? t('Geen')}</strong>
         {waarde && (
           <button
             type="button"
             onClick={() => kies(undefined)}
-            style={{ marginLeft: '0.5rem', border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer' }}
+            style={{ marginLeft: '0.5rem', border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer' }}
           >
             {t('wissen')}
           </button>
@@ -139,7 +139,7 @@ export function CategorieKiezer({
             padding: 0,
             maxHeight: 220,
             overflowY: 'auto',
-            border: '1px solid #ddd',
+            border: '1px solid var(--border-strong)',
             borderRadius: 8,
             background: 'white',
             position: 'absolute',
@@ -162,14 +162,14 @@ export function CategorieKiezer({
                   textAlign: 'left',
                   padding: '0.35rem 0.5rem',
                   border: 'none',
-                  borderBottom: '1px solid #f2f2f2',
-                  background: i === gemarkeerd ? '#eef2fb' : 'white',
+                  borderBottom: '1px solid var(--surface-2)',
+                  background: i === gemarkeerd ? 'var(--info-soft)' : 'white',
                   cursor: 'pointer',
                   fontSize: '0.9rem',
                 }}
               >
                 {s.titel}
-                {s.sub && <span style={{ color: '#999' }}> · {s.sub}</span>}
+                {s.sub && <span style={{ color: 'var(--text-subtle)' }}> · {s.sub}</span>}
               </button>
             </li>
           ))}

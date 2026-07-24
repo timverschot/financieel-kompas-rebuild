@@ -49,9 +49,9 @@ export function SpaardoelSectie({
   return (
     <section>
       <h2 style={kop}>{t('Spaardoelen')}</h2>
-      <p style={{ color: '#888', marginTop: 0 }}>{t('Langetermijndoelen — buffers, grote aankopen, schuldenvrij.')}</p>
+      <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>{t('Langetermijndoelen — buffers, grote aankopen, schuldenvrij.')}</p>
 
-      {spaardoelen.length === 0 && <p style={{ color: '#888' }}>{t('Nog geen doelen. Voeg je eerste doel toe!')}</p>}
+      {spaardoelen.length === 0 && <p style={{ color: 'var(--text-muted)' }}>{t('Nog geen doelen. Voeg je eerste doel toe!')}</p>}
 
       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
         {spaardoelen.map((d) => {
@@ -59,17 +59,17 @@ export function SpaardoelSectie({
           const kleur = d.kleur ?? '#3F8A58'
           const manueel = !d.gekoppeldeRekeningId
           return (
-            <li key={d.id} style={{ padding: '0.6rem 0', borderBottom: '1px solid #f0f0f0' }}>
+            <li key={d.id} style={{ padding: '0.6rem 0', borderBottom: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <strong>{d.naam}</strong>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <span style={{ color: '#666' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>
                     {t('{a} van {b}', { a: formatEuro(v.huidig), b: formatEuro(v.doel) })}
                   </span>
-                  <button aria-label={t('Bewerk doel {naam}', { naam: d.naam })} onClick={() => setBewerk(d)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
+                  <button aria-label={t('Bewerk doel {naam}', { naam: d.naam })} onClick={() => setBewerk(d)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>
                     ✎
                   </button>
-                  <button aria-label={t('Verwijder doel {naam}', { naam: d.naam })} onClick={() => onVerwijderen(d.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
+                  <button aria-label={t('Verwijder doel {naam}', { naam: d.naam })} onClick={() => onVerwijderen(d.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>
                     ×
                   </button>
                 </span>
@@ -80,11 +80,11 @@ export function SpaardoelSectie({
                 aria-valuenow={Math.round(v.fractie * 100)}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                style={{ height: 8, background: '#eee', borderRadius: 4, marginTop: 4, overflow: 'hidden' }}
+                style={{ height: 8, background: 'var(--border)', borderRadius: 4, marginTop: 4, overflow: 'hidden' }}
               >
                 <div style={{ height: '100%', width: `${v.fractie * 100}%`, background: kleur }} />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#888', fontSize: '0.85rem', marginTop: 2 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 2 }}>
                 <span>{t('nog {bedrag}', { bedrag: formatEuro(v.resterend) })}</span>
                 <span>
                   {d.maandbedrag ? t('{bedrag}/mnd', { bedrag: formatEuro(d.maandbedrag) }) : ''}
@@ -105,7 +105,7 @@ export function SpaardoelSectie({
                   <button
                     type="button"
                     onClick={() => werkBedragBij(d)}
-                    style={{ padding: '0.3rem 0.7rem', borderRadius: 8, border: '1px solid #ccc', background: '#eef2f7', cursor: 'pointer' }}
+                    style={{ padding: '0.3rem 0.7rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--info-soft)', cursor: 'pointer' }}
                   >
                     {t('Bedrag bijwerken')}
                   </button>

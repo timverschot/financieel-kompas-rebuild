@@ -273,9 +273,9 @@ export function TransactieFormulier({
           />
         </div>
       ) : (
-        <div style={{ ...rij, background: '#faf9f7', border: '1px solid #eee', borderRadius: 8, padding: '0.6rem' }}>
+        <div style={{ ...rij, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem' }}>
           {kassaRegels.map((r, i) => (
-            <div key={r.sleutel} style={{ marginBottom: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid #eee' }}>
+            <div key={r.sleutel} style={{ marginBottom: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1 }}>
                   <ItemZoeker
@@ -291,7 +291,7 @@ export function TransactieFormulier({
                   type="button"
                   aria-label={t('Scan streepjescode voor regel {n}', { n: i + 1 })}
                   onClick={() => setScanVoor(r.sleutel)}
-                  style={{ border: '1px solid #ccc', background: '#f7f7f7', borderRadius: 8, cursor: 'pointer', fontSize: '1.1rem', padding: '0.2rem 0.5rem', lineHeight: 1 }}
+                  style={{ border: '1px solid var(--border-strong)', background: 'var(--surface-2)', borderRadius: 8, cursor: 'pointer', fontSize: '1.1rem', padding: '0.2rem 0.5rem', lineHeight: 1 }}
                   title={t('Streepjescode scannen')}
                 >
                   📷
@@ -310,7 +310,7 @@ export function TransactieFormulier({
                     type="button"
                     aria-label={t('Verwijder regel {n}', { n: i + 1 })}
                     onClick={() => verwijderRegel(r.sleutel)}
-                    style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.2rem' }}
+                    style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.2rem' }}
                   >
                     ×
                   </button>
@@ -318,7 +318,7 @@ export function TransactieFormulier({
               </div>
               {r.nutriScore && (
                 <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#888' }}>{t('Nutri-Score')}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Nutri-Score')}</span>
                   <NutriScoreBadge score={r.nutriScore} />
                 </div>
               )}
@@ -328,7 +328,7 @@ export function TransactieFormulier({
           <button
             type="button"
             onClick={() => voegRegelToe()}
-            style={{ padding: '0.3rem 0.7rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}
+            style={{ padding: '0.3rem 0.7rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
           >
             {t('+ Regel toevoegen')}
           </button>
@@ -336,9 +336,9 @@ export function TransactieFormulier({
           <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem' }}>
             {t('Verdeeld:')} <strong>{formatEuro(verdeeld)}</strong> {t('van')} <strong>{formatEuro(totaalCenten)}</strong>{' '}
             {Math.abs(verschil) < 1 ? (
-              <span style={{ color: '#27ae60' }}>✓</span>
+              <span style={{ color: 'var(--positive)' }}>✓</span>
             ) : (
-              <span style={{ color: verschil < 0 ? '#c0392b' : '#e67e22' }}>
+              <span style={{ color: verschil < 0 ? 'var(--negative)' : 'var(--warn)' }}>
                 {t('(nog {bedrag})', { bedrag: formatEuro(verschil) })}
               </span>
             )}
@@ -374,8 +374,8 @@ export function TransactieFormulier({
         style={{
           padding: '0.5rem 0.9rem',
           borderRadius: 8,
-          border: '1px solid #ccc',
-          background: geldig ? '#eef7ee' : '#f2f2f2',
+          border: '1px solid var(--border-strong)',
+          background: geldig ? 'var(--positive-soft)' : 'var(--surface-2)',
           cursor: geldig ? 'pointer' : 'not-allowed',
         }}
       >
@@ -385,7 +385,7 @@ export function TransactieFormulier({
         <button
           type="button"
           onClick={onAnnuleer}
-          style={{ marginLeft: '0.5rem', padding: '0.5rem 0.9rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}
+          style={{ marginLeft: '0.5rem', padding: '0.5rem 0.9rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
         >
           {t('Annuleer')}
         </button>

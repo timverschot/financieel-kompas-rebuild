@@ -31,7 +31,7 @@ export function StaafGrafiek({ data }: { data: MaandBedrag[] }) {
                   width: '100%',
                   height: `${hoogte}%`,
                   minHeight: d.bedrag > 0 ? 2 : 0,
-                  background: laatste ? '#C56A1F' : '#E6B980',
+                  background: laatste ? 'var(--accent-strong)' : 'var(--accent-dot)',
                   borderRadius: '4px 4px 0 0',
                 }}
               />
@@ -41,7 +41,7 @@ export function StaafGrafiek({ data }: { data: MaandBedrag[] }) {
       </div>
       <div style={{ display: 'flex', gap: '0.4rem', marginTop: 2 }}>
         {data.map((d) => (
-          <div key={d.maand} style={{ flex: 1, textAlign: 'center', fontSize: '0.7rem', color: '#888' }}>
+          <div key={d.maand} style={{ flex: 1, textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
             {maandKort(d.maand)}
           </div>
         ))}

@@ -168,10 +168,10 @@ export function GedeeldeKostFormulier({
         {bonnetje ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: 2 }}>
             {bonnetje.startsWith('data:image') && (
-              <img src={bonnetje} alt={t('Bon/factuur')} style={{ maxHeight: 60, borderRadius: 6, border: '1px solid #eee' }} />
+              <img src={bonnetje} alt={t('Bon/factuur')} style={{ maxHeight: 60, borderRadius: 6, border: '1px solid var(--border)' }} />
             )}
-            <a href={bonnetje} target="_blank" rel="noreferrer" style={{ color: '#2c6cb0' }}>{t('bekijken')}</a>
-            <button type="button" onClick={() => setBonnetje('')} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer' }}>
+            <a href={bonnetje} target="_blank" rel="noreferrer" style={{ color: 'var(--info)' }}>{t('bekijken')}</a>
+            <button type="button" onClick={() => setBonnetje('')} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer' }}>
               {t('verwijderen')}
             </button>
           </div>
@@ -188,7 +188,7 @@ export function GedeeldeKostFormulier({
             }}
           />
         )}
-        {bezigBon && <span style={{ color: '#888', fontSize: '0.85rem' }}> {t('bezig…')}</span>}
+        {bezigBon && <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}> {t('bezig…')}</span>}
       </div>
       <button
         type="submit"
@@ -196,8 +196,8 @@ export function GedeeldeKostFormulier({
         style={{
           padding: '0.4rem 0.8rem',
           borderRadius: 8,
-          border: '1px solid #ccc',
-          background: geldig ? '#eef7ee' : '#f2f2f2',
+          border: '1px solid var(--border-strong)',
+          background: geldig ? 'var(--positive-soft)' : 'var(--surface-2)',
           cursor: geldig ? 'pointer' : 'not-allowed',
         }}
       >
@@ -207,7 +207,7 @@ export function GedeeldeKostFormulier({
         <button
           type="button"
           onClick={onAnnuleer}
-          style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid #ccc', background: '#f7f7f7', cursor: 'pointer' }}
+          style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
         >
           {t('Annuleer')}
         </button>

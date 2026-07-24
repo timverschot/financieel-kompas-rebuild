@@ -10,7 +10,7 @@ import type { Vertaler } from '../i18n'
 
 const vandaag = () => new Date().toISOString().slice(0, 10)
 
-const kaart: CSSProperties = { background: '#faf9f7', border: '1px solid #eee', borderRadius: 8, padding: '0.7rem', marginBottom: '0.75rem' }
+const kaart: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem', marginBottom: '0.75rem' }
 const veld: CSSProperties = { padding: '0.4rem', boxSizing: 'border-box' }
 
 // Klein formulier om een aflossing toe te voegen aan één lening.
@@ -33,7 +33,7 @@ function AflossingToevoegen({ leningId, onOpslaan }: { leningId: string; onOpsla
     <form onSubmit={verzend} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.5rem' }}>
       <input aria-label={t('Aflossing (€)')} style={{ ...veld, width: 110 }} inputMode="decimal" placeholder={t('Aflossing (€)')} value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
       <input aria-label={t('Datum aflossing')} type="date" style={veld} value={datum} onChange={(e) => setDatum(e.target.value)} />
-      <button type="submit" disabled={!geldig} style={{ padding: '0.4rem 0.7rem', borderRadius: 8, border: '1px solid #ccc', background: geldig ? '#eef7ee' : '#f2f2f2', cursor: geldig ? 'pointer' : 'not-allowed' }}>
+      <button type="submit" disabled={!geldig} style={{ padding: '0.4rem 0.7rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: geldig ? 'var(--positive-soft)' : 'var(--surface-2)', cursor: geldig ? 'pointer' : 'not-allowed' }}>
         {t('Aflossing toevoegen')}
       </button>
     </form>
@@ -85,11 +85,11 @@ export function LeningSectie({
   return (
     <section>
       <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{t('Leningen & kredieten')}</h2>
-      <p style={{ color: '#888', marginTop: 0, fontSize: '0.85rem' }}>
+      <p style={{ color: 'var(--text-muted)', marginTop: 0, fontSize: '0.85rem' }}>
         {t('Geld dat jij uitleende of zelf leende. Log terugbetalingen; de app houdt het openstaand kapitaal en de geschiedenis bij.')}
       </p>
 
-      {leningen.length === 0 && <p style={{ color: '#888' }}>{t('Nog geen leningen. Voeg er hieronder een toe.')}</p>}
+      {leningen.length === 0 && <p style={{ color: 'var(--text-muted)' }}>{t('Nog geen leningen. Voeg er hieronder een toe.')}</p>}
 
       {gesorteerd.map((l) => {
         const eigen = aflossingenVan(l.id, aflossingen)
@@ -104,35 +104,35 @@ export function LeningSectie({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <strong>{l.naam}</strong>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.75rem', color: '#fff', background: l.richting === 'uitgeleend' ? '#2e8b57' : '#b8860b', borderRadius: 6, padding: '0.05rem 0.4rem' }}>
+                <span style={{ fontSize: '0.75rem', color: '#fff', background: l.richting === 'uitgeleend' ? 'var(--positive)' : 'var(--warn)', borderRadius: 6, padding: '0.05rem 0.4rem' }}>
                   {richtingLabel}
                 </span>
-                <button aria-label={t('Bewerk lening {naam}', { naam: l.naam })} onClick={() => setBewerk(l)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>✎</button>
-                <button aria-label={t('Verwijder lening {naam}', { naam: l.naam })} onClick={() => onVerwijderen(l.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
+                <button aria-label={t('Bewerk lening {naam}', { naam: l.naam })} onClick={() => setBewerk(l)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>✎</button>
+                <button aria-label={t('Verwijder lening {naam}', { naam: l.naam })} onClick={() => onVerwijderen(l.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
               </span>
             </div>
-            {l.tegenpartij && <div style={{ color: '#999', fontSize: '0.8rem' }}>{l.tegenpartij}</div>}
+            {l.tegenpartij && <div style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>{l.tegenpartij}</div>}
 
             <p style={{ margin: '0.4rem 0 0.1rem' }}>
-              <strong>{formatEuro(open)}</strong> <span style={{ color: '#777', fontSize: '0.85rem' }}>{openLabel}</span>
-              {klaar && <span style={{ color: '#2e8b57', fontSize: '0.85rem' }}> · {t('afbetaald')}</span>}
+              <strong>{formatEuro(open)}</strong> <span style={{ color: 'var(--text-subtle)', fontSize: '0.85rem' }}>{openLabel}</span>
+              {klaar && <span style={{ color: 'var(--positive)', fontSize: '0.85rem' }}> · {t('afbetaald')}</span>}
             </p>
-            <div style={{ background: '#eee', borderRadius: 6, height: 8, overflow: 'hidden', margin: '0.25rem 0' }}>
+            <div style={{ background: 'var(--border)', borderRadius: 6, height: 8, overflow: 'hidden', margin: '0.25rem 0' }}>
               <div
                 role="progressbar"
                 aria-label={l.naam}
                 aria-valuenow={pct}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                style={{ width: `${pct}%`, height: '100%', background: l.richting === 'uitgeleend' ? '#2e8b57' : '#b8860b' }}
+                style={{ width: `${pct}%`, height: '100%', background: l.richting === 'uitgeleend' ? 'var(--positive)' : 'var(--warn)' }}
               />
             </div>
-            <div style={{ color: '#999', fontSize: '0.8rem' }}>
+            <div style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>
               {t('{afgelost} van {hoofdsom} afgelost ({pct}%)', { afgelost: formatEuro(afgelost), hoofdsom: formatEuro(l.hoofdsom), pct })}
             </div>
 
             {l.richting === 'geleend' && (l.rentevoet !== undefined || l.maandbedrag !== undefined || l.einddatum) && (
-              <div style={{ color: '#777', fontSize: '0.8rem', marginTop: '0.25rem' }}>
+              <div style={{ color: 'var(--text-subtle)', fontSize: '0.8rem', marginTop: '0.25rem' }}>
                 {l.rentevoet !== undefined && <span>{t('rente {r}%', { r: l.rentevoet })} </span>}
                 {l.maandbedrag !== undefined && <span>· {t('{bedrag}/maand', { bedrag: formatEuro(l.maandbedrag) })} </span>}
                 {l.einddatum && <span>· {termijnTekst(t, l.einddatum)}</span>}
@@ -141,7 +141,7 @@ export function LeningSectie({
 
             {l.bonnetje && (
               <div style={{ marginTop: '0.25rem' }}>
-                <a href={l.bonnetje} target="_blank" rel="noreferrer" style={{ color: '#2c6cb0', fontSize: '0.85rem' }}>{t('contract/bewijs')}</a>
+                <a href={l.bonnetje} target="_blank" rel="noreferrer" style={{ color: 'var(--info)', fontSize: '0.85rem' }}>{t('contract/bewijs')}</a>
               </div>
             )}
 
@@ -149,7 +149,7 @@ export function LeningSectie({
               <button
                 type="button"
                 onClick={() => setToonGeschiedenis((h) => ({ ...h, [l.id]: !h[l.id] }))}
-                style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer', fontSize: '0.85rem', padding: '0.25rem 0 0' }}
+                style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer', fontSize: '0.85rem', padding: '0.25rem 0 0' }}
               >
                 {toonGeschiedenis[l.id] ? t('Geschiedenis verbergen') : t('Geschiedenis tonen ({n})', { n: eigen.length })}
               </button>
@@ -157,11 +157,11 @@ export function LeningSectie({
             {toonGeschiedenis[l.id] && (
               <ul style={{ listStyle: 'none', padding: 0, margin: '0.25rem 0 0' }}>
                 {[...eigen].reverse().map((a) => (
-                  <li key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.2rem 0', borderBottom: '1px solid #f0f0f0', fontSize: '0.85rem' }}>
+                  <li key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.2rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.85rem' }}>
                     <span>{a.datum}{a.omschrijving ? ` · ${a.omschrijving}` : ''}</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <span>{formatEuro(a.bedrag)}</span>
-                      <button aria-label={t('Verwijder aflossing {datum}', { datum: a.datum })} onClick={() => onAflossingVerwijderen(a.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer' }}>×</button>
+                      <button aria-label={t('Verwijder aflossing {datum}', { datum: a.datum })} onClick={() => onAflossingVerwijderen(a.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer' }}>×</button>
                     </span>
                   </li>
                 ))}

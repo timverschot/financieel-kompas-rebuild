@@ -13,6 +13,7 @@
    Semantische namen (--bg, --surface, --accent, …) zodat componenten niet meer
    met hardgecodeerde kleuren werken en licht/donker één schakelaar is. */
 :root {
+  color-scheme: light;
   --bg: #ede6da;
   --surface: #fffcf6;
   --surface-2: #f3ede3;
@@ -34,6 +35,7 @@
   --negative: #c4562c;
   --negative-soft: #f6e2d6;
   --info: #4a6e9b;
+  --info-soft: #e7eef6;
   --warn: #c07000;
   --warn-soft: #fff8ee;
 
@@ -47,6 +49,7 @@
 }
 
 :root[data-theme='dark'] {
+  color-scheme: dark;
   --bg: #0e1116;
   --surface: #171c23;
   --surface-2: #232b35;
@@ -68,6 +71,7 @@
   --negative: #f0784e;
   --negative-soft: #3a2016;
   --info: #6e93c4;
+  --info-soft: #1c2733;
   --warn: #e0913a;
   --warn-soft: #262e39;
 
@@ -103,6 +107,34 @@ h3 {
 .cijfer {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+}
+
+/* Invulvelden erven het thema. Zo zijn ze in donkere modus niet meer wit.
+   Inline-stijlen op losse velden (bv. een eigen rand) blijven voorgaan; enkel
+   wat een veld niet zelf zet, valt terug op deze thema-kleuren. */
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 1rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-subtle);
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 a {
