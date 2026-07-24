@@ -1,0 +1,114 @@
+/* Lettertypes (self-hosted via Fontsource, dus offline beschikbaar). */
+@import '@fontsource-variable/bricolage-grotesque';
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-sans/700.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/600.css';
+
+/* Design-tokens uit het Kompal-design-systeem, als CSS-variabelen.
+   Licht is de standaard; donker wordt geactiveerd met data-theme="dark" op <html>.
+   Semantische namen (--bg, --surface, --accent, …) zodat componenten niet meer
+   met hardgecodeerde kleuren werken en licht/donker één schakelaar is. */
+:root {
+  --bg: #ede6da;
+  --surface: #fffcf6;
+  --surface-2: #f3ede3;
+  --surface-3: #e9e1d3;
+  --text: #171c23;
+  --text-muted: #6c6459;
+  --text-subtle: #8a8175;
+  --border: #e0d6c5;
+  --border-strong: #d9cdb9;
+
+  --accent: #c9761a;
+  --accent-strong: #bf7415;
+  --accent-dot: #f0a63c;
+  --accent-soft: #f6e2c6;
+  --on-accent: #fff8ed;
+
+  --positive: #2e7a56;
+  --positive-soft: #ddede3;
+  --negative: #c4562c;
+  --negative-soft: #f6e2d6;
+  --info: #4a6e9b;
+  --warn: #c07000;
+  --warn-soft: #fff8ee;
+
+  --font-body: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --radius: 12px;
+  --radius-lg: 16px;
+  --shadow: 0 1px 3px rgba(23, 28, 35, 0.08);
+}
+
+:root[data-theme='dark'] {
+  --bg: #0e1116;
+  --surface: #171c23;
+  --surface-2: #232b35;
+  --surface-3: #2a323d;
+  --text: #f4efe6;
+  --text-muted: #99a2ad;
+  --text-subtle: #7c8592;
+  --border: #2e3846;
+  --border-strong: #3a424e;
+
+  --accent: #f0a63c;
+  --accent-strong: #e0913a;
+  --accent-dot: #f0a63c;
+  --accent-soft: #3a2a16;
+  --on-accent: #171c23;
+
+  --positive: #57c596;
+  --positive-soft: #17362b;
+  --negative: #f0784e;
+  --negative-soft: #3a2016;
+  --info: #6e93c4;
+  --warn: #e0913a;
+  --warn-soft: #262e39;
+
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+/* Cijfers/bedragen: tabulair uitgelijnd, monospace. */
+.cijfer {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+a {
+  color: var(--info);
+}
+
+::selection {
+  background: var(--accent-soft);
+}

@@ -110,7 +110,6 @@ import { formatEuro } from './utils/format'
 import { useT } from './i18n'
 
 const container: CSSProperties = {
-  fontFamily: 'system-ui, sans-serif',
   maxWidth: 480,
   margin: '2rem auto',
   padding: '0 1rem',
@@ -118,12 +117,13 @@ const container: CSSProperties = {
 const knop: CSSProperties = {
   padding: '0.5rem 0.9rem',
   borderRadius: 8,
-  border: '1px solid #ccc',
-  background: '#f7f7f7',
+  border: '1px solid var(--border-strong)',
+  background: 'var(--surface-2)',
+  color: 'var(--text)',
   cursor: 'pointer',
 }
 const kop: CSSProperties = { fontSize: '1rem', marginBottom: '0.25rem' }
-const scheiding: CSSProperties = { margin: '1.5rem 0', border: 'none', borderTop: '1px solid #eee' }
+const scheiding: CSSProperties = { margin: '1.5rem 0', border: 'none', borderTop: '1px solid var(--border)' }
 
 const huidigeMaand = () => new Date().toISOString().slice(0, 7)
 
@@ -712,8 +712,8 @@ export function App() {
   if (transacties === null) {
     return (
       <main style={container}>
-        <h1 style={{ marginBottom: 0 }}>Financieel Kompas</h1>
-        <p style={{ color: '#666' }}>{t('Laden…')}</p>
+        <h1 style={{ marginBottom: 0 }}>Kompal</h1>
+        <p style={{ color: 'var(--text-muted)' }}>{t('Laden…')}</p>
       </main>
     )
   }
@@ -735,13 +735,13 @@ export function App() {
 
   return (
     <main style={container}>
-      <h1 style={{ marginBottom: 0 }}>Financieel Kompas</h1>
-      <p style={{ color: '#666', marginTop: 4 }}>
+      <h1 style={{ marginBottom: 0 }}>Kompal</h1>
+      <p style={{ color: 'var(--text-muted)', marginTop: 4 }}>
         {t('Rekeningen, categorieën, budgetten en transacties — met backup en synchronisatie')}
       </p>
 
       {ongeldig > 0 && (
-        <p style={{ background: '#fff5f5', border: '1px solid #f5c6cb', borderRadius: 8, padding: '0.5rem 0.75rem' }}>
+        <p style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative)', color: 'var(--text)', borderRadius: 8, padding: '0.5rem 0.75rem' }}>
           {t('Let op: {n} record(s) werden overgeslagen omdat ze niet aan het schema voldeden.', { n: ongeldig })}
         </p>
       )}
@@ -760,11 +760,11 @@ export function App() {
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.15rem 0' }}>
           <span>{t('Inkomsten')}</span>
-          <span style={{ color: '#27ae60' }}>{formatEuro(inkomsten)}</span>
+          <span style={{ color: 'var(--positive)' }}>{formatEuro(inkomsten)}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.15rem 0' }}>
           <span>{t('Uitgaven')}</span>
-          <span style={{ color: '#c0392b' }}>{formatEuro(uitgaven)}</span>
+          <span style={{ color: 'var(--negative)' }}>{formatEuro(uitgaven)}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.15rem 0', fontWeight: 'bold' }}>
           <span>{t('Netto')}</span>
@@ -778,13 +778,13 @@ export function App() {
 
         {perInkomsten.length > 0 && (
           <div style={{ marginTop: '0.75rem' }}>
-            <p style={{ color: '#888', margin: '0 0 0.25rem' }}>{t('Inkomsten per categorie')}</p>
+            <p style={{ color: 'var(--text-muted)', margin: '0 0 0.25rem' }}>{t('Inkomsten per categorie')}</p>
             <Donut items={perInkomsten} middenLabel="inkomsten" />
           </div>
         )}
 
         <div style={{ marginTop: '1rem' }}>
-          <p style={{ color: '#888', margin: '0 0 0.25rem' }}>{t('Uitgaven per maand')}</p>
+          <p style={{ color: 'var(--text-muted)', margin: '0 0 0.25rem' }}>{t('Uitgaven per maand')}</p>
           <StaafGrafiek data={maandVerloop} />
         </div>
       </section>
@@ -798,30 +798,30 @@ export function App() {
           {rekeningen.map((r) => {
             const meta = [t(REKENING_TYPE_LABEL[r.type ?? 'betaal']), r.rubriek, r.rekeningnummer].filter(Boolean).join(' · ')
             return (
-              <li key={r.id} style={{ padding: '0.35rem 0', borderBottom: '1px solid #f0f0f0', opacity: r.gearchiveerd ? 0.55 : 1 }}>
+              <li key={r.id} style={{ padding: '0.35rem 0', borderBottom: '1px solid var(--border)', opacity: r.gearchiveerd ? 0.55 : 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>
                     {r.naam}
-                    {r.gearchiveerd && <span style={{ color: '#888', fontSize: '0.8rem' }}> · {t('gearchiveerd')}</span>}
+                    {r.gearchiveerd && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}> · {t('gearchiveerd')}</span>}
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <span style={{ color: '#888' }}>{t('startsaldo {saldo}', { saldo: formatEuro(r.beginsaldo) })}</span>
-                    <button aria-label={t('Bewerk rekening {naam}', { naam: r.naam })} onClick={() => setBewerkRekening(r)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{t('startsaldo {saldo}', { saldo: formatEuro(r.beginsaldo) })}</span>
+                    <button aria-label={t('Bewerk rekening {naam}', { naam: r.naam })} onClick={() => setBewerkRekening(r)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>
                       ✎
                     </button>
                     <button
                       aria-label={r.gearchiveerd ? t('Herstel rekening {naam}', { naam: r.naam }) : t('Archiveer rekening {naam}', { naam: r.naam })}
                       onClick={() => archiveerRekening(r, !r.gearchiveerd)}
-                      style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer', fontSize: '0.8rem' }}
+                      style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer', fontSize: '0.8rem' }}
                     >
                       {r.gearchiveerd ? t('herstel') : t('archiveer')}
                     </button>
-                    <button aria-label={t('Verwijder rekening {naam}', { naam: r.naam })} onClick={() => verwijderRek(r.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
+                    <button aria-label={t('Verwijder rekening {naam}', { naam: r.naam })} onClick={() => verwijderRek(r.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>
                       ×
                     </button>
                   </span>
                 </div>
-                {meta && <div style={{ color: '#999', fontSize: '0.8rem' }}>{meta}</div>}
+                {meta && <div style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>{meta}</div>}
               </li>
             )
           })}
@@ -851,14 +851,14 @@ export function App() {
           {categorieen.map((c) => (
             <li
               key={c.id}
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.3rem 0', borderBottom: '1px solid #f0f0f0' }}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.3rem 0', borderBottom: '1px solid var(--border)' }}
             >
               <span>{c.naam}</span>
               <span style={{ display: 'flex', gap: '0.6rem' }}>
-                <button aria-label={t('Bewerk categorie {naam}', { naam: c.naam })} onClick={() => setBewerkCategorie(c)} style={{ border: 'none', background: 'none', color: '#2c6cb0', cursor: 'pointer' }}>
+                <button aria-label={t('Bewerk categorie {naam}', { naam: c.naam })} onClick={() => setBewerkCategorie(c)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>
                   ✎
                 </button>
-                <button aria-label={t('Verwijder categorie {naam}', { naam: c.naam })} onClick={() => verwijderCat(c.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
+                <button aria-label={t('Verwijder categorie {naam}', { naam: c.naam })} onClick={() => verwijderCat(c.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>
                   ×
                 </button>
               </span>
@@ -884,23 +884,23 @@ export function App() {
       <ErrorBoundary naam="Budgetten">
       <section>
         <h2 style={kop}>{t('Budgetten')}</h2>
-        <p style={{ color: '#888', marginTop: 0 }}>{t('voor {maand}', { maand: maandLabel(maand) })}</p>
-        {budgetten.length === 0 && <p style={{ color: '#888' }}>{t('Nog geen budgetten ingesteld.')}</p>}
+        <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>{t('voor {maand}', { maand: maandLabel(maand) })}</p>
+        {budgetten.length === 0 && <p style={{ color: 'var(--text-muted)' }}>{t('Nog geen budgetten ingesteld.')}</p>}
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {budgetten.map((b) => {
             const naam = categorieNaam(b.categorieId) ?? '—'
             const uitgegeven = uitgavenInMaand(transacties, b.categorieId, maand)
             const fractie = Math.min(uitgegeven / b.bedrag, 1)
-            const kleur = uitgegeven > b.bedrag ? '#c0392b' : uitgegeven >= b.bedrag * 0.8 ? '#e67e22' : '#27ae60'
+            const kleur = uitgegeven > b.bedrag ? 'var(--negative)' : uitgegeven >= b.bedrag * 0.8 ? 'var(--warn)' : 'var(--positive)'
             return (
-              <li key={b.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid #f0f0f0' }}>
+              <li key={b.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>{naam}</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <span style={{ color: '#666' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>
                       {formatEuro(uitgegeven)} / {formatEuro(b.bedrag)}
                     </span>
-                    <button aria-label={t('Verwijder budget {naam}', { naam })} onClick={() => verwijderBud(b.id)} style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1.1rem' }}>
+                    <button aria-label={t('Verwijder budget {naam}', { naam })} onClick={() => verwijderBud(b.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>
                       ×
                     </button>
                   </span>
@@ -911,7 +911,7 @@ export function App() {
                   aria-valuenow={Math.round(uitgegeven)}
                   aria-valuemin={0}
                   aria-valuemax={Math.round(b.bedrag)}
-                  style={{ height: 8, background: '#eee', borderRadius: 4, marginTop: 4, overflow: 'hidden' }}
+                  style={{ height: 8, background: 'var(--surface-3)', borderRadius: 4, marginTop: 4, overflow: 'hidden' }}
                 >
                   <div style={{ height: '100%', width: `${fractie * 100}%`, background: kleur }} />
                 </div>
@@ -1068,8 +1068,8 @@ export function App() {
             left: '50%',
             transform: 'translateX(-50%)',
             bottom: 20,
-            background: '#333',
-            color: '#fff',
+            background: 'var(--text)',
+            color: 'var(--bg)',
             padding: '0.6rem 1rem',
             borderRadius: 8,
             display: 'flex',
@@ -1083,7 +1083,7 @@ export function App() {
           <span>{undoInfo.boodschap}</span>
           <button
             onClick={() => void undoNu()}
-            style={{ background: 'none', border: 'none', color: '#8ec5ff', cursor: 'pointer', fontWeight: 'bold' }}
+            style={{ background: 'none', border: 'none', color: 'var(--accent-dot)', cursor: 'pointer', fontWeight: 'bold' }}
           >
             {t('Ongedaan maken')}
           </button>

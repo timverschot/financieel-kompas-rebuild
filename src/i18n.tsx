@@ -441,6 +441,13 @@ const en: Record<string, string> = {
   'Toon enkel recente maanden': 'Show only recent months',
   // Instellingen (Ronde 3 · Brok I)
   'Instellingen': 'Settings',
+  // Weergave / thema (Ronde 5 · Brok O)
+  'Weergave': 'Appearance',
+  'Kies licht of donker, of laat de app de voorkeur van je toestel volgen.':
+    'Choose light or dark, or let the app follow your device preference.',
+  'Licht': 'Light',
+  'Donker': 'Dark',
+  'Systeem': 'System',
   'Synchronisatie (Google Drive)': 'Sync (Google Drive)',
   'Synchroniseer je gegevens veilig tussen je toestellen via je eigen Google Drive. Enkel een back-uplogboek; je data blijft lokaal-eerst.':
     'Sync your data safely across your devices via your own Google Drive. Only a backup log; your data stays local-first.',
@@ -875,6 +882,13 @@ const fr: Record<string, string> = {
   'Toon enkel recente maanden': 'Afficher uniquement les mois récents',
   // Instellingen (Ronde 3 · Brok I)
   'Instellingen': 'Paramètres',
+  // Weergave / thema (Ronde 5 · Brok O)
+  'Weergave': 'Apparence',
+  'Kies licht of donker, of laat de app de voorkeur van je toestel volgen.':
+    'Choisissez clair ou sombre, ou laissez l\'app suivre la préférence de votre appareil.',
+  'Licht': 'Clair',
+  'Donker': 'Sombre',
+  'Systeem': 'Système',
   'Synchronisatie (Google Drive)': 'Synchronisation (Google Drive)',
   'Synchroniseer je gegevens veilig tussen je toestellen via je eigen Google Drive. Enkel een back-uplogboek; je data blijft lokaal-eerst.':
     'Synchronisez vos données en toute sécurité entre vos appareils via votre propre Google Drive. Uniquement un journal de sauvegarde ; vos données restent local-first.',
