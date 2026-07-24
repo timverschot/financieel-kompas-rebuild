@@ -444,6 +444,13 @@ const en: Record<string, string> = {
   'Synchronisatie (Google Drive)': 'Sync (Google Drive)',
   'Synchroniseer je gegevens veilig tussen je toestellen via je eigen Google Drive. Enkel een back-uplogboek; je data blijft lokaal-eerst.':
     'Sync your data safely across your devices via your own Google Drive. Only a backup log; your data stays local-first.',
+  // Barcode-scanner (Ronde 4 · Brok L)
+  'Streepjescode scannen': 'Scan barcode',
+  'Richt de camera op de streepjescode': 'Point the camera at the barcode',
+  'Camera niet beschikbaar: {fout}': 'Camera not available: {fout}',
+  'Sluiten': 'Close',
+  'Scan streepjescode voor regel {n}': 'Scan barcode for line {n}',
+  'Nutri-Score': 'Nutri-Score',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -871,6 +878,13 @@ const fr: Record<string, string> = {
   'Synchronisatie (Google Drive)': 'Synchronisation (Google Drive)',
   'Synchroniseer je gegevens veilig tussen je toestellen via je eigen Google Drive. Enkel een back-uplogboek; je data blijft lokaal-eerst.':
     'Synchronisez vos données en toute sécurité entre vos appareils via votre propre Google Drive. Uniquement un journal de sauvegarde ; vos données restent local-first.',
+  // Barcode-scanner (Ronde 4 · Brok L)
+  'Streepjescode scannen': 'Scanner le code-barres',
+  'Richt de camera op de streepjescode': 'Dirigez la caméra vers le code-barres',
+  'Camera niet beschikbaar: {fout}': 'Caméra indisponible : {fout}',
+  'Sluiten': 'Fermer',
+  'Scan streepjescode voor regel {n}': 'Scanner le code-barres pour la ligne {n}',
+  'Nutri-Score': 'Nutri-Score',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 

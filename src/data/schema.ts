@@ -280,3 +280,16 @@ export const GarantieSchema = z.object({
   bonnetje: z.string().optional(), // bon/factuur als (verkleinde) data-URL
 })
 export type Garantie = z.infer<typeof GarantieSchema>
+
+// Een onthouden streepjescode: koppelt een barcode aan een productnaam (en
+// optioneel een categorie en Nutri-Score), zodat een volgende scan van hetzelfde
+// product meteen werkt — ook offline en voor niet-voeding die je één keer benoemt.
+// De 'id' IS de barcode zelf. Wordt mee gesynct, dus je onthouden producten volgen
+// je over toestellen.
+export const StreepjescodeSchema = z.object({
+  id: z.string().min(1), // de barcode
+  naam: z.string().min(1),
+  categorieId: z.string().min(1).optional(),
+  nutriScore: z.string().optional(), // 'a'..'e' (Open Food Facts)
+})
+export type Streepjescode = z.infer<typeof StreepjescodeSchema>

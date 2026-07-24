@@ -44,6 +44,7 @@ const SCHRIJF_TABELLEN = () => [
   db.leningen,
   db.aflossingen,
   db.garanties,
+  db.streepjescodes,
   db.meta,
 ]
 
@@ -66,6 +67,7 @@ const STAAT_TABELLEN = () => [
   db.leningen,
   db.aflossingen,
   db.garanties,
+  db.streepjescodes,
 ]
 
 // Past één gebeurtenis toe op de huidige staat (voor eigen, nieuwe wijzigingen).
@@ -174,6 +176,12 @@ async function pasStaatToe(regel: Logregel): Promise<void> {
     case 'garantie.verwijderd':
       await db.garanties.delete(g.payload.id)
       break
+    case 'streepjescode.bewaard':
+      await db.streepjescodes.put(g.payload)
+      break
+    case 'streepjescode.verwijderd':
+      await db.streepjescodes.delete(g.payload.id)
+      break
   }
 }
 
@@ -237,6 +245,7 @@ export async function herbouwStaat(): Promise<void> {
     await db.leningen.clear()
     await db.aflossingen.clear()
     await db.garanties.clear()
+    await db.streepjescodes.clear()
     await db.rekeningen.bulkPut([...staat.rekeningen.values()])
     await db.transacties.bulkPut([...staat.transacties.values()])
     await db.categorieen.bulkPut([...staat.categorieen.values()])
@@ -254,5 +263,6 @@ export async function herbouwStaat(): Promise<void> {
     await db.leningen.bulkPut([...staat.leningen.values()])
     await db.aflossingen.bulkPut([...staat.aflossingen.values()])
     await db.garanties.bulkPut([...staat.garanties.values()])
+    await db.streepjescodes.bulkPut([...staat.streepjescodes.values()])
   })
 }

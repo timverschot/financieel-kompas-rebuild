@@ -1,13 +1,18 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, FormEvent, KeyboardEvent } from 'react'
-import type { Categorie, Rekening, Transactie, TransactieRegel } from '../data/schema'
+import type { Categorie, Rekening, Streepjescode, Transactie, TransactieRegel } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer, formatEuro } from '../utils/format'
 import { labelVanCategorie } from '../data/categorieen/resolve'
+import { zoekOpenFoodFacts } from '../utils/openFoodFacts'
 import { CategorieKiezer } from './CategorieKiezer'
 import { HandelaarVeld } from './HandelaarVeld'
 import { ItemZoeker } from './ItemZoeker'
+import { NutriScoreBadge } from './NutriScoreBadge'
 import { useT } from '../i18n'
+
+// De scanner (en de ZXing-bibliotheek) worden pas geladen wanneer je effectief scant.
+const BarcodeScanner = lazy(() => import('./BarcodeScanner'))
 
 const vandaag = () => new Date().toISOString().slice(0, 10)
 
@@ -41,8 +46,9 @@ const veld: CSSProperties = {
 }
 const rij: CSSProperties = { marginBottom: '0.6rem' }
 
-// Eén kassaticketregel (lokale invoer).
-type KassaRegel = { sleutel: string; categorieId: string; omschrijving: string; bedrag: string }
+// Eén kassaticketregel (lokale invoer). 'code'/'nutriScore' zijn optioneel en
+// worden ingevuld bij het scannen van een streepjescode.
+type KassaRegel = { sleutel: string; categorieId: string; omschrijving: string; bedrag: string; code?: string; nutriScore?: string }
 function nieuweKassaRegel(): KassaRegel {
   return { sleutel: nieuwId(), categorieId: '', omschrijving: '', bedrag: '' }
 }
@@ -57,6 +63,8 @@ export function TransactieFormulier({
   categorieen,
   handelaars,
   bewerken,
+  streepjescodes = [],
+  onOnthoudStreepjescode,
 }: {
   onOpslaan: (t: Transactie) => Promise<void> | void
   onAnnuleer?: () => void
@@ -64,6 +72,8 @@ export function TransactieFormulier({
   categorieen: Categorie[]
   handelaars: string[]
   bewerken?: Transactie | null
+  streepjescodes?: Streepjescode[]
+  onOnthoudStreepjescode?: (s: Streepjescode) => Promise<void> | void
 }) {
   const { t } = useT()
   const [omschrijving, setOmschrijving] = useState('')
@@ -75,6 +85,7 @@ export function TransactieFormulier({
   const [gesplitst, setGesplitst] = useState(false)
   const [kassaRegels, setKassaRegels] = useState<KassaRegel[]>(() => [nieuweKassaRegel()])
   const zoekRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const [scanVoor, setScanVoor] = useState<string | null>(null)
 
   useEffect(() => {
     if (bewerken) {
@@ -135,6 +146,21 @@ export function TransactieFormulier({
     return r.sleutel
   }
 
+  // Verwerkt een gescande streepjescode voor één regel: eerst kijken of we ze al
+  // onthouden hebben (meteen, ook offline), anders online opzoeken via Open Food
+  // Facts. De code blijft aan de regel hangen zodat ze bij het opslaan (met de
+  // uiteindelijke naam + categorie) onthouden wordt.
+  async function verwerkScan(sleutel: string, code: string) {
+    setScanVoor(null)
+    const onthouden = streepjescodes.find((s) => s.id === code)
+    if (onthouden) {
+      wijzigRegel(sleutel, { omschrijving: onthouden.naam, categorieId: onthouden.categorieId ?? '', code, nutriScore: onthouden.nutriScore })
+      return
+    }
+    const gevonden = await zoekOpenFoodFacts(code)
+    wijzigRegel(sleutel, { omschrijving: gevonden?.naam ?? '', categorieId: '', code, nutriScore: gevonden?.nutriScore })
+  }
+
   function opBedragToets(e: KeyboardEvent<HTMLInputElement>, sleutel: string) {
     if (e.key !== 'Enter') return
     e.preventDefault()
@@ -188,6 +214,22 @@ export function TransactieFormulier({
 
     await onOpslaan(t)
     onthoudRekening(rekeningId)
+
+    // Onthoud elke gescande regel (barcode -> naam + categorie + Nutri-Score), zodat
+    // een volgende scan van hetzelfde product meteen werkt, ook offline.
+    if (gesplitst && onOnthoudStreepjescode) {
+      for (const r of kassaRegels) {
+        if (r.code && r.omschrijving.trim()) {
+          await onOnthoudStreepjescode({
+            id: r.code,
+            naam: r.omschrijving.trim(),
+            ...(r.categorieId ? { categorieId: r.categorieId } : {}),
+            ...(r.nutriScore ? { nutriScore: r.nutriScore } : {}),
+          })
+        }
+      }
+    }
+
     if (!bewerken) {
       setOmschrijving('')
       setBedrag('')
@@ -245,6 +287,15 @@ export function TransactieFormulier({
                     }}
                   />
                 </div>
+                <button
+                  type="button"
+                  aria-label={t('Scan streepjescode voor regel {n}', { n: i + 1 })}
+                  onClick={() => setScanVoor(r.sleutel)}
+                  style={{ border: '1px solid #ccc', background: '#f7f7f7', borderRadius: 8, cursor: 'pointer', fontSize: '1.1rem', padding: '0.2rem 0.5rem', lineHeight: 1 }}
+                  title={t('Streepjescode scannen')}
+                >
+                  📷
+                </button>
                 <input
                   aria-label={t('Deelbedrag')}
                   style={{ ...veld, marginTop: 0, width: 90 }}
@@ -265,6 +316,12 @@ export function TransactieFormulier({
                   </button>
                 )}
               </div>
+              {r.nutriScore && (
+                <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#888' }}>{t('Nutri-Score')}</span>
+                  <NutriScoreBadge score={r.nutriScore} />
+                </div>
+              )}
             </div>
           ))}
 
@@ -332,6 +389,12 @@ export function TransactieFormulier({
         >
           {t('Annuleer')}
         </button>
+      )}
+
+      {scanVoor && (
+        <Suspense fallback={null}>
+          <BarcodeScanner onGevonden={(code) => void verwerkScan(scanVoor, code)} onSluiten={() => setScanVoor(null)} />
+        </Suspense>
       )}
     </form>
   )

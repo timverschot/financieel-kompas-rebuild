@@ -13,6 +13,7 @@ import {
   OverboekingSchema,
   RekeningSchema,
   SpaardoelSchema,
+  StreepjescodeSchema,
   SubcategorieSchema,
   TerugkerendePostSchema,
   TransactieSchema,
@@ -56,6 +57,8 @@ export const GebeurtenisSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('aflossing.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
   z.object({ type: z.literal('garantie.bewaard'), payload: GarantieSchema }),
   z.object({ type: z.literal('garantie.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
+  z.object({ type: z.literal('streepjescode.bewaard'), payload: StreepjescodeSchema }),
+  z.object({ type: z.literal('streepjescode.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
 ])
 export type Gebeurtenis = z.infer<typeof GebeurtenisSchema>
 

@@ -14,6 +14,7 @@ import type {
   Overboeking,
   Rekening,
   Spaardoel,
+  Streepjescode,
   Subcategorie,
   TerugkerendePost,
   Transactie,
@@ -33,6 +34,7 @@ import {
   bewaarRekening,
   bewaarOverboeking,
   bewaarSpaardoel,
+  bewaarStreepjescode,
   bewaarSubcategorie,
   bewaarTerugkerendePost,
   bewaarTransactie,
@@ -53,6 +55,7 @@ import {
   laadOverboekingen,
   laadRekeningen,
   laadSpaardoelen,
+  laadStreepjescodes,
   laadSubcategorieen,
   laadTerugkerendePosten,
   laadTransacties,
@@ -153,6 +156,7 @@ export function App() {
   const [leningen, setLeningen] = useState<Lening[]>([])
   const [aflossingen, setAflossingen] = useState<Aflossing[]>([])
   const [garanties, setGaranties] = useState<Garantie[]>([])
+  const [streepjescodes, setStreepjescodes] = useState<Streepjescode[]>([])
   const [ongeldig, setOngeldig] = useState(0)
   const [verbonden, setVerbonden] = useState(false)
   const [bezig, setBezig] = useState(false)
@@ -169,7 +173,7 @@ export function App() {
   const { t, taal, zetTaal } = useT()
 
   async function herlaad() {
-    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar] = await Promise.all([
+    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc] = await Promise.all([
       laadTransacties(),
       laadRekeningen(),
       laadCategorieen(),
@@ -187,6 +191,7 @@ export function App() {
       laadLeningen(),
       laadAflossingen(),
       laadGaranties(),
+      laadStreepjescodes(),
     ])
     setTransacties(tx.geldig)
     setOngeldig(tx.ongeldig)
@@ -206,6 +211,7 @@ export function App() {
     setLeningen(ln.geldig)
     setAflossingen(afl.geldig)
     setGaranties(gar.geldig)
+    setStreepjescodes(sc.geldig)
   }
 
   // Toon een korte "ongedaan maken"-melding na een verwijdering. Herstellen is
@@ -234,7 +240,7 @@ export function App() {
     let actief = true
     async function laad() {
       await seedIndienLeeg()
-      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar] = await Promise.all([
+      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc] = await Promise.all([
         laadTransacties(),
         laadRekeningen(),
         laadCategorieen(),
@@ -252,6 +258,7 @@ export function App() {
         laadLeningen(),
         laadAflossingen(),
         laadGaranties(),
+        laadStreepjescodes(),
       ])
       if (!actief) return
       setTransacties(tx.geldig)
@@ -272,6 +279,7 @@ export function App() {
       setLeningen(ln.geldig)
       setAflossingen(afl.geldig)
       setGaranties(gar.geldig)
+      setStreepjescodes(sc.geldig)
     }
     void laad()
     return () => {
@@ -653,6 +661,16 @@ export function App() {
     if (oud) toonUndo(t('Garantie verwijderd'), () => bewaarGarantie(oud))
   }
 
+  // Onthoud een gescande streepjescode (barcode -> product). Stil bijwerken; geen
+  // volledige herlaad nodig — de lijst wordt bij een volgende actie meegeladen.
+  async function onthoudStreepjescode(s: Streepjescode) {
+    await bewaarStreepjescode(s)
+    setStreepjescodes((huidig) => {
+      const rest = huidig.filter((x) => x.id !== s.id)
+      return [...rest, s]
+    })
+  }
+
   async function verwijder(id: string) {
     const oud = transacties?.find((t) => t.id === id)
     await verwijderTransactie(id)
@@ -932,6 +950,8 @@ export function App() {
           categorieen={categorieen}
           handelaars={handelaars}
           bewerken={bewerkTransactie}
+          streepjescodes={streepjescodes}
+          onOnthoudStreepjescode={onthoudStreepjescode}
         />
       </section>
 

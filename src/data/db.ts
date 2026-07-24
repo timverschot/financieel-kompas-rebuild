@@ -13,6 +13,7 @@ import type {
   Overboeking,
   Rekening,
   Spaardoel,
+  Streepjescode,
   Subcategorie,
   TerugkerendePost,
   Transactie,
@@ -44,6 +45,7 @@ export class FinancieelKompasDB extends Dexie {
   leningen!: Table<Lening, string>
   aflossingen!: Table<Aflossing, string>
   garanties!: Table<Garantie, string>
+  streepjescodes!: Table<Streepjescode, string>
 
   constructor() {
     super('financieel-kompas')
@@ -340,6 +342,31 @@ export class FinancieelKompasDB extends Dexie {
       leningen: 'id, richting',
       aflossingen: 'id, leningId',
       garanties: 'id, aankoopdatum',
+    })
+
+    // Versie 16 - onthouden streepjescodes (barcode -> product). Nieuwe tabel;
+    // geen omzetting nodig. De 'id' is de barcode zelf.
+    this.version(16).stores({
+      rekeningen: 'id, naam',
+      transacties: 'id, rekeningId, datum, categorieId',
+      events: 'id, toestelId, volgnummer',
+      meta: 'sleutel',
+      categorieen: 'id, naam',
+      budgetten: 'id, categorieId',
+      dossiers: 'id, naam',
+      gedeeldeKosten: 'id, dossierId, verrekeningId',
+      verrekeningen: 'id, dossierId',
+      terugkerendePosten: 'id',
+      spaardoelen: 'id, naam',
+      subcategorieen: 'id, categorieId',
+      overboekingen: 'id, datum',
+      kinderen: 'id, naam',
+      kindrekeningen: 'id, dossierId',
+      kindrekeningposten: 'id, kindrekeningId',
+      leningen: 'id, richting',
+      aflossingen: 'id, leningId',
+      garanties: 'id, aankoopdatum',
+      streepjescodes: 'id',
     })
   }
 }

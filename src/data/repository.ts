@@ -12,6 +12,7 @@ import {
   KindrekeningpostSchema,
   LeningSchema,
   OverboekingSchema,
+  StreepjescodeSchema,
   RekeningSchema,
   SpaardoelSchema,
   SubcategorieSchema,
@@ -29,6 +30,7 @@ import {
   type Kindrekeningpost,
   type Lening,
   type Overboeking,
+  type Streepjescode,
   type Rekening,
   type Spaardoel,
   type Subcategorie,
@@ -171,6 +173,15 @@ export async function verwijderGarantie(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'garantie.verwijderd', payload: { id } })
 }
 
+export async function bewaarStreepjescode(s: Streepjescode): Promise<void> {
+  const geldig = StreepjescodeSchema.parse(s)
+  await pasGebeurtenisToe({ type: 'streepjescode.bewaard', payload: geldig })
+}
+
+export async function verwijderStreepjescode(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'streepjescode.verwijderd', payload: { id } })
+}
+
 export async function verwijderTransactie(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'transactie.verwijderd', payload: { id } })
 }
@@ -285,4 +296,8 @@ export async function laadAflossingen(): Promise<LeesResultaat<Aflossing>> {
 
 export async function laadGaranties(): Promise<LeesResultaat<Garantie>> {
   return valideerLijst(await db.garanties.toArray(), GarantieSchema)
+}
+
+export async function laadStreepjescodes(): Promise<LeesResultaat<Streepjescode>> {
+  return valideerLijst(await db.streepjescodes.toArray(), StreepjescodeSchema)
 }
