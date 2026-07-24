@@ -4,7 +4,7 @@ import type { Categorie, Rekening, Streepjescode, Transactie, TransactieRegel } 
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer, formatEuro } from '../utils/format'
 import { labelVanCategorie } from '../data/categorieen/resolve'
-import { zoekOpenFoodFacts } from '../utils/openFoodFacts'
+import { zoekProduct } from '../utils/openFoodFacts'
 import { CategorieKiezer } from './CategorieKiezer'
 import { HandelaarVeld } from './HandelaarVeld'
 import { ItemZoeker } from './ItemZoeker'
@@ -157,7 +157,7 @@ export function TransactieFormulier({
       wijzigRegel(sleutel, { omschrijving: onthouden.naam, categorieId: onthouden.categorieId ?? '', code, nutriScore: onthouden.nutriScore })
       return
     }
-    const gevonden = await zoekOpenFoodFacts(code)
+    const gevonden = await zoekProduct(code)
     wijzigRegel(sleutel, { omschrijving: gevonden?.naam ?? '', categorieId: '', code, nutriScore: gevonden?.nutriScore })
   }
 
