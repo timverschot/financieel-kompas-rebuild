@@ -224,3 +224,59 @@ export const KindrekeningpostSchema = z.object({
   bonnetje: z.string().optional(),
 })
 export type Kindrekeningpost = z.infer<typeof KindrekeningpostSchema>
+
+// De richting van een lening/krediet. Taal-onafhankelijke sleutels:
+//   'uitgeleend' = jij leende geld uit, iemand is jou nog iets verschuldigd.
+//   'geleend'    = jij leende zelf / een krediet dat jij afbetaalt.
+export const LENING_RICHTINGEN = ['uitgeleend', 'geleend'] as const
+export type LeningRichting = (typeof LENING_RICHTINGEN)[number]
+
+// Eén lening of krediet. Dezelfde vorm dekt beide richtingen. 'hoofdsom' is het
+// startbedrag (of het openstaand kapitaal op de startdatum), in centen. Het
+// openstaand kapitaal wordt afgeleid uit de hoofdsom min de gelogde aflossingen.
+// De rente/maandbedrag/einddatum-velden zijn vooral nuttig voor een krediet dat
+// jij afbetaalt, en zijn allemaal optioneel.
+export const LeningSchema = z.object({
+  id: z.string().min(1),
+  naam: z.string().min(1),
+  richting: z.enum(LENING_RICHTINGEN),
+  hoofdsom: z.number().int().positive(), // in centen
+  startdatum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  tegenpartij: z.string().optional(), // wie: persoon of kredietgever
+  rentevoet: z.number().nonnegative().optional(), // jaarlijkse % (informatief)
+  maandbedrag: z.number().int().positive().optional(), // afgesproken maandaflossing (centen)
+  einddatum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // afgesproken termijn
+  omschrijving: z.string().optional(),
+  afgesloten: z.boolean().optional(), // manueel afgesloten/gearchiveerd
+  bonnetje: z.string().optional(), // contract/bewijs als (verkleinde) data-URL
+})
+export type Lening = z.infer<typeof LeningSchema>
+
+// Eén aflossing (terugbetaling) op een lening/krediet. Bedrag altijd positief in
+// centen; het verlaagt het openstaand kapitaal.
+export const AflossingSchema = z.object({
+  id: z.string().min(1),
+  leningId: z.string().min(1),
+  datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  bedrag: z.number().int().positive(), // in centen
+  omschrijving: z.string().optional(),
+})
+export type Aflossing = z.infer<typeof AflossingSchema>
+
+// Een aankoop met garantie. 'garantieMaanden' is de garantieperiode in maanden
+// (standaard 24 = de Belgische wettelijke garantie van 2 jaar; tweedehands minstens
+// 12; een commerciële garantie kan langer). De vervaldatum wordt afgeleid uit de
+// aankoopdatum + de garantieperiode (zie utils/garantie.ts). Een aankoop kan
+// optioneel aan een bestaande transactie gekoppeld worden of losstaan.
+export const GarantieSchema = z.object({
+  id: z.string().min(1),
+  product: z.string().min(1),
+  aankoopdatum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  garantieMaanden: z.number().int().positive(),
+  winkel: z.string().optional(),
+  prijs: z.number().int().nonnegative().optional(), // in centen
+  transactieId: z.string().min(1).optional(),
+  notitie: z.string().optional(),
+  bonnetje: z.string().optional(), // bon/factuur als (verkleinde) data-URL
+})
+export type Garantie = z.infer<typeof GarantieSchema>

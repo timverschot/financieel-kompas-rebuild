@@ -1,13 +1,16 @@
 import type { ZodType } from 'zod'
 import { db } from './db'
 import {
+  AflossingSchema,
   BudgetSchema,
   CategorieSchema,
   DossierSchema,
+  GarantieSchema,
   GedeeldeKostSchema,
   KindSchema,
   KindrekeningSchema,
   KindrekeningpostSchema,
+  LeningSchema,
   OverboekingSchema,
   RekeningSchema,
   SpaardoelSchema,
@@ -17,11 +20,14 @@ import {
   VerrekeningSchema,
   type Budget,
   type Categorie,
+  type Aflossing,
   type Dossier,
+  type Garantie,
   type GedeeldeKost,
   type Kind,
   type Kindrekening,
   type Kindrekeningpost,
+  type Lening,
   type Overboeking,
   type Rekening,
   type Spaardoel,
@@ -138,6 +144,33 @@ export async function verwijderKindrekeningpost(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'kindrekeningpost.verwijderd', payload: { id } })
 }
 
+export async function bewaarLening(lening: Lening): Promise<void> {
+  const geldig = LeningSchema.parse(lening)
+  await pasGebeurtenisToe({ type: 'lening.bewaard', payload: geldig })
+}
+
+export async function verwijderLening(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'lening.verwijderd', payload: { id } })
+}
+
+export async function bewaarAflossing(aflossing: Aflossing): Promise<void> {
+  const geldig = AflossingSchema.parse(aflossing)
+  await pasGebeurtenisToe({ type: 'aflossing.bewaard', payload: geldig })
+}
+
+export async function verwijderAflossing(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'aflossing.verwijderd', payload: { id } })
+}
+
+export async function bewaarGarantie(g: Garantie): Promise<void> {
+  const geldig = GarantieSchema.parse(g)
+  await pasGebeurtenisToe({ type: 'garantie.bewaard', payload: geldig })
+}
+
+export async function verwijderGarantie(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'garantie.verwijderd', payload: { id } })
+}
+
 export async function verwijderTransactie(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'transactie.verwijderd', payload: { id } })
 }
@@ -240,4 +273,16 @@ export async function laadKindrekeningen(): Promise<LeesResultaat<Kindrekening>>
 
 export async function laadKindrekeningposten(): Promise<LeesResultaat<Kindrekeningpost>> {
   return valideerLijst(await db.kindrekeningposten.toArray(), KindrekeningpostSchema)
+}
+
+export async function laadLeningen(): Promise<LeesResultaat<Lening>> {
+  return valideerLijst(await db.leningen.toArray(), LeningSchema)
+}
+
+export async function laadAflossingen(): Promise<LeesResultaat<Aflossing>> {
+  return valideerLijst(await db.aflossingen.toArray(), AflossingSchema)
+}
+
+export async function laadGaranties(): Promise<LeesResultaat<Garantie>> {
+  return valideerLijst(await db.garanties.toArray(), GarantieSchema)
 }

@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type {
+  Aflossing,
   Budget,
   Categorie,
   Dossier,
+  Garantie,
   GedeeldeKost,
   Kind,
   Kindrekening,
   Kindrekeningpost,
+  Lening,
   Overboeking,
   Rekening,
   Spaardoel,
@@ -21,9 +24,12 @@ import {
   bewaarCategorie,
   bewaarDossier,
   bewaarGedeeldeKost,
+  bewaarAflossing,
+  bewaarGarantie,
   bewaarKind,
   bewaarKindrekening,
   bewaarKindrekeningpost,
+  bewaarLening,
   bewaarRekening,
   bewaarOverboeking,
   bewaarSpaardoel,
@@ -38,9 +44,12 @@ import {
   laadCategorieen,
   laadDossiers,
   laadGedeeldeKosten,
+  laadAflossingen,
+  laadGaranties,
   laadKinderen,
   laadKindrekeningen,
   laadKindrekeningposten,
+  laadLeningen,
   laadOverboekingen,
   laadRekeningen,
   laadSpaardoelen,
@@ -51,9 +60,12 @@ import {
   verwijderBudget,
   verwijderCategorie,
   verwijderGedeeldeKost,
+  verwijderAflossing,
+  verwijderGarantie,
   verwijderKind,
   verwijderKindrekening,
   verwijderKindrekeningpost,
+  verwijderLening,
   verwijderOverboeking,
   verwijderRekening,
   verwijderTerugkerendePost,
@@ -71,6 +83,8 @@ import { RekeningFormulier, REKENING_TYPE_LABEL } from './components/RekeningFor
 import { CategorieFormulier } from './components/CategorieFormulier'
 import { BudgetFormulier } from './components/BudgetFormulier'
 import { DossierSectie } from './components/DossierSectie'
+import { LeningSectie } from './components/LeningSectie'
+import { GarantieSectie } from './components/GarantieSectie'
 import { KinderenSectie } from './components/KinderenSectie'
 import { SpaardoelSectie } from './components/SpaardoelSectie'
 import { CategorieBoom } from './components/CategorieBoom'
@@ -135,6 +149,9 @@ export function App() {
   const [kinderen, setKinderen] = useState<Kind[]>([])
   const [kindrekeningen, setKindrekeningen] = useState<Kindrekening[]>([])
   const [kindrekeningposten, setKindrekeningposten] = useState<Kindrekeningpost[]>([])
+  const [leningen, setLeningen] = useState<Lening[]>([])
+  const [aflossingen, setAflossingen] = useState<Aflossing[]>([])
+  const [garanties, setGaranties] = useState<Garantie[]>([])
   const [ongeldig, setOngeldig] = useState(0)
   const [verbonden, setVerbonden] = useState(false)
   const [bezig, setBezig] = useState(false)
@@ -151,7 +168,7 @@ export function App() {
   const { t, taal, zetTaal } = useT()
 
   async function herlaad() {
-    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp] = await Promise.all([
+    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar] = await Promise.all([
       laadTransacties(),
       laadRekeningen(),
       laadCategorieen(),
@@ -166,6 +183,9 @@ export function App() {
       laadKinderen(),
       laadKindrekeningen(),
       laadKindrekeningposten(),
+      laadLeningen(),
+      laadAflossingen(),
+      laadGaranties(),
     ])
     setTransacties(tx.geldig)
     setOngeldig(tx.ongeldig)
@@ -182,6 +202,9 @@ export function App() {
     setKinderen(ki.geldig)
     setKindrekeningen(kr.geldig)
     setKindrekeningposten(krp.geldig)
+    setLeningen(ln.geldig)
+    setAflossingen(afl.geldig)
+    setGaranties(gar.geldig)
   }
 
   // Toon een korte "ongedaan maken"-melding na een verwijdering. Herstellen is
@@ -210,7 +233,7 @@ export function App() {
     let actief = true
     async function laad() {
       await seedIndienLeeg()
-      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp] = await Promise.all([
+      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar] = await Promise.all([
         laadTransacties(),
         laadRekeningen(),
         laadCategorieen(),
@@ -225,6 +248,9 @@ export function App() {
         laadKinderen(),
         laadKindrekeningen(),
         laadKindrekeningposten(),
+        laadLeningen(),
+        laadAflossingen(),
+        laadGaranties(),
       ])
       if (!actief) return
       setTransacties(tx.geldig)
@@ -242,6 +268,9 @@ export function App() {
       setKinderen(ki.geldig)
       setKindrekeningen(kr.geldig)
       setKindrekeningposten(krp.geldig)
+      setLeningen(ln.geldig)
+      setAflossingen(afl.geldig)
+      setGaranties(gar.geldig)
     }
     void laad()
     return () => {
@@ -574,6 +603,53 @@ export function App() {
     await verwijderKindrekeningpost(id)
     await herlaad()
     if (oud) toonUndo(t('Beweging verwijderd'), () => bewaarKindrekeningpost(oud))
+  }
+
+  // --- Leningen & kredieten ---
+  async function leningOpslaan(l: Lening) {
+    await bewaarLening(l)
+    await herlaad()
+  }
+
+  // Een lening verwijderen verwijdert ook haar aflossingen; ongedaan maken zet
+  // beide terug.
+  async function leningVerwijderen(id: string) {
+    const oud = leningen.find((l) => l.id === id)
+    const oudeAflossingen = aflossingen.filter((a) => a.leningId === id)
+    await verwijderLening(id)
+    for (const a of oudeAflossingen) await verwijderAflossing(a.id)
+    await herlaad()
+    if (oud) {
+      toonUndo(t('Lening verwijderd'), async () => {
+        await bewaarLening(oud)
+        for (const a of oudeAflossingen) await bewaarAflossing(a)
+      })
+    }
+  }
+
+  async function aflossingOpslaan(a: Aflossing) {
+    await bewaarAflossing(a)
+    await herlaad()
+  }
+
+  async function aflossingVerwijderen(id: string) {
+    const oud = aflossingen.find((a) => a.id === id)
+    await verwijderAflossing(id)
+    await herlaad()
+    if (oud) toonUndo(t('Aflossing verwijderd'), () => bewaarAflossing(oud))
+  }
+
+  // --- Garanties ---
+  async function garantieOpslaan(g: Garantie) {
+    await bewaarGarantie(g)
+    await herlaad()
+  }
+
+  async function garantieVerwijderen(id: string) {
+    const oud = garanties.find((g) => g.id === id)
+    await verwijderGarantie(id)
+    await herlaad()
+    if (oud) toonUndo(t('Garantie verwijderd'), () => bewaarGarantie(oud))
   }
 
   async function verwijder(id: string) {
@@ -953,6 +1029,30 @@ export function App() {
           onKindrekeningVerwijderen={kindrekeningVerwijderen}
           onKindrekeningPostOpslaan={kindrekeningPostOpslaan}
           onKindrekeningPostVerwijderen={kindrekeningPostVerwijderen}
+        />
+      </ErrorBoundary>
+
+      <hr style={scheiding} />
+
+      <ErrorBoundary naam="Leningen">
+        <LeningSectie
+          leningen={leningen}
+          aflossingen={aflossingen}
+          onOpslaan={leningOpslaan}
+          onVerwijderen={leningVerwijderen}
+          onAflossingOpslaan={aflossingOpslaan}
+          onAflossingVerwijderen={aflossingVerwijderen}
+        />
+      </ErrorBoundary>
+
+      <hr style={scheiding} />
+
+      <ErrorBoundary naam="Garanties">
+        <GarantieSectie
+          garanties={garanties}
+          transacties={transacties}
+          onOpslaan={garantieOpslaan}
+          onVerwijderen={garantieVerwijderen}
         />
       </ErrorBoundary>
 

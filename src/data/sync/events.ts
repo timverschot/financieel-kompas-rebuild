@@ -2,11 +2,14 @@ import { z } from 'zod'
 import {
   BudgetSchema,
   CategorieSchema,
+  AflossingSchema,
   DossierSchema,
+  GarantieSchema,
   GedeeldeKostSchema,
   KindSchema,
   KindrekeningSchema,
   KindrekeningpostSchema,
+  LeningSchema,
   OverboekingSchema,
   RekeningSchema,
   SpaardoelSchema,
@@ -47,6 +50,12 @@ export const GebeurtenisSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('kindrekening.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
   z.object({ type: z.literal('kindrekeningpost.bewaard'), payload: KindrekeningpostSchema }),
   z.object({ type: z.literal('kindrekeningpost.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
+  z.object({ type: z.literal('lening.bewaard'), payload: LeningSchema }),
+  z.object({ type: z.literal('lening.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
+  z.object({ type: z.literal('aflossing.bewaard'), payload: AflossingSchema }),
+  z.object({ type: z.literal('aflossing.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
+  z.object({ type: z.literal('garantie.bewaard'), payload: GarantieSchema }),
+  z.object({ type: z.literal('garantie.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
 ])
 export type Gebeurtenis = z.infer<typeof GebeurtenisSchema>
 

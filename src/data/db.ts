@@ -1,12 +1,15 @@
 import Dexie, { type Table } from 'dexie'
 import type {
+  Aflossing,
   Budget,
   Categorie,
   Dossier,
+  Garantie,
   GedeeldeKost,
   Kind,
   Kindrekening,
   Kindrekeningpost,
+  Lening,
   Overboeking,
   Rekening,
   Spaardoel,
@@ -38,6 +41,9 @@ export class FinancieelKompasDB extends Dexie {
   kinderen!: Table<Kind, string>
   kindrekeningen!: Table<Kindrekening, string>
   kindrekeningposten!: Table<Kindrekeningpost, string>
+  leningen!: Table<Lening, string>
+  aflossingen!: Table<Aflossing, string>
+  garanties!: Table<Garantie, string>
 
   constructor() {
     super('financieel-kompas')
@@ -288,6 +294,52 @@ export class FinancieelKompasDB extends Dexie {
       kinderen: 'id, naam',
       kindrekeningen: 'id, dossierId',
       kindrekeningposten: 'id, kindrekeningId',
+    })
+
+    // Versie 14 - leningen/kredieten (beide richtingen) en hun aflossingen. Nieuwe
+    // tabellen; geen omzetting van bestaande data nodig.
+    this.version(14).stores({
+      rekeningen: 'id, naam',
+      transacties: 'id, rekeningId, datum, categorieId',
+      events: 'id, toestelId, volgnummer',
+      meta: 'sleutel',
+      categorieen: 'id, naam',
+      budgetten: 'id, categorieId',
+      dossiers: 'id, naam',
+      gedeeldeKosten: 'id, dossierId, verrekeningId',
+      verrekeningen: 'id, dossierId',
+      terugkerendePosten: 'id',
+      spaardoelen: 'id, naam',
+      subcategorieen: 'id, categorieId',
+      overboekingen: 'id, datum',
+      kinderen: 'id, naam',
+      kindrekeningen: 'id, dossierId',
+      kindrekeningposten: 'id, kindrekeningId',
+      leningen: 'id, richting',
+      aflossingen: 'id, leningId',
+    })
+
+    // Versie 15 - garantie- & factuurbeheer. Nieuwe tabel; geen omzetting nodig.
+    this.version(15).stores({
+      rekeningen: 'id, naam',
+      transacties: 'id, rekeningId, datum, categorieId',
+      events: 'id, toestelId, volgnummer',
+      meta: 'sleutel',
+      categorieen: 'id, naam',
+      budgetten: 'id, categorieId',
+      dossiers: 'id, naam',
+      gedeeldeKosten: 'id, dossierId, verrekeningId',
+      verrekeningen: 'id, dossierId',
+      terugkerendePosten: 'id',
+      spaardoelen: 'id, naam',
+      subcategorieen: 'id, categorieId',
+      overboekingen: 'id, datum',
+      kinderen: 'id, naam',
+      kindrekeningen: 'id, dossierId',
+      kindrekeningposten: 'id, kindrekeningId',
+      leningen: 'id, richting',
+      aflossingen: 'id, leningId',
+      garanties: 'id, aankoopdatum',
     })
   }
 }

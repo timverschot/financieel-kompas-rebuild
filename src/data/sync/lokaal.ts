@@ -41,6 +41,9 @@ const SCHRIJF_TABELLEN = () => [
   db.kinderen,
   db.kindrekeningen,
   db.kindrekeningposten,
+  db.leningen,
+  db.aflossingen,
+  db.garanties,
   db.meta,
 ]
 
@@ -60,6 +63,9 @@ const STAAT_TABELLEN = () => [
   db.kinderen,
   db.kindrekeningen,
   db.kindrekeningposten,
+  db.leningen,
+  db.aflossingen,
+  db.garanties,
 ]
 
 // Past één gebeurtenis toe op de huidige staat (voor eigen, nieuwe wijzigingen).
@@ -150,6 +156,24 @@ async function pasStaatToe(regel: Logregel): Promise<void> {
     case 'kindrekeningpost.verwijderd':
       await db.kindrekeningposten.delete(g.payload.id)
       break
+    case 'lening.bewaard':
+      await db.leningen.put(g.payload)
+      break
+    case 'lening.verwijderd':
+      await db.leningen.delete(g.payload.id)
+      break
+    case 'aflossing.bewaard':
+      await db.aflossingen.put(g.payload)
+      break
+    case 'aflossing.verwijderd':
+      await db.aflossingen.delete(g.payload.id)
+      break
+    case 'garantie.bewaard':
+      await db.garanties.put(g.payload)
+      break
+    case 'garantie.verwijderd':
+      await db.garanties.delete(g.payload.id)
+      break
   }
 }
 
@@ -210,6 +234,9 @@ export async function herbouwStaat(): Promise<void> {
     await db.kinderen.clear()
     await db.kindrekeningen.clear()
     await db.kindrekeningposten.clear()
+    await db.leningen.clear()
+    await db.aflossingen.clear()
+    await db.garanties.clear()
     await db.rekeningen.bulkPut([...staat.rekeningen.values()])
     await db.transacties.bulkPut([...staat.transacties.values()])
     await db.categorieen.bulkPut([...staat.categorieen.values()])
@@ -224,5 +251,8 @@ export async function herbouwStaat(): Promise<void> {
     await db.kinderen.bulkPut([...staat.kinderen.values()])
     await db.kindrekeningen.bulkPut([...staat.kindrekeningen.values()])
     await db.kindrekeningposten.bulkPut([...staat.kindrekeningposten.values()])
+    await db.leningen.bulkPut([...staat.leningen.values()])
+    await db.aflossingen.bulkPut([...staat.aflossingen.values()])
+    await db.garanties.bulkPut([...staat.garanties.values()])
   })
 }
