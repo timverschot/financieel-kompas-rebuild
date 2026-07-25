@@ -7,6 +7,8 @@ import {
   geindexeerdeBijdrage,
   aantalTermijnen,
   standPerOuder,
+  verwachtTotaal,
+  teltVerledenZonderIndex,
 } from './kindrekening'
 
 const kr = (extra: Partial<Kindrekening> = {}): Kindrekening => ({
@@ -86,6 +88,36 @@ describe('aantalTermijnen', () => {
   })
 })
 
+describe('verwachtTotaal', () => {
+  it('is bijdrage × termijnen zonder indexatie', () => {
+    expect(verwachtTotaal(kr(), 20000, 3)).toBe(60000)
+  })
+
+  it('past de indexatie niet met terugwerkende kracht toe', () => {
+    // 3 termijnen, basis € 200, geïndexeerd € 220: jan en feb aan € 200, de
+    // lopende maand aan € 220 = € 620 (niet 3 × € 220 = € 660).
+    expect(verwachtTotaal(kr({ aanvangsindex: 100, huidigeIndex: 110 }), 20000, 3)).toBe(62000)
+  })
+
+  it('is 0 zonder bijdrage of zonder termijnen', () => {
+    expect(verwachtTotaal(kr(), undefined, 3)).toBe(0)
+    expect(verwachtTotaal(kr(), 20000, 0)).toBe(0)
+  })
+})
+
+describe('teltVerledenZonderIndex', () => {
+  const geindexeerd = kr({ maandbijdrageJij: 20000, bijdrageStart: '2026-01-01', aanvangsindex: 100, huidigeIndex: 110 })
+
+  it('is waar zodra er geïndexeerd wordt én er eerdere termijnen zijn', () => {
+    expect(teltVerledenZonderIndex(geindexeerd, '2026-03-10')).toBe(true)
+  })
+
+  it('is onwaar in de eerste maand of zonder indexatie', () => {
+    expect(teltVerledenZonderIndex(geindexeerd, '2026-01-10')).toBe(false)
+    expect(teltVerledenZonderIndex(kr({ maandbijdrageJij: 20000, bijdrageStart: '2026-01-01' }), '2026-03-10')).toBe(false)
+  })
+})
+
 describe('standPerOuder', () => {
   it('berekent verwacht = geïndexeerde maandbijdrage × termijnen, en het verschil', () => {
     const rekening = kr({
@@ -111,6 +143,19 @@ describe('standPerOuder', () => {
     const stand = standPerOuder(rekening, [], '2026-01-15')
     expect(stand.jij.verwacht).toBe(22000)
     expect(stand.jij.verschil).toBe(-22000)
+  })
+
+  it('overschat de achterstand niet door de index op oude maanden toe te passen', () => {
+    const rekening = kr({
+      maandbijdrageJij: 20000,
+      bijdrageStart: '2026-01-01',
+      aanvangsindex: 100,
+      huidigeIndex: 110,
+    })
+    // 3 termijnen: jan en feb aan de basis € 200, maart geïndexeerd € 220.
+    const stand = standPerOuder(rekening, [storting(60000, 'jij')], '2026-03-10')
+    expect(stand.jij.verwacht).toBe(62000)
+    expect(stand.jij.verschil).toBe(-2000) // niet −6000 zoals bij 3 × € 220
   })
 
   it('verwacht 0 zonder startdatum (geen achterstand)', () => {

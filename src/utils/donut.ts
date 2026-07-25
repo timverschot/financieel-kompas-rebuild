@@ -30,6 +30,41 @@ const PALET = [
 // Zet bedragen om naar donutsegmenten. De kleur komt uit hetzelfde data-object
 // als het bedrag (belangrijke v1-les: nooit een losse kleurenlijst die uit de pas
 // kan lopen); enkel groepen zonder kleur krijgen een terugvalkleur.
+// Percentages die samen exact 100 zijn ("grootste-restmethode").
+//
+// Waarom dit bestaat: rond je elk percentage apart af, dan telt de kolom op tot
+// 99% of 101% — de gebruiker ziet dat meteen en vertrouwt de cijfers niet meer.
+// Werkwijze: eerst iedereen zijn hele procenten (naar beneden afgerond), daarna
+// worden de resterende procenten één voor één weggegeven aan de rijen met de
+// grootste "rest" (het afgeknipte stukje). Bij gelijke rest wint de rij die
+// bovenaan staat, zodat dezelfde invoer altijd hetzelfde resultaat geeft.
+//
+// Randgevallen: een totaal van 0 (of negatief) geeft overal 0 — er valt dan niets
+// te verdelen. Negatieve deelbedragen horen hier niet thuis (een taartpunt kan
+// niet negatief zijn); die worden als 0 behandeld.
+export function afgerondePercentages(bedragen: number[]): number[] {
+  const veilig = bedragen.map((b) => (b > 0 ? b : 0))
+  const totaal = veilig.reduce((s, b) => s + b, 0)
+  if (totaal <= 0) return bedragen.map(() => 0)
+
+  const exact = veilig.map((b) => (b / totaal) * 100)
+  const heel = exact.map((p) => Math.floor(p))
+  let teVerdelen = 100 - heel.reduce((s, p) => s + p, 0)
+
+  // Volgorde: grootste rest eerst; bij gelijkspel de laagste index eerst.
+  const volgorde = exact
+    .map((p, i) => ({ i, rest: p - Math.floor(p) }))
+    .sort((a, b) => b.rest - a.rest || a.i - b.i)
+
+  const uit = [...heel]
+  for (const { i } of volgorde) {
+    if (teVerdelen <= 0) break
+    uit[i] += 1
+    teVerdelen--
+  }
+  return uit
+}
+
 export function donutSegmenten(items: DonutInvoer[]): DonutSegment[] {
   const totaal = items.reduce((s, i) => s + i.bedrag, 0)
   if (totaal <= 0) return []

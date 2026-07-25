@@ -2,22 +2,38 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Aflossing, Lening } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
-import { formatEuro, invoerNaarCenten } from '../utils/format'
-import { aflossingenVan, openstaandKapitaal, totaalAfgelost, voortgang, isAfbetaald, maandenTotEinde } from '../utils/lening'
+import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
+import { aflossingenVan, openstaandKapitaal, totaalAfgelost, totaalOpenstaand, voortgang, isAfbetaald, maandenTotEinde } from '../utils/lening'
 import { LeningFormulier } from './LeningFormulier'
-import { Kaart, Leeg, Bedrag, Balk } from '../ui/basis'
+import { Kaart, Leeg, Bedrag, Balk, Stat } from '../ui/basis'
 import { useT } from '../i18n'
 import type { Vertaler } from '../i18n'
 import { vandaag } from '../utils/datum'
 
 
 // Klein formulier om een aflossing toe te voegen aan één lening.
-function AflossingToevoegen({ leningId, onOpslaan }: { leningId: string; onOpslaan: (a: Aflossing) => Promise<void> | void }) {
+//
+// 'openstaand' dient enkel om te waarschuwen: een aflossing die groter is dan wat
+// er nog openstaat wordt door de rekenlaag afgekapt (het saldo gaat nooit onder
+// nul), dus zonder waarschuwing zou het teveel geruisloos verdwijnen. We blokkeren
+// de knop bewust NIET — een echte terugbetaling kan meer bevatten dan het zuivere
+// kapitaal (rente, kosten, afronding) — maar we zeggen het, en bieden één klik om
+// het bedrag gelijk te zetten aan wat er nog openstaat.
+function AflossingToevoegen({
+  leningId,
+  openstaand,
+  onOpslaan,
+}: {
+  leningId: string
+  openstaand: number
+  onOpslaan: (a: Aflossing) => Promise<void> | void
+}) {
   const { t } = useT()
   const [bedrag, setBedrag] = useState('')
   const [datum, setDatum] = useState(vandaag())
   const centen = invoerNaarCenten(bedrag)
   const geldig = Number.isFinite(centen) && centen > 0
+  const teVeel = geldig && centen > openstaand
 
   async function verzend(e: FormEvent) {
     e.preventDefault()
@@ -28,12 +44,24 @@ function AflossingToevoegen({ leningId, onOpslaan }: { leningId: string; onOpsla
   }
 
   return (
-    <form onSubmit={verzend} className="knoprij">
-      <input aria-label={t('Aflossing (€)')} style={{ width: 130 }} inputMode="decimal" placeholder={t('Aflossing (€)')} value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
-      <input aria-label={t('Datum aflossing')} type="date" value={datum} onChange={(e) => setDatum(e.target.value)} />
-      <button type="submit" disabled={!geldig} className="knop knop-secundair knop-klein">
-        {t('Aflossing toevoegen')}
-      </button>
+    <form onSubmit={verzend} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div className="knoprij">
+        <input aria-label={t('Aflossing (€)')} style={{ width: 130 }} inputMode="decimal" placeholder={t('Aflossing (€)')} value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
+        <input aria-label={t('Datum aflossing')} type="date" value={datum} onChange={(e) => setDatum(e.target.value)} />
+        <button type="submit" disabled={!geldig} className="knop knop-secundair knop-klein">
+          {t('Aflossing toevoegen')}
+        </button>
+      </div>
+      {teVeel && (
+        <div className="knoprij" style={{ alignItems: 'baseline' }}>
+          <span className="rij-meta" style={{ color: 'var(--warn)' }}>
+            {t('Dit is meer dan er nog openstaat ({open}).', { open: formatEuro(openstaand) })}
+          </span>
+          <button type="button" className="knop knop-ghost knop-klein" onClick={() => setBedrag(centenNaarInvoer(openstaand))}>
+            {t('Zet op {open}', { open: formatEuro(openstaand) })}
+          </button>
+        </div>
+      )}
     </form>
   )
 }
@@ -73,6 +101,16 @@ export function LeningSectie({
     setBewerk(null)
   }
 
+  // Een lening afsluiten of weer heropenen. Dit gebruikt dezelfde opslagweg als
+  // het bewerken van de lening: we bewaren dezelfde lening met 'afgesloten' aan
+  // of uit. Afsluiten is nodig voor geld dat nooit helemaal terugkomt of een
+  // krediet dat vervroegd afgelost is — anders blijft het eeuwig openstaan.
+  async function zetAfgesloten(l: Lening, afgesloten: boolean) {
+    const gewijzigd: Lening = { ...l, afgesloten: true }
+    if (!afgesloten) delete gewijzigd.afgesloten // heropenen: het veld verdwijnt weer
+    await onOpslaan(gewijzigd)
+  }
+
   const gesorteerd = [...leningen].sort((a, b) => {
     const aKlaar = isAfbetaald(a, aflossingen)
     const bKlaar = isAfbetaald(b, aflossingen)
@@ -86,6 +124,16 @@ export function LeningSectie({
       bijschrift={t('Geld dat jij uitleende of zelf leende. Log terugbetalingen; de app houdt het openstaand kapitaal en de geschiedenis bij.')}
     >
       {leningen.length === 0 && <Leeg>{t('Nog geen leningen. Voeg er hieronder een toe.')}</Leeg>}
+
+      {/* Wat er in totaal nog openstaat; afgesloten leningen tellen niet meer mee.
+          Bij één enkele lening zou dit gewoon de rij eronder herhalen, dus tonen
+          we het pas vanaf twee. */}
+      {leningen.length > 1 && (
+        <div className="stat-rij">
+          <Stat label={t('Nog te ontvangen')}>{formatEuro(totaalOpenstaand(leningen, aflossingen, 'uitgeleend'))}</Stat>
+          <Stat label={t('Nog te betalen')}>{formatEuro(totaalOpenstaand(leningen, aflossingen, 'geleend'))}</Stat>
+        </div>
+      )}
 
       {gesorteerd.length > 0 && (
         <ul className="lijst">
@@ -107,8 +155,17 @@ export function LeningSectie({
                   </div>
                   <span className="rij-acties">
                     <span className={l.richting === 'uitgeleend' ? 'badge badge-ok' : 'badge badge-open'}>{richtingLabel}</span>
+                    {l.afgesloten && <span className="badge badge-neutraal">{t('afgesloten')}</span>}
                     <button className="knop knop-kaal" aria-label={t('Bewerk lening {naam}', { naam: l.naam })} onClick={() => setBewerk(l)}>
                       ✎
+                    </button>
+                    <button
+                      type="button"
+                      className="knop knop-ghost knop-klein"
+                      aria-label={l.afgesloten ? t('Heropen lening {naam}', { naam: l.naam }) : t('Sluit lening {naam} af', { naam: l.naam })}
+                      onClick={() => zetAfgesloten(l, !l.afgesloten)}
+                    >
+                      {l.afgesloten ? t('heropen') : t('sluit af')}
                     </button>
                     <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder lening {naam}', { naam: l.naam })} onClick={() => onVerwijderen(l.id)}>
                       ×
@@ -119,7 +176,8 @@ export function LeningSectie({
                 <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 6 }}>
                   <Bedrag centen={open} />
                   <span className="rij-meta">{openLabel}</span>
-                  {klaar && <span className="rij-meta" style={{ color: 'var(--positive)' }}> · {t('afbetaald')}</span>}
+                  {open === 0 && <span className="rij-meta" style={{ color: 'var(--positive)' }}> · {t('afbetaald')}</span>}
+                  {l.afgesloten && open > 0 && <span className="rij-meta"> · {t('afgesloten, telt niet meer mee')}</span>}
                 </div>
 
                 <Balk label={l.naam} fractie={pct / 100} kleur={balkKleur} nu={pct} max={100} />
@@ -170,7 +228,7 @@ export function LeningSectie({
                   </ul>
                 )}
 
-                {!klaar && <AflossingToevoegen leningId={l.id} onOpslaan={onAflossingOpslaan} />}
+                {!klaar && <AflossingToevoegen leningId={l.id} openstaand={open} onOpslaan={onAflossingOpslaan} />}
               </li>
             )
           })}

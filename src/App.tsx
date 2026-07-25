@@ -112,6 +112,7 @@ import { labelVanCategorie } from './data/categorieen/resolve'
 import { stelSubcategorieenIn } from './data/categorieen/zoek'
 import { formatEuro } from './utils/format'
 import { huidigeMaand, vandaag } from './utils/datum'
+import { saldoVanRekening, totaalSaldoVan } from './utils/saldo'
 import { Balk, Bedrag, Kaart, Leeg, PaginaKop } from './ui/basis'
 import { useT } from './i18n'
 
@@ -421,6 +422,20 @@ export function App() {
 
   async function verwijderRek(id: string) {
     const oud = rekeningen.find((r) => r.id === id)
+    // Een rekening verwijderen terwijl er nog transacties of overboekingen aan
+    // hangen, laat die boekingen wijzen naar iets dat niet meer bestaat: het saldo
+    // verspringt en de transacties tonen geen rekeningnaam meer. Daarom weigeren we
+    // dat en stellen we archiveren voor — dan blijft alles kloppen en verdwijnt de
+    // rekening enkel uit de keuzelijsten.
+    const aantal =
+      (transacties ?? []).filter((tx) => tx.rekeningId === id).length +
+      overboekingen.filter((o) => o.vanRekeningId === id || o.naarRekeningId === id).length
+    if (aantal > 0) {
+      setStatusTekst(
+        t('Deze rekening heeft nog {n} boeking(en). Archiveer ze in plaats van ze te verwijderen.', { n: aantal }),
+      )
+      return
+    }
     await verwijderRekening(id)
     await herlaad()
     if (oud) toonUndo(t('Rekening verwijderd'), () => bewaarRekening(oud))
@@ -492,9 +507,31 @@ export function App() {
 
   async function verwijderDoss(id: string) {
     const oud = dossiers.find((d) => d.id === id)
+    // Alles wat aan het dossier hangt mee opruimen. Anders blijven de gedeelde
+    // kosten en afrekeningen als onzichtbare weesrecords in de database staan (en
+    // worden ze wél mee gesynchroniseerd). Leningen deden dit al zo; nu overal
+    // dezelfde regel. 'Ongedaan maken' zet het volledige dossier terug.
+    const oudeKosten = gedeeldeKosten.filter((k) => k.dossierId === id)
+    const oudeVerrekeningen = verrekeningen.filter((v) => v.dossierId === id)
+    const oudeKindrekeningen = kindrekeningen.filter((k) => k.dossierId === id)
+    const oudeKindrekeningposten = kindrekeningposten.filter((p) =>
+      oudeKindrekeningen.some((k) => k.id === p.kindrekeningId),
+    )
     await verwijderDossier(id)
+    for (const k of oudeKosten) await verwijderGedeeldeKost(k.id)
+    for (const v of oudeVerrekeningen) await verwijderVerrekening(v.id)
+    for (const p of oudeKindrekeningposten) await verwijderKindrekeningpost(p.id)
+    for (const k of oudeKindrekeningen) await verwijderKindrekening(k.id)
     await herlaad()
-    if (oud) toonUndo(t('Dossier verwijderd'), () => bewaarDossier(oud))
+    if (oud) {
+      toonUndo(t('Dossier verwijderd'), async () => {
+        await bewaarDossier(oud)
+        for (const k of oudeKosten) await bewaarGedeeldeKost(k)
+        for (const v of oudeVerrekeningen) await bewaarVerrekening(v)
+        for (const k of oudeKindrekeningen) await bewaarKindrekening(k)
+        for (const p of oudeKindrekeningposten) await bewaarKindrekeningpost(p)
+      })
+    }
   }
 
   async function verwijderKost(id: string) {
@@ -750,9 +787,10 @@ export function App() {
   }
 
   const categorieNaam = (id?: string) => labelVanCategorie(id, categorieen)
-  const totaalSaldo =
-    rekeningen.reduce((som, r) => som + r.beginsaldo, 0) +
-    transacties.reduce((som, t) => som + t.bedrag, 0)
+  // Het totale saldo t.e.m. vandaag. De datumgrens is belangrijk: een transactie
+  // die je met een datum in de toekomst inboekt (bv. een vaste last die je alvast
+  // voor volgende maand inboekt) hoort nog niet in je huidige saldo te zitten.
+  const totaalSaldo = totaalSaldoVan(rekeningen, transacties, overboekingen, vandaag())
 
   const inkomsten = maandInkomsten(transacties, maand)
   const uitgaven = maandUitgaven(transacties, maand)
@@ -868,7 +906,7 @@ export function App() {
             <TransactieLijst
               transacties={transacties}
               categorieen={categorieen}
-              rekeningen={actieveRekeningen}
+              rekeningen={rekeningen}
               onBewerk={setBewerkTransactie}
               onVerwijder={verwijder}
             />
@@ -889,6 +927,11 @@ export function App() {
           <ErrorBoundary naam="Budgetten">
             <Kaart titel={t('Budgetten')} bijschrift={t('voor {maand}', { maand: maandLabel(maand) })}>
               {budgetten.length === 0 && <Leeg>{t('Nog geen budgetten ingesteld.')}</Leeg>}
+              {budgetten.length > 0 && (
+                <p className="rij-meta" style={{ margin: 0 }}>
+                  {t('Een terugbetaling in dezelfde categorie verlaagt het verbruik. Daardoor kan dit cijfer lager liggen dan de uitgaven in de Analyse.')}
+                </p>
+              )}
               {budgetten.length > 0 && (
                 <ul className="lijst">
                   {budgetten.map((b) => {
@@ -975,6 +1018,10 @@ export function App() {
               <ul className="lijst">
                 {rekeningen.map((r) => {
                   const meta = [t(REKENING_TYPE_LABEL[r.type ?? 'betaal']), r.rubriek, r.rekeningnummer].filter(Boolean).join(' · ')
+                  // Het saldo van vandaag: beginsaldo + transacties + overboekingen.
+                  // Vroeger stond hier enkel het startbedrag dat je ooit invulde,
+                  // waardoor je nooit zag wat er nu echt op de rekening staat.
+                  const saldoNu = saldoVanRekening(r, transacties, overboekingen, vandaag())
                   return (
                     <li key={r.id} className="rij" style={{ opacity: r.gearchiveerd ? 0.55 : 1 }}>
                       <div className="rij-midden">
@@ -987,6 +1034,7 @@ export function App() {
                           {meta ? ' · ' + meta : ''}
                         </span>
                       </div>
+                      <Bedrag centen={saldoNu} />
                       <span className="rij-acties">
                         <button className="knop knop-kaal" aria-label={t('Bewerk rekening {naam}', { naam: r.naam })} onClick={() => setBewerkRekening(r)}>
                           ✎
@@ -1014,6 +1062,7 @@ export function App() {
             <OverboekingSectie
               overboekingen={overboekingen}
               rekeningen={actieveRekeningen}
+              transacties={transacties}
               bewerken={bewerkOverboeking}
               onOpslaan={voegOverboekingToe}
               onVerwijderen={verwijderOverboekingH}
@@ -1028,8 +1077,9 @@ export function App() {
           <ErrorBoundary naam="Spaardoelen">
             <SpaardoelSectie
               spaardoelen={spaardoelen}
-              rekeningen={actieveRekeningen}
+              rekeningen={rekeningen}
               transacties={transacties}
+              overboekingen={overboekingen}
               onOpslaan={voegSpaardoelToe}
               onVerwijderen={verwijderSpaardoelH}
             />

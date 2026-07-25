@@ -59,10 +59,36 @@ export function aantalTermijnen(startISO: string, vandaagISO: string): number {
   return Math.max(0, maanden + 1)
 }
 
+// Wat er over alle voorbije termijnen samen verwacht wordt van één ouder.
+//
+// Waarom niet simpelweg "geïndexeerde bijdrage × termijnen"? Dan zou de index van
+// vandaag met terugwerkende kracht gelden voor maanden waarin nog de oude, lagere
+// bijdrage gold — de getoonde achterstand wordt daardoor structureel te hoog.
+// Uit wat we bewaren (aanvangsindex + huidige index) valt niet af te leiden vanáf
+// welke maand welke index gold; we weten enkel dat de huidige index nú geldt.
+// Daarom, zonder een datum te verzinnen: de lopende termijn telt aan de
+// geïndexeerde bijdrage, alle eerdere termijnen aan de niet-geïndexeerde
+// basisbijdrage. Zo is de getoonde achterstand nooit hoger dan wat met zekerheid
+// verschuldigd is (het scherm zegt erbij hoe er geteld wordt).
+export function verwachtTotaal(kr: Kindrekening, basis: number | undefined, termijnen: number): number {
+  if (!basis || basis <= 0 || termijnen <= 0) return 0
+  return basis * (termijnen - 1) + geindexeerdeBijdrage(kr, basis)
+}
+
+// Waar wanneer het verwachte bedrag deels met de niet-geïndexeerde basisbijdrage
+// geteld wordt: er is een indexatie ingesteld én er zijn eerdere termijnen dan de
+// lopende. Het scherm zet er dan één regel bij die dat uitlegt.
+export function teltVerledenZonderIndex(kr: Kindrekening, vandaagISO: string): boolean {
+  const heeftIndex = !!(kr.aanvangsindex && kr.huidigeIndex && kr.huidigeIndex !== kr.aanvangsindex)
+  const heeftBijdrage = !!(kr.maandbijdrageJij || kr.maandbijdragePartner)
+  const termijnen = kr.bijdrageStart ? aantalTermijnen(kr.bijdrageStart, vandaagISO) : 0
+  return heeftIndex && heeftBijdrage && termijnen > 1
+}
+
 export type OuderStand = { gestort: number; verwacht: number; verschil: number }
 
-// Per ouder: hoeveel gestort, hoeveel verwacht (geïndexeerde maandbijdrage ×
-// aantal termijnen) en het verschil. Verschil < 0 = achterstand; > 0 = vooruit.
+// Per ouder: hoeveel gestort, hoeveel verwacht (zie verwachtTotaal) en het
+// verschil. Verschil < 0 = achterstand; > 0 = vooruit.
 // Zonder maandbijdrage of startdatum is 'verwacht' 0 (dan tonen we geen achterstand).
 export function standPerOuder(
   kr: Kindrekening,
@@ -71,8 +97,8 @@ export function standPerOuder(
 ): { jij: OuderStand; partner: OuderStand } {
   const gestort = gestortPerOuder(posten)
   const termijnen = kr.bijdrageStart ? aantalTermijnen(kr.bijdrageStart, vandaagISO) : 0
-  const verwachtJij = geindexeerdeBijdrage(kr, kr.maandbijdrageJij) * termijnen
-  const verwachtPartner = geindexeerdeBijdrage(kr, kr.maandbijdragePartner) * termijnen
+  const verwachtJij = verwachtTotaal(kr, kr.maandbijdrageJij, termijnen)
+  const verwachtPartner = verwachtTotaal(kr, kr.maandbijdragePartner, termijnen)
   return {
     jij: { gestort: gestort.jij, verwacht: verwachtJij, verschil: gestort.jij - verwachtJij },
     partner: { gestort: gestort.partner, verwacht: verwachtPartner, verschil: gestort.partner - verwachtPartner },

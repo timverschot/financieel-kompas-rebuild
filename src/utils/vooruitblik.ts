@@ -1,6 +1,7 @@
 import type { TerugkerendePost, Transactie } from '../data/schema'
 import { categorieBedragen } from './transactie'
 import { inPeriode, type Periode } from './analyse'
+import { vandaag } from './datum'
 
 // Rekenkern voor het blok "Vooruitblik & spaarquote" op de Analyse-pagina.
 // Zuiver en los testbaar (geen datum/klok binnenin). Inkomsten en uitgaven worden
@@ -53,34 +54,110 @@ export function vasteLastTransactieId(postId: string, maand: string): string {
 export type Vooruitblik = {
   maand: string
   geboekt: { inkomsten: number; uitgaven: number }
-  komend: { inkomsten: number; uitgaven: number }
-  aantalKomend: number // aantal nog niet ingeboekte vaste lasten
+  komend: { inkomsten: number; uitgaven: number } // dag nog niet voorbij
+  achterstallig: { inkomsten: number; uitgaven: number } // dag voorbij, nog niet geboekt
+  aantalKomend: number
+  aantalAchterstallig: number
   verwachteInkomsten: number
   verwachteUitgaven: number
   verwachtSaldo: number
   verwachteQuote: number | null
 }
 
+// Herkent een vaste last die de gebruiker ZELF als gewone transactie ingetikt
+// heeft (dus niet via de knop "Boek in", die een vast id meegeeft).
+//
+// Waarom nodig: zonder deze herkenning telt zelf ingetikte huur dubbel — één keer
+// bij "al geboekt" en nog eens bij "nog te komen". € 900 huur werd dan € 1.800
+// verwachte uitgave.
+//
+// De regel is bewust STRENG. Een transactie moet in dezelfde maand vallen, op
+// dezelfde rekening staan, exact hetzelfde bedrag hebben (zelfde teken), en — als
+// de vaste last een categorie heeft — dezelfde categorie dragen. Bovendien:
+// - gesplitste transacties (kassaticket met regels) tellen nooit mee: die zijn per
+//   definitie een winkelbezoek, geen vaste last;
+// - elke transactie kan hoogstens één vaste last afdekken, zodat twee posten van
+//   hetzelfde bedrag niet allebei op dezelfde transactie leunen.
+// De keuze bij twijfel is altijd: liever een vaste last één keer te weinig
+// herkennen (ze blijft dan als "nog te komen" staan, wat hoogstens irritant is)
+// dan een echte, aparte uitgave onterecht wegmoffelen (wat je te rooskleurig
+// voorspelt).
+function isMogelijkeBoeking(t: Transactie, p: TerugkerendePost, maand: string): boolean {
+  if (!t.datum.startsWith(maand)) return false
+  if (t.rekeningId !== p.rekeningId) return false
+  if (t.bedrag !== p.bedrag) return false
+  if (t.regels && t.regels.length > 0) return false
+  if (p.categorieId && t.categorieId !== p.categorieId) return false
+  return true
+}
+
 export function maandVooruitblik(
   transacties: Transactie[],
   posten: TerugkerendePost[],
   maand: string,
+  vandaagISO: string = vandaag(),
 ): Vooruitblik {
   const geboekt = telInUit(transacties, (d) => d.startsWith(maand))
 
-  const bestaandeIds = new Set(transacties.map((t) => t.id))
+  // Ronde 1: de zekere herkenning op id ("Boek in"). Die krijgt voorrang, zodat
+  // zo'n transactie niet eerst door een andere post opgesnoept wordt.
+  const perId = new Map<string, Transactie>()
+  for (const t of transacties) perId.set(t.id, t)
+  const gebruikt = new Set<string>() // transactie-id's die al een vaste last afdekken
+  const geboekteposten = new Set<string>() // post-id's die als geboekt gelden
+  for (const p of posten) {
+    const t = perId.get(vasteLastTransactieId(p.id, maand))
+    if (t) {
+      gebruikt.add(t.id)
+      geboekteposten.add(p.id)
+    }
+  }
+
+  // Ronde 2: de voorzichtige herkenning van handmatig ingetikte vaste lasten.
+  for (const p of posten) {
+    if (geboekteposten.has(p.id)) continue
+    const treffer = transacties.find((t) => !gebruikt.has(t.id) && isMogelijkeBoeking(t, p, maand))
+    if (treffer) {
+      gebruikt.add(treffer.id)
+      geboekteposten.add(p.id)
+    }
+  }
+
+  // Is de dag van de maand al voorbij? Dan is een niet-geboekte post niet "nog te
+  // komen" maar achterstallig. Voor een maand in het verleden is alles voorbij,
+  // voor een maand in de toekomst nog niets. De dag van vandaag zelf telt nog als
+  // "nog te komen" (de post kan vandaag nog geboekt worden).
+  const huidigeMaand = vandaagISO.slice(0, 7)
+  const huidigeDag = Number(vandaagISO.slice(8, 10))
+  const isVoorbij = (dag: number): boolean => {
+    if (maand < huidigeMaand) return true
+    if (maand > huidigeMaand) return false
+    return dag < huidigeDag
+  }
+
   let komendeInkomsten = 0
   let komendeUitgaven = 0
   let aantalKomend = 0
+  let achterstalligeInkomsten = 0
+  let achterstalligeUitgaven = 0
+  let aantalAchterstallig = 0
   for (const p of posten) {
-    if (bestaandeIds.has(vasteLastTransactieId(p.id, maand))) continue
-    aantalKomend++
-    if (p.bedrag > 0) komendeInkomsten += p.bedrag
-    else if (p.bedrag < 0) komendeUitgaven += -p.bedrag
+    if (geboekteposten.has(p.id)) continue
+    if (isVoorbij(p.dag)) {
+      aantalAchterstallig++
+      if (p.bedrag > 0) achterstalligeInkomsten += p.bedrag
+      else if (p.bedrag < 0) achterstalligeUitgaven += -p.bedrag
+    } else {
+      aantalKomend++
+      if (p.bedrag > 0) komendeInkomsten += p.bedrag
+      else if (p.bedrag < 0) komendeUitgaven += -p.bedrag
+    }
   }
 
-  const verwachteInkomsten = geboekt.inkomsten + komendeInkomsten
-  const verwachteUitgaven = geboekt.uitgaven + komendeUitgaven
+  // Achterstallige posten tellen wél mee in de verwachting: ze zijn te laat, maar
+  // het geld moet nog steeds komen of gaan.
+  const verwachteInkomsten = geboekt.inkomsten + komendeInkomsten + achterstalligeInkomsten
+  const verwachteUitgaven = geboekt.uitgaven + komendeUitgaven + achterstalligeUitgaven
   const verwachtSaldo = verwachteInkomsten - verwachteUitgaven
   const verwachteQuote = verwachteInkomsten > 0 ? (verwachtSaldo / verwachteInkomsten) * 100 : null
 
@@ -88,7 +165,9 @@ export function maandVooruitblik(
     maand,
     geboekt,
     komend: { inkomsten: komendeInkomsten, uitgaven: komendeUitgaven },
+    achterstallig: { inkomsten: achterstalligeInkomsten, uitgaven: achterstalligeUitgaven },
     aantalKomend,
+    aantalAchterstallig,
     verwachteInkomsten,
     verwachteUitgaven,
     verwachtSaldo,

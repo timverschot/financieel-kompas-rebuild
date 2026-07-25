@@ -21,4 +21,32 @@ describe('Donut', () => {
     const { container } = render(<Donut items={[]} />)
     expect(container.firstChild).toBeNull()
   })
+
+  it('toont percentages die samen exact 100% zijn', () => {
+    render(
+      <Donut
+        items={[
+          { naam: 'A', bedrag: 100, kleur: '#111' },
+          { naam: 'B', bedrag: 100, kleur: '#222' },
+          { naam: 'C', bedrag: 100, kleur: '#333' },
+        ]}
+      />,
+    )
+    // Apart afronden gaf drie keer 33% (samen 99%); nu 34 + 33 + 33 = 100.
+    const percentages = screen.getAllByText(/^\d+%$/).map((el) => Number(el.textContent!.replace('%', '')))
+    expect(percentages).toEqual([34, 33, 33])
+    expect(percentages.reduce((s, p) => s + p, 0)).toBe(100)
+  })
+
+  it('toont twee gelijknamige schijven allebei (unieke sleutel per segment)', () => {
+    render(
+      <Donut
+        items={[
+          { naam: 'Onbekend', bedrag: 300, kleur: '#111' },
+          { naam: 'Onbekend', bedrag: 100, kleur: '#222' },
+        ]}
+      />,
+    )
+    expect(screen.getAllByText('Onbekend')).toHaveLength(2)
+  })
 })

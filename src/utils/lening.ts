@@ -1,4 +1,4 @@
-import type { Aflossing, Lening } from '../data/schema'
+import type { Aflossing, Lening, LeningRichting } from '../data/schema'
 
 // Rekenlaag voor de leningen/kredieten-module. Zuivere functies in gehele centen,
 // zodat ze los en deterministisch getest kunnen worden. De richting ('uitgeleend'
@@ -30,6 +30,16 @@ export function voortgang(lening: Lening, aflossingen: Aflossing[]): number {
 // Is de lening volledig afgelost (of manueel afgesloten)?
 export function isAfbetaald(lening: Lening, aflossingen: Aflossing[]): boolean {
   return !!lening.afgesloten || openstaandKapitaal(lening, aflossingen) === 0
+}
+
+// Wat er in totaal nog openstaat. Een manueel afgesloten lening telt niet meer
+// mee: ze is bewust afgerond (kwijtgescholden, vervroegd afbetaald, …), ook al
+// staat er rekenkundig nog een saldo open. Zonder 'richting' worden beide
+// richtingen samengeteld.
+export function totaalOpenstaand(leningen: Lening[], aflossingen: Aflossing[], richting?: LeningRichting): number {
+  return leningen
+    .filter((l) => !l.afgesloten && (richting === undefined || l.richting === richting))
+    .reduce((som, l) => som + openstaandKapitaal(l, aflossingen), 0)
 }
 
 export type EvolutiePunt = { datum: string; openstaand: number }

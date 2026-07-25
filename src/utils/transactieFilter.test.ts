@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Transactie } from '../data/schema'
-import { filterTransacties, heeftActiefFilter, grensDatumMaandenTerug } from './transactieFilter'
+import { filterTransacties, heeftActiefFilter, grensDatumMaandenTerug, isOmgekeerdBereik } from './transactieFilter'
 
 const tx = (extra: Partial<Transactie> & { id: string }): Transactie => ({
   datum: '2026-06-01',
@@ -20,6 +20,26 @@ describe('filterTransacties', () => {
   it('filtert op richting inkomst/uitgave', () => {
     expect(filterTransacties(lijst, { richting: 'in' }).map((t) => t.id)).toEqual(['2'])
     expect(filterTransacties(lijst, { richting: 'uit' }).map((t) => t.id)).toEqual(['1', '3'])
+  })
+
+  it('kijkt bij richting naar de deelregels, niet naar het totaal', () => {
+    // Kassaticket van −50€ met een statiegeldregel van +3€: dat is tegelijk een
+    // uitgave én (voor 3€) een inkomst. Vroeger verdween dit ticket volledig
+    // onder 'Inkomsten', terwijl de Analyse die 3€ wél als inkomst toonde.
+    const ticket = tx({
+      id: 'ticket',
+      omschrijving: 'Colruyt',
+      bedrag: -4700,
+      regels: [{ bedrag: -5000 }, { bedrag: 300, omschrijving: 'statiegeld' }],
+    })
+    expect(filterTransacties([ticket], { richting: 'in' }).map((t) => t.id)).toEqual(['ticket'])
+    expect(filterTransacties([ticket], { richting: 'uit' }).map((t) => t.id)).toEqual(['ticket'])
+  })
+
+  it('laat een niet-gesplitste transactie zich exact gedragen als vroeger', () => {
+    const nul = tx({ id: 'nul', bedrag: 0 })
+    expect(filterTransacties([nul], { richting: 'in' })).toEqual([])
+    expect(filterTransacties([nul], { richting: 'uit' })).toEqual([])
   })
 
   it('filtert op rekening', () => {
@@ -53,6 +73,24 @@ describe('heeftActiefFilter', () => {
   it('is waar zodra er iets ingesteld is', () => {
     expect(heeftActiefFilter({ richting: 'in' })).toBe(true)
     expect(heeftActiefFilter({ zoek: 'x' })).toBe(true)
+  })
+})
+
+describe('isOmgekeerdBereik', () => {
+  it('herkent een einddatum die vóór de begindatum ligt', () => {
+    expect(isOmgekeerdBereik('2026-07-31', '2026-07-01')).toBe(true)
+  })
+
+  it('is onwaar bij een gewoon bereik, één dag, of een half ingevuld bereik', () => {
+    expect(isOmgekeerdBereik('2026-07-01', '2026-07-31')).toBe(false)
+    expect(isOmgekeerdBereik('2026-07-05', '2026-07-05')).toBe(false)
+    expect(isOmgekeerdBereik('2026-07-05', undefined)).toBe(false)
+    expect(isOmgekeerdBereik(undefined, '2026-07-05')).toBe(false)
+    expect(isOmgekeerdBereik('', '')).toBe(false)
+  })
+
+  it('werkt over de jaargrens', () => {
+    expect(isOmgekeerdBereik('2026-01-01', '2025-12-31')).toBe(true)
   })
 })
 

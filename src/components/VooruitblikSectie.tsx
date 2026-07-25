@@ -5,6 +5,7 @@ import type { Periode } from '../utils/analyse'
 import { formatEuro } from '../utils/format'
 import { Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
+import { huidigeMaand, vandaag } from '../utils/datum'
 
 function kleurVanSaldo(saldo: number): string {
   return saldo >= 0 ? 'var(--positive)' : 'var(--negative)'
@@ -44,12 +45,16 @@ export function VooruitblikSectie({
 
   const sq = useMemo(() => spaarquote(transacties, periode), [transacties, periode])
 
+  // Vandaag en de huidige maand komen uit utils/datum.ts, zodat elk scherm met
+  // dezelfde (lokale) dag rekent. De dag is nodig om te zien welke vaste lasten
+  // achterstallig zijn.
   const nu = new Date()
-  const maand = nu.getFullYear() + '-' + String(nu.getMonth() + 1).padStart(2, '0')
+  const vandaagISO = vandaag(nu)
+  const maand = huidigeMaand(nu)
   const maandNaam = new Intl.DateTimeFormat('nl-BE', { month: 'long' }).format(nu)
   const vb = useMemo(
-    () => maandVooruitblik(transacties, terugkerendePosten, maand),
-    [transacties, terugkerendePosten, maand],
+    () => maandVooruitblik(transacties, terugkerendePosten, maand, vandaagISO),
+    [transacties, terugkerendePosten, maand, vandaagISO],
   )
 
   // Balkje toont het overgehouden deel van de inkomsten (0–100%); negatief = leeg.
@@ -110,12 +115,26 @@ export function VooruitblikSectie({
           {vb.aantalKomend > 0 && vb.komend.uitgaven > 0 && (
             <Regel label={t('Nog te komen — uitgaven')} bedrag={vb.komend.uitgaven} teken="−" />
           )}
+          {/* Achterstallig: de dag van de maand is voorbij en er is niets geboekt.
+              Bewust rustig getoond — het blijft een gewone regel in dezelfde lijst. */}
+          {vb.achterstallig.inkomsten > 0 && (
+            <Regel label={t('Achterstallig — inkomsten')} bedrag={vb.achterstallig.inkomsten} teken="+" />
+          )}
+          {vb.achterstallig.uitgaven > 0 && (
+            <Regel label={t('Achterstallig — uitgaven')} bedrag={vb.achterstallig.uitgaven} teken="−" />
+          )}
         </ul>
-        {vb.aantalKomend > 0 ? (
+        {vb.aantalKomend > 0 && (
           <p className="rij-meta" style={{ margin: 0 }}>
             {t('{n} vaste last(en) nog in te boeken deze maand', { n: vb.aantalKomend })}
           </p>
-        ) : (
+        )}
+        {vb.aantalAchterstallig > 0 && (
+          <p className="rij-meta" style={{ margin: 0 }}>
+            {t('{n} vaste last(en) achterstallig — de dag is voorbij', { n: vb.aantalAchterstallig })}
+          </p>
+        )}
+        {vb.aantalKomend === 0 && vb.aantalAchterstallig === 0 && (
           <p className="rij-meta" style={{ margin: 0 }}>
             {t('Alle vaste lasten voor deze maand zijn al ingeboekt')}
           </p>

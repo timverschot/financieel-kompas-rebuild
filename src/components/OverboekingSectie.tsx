@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import type { Overboeking, Rekening } from '../data/schema'
+import type { Overboeking, Rekening, Transactie } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
-import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
+import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
+import { saldoVanRekening } from '../utils/saldo'
 import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 import { vandaag } from '../utils/datum'
@@ -14,6 +15,7 @@ import { vandaag } from '../utils/datum'
 export function OverboekingSectie({
   overboekingen,
   rekeningen,
+  transacties = [],
   bewerken,
   onOpslaan,
   onVerwijderen,
@@ -22,6 +24,9 @@ export function OverboekingSectie({
 }: {
   overboekingen: Overboeking[]
   rekeningen: Rekening[]
+  // Nodig om per rekening het saldo van vandaag te tonen in de keuzelijsten, zodat
+  // je ziet wat er beschikbaar is vóór je overboekt.
+  transacties?: Transactie[]
   bewerken?: Overboeking | null
   onOpslaan: (o: Overboeking) => Promise<void> | void
   onVerwijderen: (id: string) => Promise<void> | void
@@ -29,6 +34,9 @@ export function OverboekingSectie({
   onStopBewerken: () => void
 }) {
   const { t } = useT()
+  // Naam + saldo van vandaag, zodat de keuzelijsten tonen wat er op elke rekening staat.
+  const label = (r: Rekening) =>
+    `${r.naam} — ${formatEuro(saldoVanRekening(r, transacties, overboekingen, vandaag()))}`
   const [vanId, setVanId] = useState('')
   const [naarId, setNaarId] = useState('')
   const [bedrag, setBedrag] = useState('')
@@ -132,7 +140,7 @@ export function OverboekingSectie({
                   <option value="">{t('— kies —')}</option>
                   {rekeningen.map((r) => (
                     <option key={r.id} value={r.id}>
-                      {r.naam}
+                      {label(r)}
                     </option>
                   ))}
                 </select>
@@ -145,7 +153,7 @@ export function OverboekingSectie({
                   <option value="">{t('— kies —')}</option>
                   {rekeningen.map((r) => (
                     <option key={r.id} value={r.id}>
-                      {r.naam}
+                      {label(r)}
                     </option>
                   ))}
                 </select>

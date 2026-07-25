@@ -4,6 +4,7 @@ import {
   aflossingenVan,
   totaalAfgelost,
   openstaandKapitaal,
+  totaalOpenstaand,
   voortgang,
   isAfbetaald,
   evolutie,
@@ -44,6 +45,24 @@ describe('totaalAfgelost / openstaandKapitaal', () => {
   it('gaat nooit onder nul, ook bij te veel aflossen', () => {
     const alle = [afl(120000, '2026-02-01')]
     expect(openstaandKapitaal(lening(), alle)).toBe(0)
+  })
+})
+
+describe('totaalOpenstaand', () => {
+  const uitgeleend = lening({ id: 'l1', richting: 'uitgeleend', hoofdsom: 100000 })
+  const geleend = lening({ id: 'l2', naam: 'Autolening', richting: 'geleend', hoofdsom: 200000 })
+
+  it('telt op wat er nog openstaat, per richting en samen', () => {
+    const alle = [afl(25000, '2026-02-01', 'l1')]
+    expect(totaalOpenstaand([uitgeleend, geleend], alle, 'uitgeleend')).toBe(75000)
+    expect(totaalOpenstaand([uitgeleend, geleend], alle, 'geleend')).toBe(200000)
+    expect(totaalOpenstaand([uitgeleend, geleend], alle)).toBe(275000)
+  })
+
+  it('laat een manueel afgesloten lening buiten beschouwing', () => {
+    const dicht = lening({ id: 'l1', richting: 'uitgeleend', hoofdsom: 100000, afgesloten: true })
+    expect(totaalOpenstaand([dicht, geleend], [])).toBe(200000)
+    expect(totaalOpenstaand([dicht], [], 'uitgeleend')).toBe(0)
   })
 })
 

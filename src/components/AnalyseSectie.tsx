@@ -15,10 +15,12 @@ import {
   type AnalysePost,
 } from '../utils/analyse'
 import { Donut } from './Donut'
+import { afgerondePercentages } from '../utils/donut'
 import { formatEuro } from '../utils/format'
 import { Kaart, PaginaKop, Leeg, Bedrag, Stat, Balk } from '../ui/basis'
 import { useT } from '../i18n'
 import { naarDatumTekst } from '../utils/datum'
+import { isOmgekeerdBereik } from '../utils/transactieFilter'
 
 // Palet voor lijstjes zonder eigen kleur (producten, winkels). Bewust vaste,
 // onderscheidbare tinten; de kleur reist mee met het bedrag (zelfde data-object).
@@ -72,19 +74,23 @@ function DonutKaart({ titel, subtitel, posten, richting }: { titel: string; subt
   const ring = top10.map((p) => ({ naam: p.naam, bedrag: p.bedrag, kleur: p.kleur }))
   if (restTotaal > 0) ring.push({ naam: t('Overige ({n})', { n: rest.length }), bedrag: restTotaal, kleur: OVERIGE_KLEUR })
   const legende = toonAlles ? posten : top10
+  // Percentages over de VOLLEDIGE lijst berekenen (niet enkel de zichtbare top 10),
+  // zodat een rij hetzelfde percentage houdt als je de lijst uitklapt. 'legende' is
+  // altijd het begin van 'posten', dus de plaatsen lopen gelijk.
+  const percentages = afgerondePercentages(posten.map((p) => p.bedrag))
 
   return (
     <Kaart titel={titel} bijschrift={subtitel}>
       <Donut items={ring} toonLegende={false} middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'} />
       <ul className="lijst" style={{ maxHeight: toonAlles ? 260 : undefined, overflowY: toonAlles ? 'auto' : undefined }}>
-        {legende.map((p) => (
-          <li key={p.naam} className="rij">
+        {legende.map((p, i) => (
+          <li key={`${i}-${p.naam}`} className="rij">
             <span style={{ ...stip, background: p.kleur }} />
             <span className="rij-midden">
               <span className="rij-titel" style={afkap}>
                 {p.naam}
               </span>
-              <span className="rij-meta">{totaal > 0 ? Math.round((p.bedrag / totaal) * 100) : 0}%</span>
+              <span className="rij-meta">{percentages[i]}%</span>
             </span>
             <Bedrag centen={p.bedrag} />
           </li>
@@ -123,6 +129,12 @@ export function AnalyseSectie({
   const [van, setVan] = useState('')
   const [tot, setTot] = useState('')
   const [drill, setDrill] = useState<{ sleutel: string; naam: string } | null>(null)
+
+  // Een aangepast bereik waarvan de einddatum vóór de begindatum ligt, levert
+  // nergens resultaten op. Vroeger bleef het scherm dan zwijgend leeg (en werd het
+  // aantal dagen voor de vergelijking zelfs negatief). We merken dat geval nu op,
+  // zeggen het in één regel, en rekenen verder niets uit.
+  const bereikOmgekeerd = keuze === 'aangepast' && isOmgekeerdBereik(van, tot)
 
   // Periode omzetten naar een van/tot-bereik. Los gehouden van de rekenkern zodat
   // die zuiver testbaar blijft.
@@ -163,7 +175,7 @@ export function AnalyseSectie({
       return { van: `${j}-01-01`, tot: `${j}-12-31` }
     }
     if (keuze === 'aangepast') {
-      if (!van || !tot) return null
+      if (!van || !tot || isOmgekeerdBereik(van, tot)) return null
       const vd = new Date(van)
       const td = new Date(tot)
       const dagen = Math.round((td.getTime() - vd.getTime()) / 86400000)
@@ -174,17 +186,32 @@ export function AnalyseSectie({
     return null // alles
   }, [keuze, van, tot])
 
-  const byOv = useMemo(() => perHoofdcategorie(transacties, categorieen, periode, richting), [transacties, categorieen, periode, richting])
-  const byItem = useMemo(() => kleuren(perItem(transacties, categorieen, periode, richting)), [transacties, categorieen, periode, richting])
-  const byWinkel = useMemo(() => kleuren(perWinkel(transacties, periode, richting)), [transacties, periode, richting])
+  // Bij een omgekeerd bereik rekenen we bewust niets uit: lege kaarten met nullen
+  // zouden suggereren dat er écht niets is.
+  const byOv = useMemo(
+    () => (bereikOmgekeerd ? [] : perHoofdcategorie(transacties, categorieen, periode, richting)),
+    [bereikOmgekeerd, transacties, categorieen, periode, richting],
+  )
+  const byItem = useMemo(
+    () => (bereikOmgekeerd ? [] : kleuren(perItem(transacties, categorieen, periode, richting))),
+    [bereikOmgekeerd, transacties, categorieen, periode, richting],
+  )
+  const byWinkel = useMemo(
+    () => (bereikOmgekeerd ? [] : kleuren(perWinkel(transacties, periode, richting))),
+    [bereikOmgekeerd, transacties, periode, richting],
+  )
   const totaal = totaalVan(byOv)
 
   const drillTxs = useMemo(
-    () => (drill ? drillTransacties(transacties, categorieen, periode, richting, drill.sleutel) : []),
-    [drill, transacties, categorieen, periode, richting],
+    () => (drill && !bereikOmgekeerd ? drillTransacties(transacties, categorieen, periode, richting, drill.sleutel) : []),
+    [bereikOmgekeerd, drill, transacties, categorieen, periode, richting],
   )
   const drillSub = useMemo(() => kleuren(drillPerItem(drillTxs, categorieen)), [drillTxs, categorieen])
   const drillTotaal = totaalVan(drillTxs.map((d) => ({ bedrag: d.bedrag })))
+
+  // Percentages per rij: in één keer berekend zodat elke kolom op exact 100% sluit.
+  const ovPercentages = afgerondePercentages(byOv.map((g) => g.bedrag))
+  const drillSubPercentages = afgerondePercentages(drillSub.map((p) => p.bedrag))
 
   const perioden: [typeof keuze, string][] = [
     ['maand', t('Deze maand')],
@@ -248,7 +275,13 @@ export function AnalyseSectie({
         )}
       </div>
 
-      {!drill && (
+      {bereikOmgekeerd && (
+        <Kaart>
+          <Leeg>{t('De einddatum ligt vóór de begindatum.')}</Leeg>
+        </Kaart>
+      )}
+
+      {!drill && !bereikOmgekeerd && (
         <>
           {/* Verdeling per hoofdcategorie + ranglijst */}
           <Kaart
@@ -278,7 +311,7 @@ export function AnalyseSectie({
                               <span className="rij-titel" style={afkap}>
                                 {g.naam}
                               </span>
-                              <span className="rij-meta">{Math.round(fractie * 100)}%</span>
+                              <span className="rij-meta">{ovPercentages[i]}%</span>
                             </span>
                             <Bedrag centen={g.bedrag} />
                             <span className="rij-meta">›</span>
@@ -325,7 +358,7 @@ export function AnalyseSectie({
         </>
       )}
 
-      {drill && (
+      {drill && !bereikOmgekeerd && (
         <>
           <Kaart>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -354,17 +387,17 @@ export function AnalyseSectie({
                 middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'}
               />
               <ul className="lijst">
-                {drillSub.map((p) => {
+                {drillSub.map((p, i) => {
                   const fractie = drillTotaal > 0 ? p.bedrag / drillTotaal : 0
                   return (
-                    <li key={p.naam} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+                    <li key={`${i}-${p.naam}`} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <span style={{ ...stip, background: p.kleur }} />
                         <span className="rij-midden">
                           <span className="rij-titel" style={afkap}>
                             {p.naam}
                           </span>
-                          <span className="rij-meta">{Math.round(fractie * 100)}%</span>
+                          <span className="rij-meta">{drillSubPercentages[i]}%</span>
                         </span>
                         <Bedrag centen={p.bedrag} />
                       </span>

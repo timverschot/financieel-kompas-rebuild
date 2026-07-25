@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { donutSegmenten, type DonutInvoer } from '../utils/donut'
+import { donutSegmenten, afgerondePercentages, type DonutInvoer } from '../utils/donut'
 import { formatEuro } from '../utils/format'
 import { Bedrag } from '../ui/basis'
 import { useT } from '../i18n'
@@ -48,6 +48,8 @@ export function Donut({
   if (segmenten.length === 0) return null
   const totaal = segmenten.reduce((s, seg) => s + seg.bedrag, 0)
   const enkel = segmenten.length === 1
+  // Percentages in één keer berekend, zodat de legende netjes op 100% uitkomt.
+  const percentages = afgerondePercentages(segmenten.map((seg) => seg.bedrag))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -69,9 +71,11 @@ export function Donut({
             strokeWidth={BUITEN - BINNEN}
           />
         ) : (
-          segmenten.map((seg) => (
+          segmenten.map((seg, i) => (
             // Een haarlijntje in de kaartkleur scheidt de schijven zacht van elkaar.
-            <path key={seg.naam} d={segmentPad(seg.start, seg.eind)} fill={seg.kleur} stroke="var(--surface)" strokeWidth={1.5} />
+            // De sleutel bevat de plaats in de lijst: twee schijven mogen dezelfde
+            // naam dragen (bv. tweemaal 'Onbekend') zonder elkaar te verdringen.
+            <path key={`${i}-${seg.naam}`} d={segmentPad(seg.start, seg.eind)} fill={seg.kleur} stroke="var(--surface)" strokeWidth={1.5} />
           ))
         )}
         <text
@@ -94,14 +98,14 @@ export function Donut({
 
       {toonLegende && (
         <ul className="lijst">
-          {segmenten.map((seg) => (
-            <li key={seg.naam} className="rij">
+          {segmenten.map((seg, i) => (
+            <li key={`${i}-${seg.naam}`} className="rij">
               <span style={{ ...stip, background: seg.kleur }} />
               <span className="rij-midden">
                 <span className="rij-titel" style={afkap}>
                   {seg.naam}
                 </span>
-                <span className="rij-meta">{Math.round(seg.fractie * 100)}%</span>
+                <span className="rij-meta">{percentages[i]}%</span>
               </span>
               <Bedrag centen={seg.bedrag} />
             </li>

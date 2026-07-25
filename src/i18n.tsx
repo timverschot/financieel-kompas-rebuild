@@ -206,6 +206,29 @@ const en: Record<string, string> = {
   'Geef een naam en een geldig bedrag om op te slaan.': 'Enter a name and a valid amount to save.',
   'Geef een naam en een percentage tussen 0 en 100.': 'Enter a name and a percentage between 0 and 100.',
   'Kies een categorie en geef een bedrag.': 'Pick a category and enter an amount.',
+  // Ronde 7: correcte cijfers, leningen afsluiten, vooruitblik
+  'Nieuwe transactie': 'New transaction',
+  'Uitgaven per categorie': 'Spending by category',
+  'Deze rekening heeft nog {n} boeking(en). Archiveer ze in plaats van ze te verwijderen.':
+    'This account still has {n} entr(ies). Archive it instead of deleting it.',
+  'Een terugbetaling in dezelfde categorie verlaagt het verbruik. Daardoor kan dit cijfer lager liggen dan de uitgaven in de Analyse.':
+    'A refund in the same category lowers the amount used. That is why this figure can be lower than the spending shown in Analysis.',
+  'Achterstallig — inkomsten': 'Overdue — income',
+  'Achterstallig — uitgaven': 'Overdue — expenses',
+  '{n} vaste last(en) achterstallig — de dag is voorbij': '{n} recurring item(s) overdue — the day has passed',
+  'De einddatum ligt vóór de begindatum.': 'The end date is before the start date.',
+  'sluit af': 'close',
+  'heropen': 'reopen',
+  'Sluit lening {naam} af': 'Close loan {naam}',
+  'Heropen lening {naam}': 'Reopen loan {naam}',
+  'afgesloten': 'closed',
+  'afgesloten, telt niet meer mee': 'closed, no longer counted',
+  'Nog te ontvangen': 'Still to receive',
+  'Nog te betalen': 'Still to pay',
+  'Dit is meer dan er nog openstaat ({open}).': 'This is more than the outstanding amount ({open}).',
+  'Zet op {open}': 'Set to {open}',
+  'De eerdere maanden tellen aan de niet-geïndexeerde bijdrage; enkel de lopende maand telt geïndexeerd. Zo weegt de indexatie niet met terugwerkende kracht.':
+    'Earlier months are counted at the non-indexed contribution; only the current month is counted as indexed. That way indexation does not apply retroactively.',
   // Spaardoelen
   'Spaardoelen': 'Savings goals',
   'Leningen': 'Loans',
@@ -724,6 +747,29 @@ const fr: Record<string, string> = {
   'Geef een naam en een geldig bedrag om op te slaan.': 'Indiquez un nom et un montant valide pour enregistrer.',
   'Geef een naam en een percentage tussen 0 en 100.': 'Indiquez un nom et un pourcentage entre 0 et 100.',
   'Kies een categorie en geef een bedrag.': 'Choisissez une catégorie et indiquez un montant.',
+  // Ronde 7 : chiffres corrects, clôture des prêts, perspectives
+  'Nieuwe transactie': 'Nouvelle transaction',
+  'Uitgaven per categorie': 'Dépenses par catégorie',
+  'Deze rekening heeft nog {n} boeking(en). Archiveer ze in plaats van ze te verwijderen.':
+    'Ce compte comporte encore {n} écriture(s). Archivez-le au lieu de le supprimer.',
+  'Een terugbetaling in dezelfde categorie verlaagt het verbruik. Daardoor kan dit cijfer lager liggen dan de uitgaven in de Analyse.':
+    'Un remboursement dans la même catégorie réduit la consommation. Ce chiffre peut donc être inférieur aux dépenses affichées dans l’Analyse.',
+  'Achterstallig — inkomsten': 'En retard — revenus',
+  'Achterstallig — uitgaven': 'En retard — dépenses',
+  '{n} vaste last(en) achterstallig — de dag is voorbij': '{n} charge(s) fixe(s) en retard — le jour est passé',
+  'De einddatum ligt vóór de begindatum.': 'La date de fin précède la date de début.',
+  'sluit af': 'clôturer',
+  'heropen': 'rouvrir',
+  'Sluit lening {naam} af': 'Clôturer le prêt {naam}',
+  'Heropen lening {naam}': 'Rouvrir le prêt {naam}',
+  'afgesloten': 'clôturé',
+  'afgesloten, telt niet meer mee': 'clôturé, plus comptabilisé',
+  'Nog te ontvangen': 'Encore à recevoir',
+  'Nog te betalen': 'Encore à payer',
+  'Dit is meer dan er nog openstaat ({open}).': 'C’est plus que le montant restant dû ({open}).',
+  'Zet op {open}': 'Mettre à {open}',
+  'De eerdere maanden tellen aan de niet-geïndexeerde bijdrage; enkel de lopende maand telt geïndexeerd. Zo weegt de indexatie niet met terugwerkende kracht.':
+    'Les mois antérieurs sont comptés à la contribution non indexée ; seul le mois en cours est indexé. L’indexation ne s’applique donc pas rétroactivement.',
   // Spaardoelen
   'Spaardoelen': 'Objectifs d’épargne',
   'Leningen': 'Prêts',

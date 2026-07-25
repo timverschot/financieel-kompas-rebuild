@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Categorie, Dossier, Kind, Kindrekening, Kindrekeningpost } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
-import { potSaldo, standPerOuder, geindexeerdeBijdrage, type OuderStand } from '../utils/kindrekening'
+import { potSaldo, standPerOuder, geindexeerdeBijdrage, teltVerledenZonderIndex, type OuderStand } from '../utils/kindrekening'
 import { labelVanCategorie } from '../data/categorieen/resolve'
 import { KindrekeningpostFormulier } from './KindrekeningpostFormulier'
 import { Bedrag, Kaart } from '../ui/basis'
@@ -160,6 +160,16 @@ export function KindrekeningSectie({
           </span>
         </li>
       </ul>
+
+      {/* Eén regel die zegt hoe de achterstand geteld wordt zodra er geïndexeerd
+          wordt. De app weet niet vanaf welke maand de huidige index gold, dus
+          telt ze de eerdere maanden aan de niet-geïndexeerde bijdrage in plaats
+          van de indexatie met terugwerkende kracht toe te passen. */}
+      {teltVerledenZonderIndex(kindrekening, vandaag()) && (
+        <p className="rij-meta" style={{ margin: 0 }}>
+          {t('De eerdere maanden tellen aan de niet-geïndexeerde bijdrage; enkel de lopende maand telt geïndexeerd. Zo weegt de indexatie niet met terugwerkende kracht.')}
+        </p>
+      )}
 
       {/* Maandbijdrage-afspraak (met indexatie) */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>

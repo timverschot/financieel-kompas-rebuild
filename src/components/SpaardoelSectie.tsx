@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Rekening, Spaardoel, Transactie } from '../data/schema'
+import type { Overboeking, Rekening, Spaardoel, Transactie } from '../data/schema'
 import { SpaardoelFormulier } from './SpaardoelFormulier'
 import { spaardoelVoortgang } from '../utils/spaardoel'
 import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
@@ -13,12 +13,16 @@ export function SpaardoelSectie({
   spaardoelen,
   rekeningen,
   transacties,
+  overboekingen = [],
   onOpslaan,
   onVerwijderen,
 }: {
   spaardoelen: Spaardoel[]
   rekeningen: Rekening[]
   transacties: Transactie[]
+  // Overboekingen tellen mee in het saldo van een gekoppelde rekening: geld dat je
+  // naar je spaarrekening boekt, hoort in je spaardoel te verschijnen.
+  overboekingen?: Overboeking[]
   onOpslaan: (d: Spaardoel) => Promise<void> | void
   onVerwijderen: (id: string) => Promise<void> | void
 }) {
@@ -54,7 +58,7 @@ export function SpaardoelSectie({
         {spaardoelen.length > 0 && (
           <ul className="lijst">
             {spaardoelen.map((d) => {
-              const v = spaardoelVoortgang(d, rekeningen, transacties)
+              const v = spaardoelVoortgang(d, rekeningen, transacties, overboekingen)
               const kleur = d.kleur ?? 'var(--positive)'
               const manueel = !d.gekoppeldeRekeningId
               return (

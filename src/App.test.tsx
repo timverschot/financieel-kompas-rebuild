@@ -117,7 +117,9 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Rekening toevoegen' }))
 
     // Vakantiepot verschijnt nu als keuze in de rekening-selecties (overboekingen).
-    expect((await screen.findAllByRole('option', { name: 'Vakantiepot' })).length).toBeGreaterThan(0)
+    // De keuzelijst toont sinds ronde 7 ook het saldo ("Vakantiepot — € 100,00"),
+    // vandaar dat we op de naam zoeken en niet op de volledige tekst.
+    expect((await screen.findAllByRole('option', { name: /Vakantiepot/ })).length).toBeGreaterThan(0)
   })
 
   it('maakt een vaste post aan en boekt hem in voor de maand', async () => {
@@ -247,10 +249,10 @@ describe('App', () => {
     await gaMeer(user, 'Rekeningen')
     await user.type(screen.getByLabelText('Rekeningnaam'), 'Vakantiepot')
     await user.click(screen.getByRole('button', { name: 'Rekening toevoegen' }))
-    expect((await screen.findAllByRole('option', { name: 'Vakantiepot' })).length).toBeGreaterThan(0)
+    expect((await screen.findAllByRole('option', { name: /Vakantiepot/ })).length).toBeGreaterThan(0)
 
     await user.click(screen.getByRole('button', { name: 'Verwijder rekening Vakantiepot' }))
-    await waitFor(() => expect(screen.queryAllByRole('option', { name: 'Vakantiepot' })).toHaveLength(0))
+    await waitFor(() => expect(screen.queryAllByRole('option', { name: /Vakantiepot/ })).toHaveLength(0))
   })
 
   it('verwijdert een budget', async () => {

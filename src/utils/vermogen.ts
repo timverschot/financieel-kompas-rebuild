@@ -1,4 +1,5 @@
 import type { Overboeking, Rekening, Transactie } from '../data/schema'
+import { saldoOpDatum } from './saldo'
 
 // Rekenkern voor de vermogensevolutie: het saldo van elke rekening op het einde
 // van een reeks maanden, en het totale vermogen (som over alle rekeningen).
@@ -15,15 +16,8 @@ export function saldoOpEinde(
   overboekingen: Overboeking[],
   eindeMaand: string,
 ): number {
-  const grens = `${eindeMaand}-31` // JJJJ-MM-31 dekt elke dag van die maand en eerder
-  let saldo = beginsaldo
-  for (const t of transacties) if (t.rekeningId === rekeningId && t.datum <= grens) saldo += t.bedrag
-  for (const o of overboekingen) {
-    if (o.datum > grens) continue
-    if (o.naarRekeningId === rekeningId) saldo += o.bedrag
-    if (o.vanRekeningId === rekeningId) saldo -= o.bedrag
-  }
-  return saldo
+  // 'JJJJ-MM-31' dekt als tekstvergelijking elke dag van die maand en eerder.
+  return saldoOpDatum(rekeningId, beginsaldo, transacties, overboekingen, `${eindeMaand}-31`)
 }
 
 // Voor elke maand in 'maanden' het saldo per rekening en het totale vermogen.

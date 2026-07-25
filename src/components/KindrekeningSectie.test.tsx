@@ -47,6 +47,34 @@ describe('KindrekeningSectie', () => {
     expect(screen.getByText(/120,00/)).toBeInTheDocument()
   })
 
+  // Probleem 3: de huidige index werd met terugwerkende kracht op alle voorbije
+  // maanden toegepast, waardoor de achterstand structureel te hoog was.
+  it('past de indexatie niet met terugwerkende kracht toe in de achterstand', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 2, 10)) // 10 maart 2026
+    try {
+      const kr: Kindrekening = {
+        id: 'kr1',
+        dossierId: 'd1',
+        naam: 'Pot',
+        beginsaldo: 0,
+        maandbijdrageJij: 20000, // € 200 basis, geïndexeerd € 220
+        bijdrageStart: '2026-01-01',
+        aanvangsindex: 100,
+        huidigeIndex: 110,
+      }
+      toon(kr, [])
+      // 3 termijnen: jan + feb aan € 200, maart aan € 220 = € 620 verwacht.
+      expect(screen.getByText(/620,00/)).toBeInTheDocument()
+      // Niet 3 × € 220 = € 660.
+      expect(screen.queryByText(/660,00/)).not.toBeInTheDocument()
+      // En het scherm legt uit hoe er geteld wordt.
+      expect(screen.getByText(/niet-geïndexeerde bijdrage/)).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('voegt een storting toe via het formulier', async () => {
     const user = userEvent.setup()
     const kr: Kindrekening = { id: 'kr1', dossierId: 'd1', naam: 'Pot', beginsaldo: 0 }

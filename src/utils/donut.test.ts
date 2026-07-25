@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { donutSegmenten } from './donut'
+import { donutSegmenten, afgerondePercentages } from './donut'
 
 describe('donutSegmenten', () => {
   it('berekent fracties en cumulatieve hoeken', () => {
@@ -28,5 +28,45 @@ describe('donutSegmenten', () => {
   it('geeft een lege lijst bij een totaal van nul', () => {
     expect(donutSegmenten([])).toEqual([])
     expect(donutSegmenten([{ naam: 'x', bedrag: 0, kleur: null }])).toEqual([])
+  })
+})
+
+describe('afgerondePercentages', () => {
+  const som = (n: number[]) => n.reduce((s, x) => s + x, 0)
+
+  it('telt op tot exact 100 waar apart afronden 101 zou geven', () => {
+    // Drie gelijke delen: apart afgerond wordt elk 33% (samen 99).
+    expect(afgerondePercentages([1, 1, 1])).toEqual([34, 33, 33])
+  })
+
+  it('telt op tot exact 100 bij een lastige verdeling', () => {
+    // Elk deel is 16,66…%: apart afgerond 17% × 6 = 102.
+    const p = afgerondePercentages([1, 1, 1, 1, 1, 1])
+    expect(som(p)).toBe(100)
+    expect(p).toEqual([17, 17, 17, 17, 16, 16])
+  })
+
+  it('geeft de extra procenten aan de grootste resten', () => {
+    // 3000/7000 = 42,857 (rest ,857), 2500/7000 = 35,714 (rest ,714), 1500/7000 = 21,428 (rest ,428).
+    const p = afgerondePercentages([3000, 2500, 1500])
+    expect(p).toEqual([43, 36, 21])
+    expect(som(p)).toBe(100)
+  })
+
+  it('blijft kloppen bij veel kleine posten', () => {
+    const bedragen = Array.from({ length: 37 }, (_, i) => 100 + i * 7)
+    const p = afgerondePercentages(bedragen)
+    expect(som(p)).toBe(100)
+    expect(p).toHaveLength(37)
+  })
+
+  it('geeft overal 0 bij een totaal van nul of een lege lijst', () => {
+    expect(afgerondePercentages([])).toEqual([])
+    expect(afgerondePercentages([0, 0])).toEqual([0, 0])
+    expect(afgerondePercentages([-5])).toEqual([0])
+  })
+
+  it('geeft 100 aan één enkele post', () => {
+    expect(afgerondePercentages([250])).toEqual([100])
   })
 })
