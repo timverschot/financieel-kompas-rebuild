@@ -12,12 +12,37 @@ const MAX_SUGGESTIES = 12
 
 type Suggestie = { id: string; titel: string; sub?: string }
 
-const invoer: CSSProperties = {
-  display: 'block',
+// Het zwevende voorstellenlijstje: crème vlak met zachte rand en een schaduw,
+// want het zweeft boven de rest van het formulier.
+const suggestieLijst: CSSProperties = {
+  listStyle: 'none',
+  margin: '4px 0 0',
+  padding: 0,
+  maxHeight: 240,
+  overflowY: 'auto',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius)',
+  background: 'var(--surface)',
+  boxShadow: 'var(--shadow-sheet)',
+  position: 'absolute',
   width: '100%',
-  padding: '0.4rem',
-  marginTop: 2,
-  boxSizing: 'border-box',
+  zIndex: 10,
+}
+
+function suggestieKnop(gemarkeerd: boolean): CSSProperties {
+  return {
+    display: 'block',
+    width: '100%',
+    textAlign: 'left',
+    fontFamily: 'inherit',
+    fontSize: 14,
+    color: 'var(--text)',
+    padding: '9px 12px',
+    border: 'none',
+    borderBottom: '1px solid var(--rij-lijn)',
+    background: gemarkeerd ? 'var(--accent-soft)' : 'transparent',
+    cursor: 'pointer',
+  }
 }
 
 // Categorie-kiezer met autocomplete, zoals in v1: begin te typen en vanaf twee
@@ -100,15 +125,11 @@ export function CategorieKiezer({
   }
 
   return (
-    <div style={{ position: 'relative' }}>
-      <p style={{ margin: '0 0 0.25rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-        {t('Categorie:')} <strong>{gekozenLabel ?? t('Geen')}</strong>
+    <div className="veldgroep" style={{ position: 'relative' }}>
+      <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span className="label-caps">{t('Categorie:')}</span> <strong>{gekozenLabel ?? t('Geen')}</strong>
         {waarde && (
-          <button
-            type="button"
-            onClick={() => kies(undefined)}
-            style={{ marginLeft: '0.5rem', border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer' }}
-          >
+          <button type="button" className="knop knop-ghost knop-klein knop-gevaar" onClick={() => kies(undefined)}>
             {t('wissen')}
           </button>
         )}
@@ -118,7 +139,7 @@ export function CategorieKiezer({
         role="combobox"
         aria-expanded={open && zichtbaar.length > 0}
         aria-autocomplete="list"
-        style={invoer}
+        style={{ display: 'block', width: '100%' }}
         value={zoek}
         placeholder={t('Typ om te zoeken (vanaf 2 letters)…')}
         onFocus={() => setOpen(true)}
@@ -131,23 +152,7 @@ export function CategorieKiezer({
         onKeyDown={opToets}
       />
       {open && zichtbaar.length > 0 && (
-        <ul
-          role="listbox"
-          style={{
-            listStyle: 'none',
-            margin: '2px 0 0',
-            padding: 0,
-            maxHeight: 220,
-            overflowY: 'auto',
-            border: '1px solid var(--border-strong)',
-            borderRadius: 8,
-            background: 'white',
-            position: 'absolute',
-            width: '100%',
-            zIndex: 10,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-          }}
-        >
+        <ul role="listbox" style={{ ...suggestieLijst, top: '100%' }}>
           {zichtbaar.map((s, i) => (
             <li key={s.id} role="option" aria-selected={i === gemarkeerd}>
               <button
@@ -156,17 +161,7 @@ export function CategorieKiezer({
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => kies(s.id)}
                 onMouseEnter={() => zetHoog(i)}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '0.35rem 0.5rem',
-                  border: 'none',
-                  borderBottom: '1px solid var(--surface-2)',
-                  background: i === gemarkeerd ? 'var(--info-soft)' : 'white',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem',
-                }}
+                style={suggestieKnop(i === gemarkeerd)}
               >
                 {s.titel}
                 {s.sub && <span style={{ color: 'var(--text-subtle)' }}> · {s.sub}</span>}

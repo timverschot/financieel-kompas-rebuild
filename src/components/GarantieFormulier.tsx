@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { CSSProperties, FormEvent } from 'react'
+import type { FormEvent } from 'react'
 import type { Garantie, Transactie } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer, formatEuro } from '../utils/format'
@@ -8,15 +8,6 @@ import { STANDAARD_GARANTIE_MAANDEN } from '../utils/garantie'
 import { useT } from '../i18n'
 
 const vandaag = () => new Date().toISOString().slice(0, 10)
-
-const veld: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  padding: '0.4rem',
-  marginTop: 2,
-  boxSizing: 'border-box',
-}
-const rij: CSSProperties = { marginBottom: '0.6rem' }
 
 // Formulier om een aankoop met garantie toe te voegen of te bewerken. Een aankoop
 // kan optioneel aan een bestaande transactie gekoppeld worden; bij het kiezen
@@ -110,11 +101,13 @@ export function GarantieFormulier({
   }
 
   return (
-    <form onSubmit={verzend} style={{ marginTop: '0.75rem' }}>
+    <form onSubmit={verzend} className="stapel">
       {gesorteerdeTx.length > 0 && (
-        <div style={rij}>
-          <label htmlFor="gar-tx">{t('Koppel aan transactie (optioneel)')}</label>
-          <select id="gar-tx" style={veld} value={transactieId} onChange={(e) => kiesTransactie(e.target.value)}>
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="gar-tx">
+            {t('Koppel aan transactie (optioneel)')}
+          </label>
+          <select id="gar-tx" value={transactieId} onChange={(e) => kiesTransactie(e.target.value)}>
             <option value="">{t('Niet gekoppeld')}</option>
             {gesorteerdeTx.map((tx) => (
               <option key={tx.id} value={tx.id}>
@@ -124,42 +117,56 @@ export function GarantieFormulier({
           </select>
         </div>
       )}
-      <div style={rij}>
-        <label htmlFor="gar-product">{t('Product')}</label>
-        <input id="gar-product" style={veld} value={product} onChange={(e) => setProduct(e.target.value)} placeholder={t('bv. Wasmachine')} />
+      <div className="veldrij">
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="gar-product">
+            {t('Product')}
+          </label>
+          <input id="gar-product" value={product} onChange={(e) => setProduct(e.target.value)} placeholder={t('bv. Wasmachine')} />
+        </div>
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="gar-winkel">
+            {t('Winkel (optioneel)')}
+          </label>
+          <input id="gar-winkel" value={winkel} onChange={(e) => setWinkel(e.target.value)} />
+        </div>
       </div>
-      <div style={rij}>
-        <label htmlFor="gar-winkel">{t('Winkel (optioneel)')}</label>
-        <input id="gar-winkel" style={veld} value={winkel} onChange={(e) => setWinkel(e.target.value)} />
-      </div>
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <label style={{ flex: 1, minWidth: 120 }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Aankoopdatum')}</span>
-          <input type="date" style={veld} value={aankoopdatum} onChange={(e) => setAankoopdatum(e.target.value)} />
+      <div className="veldrij">
+        <label className="veldgroep">
+          <span className="label-caps">{t('Aankoopdatum')}</span>
+          <input type="date" value={aankoopdatum} onChange={(e) => setAankoopdatum(e.target.value)} />
         </label>
-        <label style={{ flex: 1, minWidth: 120 }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Prijs € (optioneel)')}</span>
-          <input style={veld} inputMode="decimal" placeholder="0,00" value={prijs} onChange={(e) => setPrijs(e.target.value)} />
+        <label className="veldgroep">
+          <span className="label-caps">{t('Prijs € (optioneel)')}</span>
+          <input inputMode="decimal" placeholder="0,00" value={prijs} onChange={(e) => setPrijs(e.target.value)} />
         </label>
       </div>
-      <div style={{ ...rij, marginTop: '0.4rem' }}>
-        <label htmlFor="gar-maanden">{t('Garantie in maanden')}</label>
-        <input id="gar-maanden" style={veld} inputMode="numeric" value={maanden} onChange={(e) => setMaanden(e.target.value)} />
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{t('24 = wettelijk (2 jaar); tweedehands minstens 12; langere commerciële garantie mag ook.')}</span>
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="gar-maanden">
+          {t('Garantie in maanden')}
+        </label>
+        <input id="gar-maanden" inputMode="numeric" value={maanden} onChange={(e) => setMaanden(e.target.value)} />
+        <span className="rij-meta">{t('24 = wettelijk (2 jaar); tweedehands minstens 12; langere commerciële garantie mag ook.')}</span>
       </div>
-      <div style={rij}>
-        <label htmlFor="gar-notitie">{t('Notitie (optioneel)')}</label>
-        <input id="gar-notitie" style={veld} value={notitie} onChange={(e) => setNotitie(e.target.value)} />
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="gar-notitie">
+          {t('Notitie (optioneel)')}
+        </label>
+        <input id="gar-notitie" value={notitie} onChange={(e) => setNotitie(e.target.value)} />
       </div>
-      <div style={rij}>
-        <label htmlFor="gar-bon">{t('Bon/factuur (optioneel)')}</label>
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="gar-bon">
+          {t('Bon/factuur (optioneel)')}
+        </label>
         {bonnetje ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: 2 }}>
+          <div className="knoprij">
             {bonnetje.startsWith('data:image') && (
-              <img src={bonnetje} alt={t('Bon/factuur')} style={{ maxHeight: 60, borderRadius: 6, border: '1px solid var(--border)' }} />
+              <img src={bonnetje} alt={t('Bon/factuur')} style={{ maxHeight: 60, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }} />
             )}
-            <a href={bonnetje} target="_blank" rel="noreferrer" style={{ color: 'var(--info)' }}>{t('bekijken')}</a>
-            <button type="button" onClick={() => setBonnetje('')} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer' }}>
+            <a href={bonnetje} target="_blank" rel="noreferrer">
+              {t('bekijken')}
+            </a>
+            <button type="button" className="knop knop-ghost knop-klein knop-gevaar" onClick={() => setBonnetje('')}>
               {t('verwijderen')}
             </button>
           </div>
@@ -168,7 +175,6 @@ export function GarantieFormulier({
             id="gar-bon"
             type="file"
             accept="image/*,application/pdf"
-            style={{ marginTop: 2 }}
             onChange={(e) => {
               const f = e.target.files?.[0]
               if (f) void kiesBon(f)
@@ -176,30 +182,18 @@ export function GarantieFormulier({
             }}
           />
         )}
-        {bezigBon && <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}> {t('bezig…')}</span>}
+        {bezigBon && <span className="rij-meta"> {t('bezig…')}</span>}
       </div>
-      <button
-        type="submit"
-        disabled={!geldig}
-        style={{
-          padding: '0.4rem 0.8rem',
-          borderRadius: 8,
-          border: '1px solid var(--border-strong)',
-          background: geldig ? 'var(--positive-soft)' : 'var(--surface-2)',
-          cursor: geldig ? 'pointer' : 'not-allowed',
-        }}
-      >
-        {bewerken ? t('Garantie wijzigen') : t('Garantie toevoegen')}
-      </button>
-      {bewerken && onAnnuleer && (
-        <button
-          type="button"
-          onClick={onAnnuleer}
-          style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
-        >
-          {t('Annuleer')}
+      <div className="knoprij">
+        <button type="submit" disabled={!geldig} className="knop knop-primair">
+          {bewerken ? t('Garantie wijzigen') : t('Garantie toevoegen')}
         </button>
-      )}
+        {bewerken && onAnnuleer && (
+          <button type="button" className="knop knop-secundair" onClick={onAnnuleer}>
+            {t('Annuleer')}
+          </button>
+        )}
+      </div>
     </form>
   )
 }

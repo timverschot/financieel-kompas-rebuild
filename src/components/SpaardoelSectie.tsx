@@ -1,12 +1,10 @@
 import { useState } from 'react'
-import type { CSSProperties } from 'react'
 import type { Rekening, Spaardoel, Transactie } from '../data/schema'
 import { SpaardoelFormulier } from './SpaardoelFormulier'
 import { spaardoelVoortgang } from '../utils/spaardoel'
 import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
+import { Balk, Kaart, Leeg, PaginaKop } from '../ui/basis'
 import { useT } from '../i18n'
-
-const kop: CSSProperties = { fontSize: '1rem', marginBottom: '0.25rem' }
 
 // De volledige Spaardoelen-sectie: overzicht met voortgangsbalken, snel het
 // huidige bedrag bijwerken (bij manueel bijgehouden doelen), en een formulier om
@@ -47,76 +45,72 @@ export function SpaardoelSectie({
   }
 
   return (
-    <section>
-      <h2 style={kop}>{t('Spaardoelen')}</h2>
-      <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>{t('Langetermijndoelen — buffers, grote aankopen, schuldenvrij.')}</p>
+    <div className="stapel">
+      <PaginaKop titel={t('Spaardoelen')} bijschrift={t('Langetermijndoelen — buffers, grote aankopen, schuldenvrij.')} />
 
-      {spaardoelen.length === 0 && <p style={{ color: 'var(--text-muted)' }}>{t('Nog geen doelen. Voeg je eerste doel toe!')}</p>}
+      <Kaart>
+        {spaardoelen.length === 0 && <Leeg>{t('Nog geen doelen. Voeg je eerste doel toe!')}</Leeg>}
 
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-        {spaardoelen.map((d) => {
-          const v = spaardoelVoortgang(d, rekeningen, transacties)
-          const kleur = d.kleur ?? '#3F8A58'
-          const manueel = !d.gekoppeldeRekeningId
-          return (
-            <li key={d.id} style={{ padding: '0.6rem 0', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <strong>{d.naam}</strong>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>
-                    {t('{a} van {b}', { a: formatEuro(v.huidig), b: formatEuro(v.doel) })}
-                  </span>
-                  <button aria-label={t('Bewerk doel {naam}', { naam: d.naam })} onClick={() => setBewerk(d)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>
-                    ✎
-                  </button>
-                  <button aria-label={t('Verwijder doel {naam}', { naam: d.naam })} onClick={() => onVerwijderen(d.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>
-                    ×
-                  </button>
-                </span>
-              </div>
-              <div
-                role="progressbar"
-                aria-label={d.naam}
-                aria-valuenow={Math.round(v.fractie * 100)}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                style={{ height: 8, background: 'var(--border)', borderRadius: 4, marginTop: 4, overflow: 'hidden' }}
-              >
-                <div style={{ height: '100%', width: `${v.fractie * 100}%`, background: kleur }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 2 }}>
-                <span>{t('nog {bedrag}', { bedrag: formatEuro(v.resterend) })}</span>
-                <span>
-                  {d.maandbedrag ? t('{bedrag}/mnd', { bedrag: formatEuro(d.maandbedrag) }) : ''}
-                  {d.doeldatum ? t(' · tegen {datum}', { datum: d.doeldatum }) : ''}
-                </span>
-              </div>
+        {spaardoelen.length > 0 && (
+          <ul className="lijst">
+            {spaardoelen.map((d) => {
+              const v = spaardoelVoortgang(d, rekeningen, transacties)
+              const kleur = d.kleur ?? 'var(--positive)'
+              const manueel = !d.gekoppeldeRekeningId
+              return (
+                <li key={d.id} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div className="rij-midden">
+                      <span className="rij-titel">{d.naam}</span>
+                      <span className="rij-meta">{t('{a} van {b}', { a: formatEuro(v.huidig), b: formatEuro(v.doel) })}</span>
+                    </div>
+                    <span className="rij-acties">
+                      <button className="knop knop-kaal" aria-label={t('Bewerk doel {naam}', { naam: d.naam })} onClick={() => setBewerk(d)}>
+                        ✎
+                      </button>
+                      <button
+                        className="knop knop-kaal knop-gevaar"
+                        aria-label={t('Verwijder doel {naam}', { naam: d.naam })}
+                        onClick={() => onVerwijderen(d.id)}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  </div>
 
-              {manueel && (
-                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginTop: '0.4rem' }}>
-                  <input
-                    aria-label={t('Huidig bedrag {naam}', { naam: d.naam })}
-                    style={{ flex: 1, padding: '0.3rem', boxSizing: 'border-box' }}
-                    inputMode="decimal"
-                    placeholder={t('Huidig bedrag')}
-                    value={bedragInvoer[d.id] ?? centenNaarInvoer(d.huidigBedrag)}
-                    onChange={(e) => setBedragInvoer((m) => ({ ...m, [d.id]: e.target.value }))}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => werkBedragBij(d)}
-                    style={{ padding: '0.3rem 0.7rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--info-soft)', cursor: 'pointer' }}
-                  >
-                    {t('Bedrag bijwerken')}
-                  </button>
-                </div>
-              )}
-            </li>
-          )
-        })}
-      </ul>
+                  <Balk label={d.naam} fractie={v.fractie} kleur={kleur} nu={v.fractie * 100} max={100} />
 
-      <SpaardoelFormulier rekeningen={rekeningen} onOpslaan={opslaan} onAnnuleer={() => setBewerk(null)} bewerken={bewerk} />
-    </section>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                    <span className="rij-meta">{t('nog {bedrag}', { bedrag: formatEuro(v.resterend) })}</span>
+                    <span className="rij-meta">
+                      {d.maandbedrag ? t('{bedrag}/mnd', { bedrag: formatEuro(d.maandbedrag) }) : ''}
+                      {d.doeldatum ? t(' · tegen {datum}', { datum: d.doeldatum }) : ''}
+                    </span>
+                  </div>
+
+                  {manueel && (
+                    <div className="knoprij" style={{ flexWrap: 'nowrap' }}>
+                      <input
+                        aria-label={t('Huidig bedrag {naam}', { naam: d.naam })}
+                        style={{ flex: 1, minWidth: 0 }}
+                        inputMode="decimal"
+                        placeholder={t('Huidig bedrag')}
+                        value={bedragInvoer[d.id] ?? centenNaarInvoer(d.huidigBedrag)}
+                        onChange={(e) => setBedragInvoer((m) => ({ ...m, [d.id]: e.target.value }))}
+                      />
+                      <button type="button" className="knop knop-secundair knop-klein" onClick={() => werkBedragBij(d)}>
+                        {t('Bedrag bijwerken')}
+                      </button>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        )}
+
+        <SpaardoelFormulier rekeningen={rekeningen} onOpslaan={opslaan} onAnnuleer={() => setBewerk(null)} bewerken={bewerk} />
+      </Kaart>
+    </div>
   )
 }

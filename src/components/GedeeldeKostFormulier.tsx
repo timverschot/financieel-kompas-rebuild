@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { CSSProperties, FormEvent } from 'react'
+import type { FormEvent } from 'react'
 import type { Categorie, GedeeldeKost, Kind } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
@@ -8,15 +8,6 @@ import { verkleinAfbeelding } from '../utils/afbeelding'
 import { useT } from '../i18n'
 
 const vandaag = () => new Date().toISOString().slice(0, 10)
-
-const veld: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  padding: '0.4rem',
-  marginTop: 2,
-  boxSizing: 'border-box',
-}
-const rij: CSSProperties = { marginBottom: '0.6rem' }
 
 // Formulier om een gedeelde kost toe te voegen of te bewerken. Een kost kan aan
 // één of meer kinderen gekoppeld worden, een categorie en kostentype krijgen, en
@@ -115,63 +106,65 @@ export function GedeeldeKostFormulier({
   }
 
   return (
-    <form onSubmit={verzend} style={{ marginTop: '0.75rem' }}>
-      <div style={rij}>
-        <label htmlFor="kostomschrijving">{t('Kostomschrijving')}</label>
-        <input id="kostomschrijving" style={veld} value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} />
+    <form onSubmit={verzend} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="kostomschrijving">{t('Kostomschrijving')}</label>
+        <input id="kostomschrijving" value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} />
       </div>
-      <div style={rij}>
-        <label htmlFor="kostbedrag">{t('Kostbedrag (€)')}</label>
-        <input id="kostbedrag" style={veld} inputMode="decimal" placeholder="0,00" value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="kostbedrag">{t('Kostbedrag (€)')}</label>
+        <input id="kostbedrag" inputMode="decimal" placeholder="0,00" value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
       </div>
-      <div style={rij}>
-        <label htmlFor="kosttype">{t('Soort kost')}</label>
-        <select id="kosttype" style={veld} value={kostenType} onChange={(e) => setKostenType(e.target.value as 'gewoon' | 'buitengewoon')}>
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="kosttype">{t('Soort kost')}</label>
+        <select id="kosttype" value={kostenType} onChange={(e) => setKostenType(e.target.value as 'gewoon' | 'buitengewoon')}>
           <option value="gewoon">{t('Gewone kost')}</option>
           <option value="buitengewoon">{t('Buitengewone kost')}</option>
         </select>
       </div>
-      <div style={rij}>
+      <div className="veldgroep">
         <CategorieKiezer waarde={categorieId || undefined} onKies={(id) => setCategorieId(id ?? '')} gebruikerCategorieen={categorieen} />
       </div>
       {kinderen.length > 0 && (
-        <div style={rij}>
-          <span style={{ display: 'block', marginBottom: 2 }}>{t('Voor wie? (optioneel)')}</span>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div className="veldgroep">
+          <span className="label-caps">{t('Voor wie? (optioneel)')}</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
             {kinderen.map((k) => (
-              <label key={k.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+              <label key={k.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <input type="checkbox" checked={kindIds.includes(k.id)} onChange={() => wisselKind(k.id)} /> {k.naam}
               </label>
             ))}
           </div>
         </div>
       )}
-      <div style={rij}>
-        <label htmlFor="kostdatum">{t('Datum')}</label>
-        <input id="kostdatum" type="date" style={veld} value={datum} onChange={(e) => setDatum(e.target.value)} />
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="kostdatum">{t('Datum')}</label>
+        <input id="kostdatum" type="date" value={datum} onChange={(e) => setDatum(e.target.value)} />
       </div>
-      <div style={rij}>
-        <span style={{ marginRight: '0.75rem' }}>{t('Betaald door:')}</span>
-        <label style={{ marginRight: '1rem' }}>
-          <input type="radio" name="betaalddoor" checked={betaaldDoor === 'jij'} onChange={() => setBetaaldDoor('jij')} /> {t('Jij')}
-        </label>
-        <label>
-          <input type="radio" name="betaalddoor" checked={betaaldDoor === 'partner'} onChange={() => setBetaaldDoor('partner')} /> {t('Partner')}
-        </label>
+      <div className="veldgroep">
+        <span className="label-caps">{t('Betaald door:')}</span>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <input type="radio" name="betaalddoor" checked={betaaldDoor === 'jij'} onChange={() => setBetaaldDoor('jij')} /> {t('Jij')}
+          </label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <input type="radio" name="betaalddoor" checked={betaaldDoor === 'partner'} onChange={() => setBetaaldDoor('partner')} /> {t('Partner')}
+          </label>
+        </div>
       </div>
-      <div style={rij}>
-        <label htmlFor="kost-override">{t('Eigen verdeling (% jij, optioneel)')}</label>
-        <input id="kost-override" style={veld} inputMode="decimal" placeholder={t('leeg = standaard van het dossier')} value={aandeelOverride} onChange={(e) => setAandeelOverride(e.target.value)} />
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="kost-override">{t('Eigen verdeling (% jij, optioneel)')}</label>
+        <input id="kost-override" inputMode="decimal" placeholder={t('leeg = standaard van het dossier')} value={aandeelOverride} onChange={(e) => setAandeelOverride(e.target.value)} />
       </div>
-      <div style={rij}>
-        <label htmlFor="kost-bon">{t('Bon/factuur (optioneel)')}</label>
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="kost-bon">{t('Bon/factuur (optioneel)')}</label>
         {bonnetje ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {bonnetje.startsWith('data:image') && (
-              <img src={bonnetje} alt={t('Bon/factuur')} style={{ maxHeight: 60, borderRadius: 6, border: '1px solid var(--border)' }} />
+              <img src={bonnetje} alt={t('Bon/factuur')} style={{ maxHeight: 60, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }} />
             )}
-            <a href={bonnetje} target="_blank" rel="noreferrer" style={{ color: 'var(--info)' }}>{t('bekijken')}</a>
-            <button type="button" onClick={() => setBonnetje('')} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer' }}>
+            <a href={bonnetje} target="_blank" rel="noreferrer">{t('bekijken')}</a>
+            <button type="button" className="knop knop-ghost knop-klein knop-gevaar" onClick={() => setBonnetje('')}>
               {t('verwijderen')}
             </button>
           </div>
@@ -180,7 +173,6 @@ export function GedeeldeKostFormulier({
             id="kost-bon"
             type="file"
             accept="image/*,application/pdf"
-            style={{ marginTop: 2 }}
             onChange={(e) => {
               const f = e.target.files?.[0]
               if (f) void kiesBonnetje(f)
@@ -188,30 +180,18 @@ export function GedeeldeKostFormulier({
             }}
           />
         )}
-        {bezigBon && <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}> {t('bezig…')}</span>}
+        {bezigBon && <span className="rij-meta"> {t('bezig…')}</span>}
       </div>
-      <button
-        type="submit"
-        disabled={!geldig}
-        style={{
-          padding: '0.4rem 0.8rem',
-          borderRadius: 8,
-          border: '1px solid var(--border-strong)',
-          background: geldig ? 'var(--positive-soft)' : 'var(--surface-2)',
-          cursor: geldig ? 'pointer' : 'not-allowed',
-        }}
-      >
-        {bewerken ? t('Kost wijzigen') : t('Kost toevoegen')}
-      </button>
-      {bewerken && onAnnuleer && (
-        <button
-          type="button"
-          onClick={onAnnuleer}
-          style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
-        >
-          {t('Annuleer')}
+      <div className="knoprij">
+        <button type="submit" className="knop knop-primair" disabled={!geldig}>
+          {bewerken ? t('Kost wijzigen') : t('Kost toevoegen')}
         </button>
-      )}
+        {bewerken && onAnnuleer && (
+          <button type="button" className="knop knop-secundair" onClick={onAnnuleer}>
+            {t('Annuleer')}
+          </button>
+        )}
+      </div>
     </form>
   )
 }

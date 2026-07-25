@@ -1,22 +1,13 @@
 import { useEffect, useState } from 'react'
-import type { CSSProperties } from 'react'
 import type { Categorie, Dossier, Kind, Kindrekening, Kindrekeningpost } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { potSaldo, standPerOuder, geindexeerdeBijdrage, type OuderStand } from '../utils/kindrekening'
 import { labelVanCategorie } from '../data/categorieen/resolve'
 import { KindrekeningpostFormulier } from './KindrekeningpostFormulier'
+import { Bedrag, Kaart } from '../ui/basis'
 import { useT } from '../i18n'
 import type { Vertaler } from '../i18n'
-
-const veld: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  padding: '0.4rem',
-  marginTop: 2,
-  boxSizing: 'border-box',
-}
-const blok: CSSProperties = { background: 'var(--positive-soft)', border: '1px solid var(--positive-soft)', borderRadius: 8, padding: '0.6rem', marginBottom: '0.75rem' }
 
 const vandaag = () => new Date().toISOString().slice(0, 10)
 
@@ -107,15 +98,16 @@ export function KindrekeningSectie({
 
   if (!kindrekening) {
     return (
-      <div style={{ ...blok, marginTop: '1rem' }}>
-        <h3 style={{ fontSize: '0.9rem', margin: '0 0 0.15rem' }}>{t('Kindrekening (gezamenlijke pot)')}</h3>
-        <p style={{ color: 'var(--text-muted)', margin: '0 0 0.5rem', fontSize: '0.85rem' }}>
-          {t('Een gezamenlijke pot waarop beide ouders storten en waaruit kosten rechtstreeks betaald worden. Een tweede manier van afrekenen naast het verschil-model.')}
-        </p>
-        <button type="button" onClick={zetAan} style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--positive-soft)', cursor: 'pointer' }}>
-          {t('Kindrekening aanzetten')}
-        </button>
-      </div>
+      <Kaart
+        titel={t('Kindrekening (gezamenlijke pot)')}
+        bijschrift={t('Een gezamenlijke pot waarop beide ouders storten en waaruit kosten rechtstreeks betaald worden. Een tweede manier van afrekenen naast het verschil-model.')}
+      >
+        <div className="knoprij">
+          <button type="button" className="knop knop-secundair" onClick={zetAan}>
+            {t('Kindrekening aanzetten')}
+          </button>
+        </div>
+      </Kaart>
     )
   }
 
@@ -137,110 +129,125 @@ export function KindrekeningSectie({
   })()
 
   return (
-    <div style={{ ...blok, marginTop: '1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-        <h3 style={{ fontSize: '0.9rem', margin: 0 }}>{t('Kindrekening (gezamenlijke pot)')}</h3>
+    <Kaart
+      titel={t('Kindrekening (gezamenlijke pot)')}
+      actie={
         <button
+          className="knop knop-kaal knop-gevaar"
           aria-label={t('Kindrekening uitzetten')}
           onClick={() => onVerwijderen(kindrekening.id)}
-          style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.2rem' }}
         >
           ×
         </button>
+      }
+    >
+      <div className="stat">
+        <span className="label-caps">{t('Saldo van de pot')}</span>
+        <Bedrag centen={saldo} groot />
       </div>
 
-      <p style={{ fontWeight: 'bold', margin: '0.25rem 0' }}>
-        {t('Saldo van de pot')}: {formatEuro(saldo)}
-      </p>
-
-      <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 0.5rem', fontSize: '0.9rem' }}>
-        <li>{t('Jij')} — {standTekst(t, stand.jij)}</li>
-        <li>{t('Partner')} — {standTekst(t, stand.partner)}</li>
+      <ul className="lijst">
+        <li className="rij">
+          <span className="rij-midden">
+            <span className="rij-titel">{t('Jij')}</span>
+            <span className="rij-meta">{standTekst(t, stand.jij)}</span>
+          </span>
+        </li>
+        <li className="rij">
+          <span className="rij-midden">
+            <span className="rij-titel">{t('Partner')}</span>
+            <span className="rij-meta">{standTekst(t, stand.partner)}</span>
+          </span>
+        </li>
       </ul>
 
       {/* Maandbijdrage-afspraak (met indexatie) */}
-      <div style={{ marginBottom: '0.5rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
         {(kindrekening.maandbijdrageJij || kindrekening.maandbijdragePartner) && !toonAfspraak && (
-          <p style={{ margin: '0 0 0.25rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+          <p className="rij-meta" style={{ margin: 0 }}>
             {t('Maandbijdrage')}: {t('jij {jij}', { jij: formatEuro(geindexeerdJij) })}, {t('partner {partner}', { partner: formatEuro(geindexeerdPartner) })}
             {heeftIndex && ` · ${t('geïndexeerd')}`}
           </p>
         )}
-        <button type="button" onClick={() => setToonAfspraak((v) => !v)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer', fontSize: '0.85rem', padding: 0 }}>
+        <button type="button" className="knop knop-ghost knop-klein" onClick={() => setToonAfspraak((v) => !v)}>
           {toonAfspraak ? t('Afspraak verbergen') : t('Maandbijdrage-afspraak instellen')}
         </button>
       </div>
 
       {toonAfspraak && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem', marginBottom: '0.75rem' }}>
-          <p style={{ color: 'var(--text-muted)', margin: '0 0 0.4rem', fontSize: '0.85rem' }}>
+        <Kaart compact style={{ background: 'var(--surface-2)' }}>
+          <p className="kaart-bijschrift" style={{ margin: 0 }}>
             {t('De afgesproken maandelijkse storting per ouder. Vul een aanvangs- en huidige index in om de bijdrage te indexeren (Belgische formule).')}
           </p>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <label style={{ flex: 1, minWidth: 110 }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Bijdrage jij (€/maand)')}</span>
-              <input style={veld} inputMode="decimal" placeholder="0,00" value={bijJij} onChange={(e) => setBijJij(e.target.value)} />
+          <div className="veldrij">
+            <label className="veldgroep">
+              <span className="label-caps">{t('Bijdrage jij (€/maand)')}</span>
+              <input inputMode="decimal" placeholder="0,00" value={bijJij} onChange={(e) => setBijJij(e.target.value)} />
             </label>
-            <label style={{ flex: 1, minWidth: 110 }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Bijdrage partner (€/maand)')}</span>
-              <input style={veld} inputMode="decimal" placeholder="0,00" value={bijPartner} onChange={(e) => setBijPartner(e.target.value)} />
+            <label className="veldgroep">
+              <span className="label-caps">{t('Bijdrage partner (€/maand)')}</span>
+              <input inputMode="decimal" placeholder="0,00" value={bijPartner} onChange={(e) => setBijPartner(e.target.value)} />
             </label>
           </div>
-          <label style={{ display: 'block', marginTop: '0.4rem' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Startdatum afspraak')}</span>
-            <input type="date" style={veld} value={start} onChange={(e) => setStart(e.target.value)} />
+          <label className="veldgroep">
+            <span className="label-caps">{t('Startdatum afspraak')}</span>
+            <input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
           </label>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.4rem' }}>
-            <label style={{ flex: 1, minWidth: 110 }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Aanvangsindex (optioneel)')}</span>
-              <input style={veld} inputMode="decimal" value={aanvang} onChange={(e) => setAanvang(e.target.value)} />
+          <div className="veldrij">
+            <label className="veldgroep">
+              <span className="label-caps">{t('Aanvangsindex (optioneel)')}</span>
+              <input inputMode="decimal" value={aanvang} onChange={(e) => setAanvang(e.target.value)} />
             </label>
-            <label style={{ flex: 1, minWidth: 110 }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Huidige index (optioneel)')}</span>
-              <input style={veld} inputMode="decimal" value={huidig} onChange={(e) => setHuidig(e.target.value)} />
+            <label className="veldgroep">
+              <span className="label-caps">{t('Huidige index (optioneel)')}</span>
+              <input inputMode="decimal" value={huidig} onChange={(e) => setHuidig(e.target.value)} />
             </label>
           </div>
           {voorbeeldJij !== null && (
-            <p style={{ margin: '0.4rem 0 0', fontSize: '0.85rem' }}>
+            <p className="rij-meta" style={{ margin: 0 }}>
               {t('Geïndexeerde bijdrage jij: {bedrag}', { bedrag: formatEuro(voorbeeldJij) })}
             </p>
           )}
-          <button type="button" onClick={bewaarAfspraak} style={{ marginTop: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--positive-soft)', cursor: 'pointer' }}>
-            {t('Afspraak bewaren')}
-          </button>
-        </div>
+          <div className="knoprij">
+            <button type="button" className="knop knop-secundair knop-klein" onClick={bewaarAfspraak}>
+              {t('Afspraak bewaren')}
+            </button>
+          </div>
+        </Kaart>
       )}
 
       {/* Bewegingen */}
       {bewegingen.length > 0 && (
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+        <ul className="lijst">
           {bewegingen.map((p) => (
-            <li key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.35rem 0', borderBottom: '1px solid var(--positive-soft)' }}>
-              <span style={{ fontSize: '0.9rem' }}>
-                <span style={{ color: p.soort === 'storting' ? 'var(--positive)' : 'var(--negative)' }}>
-                  {p.soort === 'storting' ? '▲' : '▼'}
-                </span>{' '}
-                {p.omschrijving || (p.soort === 'storting' ? t('Storting') : t('Uitgave'))}
-                <span style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>
-                  {' '}· {p.datum}
+            <li key={p.id} className="rij">
+              <span className="rij-midden">
+                <span className="rij-titel">
+                  <span style={{ color: p.soort === 'storting' ? 'var(--positive)' : 'var(--negative)' }}>
+                    {p.soort === 'storting' ? '▲' : '▼'}
+                  </span>{' '}
+                  {p.omschrijving || (p.soort === 'storting' ? t('Storting') : t('Uitgave'))}
+                </span>
+                <span className="rij-meta">
+                  {p.datum}
                   {p.soort === 'storting' && ` · ${t('door {wie}', { wie: p.door === 'partner' ? t('partner') : t('jou') })}`}
                   {p.categorieId && ` · ${labelVanCategorie(p.categorieId, categorieen) ?? ''}`}
                   {p.kindIds && p.kindIds.length > 0 && ` · ${t('voor {namen}', { namen: kindNamen(p.kindIds) })}`}
                 </span>
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <span style={{ color: p.soort === 'storting' ? 'var(--positive)' : 'var(--negative)' }}>
+              <span className="rij-acties">
+                <span className={p.soort === 'storting' ? 'bedrag bedrag-positief' : 'bedrag bedrag-negatief'}>
                   {p.soort === 'storting' ? '+' : '−'}{formatEuro(p.bedrag)}
                 </span>
                 {p.bonnetje && (
-                  <a href={p.bonnetje} target="_blank" rel="noreferrer" style={{ color: 'var(--info)', fontSize: '0.85rem' }}>
+                  <a href={p.bonnetje} target="_blank" rel="noreferrer">
                     {t('bon')}
                   </a>
                 )}
-                <button aria-label={t('Bewerk beweging')} onClick={() => setBewerkPost(p)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>
+                <button className="knop knop-kaal" aria-label={t('Bewerk beweging')} onClick={() => setBewerkPost(p)}>
                   ✎
                 </button>
-                <button aria-label={t('Verwijder beweging')} onClick={() => onPostVerwijderen(p.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>
+                <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder beweging')} onClick={() => onPostVerwijderen(p.id)}>
                   ×
                 </button>
               </span>
@@ -257,6 +264,6 @@ export function KindrekeningSectie({
         onAnnuleer={() => setBewerkPost(null)}
         bewerken={bewerkPost}
       />
-    </div>
+    </Kaart>
   )
 }

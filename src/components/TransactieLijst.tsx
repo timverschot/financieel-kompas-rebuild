@@ -1,17 +1,13 @@
 import { useMemo, useState } from 'react'
-import type { CSSProperties } from 'react'
 import type { Categorie, Rekening, Transactie } from '../data/schema'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
 import { labelVanCategorie } from '../data/categorieen/resolve'
-import { formatEuro } from '../utils/format'
 import { filterTransacties, heeftActiefFilter, grensDatumMaandenTerug, type TxFilter } from '../utils/transactieFilter'
+import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 
 const vandaag = () => new Date().toISOString().slice(0, 10)
 const STANDAARD_MAANDEN = 6
-
-const veld: CSSProperties = { display: 'block', width: '100%', padding: '0.4rem', marginTop: 2, boxSizing: 'border-box' }
-const filterBlok: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem', marginBottom: '0.75rem' }
 
 // De transactielijst met zoek-/filterbalk en een historiek-venster. Standaard
 // toont ze enkel de recente maanden (ouder op aanvraag); zodra je zoekt of filtert,
@@ -59,29 +55,32 @@ export function TransactieLijst({
   }
 
   const categorieNaam = (id?: string) => labelVanCategorie(id, categorieen)
+  const rekeningNaam = (id: string) => rekeningen.find((r) => r.id === id)?.naam
 
   return (
-    <section>
-      <div style={filterBlok}>
-        <input
-          aria-label={t('Zoek in transacties')}
-          style={veld}
-          placeholder={t('Zoek op omschrijving…')}
-          value={filter.zoek ?? ''}
-          onChange={(e) => zet({ zoek: e.target.value })}
-        />
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-          <label style={{ flex: 1, minWidth: 130 }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Richting')}</span>
-            <select style={veld} value={filter.richting ?? ''} onChange={(e) => zet({ richting: (e.target.value || undefined) as TxFilter['richting'] })}>
+    <section className="stapel">
+      <Kaart>
+        <div className="veldgroep">
+          <input
+            aria-label={t('Zoek in transacties')}
+            placeholder={t('Zoek op omschrijving…')}
+            value={filter.zoek ?? ''}
+            onChange={(e) => zet({ zoek: e.target.value })}
+          />
+        </div>
+
+        <div className="veldrij">
+          <label className="veldgroep">
+            <span className="label-caps">{t('Richting')}</span>
+            <select value={filter.richting ?? ''} onChange={(e) => zet({ richting: (e.target.value || undefined) as TxFilter['richting'] })}>
               <option value="">{t('Alles')}</option>
               <option value="in">{t('Inkomsten')}</option>
               <option value="uit">{t('Uitgaven')}</option>
             </select>
           </label>
-          <label style={{ flex: 1, minWidth: 130 }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Rekening')}</span>
-            <select style={veld} value={filter.rekeningId ?? ''} onChange={(e) => zet({ rekeningId: e.target.value || undefined })}>
+          <label className="veldgroep">
+            <span className="label-caps">{t('Rekening')}</span>
+            <select value={filter.rekeningId ?? ''} onChange={(e) => zet({ rekeningId: e.target.value || undefined })}>
               <option value="">{t('Alle rekeningen')}</option>
               {rekeningen.map((r) => (
                 <option key={r.id} value={r.id}>{r.naam}</option>
@@ -89,11 +88,11 @@ export function TransactieLijst({
             </select>
           </label>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-          <label style={{ flex: 1, minWidth: 130 }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Hoofdcategorie')}</span>
+
+        <div className="veldrij">
+          <label className="veldgroep">
+            <span className="label-caps">{t('Hoofdcategorie')}</span>
             <select
-              style={veld}
               value={filter.hoofdId ?? ''}
               onChange={(e) => zet({ hoofdId: e.target.value || undefined, catId: undefined })}
             >
@@ -111,9 +110,9 @@ export function TransactieLijst({
             </select>
           </label>
           {subOpties.length > 0 && (
-            <label style={{ flex: 1, minWidth: 130 }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Subcategorie')}</span>
-              <select style={veld} value={filter.catId ?? ''} onChange={(e) => zet({ catId: e.target.value || undefined })}>
+            <label className="veldgroep">
+              <span className="label-caps">{t('Subcategorie')}</span>
+              <select value={filter.catId ?? ''} onChange={(e) => zet({ catId: e.target.value || undefined })}>
                 <option value="">{t('Alle subcategorieën')}</option>
                 {subOpties.map((c) => (
                   <option key={c.id} value={c.id}>{c.naam}</option>
@@ -122,71 +121,87 @@ export function TransactieLijst({
             </label>
           )}
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem', alignItems: 'flex-end' }}>
-          <label style={{ flex: 1, minWidth: 120 }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Van')}</span>
-            <input type="date" style={veld} value={filter.van ?? ''} onChange={(e) => zet({ van: e.target.value || undefined })} />
+
+        <div className="veldrij">
+          <label className="veldgroep">
+            <span className="label-caps">{t('Van')}</span>
+            <input type="date" value={filter.van ?? ''} onChange={(e) => zet({ van: e.target.value || undefined })} />
           </label>
-          <label style={{ flex: 1, minWidth: 120 }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Tot')}</span>
-            <input type="date" style={veld} value={filter.tot ?? ''} onChange={(e) => zet({ tot: e.target.value || undefined })} />
+          <label className="veldgroep">
+            <span className="label-caps">{t('Tot')}</span>
+            <input type="date" value={filter.tot ?? ''} onChange={(e) => zet({ tot: e.target.value || undefined })} />
           </label>
           {actief && (
-            <button type="button" onClick={wis} style={{ padding: '0.4rem 0.7rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}>
+            <button type="button" className="chip" onClick={wis} style={{ alignSelf: 'flex-end' }}>
               {t('Wis filters')}
             </button>
           )}
         </div>
-      </div>
+      </Kaart>
 
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '0 0 0.25rem' }}>
-        {actief
-          ? t('{n} transactie(s) gevonden', { n: gesorteerd.length })
-          : t('{n} transactie(s) getoond', { n: zichtbaar.length })}
-      </p>
+      <Kaart>
+        <p className="kaart-bijschrift" style={{ margin: 0 }}>
+          {actief
+            ? t('{n} transactie(s) gevonden', { n: gesorteerd.length })
+            : t('{n} transactie(s) getoond', { n: zichtbaar.length })}
+        </p>
 
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-        {zichtbaar.map((tx) => {
-          const cat = tx.regels && tx.regels.length > 0 ? t('gesplitst · {n} categorieën', { n: tx.regels.length }) : categorieNaam(tx.categorieId)
-          return (
-            <li key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
-              <span>
-                {tx.omschrijving}
-                <span style={{ color: 'var(--text-subtle)', fontSize: '0.85rem' }}>
-                  {' '}· {tx.datum}
-                  {cat && ` · ${cat}`}
-                </span>
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <span style={{ color: tx.bedrag < 0 ? 'var(--negative)' : 'var(--positive)' }}>{formatEuro(tx.bedrag)}</span>
-                <button aria-label={t('Bewerk {oms}', { oms: tx.omschrijving })} onClick={() => onBewerk(tx)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer', fontSize: '1rem' }}>✎</button>
-                <button aria-label={t('Verwijder {oms}', { oms: tx.omschrijving })} onClick={() => onVerwijder(tx.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
-              </span>
-            </li>
-          )
-        })}
-      </ul>
+        {zichtbaar.length > 0 && (
+          <ul className="lijst">
+            {zichtbaar.map((tx) => {
+              const cat = tx.regels && tx.regels.length > 0 ? t('gesplitst · {n} categorieën', { n: tx.regels.length }) : categorieNaam(tx.categorieId)
+              const meta = [tx.datum, cat, rekeningNaam(tx.rekeningId)].filter(Boolean).join(' · ')
+              return (
+                <li key={tx.id} className="rij">
+                  <span className="rij-teken" aria-hidden="true">
+                    {tx.omschrijving.trim().slice(0, 1).toUpperCase()}
+                  </span>
+                  <span className="rij-midden">
+                    <span className="rij-titel">{tx.omschrijving}</span>
+                    <span className="rij-meta">{meta}</span>
+                  </span>
+                  <Bedrag centen={tx.bedrag} richting="auto" />
+                  <span className="rij-acties">
+                    <button
+                      type="button"
+                      className="knop knop-kaal"
+                      aria-label={t('Bewerk {oms}', { oms: tx.omschrijving })}
+                      onClick={() => onBewerk(tx)}
+                    >
+                      ✎
+                    </button>
+                    <button
+                      type="button"
+                      className="knop knop-kaal knop-gevaar"
+                      aria-label={t('Verwijder {oms}', { oms: tx.omschrijving })}
+                      onClick={() => onVerwijder(tx.id)}
+                    >
+                      ×
+                    </button>
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        )}
 
-      {zichtbaar.length === 0 && <p style={{ color: 'var(--text-muted)' }}>{t('Geen transacties gevonden.')}</p>}
+        {zichtbaar.length === 0 && <Leeg>{t('Geen transacties gevonden.')}</Leeg>}
 
-      {venster && verborgen > 0 && (
-        <button
-          type="button"
-          onClick={() => setToonAlles(true)}
-          style={{ marginTop: '0.6rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
-        >
-          {t('Toon oudere transacties ({n} ouder dan {maanden} maanden)', { n: verborgen, maanden: STANDAARD_MAANDEN })}
-        </button>
-      )}
-      {!venster && !actief && toonAlles && (
-        <button
-          type="button"
-          onClick={() => setToonAlles(false)}
-          style={{ marginTop: '0.6rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
-        >
-          {t('Toon enkel recente maanden')}
-        </button>
-      )}
+        {venster && verborgen > 0 && (
+          <div className="knoprij">
+            <button type="button" className="knop knop-secundair knop-klein" onClick={() => setToonAlles(true)}>
+              {t('Toon oudere transacties ({n} ouder dan {maanden} maanden)', { n: verborgen, maanden: STANDAARD_MAANDEN })}
+            </button>
+          </div>
+        )}
+        {!venster && !actief && toonAlles && (
+          <div className="knoprij">
+            <button type="button" className="knop knop-secundair knop-klein" onClick={() => setToonAlles(false)}>
+              {t('Toon enkel recente maanden')}
+            </button>
+          </div>
+        )}
+      </Kaart>
     </section>
   )
 }

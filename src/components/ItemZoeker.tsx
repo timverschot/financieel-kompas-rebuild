@@ -7,12 +7,37 @@ import { useT } from '../i18n'
 const ZOEK_VANAF = 2
 const MAX = 8
 
-const veld: CSSProperties = {
-  display: 'block',
+// Het zwevende voorstellenlijstje: crème vlak met zachte rand en een schaduw,
+// want het zweeft boven de rest van het formulier.
+const suggestieLijst: CSSProperties = {
+  listStyle: 'none',
+  margin: '4px 0 0',
+  padding: 0,
+  maxHeight: 220,
+  overflowY: 'auto',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius)',
+  background: 'var(--surface)',
+  boxShadow: 'var(--shadow-sheet)',
+  position: 'absolute',
   width: '100%',
-  padding: '0.4rem',
-  marginTop: 0,
-  boxSizing: 'border-box',
+  zIndex: 20,
+}
+
+function suggestieKnop(gemarkeerd: boolean): CSSProperties {
+  return {
+    display: 'block',
+    width: '100%',
+    textAlign: 'left',
+    fontFamily: 'inherit',
+    fontSize: 14,
+    color: 'var(--text)',
+    padding: '8px 12px',
+    border: 'none',
+    borderBottom: '1px solid var(--rij-lijn)',
+    background: gemarkeerd ? 'var(--accent-soft)' : 'transparent',
+    cursor: 'pointer',
+  }
 }
 
 // Compacte item-autocomplete voor één kassaticketregel: typ een product (vanaf
@@ -72,7 +97,7 @@ export function ItemZoeker({
       <input
         aria-label={t('Item zoeken')}
         ref={registerInput}
-        style={veld}
+        style={{ display: 'block', width: '100%' }}
         autoComplete="off"
         placeholder={t('Zoek een product (vanaf 2 letters)…')}
         value={waarde}
@@ -86,23 +111,7 @@ export function ItemZoeker({
         onKeyDown={opToets}
       />
       {resultaten.length > 0 && (
-        <ul
-          role="listbox"
-          style={{
-            listStyle: 'none',
-            margin: '2px 0 0',
-            padding: 0,
-            maxHeight: 200,
-            overflowY: 'auto',
-            border: '1px solid var(--border-strong)',
-            borderRadius: 8,
-            background: 'white',
-            position: 'absolute',
-            width: '100%',
-            zIndex: 20,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-          }}
-        >
+        <ul role="listbox" style={suggestieLijst}>
           {resultaten.map((it, i) => (
             <li key={it.id} role="option" aria-selected={i === gemarkeerd}>
               <button
@@ -110,17 +119,7 @@ export function ItemZoeker({
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => kies(it)}
                 onMouseEnter={() => zetHoog(i)}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '0.3rem 0.5rem',
-                  border: 'none',
-                  borderBottom: '1px solid var(--surface-2)',
-                  background: i === gemarkeerd ? 'var(--info-soft)' : 'white',
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                }}
+                style={suggestieKnop(i === gemarkeerd)}
               >
                 {it.naam} <span style={{ color: 'var(--text-subtle)' }}>· {it.hoofdNaam}</span>
               </button>

@@ -1,17 +1,8 @@
 import { useState } from 'react'
-import type { CSSProperties, FormEvent } from 'react'
+import type { FormEvent } from 'react'
 import type { Dossier } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { useT } from '../i18n'
-
-const veld: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  padding: '0.4rem',
-  marginTop: 2,
-  boxSizing: 'border-box',
-}
-const rij: CSSProperties = { marginBottom: '0.6rem' }
 
 // Formulier om een nieuw dossier aan te maken, met de verdeelsleutel (percentage
 // dat jij draagt).
@@ -33,35 +24,28 @@ export function DossierFormulier({ onOpslaan }: { onOpslaan: (d: Dossier) => Pro
   }
 
   return (
-    <form onSubmit={verzend} style={{ marginTop: '0.75rem' }}>
-      <div style={rij}>
-        <label htmlFor="dossiernaam">{t('Dossiernaam')}</label>
-        <input id="dossiernaam" style={veld} value={naam} onChange={(e) => setNaam(e.target.value)} />
+    <form onSubmit={verzend} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="veldrij">
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="dossiernaam">{t('Dossiernaam')}</label>
+          <input id="dossiernaam" value={naam} onChange={(e) => setNaam(e.target.value)} />
+        </div>
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="aandeel">{t('Aandeel jij (%)')}</label>
+          <input
+            id="aandeel"
+            inputMode="decimal"
+            placeholder="50"
+            value={aandeel}
+            onChange={(e) => setAandeel(e.target.value)}
+          />
+        </div>
       </div>
-      <div style={rij}>
-        <label htmlFor="aandeel">{t('Aandeel jij (%)')}</label>
-        <input
-          id="aandeel"
-          style={veld}
-          inputMode="decimal"
-          placeholder="50"
-          value={aandeel}
-          onChange={(e) => setAandeel(e.target.value)}
-        />
+      <div className="knoprij">
+        <button type="submit" className="knop knop-secundair" disabled={!geldig}>
+          {t('Dossier toevoegen')}
+        </button>
       </div>
-      <button
-        type="submit"
-        disabled={!geldig}
-        style={{
-          padding: '0.4rem 0.8rem',
-          borderRadius: 8,
-          border: '1px solid var(--border-strong)',
-          background: geldig ? 'var(--info-soft)' : 'var(--surface-2)',
-          cursor: geldig ? 'pointer' : 'not-allowed',
-        }}
-      >
-        {t('Dossier toevoegen')}
-      </button>
     </form>
   )
 }

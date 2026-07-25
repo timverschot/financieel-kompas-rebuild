@@ -1,18 +1,9 @@
 import { useEffect, useState } from 'react'
-import type { CSSProperties, FormEvent } from 'react'
+import type { FormEvent } from 'react'
 import { REKENING_TYPES, type Rekening, type RekeningType } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { useT } from '../i18n'
-
-const veld: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  padding: '0.4rem',
-  marginTop: 2,
-  boxSizing: 'border-box',
-}
-const rij: CSSProperties = { marginBottom: '0.6rem' }
 
 // Weergavenaam per type (Nederlandse sleutel; via t() vertaald bij weergave). De
 // opgeslagen waarde blijft altijd de taal-onafhankelijke sleutel ('betaal', ...).
@@ -25,7 +16,8 @@ export const REKENING_TYPE_LABEL: Record<RekeningType, string> = {
 }
 
 // Formulier om een rekening aan te maken of te bewerken: naam, beginsaldo, type,
-// rekeningnummer (IBAN) en een vrije rubriek.
+// rekeningnummer (IBAN) en een vrije rubriek. Staat in App.tsx al binnen een
+// <Kaart>, dus hier geen eigen kaart: enkel veldgroepen + knoppenrij.
 export function RekeningFormulier({
   onOpslaan,
   onAnnuleer,
@@ -77,74 +69,76 @@ export function RekeningFormulier({
   }
 
   return (
-    <form onSubmit={verzend} style={{ marginTop: '0.75rem' }}>
-      <div style={rij}>
-        <label htmlFor="rekeningnaam">{t('Rekeningnaam')}</label>
-        <input id="rekeningnaam" style={veld} value={naam} onChange={(e) => setNaam(e.target.value)} />
+    <form onSubmit={verzend} className="stapel" style={{ gap: 14 }}>
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="rekeningnaam">
+          {t('Rekeningnaam')}
+        </label>
+        <input id="rekeningnaam" value={naam} onChange={(e) => setNaam(e.target.value)} />
       </div>
-      <div style={rij}>
-        <label htmlFor="rekeningtype">{t('Type')}</label>
-        <select id="rekeningtype" style={veld} value={type} onChange={(e) => setType(e.target.value as RekeningType)}>
-          {REKENING_TYPES.map((tp) => (
-            <option key={tp} value={tp}>
-              {t(REKENING_TYPE_LABEL[tp])}
-            </option>
-          ))}
-        </select>
+
+      <div className="veldrij">
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="rekeningtype">
+            {t('Type')}
+          </label>
+          <select id="rekeningtype" value={type} onChange={(e) => setType(e.target.value as RekeningType)}>
+            {REKENING_TYPES.map((tp) => (
+              <option key={tp} value={tp}>
+                {t(REKENING_TYPE_LABEL[tp])}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="beginsaldo">
+            {t('Beginsaldo (€)')}
+          </label>
+          <input
+            id="beginsaldo"
+            inputMode="decimal"
+            placeholder="0,00"
+            value={beginsaldo}
+            onChange={(e) => setBeginsaldo(e.target.value)}
+          />
+        </div>
       </div>
-      <div style={rij}>
-        <label htmlFor="beginsaldo">{t('Beginsaldo (€)')}</label>
-        <input
-          id="beginsaldo"
-          style={veld}
-          inputMode="decimal"
-          placeholder="0,00"
-          value={beginsaldo}
-          onChange={(e) => setBeginsaldo(e.target.value)}
-        />
+
+      <div className="veldrij">
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="rekeningnummer">
+            {t('Rekeningnummer (IBAN)')}
+          </label>
+          <input
+            id="rekeningnummer"
+            placeholder={t('BE.. (optioneel)')}
+            value={rekeningnummer}
+            onChange={(e) => setRekeningnummer(e.target.value)}
+          />
+        </div>
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="rubriek">
+            {t('Rubriek')}
+          </label>
+          <input
+            id="rubriek"
+            placeholder={t('optionele groepsnaam')}
+            value={rubriek}
+            onChange={(e) => setRubriek(e.target.value)}
+          />
+        </div>
       </div>
-      <div style={rij}>
-        <label htmlFor="rekeningnummer">{t('Rekeningnummer (IBAN)')}</label>
-        <input
-          id="rekeningnummer"
-          style={veld}
-          placeholder={t('BE.. (optioneel)')}
-          value={rekeningnummer}
-          onChange={(e) => setRekeningnummer(e.target.value)}
-        />
-      </div>
-      <div style={rij}>
-        <label htmlFor="rubriek">{t('Rubriek')}</label>
-        <input
-          id="rubriek"
-          style={veld}
-          placeholder={t('optionele groepsnaam')}
-          value={rubriek}
-          onChange={(e) => setRubriek(e.target.value)}
-        />
-      </div>
-      <button
-        type="submit"
-        disabled={!geldig}
-        style={{
-          padding: '0.4rem 0.8rem',
-          borderRadius: 8,
-          border: '1px solid var(--border-strong)',
-          background: geldig ? 'var(--info-soft)' : 'var(--surface-2)',
-          cursor: geldig ? 'pointer' : 'not-allowed',
-        }}
-      >
-        {bewerken ? t('Rekening wijzigen') : t('Rekening toevoegen')}
-      </button>
-      {bewerken && onAnnuleer && (
-        <button
-          type="button"
-          onClick={onAnnuleer}
-          style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
-        >
-          {t('Annuleer')}
+
+      <div className="knoprij">
+        <button type="submit" className="knop knop-primair" disabled={!geldig}>
+          {bewerken ? t('Rekening wijzigen') : t('Rekening toevoegen')}
         </button>
-      )}
+        {bewerken && onAnnuleer && (
+          <button type="button" className="knop knop-ghost" onClick={onAnnuleer}>
+            {t('Annuleer')}
+          </button>
+        )}
+      </div>
     </form>
   )
 }

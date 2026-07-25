@@ -1,12 +1,9 @@
 import { useEffect, useState } from 'react'
-import type { CSSProperties, FormEvent } from 'react'
+import type { FormEvent } from 'react'
 import type { Rekening, Spaardoel } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { useT } from '../i18n'
-
-const veld: CSSProperties = { display: 'block', width: '100%', padding: '0.4rem', marginTop: 2, boxSizing: 'border-box' }
-const rij: CSSProperties = { marginBottom: '0.6rem' }
 
 // Formulier om een spaardoel aan te maken of te bewerken.
 export function SpaardoelFormulier({
@@ -70,18 +67,36 @@ export function SpaardoelFormulier({
   }
 
   return (
-    <form onSubmit={verzend} style={{ marginTop: '0.75rem' }}>
-      <div style={rij}>
-        <label htmlFor="doelnaam">{t('Doelnaam')}</label>
-        <input id="doelnaam" style={veld} placeholder={t('Bv. Communie Kind 1')} value={naam} onChange={(e) => setNaam(e.target.value)} />
+    <form onSubmit={verzend} className="stapel">
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="doelnaam">
+          {t('Doelnaam')}
+        </label>
+        <input id="doelnaam" placeholder={t('Bv. Communie Kind 1')} value={naam} onChange={(e) => setNaam(e.target.value)} />
       </div>
-      <div style={rij}>
-        <label htmlFor="doelbedrag">{t('Doelbedrag (€)')}</label>
-        <input id="doelbedrag" style={veld} inputMode="decimal" placeholder="0,00" value={doelbedrag} onChange={(e) => setDoelbedrag(e.target.value)} />
+
+      <div className="veldrij">
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="doelbedrag">
+            {t('Doelbedrag (€)')}
+          </label>
+          <input id="doelbedrag" inputMode="decimal" placeholder="0,00" value={doelbedrag} onChange={(e) => setDoelbedrag(e.target.value)} />
+        </div>
+        {!gekoppeldeRekeningId && (
+          <div className="veldgroep">
+            <label className="label-caps" htmlFor="huidigbedrag">
+              {t('Huidig bedrag (€)')}
+            </label>
+            <input id="huidigbedrag" inputMode="decimal" placeholder="0,00" value={huidig} onChange={(e) => setHuidig(e.target.value)} />
+          </div>
+        )}
       </div>
-      <div style={rij}>
-        <label htmlFor="doelrekening">{t('Gekoppelde rekening')}</label>
-        <select id="doelrekening" style={veld} value={gekoppeldeRekeningId} onChange={(e) => setGekoppeld(e.target.value)}>
+
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="doelrekening">
+          {t('Gekoppelde rekening')}
+        </label>
+        <select id="doelrekening" value={gekoppeldeRekeningId} onChange={(e) => setGekoppeld(e.target.value)}>
           <option value="">{t('Geen — manueel bijhouden')}</option>
           {rekeningen.map((r) => (
             <option key={r.id} value={r.id}>
@@ -90,36 +105,45 @@ export function SpaardoelFormulier({
           ))}
         </select>
       </div>
-      {!gekoppeldeRekeningId && (
-        <div style={rij}>
-          <label htmlFor="huidigbedrag">{t('Huidig bedrag (€)')}</label>
-          <input id="huidigbedrag" style={veld} inputMode="decimal" placeholder="0,00" value={huidig} onChange={(e) => setHuidig(e.target.value)} />
+
+      <div className="veldrij">
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="doeldatum">
+            {t('Doeldatum (optioneel)')}
+          </label>
+          <input id="doeldatum" type="date" value={doeldatum} onChange={(e) => setDoeldatum(e.target.value)} />
         </div>
-      )}
-      <div style={rij}>
-        <label htmlFor="doeldatum">{t('Doeldatum (optioneel)')}</label>
-        <input id="doeldatum" type="date" style={veld} value={doeldatum} onChange={(e) => setDoeldatum(e.target.value)} />
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="maandbedrag">
+            {t('Maandelijks streefbedrag (€, optioneel)')}
+          </label>
+          <input id="maandbedrag" inputMode="decimal" placeholder="0,00" value={maandbedrag} onChange={(e) => setMaandbedrag(e.target.value)} />
+        </div>
       </div>
-      <div style={rij}>
-        <label htmlFor="maandbedrag">{t('Maandelijks streefbedrag (€, optioneel)')}</label>
-        <input id="maandbedrag" style={veld} inputMode="decimal" placeholder="0,00" value={maandbedrag} onChange={(e) => setMaandbedrag(e.target.value)} />
+
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="doelkleur">
+          {t('Kleur')}
+        </label>
+        <input
+          id="doelkleur"
+          type="color"
+          value={kleur}
+          onChange={(e) => setKleur(e.target.value)}
+          style={{ width: 56, height: 40, padding: 4 }}
+        />
       </div>
-      <div style={rij}>
-        <label htmlFor="doelkleur">{t('Kleur')}</label>
-        <input id="doelkleur" type="color" value={kleur} onChange={(e) => setKleur(e.target.value)} style={{ marginLeft: '0.5rem' }} />
-      </div>
-      <button
-        type="submit"
-        disabled={!geldig}
-        style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: geldig ? 'var(--positive-soft)' : 'var(--surface-2)', cursor: geldig ? 'pointer' : 'not-allowed' }}
-      >
-        {bewerken ? t('Doel wijzigen') : t('Doel toevoegen')}
-      </button>
-      {bewerken && onAnnuleer && (
-        <button type="button" onClick={onAnnuleer} style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}>
-          {t('Annuleer')}
+
+      <div className="knoprij">
+        <button type="submit" disabled={!geldig} className="knop knop-primair">
+          {bewerken ? t('Doel wijzigen') : t('Doel toevoegen')}
         </button>
-      )}
+        {bewerken && onAnnuleer && (
+          <button type="button" className="knop knop-secundair" onClick={onAnnuleer}>
+            {t('Annuleer')}
+          </button>
+        )}
+      </div>
     </form>
   )
 }

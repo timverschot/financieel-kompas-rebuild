@@ -1,24 +1,8 @@
 import { useState } from 'react'
-import type { CSSProperties, FormEvent } from 'react'
+import type { FormEvent } from 'react'
 import type { Kind } from '../data/schema'
+import { Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
-
-const veld: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  padding: '0.4rem',
-  marginTop: 2,
-  boxSizing: 'border-box',
-}
-const miniKnop: CSSProperties = {
-  border: '1px solid var(--border-strong)',
-  background: 'var(--surface-2)',
-  borderRadius: 6,
-  cursor: 'pointer',
-  fontSize: '0.8rem',
-  padding: '0.15rem 0.5rem',
-}
-const kop: CSSProperties = { fontSize: '1rem', marginBottom: '0.25rem' }
 
 // Beheer van de globale lijst kinderen. Deze kinderen zijn herbruikbaar: je kan
 // gedeelde kosten aan één of meer kinderen koppelen (zie het kostformulier).
@@ -51,42 +35,73 @@ export function KinderenSectie({
   }
 
   return (
-    <section>
-      <h2 style={kop}>{t('Kinderen')}</h2>
-      <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>{t('Stel je kinderen één keer in; je kan gedeelde kosten eraan koppelen.')}</p>
+    <Kaart titel={t('Kinderen')} bijschrift={t('Stel je kinderen één keer in; je kan gedeelde kosten eraan koppelen.')}>
+      {kinderen.length === 0 && <Leeg>{t('Nog geen kinderen ingesteld.')}</Leeg>}
 
-      {kinderen.length === 0 && <p style={{ color: 'var(--text-muted)' }}>{t('Nog geen kinderen ingesteld.')}</p>}
+      {kinderen.length > 0 && (
+        <ul className="lijst">
+          {kinderen.map((k) => (
+            <li key={k.id} className="rij">
+              {bewerkId === k.id ? (
+                <>
+                  <input
+                    aria-label={t('Nieuwe naam voor {naam}', { naam: k.naam })}
+                    style={{ flex: 1, minWidth: 0 }}
+                    value={bewerkTekst}
+                    onChange={(e) => setBewerkTekst(e.target.value)}
+                  />
+                  <span className="rij-acties">
+                    <button type="button" className="knop knop-secundair knop-klein" onClick={bewaarHernoeming}>
+                      {t('Bewaar')}
+                    </button>
+                    <button type="button" className="knop knop-kaal" onClick={() => setBewerkId(null)}>
+                      ×
+                    </button>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="rij-midden rij-titel">{k.naam}</span>
+                  <span className="rij-acties">
+                    <button
+                      type="button"
+                      className="knop knop-kaal"
+                      aria-label={t('Wijzig kind {naam}', { naam: k.naam })}
+                      onClick={() => {
+                        setBewerkId(k.id)
+                        setBewerkTekst(k.naam)
+                      }}
+                    >
+                      ✎
+                    </button>
+                    <button
+                      type="button"
+                      className="knop knop-kaal knop-gevaar"
+                      aria-label={t('Verwijder kind {naam}', { naam: k.naam })}
+                      onClick={() => onVerwijderen(k.id)}
+                    >
+                      ×
+                    </button>
+                  </span>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
 
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-        {kinderen.map((k) => (
-          <li key={k.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.3rem 0', borderBottom: '1px solid var(--border)' }}>
-            {bewerkId === k.id ? (
-              <>
-                <input aria-label={t('Nieuwe naam voor {naam}', { naam: k.naam })} style={{ ...veld, flex: 1, marginTop: 0 }} value={bewerkTekst} onChange={(e) => setBewerkTekst(e.target.value)} />
-                <button type="button" style={miniKnop} onClick={bewaarHernoeming}>{t('Bewaar')}</button>
-                <button type="button" style={miniKnop} onClick={() => setBewerkId(null)}>×</button>
-              </>
-            ) : (
-              <>
-                <span style={{ flex: 1 }}>{k.naam}</span>
-                <button type="button" aria-label={t('Wijzig kind {naam}', { naam: k.naam })} onClick={() => { setBewerkId(k.id); setBewerkTekst(k.naam) }} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>✎</button>
-                <button type="button" aria-label={t('Verwijder kind {naam}', { naam: k.naam })} onClick={() => onVerwijderen(k.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
-              </>
-            )}
-          </li>
-        ))}
-      </ul>
-
-      <form onSubmit={voegToe} style={{ display: 'flex', gap: '0.4rem', marginTop: '0.6rem' }}>
-        <input aria-label={t('Naam kind')} style={{ ...veld, flex: 1, marginTop: 0 }} placeholder={t('Naam kind')} value={nieuw} onChange={(e) => setNieuw(e.target.value)} />
-        <button
-          type="submit"
-          disabled={!nieuw.trim()}
-          style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: nieuw.trim() ? 'var(--info-soft)' : 'var(--surface-2)', cursor: nieuw.trim() ? 'pointer' : 'not-allowed' }}
-        >
+      <form onSubmit={voegToe} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <input
+          aria-label={t('Naam kind')}
+          style={{ flex: 1, minWidth: 0 }}
+          placeholder={t('Naam kind')}
+          value={nieuw}
+          onChange={(e) => setNieuw(e.target.value)}
+        />
+        <button type="submit" className="knop knop-secundair" disabled={!nieuw.trim()}>
           {t('Kind toevoegen')}
         </button>
       </form>
-    </section>
+    </Kaart>
   )
 }

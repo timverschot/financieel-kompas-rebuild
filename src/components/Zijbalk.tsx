@@ -6,6 +6,8 @@ import { useT } from '../i18n'
 // Vast zijpaneel voor brede schermen (desktop/laptop), naar de V1-logica: logo
 // bovenaan, de volledige navigatie eronder, en een profielregel onderaan. Op smalle
 // schermen wordt dit niet getoond (dan is er de onderbalk); App.tsx beslist dat.
+// De kleuren komen uit de vaste --sidebar-*-tokens: dit paneel blijft in licht én
+// donker dezelfde donkere tint.
 const paneel: CSSProperties = {
   width: 240,
   flexShrink: 0,
@@ -18,15 +20,30 @@ const paneel: CSSProperties = {
   color: 'var(--sidebar-text)',
   borderRight: '1px solid var(--border)',
 }
+// Hairline tussen kop, navigatie en voetregel, in dezelfde amberzweem als de
+// actieve staat — zo blijft alles binnen de tokens.
+const hairline = '1px solid var(--sidebar-active-bg)'
 
 export function Zijbalk({ actief, onKies }: { actief: Pagina; onKies: (p: Pagina) => void }) {
   const { t } = useT()
   return (
     <aside style={paneel} aria-label={t('Hoofdnavigatie')}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '1.1rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '1.1rem 1rem', borderBottom: hairline }}>
         <Merkteken grootte={38} />
         <span style={{ minWidth: 0 }}>
-          <strong style={{ color: '#fff', display: 'block', fontSize: '1.05rem', fontFamily: 'var(--font-display)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.1 }}>Kompal</strong>
+          <strong
+            style={{
+              color: 'var(--sidebar-active-text)',
+              display: 'block',
+              fontSize: '1.05rem',
+              fontFamily: 'var(--font-display)',
+              fontWeight: 800,
+              letterSpacing: '-0.02em',
+              lineHeight: 1.1,
+            }}
+          >
+            Kompal
+          </strong>
           <span style={{ fontSize: '0.7rem', color: 'var(--sidebar-muted)' }}>{t('je financieel kompas')}</span>
         </span>
       </div>
@@ -46,13 +63,15 @@ export function Zijbalk({ actief, onKies }: { actief: Pagina; onKies: (p: Pagina
                 alignItems: 'center',
                 gap: '0.7rem',
                 width: '100%',
+                minHeight: 44,
                 padding: '0.55rem 0.8rem',
                 marginBottom: 2,
-                borderRadius: 9,
+                borderRadius: 'var(--radius-sm)',
                 border: 'none',
                 cursor: 'pointer',
                 background: aan ? 'var(--sidebar-active-bg)' : 'transparent',
                 color: aan ? 'var(--sidebar-active-text)' : 'var(--sidebar-text)',
+                fontFamily: 'inherit',
                 fontWeight: aan ? 600 : 400,
                 fontSize: '0.9rem',
                 textAlign: 'left',
@@ -67,9 +86,20 @@ export function Zijbalk({ actief, onKies }: { actief: Pagina; onKies: (p: Pagina
         })}
       </nav>
 
-      <div style={{ padding: '0.9rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ padding: '0.9rem', borderTop: hairline, display: 'flex', alignItems: 'center', gap: 8 }}>
         <span
-          style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--accent-dot)', color: '#3a2c22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem' }}
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 'var(--radius-pill)',
+            background: 'var(--accent-dot)',
+            color: 'var(--sidebar-bg)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 700,
+            fontSize: '0.8rem',
+          }}
           aria-hidden
         >
           K

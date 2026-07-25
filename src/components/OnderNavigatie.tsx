@@ -44,22 +44,35 @@ const balk: CSSProperties = {
   bottom: 0,
   background: 'var(--surface)',
   borderTop: '1px solid var(--border)',
-  boxShadow: '0 -1px 3px rgba(0, 0, 0, 0.06)',
   zIndex: 900,
   paddingBottom: 'env(safe-area-inset-bottom)',
 }
 const binnen: CSSProperties = { maxWidth: 480, margin: '0 auto', display: 'flex', alignItems: 'stretch' }
+// Tik-doel van een tab: ruim boven de 44 px die een duim nodig heeft.
 const tabKnop: CSSProperties = {
   flex: 1,
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
+  justifyContent: 'center',
   gap: 3,
   background: 'none',
   border: 'none',
+  borderRadius: 'var(--radius-sm)',
   padding: '0.45rem 0 0.4rem',
   cursor: 'pointer',
+  fontFamily: 'inherit',
   minHeight: 56,
+}
+// De 'Meer'-lijst is een sheet: afgeronde bovenhoeken en de sheet-schaduw.
+const sheet: CSSProperties = {
+  maxWidth: 480,
+  margin: '0 auto',
+  padding: '0.4rem',
+  background: 'var(--surface)',
+  borderTop: '1px solid var(--border)',
+  borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
+  boxShadow: 'var(--shadow-sheet)',
 }
 
 function Tab({ icoon, label, aan, onClick }: { icoon: string; label: string; aan: boolean; onClick: () => void }) {
@@ -102,10 +115,10 @@ export function OnderNavigatie({
         <>
           <div
             onClick={() => setMeerOpen(false)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', zIndex: -1 }}
+            style={{ position: 'fixed', inset: 0, background: 'var(--sidebar-bg)', opacity: 0.35, zIndex: -1 }}
             aria-hidden
           />
-          <div style={{ maxWidth: 480, margin: '0 auto', padding: '0.4rem', background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
+          <div style={sheet}>
             {SECUNDAIR.map((id) => {
               const p = PAGINAS.find((x) => x.id === id)!
               const aan = id === actief
@@ -120,11 +133,13 @@ export function OnderNavigatie({
                     alignItems: 'center',
                     gap: '0.75rem',
                     width: '100%',
+                    minHeight: 44,
                     padding: '0.7rem 0.9rem',
                     background: aan ? 'var(--accent-soft)' : 'none',
                     border: 'none',
-                    borderRadius: 10,
+                    borderRadius: 'var(--radius-sm)',
                     cursor: 'pointer',
+                    fontFamily: 'inherit',
                     color: aan ? 'var(--accent-strong)' : 'var(--text)',
                     fontSize: '0.95rem',
                     fontWeight: aan ? 600 : 400,
@@ -157,14 +172,15 @@ export function OnderNavigatie({
               width: 52,
               height: 52,
               marginTop: -22,
-              borderRadius: '50%',
+              borderRadius: 'var(--radius-pill)',
               border: 'none',
               background: 'var(--accent-dot)',
-              color: '#3a2c22',
+              color: 'var(--sidebar-bg)',
+              fontFamily: 'inherit',
               fontSize: '1.7rem',
               lineHeight: 1,
               cursor: 'pointer',
-              boxShadow: '0 6px 16px -4px rgba(201,118,26,0.55)',
+              boxShadow: 'var(--shadow-zwevend)',
             }}
           >
             +

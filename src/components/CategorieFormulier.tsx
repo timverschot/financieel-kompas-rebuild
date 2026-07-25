@@ -1,18 +1,11 @@
 import { useEffect, useState } from 'react'
-import type { CSSProperties, FormEvent } from 'react'
+import type { FormEvent } from 'react'
 import type { Categorie } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { useT } from '../i18n'
 
-const veld: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  padding: '0.4rem',
-  marginTop: 2,
-  boxSizing: 'border-box',
-}
-
-// Formulier om een categorie aan te maken of te hernoemen.
+// Formulier om een categorie aan te maken of te hernoemen. Staat in App.tsx al
+// binnen een <Kaart>, dus hier geen eigen kaart: enkel veldgroepen + knoppenrij.
 export function CategorieFormulier({
   onOpslaan,
   onAnnuleer,
@@ -37,33 +30,24 @@ export function CategorieFormulier({
   }
 
   return (
-    <form onSubmit={verzend} style={{ marginTop: '0.75rem' }}>
-      <div style={{ marginBottom: '0.6rem' }}>
-        <label htmlFor="categorienaam">{t('Categorienaam')}</label>
-        <input id="categorienaam" style={veld} value={naam} onChange={(e) => setNaam(e.target.value)} />
+    <form onSubmit={verzend} className="stapel" style={{ gap: 14 }}>
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="categorienaam">
+          {t('Categorienaam')}
+        </label>
+        <input id="categorienaam" value={naam} onChange={(e) => setNaam(e.target.value)} />
       </div>
-      <button
-        type="submit"
-        disabled={!geldig}
-        style={{
-          padding: '0.4rem 0.8rem',
-          borderRadius: 8,
-          border: '1px solid var(--border-strong)',
-          background: geldig ? 'var(--accent-soft)' : 'var(--surface-2)',
-          cursor: geldig ? 'pointer' : 'not-allowed',
-        }}
-      >
-        {bewerken ? t('Categorie wijzigen') : t('Categorie toevoegen')}
-      </button>
-      {bewerken && onAnnuleer && (
-        <button
-          type="button"
-          onClick={onAnnuleer}
-          style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
-        >
-          {t('Annuleer')}
+
+      <div className="knoprij">
+        <button type="submit" className="knop knop-primair" disabled={!geldig}>
+          {bewerken ? t('Categorie wijzigen') : t('Categorie toevoegen')}
         </button>
-      )}
+        {bewerken && onAnnuleer && (
+          <button type="button" className="knop knop-ghost" onClick={onAnnuleer}>
+            {t('Annuleer')}
+          </button>
+        )}
+      </div>
     </form>
   )
 }

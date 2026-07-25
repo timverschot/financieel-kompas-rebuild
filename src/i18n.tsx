@@ -194,6 +194,8 @@ const en: Record<string, string> = {
   'Kost toevoegen': 'Add expense',
   // Spaardoelen
   'Spaardoelen': 'Savings goals',
+  'Leningen': 'Loans',
+  'Garanties': 'Warranties',
   'Langetermijndoelen — buffers, grote aankopen, schuldenvrij.':
     'Long-term goals — buffers, big purchases, debt-free.',
   'Nog geen doelen. Voeg je eerste doel toe!': 'No goals yet. Add your first goal!',
@@ -696,6 +698,8 @@ const fr: Record<string, string> = {
   'Kost toevoegen': 'Ajouter des frais',
   // Spaardoelen
   'Spaardoelen': 'Objectifs d’épargne',
+  'Leningen': 'Prêts',
+  'Garanties': 'Garanties',
   'Langetermijndoelen — buffers, grote aankopen, schuldenvrij.':
     'Objectifs à long terme — réserves, gros achats, sans dettes.',
   'Nog geen doelen. Voeg je eerste doel toe!': 'Aucun objectif. Ajoutez votre premier objectif !',

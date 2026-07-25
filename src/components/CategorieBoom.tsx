@@ -2,27 +2,31 @@ import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import { bouwEffectieveBoom } from '../data/categorieen/effectief'
 import type { Subcategorie } from '../data/schema'
+import { Kaart } from '../ui/basis'
 import { useT } from '../i18n'
 
-const rijKnop: CSSProperties = {
-  display: 'block',
+// De uitklapregel van een tak is één kale knop over de volle breedte: zo blijft de
+// hele regel aanklikbaar, met het driehoekje links als open/dicht-teken. De maten
+// zijn bewust compact — de boom kan honderden items tonen.
+const takKnop: CSSProperties = {
   width: '100%',
+  height: 'auto',
+  justifyContent: 'flex-start',
   textAlign: 'left',
-  border: 'none',
-  background: 'none',
-  cursor: 'pointer',
-  padding: '0.3rem 0',
-  fontSize: '0.95rem',
+  gap: 8,
+  padding: '6px 8px',
+  fontSize: 15,
+  color: 'var(--text)',
 }
-const miniKnop: CSSProperties = {
-  border: '1px solid var(--border-strong)',
-  background: 'var(--surface-2)',
-  borderRadius: 6,
-  cursor: 'pointer',
-  fontSize: '0.8rem',
-  padding: '0.15rem 0.5rem',
+const driehoek: CSSProperties = {
+  width: 12,
+  flexShrink: 0,
+  fontSize: 10,
+  color: 'var(--text-subtle)',
 }
-const veld: CSSProperties = { padding: '0.25rem', boxSizing: 'border-box' }
+// Compacte bladrij: geen scheidingslijn per item, anders wordt de lijst rumoerig.
+const bladRij: CSSProperties = { padding: '3px 8px', gap: 8, borderBottom: 'none' }
+const subLijst: CSSProperties = { paddingLeft: 18 }
 
 // Doorbladerbaar én bewerkbaar overzicht van de categorieboom: vouw open van
 // hoofdcategorie → categorie → items. Je kan een subcategorie toevoegen onder een
@@ -67,65 +71,142 @@ export function CategorieBoom({
   }
 
   return (
-    <section>
-      <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{t('Alle categorieën')}</h2>
-      <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>
-        {t('Vouw open om te bekijken. Voeg subcategorieën toe of hernoem bestaande.')}
-      </p>
-
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+    <Kaart
+      titel={t('Alle categorieën')}
+      bijschrift={t('Vouw open om te bekijken. Voeg subcategorieën toe of hernoem bestaande.')}
+    >
+      <ul className="lijst">
         {boom.map((h) => {
           const hOpen = openHoofd.has(h.id)
           const aantal = h.categorieen.reduce((s, c) => s + c.items.length, 0)
           return (
-            <li key={h.id} style={{ borderBottom: '1px solid var(--border)' }}>
-              <button type="button" aria-expanded={hOpen} onClick={() => wissel(openHoofd, setOpenHoofd, h.id)} style={{ ...rijKnop, fontWeight: 600 }}>
-                {hOpen ? '▾' : '▸'} {h.icoon} {h.naam} <span style={{ color: 'var(--text-subtle)', fontWeight: 400 }}>· {t('{n} items', { n: aantal })}</span>
+            <li key={h.id} style={{ borderBottom: '1px solid var(--rij-lijn)', padding: '2px 0' }}>
+              <button
+                type="button"
+                className="knop knop-kaal"
+                aria-expanded={hOpen}
+                onClick={() => wissel(openHoofd, setOpenHoofd, h.id)}
+                style={{ ...takKnop, fontWeight: 600 }}
+              >
+                <span aria-hidden style={driehoek}>
+                  {hOpen ? '▾' : '▸'}
+                </span>
+                <span aria-hidden>{h.icoon}</span>
+                <span className="rij-midden">
+                  <span className="rij-titel">{h.naam}</span>
+                  <span className="rij-meta">{t('{n} items', { n: aantal })}</span>
+                </span>
               </button>
 
               {hOpen && (
-                <ul style={{ listStyle: 'none', padding: '0 0 0.4rem 1rem', margin: 0 }}>
+                <ul className="lijst" style={subLijst}>
                   {h.categorieen.map((c) => {
                     const cOpen = openCat.has(c.id)
                     return (
                       <li key={c.id}>
-                        <button type="button" aria-expanded={cOpen} onClick={() => wissel(openCat, setOpenCat, c.id)} style={rijKnop}>
-                          {cOpen ? '▾' : '▸'} {c.naam} <span style={{ color: 'var(--text-subtle)' }}>({c.items.length})</span>
+                        <button
+                          type="button"
+                          className="knop knop-kaal"
+                          aria-expanded={cOpen}
+                          onClick={() => wissel(openCat, setOpenCat, c.id)}
+                          style={{ ...takKnop, fontWeight: 500 }}
+                        >
+                          <span aria-hidden style={driehoek}>
+                            {cOpen ? '▾' : '▸'}
+                          </span>
+                          <span className="rij-midden">
+                            <span style={{ fontSize: 14 }}>{c.naam}</span>
+                          </span>
+                          <span className="rij-meta">{c.items.length}</span>
                         </button>
                         {cOpen && (
-                          <ul style={{ listStyle: 'none', padding: '0 0 0.3rem 1.2rem', margin: 0 }}>
+                          <ul className="lijst" style={subLijst}>
                             {c.items.map((it) => (
-                              <li key={it.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.1rem 0', fontSize: '0.9rem' }}>
+                              <li key={it.id} className="rij" style={bladRij}>
                                 {bewerkId === it.id ? (
                                   <>
-                                    <input aria-label={t('Nieuwe naam voor {naam}', { naam: it.naam })} style={{ ...veld, flex: 1 }} value={bewerkTekst} onChange={(e) => setBewerkTekst(e.target.value)} />
-                                    <button type="button" style={miniKnop} onClick={() => bewaarHernoeming(c.id)}>{t('Bewaar')}</button>
-                                    <button type="button" style={miniKnop} onClick={() => setBewerkId(null)}>×</button>
+                                    <input
+                                      aria-label={t('Nieuwe naam voor {naam}', { naam: it.naam })}
+                                      style={{ flex: 1, minWidth: 0 }}
+                                      value={bewerkTekst}
+                                      onChange={(e) => setBewerkTekst(e.target.value)}
+                                    />
+                                    <span className="rij-acties">
+                                      <button type="button" className="knop knop-secundair knop-klein" onClick={() => bewaarHernoeming(c.id)}>
+                                        {t('Bewaar')}
+                                      </button>
+                                      <button type="button" className="knop knop-kaal" onClick={() => setBewerkId(null)}>
+                                        ×
+                                      </button>
+                                    </span>
                                   </>
                                 ) : (
                                   <>
-                                    <span style={{ flex: 1, color: 'var(--text-muted)' }}>
-                                      {it.naam}
-                                      {it.eigen && <span style={{ color: 'var(--accent-strong)' }}> · {t('eigen')}</span>}
+                                    <span className="rij-midden">
+                                      <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+                                        {it.naam}
+                                        {it.eigen && <span style={{ color: 'var(--accent-ink)' }}> · {t('eigen')}</span>}
+                                      </span>
                                     </span>
-                                    <button type="button" aria-label={t('Wijzig {naam}', { naam: it.naam })} onClick={() => { setBewerkId(it.id); setBewerkTekst(it.naam) }} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>✎</button>
-                                    {it.eigen && (
-                                      <button type="button" aria-label={t('Verwijder {naam}', { naam: it.naam })} onClick={() => onVerwijderen(it.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1rem' }}>×</button>
-                                    )}
+                                    <span className="rij-acties">
+                                      <button
+                                        type="button"
+                                        className="knop knop-kaal"
+                                        aria-label={t('Wijzig {naam}', { naam: it.naam })}
+                                        onClick={() => {
+                                          setBewerkId(it.id)
+                                          setBewerkTekst(it.naam)
+                                        }}
+                                      >
+                                        ✎
+                                      </button>
+                                      {it.eigen && (
+                                        <button
+                                          type="button"
+                                          className="knop knop-kaal knop-gevaar"
+                                          aria-label={t('Verwijder {naam}', { naam: it.naam })}
+                                          onClick={() => onVerwijderen(it.id)}
+                                        >
+                                          ×
+                                        </button>
+                                      )}
+                                    </span>
                                   </>
                                 )}
                               </li>
                             ))}
 
-                            <li style={{ paddingTop: '0.2rem' }}>
+                            <li className="rij" style={{ ...bladRij, paddingTop: 6, paddingBottom: 6 }}>
                               {toevoegCatId === c.id ? (
-                                <span style={{ display: 'flex', gap: '0.4rem' }}>
-                                  <input aria-label={t('Nieuwe subcategorie in {naam}', { naam: c.naam })} style={{ ...veld, flex: 1 }} value={toevoegTekst} onChange={(e) => setToevoegTekst(e.target.value)} placeholder={t('Naam subcategorie')} />
-                                  <button type="button" style={miniKnop} onClick={() => bewaarToevoeging(c.id)}>{t('Toevoegen')}</button>
-                                  <button type="button" style={miniKnop} onClick={() => setToevoegCatId(null)}>×</button>
-                                </span>
+                                <>
+                                  <input
+                                    aria-label={t('Nieuwe subcategorie in {naam}', { naam: c.naam })}
+                                    style={{ flex: 1, minWidth: 0 }}
+                                    value={toevoegTekst}
+                                    onChange={(e) => setToevoegTekst(e.target.value)}
+                                    placeholder={t('Naam subcategorie')}
+                                  />
+                                  <span className="rij-acties">
+                                    <button type="button" className="knop knop-secundair knop-klein" onClick={() => bewaarToevoeging(c.id)}>
+                                      {t('Toevoegen')}
+                                    </button>
+                                    <button type="button" className="knop knop-kaal" onClick={() => setToevoegCatId(null)}>
+                                      ×
+                                    </button>
+                                  </span>
+                                </>
                               ) : (
-                                <button type="button" aria-label={t('Voeg subcategorie toe aan {naam}', { naam: c.naam })} onClick={() => { setToevoegCatId(c.id); setToevoegTekst('') }} style={{ ...miniKnop, color: 'var(--positive)' }}>{t('+ subcategorie')}</button>
+                                <button
+                                  type="button"
+                                  className="knop knop-ghost knop-klein"
+                                  aria-label={t('Voeg subcategorie toe aan {naam}', { naam: c.naam })}
+                                  onClick={() => {
+                                    setToevoegCatId(c.id)
+                                    setToevoegTekst('')
+                                  }}
+                                >
+                                  {t('+ subcategorie')}
+                                </button>
                               )}
                             </li>
                           </ul>
@@ -139,6 +220,6 @@ export function CategorieBoom({
           )
         })}
       </ul>
-    </section>
+    </Kaart>
   )
 }

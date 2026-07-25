@@ -2,8 +2,12 @@ import { useMemo, useState } from 'react'
 import type { Overboeking, Rekening, Transactie } from '../data/schema'
 import { vermogensEvolutie, laatsteMaanden } from '../utils/vermogen'
 import { formatEuro } from '../utils/format'
+import { Kaart } from '../ui/basis'
 import { useT } from '../i18n'
 
+// Vaste, onderscheidbare lijnkleuren per rekening. De kleur reist mee met de
+// reeks (zelfde data-object als de waarden), zodat lijn en schakelaar nooit uit
+// de pas kunnen lopen.
 const PALET = ['#C56A1F', '#3E7C7B', '#96588A', '#3F8A58', '#C97B8B', '#B08A2E', '#2C6CB0', '#C1502E', '#4E8D8C', '#7A8B3E', '#A34A5E', '#83705C']
 
 const W = 320
@@ -71,13 +75,10 @@ export function Vermogensevolutie({
   const verschil = laatsteTotaal - eersteTotaal
 
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '1rem', marginBottom: '1rem', boxShadow: 'var(--shadow)' }}>
-      <h3 style={{ margin: '0 0 0.15rem', fontSize: '0.95rem' }}>{t('Vermogensevolutie')}</h3>
-      <p style={{ color: 'var(--text-subtle)', fontSize: '0.75rem', margin: '0 0 0.6rem' }}>{t('Je totale vermogen over de laatste 12 maanden')}</p>
-
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', marginBottom: '0.4rem' }}>
-        <span style={{ fontSize: '1.3rem', fontWeight: 700 }}>{formatEuro(laatsteTotaal)}</span>
-        <span style={{ fontSize: '0.85rem', color: verschil >= 0 ? 'var(--positive)' : 'var(--negative)' }}>
+    <Kaart titel={t('Vermogensevolutie')} bijschrift={t('Je totale vermogen over de laatste 12 maanden')}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+        <span className="bedrag-groot">{formatEuro(laatsteTotaal)}</span>
+        <span className="rij-meta" style={{ color: verschil >= 0 ? 'var(--positive)' : 'var(--negative)' }}>
           {verschil >= 0 ? '▲' : '▼'} {formatEuro(Math.abs(verschil))} {t('over 12 maanden')}
         </span>
       </div>
@@ -102,19 +103,26 @@ export function Vermogensevolutie({
           ))}
         {/* x-labels: eerste, midden, laatste maand */}
         {[0, Math.floor((n - 1) / 2), n - 1].map((i) => (
-          <text key={i} x={x(i)} y={H - 5} textAnchor={i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'} style={{ fontSize: 9, fill: 'var(--text-subtle)' }}>
+          <text
+            key={i}
+            x={x(i)}
+            y={H - 5}
+            textAnchor={i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}
+            style={{ fontFamily: 'var(--font-body)', fontSize: 9, fill: 'var(--text-subtle)' }}
+          >
             {maandKort(maanden[i])}
           </text>
         ))}
       </svg>
 
       {/* Schakelaars per rekening */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.6rem' }}>
+      <div className="knoprij" style={{ gap: 8 }}>
         {reeksen.map((r) => {
           const uit = r.id !== '__totaal' && verborgen.has(r.id)
           return (
             <button
               key={r.id}
+              className="chip"
               onClick={() => {
                 if (r.id === '__totaal') return
                 setVerborgen((s) => {
@@ -127,17 +135,11 @@ export function Vermogensevolutie({
               aria-pressed={!uit}
               disabled={r.id === '__totaal'}
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.35rem',
-                padding: '0.2rem 0.5rem',
-                borderRadius: 999,
-                border: '1px solid var(--border)',
-                background: 'var(--surface-2)',
-                color: 'var(--text)',
+                gap: 6,
                 cursor: r.id === '__totaal' ? 'default' : 'pointer',
-                fontSize: '0.75rem',
-                opacity: uit ? 0.4 : 1,
+                opacity: uit ? 0.45 : 1,
               }}
             >
               <span style={{ width: 10, height: 10, borderRadius: 3, background: r.kleur, flexShrink: 0 }} />
@@ -146,6 +148,6 @@ export function Vermogensevolutie({
           )
         })}
       </div>
-    </div>
+    </Kaart>
   )
 }

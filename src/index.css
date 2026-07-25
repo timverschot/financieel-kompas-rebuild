@@ -8,44 +8,66 @@
 @import '@fontsource/ibm-plex-mono/500.css';
 @import '@fontsource/ibm-plex-mono/600.css';
 
-/* Design-tokens uit het Kompal-design-systeem, als CSS-variabelen.
+/* ---------------------------------------------------------------------------
+   Design-tokens uit het Kompal-design-systeem, als CSS-variabelen.
    Licht is de standaard; donker wordt geactiveerd met data-theme="dark" op <html>.
    Semantische namen (--bg, --surface, --accent, …) zodat componenten niet meer
-   met hardgecodeerde kleuren werken en licht/donker één schakelaar is. */
+   met hardgecodeerde kleuren werken en licht/donker één schakelaar is.
+   --------------------------------------------------------------------------- */
 :root {
   color-scheme: light;
   --bg: #ede6da;
   --surface: #fffcf6;
-  --surface-2: #f3ede3;
+  --surface-2: #ebe3d6;
   --surface-3: #e9e1d3;
-  --text: #171c23;
+  --text: #17191e;
   --text-muted: #6c6459;
   --text-subtle: #8a8175;
   --border: #e0d6c5;
   --border-strong: #d9cdb9;
+  --divider: #eae1d2;
+  --rij-lijn: #f0e8da;
 
   --accent: #c9761a;
-  --accent-strong: #bf7415;
+  --accent-strong: #a75e10;
   --accent-dot: #f0a63c;
   --accent-soft: #f6e2c6;
+  --accent-ink: #8f5510;
   --on-accent: #fff8ed;
 
   --positive: #2e7a56;
   --positive-soft: #ddede3;
-  --negative: #c4562c;
-  --negative-soft: #f6e2d6;
+  --positive-ink: #226244;
+  --negative: #b44a2a;
+  --negative-soft: #f7ded4;
+  --negative-ink: #9c3e20;
   --info: #4a6e9b;
-  --info-soft: #e7eef6;
-  --warn: #c07000;
+  --info-soft: #e4e9f2;
+  --info-ink: #35547a;
+  --warn: #b8860b;
   --warn-soft: #fff8ee;
 
   --font-body: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
   --font-display: 'Bricolage Grotesque Variable', 'IBM Plex Sans', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
+  /* Radius-ladder uit het design: pill · klein · knop/veld · compact · lijst ·
+     kaart · grote kaart. */
+  --radius-pill: 999px;
+  --radius-sm: 12px;
   --radius: 14px;
+  --radius-md: 18px;
   --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-2xl: 28px;
+
+  /* Het design zet schaduw enkel op zwevende dingen (knop met nadruk, FAB,
+     sheet, meldingsbalk). Gewone kaarten hebben een zachte rand, geen schaduw. */
   --shadow: 0 1px 2px rgba(80, 64, 44, 0.05), 0 12px 30px -14px rgba(80, 64, 44, 0.16);
+  --shadow-knop: 0 6px 16px rgba(201, 118, 26, 0.25);
+  --shadow-zwevend: 0 12px 26px rgba(201, 118, 26, 0.35);
+  --shadow-sheet: 0 24px 60px rgba(80, 64, 44, 0.14);
+  --focus-ring: 0 0 0 3px rgba(201, 118, 26, 0.12);
 
   /* Zijpaneel (desktop): een vaste donkere chrome, in licht én donker dezelfde
      navy-tint. Zie components/Zijbalk.tsx. */
@@ -60,30 +82,40 @@
   color-scheme: dark;
   --bg: #0e1116;
   --surface: #171c23;
-  --surface-2: #232b35;
-  --surface-3: #2a323d;
+  --surface-2: #1f2630;
+  --surface-3: #232b35;
   --text: #f4efe6;
   --text-muted: #99a2ad;
   --text-subtle: #7c8592;
-  --border: #2e3846;
-  --border-strong: #3a424e;
+  --border: #262e39;
+  --border-strong: #313a46;
+  --divider: #242c36;
+  --rij-lijn: #222932;
 
   --accent: #f0a63c;
   --accent-strong: #e0913a;
   --accent-dot: #f0a63c;
   --accent-soft: #3a2a16;
-  --on-accent: #171c23;
+  --accent-ink: #f0a63c;
+  --on-accent: #1a1206;
 
   --positive: #57c596;
   --positive-soft: #17362b;
+  --positive-ink: #57c596;
   --negative: #f0784e;
-  --negative-soft: #3a2016;
+  --negative-soft: #3b1f16;
+  --negative-ink: #f0784e;
   --info: #6e93c4;
-  --info-soft: #1c2733;
-  --warn: #e0913a;
+  --info-soft: #1e2a3b;
+  --info-ink: #6e93c4;
+  --warn: #e8b948;
   --warn-soft: #262e39;
 
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow-knop: 0 8px 22px rgba(240, 166, 60, 0.22);
+  --shadow-zwevend: 0 12px 30px rgba(240, 166, 60, 0.3);
+  --shadow-sheet: 0 24px 60px rgba(0, 0, 0, 0.5);
+  --focus-ring: 0 0 0 3px rgba(240, 166, 60, 0.14);
 }
 
 * {
@@ -100,47 +132,506 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 h1,
 h2,
-h3 {
+h3,
+h4 {
   font-family: var(--font-display);
   letter-spacing: -0.02em;
   font-weight: 800;
 }
 
-/* Gedeelde kaartstijl uit het Kompal-design: crème vlak, zachte rand, grote
-   radius en een warme, subtiele schaduw. Bruikbaar als klasse op inhoudsblokken. */
+/* ---------------------------------------------------------------------------
+   Koppen
+   --------------------------------------------------------------------------- */
+
+/* Titel van een pagina (Overzicht, Transacties, …). */
+.paginakop {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  /* Schaalt mee op smalle schermen, zodat een lange titel niet uit de kolom
+     loopt (bv. "Dossiers (gedeelde kosten)" op een telefoon). */
+  font-size: clamp(21px, 6.2vw, 27px);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.paginasub {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Klein hoofdletterlabel: kolomkoppen, veldlabels, tegellabels. */
+.label-caps {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+/* ---------------------------------------------------------------------------
+   Kaarten
+   --------------------------------------------------------------------------- */
+
 .kaart {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 1rem 1.1rem;
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-/* Cijfers/bedragen: tabulair uitgelijnd, monospace. */
-.cijfer {
+.kaart-compact {
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  gap: 8px;
+}
+
+.kaart-kop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kaart-titel {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.kaart-compact .kaart-titel {
+  font-size: 15px;
+}
+
+.kaart-bijschrift {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Verticale stapel kaarten/blokken op een pagina. */
+.stapel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.scheiding {
+  height: 1px;
+  border: none;
+  background: var(--divider);
+  margin: 20px 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Lijsten en rijen
+   --------------------------------------------------------------------------- */
+
+.lijst {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* Binnen een kaart staat de lijst al op een kaartvlak: geen dubbele rand. */
+.kaart .lijst {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.rij {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--rij-lijn);
+}
+
+.kaart .rij {
+  padding: 12px 0;
+}
+
+.rij:last-child {
+  border-bottom: none;
+}
+
+.rij-midden {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rij-titel {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.rij-meta {
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+.rij-acties {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Rond initiaal/icoonvlak links in een rij. */
+.rij-teken {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Bedragen
+   --------------------------------------------------------------------------- */
+
+.cijfer,
+.bedrag {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
-/* Invulvelden erven het thema. Zo zijn ze in donkere modus niet meer wit.
-   Inline-stijlen op losse velden (bv. een eigen rand) blijven voorgaan; enkel
-   wat een veld niet zelf zet, valt terug op deze thema-kleuren. */
+.bedrag {
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.bedrag-positief {
+  color: var(--positive);
+}
+
+.bedrag-negatief {
+  color: var(--negative);
+}
+
+/* Groot bedrag (saldo, totaal). */
+.bedrag-groot {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Statblokje: klein label boven, cijfer onder. */
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-waarde {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.stat-rij {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+/* Donkere accenttegel met amberglow — voor één hoofdcijfer per scherm. */
+.saldotegel {
+  position: relative;
+  overflow: hidden;
+  background: #17191e;
+  border-radius: var(--radius-xl);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+:root[data-theme='dark'] .saldotegel {
+  background: #1b2029;
+  border: 1px solid var(--border-strong);
+}
+
+.saldotegel::after {
+  content: '';
+  position: absolute;
+  right: -40px;
+  top: -40px;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(240, 166, 60, 0.22), transparent 70%);
+  pointer-events: none;
+}
+
+.saldotegel .label-caps {
+  color: #a79e90;
+}
+
+.saldotegel .bedrag-groot {
+  color: #fff8ed;
+  font-size: 34px;
+}
+
+.saldotegel-sub {
+  font-size: 13px;
+  color: #c9bfaf;
+}
+
+/* ---------------------------------------------------------------------------
+   Knoppen
+   --------------------------------------------------------------------------- */
+
+.knop {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  border-radius: var(--radius);
+  border: 1.5px solid transparent;
+  background: none;
+  color: var(--text);
+  padding: 12px 20px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.knop-primair {
+  background: var(--accent);
+  color: var(--on-accent);
+  padding: 13px 22px;
+  box-shadow: var(--shadow-knop);
+}
+
+.knop-primair:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.knop-secundair {
+  background: var(--surface);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.knop-secundair:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.knop-ghost {
+  color: var(--accent);
+  padding: 12px 8px;
+}
+
+.knop-ghost:hover:not(:disabled) {
+  color: var(--accent-strong);
+}
+
+.knop-klein {
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+}
+
+.knop-primair.knop-klein {
+  padding: 9px 15px;
+}
+
+.knop-ghost.knop-klein {
+  padding: 8px 6px;
+}
+
+/* Vierkante icoonknop (‹ › ✎ ×). */
+.knop-icoon {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.knop-icoon:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Kale icoonknop zonder rand, voor acties in een lijstrij. */
+.knop-kaal {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  background: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.knop-kaal:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.knop-gevaar {
+  color: var(--negative);
+}
+
+.knop-gevaar:hover:not(:disabled) {
+  background: var(--negative-soft);
+  color: var(--negative);
+  border-color: var(--negative);
+}
+
+.knop:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Rij met knoppen onder een formulier. */
+.knoprij {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ---------------------------------------------------------------------------
+   Chips en badges
+   --------------------------------------------------------------------------- */
+
+.chip {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 13px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.chip-actief {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+
+.badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+}
+
+.badge-ok {
+  background: var(--positive-soft);
+  color: var(--positive-ink);
+}
+
+.badge-open {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.badge-laat {
+  background: var(--negative-soft);
+  color: var(--negative-ink);
+}
+
+.badge-info {
+  background: var(--info-soft);
+  color: var(--info-ink);
+}
+
+.badge-neutraal {
+  border-color: var(--border-strong);
+  color: var(--text-muted);
+}
+
+.badge-mini {
+  font-size: 10px;
+  padding: 2px 8px;
+}
+
+/* ---------------------------------------------------------------------------
+   Formuliervelden
+   --------------------------------------------------------------------------- */
+
+.veldgroep {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.veldrij {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.veldrij > .veldgroep {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
 input,
 select,
 textarea {
   font-family: inherit;
-  font-size: 1rem;
+  font-size: 15px;
   background: var(--surface);
   color: var(--text);
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  padding: 0.4rem 0.5rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 11px 13px;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  padding: 0;
+  accent-color: var(--accent);
 }
 
 input::placeholder,
@@ -150,14 +641,60 @@ textarea::placeholder {
 
 input:focus-visible,
 select:focus-visible,
-textarea:focus-visible,
-button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
 }
 
+button:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Voortgangsbalken
+   --------------------------------------------------------------------------- */
+
+.balk {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.balk-vulling {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  transition: width 0.25s ease;
+}
+
+/* ---------------------------------------------------------------------------
+   Lege toestand
+   --------------------------------------------------------------------------- */
+
+.leeg {
+  margin: 0;
+  padding: 18px 4px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-subtle);
+}
+
+/* ---------------------------------------------------------------------------
+   Overig
+   --------------------------------------------------------------------------- */
+
 a {
-  color: var(--info);
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--accent-strong);
 }
 
 ::selection {

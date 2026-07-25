@@ -33,29 +33,19 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div
+          className="kaart kaart-compact"
           style={{
-            fontFamily: 'system-ui, sans-serif',
-            margin: '1rem 0',
-            padding: '0.75rem 1rem',
-            border: '1px solid var(--negative)',
-            borderRadius: 8,
             background: 'var(--negative-soft)',
+            borderColor: 'var(--negative)',
+            color: 'var(--text)',
+            alignItems: 'flex-start',
           }}
         >
-          <p style={{ margin: '0 0 0.5rem' }}>
+          <p style={{ margin: 0 }}>
             Er ging iets mis{this.props.naam ? ` in ${this.props.naam}` : ''}, maar je gegevens zijn
             veilig. De rest van de app blijft gewoon werken.
           </p>
-          <button
-            onClick={this.herstel}
-            style={{
-              padding: '0.4rem 0.8rem',
-              borderRadius: 8,
-              border: '1px solid var(--border-strong)',
-              background: 'var(--surface-2)',
-              cursor: 'pointer',
-            }}
-          >
+          <button type="button" className="knop knop-secundair knop-klein" onClick={this.herstel}>
             Probeer opnieuw
           </button>
         </div>

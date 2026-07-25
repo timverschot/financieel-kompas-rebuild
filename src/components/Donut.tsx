@@ -1,13 +1,15 @@
 import type { CSSProperties } from 'react'
 import { donutSegmenten, type DonutInvoer } from '../utils/donut'
 import { formatEuro } from '../utils/format'
+import { Bedrag } from '../ui/basis'
 import { useT } from '../i18n'
 
-// Geometrie van de donut.
-const GROOTTE = 180
+// Geometrie van de donut. Puur vormgeving: een iets ruimer gat en een dunnere
+// ring, zodat het middenlabel rustig ademt zoals in het designsysteem.
+const GROOTTE = 190
 const MIDDEN = GROOTTE / 2
-const BUITEN = 80
-const BINNEN = 50
+const BUITEN = 84
+const BINNEN = 58
 
 // Een punt op een cirkel; hoek 0 = bovenaan, met de klok mee.
 function punt(straal: number, fractie: number): [number, number] {
@@ -24,10 +26,14 @@ function segmentPad(start: number, eind: number): string {
   return `M ${xb0} ${yb0} A ${BUITEN} ${BUITEN} 0 ${groot} 1 ${xb1} ${yb1} L ${xi1} ${yi1} A ${BINNEN} ${BINNEN} 0 ${groot} 0 ${xi0} ${yi0} Z`
 }
 
-const swatch: CSSProperties = { display: 'inline-block', width: 12, height: 12, borderRadius: 3, flexShrink: 0 }
+// Kleurstipje in de legende. De kleur zelf komt altijd uit het segment (zelfde
+// data-object als het bedrag), dus enkel de vorm staat hier vast.
+const stip: CSSProperties = { display: 'inline-block', width: 10, height: 10, borderRadius: 3, flexShrink: 0 }
+const afkap: CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
 
 // Donutgrafiek van bedragen per (hoofd)categorie, met legende. De kleuren komen
-// uit hetzelfde data-object als de cijfers.
+// uit hetzelfde data-object als de cijfers. Deze component zet bewust géén eigen
+// kaart om zichzelf: ze staat altijd ín een <Kaart> van de pagina.
 export function Donut({
   items,
   middenLabel = 'uitgaven',
@@ -44,8 +50,15 @@ export function Donut({
   const enkel = segmenten.length === 1
 
   return (
-    <div>
-      <svg viewBox={`0 0 ${GROOTTE} ${GROOTTE}`} width={GROOTTE} height={GROOTTE} role="img" aria-label={t('{label} per categorie', { label: t(middenLabel) })}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <svg
+        viewBox={`0 0 ${GROOTTE} ${GROOTTE}`}
+        width={GROOTTE}
+        height={GROOTTE}
+        role="img"
+        aria-label={t('{label} per categorie', { label: t(middenLabel) })}
+        style={{ display: 'block', margin: '0 auto', maxWidth: '100%' }}
+      >
         {enkel ? (
           <circle
             cx={MIDDEN}
@@ -56,27 +69,44 @@ export function Donut({
             strokeWidth={BUITEN - BINNEN}
           />
         ) : (
-          segmenten.map((seg) => <path key={seg.naam} d={segmentPad(seg.start, seg.eind)} fill={seg.kleur} />)
+          segmenten.map((seg) => (
+            // Een haarlijntje in de kaartkleur scheidt de schijven zacht van elkaar.
+            <path key={seg.naam} d={segmentPad(seg.start, seg.eind)} fill={seg.kleur} stroke="var(--surface)" strokeWidth={1.5} />
+          ))
         )}
-        <text x={MIDDEN} y={MIDDEN - 4} textAnchor="middle" style={{ fontSize: 11, fill: 'var(--text-muted)' }}>
+        <text
+          x={MIDDEN}
+          y={MIDDEN - 5}
+          textAnchor="middle"
+          style={{ fontFamily: 'var(--font-body)', fontSize: 11, fill: 'var(--text-subtle)' }}
+        >
           {t(middenLabel)}
         </text>
-        <text x={MIDDEN} y={MIDDEN + 12} textAnchor="middle" style={{ fontSize: 14, fontWeight: 700, fill: 'var(--text)' }}>
+        <text
+          x={MIDDEN}
+          y={MIDDEN + 14}
+          textAnchor="middle"
+          style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 600, fill: 'var(--text)' }}
+        >
           {formatEuro(totaal)}
         </text>
       </svg>
 
       {toonLegende && (
-      <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0' }}>
-        {segmenten.map((seg) => (
-          <li key={seg.naam} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.15rem 0' }}>
-            <span style={{ ...swatch, background: seg.kleur }} />
-            <span style={{ flex: 1 }}>{seg.naam}</span>
-            <span style={{ color: 'var(--text-muted)' }}>{formatEuro(seg.bedrag)}</span>
-            <span style={{ color: 'var(--text-subtle)', width: 44, textAlign: 'right' }}>{Math.round(seg.fractie * 100)}%</span>
-          </li>
-        ))}
-      </ul>
+        <ul className="lijst">
+          {segmenten.map((seg) => (
+            <li key={seg.naam} className="rij">
+              <span style={{ ...stip, background: seg.kleur }} />
+              <span className="rij-midden">
+                <span className="rij-titel" style={afkap}>
+                  {seg.naam}
+                </span>
+                <span className="rij-meta">{Math.round(seg.fractie * 100)}%</span>
+              </span>
+              <Bedrag centen={seg.bedrag} />
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   )

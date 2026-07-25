@@ -1,18 +1,9 @@
 import { useEffect, useState } from 'react'
-import type { CSSProperties, FormEvent } from 'react'
+import type { FormEvent } from 'react'
 import type { Categorie, Rekening, TerugkerendePost } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { useT } from '../i18n'
-
-const veld: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  padding: '0.4rem',
-  marginTop: 2,
-  boxSizing: 'border-box',
-}
-const rij: CSSProperties = { marginBottom: '0.6rem' }
 
 // Formulier om een vaste (terugkerende) post aan te maken of te bewerken.
 export function TerugkerendePostFormulier({
@@ -78,70 +69,76 @@ export function TerugkerendePostFormulier({
   }
 
   return (
-    <form onSubmit={verzend} style={{ marginTop: '0.75rem' }}>
-      <div style={rij}>
-        <label htmlFor="vaste-omschrijving">{t('Vaste omschrijving')}</label>
-        <input id="vaste-omschrijving" style={veld} value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} />
+    <form onSubmit={verzend} className="stapel">
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="vaste-omschrijving">
+          {t('Vaste omschrijving')}
+        </label>
+        <input id="vaste-omschrijving" value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} />
       </div>
-      <div style={rij}>
-        <label htmlFor="vast-bedrag">{t('Vast bedrag (€)')}</label>
-        <input id="vast-bedrag" style={veld} inputMode="decimal" placeholder="0,00" value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
+
+      <div className="veldrij">
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="vast-bedrag">
+            {t('Vast bedrag (€)')}
+          </label>
+          <input id="vast-bedrag" inputMode="decimal" placeholder="0,00" value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
+        </div>
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="vaste-dag">
+            {t('Dag van de maand')}
+          </label>
+          <input id="vaste-dag" inputMode="numeric" value={dag} onChange={(e) => setDag(e.target.value)} />
+        </div>
       </div>
-      <div style={rij}>
-        <label htmlFor="vaste-rekening">{t('Vaste rekening')}</label>
-        <select id="vaste-rekening" style={veld} value={rekeningId} onChange={(e) => setRekeningId(e.target.value)}>
-          {rekeningen.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.naam}
-            </option>
-          ))}
-        </select>
+
+      <div className="veldrij">
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="vaste-rekening">
+            {t('Vaste rekening')}
+          </label>
+          <select id="vaste-rekening" value={rekeningId} onChange={(e) => setRekeningId(e.target.value)}>
+            {rekeningen.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.naam}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="vaste-categorie">
+            {t('Vaste categorie')}
+          </label>
+          <select id="vaste-categorie" value={categorieId} onChange={(e) => setCategorieId(e.target.value)}>
+            <option value="">{t('Geen categorie')}</option>
+            {categorieen.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.naam}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
-      <div style={rij}>
-        <label htmlFor="vaste-categorie">{t('Vaste categorie')}</label>
-        <select id="vaste-categorie" style={veld} value={categorieId} onChange={(e) => setCategorieId(e.target.value)}>
-          <option value="">{t('Geen categorie')}</option>
-          {categorieen.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.naam}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div style={rij}>
-        <label htmlFor="vaste-dag">{t('Dag van de maand')}</label>
-        <input id="vaste-dag" style={veld} inputMode="numeric" value={dag} onChange={(e) => setDag(e.target.value)} />
-      </div>
-      <div style={rij}>
-        <label style={{ marginRight: '1rem' }}>
+
+      <div className="veldrij" style={{ gap: 18 }}>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <input type="radio" name="vastsoort" checked={soort === 'uitgave'} onChange={() => setSoort('uitgave')} /> {t('Uitgave')}
         </label>
-        <label>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <input type="radio" name="vastsoort" checked={soort === 'inkomst'} onChange={() => setSoort('inkomst')} /> {t('Inkomst')}
         </label>
       </div>
-      <button
-        type="submit"
-        disabled={!geldig}
-        style={{
-          padding: '0.4rem 0.8rem',
-          borderRadius: 8,
-          border: '1px solid var(--border-strong)',
-          background: geldig ? 'var(--positive-soft)' : 'var(--surface-2)',
-          cursor: geldig ? 'pointer' : 'not-allowed',
-        }}
-      >
-        {bewerken ? t('Vaste post wijzigen') : t('Vaste post toevoegen')}
-      </button>
-      {bewerken && onAnnuleer && (
-        <button
-          type="button"
-          onClick={onAnnuleer}
-          style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
-        >
-          {t('Annuleer')}
+
+      <div className="knoprij">
+        <button type="submit" disabled={!geldig} className="knop knop-secundair">
+          {bewerken ? t('Vaste post wijzigen') : t('Vaste post toevoegen')}
         </button>
-      )}
+        {bewerken && onAnnuleer && (
+          <button type="button" className="knop knop-ghost" onClick={onAnnuleer}>
+            {t('Annuleer')}
+          </button>
+        )}
+      </div>
     </form>
   )
 }

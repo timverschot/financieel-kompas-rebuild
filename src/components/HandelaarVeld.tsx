@@ -4,12 +4,36 @@ import type { CSSProperties, KeyboardEvent } from 'react'
 const ZOEK_VANAF = 2
 const MAX = 6
 
-const veld: CSSProperties = {
-  display: 'block',
+// Het zwevende suggestielijstje: crème vlak met zachte rand en een schaduw,
+// want het zweeft boven de rest van het formulier.
+const suggestieLijst: CSSProperties = {
+  listStyle: 'none',
+  margin: '4px 0 0',
+  padding: 0,
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius)',
+  background: 'var(--surface)',
+  boxShadow: 'var(--shadow-sheet)',
+  overflow: 'hidden',
+  position: 'absolute',
   width: '100%',
-  padding: '0.4rem',
-  marginTop: 2,
-  boxSizing: 'border-box',
+  zIndex: 10,
+}
+
+function suggestieKnop(gemarkeerd: boolean): CSSProperties {
+  return {
+    display: 'block',
+    width: '100%',
+    textAlign: 'left',
+    fontFamily: 'inherit',
+    fontSize: 14,
+    color: 'var(--text)',
+    padding: '9px 12px',
+    border: 'none',
+    borderBottom: '1px solid var(--rij-lijn)',
+    background: gemarkeerd ? 'var(--accent-soft)' : 'transparent',
+    cursor: 'pointer',
+  }
 }
 
 // Invoerveld voor de handelaar/winkel, met suggesties uit eerder ingevoerde
@@ -73,7 +97,7 @@ export function HandelaarVeld({
     <div style={{ position: 'relative' }}>
       <input
         id={id}
-        style={veld}
+        style={{ display: 'block', width: '100%' }}
         autoComplete="off"
         value={waarde}
         onChange={(e) => {
@@ -86,21 +110,7 @@ export function HandelaarVeld({
         onKeyDown={opToets}
       />
       {suggesties.length > 0 && (
-        <ul
-          role="listbox"
-          style={{
-            listStyle: 'none',
-            margin: '2px 0 0',
-            padding: 0,
-            border: '1px solid var(--border-strong)',
-            borderRadius: 8,
-            background: 'white',
-            position: 'absolute',
-            width: '100%',
-            zIndex: 10,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-          }}
-        >
+        <ul role="listbox" style={suggestieLijst}>
           {suggesties.map((s, i) => (
             <li key={s} role="option" aria-selected={i === gemarkeerd}>
               <button
@@ -108,17 +118,7 @@ export function HandelaarVeld({
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => kies(s)}
                 onMouseEnter={() => zetHoog(i)}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '0.35rem 0.5rem',
-                  border: 'none',
-                  borderBottom: '1px solid var(--surface-2)',
-                  background: i === gemarkeerd ? 'var(--info-soft)' : 'white',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem',
-                }}
+                style={suggestieKnop(i === gemarkeerd)}
               >
                 {s}
               </button>

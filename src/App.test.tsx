@@ -23,10 +23,12 @@ beforeEach(async () => {
   ])
 })
 
-// Zoekt het bedrag binnen de Saldo-regel, zodat het niet verwart met andere
-// bedragen elders op het scherm (zoals het netto in het maandoverzicht).
+// Zoekt het bedrag binnen de Saldo-tegel, zodat het niet verwart met andere
+// bedragen elders op het scherm (zoals het netto in het maandoverzicht). De
+// tegel is gemarkeerd met data-saldo, zodat de test niet breekt wanneer de
+// vormgeving verandert.
 function saldoRegel(): HTMLElement {
-  return screen.getByText('Saldo').closest('p') as HTMLElement
+  return screen.getByText('Saldo').closest('[data-saldo]') as HTMLElement
 }
 
 // De app heeft aparte pagina's met een vaste navigatiebalk onderaan. Deze helper

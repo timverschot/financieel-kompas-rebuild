@@ -6,6 +6,14 @@ import { useT } from '../i18n'
 // (via getUserMedia, met de achtercamera). De camera wordt netjes gestopt zodra de
 // modaal sluit. Deze component wordt lui geladen, zodat de scanbibliotheek de
 // app-start niet belast.
+
+// LET OP: deze drie kleuren zijn bewust géén designtokens. Een camerabeeld leest
+// enkel goed op een bijna-zwarte achtergrond met witte tekst, in licht én donker
+// thema. Ze mogen dus niet met het thema meeveranderen.
+const SCHERM_ACHTERGROND = 'rgba(0, 0, 0, 0.88)'
+const VIDEO_ACHTERGROND = '#000000'
+const SCHERM_TEKST = '#ffffff'
+
 export function BarcodeScanner({
   onGevonden,
   onSluiten,
@@ -52,25 +60,40 @@ export function BarcodeScanner({
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.85)',
+        background: SCHERM_ACHTERGROND,
         zIndex: 2000,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        gap: 14,
+        padding: 20,
       }}
     >
-      <p style={{ color: '#fff', marginTop: 0 }}>{t('Richt de camera op de streepjescode')}</p>
-      <video ref={videoRef} style={{ width: '100%', maxWidth: 420, borderRadius: 12, background: '#000' }} muted playsInline />
-      {fout && <p style={{ color: 'var(--negative)', maxWidth: 420, textAlign: 'center' }}>{t('Camera niet beschikbaar: {fout}', { fout })}</p>}
-      <button
-        type="button"
-        onClick={onSluiten}
-        style={{ marginTop: '1rem', padding: '0.5rem 1.1rem', borderRadius: 8, border: 'none', background: '#fff', cursor: 'pointer' }}
-      >
-        {t('Sluiten')}
-      </button>
+      <p className="label-caps" style={{ color: SCHERM_TEKST, margin: 0 }}>
+        {t('Richt de camera op de streepjescode')}
+      </p>
+      <video
+        ref={videoRef}
+        style={{
+          width: '100%',
+          maxWidth: 420,
+          borderRadius: 'var(--radius-lg)',
+          background: VIDEO_ACHTERGROND,
+        }}
+        muted
+        playsInline
+      />
+      {fout && (
+        <p style={{ color: 'var(--negative)', maxWidth: 420, textAlign: 'center', margin: 0 }}>
+          {t('Camera niet beschikbaar: {fout}', { fout })}
+        </p>
+      )}
+      <div className="knoprij">
+        <button type="button" className="knop knop-primair" onClick={onSluiten}>
+          {t('Sluiten')}
+        </button>
+      </div>
     </div>
   )
 }

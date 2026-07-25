@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import type { CSSProperties } from 'react'
 import type { Categorie, Dossier, GedeeldeKost, Kind, Kindrekening, Kindrekeningpost, Verrekening } from '../data/schema'
 import { DossierFormulier } from './DossierFormulier'
 import { GedeeldeKostFormulier } from './GedeeldeKostFormulier'
@@ -10,17 +9,8 @@ import { isOpenKost, kostenVoorAfrekening, type AfrekeningFilter } from '../util
 import { verrekenTekst, afrekeningSamenvatting } from '../utils/afrekeningTekst'
 import { exporteerAfrekeningPDF } from '../utils/afrekeningPdf'
 import { labelVanCategorie } from '../data/categorieen/resolve'
-import { formatEuro } from '../utils/format'
+import { Bedrag, Kaart, Leeg, PaginaKop } from '../ui/basis'
 import { useT } from '../i18n'
-
-const veld: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  padding: '0.4rem',
-  marginTop: 2,
-  boxSizing: 'border-box',
-}
-const blok: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem', marginBottom: '0.75rem' }
 
 // De volledige Dossiers-sectie: kies/maak/verwijder een dossier, stel de verdeling
 // per categorie in, beheer de open kosten, en genereer niet-blokkerende
@@ -146,202 +136,203 @@ export function DossierSectie({
   }
 
   return (
-    <section>
-      <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{t('Dossiers (gedeelde kosten)')}</h2>
-      {dossiers.length === 0 && <p style={{ color: 'var(--text-muted)' }}>{t('Nog geen dossiers. Maak er hieronder een aan.')}</p>}
+    <>
+      <PaginaKop titel={t('Dossiers (gedeelde kosten)')} />
 
-      {dossiers.length > 0 && (
-        <div style={{ marginBottom: '0.5rem' }}>
-          <label htmlFor="dossierkeuze">{t('Gekozen dossier')}</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <select id="dossierkeuze" style={{ ...veld, flex: 1 }} value={dossierId} onChange={(e) => setGeselecteerd(e.target.value)}>
-              {dossiers.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.naam} {t('(jij {p}%)', { p: d.aandeelJij })}
-                </option>
-              ))}
-            </select>
-            {dossier && (
-              <button
-                aria-label={t('Verwijder dossier {naam}', { naam: dossier.naam })}
-                onClick={() => onDossierVerwijderen(dossier.id)}
-                style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.2rem' }}
-              >
-                ×
-              </button>
-            )}
+      <Kaart>
+        {dossiers.length === 0 && <Leeg>{t('Nog geen dossiers. Maak er hieronder een aan.')}</Leeg>}
+
+        {dossiers.length > 0 && (
+          <div className="veldgroep">
+            <label className="label-caps" htmlFor="dossierkeuze">{t('Gekozen dossier')}</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <select id="dossierkeuze" style={{ flex: 1, minWidth: 0 }} value={dossierId} onChange={(e) => setGeselecteerd(e.target.value)}>
+                {dossiers.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.naam} {t('(jij {p}%)', { p: d.aandeelJij })}
+                  </option>
+                ))}
+              </select>
+              {dossier && (
+                <button
+                  className="knop knop-kaal knop-gevaar"
+                  aria-label={t('Verwijder dossier {naam}', { naam: dossier.naam })}
+                  onClick={() => onDossierVerwijderen(dossier.id)}
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <DossierFormulier onOpslaan={onDossierOpslaan} />
+        <DossierFormulier onOpslaan={onDossierOpslaan} />
+      </Kaart>
 
       {dossier && (
-        <div style={{ marginTop: '1rem' }}>
+        <div className="stapel">
           {/* Verdeling per categorie */}
-          <div style={blok}>
-            <h3 style={{ fontSize: '0.9rem', margin: '0 0 0.15rem' }}>{t('Verdeling per categorie')}</h3>
-            <p style={{ color: 'var(--text-muted)', margin: '0 0 0.4rem', fontSize: '0.85rem' }}>
-              {t('Standaard draag jij {p}%. Stel hier per categorie een afwijkend percentage in.', { p: dossier.aandeelJij })}
-            </p>
+          <Kaart
+            titel={t('Verdeling per categorie')}
+            bijschrift={t('Standaard draag jij {p}%. Stel hier per categorie een afwijkend percentage in.', { p: dossier.aandeelJij })}
+          >
             {dossier.categorieAandelen && Object.keys(dossier.categorieAandelen).length > 0 && (
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 0.4rem' }}>
+              <ul className="lijst">
                 {Object.entries(dossier.categorieAandelen).map(([catId, pct]) => (
-                  <li key={catId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.15rem 0' }}>
-                    <span>{labelVanCategorie(catId, categorieen) ?? catId} · {t('jij {p}%', { p: pct })}</span>
-                    <button
-                      aria-label={t('Verwijder verdeling {naam}', { naam: labelVanCategorie(catId, categorieen) ?? catId })}
-                      onClick={() => verwijderSplit(catId)}
-                      style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}
-                    >
-                      ×
-                    </button>
+                  <li key={catId} className="rij">
+                    <span className="rij-midden">
+                      <span className="rij-titel">{labelVanCategorie(catId, categorieen) ?? catId}</span>
+                      <span className="rij-meta">{t('jij {p}%', { p: pct })}</span>
+                    </span>
+                    <span className="rij-acties">
+                      <button
+                        className="knop knop-kaal knop-gevaar"
+                        aria-label={t('Verwijder verdeling {naam}', { naam: labelVanCategorie(catId, categorieen) ?? catId })}
+                        onClick={() => verwijderSplit(catId)}
+                      >
+                        ×
+                      </button>
+                    </span>
                   </li>
                 ))}
               </ul>
             )}
-            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-start' }}>
-              <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <CategorieKiezer waarde={splitCat || undefined} onKies={(id) => setSplitCat(id ?? '')} gebruikerCategorieen={categorieen} />
               </div>
-              <input aria-label={t('Percentage jij')} style={{ width: 70, padding: '0.4rem', boxSizing: 'border-box' }} inputMode="decimal" placeholder="%" value={splitPct} onChange={(e) => setSplitPct(e.target.value)} />
-              <button type="button" onClick={voegSplitToe} style={{ padding: '0.4rem 0.7rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--info-soft)', cursor: 'pointer' }}>
+              <input aria-label={t('Percentage jij')} style={{ width: 76 }} inputMode="decimal" placeholder="%" value={splitPct} onChange={(e) => setSplitPct(e.target.value)} />
+              <button type="button" className="knop knop-secundair" onClick={voegSplitToe}>
                 {t('Toevoegen')}
               </button>
             </div>
-          </div>
+          </Kaart>
 
           {/* Open kosten */}
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {openKosten.map((k) => (
-              <li
-                key={k.id}
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: '1px solid var(--border)' }}
-              >
-                <span>
-                  {k.omschrijving}
-                  <span style={{ color: 'var(--text-subtle)', fontSize: '0.85rem' }}>
-                    {' '}
-                    · {t('betaald door {wie}', { wie: k.betaaldDoor === 'jij' ? t('jou') : t('partner') })}
-                    {k.categorieId && ` · ${labelVanCategorie(k.categorieId, categorieen) ?? ''}`}
-                    {k.kostenType === 'buitengewoon' && ` · ${t('buitengewoon')}`}
-                    {k.kindIds && k.kindIds.length > 0 && ` · ${t('voor {namen}', { namen: kindNamen(k.kindIds) })}`}
-                    {typeof k.aandeelJijOverride === 'number' && ` · ${t('jij {p}%', { p: k.aandeelJijOverride })}`}
-                  </span>
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <span>{formatEuro(k.bedrag)}</span>
-                  {k.bonnetje && (
-                    <a href={k.bonnetje} target="_blank" rel="noreferrer" style={{ color: 'var(--info)', fontSize: '0.85rem' }}>
-                      {t('bon')}
-                    </a>
-                  )}
-                  <button aria-label={t('Bewerk kost {naam}', { naam: k.omschrijving })} onClick={() => setBewerkKost(k)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>
-                    ✎
-                  </button>
-                  <button aria-label={t('Verwijder kost {naam}', { naam: k.omschrijving })} onClick={() => onKostVerwijderen(k.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>
-                    ×
-                  </button>
-                </span>
-              </li>
-            ))}
-          </ul>
+          <Kaart>
+            {openKosten.length > 0 && (
+              <ul className="lijst">
+                {openKosten.map((k) => (
+                  <li key={k.id} className="rij">
+                    <span className="rij-midden">
+                      <span className="rij-titel">{k.omschrijving}</span>
+                      <span className="rij-meta">
+                        {t('betaald door {wie}', { wie: k.betaaldDoor === 'jij' ? t('jou') : t('partner') })}
+                        {k.categorieId && ` · ${labelVanCategorie(k.categorieId, categorieen) ?? ''}`}
+                        {k.kostenType === 'buitengewoon' && ` · ${t('buitengewoon')}`}
+                        {k.kindIds && k.kindIds.length > 0 && ` · ${t('voor {namen}', { namen: kindNamen(k.kindIds) })}`}
+                        {typeof k.aandeelJijOverride === 'number' && ` · ${t('jij {p}%', { p: k.aandeelJijOverride })}`}
+                      </span>
+                    </span>
+                    <span className="rij-acties">
+                      <Bedrag centen={k.bedrag} />
+                      {k.bonnetje && (
+                        <a href={k.bonnetje} target="_blank" rel="noreferrer">
+                          {t('bon')}
+                        </a>
+                      )}
+                      <button className="knop knop-kaal" aria-label={t('Bewerk kost {naam}', { naam: k.omschrijving })} onClick={() => setBewerkKost(k)}>
+                        ✎
+                      </button>
+                      <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder kost {naam}', { naam: k.omschrijving })} onClick={() => onKostVerwijderen(k.id)}>
+                        ×
+                      </button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
 
-          <p style={{ fontWeight: 'bold', marginTop: '0.75rem' }}>
-            {t('Openstaand')}: {verrekenTekst(t, openSaldo)}
-          </p>
+            <div className="stat">
+              <span className="label-caps">{t('Openstaand')}</span>
+              <span className="stat-waarde" style={{ fontFamily: 'var(--font-body)' }}>
+                {verrekenTekst(t, openSaldo)}
+              </span>
+            </div>
 
-          <GedeeldeKostFormulier
-            dossierId={dossier.id}
-            kinderen={kinderen}
-            categorieen={categorieen}
-            onOpslaan={kostOpslaan}
-            onAnnuleer={() => setBewerkKost(null)}
-            bewerken={bewerkKost}
-          />
+            <hr className="scheiding" style={{ margin: 0 }} />
+
+            <GedeeldeKostFormulier
+              dossierId={dossier.id}
+              kinderen={kinderen}
+              categorieen={categorieen}
+              onOpslaan={kostOpslaan}
+              onAnnuleer={() => setBewerkKost(null)}
+              bewerken={bewerkKost}
+            />
+          </Kaart>
 
           {/* Nieuwe afrekening genereren */}
-          <div style={{ ...blok, marginTop: '1rem' }}>
-            <h3 style={{ fontSize: '0.9rem', margin: '0 0 0.15rem' }}>{t('Nieuwe afrekening')}</h3>
-            <p style={{ color: 'var(--text-muted)', margin: '0 0 0.4rem', fontSize: '0.85rem' }}>
-              {t('Kies een periode en (optioneel) kinderen. Dit blokkeert niets — je kan meerdere afrekeningen maken.')}
-            </p>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <label style={{ flex: 1, minWidth: 120 }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Periode van')}</span>
-                <input type="date" style={veld} value={afrVan} onChange={(e) => setAfrVan(e.target.value)} />
+          <Kaart
+            titel={t('Nieuwe afrekening')}
+            bijschrift={t('Kies een periode en (optioneel) kinderen. Dit blokkeert niets — je kan meerdere afrekeningen maken.')}
+          >
+            <div className="veldrij">
+              <label className="veldgroep">
+                <span className="label-caps">{t('Periode van')}</span>
+                <input type="date" value={afrVan} onChange={(e) => setAfrVan(e.target.value)} />
               </label>
-              <label style={{ flex: 1, minWidth: 120 }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Periode tot')}</span>
-                <input type="date" style={veld} value={afrTot} onChange={(e) => setAfrTot(e.target.value)} />
+              <label className="veldgroep">
+                <span className="label-caps">{t('Periode tot')}</span>
+                <input type="date" value={afrTot} onChange={(e) => setAfrTot(e.target.value)} />
               </label>
             </div>
             {kinderen.length > 0 && (
-              <div style={{ marginTop: '0.4rem' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Voor welke kinderen? (leeg = allemaal)')}</span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: 2 }}>
+              <div className="veldgroep">
+                <span className="label-caps">{t('Voor welke kinderen? (leeg = allemaal)')}</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                   {kinderen.map((k) => (
-                    <label key={k.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <label key={k.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                       <input type="checkbox" checked={afrKindIds.includes(k.id)} onChange={() => wisselAfrKind(k.id)} /> {k.naam}
                     </label>
                   ))}
                 </div>
               </div>
             )}
-            <p style={{ margin: '0.5rem 0', fontSize: '0.9rem' }}>
+            <p className="rij-meta" style={{ margin: 0 }}>
               {t('In deze selectie: {n} kost(en), {saldo}', { n: selectie.length, saldo: verrekenTekst(t, selectieSaldo) })}
             </p>
-            <button
-              type="button"
-              onClick={genereerNu}
-              disabled={selectie.length === 0}
-              style={{
-                padding: '0.4rem 0.8rem',
-                borderRadius: 8,
-                border: '1px solid var(--border-strong)',
-                background: selectie.length === 0 ? 'var(--surface-2)' : 'var(--accent-soft)',
-                cursor: selectie.length === 0 ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {t('Genereer afrekening')}
-            </button>
-          </div>
+            <div className="knoprij">
+              <button type="button" className="knop knop-secundair" onClick={genereerNu} disabled={selectie.length === 0}>
+                {t('Genereer afrekening')}
+              </button>
+            </div>
+          </Kaart>
 
           {/* Afrekeningen */}
           {afrekeningen.length > 0 && (
-            <div style={{ marginTop: '1rem' }}>
-              <h3 style={{ fontSize: '0.9rem', margin: '0 0 0.25rem' }}>{t('Afrekeningen')}</h3>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            <Kaart titel={t('Afrekeningen')}>
+              <ul className="lijst">
                 {afrekeningen.map((v) => {
                   const periode = v.periodeVan || v.periodeTot ? `${v.periodeVan ?? '…'} – ${v.periodeTot ?? '…'}` : t('alle periodes')
                   const wie = v.kindIds && v.kindIds.length > 0 ? kindNamen(v.kindIds) : t('alle kinderen')
                   return (
-                    <li key={v.id} style={{ padding: '0.4rem 0', borderBottom: '1px solid var(--border)', opacity: v.overgemaakt ? 0.7 : 1 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>{verrekenTekst(t, v.bedrag)}</span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                          <label style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                            <input type="checkbox" checked={!!v.overgemaakt} onChange={(e) => onMarkeerOvergemaakt(v, e.target.checked)} /> {t('Overgemaakt')}
-                          </label>
-                          <button type="button" onClick={() => kopieerSamenvatting(v)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer', fontSize: '0.85rem' }}>
-                            {gekopieerd === v.id ? t('Gekopieerd ✓') : t('Kopieer')}
-                          </button>
-                          <button type="button" onClick={() => exportPdf(v)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer', fontSize: '0.85rem' }}>
-                            PDF
-                          </button>
-                          <button aria-label={t('Verwijder afrekening {datum}', { datum: v.datum })} onClick={() => onVerwijderAfrekening(v.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>
-                            ×
-                          </button>
+                    <li key={v.id} className="rij" style={{ flexWrap: 'wrap', opacity: v.overgemaakt ? 0.7 : 1 }}>
+                      <span className="rij-midden">
+                        <span className="rij-titel">{verrekenTekst(t, v.bedrag)}</span>
+                        <span className="rij-meta">
+                          {v.datum} · {periode} · {wie}
                         </span>
-                      </div>
-                      <div style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>
-                        {v.datum} · {periode} · {wie}
-                      </div>
+                      </span>
+                      <span className="rij-acties">
+                        <label className="rij-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <input type="checkbox" checked={!!v.overgemaakt} onChange={(e) => onMarkeerOvergemaakt(v, e.target.checked)} /> {t('Overgemaakt')}
+                        </label>
+                        <button type="button" className="knop knop-ghost knop-klein" onClick={() => kopieerSamenvatting(v)}>
+                          {gekopieerd === v.id ? t('Gekopieerd ✓') : t('Kopieer')}
+                        </button>
+                        <button type="button" className="knop knop-ghost knop-klein" onClick={() => exportPdf(v)}>
+                          PDF
+                        </button>
+                        <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder afrekening {datum}', { datum: v.datum })} onClick={() => onVerwijderAfrekening(v.id)}>
+                          ×
+                        </button>
+                      </span>
                     </li>
                   )
                 })}
               </ul>
-            </div>
+            </Kaart>
           )}
 
           {/* Kindrekening: de gezamenlijke pot als tweede manier van afrekenen. */}
@@ -358,6 +349,6 @@ export function DossierSectie({
           />
         </div>
       )}
-    </section>
+    </>
   )
 }

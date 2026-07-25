@@ -16,6 +16,7 @@ import {
 } from '../utils/analyse'
 import { Donut } from './Donut'
 import { formatEuro } from '../utils/format'
+import { Kaart, PaginaKop, Leeg, Bedrag, Stat, Balk } from '../ui/basis'
 import { useT } from '../i18n'
 
 // Palet voor lijstjes zonder eigen kleur (producten, winkels). Bewust vaste,
@@ -28,29 +29,26 @@ function kleuren(posten: AnalysePost[]): Gekleurd[] {
   return posten.map((p, i) => ({ ...p, kleur: PALET[i % PALET.length] }))
 }
 
-const kaart: CSSProperties = {
-  background: 'var(--surface)',
-  border: '1px solid var(--border)',
-  borderRadius: 16,
-  padding: '1rem',
-  marginBottom: '1rem',
-  boxShadow: 'var(--shadow)',
-}
-const knopKlein: CSSProperties = {
-  padding: '0.3rem 0.7rem',
-  borderRadius: 8,
-  border: '1px solid var(--border-strong)',
-  background: 'var(--surface-2)',
-  color: 'var(--text)',
+// Kleurstipje links in een rij: enkel de vorm ligt vast, de kleur komt uit de
+// data zelf.
+const stip: CSSProperties = { width: 10, height: 10, borderRadius: 3, flexShrink: 0 }
+const afkap: CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+// Een hele lijstrij die klikbaar is: knop zonder eigen knop-look, met de
+// rij-opmaak eromheen.
+const rijKnop: CSSProperties = {
+  width: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'stretch',
+  gap: 8,
+  padding: '12px 0',
+  background: 'none',
+  border: 'none',
+  borderBottom: '1px solid var(--rij-lijn)',
+  textAlign: 'left',
   cursor: 'pointer',
-  fontSize: '0.8rem',
-}
-const knopActief: CSSProperties = {
-  ...knopKlein,
-  background: 'var(--accent-strong)',
-  borderColor: 'var(--accent-strong)',
-  color: 'var(--on-accent)',
-  fontWeight: 600,
+  color: 'var(--text)',
+  font: 'inherit',
 }
 
 function maandStr(d: Date): string {
@@ -75,30 +73,33 @@ function DonutKaart({ titel, subtitel, posten, richting }: { titel: string; subt
   const legende = toonAlles ? posten : top10
 
   return (
-    <div style={kaart}>
-      <h3 style={{ margin: '0 0 0.15rem', fontSize: '0.95rem' }}>{titel}</h3>
-      {subtitel && <p style={{ color: 'var(--text-subtle)', fontSize: '0.75rem', margin: '0 0 0.6rem' }}>{subtitel}</p>}
+    <Kaart titel={titel} bijschrift={subtitel}>
       <Donut items={ring} toonLegende={false} middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'} />
-      <ul style={{ listStyle: 'none', padding: 0, margin: '0.6rem 0 0', maxHeight: toonAlles ? 260 : undefined, overflowY: toonAlles ? 'auto' : undefined }}>
+      <ul className="lijst" style={{ maxHeight: toonAlles ? 260 : undefined, overflowY: toonAlles ? 'auto' : undefined }}>
         {legende.map((p) => (
-          <li key={p.naam} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.15rem 0' }}>
-            <span style={{ width: 10, height: 10, borderRadius: 3, background: p.kleur, flexShrink: 0 }} />
-            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.85rem' }}>{p.naam}</span>
-            <span style={{ color: 'var(--text-subtle)', fontSize: '0.8rem', width: 40, textAlign: 'right' }}>{totaal > 0 ? Math.round((p.bedrag / totaal) * 100) : 0}%</span>
-            <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{formatEuro(p.bedrag)}</span>
+          <li key={p.naam} className="rij">
+            <span style={{ ...stip, background: p.kleur }} />
+            <span className="rij-midden">
+              <span className="rij-titel" style={afkap}>
+                {p.naam}
+              </span>
+              <span className="rij-meta">{totaal > 0 ? Math.round((p.bedrag / totaal) * 100) : 0}%</span>
+            </span>
+            <Bedrag centen={p.bedrag} />
           </li>
         ))}
       </ul>
       {rest.length > 0 && (
-        <button onClick={() => setToonAlles((s) => !s)} style={{ ...knopKlein, marginTop: '0.5rem', background: 'none', border: 'none', color: 'var(--accent-strong)', padding: '0.2rem 0' }}>
-          {toonAlles ? t('Toon minder') : t('Toon alle {n} — incl. {m} overige', { n: posten.length, m: rest.length })}
-        </button>
+        <div className="knoprij">
+          <button className="knop knop-ghost knop-klein" onClick={() => setToonAlles((s) => !s)}>
+            {toonAlles ? t('Toon minder') : t('Toon alle {n} — incl. {m} overige', { n: posten.length, m: rest.length })}
+          </button>
+        </div>
       )}
-      <div style={{ marginTop: '0.6rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', fontWeight: 600, fontSize: '0.9rem' }}>
-        <span style={{ color: 'var(--text-muted)' }}>{t('Totaal')}</span>
-        <span>{formatEuro(totaal)}</span>
+      <div className="stat-rij" style={{ paddingTop: 12, borderTop: '1px solid var(--divider)' }}>
+        <Stat label={t('Totaal')}>{formatEuro(totaal)}</Stat>
       </div>
-    </div>
+    </Kaart>
   )
 }
 
@@ -196,32 +197,52 @@ export function AnalyseSectie({
   const periodeLabel = perioden.find(([k]) => k === keuze)?.[1] ?? ''
 
   return (
-    <section>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.6rem' }}>
-        {drill && (
-          <button onClick={() => setDrill(null)} style={{ ...knopKlein, background: 'none', border: 'none', color: 'var(--accent-strong)', padding: 0 }}>
-            ‹ {t('Terug')}
-          </button>
-        )}
-        <h2 style={{ fontSize: '1rem', margin: 0 }}>{drill ? drill.naam : t('Analyse')}</h2>
-      </div>
+    <section className="stapel">
+      <PaginaKop
+        titel={drill ? drill.naam : t('Analyse')}
+        actie={
+          drill ? (
+            <button className="knop knop-secundair knop-klein" onClick={() => setDrill(null)}>
+              ‹ {t('Terug')}
+            </button>
+          ) : undefined
+        }
+      />
 
       {/* Richting: uitgaven of inkomsten */}
-      <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.5rem' }}>
-        <button onClick={() => { setRichting('uitgave'); setDrill(null) }} style={richting === 'uitgave' ? knopActief : knopKlein}>{t('Uitgaven')}</button>
-        <button onClick={() => { setRichting('inkomst'); setDrill(null) }} style={richting === 'inkomst' ? knopActief : knopKlein}>{t('Inkomsten')}</button>
+      <div className="knoprij" style={{ gap: 8 }}>
+        <button
+          className={richting === 'uitgave' ? 'chip chip-actief' : 'chip'}
+          onClick={() => {
+            setRichting('uitgave')
+            setDrill(null)
+          }}
+        >
+          {t('Uitgaven')}
+        </button>
+        <button
+          className={richting === 'inkomst' ? 'chip chip-actief' : 'chip'}
+          onClick={() => {
+            setRichting('inkomst')
+            setDrill(null)
+          }}
+        >
+          {t('Inkomsten')}
+        </button>
       </div>
 
       {/* Periode */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center', marginBottom: '1rem' }}>
+      <div className="knoprij" style={{ gap: 8 }}>
         {perioden.map(([k, label]) => (
-          <button key={k} onClick={() => setKeuze(k)} style={keuze === k ? knopActief : knopKlein}>{label}</button>
+          <button key={k} className={keuze === k ? 'chip chip-actief' : 'chip'} onClick={() => setKeuze(k)}>
+            {label}
+          </button>
         ))}
         {keuze === 'aangepast' && (
-          <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <input type="date" aria-label={t('Periode van')} value={van} onChange={(e) => setVan(e.target.value)} style={{ fontSize: '0.8rem', padding: '0.3rem' }} />
-            <span style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>{t('t/m')}</span>
-            <input type="date" aria-label={t('Periode tot')} value={tot} onChange={(e) => setTot(e.target.value)} style={{ fontSize: '0.8rem', padding: '0.3rem' }} />
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <input type="date" aria-label={t('Periode van')} value={van} onChange={(e) => setVan(e.target.value)} style={{ fontSize: 13, padding: '8px 10px' }} />
+            <span className="rij-meta">{t('t/m')}</span>
+            <input type="date" aria-label={t('Periode tot')} value={tot} onChange={(e) => setTot(e.target.value)} style={{ fontSize: 13, padding: '8px 10px' }} />
           </span>
         )}
       </div>
@@ -229,50 +250,54 @@ export function AnalyseSectie({
       {!drill && (
         <>
           {/* Verdeling per hoofdcategorie + ranglijst */}
-          <div style={kaart}>
-            <h3 style={{ margin: '0 0 0.15rem', fontSize: '0.95rem' }}>{richting === 'uitgave' ? t('Verdeling uitgaven') : t('Verdeling inkomsten')}</h3>
-            <p style={{ color: 'var(--text-subtle)', fontSize: '0.75rem', margin: '0 0 0.6rem' }}>{t('Per hoofdcategorie')}</p>
+          <Kaart
+            titel={richting === 'uitgave' ? t('Verdeling uitgaven') : t('Verdeling inkomsten')}
+            bijschrift={t('Per hoofdcategorie')}
+          >
             {byOv.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '1.5rem 0' }}>{leegTekst}</p>
+              <Leeg>{leegTekst}</Leeg>
             ) : (
               <>
                 <Donut items={donutInvoer} toonLegende={false} middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'} />
-                <p style={{ color: 'var(--text-subtle)', fontSize: '0.75rem', margin: '0.6rem 0 0.4rem' }}>{t('Ranglijst')} — {t('klik voor detail')}</p>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {byOv.map((g) => {
+                <p className="kaart-bijschrift" style={{ margin: 0 }}>
+                  {t('Ranglijst')} — {t('klik voor detail')}
+                </p>
+                <ul className="lijst">
+                  {byOv.map((g, i) => {
                     const fractie = totaal > 0 ? g.bedrag / totaal : 0
                     return (
                       <li key={g.sleutel}>
                         <button
                           onClick={() => setDrill({ sleutel: g.sleutel, naam: g.naam })}
-                          style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '0.35rem 0', color: 'var(--text)' }}
+                          style={{ ...rijKnop, borderBottom: i === byOv.length - 1 ? 'none' : rijKnop.borderBottom }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
-                              <span style={{ width: 10, height: 10, borderRadius: 3, background: g.kleur ?? OVERIGE_KLEUR, flexShrink: 0 }} />
-                              <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.naam}</span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <span style={{ ...stip, background: g.kleur ?? OVERIGE_KLEUR }} />
+                            <span className="rij-midden">
+                              <span className="rij-titel" style={afkap}>
+                                {g.naam}
+                              </span>
+                              <span className="rij-meta">{Math.round(fractie * 100)}%</span>
                             </span>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                              <span style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>{Math.round(fractie * 100)}%</span>
-                              <span style={{ fontWeight: 600 }}>{formatEuro(g.bedrag)}</span>
-                              <span style={{ color: 'var(--text-subtle)' }}>›</span>
-                            </span>
-                          </div>
-                          <div style={{ height: 5, background: 'var(--surface-3)', borderRadius: 3, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${fractie * 100}%`, background: g.kleur ?? OVERIGE_KLEUR }} />
-                          </div>
+                            <Bedrag centen={g.bedrag} />
+                            <span className="rij-meta">›</span>
+                          </span>
+                          {/* Balkje in de knop: bewust de kale balk-klassen, zodat we geen
+                              tweede rol/naam binnen de knop introduceren. */}
+                          <span className="balk">
+                            <span className="balk-vulling" style={{ display: 'block', width: `${fractie * 100}%`, background: g.kleur ?? OVERIGE_KLEUR }} />
+                          </span>
                         </button>
                       </li>
                     )
                   })}
                 </ul>
-                <div style={{ marginTop: '0.6rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', fontWeight: 600, fontSize: '0.9rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>{t('Totaal')}</span>
-                  <span>{formatEuro(totaal)}</span>
+                <div className="stat-rij" style={{ paddingTop: 12, borderTop: '1px solid var(--divider)' }}>
+                  <Stat label={t('Totaal')}>{formatEuro(totaal)}</Stat>
                 </div>
               </>
             )}
-          </div>
+          </Kaart>
 
           {byItem.length > 0 && (
             <DonutKaart
@@ -301,67 +326,82 @@ export function AnalyseSectie({
 
       {drill && (
         <>
-          <div style={{ ...kaart, display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{drill.naam}</div>
-              <div style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>{t('{n} transacties in de periode', { n: drillTxs.length })}</div>
+          <Kaart>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span className="rij-midden">
+                <span className="rij-titel" style={{ fontSize: 17 }}>
+                  {drill.naam}
+                </span>
+                <span className="rij-meta">{t('{n} transacties in de periode', { n: drillTxs.length })}</span>
+              </span>
+              <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
+                <Bedrag centen={drillTotaal} groot />
+                {totaal > 0 && (
+                  <span className="rij-meta">
+                    {Math.round((drillTotaal / totaal) * 100)}% {t('van het totaal')}
+                  </span>
+                )}
+              </span>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontWeight: 700, fontSize: '1.15rem' }}>{formatEuro(drillTotaal)}</div>
-              {totaal > 0 && <div style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>{Math.round((drillTotaal / totaal) * 100)}% {t('van het totaal')}</div>}
-            </div>
-          </div>
+          </Kaart>
 
           {drillSub.length > 0 && (
-            <div style={kaart}>
-              <h3 style={{ margin: '0 0 0.6rem', fontSize: '0.95rem' }}>{t('Per subcategorie')}</h3>
-              <Donut items={drillSub.map((p) => ({ naam: p.naam, bedrag: p.bedrag, kleur: p.kleur }))} toonLegende={false} middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'} />
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0.6rem 0 0' }}>
+            <Kaart titel={t('Per subcategorie')}>
+              <Donut
+                items={drillSub.map((p) => ({ naam: p.naam, bedrag: p.bedrag, kleur: p.kleur }))}
+                toonLegende={false}
+                middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'}
+              />
+              <ul className="lijst">
                 {drillSub.map((p) => {
                   const fractie = drillTotaal > 0 ? p.bedrag / drillTotaal : 0
                   return (
-                    <li key={p.naam} style={{ padding: '0.25rem 0' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
-                          <span style={{ width: 10, height: 10, borderRadius: 3, background: p.kleur, flexShrink: 0 }} />
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.naam}</span>
+                    <li key={p.naam} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ ...stip, background: p.kleur }} />
+                        <span className="rij-midden">
+                          <span className="rij-titel" style={afkap}>
+                            {p.naam}
+                          </span>
+                          <span className="rij-meta">{Math.round(fractie * 100)}%</span>
                         </span>
-                        <span style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-                          <span style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>{Math.round(fractie * 100)}%</span>
-                          <span style={{ fontWeight: 600 }}>{formatEuro(p.bedrag)}</span>
-                        </span>
-                      </div>
-                      <div style={{ height: 5, background: 'var(--surface-3)', borderRadius: 3, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${fractie * 100}%`, background: p.kleur }} />
-                      </div>
+                        <Bedrag centen={p.bedrag} />
+                      </span>
+                      <Balk label={p.naam} fractie={fractie} kleur={p.kleur} />
                     </li>
                   )
                 })}
               </ul>
-            </div>
+            </Kaart>
           )}
 
-          <div style={kaart}>
-            <h3 style={{ margin: '0 0 0.6rem', fontSize: '0.95rem' }}>{t('Alle transacties')}</h3>
+          <Kaart titel={t('Alle transacties')}>
             {drillTxs.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)' }}>{leegTekst}</p>
+              <Leeg>{leegTekst}</Leeg>
             ) : (
-              <div>
+              <ul className="lijst">
                 {drillTxs.map((d, i) => (
-                  <div key={d.transactie.id || i} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.4rem 0', borderTop: i === 0 ? 'none' : '1px solid var(--border)' }}>
-                    <span style={{ color: 'var(--text-subtle)', fontSize: '0.75rem', width: 52, flexShrink: 0 }}>{datumKort(d.transactie.datum)}</span>
-                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {d.transactie.omschrijving || t('Zonder omschrijving')}
-                      {d.transactie.regels && d.transactie.regels.length > 0 && (
-                        <span style={{ color: 'var(--text-subtle)', fontSize: '0.75rem' }}> · {t('Kassaticket gesplitst')}</span>
-                      )}
+                  <li key={d.transactie.id || i} className="rij">
+                    <span className="rij-meta" style={{ width: 52, flexShrink: 0 }}>
+                      {datumKort(d.transactie.datum)}
                     </span>
-                    <span style={{ fontWeight: 700, color: richting === 'uitgave' ? 'var(--negative)' : 'var(--positive)', flexShrink: 0 }}>{richting === 'uitgave' ? '−' : '+'}{formatEuro(d.bedrag)}</span>
-                  </div>
+                    <span className="rij-midden">
+                      <span className="rij-titel" style={afkap}>
+                        {d.transactie.omschrijving || t('Zonder omschrijving')}
+                        {d.transactie.regels && d.transactie.regels.length > 0 && (
+                          <span className="rij-meta"> · {t('Kassaticket gesplitst')}</span>
+                        )}
+                      </span>
+                    </span>
+                    <span className={richting === 'uitgave' ? 'bedrag bedrag-negatief' : 'bedrag bedrag-positief'}>
+                      {richting === 'uitgave' ? '−' : '+'}
+                      {formatEuro(d.bedrag)}
+                    </span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
-          </div>
+          </Kaart>
         </>
       )}
     </section>

@@ -7,14 +7,15 @@ function maandKort(maand: string): string {
 }
 
 // Eenvoudige staafgrafiek van de uitgaven per maand. De laatste (huidige) maand
-// krijgt een accentkleur.
+// krijgt de amberkleur, de rest een zachtere tint. Deze component zet bewust geen
+// eigen kaart om zichzelf: ze staat altijd ín een <Kaart> van de pagina.
 export function StaafGrafiek({ data }: { data: MaandBedrag[] }) {
   if (data.length === 0) return null
   const max = Math.max(...data.map((d) => d.bedrag), 1)
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.4rem', height: 110 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 120 }}>
         {data.map((d, i) => {
           const hoogte = Math.round((d.bedrag / max) * 100)
           const laatste = i === data.length - 1
@@ -30,18 +31,19 @@ export function StaafGrafiek({ data }: { data: MaandBedrag[] }) {
                 style={{
                   width: '100%',
                   height: `${hoogte}%`,
-                  minHeight: d.bedrag > 0 ? 2 : 0,
-                  background: laatste ? 'var(--accent-strong)' : 'var(--accent-dot)',
-                  borderRadius: '4px 4px 0 0',
+                  minHeight: d.bedrag > 0 ? 3 : 0,
+                  background: laatste ? 'var(--accent)' : 'var(--accent-dot)',
+                  opacity: laatste ? 1 : 0.55,
+                  borderRadius: '8px 8px 0 0',
                 }}
               />
             </div>
           )
         })}
       </div>
-      <div style={{ display: 'flex', gap: '0.4rem', marginTop: 2 }}>
+      <div style={{ display: 'flex', gap: 6, marginTop: 0, paddingTop: 8, borderTop: '1px solid var(--divider)' }}>
         {data.map((d) => (
-          <div key={d.maand} style={{ flex: 1, textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+          <div key={d.maand} className="rij-meta" style={{ flex: 1, textAlign: 'center' }}>
             {maandKort(d.maand)}
           </div>
         ))}

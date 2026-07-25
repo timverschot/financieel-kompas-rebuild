@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
-import type { CSSProperties, FormEvent, KeyboardEvent } from 'react'
+import type { FormEvent, KeyboardEvent } from 'react'
 import type { Categorie, Rekening, Streepjescode, Transactie, TransactieRegel } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer, formatEuro } from '../utils/format'
@@ -9,6 +9,7 @@ import { CategorieKiezer } from './CategorieKiezer'
 import { HandelaarVeld } from './HandelaarVeld'
 import { ItemZoeker } from './ItemZoeker'
 import { NutriScoreBadge } from './NutriScoreBadge'
+import { Kaart } from '../ui/basis'
 import { useT } from '../i18n'
 
 // De scanner (en de ZXing-bibliotheek) worden pas geladen wanneer je effectief scant.
@@ -36,15 +37,6 @@ function onthoudRekening(id: string): void {
     // stil negeren
   }
 }
-
-const veld: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  padding: '0.4rem',
-  marginTop: 2,
-  boxSizing: 'border-box',
-}
-const rij: CSSProperties = { marginBottom: '0.6rem' }
 
 // Eén kassaticketregel (lokale invoer). 'code'/'nutriScore' zijn optioneel en
 // worden ingevuld bij het scannen van een streepjescode.
@@ -240,156 +232,142 @@ export function TransactieFormulier({
   }
 
   return (
-    <form onSubmit={verzend} style={{ marginTop: '1rem' }}>
-      <div style={rij}>
-        <label htmlFor="handelaar">{t('Handelaar / winkel')}</label>
-        <HandelaarVeld id="handelaar" waarde={omschrijving} onWijzig={setOmschrijving} suggestiesBron={handelaars} />
-      </div>
+    <form onSubmit={verzend} className="stapel">
+      <div className="veldrij">
+        <div className="veldgroep" style={{ flex: '2 1 220px' }}>
+          <label className="label-caps" htmlFor="handelaar">{t('Handelaar / winkel')}</label>
+          <HandelaarVeld id="handelaar" waarde={omschrijving} onWijzig={setOmschrijving} suggestiesBron={handelaars} />
+        </div>
 
-      <div style={rij}>
-        <label htmlFor="bedrag">{t('Bedrag (€)')}{gesplitst ? t(' — totaal van het ticket') : ''}</label>
-        <input
-          id="bedrag"
-          style={veld}
-          inputMode="decimal"
-          placeholder="0,00"
-          value={bedrag}
-          onChange={(e) => setBedrag(e.target.value)}
-        />
-      </div>
-
-      <div style={rij}>
-        <label>
-          <input type="checkbox" checked={gesplitst} onChange={(e) => setGesplitst(e.target.checked)} /> {t('Kassaticket splitsen')}
-        </label>
-      </div>
-
-      {!gesplitst ? (
-        <div style={rij}>
-          <CategorieKiezer
-            waarde={categorieId || undefined}
-            onKies={(id) => setCategorieId(id ?? '')}
-            gebruikerCategorieen={categorieen}
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="bedrag">{t('Bedrag (€)')}{gesplitst ? t(' — totaal van het ticket') : ''}</label>
+          <input
+            id="bedrag"
+            inputMode="decimal"
+            placeholder="0,00"
+            value={bedrag}
+            onChange={(e) => setBedrag(e.target.value)}
           />
         </div>
+      </div>
+
+      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, alignSelf: 'flex-start' }}>
+        <input type="checkbox" checked={gesplitst} onChange={(e) => setGesplitst(e.target.checked)} /> {t('Kassaticket splitsen')}
+      </label>
+
+      {!gesplitst ? (
+        <CategorieKiezer
+          waarde={categorieId || undefined}
+          onKies={(id) => setCategorieId(id ?? '')}
+          gebruikerCategorieen={categorieen}
+        />
       ) : (
-        <div style={{ ...rij, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem' }}>
+        <Kaart compact style={{ background: 'var(--surface-2)' }}>
           {kassaRegels.map((r, i) => (
-            <div key={r.sleutel} style={{ marginBottom: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1 }}>
-                  <ItemZoeker
-                    waarde={r.omschrijving}
-                    onTekst={(tekst) => wijzigRegel(r.sleutel, { omschrijving: tekst, categorieId: '' })}
-                    onKiesItem={(item) => wijzigRegel(r.sleutel, { categorieId: item.id, omschrijving: item.naam })}
-                    registerInput={(el) => {
-                      zoekRefs.current[r.sleutel] = el
-                    }}
-                  />
-                </div>
+            <div key={r.sleutel} className="rij" style={{ flexWrap: 'wrap', alignItems: 'flex-start', gap: 8 }}>
+              <div style={{ flex: '1 1 150px', minWidth: 0 }}>
+                <ItemZoeker
+                  waarde={r.omschrijving}
+                  onTekst={(tekst) => wijzigRegel(r.sleutel, { omschrijving: tekst, categorieId: '' })}
+                  onKiesItem={(item) => wijzigRegel(r.sleutel, { categorieId: item.id, omschrijving: item.naam })}
+                  registerInput={(el) => {
+                    zoekRefs.current[r.sleutel] = el
+                  }}
+                />
+              </div>
+              <button
+                type="button"
+                className="knop knop-icoon"
+                aria-label={t('Scan streepjescode voor regel {n}', { n: i + 1 })}
+                onClick={() => setScanVoor(r.sleutel)}
+                title={t('Streepjescode scannen')}
+              >
+                📷
+              </button>
+              <input
+                aria-label={t('Deelbedrag')}
+                style={{ width: 96, textAlign: 'right', fontFamily: 'var(--font-mono)' }}
+                inputMode="decimal"
+                placeholder="0,00"
+                value={r.bedrag}
+                onChange={(e) => wijzigRegel(r.sleutel, { bedrag: e.target.value })}
+                onKeyDown={(e) => opBedragToets(e, r.sleutel)}
+              />
+              {kassaRegels.length > 1 && (
                 <button
                   type="button"
-                  aria-label={t('Scan streepjescode voor regel {n}', { n: i + 1 })}
-                  onClick={() => setScanVoor(r.sleutel)}
-                  style={{ border: '1px solid var(--border-strong)', background: 'var(--surface-2)', borderRadius: 8, cursor: 'pointer', fontSize: '1.1rem', padding: '0.2rem 0.5rem', lineHeight: 1 }}
-                  title={t('Streepjescode scannen')}
+                  className="knop knop-kaal knop-gevaar"
+                  aria-label={t('Verwijder regel {n}', { n: i + 1 })}
+                  onClick={() => verwijderRegel(r.sleutel)}
                 >
-                  📷
+                  ×
                 </button>
-                <input
-                  aria-label={t('Deelbedrag')}
-                  style={{ ...veld, marginTop: 0, width: 90 }}
-                  inputMode="decimal"
-                  placeholder="0,00"
-                  value={r.bedrag}
-                  onChange={(e) => wijzigRegel(r.sleutel, { bedrag: e.target.value })}
-                  onKeyDown={(e) => opBedragToets(e, r.sleutel)}
-                />
-                {kassaRegels.length > 1 && (
-                  <button
-                    type="button"
-                    aria-label={t('Verwijder regel {n}', { n: i + 1 })}
-                    onClick={() => verwijderRegel(r.sleutel)}
-                    style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.2rem' }}
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
+              )}
               {r.nutriScore && (
-                <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Nutri-Score')}</span>
+                <div style={{ flexBasis: '100%', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="label-caps">{t('Nutri-Score')}</span>
                   <NutriScoreBadge score={r.nutriScore} />
                 </div>
               )}
             </div>
           ))}
 
-          <button
-            type="button"
-            onClick={() => voegRegelToe()}
-            style={{ padding: '0.3rem 0.7rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
-          >
-            {t('+ Regel toevoegen')}
-          </button>
+          <div className="knoprij">
+            <button type="button" className="knop knop-secundair knop-klein" onClick={() => voegRegelToe()}>
+              {t('+ Regel toevoegen')}
+            </button>
+          </div>
 
-          <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem' }}>
-            {t('Verdeeld:')} <strong>{formatEuro(verdeeld)}</strong> {t('van')} <strong>{formatEuro(totaalCenten)}</strong>{' '}
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
+            {t('Verdeeld:')} <strong className="bedrag">{formatEuro(verdeeld)}</strong> {t('van')}{' '}
+            <strong className="bedrag">{formatEuro(totaalCenten)}</strong>{' '}
             {Math.abs(verschil) < 1 ? (
               <span style={{ color: 'var(--positive)' }}>✓</span>
             ) : (
-              <span style={{ color: verschil < 0 ? 'var(--negative)' : 'var(--warn)' }}>
+              <span className="bedrag" style={{ color: verschil < 0 ? 'var(--negative)' : 'var(--warn)' }}>
                 {t('(nog {bedrag})', { bedrag: formatEuro(verschil) })}
               </span>
             )}
           </p>
-        </div>
+        </Kaart>
       )}
 
-      <div style={rij}>
-        <label htmlFor="datum">{t('Datum')}</label>
-        <input id="datum" type="date" style={veld} value={datum} onChange={(e) => setDatum(e.target.value)} />
+      <div className="veldrij">
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="datum">{t('Datum')}</label>
+          <input id="datum" type="date" value={datum} onChange={(e) => setDatum(e.target.value)} />
+        </div>
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="rekening">{t('Rekening')}</label>
+          <select id="rekening" value={rekeningId} onChange={(e) => setRekeningId(e.target.value)}>
+            {rekeningen.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.naam}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
-      <div style={rij}>
-        <label htmlFor="rekening">{t('Rekening')}</label>
-        <select id="rekening" style={veld} value={rekeningId} onChange={(e) => setRekeningId(e.target.value)}>
-          {rekeningen.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.naam}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div style={rij}>
-        <label style={{ marginRight: '1rem' }}>
+
+      <div className="veldrij" style={{ gap: 18 }}>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <input type="radio" name="soort" checked={soort === 'uitgave'} onChange={() => setSoort('uitgave')} /> {t('Uitgave')}
         </label>
-        <label>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <input type="radio" name="soort" checked={soort === 'inkomst'} onChange={() => setSoort('inkomst')} /> {t('Inkomst')}
         </label>
       </div>
-      <button
-        type="submit"
-        disabled={!geldig}
-        style={{
-          padding: '0.5rem 0.9rem',
-          borderRadius: 8,
-          border: '1px solid var(--border-strong)',
-          background: geldig ? 'var(--positive-soft)' : 'var(--surface-2)',
-          cursor: geldig ? 'pointer' : 'not-allowed',
-        }}
-      >
-        {bewerken ? t('Wijzigen') : t('Toevoegen')}
-      </button>
-      {bewerken && onAnnuleer && (
-        <button
-          type="button"
-          onClick={onAnnuleer}
-          style={{ marginLeft: '0.5rem', padding: '0.5rem 0.9rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
-        >
-          {t('Annuleer')}
+
+      <div className="knoprij">
+        <button type="submit" className="knop knop-primair" disabled={!geldig}>
+          {bewerken ? t('Wijzigen') : t('Toevoegen')}
         </button>
-      )}
+        {bewerken && onAnnuleer && (
+          <button type="button" className="knop knop-secundair" onClick={onAnnuleer}>
+            {t('Annuleer')}
+          </button>
+        )}
+      </div>
 
       {scanVoor && (
         <Suspense fallback={null}>

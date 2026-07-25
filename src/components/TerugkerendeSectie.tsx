@@ -1,17 +1,9 @@
 import { useState } from 'react'
-import type { CSSProperties } from 'react'
 import type { Categorie, Rekening, TerugkerendePost, Transactie } from '../data/schema'
 import { TerugkerendePostFormulier } from './TerugkerendePostFormulier'
 import { formatEuro } from '../utils/format'
+import { Kaart } from '../ui/basis'
 import { useT } from '../i18n'
-
-const knop: CSSProperties = {
-  padding: '0.3rem 0.7rem',
-  borderRadius: 8,
-  border: '1px solid var(--border-strong)',
-  background: 'var(--info-soft)',
-  cursor: 'pointer',
-}
 
 // Sectie voor vaste (terugkerende) lasten: overzicht, inboeken voor de gekozen
 // maand, en een formulier om een vaste post toe te voegen of te bewerken.
@@ -45,54 +37,45 @@ export function TerugkerendeSectie({
   }
 
   return (
-    <section>
-      <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{t('Vaste lasten')}</h2>
-      <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>{t('Inboeken voor {maand}', { maand: maandLabel })}</p>
-
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-        {posten.map((p) => {
-          const geboekt = transacties.some((tx) => tx.id === `tk-${p.id}-${maand}`)
-          return (
-            <li
-              key={p.id}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '0.4rem 0',
-                borderBottom: '1px solid var(--border)',
-              }}
-            >
-              <span>
-                {p.omschrijving}
-                <span style={{ color: 'var(--text-subtle)', fontSize: '0.85rem' }}>
-                  {' '}
-                  · {t('{bedrag} · dag {dag}', { bedrag: formatEuro(p.bedrag), dag: p.dag })}
-                </span>
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                {geboekt ? (
-                  <span style={{ color: 'var(--positive)' }}>{t('Geboekt ✓')}</span>
-                ) : (
-                  <button style={knop} onClick={() => onBoek(p)}>
-                    {t('Boek in')}
+    <Kaart titel={t('Vaste lasten')} bijschrift={t('Inboeken voor {maand}', { maand: maandLabel })}>
+      {posten.length > 0 && (
+        <ul className="lijst">
+          {posten.map((p) => {
+            const geboekt = transacties.some((tx) => tx.id === `tk-${p.id}-${maand}`)
+            return (
+              <li key={p.id} className="rij">
+                <div className="rij-midden">
+                  <span className="rij-titel">{p.omschrijving}</span>
+                  <span className="rij-meta">{t('{bedrag} · dag {dag}', { bedrag: formatEuro(p.bedrag), dag: p.dag })}</span>
+                </div>
+                <span className="rij-acties">
+                  {geboekt ? (
+                    <span className="badge badge-ok">{t('Geboekt ✓')}</span>
+                  ) : (
+                    <button className="knop knop-secundair knop-klein" onClick={() => onBoek(p)}>
+                      {t('Boek in')}
+                    </button>
+                  )}
+                  <button
+                    className="knop knop-kaal"
+                    aria-label={t('Bewerk vaste post {naam}', { naam: p.omschrijving })}
+                    onClick={() => setBewerken(p)}
+                  >
+                    ✎
                   </button>
-                )}
-                <button aria-label={t('Bewerk vaste post {naam}', { naam: p.omschrijving })} onClick={() => setBewerken(p)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>
-                  ✎
-                </button>
-                <button
-                  aria-label={t('Verwijder vaste post {naam}', { naam: p.omschrijving })}
-                  onClick={() => onVerwijderen(p.id)}
-                  style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}
-                >
-                  ×
-                </button>
-              </span>
-            </li>
-          )
-        })}
-      </ul>
+                  <button
+                    className="knop knop-kaal knop-gevaar"
+                    aria-label={t('Verwijder vaste post {naam}', { naam: p.omschrijving })}
+                    onClick={() => onVerwijderen(p.id)}
+                  >
+                    ×
+                  </button>
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
 
       <TerugkerendePostFormulier
         rekeningen={rekeningen}
@@ -101,6 +84,6 @@ export function TerugkerendeSectie({
         onAnnuleer={() => setBewerken(null)}
         bewerken={bewerken}
       />
-    </section>
+    </Kaart>
   )
 }

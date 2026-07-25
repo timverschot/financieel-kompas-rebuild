@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { CSSProperties, FormEvent } from 'react'
+import type { FormEvent } from 'react'
 import type { Lening, LeningRichting } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
@@ -7,15 +7,6 @@ import { verkleinAfbeelding } from '../utils/afbeelding'
 import { useT } from '../i18n'
 
 const vandaag = () => new Date().toISOString().slice(0, 10)
-
-const veld: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  padding: '0.4rem',
-  marginTop: 2,
-  boxSizing: 'border-box',
-}
-const rij: CSSProperties = { marginBottom: '0.6rem' }
 
 function getal(waarde: string): number {
   return Number.parseFloat(waarde.replace(',', '.'))
@@ -108,61 +99,81 @@ export function LeningFormulier({
   }
 
   return (
-    <form onSubmit={verzend} style={{ marginTop: '0.75rem' }}>
-      <div style={rij}>
-        <label htmlFor="lening-richting">{t('Soort')}</label>
-        <select id="lening-richting" style={veld} value={richting} onChange={(e) => setRichting(e.target.value as LeningRichting)}>
+    <form onSubmit={verzend} className="stapel">
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="lening-richting">
+          {t('Soort')}
+        </label>
+        <select id="lening-richting" value={richting} onChange={(e) => setRichting(e.target.value as LeningRichting)}>
           <option value="uitgeleend">{t('Ik leende uit (iemand is mij verschuldigd)')}</option>
           <option value="geleend">{t('Ik leende / een krediet (ik betaal af)')}</option>
         </select>
       </div>
-      <div style={rij}>
-        <label htmlFor="lening-naam">{t('Naam')}</label>
-        <input id="lening-naam" style={veld} value={naam} onChange={(e) => setNaam(e.target.value)} placeholder={t('bv. Lening aan broer of Autolening')} />
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="lening-naam">
+          {t('Naam')}
+        </label>
+        <input id="lening-naam" value={naam} onChange={(e) => setNaam(e.target.value)} placeholder={t('bv. Lening aan broer of Autolening')} />
       </div>
-      <div style={rij}>
-        <label htmlFor="lening-hoofdsom">{t('Startbedrag / openstaand kapitaal (€)')}</label>
-        <input id="lening-hoofdsom" style={veld} inputMode="decimal" placeholder="0,00" value={hoofdsom} onChange={(e) => setHoofdsom(e.target.value)} />
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="lening-hoofdsom">
+          {t('Startbedrag / openstaand kapitaal (€)')}
+        </label>
+        <input id="lening-hoofdsom" inputMode="decimal" placeholder="0,00" value={hoofdsom} onChange={(e) => setHoofdsom(e.target.value)} />
       </div>
-      <div style={rij}>
-        <label htmlFor="lening-tegenpartij">{richting === 'geleend' ? t('Kredietgever (optioneel)') : t('Wie (optioneel)')}</label>
-        <input id="lening-tegenpartij" style={veld} value={tegenpartij} onChange={(e) => setTegenpartij(e.target.value)} />
-      </div>
-      <div style={rij}>
-        <label htmlFor="lening-start">{t('Startdatum')}</label>
-        <input id="lening-start" type="date" style={veld} value={startdatum} onChange={(e) => setStartdatum(e.target.value)} />
+      <div className="veldrij">
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="lening-tegenpartij">
+            {richting === 'geleend' ? t('Kredietgever (optioneel)') : t('Wie (optioneel)')}
+          </label>
+          <input id="lening-tegenpartij" value={tegenpartij} onChange={(e) => setTegenpartij(e.target.value)} />
+        </div>
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="lening-start">
+            {t('Startdatum')}
+          </label>
+          <input id="lening-start" type="date" value={startdatum} onChange={(e) => setStartdatum(e.target.value)} />
+        </div>
       </div>
       {richting === 'geleend' && (
         <>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <label style={{ flex: 1, minWidth: 110 }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Rentevoet % (optioneel)')}</span>
-              <input style={veld} inputMode="decimal" value={rentevoet} onChange={(e) => setRentevoet(e.target.value)} />
+          <div className="veldrij">
+            <label className="veldgroep">
+              <span className="label-caps">{t('Rentevoet % (optioneel)')}</span>
+              <input inputMode="decimal" value={rentevoet} onChange={(e) => setRentevoet(e.target.value)} />
             </label>
-            <label style={{ flex: 1, minWidth: 110 }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Maandbedrag € (optioneel)')}</span>
-              <input style={veld} inputMode="decimal" placeholder="0,00" value={maandbedrag} onChange={(e) => setMaandbedrag(e.target.value)} />
+            <label className="veldgroep">
+              <span className="label-caps">{t('Maandbedrag € (optioneel)')}</span>
+              <input inputMode="decimal" placeholder="0,00" value={maandbedrag} onChange={(e) => setMaandbedrag(e.target.value)} />
             </label>
           </div>
-          <div style={{ ...rij, marginTop: '0.4rem' }}>
-            <label htmlFor="lening-eind">{t('Einddatum / termijn (optioneel)')}</label>
-            <input id="lening-eind" type="date" style={veld} value={einddatum} onChange={(e) => setEinddatum(e.target.value)} />
+          <div className="veldgroep">
+            <label className="label-caps" htmlFor="lening-eind">
+              {t('Einddatum / termijn (optioneel)')}
+            </label>
+            <input id="lening-eind" type="date" value={einddatum} onChange={(e) => setEinddatum(e.target.value)} />
           </div>
         </>
       )}
-      <div style={rij}>
-        <label htmlFor="lening-omschrijving">{t('Notitie (optioneel)')}</label>
-        <input id="lening-omschrijving" style={veld} value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} />
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="lening-omschrijving">
+          {t('Notitie (optioneel)')}
+        </label>
+        <input id="lening-omschrijving" value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} />
       </div>
-      <div style={rij}>
-        <label htmlFor="lening-bon">{t('Contract/bewijs (optioneel)')}</label>
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor="lening-bon">
+          {t('Contract/bewijs (optioneel)')}
+        </label>
         {bonnetje ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: 2 }}>
+          <div className="knoprij">
             {bonnetje.startsWith('data:image') && (
-              <img src={bonnetje} alt={t('Contract/bewijs')} style={{ maxHeight: 60, borderRadius: 6, border: '1px solid var(--border)' }} />
+              <img src={bonnetje} alt={t('Contract/bewijs')} style={{ maxHeight: 60, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }} />
             )}
-            <a href={bonnetje} target="_blank" rel="noreferrer" style={{ color: 'var(--info)' }}>{t('bekijken')}</a>
-            <button type="button" onClick={() => setBonnetje('')} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer' }}>
+            <a href={bonnetje} target="_blank" rel="noreferrer">
+              {t('bekijken')}
+            </a>
+            <button type="button" className="knop knop-ghost knop-klein knop-gevaar" onClick={() => setBonnetje('')}>
               {t('verwijderen')}
             </button>
           </div>
@@ -171,7 +182,6 @@ export function LeningFormulier({
             id="lening-bon"
             type="file"
             accept="image/*,application/pdf"
-            style={{ marginTop: 2 }}
             onChange={(e) => {
               const f = e.target.files?.[0]
               if (f) void kiesBon(f)
@@ -179,30 +189,18 @@ export function LeningFormulier({
             }}
           />
         )}
-        {bezigBon && <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}> {t('bezig…')}</span>}
+        {bezigBon && <span className="rij-meta"> {t('bezig…')}</span>}
       </div>
-      <button
-        type="submit"
-        disabled={!geldig}
-        style={{
-          padding: '0.4rem 0.8rem',
-          borderRadius: 8,
-          border: '1px solid var(--border-strong)',
-          background: geldig ? 'var(--positive-soft)' : 'var(--surface-2)',
-          cursor: geldig ? 'pointer' : 'not-allowed',
-        }}
-      >
-        {bewerken ? t('Lening wijzigen') : t('Lening toevoegen')}
-      </button>
-      {bewerken && onAnnuleer && (
-        <button
-          type="button"
-          onClick={onAnnuleer}
-          style={{ marginLeft: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
-        >
-          {t('Annuleer')}
+      <div className="knoprij">
+        <button type="submit" disabled={!geldig} className="knop knop-primair">
+          {bewerken ? t('Lening wijzigen') : t('Lening toevoegen')}
         </button>
-      )}
+        {bewerken && onAnnuleer && (
+          <button type="button" className="knop knop-secundair" onClick={onAnnuleer}>
+            {t('Annuleer')}
+          </button>
+        )}
+      </div>
     </form>
   )
 }

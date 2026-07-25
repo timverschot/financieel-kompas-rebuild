@@ -1,21 +1,12 @@
 import { useState } from 'react'
-import type { CSSProperties, FormEvent } from 'react'
+import type { FormEvent } from 'react'
 import type { Overboeking, Rekening } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
-import { invoerNaarCenten, centenNaarInvoer, formatEuro } from '../utils/format'
+import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
+import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 
-const veld: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  padding: '0.4rem',
-  marginTop: 2,
-  boxSizing: 'border-box',
-}
-const rij: CSSProperties = { marginBottom: '0.6rem' }
 const vandaag = () => new Date().toISOString().slice(0, 10)
-
-const kop: CSSProperties = { fontSize: '1rem', marginBottom: '0.25rem' }
 
 // Overzicht + formulier voor interne overboekingen tussen je eigen rekeningen.
 // Een overboeking is géén inkomst of uitgave; ze verschuift enkel geld en telt dus
@@ -91,114 +82,128 @@ export function OverboekingSectie({
   const gesorteerd = [...overboekingen].sort((a, b) => (a.datum < b.datum ? 1 : -1))
 
   return (
-    <section>
-      <h2 style={kop}>{t('Overboekingen')}</h2>
-      <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>{t('Geld verschuiven tussen je eigen rekeningen (geen inkomst of uitgave).')}</p>
-
+    <Kaart titel={t('Overboekingen')} bijschrift={t('Geld verschuiven tussen je eigen rekeningen (geen inkomst of uitgave).')}>
       {rekeningen.length < 2 ? (
-        <p style={{ color: 'var(--text-muted)' }}>{t('Je hebt minstens twee rekeningen nodig om over te boeken.')}</p>
+        <Leeg>{t('Je hebt minstens twee rekeningen nodig om over te boeken.')}</Leeg>
       ) : (
         <>
-          <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 0.75rem' }}>
-            {gesorteerd.map((o) => (
-              <li
-                key={o.id}
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.35rem 0', borderBottom: '1px solid var(--border)' }}
-              >
-                <span>
-                  {naam(o.vanRekeningId)} → {naam(o.naarRekeningId)}
-                  {o.omschrijving && <span style={{ color: 'var(--text-subtle)', fontSize: '0.85rem' }}> · {o.omschrijving}</span>}
-                  <span style={{ color: 'var(--text-subtle)', fontSize: '0.85rem' }}> · {o.datum}</span>
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <span>{formatEuro(o.bedrag)}</span>
-                  <button aria-label={t('Bewerk overboeking {van} naar {naar}', { van: naam(o.vanRekeningId), naar: naam(o.naarRekeningId) })} onClick={() => onBewerk(o)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>
-                    ✎
-                  </button>
-                  <button aria-label={t('Verwijder overboeking {van} naar {naar}', { van: naam(o.vanRekeningId), naar: naam(o.naarRekeningId) })} onClick={() => onVerwijderen(o.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>
-                    ×
-                  </button>
-                </span>
-              </li>
-            ))}
-          </ul>
+          {gesorteerd.length > 0 && (
+            <ul className="lijst">
+              {gesorteerd.map((o) => (
+                <li key={o.id} className="rij">
+                  <div className="rij-midden">
+                    <span className="rij-titel">
+                      {naam(o.vanRekeningId)} → {naam(o.naarRekeningId)}
+                    </span>
+                    <span className="rij-meta">
+                      {o.omschrijving ? o.omschrijving + ' · ' : ''}
+                      {o.datum}
+                    </span>
+                  </div>
+                  <span className="rij-acties">
+                    <Bedrag centen={o.bedrag} />
+                    <button
+                      className="knop knop-kaal"
+                      aria-label={t('Bewerk overboeking {van} naar {naar}', { van: naam(o.vanRekeningId), naar: naam(o.naarRekeningId) })}
+                      onClick={() => onBewerk(o)}
+                    >
+                      ✎
+                    </button>
+                    <button
+                      className="knop knop-kaal knop-gevaar"
+                      aria-label={t('Verwijder overboeking {van} naar {naar}', { van: naam(o.vanRekeningId), naar: naam(o.naarRekeningId) })}
+                      onClick={() => onVerwijderen(o.id)}
+                    >
+                      ×
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
 
-          <form onSubmit={verzend}>
-            <div style={rij}>
-              <label htmlFor="ob-van">{t('Van rekening')}</label>
-              <select id="ob-van" style={veld} value={vanId} onChange={(e) => setVanId(e.target.value)}>
-                <option value="">{t('— kies —')}</option>
-                {rekeningen.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.naam}
-                  </option>
-                ))}
-              </select>
+          <form onSubmit={verzend} className="stapel">
+            <div className="veldrij">
+              <div className="veldgroep">
+                <label className="label-caps" htmlFor="ob-van">
+                  {t('Van rekening')}
+                </label>
+                <select id="ob-van" value={vanId} onChange={(e) => setVanId(e.target.value)}>
+                  <option value="">{t('— kies —')}</option>
+                  {rekeningen.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.naam}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="veldgroep">
+                <label className="label-caps" htmlFor="ob-naar">
+                  {t('Naar rekening')}
+                </label>
+                <select id="ob-naar" value={naarId} onChange={(e) => setNaarId(e.target.value)}>
+                  <option value="">{t('— kies —')}</option>
+                  {rekeningen.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.naam}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div style={rij}>
-              <label htmlFor="ob-naar">{t('Naar rekening')}</label>
-              <select id="ob-naar" style={veld} value={naarId} onChange={(e) => setNaarId(e.target.value)}>
-                <option value="">{t('— kies —')}</option>
-                {rekeningen.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.naam}
-                  </option>
-                ))}
-              </select>
-            </div>
+
             {vanId && naarId && vanId === naarId && (
-              <p style={{ color: 'var(--negative)', margin: '0 0 0.6rem' }}>{t('Kies twee verschillende rekeningen.')}</p>
+              <p className="rij-meta" style={{ margin: 0, color: 'var(--negative)' }}>
+                {t('Kies twee verschillende rekeningen.')}
+              </p>
             )}
-            <div style={rij}>
-              <label htmlFor="ob-bedrag">{t('Over te boeken bedrag (€)')}</label>
-              <input
-                id="ob-bedrag"
-                style={veld}
-                inputMode="decimal"
-                placeholder="0,00"
-                value={bedrag}
-                onChange={(e) => setBedrag(e.target.value)}
-              />
+
+            <div className="veldrij">
+              <div className="veldgroep">
+                <label className="label-caps" htmlFor="ob-bedrag">
+                  {t('Over te boeken bedrag (€)')}
+                </label>
+                <input
+                  id="ob-bedrag"
+                  inputMode="decimal"
+                  placeholder="0,00"
+                  value={bedrag}
+                  onChange={(e) => setBedrag(e.target.value)}
+                />
+              </div>
+              <div className="veldgroep">
+                <label className="label-caps" htmlFor="ob-datum">
+                  {t('Datum overboeking')}
+                </label>
+                <input id="ob-datum" type="date" value={datum} onChange={(e) => setDatum(e.target.value)} />
+              </div>
             </div>
-            <div style={rij}>
-              <label htmlFor="ob-datum">{t('Datum overboeking')}</label>
-              <input id="ob-datum" type="date" style={veld} value={datum} onChange={(e) => setDatum(e.target.value)} />
-            </div>
-            <div style={rij}>
-              <label htmlFor="ob-oms">{t('Omschrijving')}</label>
+
+            <div className="veldgroep">
+              <label className="label-caps" htmlFor="ob-oms">
+                {t('Omschrijving')}
+              </label>
               <input
                 id="ob-oms"
-                style={veld}
                 placeholder={t('optioneel')}
                 value={omschrijving}
                 onChange={(e) => setOmschrijving(e.target.value)}
               />
             </div>
-            <button
-              type="submit"
-              disabled={!geldig}
-              style={{
-                padding: '0.5rem 0.9rem',
-                borderRadius: 8,
-                border: '1px solid var(--border-strong)',
-                background: geldig ? 'var(--info-soft)' : 'var(--surface-2)',
-                cursor: geldig ? 'pointer' : 'not-allowed',
-              }}
-            >
-              {bewerken ? t('Overboeking wijzigen') : t('Overboeking toevoegen')}
-            </button>
-            {bewerken && (
-              <button
-                type="button"
-                onClick={onStopBewerken}
-                style={{ marginLeft: '0.5rem', padding: '0.5rem 0.9rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', cursor: 'pointer' }}
-              >
-                {t('Annuleer')}
+
+            <div className="knoprij">
+              <button type="submit" disabled={!geldig} className="knop knop-secundair">
+                {bewerken ? t('Overboeking wijzigen') : t('Overboeking toevoegen')}
               </button>
-            )}
+              {bewerken && (
+                <button type="button" className="knop knop-ghost" onClick={onStopBewerken}>
+                  {t('Annuleer')}
+                </button>
+              )}
+            </div>
           </form>
         </>
       )}
-    </section>
+    </Kaart>
   )
 }

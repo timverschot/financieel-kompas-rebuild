@@ -1,21 +1,13 @@
 import { useState } from 'react'
-import type { CSSProperties, FormEvent } from 'react'
+import type { FormEvent } from 'react'
 import type { Budget, Categorie } from '../data/schema'
 import { invoerNaarCenten } from '../utils/format'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
 import { useT } from '../i18n'
 
-const veld: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  padding: '0.4rem',
-  marginTop: 2,
-  boxSizing: 'border-box',
-}
-const rij: CSSProperties = { marginBottom: '0.6rem' }
-
 // Formulier om een maandbudget voor een categorie in te stellen. De id is
 // afgeleid van de categorie, zodat opnieuw instellen hetzelfde budget bijwerkt.
+// Staat al binnen een Kaart (budgetpagina), dus zonder eigen kaartomlijsting.
 export function BudgetFormulier({
   categorieen,
   onOpslaan,
@@ -38,57 +30,50 @@ export function BudgetFormulier({
   }
 
   return (
-    <form onSubmit={verzend} style={{ marginTop: '0.75rem' }}>
-      <div style={rij}>
-        <label htmlFor="budgetcategorie">{t('Budgetcategorie')}</label>
-        <select
-          id="budgetcategorie"
-          style={veld}
-          value={categorieId}
-          onChange={(e) => setCategorieId(e.target.value)}
-        >
-          <optgroup label={t('Hoofdcategorieën')}>
-            {INGEBOUWDE_CATEGORIEEN.map((h) => (
-              <option key={h.id} value={h.id}>
-                {h.naam}
-              </option>
-            ))}
-          </optgroup>
-          {categorieen.length > 0 && (
-            <optgroup label={t('Eigen categorieën')}>
-              {categorieen.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.naam}
+    <form onSubmit={verzend} className="stapel">
+      <div className="veldrij">
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="budgetcategorie">
+            {t('Budgetcategorie')}
+          </label>
+          <select id="budgetcategorie" value={categorieId} onChange={(e) => setCategorieId(e.target.value)}>
+            <optgroup label={t('Hoofdcategorieën')}>
+              {INGEBOUWDE_CATEGORIEEN.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.naam}
                 </option>
               ))}
             </optgroup>
-          )}
-        </select>
+            {categorieen.length > 0 && (
+              <optgroup label={t('Eigen categorieën')}>
+                {categorieen.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.naam}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+        </div>
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="maandbudget">
+            {t('Maandbudget (€)')}
+          </label>
+          <input
+            id="maandbudget"
+            inputMode="decimal"
+            placeholder="0,00"
+            value={bedrag}
+            onChange={(e) => setBedrag(e.target.value)}
+          />
+        </div>
       </div>
-      <div style={rij}>
-        <label htmlFor="maandbudget">{t('Maandbudget (€)')}</label>
-        <input
-          id="maandbudget"
-          style={veld}
-          inputMode="decimal"
-          placeholder="0,00"
-          value={bedrag}
-          onChange={(e) => setBedrag(e.target.value)}
-        />
+
+      <div className="knoprij">
+        <button type="submit" disabled={!geldig} className="knop knop-primair">
+          {t('Budget instellen')}
+        </button>
       </div>
-      <button
-        type="submit"
-        disabled={!geldig}
-        style={{
-          padding: '0.4rem 0.8rem',
-          borderRadius: 8,
-          border: '1px solid var(--border-strong)',
-          background: geldig ? 'var(--info-soft)' : 'var(--surface-2)',
-          cursor: geldig ? 'pointer' : 'not-allowed',
-        }}
-      >
-        {t('Budget instellen')}
-      </button>
     </form>
   )
 }

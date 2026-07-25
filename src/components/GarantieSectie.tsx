@@ -1,21 +1,20 @@
 import { useState } from 'react'
-import type { CSSProperties } from 'react'
 import type { Garantie, Transactie } from '../data/schema'
 import { formatEuro } from '../utils/format'
-import { garantieStatus } from '../utils/garantie'
+import { garantieStatus, dagenTussen } from '../utils/garantie'
 import { GarantieFormulier } from './GarantieFormulier'
+import { Kaart, Leeg, Balk } from '../ui/basis'
 import { useT } from '../i18n'
 import type { Vertaler } from '../i18n'
 
 const vandaag = () => new Date().toISOString().slice(0, 10)
 
-const kaart: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem', marginBottom: '0.6rem' }
-
-// De statusbadge (kleur + tekst) voor een garantie.
-function badge(t: Vertaler, s: ReturnType<typeof garantieStatus>): { kleur: string; tekst: string } {
-  if (s.verlopen) return { kleur: 'var(--text-subtle)', tekst: t('verlopen') }
-  if (s.bijnaVerlopen) return { kleur: 'var(--warn)', tekst: t('nog {n} dag(en)', { n: s.dagenResterend }) }
-  return { kleur: 'var(--positive)', tekst: t('nog {n} maand(en)', { n: s.maandenResterend }) }
+// De statusbadge (klasse + tekst) voor een garantie: vervallen, bijna vervallen
+// of nog geldig.
+function badge(t: Vertaler, s: ReturnType<typeof garantieStatus>): { klasse: string; tekst: string } {
+  if (s.verlopen) return { klasse: 'badge badge-laat', tekst: t('verlopen') }
+  if (s.bijnaVerlopen) return { klasse: 'badge badge-open', tekst: t('nog {n} dag(en)', { n: s.dagenResterend }) }
+  return { klasse: 'badge badge-ok', tekst: t('nog {n} maand(en)', { n: s.maandenResterend }) }
 }
 
 // De garantie- & factuursectie: voeg aankopen met garantie toe, zie de vervaldatum
@@ -49,45 +48,83 @@ export function GarantieSectie({
   })
 
   return (
-    <section>
-      <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{t('Garanties & facturen')}</h2>
-      <p style={{ color: 'var(--text-muted)', marginTop: 0, fontSize: '0.85rem' }}>
-        {t('Hou per aankoop de garantie en de factuur bij. De app berekent de vervaldatum en waarschuwt vóór ze afloopt.')}
-      </p>
+    <Kaart
+      titel={t('Garanties & facturen')}
+      bijschrift={t('Hou per aankoop de garantie en de factuur bij. De app berekent de vervaldatum en waarschuwt vóór ze afloopt.')}
+    >
+      {garanties.length === 0 && <Leeg>{t('Nog geen aankopen. Voeg er hieronder een toe.')}</Leeg>}
 
-      {garanties.length === 0 && <p style={{ color: 'var(--text-muted)' }}>{t('Nog geen aankopen. Voeg er hieronder een toe.')}</p>}
+      {metStatus.length > 0 && (
+        <ul className="lijst">
+          {metStatus.map(({ g, s }) => {
+            const b = badge(t, s)
+            // Hoeveel van de garantieperiode er nog rest, als fractie 0..1.
+            const totaalDagen = dagenTussen(g.aankoopdatum, s.vervaldatum)
+            const restFractie = totaalDagen > 0 ? s.dagenResterend / totaalDagen : 0
+            const balkKleur = s.verlopen ? 'var(--text-subtle)' : s.bijnaVerlopen ? 'var(--warn)' : 'var(--positive)'
+            return (
+              <li
+                key={g.id}
+                className="rij"
+                style={{
+                  flexDirection: 'column',
+                  alignItems: 'stretch',
+                  gap: 8,
+                  opacity: s.verlopen ? 0.7 : 1,
+                  ...(s.bijnaVerlopen ? { borderLeft: '3px solid var(--warn)', paddingLeft: 10 } : {}),
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div className="rij-midden">
+                    <span className="rij-titel">{g.product}</span>
+                  </div>
+                  <span className="rij-acties">
+                    <span className={b.klasse}>{b.tekst}</span>
+                    <button className="knop knop-kaal" aria-label={t('Bewerk garantie {naam}', { naam: g.product })} onClick={() => setBewerk(g)}>
+                      ✎
+                    </button>
+                    <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder garantie {naam}', { naam: g.product })} onClick={() => onVerwijderen(g.id)}>
+                      ×
+                    </button>
+                  </span>
+                </div>
 
-      {metStatus.map(({ g, s }) => {
-        const b = badge(t, s)
-        return (
-          <div key={g.id} style={{ ...kaart, opacity: s.verlopen ? 0.7 : 1, borderColor: s.bijnaVerlopen ? 'var(--warn)' : 'var(--border)', background: s.bijnaVerlopen ? 'var(--warn-soft)' : 'var(--surface)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <strong>{g.product}</strong>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.75rem', color: '#fff', background: b.kleur, borderRadius: 6, padding: '0.05rem 0.4rem' }}>{b.tekst}</span>
-                <button aria-label={t('Bewerk garantie {naam}', { naam: g.product })} onClick={() => setBewerk(g)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>✎</button>
-                <button aria-label={t('Verwijder garantie {naam}', { naam: g.product })} onClick={() => onVerwijderen(g.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
-              </span>
-            </div>
-            <div style={{ color: 'var(--text-subtle)', fontSize: '0.82rem', marginTop: '0.2rem' }}>
-              {g.winkel && <span>{g.winkel} · </span>}
-              {t('gekocht {datum}', { datum: g.aankoopdatum })}
-              {typeof g.prijs === 'number' && <span> · {formatEuro(g.prijs)}</span>}
-              {' · '}
-              {t('vervalt {datum}', { datum: s.vervaldatum })}
-            </div>
-            {g.notitie && <div style={{ color: 'var(--text-subtle)', fontSize: '0.8rem', marginTop: '0.15rem' }}>{g.notitie}</div>}
-            {g.bonnetje && (
-              <div style={{ marginTop: '0.2rem' }}>
-                <a href={g.bonnetje} target="_blank" rel="noreferrer" style={{ color: 'var(--info)', fontSize: '0.85rem' }}>{t('bon/factuur')}</a>
-              </div>
-            )}
-          </div>
-        )
-      })}
+                <Balk label={g.product} fractie={restFractie} kleur={balkKleur} />
 
-      <h3 style={{ fontSize: '0.9rem', margin: '0.5rem 0 0' }}>{bewerk ? t('Aankoop bewerken') : t('Nieuwe aankoop')}</h3>
+                <span className="rij-meta">
+                  {g.winkel && <span>{g.winkel} · </span>}
+                  {t('gekocht {datum}', { datum: g.aankoopdatum })}
+                  {typeof g.prijs === 'number' && (
+                    <span>
+                      {' · '}
+                      <span className="bedrag" style={{ fontSize: 'inherit' }}>
+                        {formatEuro(g.prijs)}
+                      </span>
+                    </span>
+                  )}
+                  {' · '}
+                  {t('vervalt {datum}', { datum: s.vervaldatum })}
+                </span>
+
+                {g.notitie && <span className="rij-meta">{g.notitie}</span>}
+
+                {g.bonnetje && (
+                  <div>
+                    <a href={g.bonnetje} target="_blank" rel="noreferrer" style={{ fontSize: 13 }}>
+                      {t('bon/factuur')}
+                    </a>
+                  </div>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      <h3 className="label-caps" style={{ margin: 0 }}>
+        {bewerk ? t('Aankoop bewerken') : t('Nieuwe aankoop')}
+      </h3>
       <GarantieFormulier transacties={transacties} onOpslaan={opslaan} onAnnuleer={() => setBewerk(null)} bewerken={bewerk} />
-    </section>
+    </Kaart>
   )
 }
