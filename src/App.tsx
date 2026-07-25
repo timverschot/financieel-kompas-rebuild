@@ -98,6 +98,7 @@ import { IndexatieCalculator } from './components/IndexatieCalculator'
 import { TerugkerendeSectie } from './components/TerugkerendeSectie'
 import { OverboekingSectie } from './components/OverboekingSectie'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { OnderNavigatie, type Pagina } from './components/OnderNavigatie'
 import { saldoVerrekeningDossier } from './utils/dossier'
 import { kostenVoorAfrekening, type AfrekeningFilter } from './utils/afrekening'
 import { nieuwId } from './data/sync/id'
@@ -166,6 +167,7 @@ export function App() {
   const [bewerkRekening, setBewerkRekening] = useState<Rekening | null>(null)
   const [bewerkOverboeking, setBewerkOverboeking] = useState<Overboeking | null>(null)
   const [maand, setMaand] = useState(huidigeMaand())
+  const [pagina, setPagina] = useState<Pagina>('overzicht')
   const [backupTekst, setBackupTekst] = useState<string | null>(null)
   const [undoInfo, setUndoInfo] = useState<{ boodschap: string; herstel: () => Promise<void> } | null>(null)
   const backendRef = useRef<DriveBackend | null>(null)
@@ -733,332 +735,346 @@ export function App() {
   const actieveRekeningen = rekeningen.filter((r) => !r.gearchiveerd)
   const maandVerloop = uitgavenPerMaand(transacties, maand, 6)
 
-  return (
-    <main style={container}>
-      <h1 style={{ marginBottom: 0 }}>Kompal</h1>
-      <p style={{ color: 'var(--text-muted)', marginTop: 4 }}>
-        {t('Rekeningen, categorieën, budgetten en transacties — met backup en synchronisatie')}
-      </p>
+  // Eén maand-schakelaar, hergebruikt op de pagina's die per maand tonen
+  // (Overzicht en Budget). Zo hoeft de gebruiker niet terug naar Overzicht.
+  const maandNav = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+      <button style={knop} aria-label={t('Vorige maand')} onClick={() => setMaand(verschuifMaand(maand, -1))}>
+        ‹
+      </button>
+      <span style={{ minWidth: 120, textAlign: 'center' }}>{maandLabel(maand)}</span>
+      <button style={knop} aria-label={t('Volgende maand')} onClick={() => setMaand(verschuifMaand(maand, 1))}>
+        ›
+      </button>
+    </div>
+  )
 
-      {ongeldig > 0 && (
-        <p style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative)', color: 'var(--text)', borderRadius: 8, padding: '0.5rem 0.75rem' }}>
-          {t('Let op: {n} record(s) werden overgeslagen omdat ze niet aan het schema voldeden.', { n: ongeldig })}
-        </p>
+  return (
+    <main style={{ ...container, paddingBottom: '5.5rem' }}>
+      <h1 style={{ marginBottom: '0.75rem' }}>Kompal</h1>
+
+      {pagina === 'overzicht' && (
+        <>
+          {ongeldig > 0 && (
+            <p style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative)', color: 'var(--text)', borderRadius: 8, padding: '0.5rem 0.75rem' }}>
+              {t('Let op: {n} record(s) werden overgeslagen omdat ze niet aan het schema voldeden.', { n: ongeldig })}
+            </p>
+          )}
+
+          <ErrorBoundary naam="Maandoverzicht">
+            <section>
+              <h2 style={kop}>{t('Maandoverzicht')}</h2>
+              {maandNav}
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.15rem 0' }}>
+                <span>{t('Inkomsten')}</span>
+                <span style={{ color: 'var(--positive)' }}>{formatEuro(inkomsten)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.15rem 0' }}>
+                <span>{t('Uitgaven')}</span>
+                <span style={{ color: 'var(--negative)' }}>{formatEuro(uitgaven)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.15rem 0', fontWeight: 'bold' }}>
+                <span>{t('Netto')}</span>
+                <span>{formatEuro(inkomsten - uitgaven)}</span>
+              </div>
+              {perCategorie.length > 0 && (
+                <div style={{ marginTop: '0.75rem' }}>
+                  <Donut items={perCategorie} />
+                </div>
+              )}
+
+              {perInkomsten.length > 0 && (
+                <div style={{ marginTop: '0.75rem' }}>
+                  <p style={{ color: 'var(--text-muted)', margin: '0 0 0.25rem' }}>{t('Inkomsten per categorie')}</p>
+                  <Donut items={perInkomsten} middenLabel="inkomsten" />
+                </div>
+              )}
+
+              <div style={{ marginTop: '1rem' }}>
+                <p style={{ color: 'var(--text-muted)', margin: '0 0 0.25rem' }}>{t('Uitgaven per maand')}</p>
+                <StaafGrafiek data={maandVerloop} />
+              </div>
+            </section>
+          </ErrorBoundary>
+
+          <p style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '1.2rem', marginTop: '1.25rem' }}>
+            <span>{t('Saldo')}</span>
+            <span>{formatEuro(totaalSaldo)}</span>
+          </p>
+        </>
       )}
 
-      <ErrorBoundary naam="Maandoverzicht">
-      <section>
-        <h2 style={kop}>{t('Maandoverzicht')}</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-          <button style={knop} aria-label={t('Vorige maand')} onClick={() => setMaand(verschuifMaand(maand, -1))}>
-            ‹
-          </button>
-          <span style={{ minWidth: 120, textAlign: 'center' }}>{maandLabel(maand)}</span>
-          <button style={knop} aria-label={t('Volgende maand')} onClick={() => setMaand(verschuifMaand(maand, 1))}>
-            ›
-          </button>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.15rem 0' }}>
-          <span>{t('Inkomsten')}</span>
-          <span style={{ color: 'var(--positive)' }}>{formatEuro(inkomsten)}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.15rem 0' }}>
-          <span>{t('Uitgaven')}</span>
-          <span style={{ color: 'var(--negative)' }}>{formatEuro(uitgaven)}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.15rem 0', fontWeight: 'bold' }}>
-          <span>{t('Netto')}</span>
-          <span>{formatEuro(inkomsten - uitgaven)}</span>
-        </div>
-        {perCategorie.length > 0 && (
-          <div style={{ marginTop: '0.75rem' }}>
-            <Donut items={perCategorie} />
+      {pagina === 'transacties' && (
+        <>
+          <section>
+            <h2 style={kop}>{bewerkTransactie ? t('Transactie bewerken') : t('Transactie toevoegen')}</h2>
+            <TransactieFormulier
+              onOpslaan={slaTransactieOp}
+              onAnnuleer={() => setBewerkTransactie(null)}
+              rekeningen={actieveRekeningen}
+              categorieen={categorieen}
+              handelaars={handelaars}
+              bewerken={bewerkTransactie}
+              streepjescodes={streepjescodes}
+              onOnthoudStreepjescode={onthoudStreepjescode}
+            />
+          </section>
+
+          <div style={{ marginTop: '1.5rem' }}>
+            <ErrorBoundary naam="Transactielijst">
+              <TransactieLijst
+                transacties={transacties}
+                categorieen={categorieen}
+                rekeningen={actieveRekeningen}
+                onBewerk={setBewerkTransactie}
+                onVerwijder={verwijder}
+              />
+            </ErrorBoundary>
           </div>
-        )}
+        </>
+      )}
 
-        {perInkomsten.length > 0 && (
-          <div style={{ marginTop: '0.75rem' }}>
-            <p style={{ color: 'var(--text-muted)', margin: '0 0 0.25rem' }}>{t('Inkomsten per categorie')}</p>
-            <Donut items={perInkomsten} middenLabel="inkomsten" />
-          </div>
-        )}
+      {pagina === 'budget' && (
+        <>
+          {maandNav}
+          <ErrorBoundary naam="Budgetten">
+            <section>
+              <h2 style={kop}>{t('Budgetten')}</h2>
+              <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>{t('voor {maand}', { maand: maandLabel(maand) })}</p>
+              {budgetten.length === 0 && <p style={{ color: 'var(--text-muted)' }}>{t('Nog geen budgetten ingesteld.')}</p>}
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {budgetten.map((b) => {
+                  const naam = categorieNaam(b.categorieId) ?? '—'
+                  const uitgegeven = uitgavenInMaand(transacties, b.categorieId, maand)
+                  const fractie = Math.min(uitgegeven / b.bedrag, 1)
+                  const kleur = uitgegeven > b.bedrag ? 'var(--negative)' : uitgegeven >= b.bedrag * 0.8 ? 'var(--warn)' : 'var(--positive)'
+                  return (
+                    <li key={b.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>{naam}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                          <span style={{ color: 'var(--text-muted)' }}>
+                            {formatEuro(uitgegeven)} / {formatEuro(b.bedrag)}
+                          </span>
+                          <button aria-label={t('Verwijder budget {naam}', { naam })} onClick={() => verwijderBud(b.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>
+                            ×
+                          </button>
+                        </span>
+                      </div>
+                      <div
+                        role="progressbar"
+                        aria-label={naam}
+                        aria-valuenow={Math.round(uitgegeven)}
+                        aria-valuemin={0}
+                        aria-valuemax={Math.round(b.bedrag)}
+                        style={{ height: 8, background: 'var(--surface-3)', borderRadius: 4, marginTop: 4, overflow: 'hidden' }}
+                      >
+                        <div style={{ height: '100%', width: `${fractie * 100}%`, background: kleur }} />
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+              {categorieen.length > 0 && <BudgetFormulier categorieen={categorieen} onOpslaan={voegBudgetToe} />}
+            </section>
+          </ErrorBoundary>
 
-        <div style={{ marginTop: '1rem' }}>
-          <p style={{ color: 'var(--text-muted)', margin: '0 0 0.25rem' }}>{t('Uitgaven per maand')}</p>
-          <StaafGrafiek data={maandVerloop} />
-        </div>
-      </section>
-      </ErrorBoundary>
+          <hr style={scheiding} />
 
-      <hr style={scheiding} />
+          <ErrorBoundary naam="Vaste lasten">
+            <TerugkerendeSectie
+              posten={terugkerendePosten}
+              rekeningen={actieveRekeningen}
+              categorieen={categorieen}
+              transacties={transacties}
+              maand={maand}
+              maandLabel={maandLabel(maand)}
+              onOpslaan={voegTerugkerendToe}
+              onVerwijderen={verwijderTerugkerend}
+              onBoek={boekTerugkerend}
+            />
+          </ErrorBoundary>
+        </>
+      )}
 
-      <section>
-        <h2 style={kop}>{t('Rekeningen')}</h2>
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {rekeningen.map((r) => {
-            const meta = [t(REKENING_TYPE_LABEL[r.type ?? 'betaal']), r.rubriek, r.rekeningnummer].filter(Boolean).join(' · ')
-            return (
-              <li key={r.id} style={{ padding: '0.35rem 0', borderBottom: '1px solid var(--border)', opacity: r.gearchiveerd ? 0.55 : 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>
-                    {r.naam}
-                    {r.gearchiveerd && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}> · {t('gearchiveerd')}</span>}
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>{t('startsaldo {saldo}', { saldo: formatEuro(r.beginsaldo) })}</span>
-                    <button aria-label={t('Bewerk rekening {naam}', { naam: r.naam })} onClick={() => setBewerkRekening(r)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>
-                      ✎
-                    </button>
-                    <button
-                      aria-label={r.gearchiveerd ? t('Herstel rekening {naam}', { naam: r.naam }) : t('Archiveer rekening {naam}', { naam: r.naam })}
-                      onClick={() => archiveerRekening(r, !r.gearchiveerd)}
-                      style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer', fontSize: '0.8rem' }}
-                    >
-                      {r.gearchiveerd ? t('herstel') : t('archiveer')}
-                    </button>
-                    <button aria-label={t('Verwijder rekening {naam}', { naam: r.naam })} onClick={() => verwijderRek(r.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>
-                      ×
-                    </button>
-                  </span>
-                </div>
-                {meta && <div style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>{meta}</div>}
-              </li>
-            )
-          })}
-        </ul>
-        <RekeningFormulier onOpslaan={slaRekeningOp} onAnnuleer={() => setBewerkRekening(null)} bewerken={bewerkRekening} />
-      </section>
-
-      <hr style={scheiding} />
-
-      <ErrorBoundary naam="Overboekingen">
-        <OverboekingSectie
-          overboekingen={overboekingen}
-          rekeningen={actieveRekeningen}
-          bewerken={bewerkOverboeking}
-          onOpslaan={voegOverboekingToe}
-          onVerwijderen={verwijderOverboekingH}
-          onBewerk={setBewerkOverboeking}
-          onStopBewerken={() => setBewerkOverboeking(null)}
-        />
-      </ErrorBoundary>
-
-      <hr style={scheiding} />
-
-      <section>
-        <h2 style={kop}>{t('Categorieën')}</h2>
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {categorieen.map((c) => (
-            <li
-              key={c.id}
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.3rem 0', borderBottom: '1px solid var(--border)' }}
-            >
-              <span>{c.naam}</span>
-              <span style={{ display: 'flex', gap: '0.6rem' }}>
-                <button aria-label={t('Bewerk categorie {naam}', { naam: c.naam })} onClick={() => setBewerkCategorie(c)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>
-                  ✎
-                </button>
-                <button aria-label={t('Verwijder categorie {naam}', { naam: c.naam })} onClick={() => verwijderCat(c.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>
-                  ×
-                </button>
-              </span>
-            </li>
-          ))}
-        </ul>
-        <CategorieFormulier onOpslaan={slaCategorieOp} onAnnuleer={() => setBewerkCategorie(null)} bewerken={bewerkCategorie} />
-      </section>
-
-      <hr style={scheiding} />
-
-      <ErrorBoundary naam="Categorieën">
-        <CategorieBoom
-          aanpassingen={subcategorieen}
-          onToevoegen={voegSubcategorieToe}
-          onWijzigen={wijzigSubcategorie}
-          onVerwijderen={verwijderSubcategorieH}
-        />
-      </ErrorBoundary>
-
-      <hr style={scheiding} />
-
-      <ErrorBoundary naam="Budgetten">
-      <section>
-        <h2 style={kop}>{t('Budgetten')}</h2>
-        <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>{t('voor {maand}', { maand: maandLabel(maand) })}</p>
-        {budgetten.length === 0 && <p style={{ color: 'var(--text-muted)' }}>{t('Nog geen budgetten ingesteld.')}</p>}
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {budgetten.map((b) => {
-            const naam = categorieNaam(b.categorieId) ?? '—'
-            const uitgegeven = uitgavenInMaand(transacties, b.categorieId, maand)
-            const fractie = Math.min(uitgegeven / b.bedrag, 1)
-            const kleur = uitgegeven > b.bedrag ? 'var(--negative)' : uitgegeven >= b.bedrag * 0.8 ? 'var(--warn)' : 'var(--positive)'
-            return (
-              <li key={b.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>{naam}</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>
-                      {formatEuro(uitgegeven)} / {formatEuro(b.bedrag)}
-                    </span>
-                    <button aria-label={t('Verwijder budget {naam}', { naam })} onClick={() => verwijderBud(b.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>
-                      ×
-                    </button>
-                  </span>
-                </div>
-                <div
-                  role="progressbar"
-                  aria-label={naam}
-                  aria-valuenow={Math.round(uitgegeven)}
-                  aria-valuemin={0}
-                  aria-valuemax={Math.round(b.bedrag)}
-                  style={{ height: 8, background: 'var(--surface-3)', borderRadius: 4, marginTop: 4, overflow: 'hidden' }}
-                >
-                  <div style={{ height: '100%', width: `${fractie * 100}%`, background: kleur }} />
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-        {categorieen.length > 0 && <BudgetFormulier categorieen={categorieen} onOpslaan={voegBudgetToe} />}
-      </section>
-      </ErrorBoundary>
-
-      <hr style={scheiding} />
-
-      <ErrorBoundary naam="Vaste lasten">
-        <TerugkerendeSectie
-          posten={terugkerendePosten}
-          rekeningen={actieveRekeningen}
-          categorieen={categorieen}
-          transacties={transacties}
-          maand={maand}
-          maandLabel={maandLabel(maand)}
-          onOpslaan={voegTerugkerendToe}
-          onVerwijderen={verwijderTerugkerend}
-          onBoek={boekTerugkerend}
-        />
-      </ErrorBoundary>
-
-      <hr style={scheiding} />
-
-      <section>
-        <h2 style={kop}>{bewerkTransactie ? t('Transactie bewerken') : t('Transactie toevoegen')}</h2>
-        <TransactieFormulier
-          onOpslaan={slaTransactieOp}
-          onAnnuleer={() => setBewerkTransactie(null)}
-          rekeningen={actieveRekeningen}
-          categorieen={categorieen}
-          handelaars={handelaars}
-          bewerken={bewerkTransactie}
-          streepjescodes={streepjescodes}
-          onOnthoudStreepjescode={onthoudStreepjescode}
-        />
-      </section>
-
-      <div style={{ marginTop: '1.5rem' }}>
-        <ErrorBoundary naam="Transactielijst">
-          <TransactieLijst
-            transacties={transacties}
+      {pagina === 'dossiers' && (
+        <ErrorBoundary naam="Dossiers">
+          <DossierSectie
+            dossiers={dossiers}
+            kosten={gedeeldeKosten}
+            verrekeningen={verrekeningen}
+            kinderen={kinderen}
             categorieen={categorieen}
-            rekeningen={actieveRekeningen}
-            onBewerk={setBewerkTransactie}
-            onVerwijder={verwijder}
+            kindrekeningen={kindrekeningen}
+            kindrekeningposten={kindrekeningposten}
+            onDossierOpslaan={voegDossierToe}
+            onDossierVerwijderen={verwijderDoss}
+            onKostOpslaan={voegGedeeldeKostToe}
+            onKostVerwijderen={verwijderKost}
+            onGenereer={genereerAfrekening}
+            onMarkeerOvergemaakt={markeerOvergemaakt}
+            onVerwijderAfrekening={verwijderAfrekening}
+            onKindrekeningOpslaan={kindrekeningOpslaan}
+            onKindrekeningVerwijderen={kindrekeningVerwijderen}
+            onKindrekeningPostOpslaan={kindrekeningPostOpslaan}
+            onKindrekeningPostVerwijderen={kindrekeningPostVerwijderen}
           />
         </ErrorBoundary>
-      </div>
+      )}
 
-      <p style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '1.2rem', marginTop: '1rem' }}>
-        <span>{t('Saldo')}</span>
-        <span>{formatEuro(totaalSaldo)}</span>
-      </p>
+      {pagina === 'meer' && (
+        <>
+          <section>
+            <h2 style={kop}>{t('Rekeningen')}</h2>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {rekeningen.map((r) => {
+                const meta = [t(REKENING_TYPE_LABEL[r.type ?? 'betaal']), r.rubriek, r.rekeningnummer].filter(Boolean).join(' · ')
+                return (
+                  <li key={r.id} style={{ padding: '0.35rem 0', borderBottom: '1px solid var(--border)', opacity: r.gearchiveerd ? 0.55 : 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>
+                        {r.naam}
+                        {r.gearchiveerd && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}> · {t('gearchiveerd')}</span>}
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>{t('startsaldo {saldo}', { saldo: formatEuro(r.beginsaldo) })}</span>
+                        <button aria-label={t('Bewerk rekening {naam}', { naam: r.naam })} onClick={() => setBewerkRekening(r)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>
+                          ✎
+                        </button>
+                        <button
+                          aria-label={r.gearchiveerd ? t('Herstel rekening {naam}', { naam: r.naam }) : t('Archiveer rekening {naam}', { naam: r.naam })}
+                          onClick={() => archiveerRekening(r, !r.gearchiveerd)}
+                          style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer', fontSize: '0.8rem' }}
+                        >
+                          {r.gearchiveerd ? t('herstel') : t('archiveer')}
+                        </button>
+                        <button aria-label={t('Verwijder rekening {naam}', { naam: r.naam })} onClick={() => verwijderRek(r.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>
+                          ×
+                        </button>
+                      </span>
+                    </div>
+                    {meta && <div style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>{meta}</div>}
+                  </li>
+                )
+              })}
+            </ul>
+            <RekeningFormulier onOpslaan={slaRekeningOp} onAnnuleer={() => setBewerkRekening(null)} bewerken={bewerkRekening} />
+          </section>
 
-      <hr style={scheiding} />
+          <hr style={scheiding} />
 
-      <ErrorBoundary naam="Dossiers">
-        <DossierSectie
-          dossiers={dossiers}
-          kosten={gedeeldeKosten}
-          verrekeningen={verrekeningen}
-          kinderen={kinderen}
-          categorieen={categorieen}
-          kindrekeningen={kindrekeningen}
-          kindrekeningposten={kindrekeningposten}
-          onDossierOpslaan={voegDossierToe}
-          onDossierVerwijderen={verwijderDoss}
-          onKostOpslaan={voegGedeeldeKostToe}
-          onKostVerwijderen={verwijderKost}
-          onGenereer={genereerAfrekening}
-          onMarkeerOvergemaakt={markeerOvergemaakt}
-          onVerwijderAfrekening={verwijderAfrekening}
-          onKindrekeningOpslaan={kindrekeningOpslaan}
-          onKindrekeningVerwijderen={kindrekeningVerwijderen}
-          onKindrekeningPostOpslaan={kindrekeningPostOpslaan}
-          onKindrekeningPostVerwijderen={kindrekeningPostVerwijderen}
-        />
-      </ErrorBoundary>
+          <ErrorBoundary naam="Overboekingen">
+            <OverboekingSectie
+              overboekingen={overboekingen}
+              rekeningen={actieveRekeningen}
+              bewerken={bewerkOverboeking}
+              onOpslaan={voegOverboekingToe}
+              onVerwijderen={verwijderOverboekingH}
+              onBewerk={setBewerkOverboeking}
+              onStopBewerken={() => setBewerkOverboeking(null)}
+            />
+          </ErrorBoundary>
 
-      <hr style={scheiding} />
+          <hr style={scheiding} />
 
-      <ErrorBoundary naam="Leningen">
-        <LeningSectie
-          leningen={leningen}
-          aflossingen={aflossingen}
-          onOpslaan={leningOpslaan}
-          onVerwijderen={leningVerwijderen}
-          onAflossingOpslaan={aflossingOpslaan}
-          onAflossingVerwijderen={aflossingVerwijderen}
-        />
-      </ErrorBoundary>
+          <ErrorBoundary naam="Spaardoelen">
+            <SpaardoelSectie
+              spaardoelen={spaardoelen}
+              rekeningen={actieveRekeningen}
+              transacties={transacties}
+              onOpslaan={voegSpaardoelToe}
+              onVerwijderen={verwijderSpaardoelH}
+            />
+          </ErrorBoundary>
 
-      <hr style={scheiding} />
+          <hr style={scheiding} />
 
-      <ErrorBoundary naam="Garanties">
-        <GarantieSectie
-          garanties={garanties}
-          transacties={transacties}
-          onOpslaan={garantieOpslaan}
-          onVerwijderen={garantieVerwijderen}
-        />
-      </ErrorBoundary>
+          <section>
+            <h2 style={kop}>{t('Categorieën')}</h2>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {categorieen.map((c) => (
+                <li
+                  key={c.id}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.3rem 0', borderBottom: '1px solid var(--border)' }}
+                >
+                  <span>{c.naam}</span>
+                  <span style={{ display: 'flex', gap: '0.6rem' }}>
+                    <button aria-label={t('Bewerk categorie {naam}', { naam: c.naam })} onClick={() => setBewerkCategorie(c)} style={{ border: 'none', background: 'none', color: 'var(--info)', cursor: 'pointer' }}>
+                      ✎
+                    </button>
+                    <button aria-label={t('Verwijder categorie {naam}', { naam: c.naam })} onClick={() => verwijderCat(c.id)} style={{ border: 'none', background: 'none', color: 'var(--negative)', cursor: 'pointer', fontSize: '1.1rem' }}>
+                      ×
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <CategorieFormulier onOpslaan={slaCategorieOp} onAnnuleer={() => setBewerkCategorie(null)} bewerken={bewerkCategorie} />
+          </section>
 
-      <hr style={scheiding} />
+          <hr style={scheiding} />
 
-      <ErrorBoundary naam="Spaardoelen">
-        <SpaardoelSectie
-          spaardoelen={spaardoelen}
-          rekeningen={actieveRekeningen}
-          transacties={transacties}
-          onOpslaan={voegSpaardoelToe}
-          onVerwijderen={verwijderSpaardoelH}
-        />
-      </ErrorBoundary>
+          <ErrorBoundary naam="Categorieën">
+            <CategorieBoom
+              aanpassingen={subcategorieen}
+              onToevoegen={voegSubcategorieToe}
+              onWijzigen={wijzigSubcategorie}
+              onVerwijderen={verwijderSubcategorieH}
+            />
+          </ErrorBoundary>
 
-      <hr style={scheiding} />
+          <hr style={scheiding} />
 
-      <ErrorBoundary naam="Indexatie">
-        <IndexatieCalculator />
-      </ErrorBoundary>
+          <ErrorBoundary naam="Leningen">
+            <LeningSectie
+              leningen={leningen}
+              aflossingen={aflossingen}
+              onOpslaan={leningOpslaan}
+              onVerwijderen={leningVerwijderen}
+              onAflossingOpslaan={aflossingOpslaan}
+              onAflossingVerwijderen={aflossingVerwijderen}
+            />
+          </ErrorBoundary>
 
-      <hr style={scheiding} />
+          <hr style={scheiding} />
 
-      <ErrorBoundary naam="Instellingen">
-        <InstellingenSectie
-          taal={taal}
-          zetTaal={zetTaal}
-          verbonden={verbonden}
-          bezig={bezig}
-          statusTekst={statusTekst}
-          onVerbind={verbindEnSynchroniseer}
-          onSynchroniseer={synchroniseerNu}
-          backupTekst={backupTekst}
-          onExporteer={exporteerNu}
-          onHerstel={herstelUitBestand}
-          kinderen={kinderen}
-          onKindToevoegen={voegKindToe}
-          onKindWijzigen={wijzigKind}
-          onKindVerwijderen={verwijderKindH}
-        />
-      </ErrorBoundary>
+          <ErrorBoundary naam="Garanties">
+            <GarantieSectie
+              garanties={garanties}
+              transacties={transacties}
+              onOpslaan={garantieOpslaan}
+              onVerwijderen={garantieVerwijderen}
+            />
+          </ErrorBoundary>
+
+          <hr style={scheiding} />
+
+          <ErrorBoundary naam="Indexatie">
+            <IndexatieCalculator />
+          </ErrorBoundary>
+
+          <hr style={scheiding} />
+
+          <ErrorBoundary naam="Instellingen">
+            <InstellingenSectie
+              taal={taal}
+              zetTaal={zetTaal}
+              verbonden={verbonden}
+              bezig={bezig}
+              statusTekst={statusTekst}
+              onVerbind={verbindEnSynchroniseer}
+              onSynchroniseer={synchroniseerNu}
+              backupTekst={backupTekst}
+              onExporteer={exporteerNu}
+              onHerstel={herstelUitBestand}
+              kinderen={kinderen}
+              onKindToevoegen={voegKindToe}
+              onKindWijzigen={wijzigKind}
+              onKindVerwijderen={verwijderKindH}
+            />
+          </ErrorBoundary>
+        </>
+      )}
 
       {undoInfo && (
         <div
@@ -1067,7 +1083,7 @@ export function App() {
             position: 'fixed',
             left: '50%',
             transform: 'translateX(-50%)',
-            bottom: 20,
+            bottom: 'calc(4.75rem + env(safe-area-inset-bottom))',
             background: 'var(--text)',
             color: 'var(--bg)',
             padding: '0.6rem 1rem',
@@ -1089,6 +1105,8 @@ export function App() {
           </button>
         </div>
       )}
+
+      <OnderNavigatie actief={pagina} onKies={setPagina} />
     </main>
   )
 }

@@ -441,6 +441,13 @@ const en: Record<string, string> = {
   'Toon enkel recente maanden': 'Show only recent months',
   // Instellingen (Ronde 3 · Brok I)
   'Instellingen': 'Settings',
+  // Navigatie / pagina's (Ronde 5 · Brok Q)
+  'Hoofdnavigatie': 'Main navigation',
+  'Overzicht': 'Overview',
+  'Transacties': 'Transactions',
+  'Budget': 'Budget',
+  'Dossiers': 'Cases',
+  'Meer': 'More',
   // Weergave / thema (Ronde 5 · Brok O)
   'Weergave': 'Appearance',
   'Kies licht of donker, of laat de app de voorkeur van je toestel volgen.':
@@ -882,6 +889,13 @@ const fr: Record<string, string> = {
   'Toon enkel recente maanden': 'Afficher uniquement les mois récents',
   // Instellingen (Ronde 3 · Brok I)
   'Instellingen': 'Paramètres',
+  // Navigatie / pagina's (Ronde 5 · Brok Q)
+  'Hoofdnavigatie': 'Navigation principale',
+  'Overzicht': 'Aperçu',
+  'Transacties': 'Transactions',
+  'Budget': 'Budget',
+  'Dossiers': 'Dossiers',
+  'Meer': 'Plus',
   // Weergave / thema (Ronde 5 · Brok O)
   'Weergave': 'Apparence',
   'Kies licht of donker, of laat de app de voorkeur van je toestel volgen.':
