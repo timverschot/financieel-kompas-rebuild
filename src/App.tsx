@@ -7,6 +7,7 @@ import type {
   Dossier,
   Garantie,
   GedeeldeKost,
+  Gezinsrol,
   Kind,
   Kindrekening,
   Kindrekeningpost,
@@ -87,6 +88,7 @@ import { RekeningFormulier, REKENING_TYPE_LABEL } from './components/RekeningFor
 import { CategorieFormulier } from './components/CategorieFormulier'
 import { BudgetFormulier } from './components/BudgetFormulier'
 import { DossierSectie } from './components/DossierSectie'
+import { NieuwDossierKiezer } from './components/NieuwDossierKiezer'
 import { LeningSectie } from './components/LeningSectie'
 import { GarantieSectie } from './components/GarantieSectie'
 import { InstellingenSectie } from './components/InstellingenSectie'
@@ -97,7 +99,7 @@ import { OverzichtZijkolom } from './components/OverzichtZijkolom'
 import { SubcategorieSnelFormulier } from './components/SubcategorieSnelFormulier'
 import { Donut } from './components/Donut'
 import { StaafGrafiek } from './components/StaafGrafiek'
-import { IndexatieCalculator } from './components/IndexatieCalculator'
+import { RekenhulpenSectie } from './components/RekenhulpenSectie'
 import { TerugkerendeSectie } from './components/TerugkerendeSectie'
 import { OverboekingSectie } from './components/OverboekingSectie'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -461,13 +463,15 @@ export function App() {
     if (oud) toonUndo(t('Overboeking verwijderd'), () => bewaarOverboeking(oud))
   }
 
-  async function voegKindToe(naam: string) {
-    await bewaarKind({ id: nieuwId(), naam })
+  async function voegKindToe(naam: string, rol?: Gezinsrol) {
+    await bewaarKind({ id: nieuwId(), naam, ...(rol ? { rol } : {}) })
     await herlaad()
   }
 
-  async function wijzigKind(id: string, naam: string) {
-    await bewaarKind({ id, naam })
+  // Krijgt het volledige gewijzigde gezinslid terug. Archiveren en heropenen
+  // lopen via dezelfde weg (enkel het veld 'gearchiveerd' verschilt).
+  async function wijzigKind(lid: Kind) {
+    await bewaarKind(lid)
     await herlaad()
   }
 
@@ -952,6 +956,7 @@ export function App() {
                   streepjescodes={streepjescodes}
                   onOnthoudStreepjescode={onthoudStreepjescode}
                   onNieuweSubcategorie={voegSubcategorieToe}
+                  gezinsleden={kinderen}
                 />
               </Kaart>
             </div>
@@ -973,7 +978,8 @@ export function App() {
 
       {pagina === 'analyse' && (
         <ErrorBoundary naam="Analyse">
-          <AnalyseSectie transacties={transacties} categorieen={categorieen} rekeningen={rekeningen} overboekingen={overboekingen} terugkerendePosten={terugkerendePosten} />
+          <AnalyseSectie
+            gezinsleden={kinderen} transacties={transacties} categorieen={categorieen} rekeningen={rekeningen} overboekingen={overboekingen} terugkerendePosten={terugkerendePosten} />
         </ErrorBoundary>
       )}
 
@@ -1051,6 +1057,15 @@ export function App() {
       )}
 
       {pagina === 'dossiers' && (
+        <>
+          {/* Één plek om te kiezen wat voor dossier je wil; leningen en garanties
+              wonen op hun eigen pagina, maar je moest maar raden dat ze bestonden. */}
+          <NieuwDossierKiezer
+            onKies={(soort) => {
+              if (soort === 'lening' || soort === 'garantie') setPagina('leningen')
+            }}
+          />
+
         <ErrorBoundary naam="Dossiers">
           <DossierSectie
             dossiers={dossiers}
@@ -1073,6 +1088,7 @@ export function App() {
             onKindrekeningPostVerwijderen={kindrekeningPostVerwijderen}
           />
         </ErrorBoundary>
+        </>
       )}
 
       {pagina === 'rekeningen' && (
@@ -1151,6 +1167,7 @@ export function App() {
       {pagina === 'spaardoelen' && (
           <ErrorBoundary naam="Spaardoelen">
             <SpaardoelSectie
+              gezinsleden={kinderen}
               spaardoelen={spaardoelen}
               rekeningen={rekeningen}
               transacties={transacties}
@@ -1216,6 +1233,7 @@ export function App() {
 
           <ErrorBoundary naam="Leningen">
             <LeningSectie
+              gezinsleden={kinderen}
               leningen={leningen}
               aflossingen={aflossingen}
               onOpslaan={leningOpslaan}
@@ -1227,6 +1245,7 @@ export function App() {
 
           <ErrorBoundary naam="Garanties">
             <GarantieSectie
+              gezinsleden={kinderen}
               garanties={garanties}
               transacties={transacties}
               onOpslaan={garantieOpslaan}
@@ -1238,8 +1257,6 @@ export function App() {
 
       {pagina === 'instellingen' && (
         <>
-          {/* Instellingen eerst: die sectie draagt de paginatitel. De
-              indexatie-rekenhulp is een hulpmiddel en komt daaronder. */}
           <ErrorBoundary naam="Instellingen">
             <InstellingenSectie
               taal={taal}
@@ -1259,10 +1276,13 @@ export function App() {
             />
           </ErrorBoundary>
 
-          <ErrorBoundary naam="Indexatie">
-            <IndexatieCalculator />
-          </ErrorBoundary>
         </>
+      )}
+
+      {pagina === 'rekenhulpen' && (
+        <ErrorBoundary naam="Rekenhulpen">
+          <RekenhulpenSectie />
+        </ErrorBoundary>
       )}
 
     </div>

@@ -15,6 +15,7 @@ export type Pagina =
   | 'leningen'
   | 'analyse'
   | 'categorieen'
+  | 'rekenhulpen'
   | 'instellingen'
 
 // Alle pagina's met icoon + label, in de volgorde van het desktop-zijpaneel.
@@ -28,6 +29,7 @@ export const PAGINAS: { id: Pagina; icoon: string; label: string }[] = [
   { id: 'leningen', icoon: '📄', label: 'Leningen' },
   { id: 'analyse', icoon: '📊', label: 'Analyse' },
   { id: 'categorieen', icoon: '🏷️', label: 'Categorieën' },
+  { id: 'rekenhulpen', icoon: '🧮', label: 'Rekenhulpen' },
   { id: 'instellingen', icoon: '⚙️', label: 'Instellingen' },
 ]
 
@@ -35,7 +37,7 @@ export const PAGINAS: { id: Pagina; icoon: string; label: string }[] = [
 // en Transacties, rechts Analyse, en dan Meer. De rest zit onder 'Meer'.
 const PRIMAIR_LINKS: Pagina[] = ['overzicht', 'transacties']
 const PRIMAIR_RECHTS: Pagina[] = ['analyse']
-const SECUNDAIR: Pagina[] = ['rekeningen', 'spaardoelen', 'budget', 'dossiers', 'leningen', 'categorieen', 'instellingen']
+const SECUNDAIR: Pagina[] = ['rekeningen', 'spaardoelen', 'budget', 'dossiers', 'leningen', 'categorieen', 'rekenhulpen', 'instellingen']
 
 const balk: CSSProperties = {
   position: 'fixed',

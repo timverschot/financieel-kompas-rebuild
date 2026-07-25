@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
-import type { Categorie, Rekening, Streepjescode, Transactie, TransactieRegel } from '../data/schema'
+import type { Categorie, Kind, Rekening, Streepjescode, Transactie, TransactieRegel } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer, formatEuro } from '../utils/format'
 import { labelVanCategorie } from '../data/categorieen/resolve'
@@ -10,6 +10,7 @@ import { HandelaarVeld } from './HandelaarVeld'
 import { ItemZoeker } from './ItemZoeker'
 import { NutriScoreBadge } from './NutriScoreBadge'
 import { Kaart } from '../ui/basis'
+import { GezinsledenKiezer } from './GezinslidKiezer'
 import { useT } from '../i18n'
 import { vandaag } from '../utils/datum'
 
@@ -58,6 +59,7 @@ export function TransactieFormulier({
   streepjescodes = [],
   onOnthoudStreepjescode,
   onNieuweSubcategorie,
+  gezinsleden = [],
 }: {
   onOpslaan: (t: Transactie) => Promise<void> | void
   onAnnuleer?: () => void
@@ -70,11 +72,14 @@ export function TransactieFormulier({
   // Bewaart een nieuwe subcategorie onder een bestaande (midden)categorie en
   // geeft het nieuwe id terug, zodat de regel er meteen op getagd kan worden.
   onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
+  // Optioneel: voor of door welke gezinsleden was deze uitgave?
+  gezinsleden?: Kind[]
 }) {
   const { t } = useT()
   const [omschrijving, setOmschrijving] = useState('')
   const [bedrag, setBedrag] = useState('')
   const [datum, setDatum] = useState(vandaag())
+  const [persoonIds, setPersoonIds] = useState<string[]>([])
   const [soort, setSoort] = useState<'uitgave' | 'inkomst'>('uitgave')
   const [rekeningId, setRekeningId] = useState(() => standaardRekening(rekeningen))
   const [categorieId, setCategorieId] = useState('')
@@ -89,6 +94,7 @@ export function TransactieFormulier({
       setSoort(bewerken.bedrag < 0 ? 'uitgave' : 'inkomst')
       setDatum(bewerken.datum)
       setRekeningId(bewerken.rekeningId)
+      setPersoonIds(bewerken.persoonIds ?? [])
       setBedrag(centenNaarInvoer(Math.abs(bewerken.bedrag)))
       if (bewerken.regels && bewerken.regels.length > 0) {
         setGesplitst(true)
@@ -111,6 +117,7 @@ export function TransactieFormulier({
       setBedrag('')
       setSoort('uitgave')
       setDatum(vandaag())
+      setPersoonIds([])
       setCategorieId('')
       setGesplitst(false)
       setKassaRegels([nieuweKassaRegel()])
@@ -196,6 +203,7 @@ export function TransactieFormulier({
         bedrag: teken * bedragCenten,
         rekeningId,
         ...(regels.length > 0 ? { regels } : {}),
+        ...(persoonIds.length > 0 ? { persoonIds } : {}),
       }
     } else {
       t = {
@@ -205,6 +213,7 @@ export function TransactieFormulier({
         bedrag: teken * bedragCenten,
         rekeningId,
         ...(categorieId ? { categorieId } : {}),
+        ...(persoonIds.length > 0 ? { persoonIds } : {}),
       }
     }
 
@@ -347,6 +356,15 @@ export function TransactieFormulier({
           </p>
         </Kaart>
       )}
+
+      {/* Voor of door wie was deze uitgave? Verschijnt enkel als er gezinsleden
+          ingesteld zijn, en is altijd optioneel. */}
+      <GezinsledenKiezer
+        label={t('Voor wie? (optioneel)')}
+        waarden={persoonIds}
+        onWijzig={setPersoonIds}
+        gezinsleden={gezinsleden}
+      />
 
       <div className="veldrij">
         <div className="veldgroep">

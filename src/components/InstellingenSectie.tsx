@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import type { Kind } from '../data/schema'
+import type { Gezinsrol, Kind } from '../data/schema'
 import { KinderenSectie } from './KinderenSectie'
 import { Kaart, PaginaKop } from '../ui/basis'
 import { useT, TALEN, type Taal } from '../i18n'
@@ -39,8 +39,8 @@ export function InstellingenSectie({
   onExporteer: () => void
   onHerstel: (bestand: File) => void
   kinderen: Kind[]
-  onKindToevoegen: (naam: string) => void
-  onKindWijzigen: (id: string, naam: string) => void
+  onKindToevoegen: (naam: string, rol?: Gezinsrol) => void
+  onKindWijzigen: (lid: Kind) => void
   onKindVerwijderen: (id: string) => void
 }) {
   const { t } = useT()

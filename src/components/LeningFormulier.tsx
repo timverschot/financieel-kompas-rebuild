@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import type { Lening, LeningRichting } from '../data/schema'
+import type { Kind, Lening, LeningRichting } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
+import { GezinslidKiezer } from './GezinslidKiezer'
+import { heeftKiesbareLeden } from '../utils/persoon'
 import { verkleinAfbeelding } from '../utils/afbeelding'
 import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
@@ -25,6 +27,7 @@ function beginwaarden() {
     maandbedrag: '',
     einddatum: '',
     bonnetje: '',
+    persoonId: '',
   }
 }
 
@@ -35,10 +38,14 @@ export function LeningFormulier({
   onOpslaan,
   onAnnuleer,
   bewerken,
+  gezinsleden = [],
 }: {
   onOpslaan: (l: Lening) => Promise<void> | void
   onAnnuleer?: () => void
   bewerken?: Lening | null
+  // Optioneel: zolang deze lijst leeg is, verschijnt het gezinslid-veld niet. Zo
+  // blijven bestaande aanroepen ongewijzigd werken.
+  gezinsleden?: Kind[]
 }) {
   const { t } = useT()
   const [richting, setRichting] = useState<LeningRichting>(() => beginwaarden().richting)
@@ -51,6 +58,7 @@ export function LeningFormulier({
   const [maandbedrag, setMaandbedrag] = useState(() => beginwaarden().maandbedrag)
   const [einddatum, setEinddatum] = useState(() => beginwaarden().einddatum)
   const [bonnetje, setBonnetje] = useState(() => beginwaarden().bonnetje)
+  const [persoonId, setPersoonId] = useState(() => beginwaarden().persoonId)
   const [bezigBon, setBezigBon] = useState(false)
 
   // Zet alle velden terug op hun beginwaarde.
@@ -66,6 +74,7 @@ export function LeningFormulier({
     setMaandbedrag(b.maandbedrag)
     setEinddatum(b.einddatum)
     setBonnetje(b.bonnetje)
+    setPersoonId(b.persoonId)
   }, [])
 
   useEffect(() => {
@@ -80,6 +89,7 @@ export function LeningFormulier({
       setMaandbedrag(typeof bewerken.maandbedrag === 'number' ? centenNaarInvoer(bewerken.maandbedrag) : '')
       setEinddatum(bewerken.einddatum ?? '')
       setBonnetje(bewerken.bonnetje ?? '')
+      setPersoonId(bewerken.persoonId ?? '')
     } else {
       leegmaken()
     }
@@ -116,6 +126,9 @@ export function LeningFormulier({
       ...(richting === 'geleend' && Number.isFinite(m) && m > 0 ? { maandbedrag: m } : {}),
       ...(richting === 'geleend' && einddatum ? { einddatum } : {}),
       ...(bonnetje ? { bonnetje } : {}),
+      // Ook bewaren als het veld niet zichtbaar is (bv. het gekoppelde lid werd
+      // intussen gearchiveerd): een koppeling mag nooit stil verdwijnen.
+      ...(persoonId ? { persoonId } : {}),
       ...(bewerken?.afgesloten ? { afgesloten: true } : {}),
     })
     // Bij een NIEUWE lening blijft 'bewerken' null, dus de useEffect hierboven draait
@@ -161,6 +174,17 @@ export function LeningFormulier({
           <input id="lening-start" type="date" value={startdatum} onChange={(e) => setStartdatum(e.target.value)} />
         </div>
       </div>
+      {/* Naast het vrije veld hierboven: een bank of kredietgever tik je gewoon
+          in, familie kies je uit je gezinsleden. */}
+      {heeftKiesbareLeden(gezinsleden, persoonId) && (
+        <GezinslidKiezer
+          label={t('Gezinslid (optioneel)')}
+          waarde={persoonId}
+          onKies={setPersoonId}
+          gezinsleden={gezinsleden}
+          hint={t('Een bank of winkel vul je hierboven in als vrije tekst; gaat het om iemand van het gezin, kies hem hier.')}
+        />
+      )}
       {richting === 'geleend' && (
         <>
           <div className="veldrij">

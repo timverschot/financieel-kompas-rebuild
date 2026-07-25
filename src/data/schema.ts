@@ -54,6 +54,10 @@ export const TransactieSchema = z.object({
   categorieId: z.string().min(1).optional(),
   // Optionele uitsplitsing (kassaticket) over meerdere regels.
   regels: z.array(TransactieRegelSchema).optional(),
+  // Optioneel: voor of door welke gezinsleden was deze uitgave? Bewust op het
+  // niveau van de hele transactie en niet per ticketregel — dat laatste zou de
+  // splitsingslogica verdubbelen en elke ticketinvoer traag maken.
+  persoonIds: z.array(z.string().min(1)).optional(),
 })
 export type Transactie = z.infer<typeof TransactieSchema>
 
@@ -67,11 +71,26 @@ export type Budget = z.infer<typeof BudgetSchema>
 // Een kind (of algemener: een partij) waaraan gedeelde kosten toegewezen kunnen
 // worden. Globale lijst, herbruikbaar in elk dossier. De naam is de weergave; de
 // id is de taal-onafhankelijke sleutel.
+// De rollen die een gezinslid kan hebben. Puur informatief: de app rekent er
+// niets mee, ze helpen enkel om de lijst leesbaar te houden.
+export const GEZINSROLLEN = ['kind', 'partner', 'ikzelf', 'ander'] as const
+export type Gezinsrol = (typeof GEZINSROLLEN)[number]
+
+// Een gezinslid. LET OP: intern heet dit nog altijd "kind" — het event-type
+// 'kind.bewaard' en het veld 'kindIds' staan letterlijk in élke bestaande
+// logregel en in elke Google Drive-back-up. Hernoemen zou de volledige
+// geschiedenis herschrijven, wat haaks staat op het append-only-model. In de app
+// spreken we van "gezinsleden"; onder water blijft alles ongewijzigd.
+// De extra velden zijn OPTIONEEL, zodat bestaande records geldig blijven.
 export const KindSchema = z.object({
   id: z.string().min(1),
   naam: z.string().min(1),
+  rol: z.enum(GEZINSROLLEN).optional(),
+  gearchiveerd: z.boolean().optional(),
 })
 export type Kind = z.infer<typeof KindSchema>
+/** Nieuwe naam voor hetzelfde ding; gebruik deze in nieuwe code. */
+export type Gezinslid = Kind
 
 // Een dossier voor gedeelde kosten (bv. tussen co-ouders). 'aandeelJij' is het
 // STANDAARD-percentage (0-100) van elke kost dat jij hoort te dragen. Dit kan per
@@ -168,6 +187,7 @@ export const SpaardoelSchema = z.object({
   gekoppeldeRekeningId: z.string().min(1).optional(),
   maandbedrag: z.number().int().positive().optional(), // maandelijks streefbedrag
   kleur: z.string().optional(),
+  persoonId: z.string().min(1).optional(), // optioneel: doel op naam van een gezinslid
 })
 export type Spaardoel = z.infer<typeof SpaardoelSchema>
 
@@ -249,6 +269,7 @@ export const LeningSchema = z.object({
   omschrijving: z.string().optional(),
   afgesloten: z.boolean().optional(), // manueel afgesloten/gearchiveerd
   bonnetje: z.string().optional(), // contract/bewijs als (verkleinde) data-URL
+  persoonId: z.string().min(1).optional(), // optioneel: aan/van welk gezinslid
 })
 export type Lening = z.infer<typeof LeningSchema>
 
@@ -278,6 +299,7 @@ export const GarantieSchema = z.object({
   transactieId: z.string().min(1).optional(),
   notitie: z.string().optional(),
   bonnetje: z.string().optional(), // bon/factuur als (verkleinde) data-URL
+  persoonId: z.string().min(1).optional(), // optioneel: van welk gezinslid is dit
 })
 export type Garantie = z.infer<typeof GarantieSchema>
 

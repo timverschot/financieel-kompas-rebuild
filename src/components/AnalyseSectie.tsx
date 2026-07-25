@@ -1,5 +1,5 @@
 import { useMemo, useState, type CSSProperties } from 'react'
-import type { Categorie, Overboeking, Rekening, TerugkerendePost, Transactie } from '../data/schema'
+import type { Categorie, Kind, Overboeking, Rekening, TerugkerendePost, Transactie } from '../data/schema'
 import { Vermogensevolutie } from './Vermogensevolutie'
 import { TrendsSectie } from './TrendsSectie'
 import { VooruitblikSectie } from './VooruitblikSectie'
@@ -10,10 +10,13 @@ import {
   drillTransacties,
   drillPerItem,
   totaalVan,
+  inPeriode,
   type Periode,
   type Richting,
   type AnalysePost,
 } from '../utils/analyse'
+import { categorieBedragen } from '../utils/transactie'
+import { uitgavenPerPersoon } from '../utils/persoon'
 import { Donut } from './Donut'
 import { afgerondePercentages } from '../utils/donut'
 import { formatEuro } from '../utils/format'
@@ -116,12 +119,16 @@ export function AnalyseSectie({
   rekeningen,
   overboekingen,
   terugkerendePosten,
+  gezinsleden = [],
 }: {
   transacties: Transactie[]
   categorieen: Categorie[]
   rekeningen: Rekening[]
   overboekingen: Overboeking[]
   terugkerendePosten: TerugkerendePost[]
+  // Optioneel: zonder ingestelde gezinsleden blijft het blok 'per gezinslid'
+  // gewoon weg — het zou dan alleen maar verwarren.
+  gezinsleden?: Kind[]
 }) {
   const { t } = useT()
   const [richting, setRichting] = useState<Richting>('uitgave')
@@ -201,6 +208,37 @@ export function AnalyseSectie({
     [bereikOmgekeerd, transacties, periode, richting],
   )
   const totaal = totaalVan(byOv)
+
+  // Verdeling per gezinslid. Het bedrag per transactie wordt opgebouwd uit de
+  // deelregels (categorieBedragen), zodat een gesplitst kassaticket exact even
+  // zwaar meetelt als een gewone transactie — en daarna gelijk verdeeld over de
+  // personen die eraan hangen.
+  const perPersoon = useMemo(() => {
+    if (bereikOmgekeerd || gezinsleden.length === 0) return []
+    const posten = transacties
+      .filter((tx) => inPeriode(tx.datum, periode))
+      .map((tx) => ({
+        bedrag: categorieBedragen(tx)
+          .filter((r) => (richting === 'uitgave' ? r.bedrag < 0 : r.bedrag > 0))
+          .reduce((s, r) => s + Math.abs(r.bedrag), 0),
+        persoonIds: tx.persoonIds,
+      }))
+      .filter((p) => p.bedrag > 0)
+    return uitgavenPerPersoon(posten, gezinsleden, {
+      nietToegewezen: t('Niet toegewezen'),
+      onbekend: t('Onbekend gezinslid'),
+    })
+  }, [bereikOmgekeerd, gezinsleden, transacties, periode, richting, t])
+
+  // Kleuren zoals elders op deze pagina; de restgroep krijgt bewust de neutrale
+  // 'overige'-tint, zodat ze niet als een persoon leest.
+  const perPersoonGekleurd = useMemo(
+    () =>
+      kleuren(perPersoon.map((p) => ({ naam: p.naam, bedrag: p.bedrag }))).map((p, i) =>
+        perPersoon[i].id === null ? { ...p, kleur: OVERIGE_KLEUR } : p,
+      ),
+    [perPersoon],
+  )
 
   const drillTxs = useMemo(
     () => (drill && !bereikOmgekeerd ? drillTransacties(transacties, categorieen, periode, richting, drill.sleutel) : []),
@@ -346,6 +384,15 @@ export function AnalyseSectie({
               titel={richting === 'uitgave' ? t('Uitgaven per winkel') : t('Inkomsten per bron')}
               subtitel={t('Gebaseerd op de omschrijving bij elke transactie')}
               posten={byWinkel}
+              richting={richting}
+            />
+          )}
+
+          {perPersoonGekleurd.length > 0 && (
+            <DonutKaart
+              titel={richting === 'uitgave' ? t('Uitgaven per gezinslid') : t('Inkomsten per gezinslid')}
+              subtitel={t('Hangt een transactie aan meerdere gezinsleden, dan wordt het bedrag gelijk over hen verdeeld.')}
+              posten={perPersoonGekleurd}
               richting={richting}
             />
           )}

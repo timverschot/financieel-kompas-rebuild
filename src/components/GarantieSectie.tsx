@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Garantie, Transactie } from '../data/schema'
+import type { Garantie, Kind, Transactie } from '../data/schema'
 import { formatEuro } from '../utils/format'
 import { garantieStatus, dagenTussen } from '../utils/garantie'
 import { GarantieFormulier } from './GarantieFormulier'
@@ -21,11 +21,14 @@ function badge(t: Vertaler, s: ReturnType<typeof garantieStatus>): { klasse: str
 // en "nog X maanden / verlopen" — gesorteerd op wat het eerst vervalt, met een
 // waarschuwing voor wat bijna verloopt.
 export function GarantieSectie({
+  gezinsleden = [],
   garanties,
   transacties,
   onOpslaan,
   onVerwijderen,
 }: {
+  // Optioneel: doorgegeven aan het formulier, om iets aan een gezinslid te koppelen.
+  gezinsleden?: Kind[]
   garanties: Garantie[]
   transacties: Transactie[]
   onOpslaan: (g: Garantie) => Promise<void> | void
@@ -124,7 +127,7 @@ export function GarantieSectie({
       <h3 className="label-caps" style={{ margin: 0 }}>
         {bewerk ? t('Aankoop bewerken') : t('Nieuwe aankoop')}
       </h3>
-      <GarantieFormulier transacties={transacties} onOpslaan={opslaan} onAnnuleer={() => setBewerk(null)} bewerken={bewerk} />
+      <GarantieFormulier gezinsleden={gezinsleden} transacties={transacties} onOpslaan={opslaan} onAnnuleer={() => setBewerk(null)} bewerken={bewerk} />
     </Kaart>
   )
 }

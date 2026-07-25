@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import type { Garantie, Transactie } from '../data/schema'
+import type { Garantie, Kind, Transactie } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer, formatEuro } from '../utils/format'
+import { GezinslidKiezer } from './GezinslidKiezer'
+import { heeftKiesbareLeden } from '../utils/persoon'
 import { verkleinAfbeelding } from '../utils/afbeelding'
 import { STANDAARD_GARANTIE_MAANDEN } from '../utils/garantie'
 import { vandaag } from '../utils/datum'
@@ -20,6 +22,7 @@ function beginwaarden() {
     transactieId: '',
     notitie: '',
     bonnetje: '',
+    persoonId: '',
   }
 }
 
@@ -31,11 +34,15 @@ export function GarantieFormulier({
   onOpslaan,
   onAnnuleer,
   bewerken,
+  gezinsleden = [],
 }: {
   transacties: Transactie[]
   onOpslaan: (g: Garantie) => Promise<void> | void
   onAnnuleer?: () => void
   bewerken?: Garantie | null
+  // Optioneel: zolang deze lijst leeg is, verschijnt het gezinslid-veld niet. Zo
+  // blijven bestaande aanroepen ongewijzigd werken.
+  gezinsleden?: Kind[]
 }) {
   const { t } = useT()
   const [product, setProduct] = useState(() => beginwaarden().product)
@@ -46,6 +53,7 @@ export function GarantieFormulier({
   const [transactieId, setTransactieId] = useState(() => beginwaarden().transactieId)
   const [notitie, setNotitie] = useState(() => beginwaarden().notitie)
   const [bonnetje, setBonnetje] = useState(() => beginwaarden().bonnetje)
+  const [persoonId, setPersoonId] = useState(() => beginwaarden().persoonId)
   const [bezigBon, setBezigBon] = useState(false)
 
   // Zet alle velden terug op hun beginwaarde.
@@ -59,6 +67,7 @@ export function GarantieFormulier({
     setTransactieId(b.transactieId)
     setNotitie(b.notitie)
     setBonnetje(b.bonnetje)
+    setPersoonId(b.persoonId)
   }, [])
 
   useEffect(() => {
@@ -71,6 +80,7 @@ export function GarantieFormulier({
       setTransactieId(bewerken.transactieId ?? '')
       setNotitie(bewerken.notitie ?? '')
       setBonnetje(bewerken.bonnetje ?? '')
+      setPersoonId(bewerken.persoonId ?? '')
     } else {
       leegmaken()
     }
@@ -117,6 +127,9 @@ export function GarantieFormulier({
       ...(transactieId ? { transactieId } : {}),
       ...(notitie.trim() ? { notitie: notitie.trim() } : {}),
       ...(bonnetje ? { bonnetje } : {}),
+      // Ook bewaren als het veld niet zichtbaar is (bv. het gekoppelde lid werd
+      // intussen gearchiveerd): een koppeling mag nooit stil verdwijnen.
+      ...(persoonId ? { persoonId } : {}),
     })
     // Bij een NIEUWE aankoop blijft 'bewerken' null, dus de useEffect hierboven
     // draait niet. Daarom hier leegmaken, anders blijft alles ingevuld staan en
@@ -172,6 +185,14 @@ export function GarantieFormulier({
         <input id="gar-maanden" inputMode="numeric" value={maanden} onChange={(e) => setMaanden(e.target.value)} />
         <span className="rij-meta">{t('24 = wettelijk (2 jaar); tweedehands minstens 12; langere commerciële garantie mag ook.')}</span>
       </div>
+      {heeftKiesbareLeden(gezinsleden, persoonId) && (
+        <GezinslidKiezer
+          label={t('Van wie is dit?')}
+          waarde={persoonId}
+          onKies={setPersoonId}
+          gezinsleden={gezinsleden}
+        />
+      )}
       <div className="veldgroep">
         <label className="label-caps" htmlFor="gar-notitie">
           {t('Notitie (optioneel)')}

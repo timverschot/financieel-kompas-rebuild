@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import type { Overboeking, Rekening, Spaardoel, Transactie } from '../data/schema'
+import type { Kind, Overboeking, Rekening, Spaardoel, Transactie } from '../data/schema'
 import { SpaardoelFormulier } from './SpaardoelFormulier'
 import { spaardoelVoortgang } from '../utils/spaardoel'
+import { naamVanPersoon } from '../utils/persoon'
 import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { Balk, Kaart, Leeg, PaginaKop } from '../ui/basis'
 import { useT } from '../i18n'
@@ -14,12 +15,15 @@ export function SpaardoelSectie({
   rekeningen,
   transacties,
   overboekingen = [],
+  gezinsleden = [],
   onOpslaan,
   onVerwijderen,
 }: {
   spaardoelen: Spaardoel[]
   rekeningen: Rekening[]
   transacties: Transactie[]
+  // Optioneel: enkel nodig om te tonen (en te kiezen) voor wie een doel is.
+  gezinsleden?: Kind[]
   // Overboekingen tellen mee in het saldo van een gekoppelde rekening: geld dat je
   // naar je spaarrekening boekt, hoort in je spaardoel te verschijnen.
   overboekingen?: Overboeking[]
@@ -61,12 +65,18 @@ export function SpaardoelSectie({
               const v = spaardoelVoortgang(d, rekeningen, transacties, overboekingen)
               const kleur = d.kleur ?? 'var(--positive)'
               const manueel = !d.gekoppeldeRekeningId
+              // De naam van het gezinslid komt uit de lijst; staat het lid er niet
+              // (meer) in, dan tonen we gewoon niets extra.
+              const persoonNaam = naamVanPersoon(d.persoonId, gezinsleden)
               return (
                 <li key={d.id} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div className="rij-midden">
                       <span className="rij-titel">{d.naam}</span>
-                      <span className="rij-meta">{t('{a} van {b}', { a: formatEuro(v.huidig), b: formatEuro(v.doel) })}</span>
+                      <span className="rij-meta">
+                        {t('{a} van {b}', { a: formatEuro(v.huidig), b: formatEuro(v.doel) })}
+                        {persoonNaam ? ` · ${t('voor {naam}', { naam: persoonNaam })}` : ''}
+                      </span>
                     </div>
                     <span className="rij-acties">
                       <button className="knop knop-kaal" aria-label={t('Bewerk doel {naam}', { naam: d.naam })} onClick={() => setBewerk(d)}>
@@ -113,7 +123,13 @@ export function SpaardoelSectie({
           </ul>
         )}
 
-        <SpaardoelFormulier rekeningen={rekeningen} onOpslaan={opslaan} onAnnuleer={() => setBewerk(null)} bewerken={bewerk} />
+        <SpaardoelFormulier
+          rekeningen={rekeningen}
+          gezinsleden={gezinsleden}
+          onOpslaan={opslaan}
+          onAnnuleer={() => setBewerk(null)}
+          bewerken={bewerk}
+        />
       </Kaart>
     </div>
   )

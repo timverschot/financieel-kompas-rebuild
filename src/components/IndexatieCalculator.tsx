@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import type { CSSProperties } from 'react'
-import { indexeerBedrag } from '../utils/indexatie'
+import { indexatie, tekstNaarGetal, formatProcent, type IndexatieSoort } from '../utils/rekenhulp'
 import { formatEuro, invoerNaarCenten } from '../utils/format'
 import { Kaart } from '../ui/basis'
 import { useT } from '../i18n'
 
 // De uitkomst krijgt een zacht amberen vlak: het is het antwoord van de rekenhulp,
-// niet zomaar een regel tekst.
-const uitkomst: CSSProperties = {
+// niet zomaar een regel tekst. De andere rekenhulpen gebruiken hetzelfde vlak,
+// daarom staat het hier één keer en wordt het geëxporteerd.
+export const uitkomstVlak: CSSProperties = {
   margin: 0,
   padding: '12px 14px',
   borderRadius: 'var(--radius-md)',
@@ -16,29 +17,60 @@ const uitkomst: CSSProperties = {
   fontWeight: 600,
 }
 
-function getal(waarde: string): number {
-  return Number.parseFloat(waarde.replace(',', '.'))
-}
+// Kleine bijregel binnen dat amberen vlak (de toelichting onder het hoofdcijfer).
+export const uitkomstBijregel: CSSProperties = { margin: '6px 0 0', fontSize: 13, fontWeight: 500 }
 
-// Rekenhulp voor de Belgische indexatie van onderhoudsgeld. Rekent live mee;
-// bewaart (voorlopig) niets.
+/**
+ * Rekenhulp voor de Belgische indexatie. Alimentatie en huur gebruiken exact
+ * dezelfde formule (basisbedrag × nieuwe index / aanvangsindex); enkel de uitleg
+ * en de gebruikte indexreeks verschillen. Rekent live mee; bewaart niets.
+ */
 export function IndexatieCalculator() {
   const { t } = useT()
+  const [soort, setSoort] = useState<IndexatieSoort>('alimentatie')
   const [basis, setBasis] = useState('')
   const [aanvang, setAanvang] = useState('')
   const [nieuw, setNieuw] = useState('')
 
-  const bCenten = invoerNaarCenten(basis) // basisbedrag in centen
-  const a = getal(aanvang)
-  const n = getal(nieuw)
-  const geldig = [bCenten, a, n].every(Number.isFinite) && bCenten > 0 && a > 0 && n > 0
-  const resultaat = geldig ? indexeerBedrag(bCenten, a, n) : null
+  const uitkomst = indexatie(invoerNaarCenten(basis), tekstNaarGetal(aanvang), tekstNaarGetal(nieuw))
+  // Zolang er nog niets ingevuld is, tonen we geen foutmelding — dat zou de
+  // gebruiker beknorren voor een leeg formulier.
+  const ingevuld = basis.trim() !== '' && aanvang.trim() !== '' && nieuw.trim() !== ''
 
   return (
     <Kaart
-      titel={t('Alimentatie-indexatie')}
-      bijschrift={t('Geïndexeerd bedrag = basisbedrag × nieuwe index / aanvangsindex (Belgische formule).')}
+      titel={soort === 'huur' ? t('Huurindexatie') : t('Alimentatie-indexatie')}
+      bijschrift={
+        soort === 'huur'
+          ? t('Geïndexeerde huur = basishuur × nieuwe index / aanvangsindex (Belgische formule).')
+          : t('Geïndexeerd bedrag = basisbedrag × nieuwe index / aanvangsindex (Belgische formule).')
+      }
     >
+      <div className="knoprij" style={{ marginBottom: 12 }}>
+        <button
+          type="button"
+          className={soort === 'alimentatie' ? 'chip chip-actief' : 'chip'}
+          aria-pressed={soort === 'alimentatie'}
+          onClick={() => setSoort('alimentatie')}
+        >
+          {t('Alimentatie')}
+        </button>
+        <button
+          type="button"
+          className={soort === 'huur' ? 'chip chip-actief' : 'chip'}
+          aria-pressed={soort === 'huur'}
+          onClick={() => setSoort('huur')}
+        >
+          {t('Huur')}
+        </button>
+      </div>
+
+      <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-muted)' }}>
+        {soort === 'huur'
+          ? t('Voor huur gebruik je de gezondheidsindex: de aanvangsindex is die van de maand vóór de ondertekening van het huurcontract.')
+          : t('Voor onderhoudsgeld is de aanvangsindex die van de maand waarin het bedrag werd vastgelegd.')}
+      </p>
+
       <div className="veldrij">
         <div className="veldgroep">
           <label className="label-caps" htmlFor="basisbedrag">
@@ -60,8 +92,31 @@ export function IndexatieCalculator() {
         </div>
       </div>
 
-      {resultaat !== null && (
-        <p style={uitkomst}>{t('Geïndexeerd bedrag: {bedrag}', { bedrag: formatEuro(resultaat) })}</p>
+      {uitkomst.ok && (
+        <div style={{ ...uitkomstVlak, marginTop: 14 }}>
+          <p style={{ margin: 0 }}>{t('Geïndexeerd bedrag: {bedrag}', { bedrag: formatEuro(uitkomst.waarde.nieuwBedragCenten) })}</p>
+          <p style={uitkomstBijregel}>
+            {uitkomst.waarde.verschilCenten === 0
+              ? t('Het bedrag blijft gelijk.')
+              : uitkomst.waarde.verschilCenten > 0
+                ? t('Dat is {verschil} meer ({procent}).', {
+                    verschil: formatEuro(uitkomst.waarde.verschilCenten),
+                    procent: formatProcent(uitkomst.waarde.stijgingProcent, 2),
+                  })
+                : t('Dat is {verschil} minder ({procent}).', {
+                    verschil: formatEuro(Math.abs(uitkomst.waarde.verschilCenten)),
+                    procent: formatProcent(Math.abs(uitkomst.waarde.stijgingProcent), 2),
+                  })}
+          </p>
+        </div>
+      )}
+
+      {!uitkomst.ok && ingevuld && (
+        <p style={{ margin: '14px 0 0', fontSize: 13, color: 'var(--negative-ink)' }}>
+          {uitkomst.fout === 'index-ongeldig'
+            ? t('Vul twee indexcijfers groter dan nul in.')
+            : t('Vul een basisbedrag groter dan nul in.')}
+        </p>
       )}
     </Kaart>
   )

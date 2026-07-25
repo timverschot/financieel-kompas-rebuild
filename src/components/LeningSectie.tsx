@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import type { Aflossing, Lening } from '../data/schema'
+import type { Aflossing, Kind, Lening } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { aflossingenVan, openstaandKapitaal, totaalAfgelost, totaalOpenstaand, voortgang, isAfbetaald, maandenTotEinde } from '../utils/lening'
@@ -78,6 +78,7 @@ function termijnTekst(t: Vertaler, einddatum: string): string {
 // zie per lening het openstaand kapitaal met voortgangsbalk, log aflossingen en
 // bekijk de volledige aflossingsgeschiedenis.
 export function LeningSectie({
+  gezinsleden = [],
   leningen,
   aflossingen,
   onOpslaan,
@@ -85,6 +86,8 @@ export function LeningSectie({
   onAflossingOpslaan,
   onAflossingVerwijderen,
 }: {
+  // Optioneel: doorgegeven aan het formulier, om een lening aan een gezinslid te koppelen.
+  gezinsleden?: Kind[]
   leningen: Lening[]
   aflossingen: Aflossing[]
   onOpslaan: (l: Lening) => Promise<void> | void
@@ -238,7 +241,7 @@ export function LeningSectie({
       <h3 className="label-caps" style={{ margin: 0 }}>
         {bewerk ? t('Lening bewerken') : t('Nieuwe lening')}
       </h3>
-      <LeningFormulier onOpslaan={opslaan} onAnnuleer={() => setBewerk(null)} bewerken={bewerk} />
+      <LeningFormulier gezinsleden={gezinsleden} onOpslaan={opslaan} onAnnuleer={() => setBewerk(null)} bewerken={bewerk} />
     </Kaart>
   )
 }

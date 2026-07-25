@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import type { Rekening, Spaardoel } from '../data/schema'
+import type { Kind, Rekening, Spaardoel } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
+import { GezinslidKiezer } from './GezinslidKiezer'
+import { heeftKiesbareLeden } from '../utils/persoon'
 import { useT } from '../i18n'
 
 // De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
@@ -15,6 +17,7 @@ const BEGIN = {
   doeldatum: '',
   maandbedrag: '',
   kleur: '#3F8A58',
+  persoonId: '',
 }
 
 // Formulier om een spaardoel aan te maken of te bewerken.
@@ -23,11 +26,15 @@ export function SpaardoelFormulier({
   onOpslaan,
   onAnnuleer,
   bewerken,
+  gezinsleden = [],
 }: {
   rekeningen: Rekening[]
   onOpslaan: (d: Spaardoel) => Promise<void> | void
   onAnnuleer?: () => void
   bewerken?: Spaardoel | null
+  // Optioneel: zolang deze lijst leeg is, verschijnt het veld "Voor wie is dit
+  // doel?" gewoon niet. Zo blijven bestaande aanroepen ongewijzigd werken.
+  gezinsleden?: Kind[]
 }) {
   const { t } = useT()
   const [naam, setNaam] = useState(BEGIN.naam)
@@ -37,6 +44,7 @@ export function SpaardoelFormulier({
   const [doeldatum, setDoeldatum] = useState(BEGIN.doeldatum)
   const [maandbedrag, setMaandbedrag] = useState(BEGIN.maandbedrag)
   const [kleur, setKleur] = useState(BEGIN.kleur)
+  const [persoonId, setPersoonId] = useState(BEGIN.persoonId)
 
   // Zet alle velden terug op hun beginwaarde.
   const leegmaken = useCallback(() => {
@@ -47,6 +55,7 @@ export function SpaardoelFormulier({
     setDoeldatum(BEGIN.doeldatum)
     setMaandbedrag(BEGIN.maandbedrag)
     setKleur(BEGIN.kleur)
+    setPersoonId(BEGIN.persoonId)
   }, [])
 
   useEffect(() => {
@@ -58,6 +67,7 @@ export function SpaardoelFormulier({
       setDoeldatum(bewerken.doeldatum ?? '')
       setMaandbedrag(bewerken.maandbedrag ? centenNaarInvoer(bewerken.maandbedrag) : '')
       setKleur(bewerken.kleur ?? '#3F8A58')
+      setPersoonId(bewerken.persoonId ?? '')
     } else {
       leegmaken()
     }
@@ -80,6 +90,9 @@ export function SpaardoelFormulier({
       ...(gekoppeldeRekeningId ? { gekoppeldeRekeningId } : {}),
       ...(Number.isFinite(maandCenten) && maandCenten > 0 ? { maandbedrag: maandCenten } : {}),
       ...(kleur ? { kleur } : {}),
+      // Ook bewaren als het veld niet zichtbaar is (bv. het gekoppelde lid werd
+      // intussen gearchiveerd): een koppeling mag nooit stil verdwijnen.
+      ...(persoonId ? { persoonId } : {}),
     })
     // Bij een NIEUW doel blijft 'bewerken' null, dus de useEffect hierboven draait
     // niet. Daarom hier leegmaken, anders blijft alles ingevuld staan en maakt een
@@ -141,6 +154,15 @@ export function SpaardoelFormulier({
           <input id="maandbedrag" inputMode="decimal" placeholder="0,00" value={maandbedrag} onChange={(e) => setMaandbedrag(e.target.value)} />
         </div>
       </div>
+
+      {heeftKiesbareLeden(gezinsleden, persoonId) && (
+        <GezinslidKiezer
+          label={t('Voor wie is dit doel?')}
+          waarde={persoonId}
+          onKies={setPersoonId}
+          gezinsleden={gezinsleden}
+        />
+      )}
 
       <div className="veldgroep">
         <label className="label-caps" htmlFor="doelkleur">
