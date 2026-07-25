@@ -1,7 +1,8 @@
 import { useMemo, useState, type CSSProperties } from 'react'
-import type { Categorie, Overboeking, Rekening, Transactie } from '../data/schema'
+import type { Categorie, Overboeking, Rekening, TerugkerendePost, Transactie } from '../data/schema'
 import { Vermogensevolutie } from './Vermogensevolutie'
 import { TrendsSectie } from './TrendsSectie'
+import { VooruitblikSectie } from './VooruitblikSectie'
 import {
   perHoofdcategorie,
   perItem,
@@ -105,11 +106,13 @@ export function AnalyseSectie({
   categorieen,
   rekeningen,
   overboekingen,
+  terugkerendePosten,
 }: {
   transacties: Transactie[]
   categorieen: Categorie[]
   rekeningen: Rekening[]
   overboekingen: Overboeking[]
+  terugkerendePosten: TerugkerendePost[]
 }) {
   const { t } = useT()
   const [richting, setRichting] = useState<Richting>('uitgave')
@@ -189,6 +192,7 @@ export function AnalyseSectie({
   ]
   const leegTekst = richting === 'uitgave' ? t('Geen uitgaven in deze periode') : t('Geen inkomsten in deze periode')
   const donutInvoer = byOv.map((g) => ({ naam: g.naam, bedrag: g.bedrag, kleur: g.kleur }))
+  const periodeLabel = perioden.find(([k]) => k === keuze)?.[1] ?? ''
 
   return (
     <section>
@@ -289,6 +293,8 @@ export function AnalyseSectie({
           <TrendsSectie transacties={transacties} categorieen={categorieen} richting={richting} huidige={periode} vorige={vorige} />
 
           <Vermogensevolutie rekeningen={rekeningen} transacties={transacties} overboekingen={overboekingen} />
+
+          <VooruitblikSectie transacties={transacties} terugkerendePosten={terugkerendePosten} periode={periode} periodeLabel={periodeLabel} />
         </>
       )}
 

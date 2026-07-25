@@ -488,6 +488,20 @@ const en: Record<string, string> = {
   'Geen verschillen om te tonen.': 'No differences to show.',
   'Per categorie per maand': 'By category per month',
   'Verloop over de laatste 6 maanden': 'Trend over the last 6 months',
+  // Vooruitblik & spaarquote (Ronde 5 · Brok V)
+  'Vooruitblik & spaarquote': 'Outlook & savings rate',
+  'Spaarquote': 'Savings rate',
+  'Nog geen inkomsten in deze periode': 'No income in this period yet',
+  '{saldo} van {inkomsten} inkomsten overgehouden': '{saldo} of {inkomsten} income kept',
+  'Vooruitblik — {maand}': 'Outlook — {maand}',
+  'verwacht deze maand': 'expected this month',
+  'spaarquote': 'savings rate',
+  'Al geboekt — inkomsten': 'Booked — income',
+  'Al geboekt — uitgaven': 'Booked — expenses',
+  'Nog te komen — inkomsten': 'Still to come — income',
+  'Nog te komen — uitgaven': 'Still to come — expenses',
+  '{n} vaste last(en) nog in te boeken deze maand': '{n} fixed cost(s) still to book this month',
+  'Alle vaste lasten voor deze maand zijn al ingeboekt': 'All fixed costs for this month are already booked',
   // Weergave / thema (Ronde 5 · Brok O)
   'Weergave': 'Appearance',
   'Kies licht of donker, of laat de app de voorkeur van je toestel volgen.':
@@ -976,6 +990,20 @@ const fr: Record<string, string> = {
   'Geen verschillen om te tonen.': 'Aucune différence à afficher.',
   'Per categorie per maand': 'Par catégorie par mois',
   'Verloop over de laatste 6 maanden': 'Évolution sur les 6 derniers mois',
+  // Vooruitblik & spaarquote (Ronde 5 · Brok V)
+  'Vooruitblik & spaarquote': 'Aperçu & taux d\'épargne',
+  'Spaarquote': 'Taux d\'épargne',
+  'Nog geen inkomsten in deze periode': 'Pas encore de revenus sur cette période',
+  '{saldo} van {inkomsten} inkomsten overgehouden': '{saldo} conservés sur {inkomsten} de revenus',
+  'Vooruitblik — {maand}': 'Aperçu — {maand}',
+  'verwacht deze maand': 'prévu ce mois-ci',
+  'spaarquote': 'taux d\'épargne',
+  'Al geboekt — inkomsten': 'Déjà comptabilisé — revenus',
+  'Al geboekt — uitgaven': 'Déjà comptabilisé — dépenses',
+  'Nog te komen — inkomsten': 'À venir — revenus',
+  'Nog te komen — uitgaven': 'À venir — dépenses',
+  '{n} vaste last(en) nog in te boeken deze maand': '{n} charge(s) fixe(s) encore à comptabiliser ce mois-ci',
+  'Alle vaste lasten voor deze maand zijn al ingeboekt': 'Toutes les charges fixes de ce mois sont déjà comptabilisées',
   // Weergave / thema (Ronde 5 · Brok O)
   'Weergave': 'Apparence',
   'Kies licht of donker, of laat de app de voorkeur van je toestel volgen.':
