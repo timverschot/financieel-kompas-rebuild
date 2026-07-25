@@ -481,6 +481,13 @@ const en: Record<string, string> = {
   'Vermogensevolutie': 'Net worth over time',
   'Je totale vermogen over de laatste 12 maanden': 'Your total net worth over the last 12 months',
   'over 12 maanden': 'over 12 months',
+  // Trends & stijgers/dalers (Ronde 5 · Brok T)
+  'Stijgers en dalers': 'Movers',
+  't.o.v. de vorige periode': 'vs the previous period',
+  'Kies een periode (niet Alles) om te vergelijken.': 'Choose a period (not All) to compare.',
+  'Geen verschillen om te tonen.': 'No differences to show.',
+  'Per categorie per maand': 'By category per month',
+  'Verloop over de laatste 6 maanden': 'Trend over the last 6 months',
   // Weergave / thema (Ronde 5 · Brok O)
   'Weergave': 'Appearance',
   'Kies licht of donker, of laat de app de voorkeur van je toestel volgen.':
@@ -962,6 +969,13 @@ const fr: Record<string, string> = {
   'Vermogensevolutie': 'Évolution du patrimoine',
   'Je totale vermogen over de laatste 12 maanden': 'Votre patrimoine total sur les 12 derniers mois',
   'over 12 maanden': 'sur 12 mois',
+  // Trends & stijgers/dalers (Ronde 5 · Brok T)
+  'Stijgers en dalers': 'Hausses et baisses',
+  't.o.v. de vorige periode': 'p.r. à la période précédente',
+  'Kies een periode (niet Alles) om te vergelijken.': 'Choisissez une période (pas Tout) pour comparer.',
+  'Geen verschillen om te tonen.': 'Aucune différence à afficher.',
+  'Per categorie per maand': 'Par catégorie par mois',
+  'Verloop over de laatste 6 maanden': 'Évolution sur les 6 derniers mois',
   // Weergave / thema (Ronde 5 · Brok O)
   'Weergave': 'Apparence',
   'Kies licht of donker, of laat de app de voorkeur van je toestel volgen.':

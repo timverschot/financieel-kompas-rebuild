@@ -1,6 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import type { Categorie, Overboeking, Rekening, Transactie } from '../data/schema'
 import { Vermogensevolutie } from './Vermogensevolutie'
+import { TrendsSectie } from './TrendsSectie'
 import {
   perHoofdcategorie,
   perItem,
@@ -138,6 +139,35 @@ export function AnalyseSectie({
     return {}
   }, [keuze, van, tot])
 
+  // De vorige, vergelijkbare periode (voor stijgers/dalers). 'Alles' en een
+  // onvolledig aangepast bereik hebben geen zinvolle vorige periode.
+  const vorige: Periode | null = useMemo(() => {
+    const nu = new Date()
+    const iso = (d: Date) => d.toISOString().slice(0, 10)
+    if (keuze === 'maand') {
+      const m = maandStr(new Date(nu.getFullYear(), nu.getMonth() - 1, 1))
+      return { van: `${m}-01`, tot: `${m}-31` }
+    }
+    if (keuze === 'vorige') {
+      const m = maandStr(new Date(nu.getFullYear(), nu.getMonth() - 2, 1))
+      return { van: `${m}-01`, tot: `${m}-31` }
+    }
+    if (keuze === 'jaar') {
+      const j = nu.getFullYear() - 1
+      return { van: `${j}-01-01`, tot: `${j}-12-31` }
+    }
+    if (keuze === 'aangepast') {
+      if (!van || !tot) return null
+      const vd = new Date(van)
+      const td = new Date(tot)
+      const dagen = Math.round((td.getTime() - vd.getTime()) / 86400000)
+      const prevTot = new Date(vd.getTime() - 86400000)
+      const prevVan = new Date(prevTot.getTime() - dagen * 86400000)
+      return { van: iso(prevVan), tot: iso(prevTot) }
+    }
+    return null // alles
+  }, [keuze, van, tot])
+
   const byOv = useMemo(() => perHoofdcategorie(transacties, categorieen, periode, richting), [transacties, categorieen, periode, richting])
   const byItem = useMemo(() => kleuren(perItem(transacties, categorieen, periode, richting)), [transacties, categorieen, periode, richting])
   const byWinkel = useMemo(() => kleuren(perWinkel(transacties, periode, richting)), [transacties, periode, richting])
@@ -255,6 +285,8 @@ export function AnalyseSectie({
               richting={richting}
             />
           )}
+
+          <TrendsSectie transacties={transacties} categorieen={categorieen} richting={richting} huidige={periode} vorige={vorige} />
 
           <Vermogensevolutie rekeningen={rekeningen} transacties={transacties} overboekingen={overboekingen} />
         </>
