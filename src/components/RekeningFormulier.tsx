@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { REKENING_TYPES, type Rekening, type RekeningType } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
@@ -15,6 +15,10 @@ export const REKENING_TYPE_LABEL: Record<RekeningType, string> = {
   cash: 'Cash',
 }
 
+// De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
+// en het leegmaken na het opslaan niet uit elkaar kunnen lopen.
+const BEGIN = { naam: '', beginsaldo: '', type: 'betaal' as RekeningType, rekeningnummer: '', rubriek: '' }
+
 // Formulier om een rekening aan te maken of te bewerken: naam, beginsaldo, type,
 // rekeningnummer (IBAN) en een vrije rubriek. Staat in App.tsx al binnen een
 // <Kaart>, dus hier geen eigen kaart: enkel veldgroepen + knoppenrij.
@@ -28,12 +32,21 @@ export function RekeningFormulier({
   bewerken?: Rekening | null
 }) {
   const { t } = useT()
-  const [naam, setNaam] = useState('')
-  const [beginsaldo, setBeginsaldo] = useState('')
-  const [type, setType] = useState<RekeningType>('betaal')
-  const [rekeningnummer, setRekeningnummer] = useState('')
-  const [rubriek, setRubriek] = useState('')
+  const [naam, setNaam] = useState(BEGIN.naam)
+  const [beginsaldo, setBeginsaldo] = useState(BEGIN.beginsaldo)
+  const [type, setType] = useState<RekeningType>(BEGIN.type)
+  const [rekeningnummer, setRekeningnummer] = useState(BEGIN.rekeningnummer)
+  const [rubriek, setRubriek] = useState(BEGIN.rubriek)
   const geldig = naam.trim().length > 0
+
+  // Zet alle velden terug op hun beginwaarde.
+  const leegmaken = useCallback(() => {
+    setNaam(BEGIN.naam)
+    setBeginsaldo(BEGIN.beginsaldo)
+    setType(BEGIN.type)
+    setRekeningnummer(BEGIN.rekeningnummer)
+    setRubriek(BEGIN.rubriek)
+  }, [])
 
   useEffect(() => {
     if (bewerken) {
@@ -43,13 +56,9 @@ export function RekeningFormulier({
       setRekeningnummer(bewerken.rekeningnummer ?? '')
       setRubriek(bewerken.rubriek ?? '')
     } else {
-      setNaam('')
-      setBeginsaldo('')
-      setType('betaal')
-      setRekeningnummer('')
-      setRubriek('')
+      leegmaken()
     }
-  }, [bewerken])
+  }, [bewerken, leegmaken])
 
   async function verzend(e: FormEvent) {
     e.preventDefault()
@@ -66,6 +75,10 @@ export function RekeningFormulier({
       ...(rub ? { rubriek: rub } : {}),
       ...(bewerken?.gearchiveerd ? { gearchiveerd: true } : {}),
     })
+    // Bij een NIEUWE rekening blijft 'bewerken' null, dus de useEffect hierboven
+    // draait niet. Daarom hier leegmaken, anders blijft alles ingevuld staan en
+    // maakt een tweede klik dezelfde rekening nog eens aan.
+    if (!bewerken) leegmaken()
   }
 
   return (
@@ -139,6 +152,12 @@ export function RekeningFormulier({
           </button>
         )}
       </div>
+      {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt. */}
+      {!geldig && (
+        <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+          {t('Geef een naam en een geldig bedrag om op te slaan.')}
+        </p>
+      )}
     </form>
   )
 }

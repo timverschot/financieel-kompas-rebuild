@@ -8,8 +8,8 @@ import { LeningFormulier } from './LeningFormulier'
 import { Kaart, Leeg, Bedrag, Balk } from '../ui/basis'
 import { useT } from '../i18n'
 import type { Vertaler } from '../i18n'
+import { vandaag } from '../utils/datum'
 
-const vandaag = () => new Date().toISOString().slice(0, 10)
 
 // Klein formulier om een aflossing toe te voegen aan één lening.
 function AflossingToevoegen({ leningId, onOpslaan }: { leningId: string; onOpslaan: (a: Aflossing) => Promise<void> | void }) {

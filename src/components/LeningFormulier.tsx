@@ -1,15 +1,31 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Lening, LeningRichting } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { verkleinAfbeelding } from '../utils/afbeelding'
+import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
-
-const vandaag = () => new Date().toISOString().slice(0, 10)
 
 function getal(waarde: string): number {
   return Number.parseFloat(waarde.replace(',', '.'))
+}
+
+// De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
+// en het leegmaken na het opslaan niet uit elkaar kunnen lopen.
+function beginwaarden() {
+  return {
+    richting: 'uitgeleend' as LeningRichting,
+    naam: '',
+    hoofdsom: '',
+    startdatum: vandaag(),
+    tegenpartij: '',
+    omschrijving: '',
+    rentevoet: '',
+    maandbedrag: '',
+    einddatum: '',
+    bonnetje: '',
+  }
 }
 
 // Formulier om een lening of krediet toe te voegen of te bewerken. De richting-
@@ -25,17 +41,32 @@ export function LeningFormulier({
   bewerken?: Lening | null
 }) {
   const { t } = useT()
-  const [richting, setRichting] = useState<LeningRichting>('uitgeleend')
-  const [naam, setNaam] = useState('')
-  const [hoofdsom, setHoofdsom] = useState('')
-  const [startdatum, setStartdatum] = useState(vandaag())
-  const [tegenpartij, setTegenpartij] = useState('')
-  const [omschrijving, setOmschrijving] = useState('')
-  const [rentevoet, setRentevoet] = useState('')
-  const [maandbedrag, setMaandbedrag] = useState('')
-  const [einddatum, setEinddatum] = useState('')
-  const [bonnetje, setBonnetje] = useState('')
+  const [richting, setRichting] = useState<LeningRichting>(() => beginwaarden().richting)
+  const [naam, setNaam] = useState(() => beginwaarden().naam)
+  const [hoofdsom, setHoofdsom] = useState(() => beginwaarden().hoofdsom)
+  const [startdatum, setStartdatum] = useState(() => beginwaarden().startdatum)
+  const [tegenpartij, setTegenpartij] = useState(() => beginwaarden().tegenpartij)
+  const [omschrijving, setOmschrijving] = useState(() => beginwaarden().omschrijving)
+  const [rentevoet, setRentevoet] = useState(() => beginwaarden().rentevoet)
+  const [maandbedrag, setMaandbedrag] = useState(() => beginwaarden().maandbedrag)
+  const [einddatum, setEinddatum] = useState(() => beginwaarden().einddatum)
+  const [bonnetje, setBonnetje] = useState(() => beginwaarden().bonnetje)
   const [bezigBon, setBezigBon] = useState(false)
+
+  // Zet alle velden terug op hun beginwaarde.
+  const leegmaken = useCallback(() => {
+    const b = beginwaarden()
+    setRichting(b.richting)
+    setNaam(b.naam)
+    setHoofdsom(b.hoofdsom)
+    setStartdatum(b.startdatum)
+    setTegenpartij(b.tegenpartij)
+    setOmschrijving(b.omschrijving)
+    setRentevoet(b.rentevoet)
+    setMaandbedrag(b.maandbedrag)
+    setEinddatum(b.einddatum)
+    setBonnetje(b.bonnetje)
+  }, [])
 
   useEffect(() => {
     if (bewerken) {
@@ -50,18 +81,9 @@ export function LeningFormulier({
       setEinddatum(bewerken.einddatum ?? '')
       setBonnetje(bewerken.bonnetje ?? '')
     } else {
-      setRichting('uitgeleend')
-      setNaam('')
-      setHoofdsom('')
-      setStartdatum(vandaag())
-      setTegenpartij('')
-      setOmschrijving('')
-      setRentevoet('')
-      setMaandbedrag('')
-      setEinddatum('')
-      setBonnetje('')
+      leegmaken()
     }
-  }, [bewerken])
+  }, [bewerken, leegmaken])
 
   const hoofdsomCenten = invoerNaarCenten(hoofdsom)
   const geldig = naam.trim().length > 0 && Number.isFinite(hoofdsomCenten) && hoofdsomCenten > 0
@@ -96,6 +118,10 @@ export function LeningFormulier({
       ...(bonnetje ? { bonnetje } : {}),
       ...(bewerken?.afgesloten ? { afgesloten: true } : {}),
     })
+    // Bij een NIEUWE lening blijft 'bewerken' null, dus de useEffect hierboven draait
+    // niet. Daarom hier leegmaken, anders blijft alles ingevuld staan en maakt een
+    // tweede klik dezelfde lening nog eens aan.
+    if (!bewerken) leegmaken()
   }
 
   return (
@@ -201,6 +227,12 @@ export function LeningFormulier({
           </button>
         )}
       </div>
+      {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt. */}
+      {!geldig && (
+        <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+          {t('Geef een naam en een geldig bedrag om op te slaan.')}
+        </p>
+      )}
     </form>
   )
 }

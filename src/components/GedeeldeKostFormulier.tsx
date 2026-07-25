@@ -1,13 +1,28 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Categorie, GedeeldeKost, Kind } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { CategorieKiezer } from './CategorieKiezer'
 import { verkleinAfbeelding } from '../utils/afbeelding'
+import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
 
-const vandaag = () => new Date().toISOString().slice(0, 10)
+// De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
+// en het leegmaken na het opslaan niet uit elkaar kunnen lopen.
+function beginwaarden() {
+  return {
+    omschrijving: '',
+    bedrag: '',
+    datum: vandaag(),
+    betaaldDoor: 'jij' as const,
+    kindIds: [] as string[],
+    categorieId: '',
+    kostenType: 'gewoon' as const,
+    aandeelOverride: '',
+    bonnetje: '',
+  }
+}
 
 // Formulier om een gedeelde kost toe te voegen of te bewerken. Een kost kan aan
 // één of meer kinderen gekoppeld worden, een categorie en kostentype krijgen, en
@@ -29,16 +44,30 @@ export function GedeeldeKostFormulier({
   bewerken?: GedeeldeKost | null
 }) {
   const { t } = useT()
-  const [omschrijving, setOmschrijving] = useState('')
-  const [bedrag, setBedrag] = useState('')
-  const [datum, setDatum] = useState(vandaag())
-  const [betaaldDoor, setBetaaldDoor] = useState<'jij' | 'partner'>('jij')
-  const [kindIds, setKindIds] = useState<string[]>([])
-  const [categorieId, setCategorieId] = useState('')
-  const [kostenType, setKostenType] = useState<'gewoon' | 'buitengewoon'>('gewoon')
-  const [aandeelOverride, setAandeelOverride] = useState('')
-  const [bonnetje, setBonnetje] = useState('')
+  const [omschrijving, setOmschrijving] = useState(() => beginwaarden().omschrijving)
+  const [bedrag, setBedrag] = useState(() => beginwaarden().bedrag)
+  const [datum, setDatum] = useState(() => beginwaarden().datum)
+  const [betaaldDoor, setBetaaldDoor] = useState<'jij' | 'partner'>(() => beginwaarden().betaaldDoor)
+  const [kindIds, setKindIds] = useState<string[]>(() => beginwaarden().kindIds)
+  const [categorieId, setCategorieId] = useState(() => beginwaarden().categorieId)
+  const [kostenType, setKostenType] = useState<'gewoon' | 'buitengewoon'>(() => beginwaarden().kostenType)
+  const [aandeelOverride, setAandeelOverride] = useState(() => beginwaarden().aandeelOverride)
+  const [bonnetje, setBonnetje] = useState(() => beginwaarden().bonnetje)
   const [bezigBon, setBezigBon] = useState(false)
+
+  // Zet alle velden terug op hun beginwaarde.
+  const leegmaken = useCallback(() => {
+    const b = beginwaarden()
+    setOmschrijving(b.omschrijving)
+    setBedrag(b.bedrag)
+    setDatum(b.datum)
+    setBetaaldDoor(b.betaaldDoor)
+    setKindIds(b.kindIds)
+    setCategorieId(b.categorieId)
+    setKostenType(b.kostenType)
+    setAandeelOverride(b.aandeelOverride)
+    setBonnetje(b.bonnetje)
+  }, [])
 
   useEffect(() => {
     if (bewerken) {
@@ -52,17 +81,9 @@ export function GedeeldeKostFormulier({
       setAandeelOverride(typeof bewerken.aandeelJijOverride === 'number' ? String(bewerken.aandeelJijOverride) : '')
       setBonnetje(bewerken.bonnetje ?? '')
     } else {
-      setOmschrijving('')
-      setBedrag('')
-      setDatum(vandaag())
-      setBetaaldDoor('jij')
-      setKindIds([])
-      setCategorieId('')
-      setKostenType('gewoon')
-      setAandeelOverride('')
-      setBonnetje('')
+      leegmaken()
     }
-  }, [bewerken])
+  }, [bewerken, leegmaken])
 
   const bedragCenten = invoerNaarCenten(bedrag)
   const geldig = omschrijving.trim().length > 0 && Number.isFinite(bedragCenten) && bedragCenten > 0
@@ -92,6 +113,10 @@ export function GedeeldeKostFormulier({
       ...(bewerken?.verrekeningId ? { verrekeningId: bewerken.verrekeningId } : {}),
       ...(bewerken?.afgerekend ? { afgerekend: true } : {}),
     })
+    // Bij een NIEUWE kost blijft 'bewerken' null, dus de useEffect hierboven draait
+    // niet. Daarom hier leegmaken, anders blijft alles ingevuld staan en boek je met
+    // een tweede klik dezelfde kost nog eens.
+    if (!bewerken) leegmaken()
   }
 
   async function kiesBonnetje(bestand: File) {
@@ -192,6 +217,12 @@ export function GedeeldeKostFormulier({
           </button>
         )}
       </div>
+      {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt. */}
+      {!geldig && (
+        <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+          {t('Geef een naam en een geldig bedrag om op te slaan.')}
+        </p>
+      )}
     </form>
   )
 }

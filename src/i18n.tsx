@@ -192,6 +192,20 @@ const en: Record<string, string> = {
   'Partner': 'Partner',
   'Kost wijzigen': 'Update expense',
   'Kost toevoegen': 'Add expense',
+  // Ronde 6: bovenbalk, zijpaneel en hulpteksten bij formulieren
+  'Opgeslagen': 'Saved',
+  'Niet verbonden': 'Not connected',
+  'Bezig met synchroniseren…': 'Syncing…',
+  'Synchronisatie mislukt': 'Sync failed',
+  'Versie {v}': 'Version {v}',
+  'Uitloggen': 'Sign out',
+  'Meldingen': 'Notifications',
+  '{n} budget(ten) bijna op': '{n} budget(s) almost used up',
+  'Verbinding met Google Drive verbroken. Je gegevens blijven op dit toestel staan.':
+    'Disconnected from Google Drive. Your data stays on this device.',
+  'Geef een naam en een geldig bedrag om op te slaan.': 'Enter a name and a valid amount to save.',
+  'Geef een naam en een percentage tussen 0 en 100.': 'Enter a name and a percentage between 0 and 100.',
+  'Kies een categorie en geef een bedrag.': 'Pick a category and enter an amount.',
   // Spaardoelen
   'Spaardoelen': 'Savings goals',
   'Leningen': 'Loans',
@@ -696,6 +710,20 @@ const fr: Record<string, string> = {
   'Partner': 'Partenaire',
   'Kost wijzigen': 'Modifier les frais',
   'Kost toevoegen': 'Ajouter des frais',
+  // Ronde 6 : barre supérieure, panneau latéral et textes d'aide
+  'Opgeslagen': 'Enregistré',
+  'Niet verbonden': 'Non connecté',
+  'Bezig met synchroniseren…': 'Synchronisation…',
+  'Synchronisatie mislukt': 'Échec de la synchronisation',
+  'Versie {v}': 'Version {v}',
+  'Uitloggen': 'Se déconnecter',
+  'Meldingen': 'Notifications',
+  '{n} budget(ten) bijna op': '{n} budget(s) presque épuisé(s)',
+  'Verbinding met Google Drive verbroken. Je gegevens blijven op dit toestel staan.':
+    'Déconnecté de Google Drive. Vos données restent sur cet appareil.',
+  'Geef een naam en een geldig bedrag om op te slaan.': 'Indiquez un nom et un montant valide pour enregistrer.',
+  'Geef een naam en een percentage tussen 0 en 100.': 'Indiquez un nom et un pourcentage entre 0 et 100.',
+  'Kies een categorie en geef een bedrag.': 'Choisissez une catégorie et indiquez un montant.',
   // Spaardoelen
   'Spaardoelen': 'Objectifs d’épargne',
   'Leningen': 'Prêts',

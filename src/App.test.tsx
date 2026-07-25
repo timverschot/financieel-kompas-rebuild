@@ -45,6 +45,14 @@ async function gaMeer(user: Gebruiker, pagina: string) {
   await user.click(screen.getByRole('button', { name: pagina }))
 }
 
+// Het percentageveld van een dossier start op 50 (de standaardverdeling), dus
+// eerst leegmaken en dan typen — anders zou 'typen' er gewoon bij plakken.
+async function zetAandeel(user: Gebruiker, waarde: string) {
+  const veld = screen.getByLabelText('Aandeel jij (%)')
+  await user.clear(veld)
+  await user.type(veld, waarde)
+}
+
 describe('App', () => {
   it('laadt transacties en toont het juiste totaalsaldo (2400 - 950 - 320 = 1130)', async () => {
     render(<App />)
@@ -166,7 +174,7 @@ describe('App', () => {
 
     await gaMeer(user, 'Dossiers')
     await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
-    await user.type(screen.getByLabelText('Aandeel jij (%)'), '50')
+    await zetAandeel(user, '50')
     await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
 
     // Het dossier wordt automatisch geselecteerd; het kostformulier verschijnt.
@@ -185,7 +193,7 @@ describe('App', () => {
 
     await gaMeer(user, 'Dossiers')
     await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
-    await user.type(screen.getByLabelText('Aandeel jij (%)'), '50')
+    await zetAandeel(user, '50')
     await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
 
     await user.type(await screen.findByLabelText('Kostomschrijving'), 'Schoolreis')
@@ -286,7 +294,7 @@ describe('App', () => {
 
     await gaMeer(user, 'Dossiers')
     await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
-    await user.type(screen.getByLabelText('Aandeel jij (%)'), '50')
+    await zetAandeel(user, '50')
     await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
 
     await user.type(await screen.findByLabelText('Kostomschrijving'), 'Schoolreis')
@@ -309,7 +317,7 @@ describe('App', () => {
 
     await gaMeer(user, 'Dossiers')
     await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
-    await user.type(screen.getByLabelText('Aandeel jij (%)'), '50')
+    await zetAandeel(user, '50')
     await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
 
     await user.click(await screen.findByRole('button', { name: 'Verwijder dossier Kinderen' }))

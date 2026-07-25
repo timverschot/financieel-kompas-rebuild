@@ -1,13 +1,18 @@
 import type { CSSProperties } from 'react'
 import { PAGINAS, type Pagina } from './OnderNavigatie'
 import { Merkteken } from './Merkteken'
+import { VERSIE } from '../config'
+import { THEMAKEUZES, useThema } from '../thema'
 import { useT } from '../i18n'
 
-// Vast zijpaneel voor brede schermen (desktop/laptop), naar de V1-logica: logo
-// bovenaan, de volledige navigatie eronder, en een profielregel onderaan. Op smalle
+// Vast zijpaneel voor brede schermen (desktop/laptop), naar de V1-logica: merk
+// bovenaan, de volledige navigatie eronder, en onderaan een rustige voetregel met
+// de sync-status, de licht/donker-schakelaar en het versienummer. Op smalle
 // schermen wordt dit niet getoond (dan is er de onderbalk); App.tsx beslist dat.
-// De kleuren komen uit de vaste --sidebar-*-tokens: dit paneel blijft in licht én
-// donker dezelfde donkere tint.
+//
+// De kleuren komen uit de --sidebar-*-tokens. Die staan in index.css apart voor
+// licht en donker, zodat het paneel in donkere modus mee verduistert in plaats van
+// als een warm bruin blok naast een donkere pagina te blijven staan.
 const paneel: CSSProperties = {
   width: 240,
   flexShrink: 0,
@@ -24,11 +29,53 @@ const paneel: CSSProperties = {
 // actieve staat — zo blijft alles binnen de tokens.
 const hairline = '1px solid var(--sidebar-active-bg)'
 
-export function Zijbalk({ actief, onKies }: { actief: Pagina; onKies: (p: Pagina) => void }) {
+// Kleur van het sync-bolletje. Vier toestanden, zoals in V1: bezig, fout,
+// opgeslagen, of niet verbonden.
+function statusKleur(verbonden: boolean, bezig: boolean, fout: boolean): string {
+  if (bezig) return 'var(--accent-dot)'
+  if (fout) return 'var(--negative)'
+  if (verbonden) return 'var(--positive)'
+  return 'var(--sidebar-muted)'
+}
+
+export function Zijbalk({
+  actief,
+  onKies,
+  verbonden = false,
+  bezig = false,
+  statusTekst = null,
+}: {
+  actief: Pagina
+  onKies: (p: Pagina) => void
+  verbonden?: boolean
+  bezig?: boolean
+  statusTekst?: string | null
+}) {
   const { t } = useT()
+  const { keuze, zetKeuze } = useThema()
+
+  const fout = statusTekst !== null && /mislukt|fout/i.test(statusTekst)
+  const statusLabel = bezig
+    ? t('Bezig met synchroniseren…')
+    : fout
+      ? t('Synchronisatie mislukt')
+      : verbonden
+        ? t('Opgeslagen')
+        : t('Niet verbonden')
+
   return (
     <aside style={paneel} aria-label={t('Hoofdnavigatie')}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '1.1rem 1rem', borderBottom: hairline }}>
+      {/* De kop begint bewust op 1,3rem van links, zodat het merkteken optisch
+          uitlijnt met de icoontjes in de navigatie eronder. */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '1.7rem 1rem 1.15rem 1.3rem',
+          borderBottom: hairline,
+        }}
+      >
         <Merkteken grootte={38} />
         <span style={{ minWidth: 0 }}>
           <strong
@@ -73,11 +120,11 @@ export function Zijbalk({ actief, onKies }: { actief: Pagina; onKies: (p: Pagina
                 color: aan ? 'var(--sidebar-active-text)' : 'var(--sidebar-text)',
                 fontFamily: 'inherit',
                 fontWeight: aan ? 600 : 400,
-                fontSize: '0.9rem',
+                fontSize: '0.92rem',
                 textAlign: 'left',
               }}
             >
-              <span style={{ fontSize: '1rem', width: 20, textAlign: 'center' }} aria-hidden>
+              <span style={{ fontSize: '1.35rem', width: 26, textAlign: 'center', lineHeight: 1 }} aria-hidden>
                 {p.icoon}
               </span>
               {t(p.label)}
@@ -86,25 +133,53 @@ export function Zijbalk({ actief, onKies }: { actief: Pagina; onKies: (p: Pagina
         })}
       </nav>
 
-      <div style={{ padding: '0.9rem', borderTop: hairline, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 'var(--radius-pill)',
-            background: 'var(--accent-dot)',
-            color: 'var(--sidebar-bg)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 700,
-            fontSize: '0.8rem',
-          }}
-          aria-hidden
-        >
-          K
+      {/* Voetregel: geen nep-profiel meer, maar de informatie die je echt af en toe
+          wil zien — synchronisatie, licht/donker en welke versie je draait. */}
+      <div style={{ padding: '0.85rem 1rem 1rem 1.3rem', borderTop: hairline, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', color: 'var(--sidebar-muted)' }}>
+          <span
+            aria-hidden
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              flexShrink: 0,
+              background: statusKleur(verbonden, bezig, fout),
+            }}
+          />
+          {statusLabel}
         </span>
-        <span style={{ fontSize: '0.78rem', color: 'var(--sidebar-muted)' }}>Kompal</span>
+
+        <span style={{ display: 'flex', gap: 4 }} role="group" aria-label={t('Weergave')}>
+          {THEMAKEUZES.map((k) => {
+            const aan = k.waarde === keuze
+            return (
+              <button
+                key={k.waarde}
+                type="button"
+                onClick={() => zetKeuze(k.waarde)}
+                aria-pressed={aan}
+                aria-label={t(k.label)}
+                style={{
+                  flex: 1,
+                  minHeight: 30,
+                  borderRadius: 'var(--radius-sm)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  fontSize: '0.72rem',
+                  fontWeight: aan ? 600 : 400,
+                  background: aan ? 'var(--sidebar-active-bg)' : 'transparent',
+                  color: aan ? 'var(--sidebar-active-text)' : 'var(--sidebar-muted)',
+                }}
+              >
+                {t(k.label)}
+              </button>
+            )
+          })}
+        </span>
+
+        <span style={{ fontSize: '0.68rem', color: 'var(--sidebar-muted)' }}>{t('Versie {v}', { v: VERSIE })}</span>
       </div>
     </aside>
   )

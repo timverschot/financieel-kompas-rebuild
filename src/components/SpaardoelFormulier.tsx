@@ -1,9 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Rekening, Spaardoel } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { useT } from '../i18n'
+
+// De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
+// en het leegmaken na het opslaan niet uit elkaar kunnen lopen.
+const BEGIN = {
+  naam: '',
+  doelbedrag: '',
+  gekoppeldeRekeningId: '',
+  huidig: '',
+  doeldatum: '',
+  maandbedrag: '',
+  kleur: '#3F8A58',
+}
 
 // Formulier om een spaardoel aan te maken of te bewerken.
 export function SpaardoelFormulier({
@@ -18,13 +30,24 @@ export function SpaardoelFormulier({
   bewerken?: Spaardoel | null
 }) {
   const { t } = useT()
-  const [naam, setNaam] = useState('')
-  const [doelbedrag, setDoelbedrag] = useState('')
-  const [gekoppeldeRekeningId, setGekoppeld] = useState('')
-  const [huidig, setHuidig] = useState('')
-  const [doeldatum, setDoeldatum] = useState('')
-  const [maandbedrag, setMaandbedrag] = useState('')
-  const [kleur, setKleur] = useState('#3F8A58')
+  const [naam, setNaam] = useState(BEGIN.naam)
+  const [doelbedrag, setDoelbedrag] = useState(BEGIN.doelbedrag)
+  const [gekoppeldeRekeningId, setGekoppeld] = useState(BEGIN.gekoppeldeRekeningId)
+  const [huidig, setHuidig] = useState(BEGIN.huidig)
+  const [doeldatum, setDoeldatum] = useState(BEGIN.doeldatum)
+  const [maandbedrag, setMaandbedrag] = useState(BEGIN.maandbedrag)
+  const [kleur, setKleur] = useState(BEGIN.kleur)
+
+  // Zet alle velden terug op hun beginwaarde.
+  const leegmaken = useCallback(() => {
+    setNaam(BEGIN.naam)
+    setDoelbedrag(BEGIN.doelbedrag)
+    setGekoppeld(BEGIN.gekoppeldeRekeningId)
+    setHuidig(BEGIN.huidig)
+    setDoeldatum(BEGIN.doeldatum)
+    setMaandbedrag(BEGIN.maandbedrag)
+    setKleur(BEGIN.kleur)
+  }, [])
 
   useEffect(() => {
     if (bewerken) {
@@ -36,15 +59,9 @@ export function SpaardoelFormulier({
       setMaandbedrag(bewerken.maandbedrag ? centenNaarInvoer(bewerken.maandbedrag) : '')
       setKleur(bewerken.kleur ?? '#3F8A58')
     } else {
-      setNaam('')
-      setDoelbedrag('')
-      setGekoppeld('')
-      setHuidig('')
-      setDoeldatum('')
-      setMaandbedrag('')
-      setKleur('#3F8A58')
+      leegmaken()
     }
-  }, [bewerken])
+  }, [bewerken, leegmaken])
 
   const doelCenten = invoerNaarCenten(doelbedrag)
   const geldig = naam.trim().length > 0 && Number.isFinite(doelCenten) && doelCenten > 0
@@ -64,6 +81,10 @@ export function SpaardoelFormulier({
       ...(Number.isFinite(maandCenten) && maandCenten > 0 ? { maandbedrag: maandCenten } : {}),
       ...(kleur ? { kleur } : {}),
     })
+    // Bij een NIEUW doel blijft 'bewerken' null, dus de useEffect hierboven draait
+    // niet. Daarom hier leegmaken, anders blijft alles ingevuld staan en maakt een
+    // tweede klik hetzelfde doel nog eens aan.
+    if (!bewerken) leegmaken()
   }
 
   return (
@@ -144,6 +165,12 @@ export function SpaardoelFormulier({
           </button>
         )}
       </div>
+      {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt. */}
+      {!geldig && (
+        <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+          {t('Geef een naam en een geldig bedrag om op te slaan.')}
+        </p>
+      )}
     </form>
   )
 }

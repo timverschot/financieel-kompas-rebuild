@@ -80,7 +80,7 @@ import { exporteerBackup, importeerBackup } from './data/backup'
 import { vraagBlijvendeOpslag } from './data/opslag'
 import { synchroniseer } from './data/sync/sync'
 import { DriveBackend } from './data/sync/drive/driveBackend'
-import { vraagToken, heeftOoitVerbonden } from './data/sync/drive/auth'
+import { vraagToken, heeftOoitVerbonden, meldAf } from './data/sync/drive/auth'
 import { TransactieFormulier } from './components/TransactieFormulier'
 import { TransactieLijst } from './components/TransactieLijst'
 import { RekeningFormulier, REKENING_TYPE_LABEL } from './components/RekeningFormulier'
@@ -111,6 +111,7 @@ import { uitgavenPerMaand } from './utils/maandverloop'
 import { labelVanCategorie } from './data/categorieen/resolve'
 import { stelSubcategorieenIn } from './data/categorieen/zoek'
 import { formatEuro } from './utils/format'
+import { huidigeMaand, vandaag } from './utils/datum'
 import { Balk, Bedrag, Kaart, Leeg, PaginaKop } from './ui/basis'
 import { useT } from './i18n'
 
@@ -120,7 +121,6 @@ const container: CSSProperties = {
   padding: '0 1rem',
 }
 
-const huidigeMaand = () => new Date().toISOString().slice(0, 7)
 
 function verschuifMaand(maand: string, delta: number): string {
   const [jaar, m] = maand.split('-').map(Number)
@@ -376,7 +376,7 @@ export function App() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `financieel-kompas-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = `financieel-kompas-backup-${vandaag()}.json`
     document.body.appendChild(a)
     a.click()
     a.remove()
@@ -565,7 +565,7 @@ export function App() {
   async function genereerAfrekening(dossier: Dossier, filter: AfrekeningFilter) {
     const gedekt = kostenVoorAfrekening(gedeeldeKosten, dossier.id, filter)
     const bedrag = saldoVerrekeningDossier(dossier, gedekt)
-    const datum = new Date().toISOString().slice(0, 10)
+    const datum = vandaag()
     await bewaarVerrekening({
       id: nieuwId(),
       dossierId: dossier.id,
@@ -723,6 +723,22 @@ export function App() {
       setBezig(false)
     }
   }
+
+  // De Drive-verbinding verbreken. `meldAf` wist het bewaarde token, waardoor de
+  // app ook bij een volgende start niet meer automatisch synchroniseert. Je data
+  // blijft gewoon lokaal staan — er wordt niets verwijderd.
+  function verbreekVerbinding() {
+    meldAf()
+    backendRef.current = null
+    setVerbonden(false)
+    setStatusTekst(t('Verbinding met Google Drive verbroken. Je gegevens blijven op dit toestel staan.'))
+  }
+
+  // Budgetten die deze maand tegen hun grens aanlopen (vanaf 85% verbruikt), voor
+  // het belletje in de bovenbalk — hetzelfde signaal als in V1.
+  const budgetWaarschuwingen = budgetten.filter(
+    (b) => b.bedrag > 0 && uitgavenInMaand(transacties ?? [], b.categorieId, maand) >= b.bedrag * 0.85,
+  ).length
 
   if (transacties === null) {
     return (
@@ -903,7 +919,9 @@ export function App() {
                   })}
                 </ul>
               )}
-              {categorieen.length > 0 && <BudgetFormulier categorieen={categorieen} onOpslaan={voegBudgetToe} />}
+              {/* Het formulier biedt zelf alle ingebouwde hoofdcategorieën aan, dus het
+                  hoort er ook te staan als je nog geen eigen categorie hebt gemaakt. */}
+              <BudgetFormulier categorieen={categorieen} onOpslaan={voegBudgetToe} />
             </Kaart>
           </ErrorBoundary>
 
@@ -1148,7 +1166,7 @@ export function App() {
   if (isDesktop) {
     return (
       <div style={{ display: 'flex', minHeight: '100vh' }}>
-        <Zijbalk actief={pagina} onKies={setPagina} />
+        <Zijbalk actief={pagina} onKies={setPagina} verbonden={verbonden} bezig={bezig} statusTekst={statusTekst} />
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <header
             style={{
@@ -1168,6 +1186,41 @@ export function App() {
             <button className="knop knop-primair knop-klein" onClick={nieuweTransactie}>
               + {t('Nieuwe transactie')}
             </button>
+
+            {/* Belletje met een amberen stip zodra een budget deze maand boven 85%
+                zit. Klikken brengt je naar de budgetpagina. */}
+            <button
+              className="knop knop-icoon"
+              style={{ position: 'relative' }}
+              aria-label={
+                budgetWaarschuwingen > 0
+                  ? t('{n} budget(ten) bijna op', { n: budgetWaarschuwingen })
+                  : t('Meldingen')
+              }
+              onClick={() => setPagina('budget')}
+            >
+              <span aria-hidden>🔔</span>
+              {budgetWaarschuwingen > 0 && (
+                <span
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    top: 4,
+                    right: 4,
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: 'var(--accent-dot)',
+                  }}
+                />
+              )}
+            </button>
+
+            {verbonden && (
+              <button className="knop knop-icoon" aria-label={t('Uitloggen')} onClick={verbreekVerbinding}>
+                <span aria-hidden>⎋</span>
+              </button>
+            )}
           </header>
           <div style={{ padding: '1.5rem 1.5rem 3rem' }}>
             <div style={{ maxWidth: 760, margin: '0 auto' }}>{paginaInhoud}</div>

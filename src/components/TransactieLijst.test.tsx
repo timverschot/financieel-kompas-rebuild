@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { TransactieLijst } from './TransactieLijst'
 import type { Transactie } from '../data/schema'
+import { vandaag } from '../utils/datum'
 
 const rekeningen = [
   { id: 'r1', naam: 'Betaal', beginsaldo: 0 },
@@ -11,7 +12,7 @@ const rekeningen = [
 
 // Een 'recente' datum (vandaag) zodat de transactie zeker binnen het historiek-
 // venster van 6 maanden valt, ongeacht de systeemklok waarop de test draait.
-const recent = new Date().toISOString().slice(0, 10)
+const recent = vandaag()
 
 const tx = (extra: Partial<Transactie> & { id: string }): Transactie => ({
   datum: recent,

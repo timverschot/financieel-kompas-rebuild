@@ -1,9 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Categorie, Rekening, TerugkerendePost } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { useT } from '../i18n'
+
+// De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
+// en het leegmaken na het opslaan niet uit elkaar kunnen lopen. De gekozen rekening
+// hoort hier bewust niet bij: die blijft staan als handige standaard.
+const BEGIN = { omschrijving: '', bedrag: '', soort: 'uitgave' as const, categorieId: '', dag: '1' }
 
 // Formulier om een vaste (terugkerende) post aan te maken of te bewerken.
 export function TerugkerendePostFormulier({
@@ -20,12 +25,21 @@ export function TerugkerendePostFormulier({
   bewerken?: TerugkerendePost | null
 }) {
   const { t } = useT()
-  const [omschrijving, setOmschrijving] = useState('')
-  const [bedrag, setBedrag] = useState('')
-  const [soort, setSoort] = useState<'uitgave' | 'inkomst'>('uitgave')
+  const [omschrijving, setOmschrijving] = useState(BEGIN.omschrijving)
+  const [bedrag, setBedrag] = useState(BEGIN.bedrag)
+  const [soort, setSoort] = useState<'uitgave' | 'inkomst'>(BEGIN.soort)
   const [rekeningId, setRekeningId] = useState(rekeningen[0]?.id ?? '')
-  const [categorieId, setCategorieId] = useState('')
-  const [dag, setDag] = useState('1')
+  const [categorieId, setCategorieId] = useState(BEGIN.categorieId)
+  const [dag, setDag] = useState(BEGIN.dag)
+
+  // Zet alle velden terug op hun beginwaarde.
+  const leegmaken = useCallback(() => {
+    setOmschrijving(BEGIN.omschrijving)
+    setBedrag(BEGIN.bedrag)
+    setSoort(BEGIN.soort)
+    setCategorieId(BEGIN.categorieId)
+    setDag(BEGIN.dag)
+  }, [])
 
   useEffect(() => {
     if (bewerken) {
@@ -36,13 +50,9 @@ export function TerugkerendePostFormulier({
       setCategorieId(bewerken.categorieId ?? '')
       setDag(String(bewerken.dag))
     } else {
-      setOmschrijving('')
-      setBedrag('')
-      setSoort('uitgave')
-      setCategorieId('')
-      setDag('1')
+      leegmaken()
     }
-  }, [bewerken])
+  }, [bewerken, leegmaken])
 
   const bedragCenten = invoerNaarCenten(bedrag)
   const dagGetal = Number.parseInt(dag, 10)
@@ -66,6 +76,10 @@ export function TerugkerendePostFormulier({
       dag: dagGetal,
       ...(categorieId ? { categorieId } : {}),
     })
+    // Bij een NIEUWE vaste post blijft 'bewerken' null, dus de useEffect hierboven
+    // draait niet. Daarom hier leegmaken, anders blijft alles ingevuld staan en
+    // maakt een tweede klik dezelfde post nog eens aan.
+    if (!bewerken) leegmaken()
   }
 
   return (
@@ -139,6 +153,12 @@ export function TerugkerendePostFormulier({
           </button>
         )}
       </div>
+      {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt. */}
+      {!geldig && (
+        <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+          {t('Geef een naam en een geldig bedrag om op te slaan.')}
+        </p>
+      )}
     </form>
   )
 }

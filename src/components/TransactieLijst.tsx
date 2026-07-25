@@ -5,8 +5,8 @@ import { labelVanCategorie } from '../data/categorieen/resolve'
 import { filterTransacties, heeftActiefFilter, grensDatumMaandenTerug, type TxFilter } from '../utils/transactieFilter'
 import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
+import { vandaag } from '../utils/datum'
 
-const vandaag = () => new Date().toISOString().slice(0, 10)
 const STANDAARD_MAANDEN = 6
 
 // De transactielijst met zoek-/filterbalk en een historiek-venster. Standaard

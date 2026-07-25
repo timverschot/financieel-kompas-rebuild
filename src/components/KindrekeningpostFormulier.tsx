@@ -1,13 +1,27 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Categorie, Kind, Kindrekeningpost } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { CategorieKiezer } from './CategorieKiezer'
 import { verkleinAfbeelding } from '../utils/afbeelding'
+import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
 
-const vandaag = () => new Date().toISOString().slice(0, 10)
+// De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
+// en het leegmaken na het opslaan niet uit elkaar kunnen lopen.
+function beginwaarden() {
+  return {
+    soort: 'storting' as const,
+    bedrag: '',
+    datum: vandaag(),
+    omschrijving: '',
+    door: 'jij' as const,
+    kindIds: [] as string[],
+    categorieId: '',
+    bonnetje: '',
+  }
+}
 
 // Formulier om een beweging op de kindrekening toe te voegen of te bewerken: ofwel
 // een storting (door een ouder), ofwel een uitgave (een kost betaald uit de pot).
@@ -28,15 +42,28 @@ export function KindrekeningpostFormulier({
   bewerken?: Kindrekeningpost | null
 }) {
   const { t } = useT()
-  const [soort, setSoort] = useState<'storting' | 'uitgave'>('storting')
-  const [bedrag, setBedrag] = useState('')
-  const [datum, setDatum] = useState(vandaag())
-  const [omschrijving, setOmschrijving] = useState('')
-  const [door, setDoor] = useState<'jij' | 'partner'>('jij')
-  const [kindIds, setKindIds] = useState<string[]>([])
-  const [categorieId, setCategorieId] = useState('')
-  const [bonnetje, setBonnetje] = useState('')
+  const [soort, setSoort] = useState<'storting' | 'uitgave'>(() => beginwaarden().soort)
+  const [bedrag, setBedrag] = useState(() => beginwaarden().bedrag)
+  const [datum, setDatum] = useState(() => beginwaarden().datum)
+  const [omschrijving, setOmschrijving] = useState(() => beginwaarden().omschrijving)
+  const [door, setDoor] = useState<'jij' | 'partner'>(() => beginwaarden().door)
+  const [kindIds, setKindIds] = useState<string[]>(() => beginwaarden().kindIds)
+  const [categorieId, setCategorieId] = useState(() => beginwaarden().categorieId)
+  const [bonnetje, setBonnetje] = useState(() => beginwaarden().bonnetje)
   const [bezigBon, setBezigBon] = useState(false)
+
+  // Zet alle velden terug op hun beginwaarde.
+  const leegmaken = useCallback(() => {
+    const b = beginwaarden()
+    setSoort(b.soort)
+    setBedrag(b.bedrag)
+    setDatum(b.datum)
+    setOmschrijving(b.omschrijving)
+    setDoor(b.door)
+    setKindIds(b.kindIds)
+    setCategorieId(b.categorieId)
+    setBonnetje(b.bonnetje)
+  }, [])
 
   useEffect(() => {
     if (bewerken) {
@@ -49,16 +76,9 @@ export function KindrekeningpostFormulier({
       setCategorieId(bewerken.categorieId ?? '')
       setBonnetje(bewerken.bonnetje ?? '')
     } else {
-      setSoort('storting')
-      setBedrag('')
-      setDatum(vandaag())
-      setOmschrijving('')
-      setDoor('jij')
-      setKindIds([])
-      setCategorieId('')
-      setBonnetje('')
+      leegmaken()
     }
-  }, [bewerken])
+  }, [bewerken, leegmaken])
 
   const bedragCenten = invoerNaarCenten(bedrag)
   const geldig = Number.isFinite(bedragCenten) && bedragCenten > 0
@@ -94,6 +114,10 @@ export function KindrekeningpostFormulier({
       ...(isUitgave && categorieId ? { categorieId } : {}),
       ...(isUitgave && bonnetje ? { bonnetje } : {}),
     })
+    // Bij een NIEUWE beweging blijft 'bewerken' null, dus de useEffect hierboven
+    // draait niet. Daarom hier leegmaken, anders blijft alles ingevuld staan en boek
+    // je met een tweede klik dezelfde beweging nog eens.
+    if (!bewerken) leegmaken()
   }
 
   return (
@@ -185,6 +209,12 @@ export function KindrekeningpostFormulier({
           </button>
         )}
       </div>
+      {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt. */}
+      {!geldig && (
+        <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+          {t('Geef een naam en een geldig bedrag om op te slaan.')}
+        </p>
+      )}
     </form>
   )
 }

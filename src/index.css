@@ -69,8 +69,10 @@
   --shadow-sheet: 0 24px 60px rgba(80, 64, 44, 0.14);
   --focus-ring: 0 0 0 3px rgba(201, 118, 26, 0.12);
 
-  /* Zijpaneel (desktop): een vaste donkere chrome, in licht én donker dezelfde
-     navy-tint. Zie components/Zijbalk.tsx. */
+  /* Zijpaneel (desktop): een donkere, warm-bruine chrome naast de crème pagina.
+     Zie components/Zijbalk.tsx. In donkere modus krijgt het paneel eigen,
+     koelere waarden (zie het dark-blok hieronder), zodat het niet als een warm
+     bruin blok naast een donkerblauwe pagina blijft staan. */
   --sidebar-bg: #2c211b;
   --sidebar-text: #d9a468;
   --sidebar-muted: #b49a82;
@@ -116,6 +118,15 @@
   --shadow-zwevend: 0 12px 30px rgba(240, 166, 60, 0.3);
   --shadow-sheet: 0 24px 60px rgba(0, 0, 0, 0.5);
   --focus-ring: 0 0 0 3px rgba(240, 166, 60, 0.14);
+
+  /* Zijpaneel in donkere modus: net tussen de paginakleur (#0e1116) en de
+     kaartkleur (#171c23), zodat de balk herkenbaar blijft zonder eruit te
+     springen. */
+  --sidebar-bg: #12161c;
+  --sidebar-text: #a9b2bd;
+  --sidebar-muted: #7c8592;
+  --sidebar-active-bg: rgba(240, 166, 60, 0.16);
+  --sidebar-active-text: #f4efe6;
 }
 
 * {

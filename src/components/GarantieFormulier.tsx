@@ -1,13 +1,27 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Garantie, Transactie } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer, formatEuro } from '../utils/format'
 import { verkleinAfbeelding } from '../utils/afbeelding'
 import { STANDAARD_GARANTIE_MAANDEN } from '../utils/garantie'
+import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
 
-const vandaag = () => new Date().toISOString().slice(0, 10)
+// De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
+// en het leegmaken na het opslaan niet uit elkaar kunnen lopen.
+function beginwaarden() {
+  return {
+    product: '',
+    winkel: '',
+    aankoopdatum: vandaag(),
+    prijs: '',
+    maanden: String(STANDAARD_GARANTIE_MAANDEN),
+    transactieId: '',
+    notitie: '',
+    bonnetje: '',
+  }
+}
 
 // Formulier om een aankoop met garantie toe te voegen of te bewerken. Een aankoop
 // kan optioneel aan een bestaande transactie gekoppeld worden; bij het kiezen
@@ -24,15 +38,28 @@ export function GarantieFormulier({
   bewerken?: Garantie | null
 }) {
   const { t } = useT()
-  const [product, setProduct] = useState('')
-  const [winkel, setWinkel] = useState('')
-  const [aankoopdatum, setAankoopdatum] = useState(vandaag())
-  const [prijs, setPrijs] = useState('')
-  const [maanden, setMaanden] = useState(String(STANDAARD_GARANTIE_MAANDEN))
-  const [transactieId, setTransactieId] = useState('')
-  const [notitie, setNotitie] = useState('')
-  const [bonnetje, setBonnetje] = useState('')
+  const [product, setProduct] = useState(() => beginwaarden().product)
+  const [winkel, setWinkel] = useState(() => beginwaarden().winkel)
+  const [aankoopdatum, setAankoopdatum] = useState(() => beginwaarden().aankoopdatum)
+  const [prijs, setPrijs] = useState(() => beginwaarden().prijs)
+  const [maanden, setMaanden] = useState(() => beginwaarden().maanden)
+  const [transactieId, setTransactieId] = useState(() => beginwaarden().transactieId)
+  const [notitie, setNotitie] = useState(() => beginwaarden().notitie)
+  const [bonnetje, setBonnetje] = useState(() => beginwaarden().bonnetje)
   const [bezigBon, setBezigBon] = useState(false)
+
+  // Zet alle velden terug op hun beginwaarde.
+  const leegmaken = useCallback(() => {
+    const b = beginwaarden()
+    setProduct(b.product)
+    setWinkel(b.winkel)
+    setAankoopdatum(b.aankoopdatum)
+    setPrijs(b.prijs)
+    setMaanden(b.maanden)
+    setTransactieId(b.transactieId)
+    setNotitie(b.notitie)
+    setBonnetje(b.bonnetje)
+  }, [])
 
   useEffect(() => {
     if (bewerken) {
@@ -45,16 +72,9 @@ export function GarantieFormulier({
       setNotitie(bewerken.notitie ?? '')
       setBonnetje(bewerken.bonnetje ?? '')
     } else {
-      setProduct('')
-      setWinkel('')
-      setAankoopdatum(vandaag())
-      setPrijs('')
-      setMaanden(String(STANDAARD_GARANTIE_MAANDEN))
-      setTransactieId('')
-      setNotitie('')
-      setBonnetje('')
+      leegmaken()
     }
-  }, [bewerken])
+  }, [bewerken, leegmaken])
 
   const maandenGetal = Number.parseInt(maanden, 10)
   const prijsCenten = invoerNaarCenten(prijs)
@@ -98,6 +118,10 @@ export function GarantieFormulier({
       ...(notitie.trim() ? { notitie: notitie.trim() } : {}),
       ...(bonnetje ? { bonnetje } : {}),
     })
+    // Bij een NIEUWE aankoop blijft 'bewerken' null, dus de useEffect hierboven
+    // draait niet. Daarom hier leegmaken, anders blijft alles ingevuld staan en
+    // maakt een tweede klik dezelfde garantie nog eens aan.
+    if (!bewerken) leegmaken()
   }
 
   return (
@@ -194,6 +218,12 @@ export function GarantieFormulier({
           </button>
         )}
       </div>
+      {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt. */}
+      {!geldig && (
+        <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+          {t('Geef een naam en een geldig bedrag om op te slaan.')}
+        </p>
+      )}
     </form>
   )
 }

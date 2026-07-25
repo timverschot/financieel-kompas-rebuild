@@ -5,8 +5,8 @@ import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
+import { vandaag } from '../utils/datum'
 
-const vandaag = () => new Date().toISOString().slice(0, 10)
 
 // Overzicht + formulier voor interne overboekingen tussen je eigen rekeningen.
 // Een overboeking is géén inkomst of uitgave; ze verschuift enkel geld en telt dus

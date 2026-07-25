@@ -6,8 +6,8 @@ import { GarantieFormulier } from './GarantieFormulier'
 import { Kaart, Leeg, Balk } from '../ui/basis'
 import { useT } from '../i18n'
 import type { Vertaler } from '../i18n'
+import { vandaag } from '../utils/datum'
 
-const vandaag = () => new Date().toISOString().slice(0, 10)
 
 // De statusbadge (klasse + tekst) voor een garantie: vervallen, bijna vervallen
 // of nog geldig.

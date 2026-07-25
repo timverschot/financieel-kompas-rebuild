@@ -11,11 +11,11 @@ import { ItemZoeker } from './ItemZoeker'
 import { NutriScoreBadge } from './NutriScoreBadge'
 import { Kaart } from '../ui/basis'
 import { useT } from '../i18n'
+import { vandaag } from '../utils/datum'
 
 // De scanner (en de ZXing-bibliotheek) worden pas geladen wanneer je effectief scant.
 const BarcodeScanner = lazy(() => import('./BarcodeScanner'))
 
-const vandaag = () => new Date().toISOString().slice(0, 10)
 
 // Onthoud de laatst gebruikte rekening als standaard (ook na een herlaad).
 const LAATSTE_REKENING_SLEUTEL = 'fk_laatste_rekening'

@@ -18,6 +18,7 @@ import { Donut } from './Donut'
 import { formatEuro } from '../utils/format'
 import { Kaart, PaginaKop, Leeg, Bedrag, Stat, Balk } from '../ui/basis'
 import { useT } from '../i18n'
+import { naarDatumTekst } from '../utils/datum'
 
 // Palet voor lijstjes zonder eigen kleur (producten, winkels). Bewust vaste,
 // onderscheidbare tinten; de kleur reist mee met het bedrag (zelfde data-object).
@@ -148,7 +149,7 @@ export function AnalyseSectie({
   // onvolledig aangepast bereik hebben geen zinvolle vorige periode.
   const vorige: Periode | null = useMemo(() => {
     const nu = new Date()
-    const iso = (d: Date) => d.toISOString().slice(0, 10)
+    const iso = naarDatumTekst
     if (keuze === 'maand') {
       const m = maandStr(new Date(nu.getFullYear(), nu.getMonth() - 1, 1))
       return { van: `${m}-01`, tot: `${m}-31` }

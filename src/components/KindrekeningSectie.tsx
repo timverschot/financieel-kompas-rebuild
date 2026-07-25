@@ -8,8 +8,8 @@ import { KindrekeningpostFormulier } from './KindrekeningpostFormulier'
 import { Bedrag, Kaart } from '../ui/basis'
 import { useT } from '../i18n'
 import type { Vertaler } from '../i18n'
+import { vandaag } from '../utils/datum'
 
-const vandaag = () => new Date().toISOString().slice(0, 10)
 
 function getal(waarde: string): number {
   return Number.parseFloat(waarde.replace(',', '.'))
