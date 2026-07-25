@@ -9,9 +9,10 @@ import { useT } from '../i18n'
 const kaart: CSSProperties = {
   background: 'var(--surface)',
   border: '1px solid var(--border)',
-  borderRadius: 12,
+  borderRadius: 16,
   padding: '1rem',
   marginBottom: '1rem',
+  boxShadow: 'var(--shadow)',
 }
 
 function kleurVanSaldo(saldo: number): string {

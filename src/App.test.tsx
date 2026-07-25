@@ -29,10 +29,17 @@ function saldoRegel(): HTMLElement {
   return screen.getByText('Saldo').closest('p') as HTMLElement
 }
 
-// De app heeft nu aparte pagina's met een vaste navigatiebalk onderaan. Deze
-// helper klikt naar een pagina via haar tab-knop (aria-label = paginanaam).
+// De app heeft aparte pagina's met een vaste navigatiebalk onderaan. Deze helper
+// klikt naar een primaire pagina via haar tab-knop (aria-label = paginanaam).
 type Gebruiker = ReturnType<typeof userEvent.setup>
 async function ga(user: Gebruiker, pagina: string) {
+  await user.click(screen.getByRole('button', { name: pagina }))
+}
+
+// Secundaire pagina's (Rekeningen, Budget, Dossiers, Categorieën, ...) zitten op
+// mobiel achter de 'Meer'-knop: eerst de sheet openen, dan de pagina kiezen.
+async function gaMeer(user: Gebruiker, pagina: string) {
+  await user.click(screen.getByRole('button', { name: 'Meer' }))
   await user.click(screen.getByRole('button', { name: pagina }))
 }
 
@@ -94,7 +101,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Meer')
+    await gaMeer(user, 'Rekeningen')
     await user.type(screen.getByLabelText('Rekeningnaam'), 'Vakantiepot')
     await user.type(screen.getByLabelText('Beginsaldo (€)'), '100')
     await user.click(screen.getByRole('button', { name: 'Rekening toevoegen' }))
@@ -108,7 +115,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Budget')
+    await gaMeer(user, 'Budget')
     await user.type(screen.getByLabelText('Vaste omschrijving'), 'Netflix')
     await user.type(screen.getByLabelText('Vast bedrag (€)'), '15')
     await user.click(screen.getByRole('button', { name: 'Vaste post toevoegen' }))
@@ -123,12 +130,12 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Meer')
+    await gaMeer(user, 'Categorieën')
     await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
     await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
 
     // 'Vervoer' verschijnt nu als keuze in het budgetformulier.
-    await ga(user, 'Budget')
+    await gaMeer(user, 'Budget')
     expect((await screen.findAllByRole('option', { name: 'Vervoer' })).length).toBeGreaterThan(0)
   })
 
@@ -142,7 +149,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Budget')
+    await gaMeer(user, 'Budget')
     await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
     await user.type(screen.getByLabelText('Maandbudget (€)'), '400')
     await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
@@ -155,7 +162,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Dossiers')
+    await gaMeer(user, 'Dossiers')
     await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
     await user.type(screen.getByLabelText('Aandeel jij (%)'), '50')
     await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
@@ -174,7 +181,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Dossiers')
+    await gaMeer(user, 'Dossiers')
     await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
     await user.type(screen.getByLabelText('Aandeel jij (%)'), '50')
     await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
@@ -196,7 +203,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Meer')
+    await gaMeer(user, 'Categorieën')
     await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
     await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
     expect(await screen.findByText('Vervoer')).toBeInTheDocument()
@@ -210,7 +217,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Meer')
+    await gaMeer(user, 'Categorieën')
     await user.click(screen.getByRole('button', { name: 'Bewerk categorie Voeding' }))
     const naam = screen.getByLabelText('Categorienaam')
     await user.clear(naam)
@@ -218,7 +225,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Categorie wijzigen' }))
 
     // Beschikbaar als keuze in het budgetformulier onder de nieuwe naam.
-    await ga(user, 'Budget')
+    await gaMeer(user, 'Budget')
     expect((await screen.findAllByRole('option', { name: 'Eten' })).length).toBeGreaterThan(0)
   })
 
@@ -227,7 +234,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Meer')
+    await gaMeer(user, 'Rekeningen')
     await user.type(screen.getByLabelText('Rekeningnaam'), 'Vakantiepot')
     await user.click(screen.getByRole('button', { name: 'Rekening toevoegen' }))
     expect((await screen.findAllByRole('option', { name: 'Vakantiepot' })).length).toBeGreaterThan(0)
@@ -241,7 +248,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Budget')
+    await gaMeer(user, 'Budget')
     await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
     await user.type(screen.getByLabelText('Maandbudget (€)'), '400')
     await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
@@ -256,7 +263,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Budget')
+    await gaMeer(user, 'Budget')
     await user.type(screen.getByLabelText('Vaste omschrijving'), 'Netflix')
     await user.type(screen.getByLabelText('Vast bedrag (€)'), '15')
     await user.click(screen.getByRole('button', { name: 'Vaste post toevoegen' }))
@@ -275,7 +282,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Dossiers')
+    await gaMeer(user, 'Dossiers')
     await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
     await user.type(screen.getByLabelText('Aandeel jij (%)'), '50')
     await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
@@ -298,7 +305,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Dossiers')
+    await gaMeer(user, 'Dossiers')
     await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
     await user.type(screen.getByLabelText('Aandeel jij (%)'), '50')
     await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))

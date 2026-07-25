@@ -71,7 +71,7 @@ export function Vermogensevolutie({
   const verschil = laatsteTotaal - eersteTotaal
 
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '1rem', marginBottom: '1rem' }}>
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '1rem', marginBottom: '1rem', boxShadow: 'var(--shadow)' }}>
       <h3 style={{ margin: '0 0 0.15rem', fontSize: '0.95rem' }}>{t('Vermogensevolutie')}</h3>
       <p style={{ color: 'var(--text-subtle)', fontSize: '0.75rem', margin: '0 0 0.6rem' }}>{t('Je totale vermogen over de laatste 12 maanden')}</p>
 

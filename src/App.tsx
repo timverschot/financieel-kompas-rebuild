@@ -100,6 +100,8 @@ import { TerugkerendeSectie } from './components/TerugkerendeSectie'
 import { OverboekingSectie } from './components/OverboekingSectie'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { OnderNavigatie, type Pagina } from './components/OnderNavigatie'
+import { Zijbalk } from './components/Zijbalk'
+import { Merkteken } from './components/Merkteken'
 import { saldoVerrekeningDossier } from './utils/dossier'
 import { kostenVoorAfrekening, type AfrekeningFilter } from './utils/afrekening'
 import { nieuwId } from './data/sync/id'
@@ -133,6 +135,24 @@ function verschuifMaand(maand: string, delta: number): string {
   const [jaar, m] = maand.split('-').map(Number)
   const d = new Date(jaar, m - 1 + delta, 1)
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+}
+
+// Is het scherm breed genoeg voor de desktoplayout (zijpaneel)? Onder de grens
+// tonen we de mobiele layout (onderbalk). We schakelen in JavaScript i.p.v. enkel
+// met CSS, zodat er nooit twee navigaties tegelijk in de DOM staan.
+const DESKTOP_GRENS = '(min-width: 1024px)'
+function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_GRENS).matches,
+  )
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia(DESKTOP_GRENS)
+    const luister = () => setIsDesktop(mq.matches)
+    mq.addEventListener('change', luister)
+    return () => mq.removeEventListener('change', luister)
+  }, [])
+  return isDesktop
 }
 
 function maandLabel(maand: string): string {
@@ -169,6 +189,7 @@ export function App() {
   const [bewerkOverboeking, setBewerkOverboeking] = useState<Overboeking | null>(null)
   const [maand, setMaand] = useState(huidigeMaand())
   const [pagina, setPagina] = useState<Pagina>('overzicht')
+  const isDesktop = useIsDesktop()
   const [backupTekst, setBackupTekst] = useState<string | null>(null)
   const [undoInfo, setUndoInfo] = useState<{ boodschap: string; herstel: () => Promise<void> } | null>(null)
   const backendRef = useRef<DriveBackend | null>(null)
@@ -750,9 +771,15 @@ export function App() {
     </div>
   )
 
-  return (
-    <main style={{ ...container, paddingBottom: '5.5rem' }}>
-      <h1 style={{ marginBottom: '0.75rem' }}>Kompal</h1>
+  // Snel een nieuwe transactie: leeg het bewerk-veld en ga naar de transactiepagina
+  // (waar het formulier bovenaan staat). Gekoppeld aan de centrale ➕ en de bovenbalk.
+  const nieuweTransactie = () => {
+    setBewerkTransactie(null)
+    setPagina('transacties')
+  }
+
+  const paginaInhoud = (
+    <>
 
       {pagina === 'overzicht' && (
         <>
@@ -929,7 +956,7 @@ export function App() {
         </ErrorBoundary>
       )}
 
-      {pagina === 'meer' && (
+      {pagina === 'rekeningen' && (
         <>
           <section>
             <h2 style={kop}>{t('Rekeningen')}</h2>
@@ -981,9 +1008,10 @@ export function App() {
               onStopBewerken={() => setBewerkOverboeking(null)}
             />
           </ErrorBoundary>
+        </>
+      )}
 
-          <hr style={scheiding} />
-
+      {pagina === 'spaardoelen' && (
           <ErrorBoundary naam="Spaardoelen">
             <SpaardoelSectie
               spaardoelen={spaardoelen}
@@ -993,9 +1021,10 @@ export function App() {
               onVerwijderen={verwijderSpaardoelH}
             />
           </ErrorBoundary>
+      )}
 
-          <hr style={scheiding} />
-
+      {pagina === 'categorieen' && (
+        <>
           <section>
             <h2 style={kop}>{t('Categorieën')}</h2>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -1029,9 +1058,11 @@ export function App() {
               onVerwijderen={verwijderSubcategorieH}
             />
           </ErrorBoundary>
+        </>
+      )}
 
-          <hr style={scheiding} />
-
+      {pagina === 'leningen' && (
+        <>
           <ErrorBoundary naam="Leningen">
             <LeningSectie
               leningen={leningen}
@@ -1053,9 +1084,11 @@ export function App() {
               onVerwijderen={garantieVerwijderen}
             />
           </ErrorBoundary>
+        </>
+      )}
 
-          <hr style={scheiding} />
-
+      {pagina === 'instellingen' && (
+        <>
           <ErrorBoundary naam="Indexatie">
             <IndexatieCalculator />
           </ErrorBoundary>
@@ -1083,37 +1116,88 @@ export function App() {
         </>
       )}
 
-      {undoInfo && (
-        <div
-          role="status"
-          style={{
-            position: 'fixed',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            bottom: 'calc(4.75rem + env(safe-area-inset-bottom))',
-            background: 'var(--text)',
-            color: 'var(--bg)',
-            padding: '0.6rem 1rem',
-            borderRadius: 8,
-            display: 'flex',
-            gap: '1rem',
-            alignItems: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-            zIndex: 1000,
-            maxWidth: '90%',
-          }}
-        >
-          <span>{undoInfo.boodschap}</span>
-          <button
-            onClick={() => void undoNu()}
-            style={{ background: 'none', border: 'none', color: 'var(--accent-dot)', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            {t('Ongedaan maken')}
-          </button>
-        </div>
-      )}
+    </>
+  )
 
-      <OnderNavigatie actief={pagina} onKies={setPagina} />
-    </main>
+  const undoBalk = undoInfo && (
+    <div
+      role="status"
+      style={{
+        position: 'fixed',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        bottom: 'calc(4.75rem + env(safe-area-inset-bottom))',
+        background: 'var(--text)',
+        color: 'var(--bg)',
+        padding: '0.6rem 1rem',
+        borderRadius: 8,
+        display: 'flex',
+        gap: '1rem',
+        alignItems: 'center',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        zIndex: 1000,
+        maxWidth: '90%',
+      }}
+    >
+      <span>{undoInfo.boodschap}</span>
+      <button
+        onClick={() => void undoNu()}
+        style={{ background: 'none', border: 'none', color: 'var(--accent-dot)', cursor: 'pointer', fontWeight: 'bold' }}
+      >
+        {t('Ongedaan maken')}
+      </button>
+    </div>
+  )
+
+  // Brede schermen: vast zijpaneel + bovenbalk + gecentreerde inhoud (V1-logica).
+  if (isDesktop) {
+    return (
+      <div style={{ display: 'flex', minHeight: '100vh' }}>
+        <Zijbalk actief={pagina} onKies={setPagina} />
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <header
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '0.6rem 1.5rem',
+              background: 'var(--surface)',
+              borderBottom: '1px solid var(--border)',
+              position: 'sticky',
+              top: 0,
+              zIndex: 800,
+            }}
+          >
+            <div style={{ flex: 1 }} />
+            {statusTekst && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{statusTekst}</span>}
+            <button
+              onClick={nieuweTransactie}
+              style={{ ...knop, background: 'var(--accent-dot)', color: '#3a2c22', border: 'none', fontWeight: 600 }}
+            >
+              + {t('Nieuwe transactie')}
+            </button>
+          </header>
+          <div style={{ padding: '1.5rem 1.5rem 3rem' }}>
+            <div style={{ maxWidth: 760, margin: '0 auto' }}>{paginaInhoud}</div>
+          </div>
+        </div>
+        {undoBalk}
+      </div>
+    )
+  }
+
+  // Smalle schermen: één kolom met de onderbalk (tabbalk + centrale ➕).
+  return (
+    <>
+      <main style={{ ...container, paddingBottom: '5.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.9rem' }}>
+          <Merkteken grootte={30} />
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.4rem', letterSpacing: '-0.02em' }}>Kompal</span>
+        </div>
+        {paginaInhoud}
+      </main>
+      {undoBalk}
+      <OnderNavigatie actief={pagina} onKies={setPagina} onNieuweTransactie={nieuweTransactie} />
+    </>
   )
 }

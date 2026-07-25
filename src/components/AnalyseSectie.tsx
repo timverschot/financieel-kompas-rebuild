@@ -31,9 +31,10 @@ function kleuren(posten: AnalysePost[]): Gekleurd[] {
 const kaart: CSSProperties = {
   background: 'var(--surface)',
   border: '1px solid var(--border)',
-  borderRadius: 12,
+  borderRadius: 16,
   padding: '1rem',
   marginBottom: '1rem',
+  boxShadow: 'var(--shadow)',
 }
 const knopKlein: CSSProperties = {
   padding: '0.3rem 0.7rem',
