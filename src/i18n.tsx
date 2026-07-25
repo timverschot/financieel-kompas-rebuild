@@ -229,6 +229,21 @@ const en: Record<string, string> = {
   'Zet op {open}': 'Set to {open}',
   'De eerdere maanden tellen aan de niet-geïndexeerde bijdrage; enkel de lopende maand telt geïndexeerd. Zo weegt de indexatie niet met terugwerkende kracht.':
     'Earlier months are counted at the non-indexed contribution; only the current month is counted as indexed. That way indexation does not apply retroactively.',
+  // Ronde 8: iconen, filters en subcategorieën ter plekke
+  'je financieel kompas': 'your financial compass',
+  'Filters': 'Filters',
+  'Filters · {n}': 'Filters · {n}',
+  'Van {datum}': 'From {datum}',
+  'Tot {datum}': 'Until {datum}',
+  'Wis filter {naam}': 'Clear filter {naam}',
+  '+ “{naam}” toevoegen aan …': '+ Add “{naam}” to …',
+  'Nieuwe subcategorie “{naam}”': 'New subcategory “{naam}”',
+  'Onder welke categorie': 'Under which category',
+  'Subcategorie toevoegen': 'Add subcategory',
+  'Kies een categorie en geef een naam.': 'Pick a category and enter a name.',
+  'Zet een eigen item onder een bestaande categorie, zonder de boom te doorlopen.':
+    'Add your own item under an existing category, without walking through the tree.',
+  'bv. Kefir': 'e.g. Kefir',
   // Spaardoelen
   'Spaardoelen': 'Savings goals',
   'Leningen': 'Loans',
@@ -770,6 +785,21 @@ const fr: Record<string, string> = {
   'Zet op {open}': 'Mettre à {open}',
   'De eerdere maanden tellen aan de niet-geïndexeerde bijdrage; enkel de lopende maand telt geïndexeerd. Zo weegt de indexatie niet met terugwerkende kracht.':
     'Les mois antérieurs sont comptés à la contribution non indexée ; seul le mois en cours est indexé. L’indexation ne s’applique donc pas rétroactivement.',
+  // Ronde 8 : icônes, filtres et sous-catégories sur place
+  'je financieel kompas': 'votre boussole financière',
+  'Filters': 'Filtres',
+  'Filters · {n}': 'Filtres · {n}',
+  'Van {datum}': 'Du {datum}',
+  'Tot {datum}': 'Au {datum}',
+  'Wis filter {naam}': 'Effacer le filtre {naam}',
+  '+ “{naam}” toevoegen aan …': '+ Ajouter “{naam}” à …',
+  'Nieuwe subcategorie “{naam}”': 'Nouvelle sous-catégorie “{naam}”',
+  'Onder welke categorie': 'Sous quelle catégorie',
+  'Subcategorie toevoegen': 'Ajouter une sous-catégorie',
+  'Kies een categorie en geef een naam.': 'Choisissez une catégorie et indiquez un nom.',
+  'Zet een eigen item onder een bestaande categorie, zonder de boom te doorlopen.':
+    'Ajoutez votre propre élément sous une catégorie existante, sans parcourir l’arborescence.',
+  'bv. Kefir': 'p. ex. Kéfir',
   // Spaardoelen
   'Spaardoelen': 'Objectifs d’épargne',
   'Leningen': 'Prêts',

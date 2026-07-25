@@ -23,7 +23,7 @@ export const INGEBOUWDE_CATEGORIEEN: IngebouwdeHoofdcategorie[] = [
     "naam": "Voeding",
     "hoofdtype": "Variabele Uitgaven",
     "kleur": "#F59E0B",
-    "icoon": "🛒",
+    "icoon": "🍽️",
     "categorieen": [
       {
         "id": "cat-broodwaren",

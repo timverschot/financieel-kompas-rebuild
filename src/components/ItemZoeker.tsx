@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
+import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
 import { zoekItems } from '../data/categorieen/zoek'
 import type { PlatItem } from '../data/categorieen/zoek'
+import { groepVanCategorie } from '../data/categorieen/resolve'
+import { HoofdcategorieChips, NieuweSubcategoriePaneel } from './CategorieKiezer'
 import { useT } from '../i18n'
 
 const ZOEK_VANAF = 2
@@ -40,23 +43,60 @@ function suggestieKnop(gemarkeerd: boolean): CSSProperties {
   }
 }
 
+// Een net aangemaakte subcategorie bestaat nog niet in de zoekindex op het
+// moment dat we ze op de regel willen zetten (de app herlaadt daarna pas). We
+// bouwen ze dus zelf op met de plaats in de boom die de gebruiker koos, zodat de
+// regel meteen correct getagd is.
+function nieuwPlatItem(id: string, naam: string, categorieId: string): PlatItem | null {
+  for (const h of INGEBOUWDE_CATEGORIEEN) {
+    for (const c of h.categorieen) {
+      if (c.id === categorieId) {
+        return {
+          id,
+          naam,
+          synoniemen: [],
+          eenheid: null,
+          categorieId: c.id,
+          categorieNaam: c.naam,
+          hoofdId: h.id,
+          hoofdNaam: h.naam,
+          hoofdtype: h.hoofdtype,
+          kleur: h.kleur,
+          icoon: h.icoon,
+        }
+      }
+    }
+  }
+  return null
+}
+
 // Compacte item-autocomplete voor één kassaticketregel: typ een product (vanaf
 // twee letters), navigeer met pijltjes en kies met Tab/Enter. Vindt ook op
-// synoniem. Vrije tekst zonder keuze blijft gewoon als omschrijving staan.
+// synoniem. Breed taggen kan met de chips (hoofdcategorieën) onder het veld, en
+// bestaat je product nog niet, dan maak je het aan via de laatste regel in de
+// lijst. Vrije tekst zonder keuze blijft gewoon als omschrijving staan.
 export function ItemZoeker({
   waarde,
   onTekst,
   onKiesItem,
   registerInput,
+  categorieId,
+  onKiesHoofdcategorie,
+  onNieuweSubcategorie,
 }: {
   waarde: string
   onTekst: (tekst: string) => void
   onKiesItem: (item: PlatItem) => void
   registerInput?: (el: HTMLInputElement | null) => void
+  categorieId?: string
+  onKiesHoofdcategorie?: (hoofdId: string, hoofdNaam: string) => void
+  onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
 }) {
   const { t } = useT()
   const [open, setOpen] = useState(false)
   const [hoog, setHoog] = useState(0)
+  // De naam waarvoor het "nieuwe subcategorie"-paneeltje openstaat (null = dicht).
+  const [nieuweNaam, setNieuweNaam] = useState<string | null>(null)
   const hoogRef = useRef(0)
   function zetHoog(n: number) {
     hoogRef.current = n
@@ -65,27 +105,49 @@ export function ItemZoeker({
 
   const term = waarde.trim()
   const resultaten = open && term.length >= ZOEK_VANAF ? zoekItems(term, MAX) : []
-  const gemarkeerd = Math.min(hoog, Math.max(0, resultaten.length - 1))
+  // De "toevoegen"-regel telt mee in de toetsenbordnavigatie: ze is gewoon de
+  // laatste regel van de lijst.
+  const toonToevoegen = Boolean(onNieuweSubcategorie) && open && term.length >= ZOEK_VANAF
+  const aantalRegels = resultaten.length + (toonToevoegen ? 1 : 0)
+  const gemarkeerd = Math.min(hoog, Math.max(0, aantalRegels - 1))
+  // Onder welke hoofdcategorie valt deze regel nu? Die chip lichten we op.
+  const hoofdInBeeld = categorieId ? groepVanCategorie(categorieId, []).sleutel : undefined
 
   function kies(item: PlatItem) {
     onKiesItem(item)
     setOpen(false)
+    setNieuweNaam(null)
     zetHoog(0)
   }
 
+  function startToevoegen() {
+    setNieuweNaam(term)
+  }
+
+  async function bewaarNieuwe(catId: string) {
+    if (!onNieuweSubcategorie || !nieuweNaam) return
+    const id = await onNieuweSubcategorie(catId, nieuweNaam)
+    const item = nieuwPlatItem(id, nieuweNaam, catId)
+    if (item) kies(item)
+    else setNieuweNaam(null)
+  }
+
   function opToets(e: KeyboardEvent<HTMLInputElement>) {
-    if (resultaten.length === 0) return
+    if (aantalRegels === 0) return
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      zetHoog(Math.min(hoogRef.current + 1, resultaten.length - 1))
+      zetHoog(Math.min(hoogRef.current + 1, aantalRegels - 1))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       zetHoog(Math.max(hoogRef.current - 1, 0))
     } else if (e.key === 'Enter' || e.key === 'Tab') {
-      const item = resultaten[Math.min(hoogRef.current, resultaten.length - 1)]
-      if (item) {
+      const index = Math.min(hoogRef.current, aantalRegels - 1)
+      if (index < resultaten.length) {
         e.preventDefault()
-        kies(item)
+        kies(resultaten[index])
+      } else if (toonToevoegen) {
+        e.preventDefault()
+        startToevoegen()
       }
     } else if (e.key === 'Escape') {
       setOpen(false)
@@ -110,7 +172,10 @@ export function ItemZoeker({
         onBlur={() => setOpen(false)}
         onKeyDown={opToets}
       />
-      {resultaten.length > 0 && (
+      {onKiesHoofdcategorie && (
+        <HoofdcategorieChips actiefId={hoofdInBeeld} onKies={(id, naam) => onKiesHoofdcategorie(id, naam)} />
+      )}
+      {aantalRegels > 0 && nieuweNaam === null && (
         <ul role="listbox" style={suggestieLijst}>
           {resultaten.map((it, i) => (
             <li key={it.id} role="option" aria-selected={i === gemarkeerd}>
@@ -125,7 +190,28 @@ export function ItemZoeker({
               </button>
             </li>
           ))}
+          {toonToevoegen && (
+            <li role="option" aria-selected={gemarkeerd === resultaten.length}>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={startToevoegen}
+                onMouseEnter={() => zetHoog(resultaten.length)}
+                style={suggestieKnop(gemarkeerd === resultaten.length)}
+              >
+                {t('+ “{naam}” toevoegen aan …', { naam: term })}
+              </button>
+            </li>
+          )}
         </ul>
+      )}
+      {nieuweNaam !== null && (
+        <NieuweSubcategoriePaneel
+          naam={nieuweNaam}
+          hoofdIdInBeeld={hoofdInBeeld}
+          onBevestig={bewaarNieuwe}
+          onAnnuleer={() => setNieuweNaam(null)}
+        />
       )}
     </div>
   )

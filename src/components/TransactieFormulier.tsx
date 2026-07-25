@@ -57,6 +57,7 @@ export function TransactieFormulier({
   bewerken,
   streepjescodes = [],
   onOnthoudStreepjescode,
+  onNieuweSubcategorie,
 }: {
   onOpslaan: (t: Transactie) => Promise<void> | void
   onAnnuleer?: () => void
@@ -66,6 +67,9 @@ export function TransactieFormulier({
   bewerken?: Transactie | null
   streepjescodes?: Streepjescode[]
   onOnthoudStreepjescode?: (s: Streepjescode) => Promise<void> | void
+  // Bewaart een nieuwe subcategorie onder een bestaande (midden)categorie en
+  // geeft het nieuwe id terug, zodat de regel er meteen op getagd kan worden.
+  onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
 }) {
   const { t } = useT()
   const [omschrijving, setOmschrijving] = useState('')
@@ -260,6 +264,7 @@ export function TransactieFormulier({
           waarde={categorieId || undefined}
           onKies={(id) => setCategorieId(id ?? '')}
           gebruikerCategorieen={categorieen}
+          onNieuweSubcategorie={onNieuweSubcategorie}
         />
       ) : (
         <Kaart compact style={{ background: 'var(--surface-2)' }}>
@@ -270,6 +275,17 @@ export function TransactieFormulier({
                   waarde={r.omschrijving}
                   onTekst={(tekst) => wijzigRegel(r.sleutel, { omschrijving: tekst, categorieId: '' })}
                   onKiesItem={(item) => wijzigRegel(r.sleutel, { categorieId: item.id, omschrijving: item.naam })}
+                  categorieId={r.categorieId}
+                  // Breed taggen: een regel "diversen" zet je zo op 'Huishouden'.
+                  // Stond er nog geen omschrijving, dan nemen we de naam van de
+                  // hoofdcategorie over.
+                  onKiesHoofdcategorie={(hoofdId, hoofdNaam) =>
+                    wijzigRegel(r.sleutel, {
+                      categorieId: hoofdId,
+                      omschrijving: r.omschrijving.trim() || hoofdNaam,
+                    })
+                  }
+                  onNieuweSubcategorie={onNieuweSubcategorie}
                   registerInput={(el) => {
                     zoekRefs.current[r.sleutel] = el
                   }}

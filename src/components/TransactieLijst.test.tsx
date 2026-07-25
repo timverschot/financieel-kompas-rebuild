@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
-import { TransactieLijst } from './TransactieLijst'
+import { TransactieLijst, aantalActieveFilters, uitsplitsingTekst } from './TransactieLijst'
 import type { Transactie } from '../data/schema'
 import { vandaag } from '../utils/datum'
 
@@ -29,6 +29,24 @@ function toon(transacties: Transactie[]) {
   return { onBewerk, onVerwijder }
 }
 
+// De filters zitten voortaan achter de knop 'Filters'. Deze helper doet wat de
+// gebruiker doet: eerst openklappen, dan pas een veld gebruiken.
+async function klapFiltersOpen(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: /^Filters/ }))
+}
+
+// De meta-regel (datum · categorie · rekening, of de uitsplitsing) van een rij.
+function metaVan(omschrijving: string): string {
+  const rij = screen.getByText(omschrijving).closest('li') as HTMLElement
+  return rij.querySelector('.rij-meta')?.textContent ?? ''
+}
+
+// Het vierkantje links in de rij (icoon of beginletter).
+function tekenVan(omschrijving: string): string {
+  const rij = screen.getByText(omschrijving).closest('li') as HTMLElement
+  return rij.querySelector('.rij-teken')?.textContent ?? ''
+}
+
 describe('TransactieLijst', () => {
   it('zoekt op omschrijving', async () => {
     const user = userEvent.setup()
@@ -48,6 +66,7 @@ describe('TransactieLijst', () => {
       tx({ id: '1', omschrijving: 'Loon', bedrag: 200000 }),
       tx({ id: '2', omschrijving: 'Winkel', bedrag: -3000 }),
     ])
+    await klapFiltersOpen(user)
     await user.selectOptions(screen.getByLabelText('Richting'), 'in')
     expect(screen.getByText('Loon')).toBeInTheDocument()
     expect(screen.queryByText('Winkel')).not.toBeInTheDocument()
@@ -72,5 +91,191 @@ describe('TransactieLijst', () => {
     const rij = screen.getByText('Colruyt').closest('li') as HTMLElement
     await user.click(within(rij).getByRole('button', { name: 'Verwijder Colruyt' }))
     expect(onVerwijder).toHaveBeenCalledWith('1')
+  })
+})
+
+describe('TransactieLijst — het teken links in de rij', () => {
+  it('toont het icoon van de hoofdcategorie bij een gewone transactie', () => {
+    toon([tx({ id: '1', omschrijving: 'Colruyt', categorieId: 'ov-voeding' })])
+    expect(tekenVan('Colruyt')).toBe('🍽️')
+  })
+
+  it('toont het winkelkar-icoon bij een gesplitst kassaticket', () => {
+    toon([
+      tx({
+        id: '1',
+        omschrijving: 'Colruyt',
+        bedrag: -5380,
+        regels: [
+          { categorieId: 'ov-voeding', bedrag: -4120 },
+          { categorieId: 'ov-huishouden-en-verzorging', bedrag: -1260 },
+        ],
+      }),
+    ])
+    expect(tekenVan('Colruyt')).toBe('🛒')
+  })
+
+  it('behandelt een ticket met regels binnen één hoofdcategorie als gewoon', () => {
+    toon([
+      tx({
+        id: '1',
+        omschrijving: 'Colruyt',
+        bedrag: -3000,
+        regels: [
+          { categorieId: 'ov-voeding', bedrag: -2000 },
+          { categorieId: 'ov-voeding', bedrag: -1000 },
+        ],
+      }),
+    ])
+    expect(tekenVan('Colruyt')).toBe('🍽️')
+  })
+
+  it('valt terug op de beginletter zonder categorie', () => {
+    toon([tx({ id: '1', omschrijving: 'winkelke' })])
+    expect(tekenVan('winkelke')).toBe('W')
+  })
+
+  it('valt terug op de beginletter bij een eigen categorie zonder icoon', () => {
+    const onBewerk = vi.fn()
+    const onVerwijder = vi.fn()
+    render(
+      <TransactieLijst
+        transacties={[tx({ id: '1', omschrijving: 'Poetsvrouw', categorieId: 'eigen-1' })]}
+        categorieen={[{ id: 'eigen-1', naam: 'Hulp in huis' }]}
+        rekeningen={rekeningen}
+        onBewerk={onBewerk}
+        onVerwijder={onVerwijder}
+      />,
+    )
+    expect(tekenVan('Poetsvrouw')).toBe('P')
+  })
+})
+
+describe('TransactieLijst — de meta-regel', () => {
+  it('toont datum, categorie en rekening bij een gewone transactie', () => {
+    toon([tx({ id: '1', omschrijving: 'Colruyt', categorieId: 'ov-voeding' })])
+    const meta = metaVan('Colruyt')
+    expect(meta).toContain(recent)
+    expect(meta).toContain('Voeding')
+    expect(meta).toContain('Betaal')
+  })
+
+  it('toont de uitsplitsing met bedragen bij een gesplitst ticket', () => {
+    toon([
+      tx({
+        id: '1',
+        omschrijving: 'Colruyt',
+        bedrag: -5380,
+        regels: [
+          { categorieId: 'ov-voeding', bedrag: -4120 },
+          { categorieId: 'ov-huishouden-en-verzorging', bedrag: -1260 },
+        ],
+      }),
+    ])
+    const meta = metaVan('Colruyt')
+    expect(meta).toContain('🍽️ Voeding')
+    expect(meta).toContain('41,20')
+    expect(meta).toContain('🧹 Huishouden en Verzorging')
+    expect(meta).toContain('12,60')
+    // Twee groepen: niets af te kappen.
+    expect(meta).not.toContain('+1')
+  })
+
+  it('kapt af met +n vanaf drie groepen', () => {
+    toon([
+      tx({
+        id: '1',
+        omschrijving: 'Colruyt',
+        bedrag: -6380,
+        regels: [
+          { categorieId: 'ov-voeding', bedrag: -4120 },
+          { categorieId: 'ov-huishouden-en-verzorging', bedrag: -1260 },
+          { categorieId: 'ov-huisdieren', bedrag: -1000 },
+        ],
+      }),
+    ])
+    expect(metaVan('Colruyt')).toContain('+1')
+  })
+
+  it('uitsplitsingTekst zet de bedragen zonder minteken en kapt af', () => {
+    const groepen = [
+      { sleutel: 'a', naam: 'Voeding', kleur: '#F59E0B', icoon: '🍽️', bedrag: -4120 },
+      { sleutel: 'b', naam: 'Huishouden', kleur: '#6B7280', icoon: '🧹', bedrag: -1260 },
+      { sleutel: 'c', naam: 'Huisdieren', kleur: '#92400E', icoon: '🐾', bedrag: -1000 },
+    ]
+    const tekst = uitsplitsingTekst(groepen)
+    expect(tekst).not.toContain('-')
+    expect(tekst).toContain('🍽️ Voeding')
+    expect(tekst).toContain('🧹 Huishouden')
+    expect(tekst).not.toContain('Huisdieren')
+    expect(tekst.endsWith('+1')).toBe(true)
+  })
+})
+
+describe('TransactieLijst — de inklapbare filterbalk', () => {
+  it('houdt de filters dicht tot je op Filters klikt, en klapt weer dicht', async () => {
+    const user = userEvent.setup()
+    toon([tx({ id: '1' })])
+    // Het zoekveld blijft altijd zichtbaar; de rest zit weg.
+    expect(screen.getByLabelText('Zoek in transacties')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Richting')).not.toBeInTheDocument()
+
+    await klapFiltersOpen(user)
+    expect(screen.getByLabelText('Richting')).toBeInTheDocument()
+    expect(screen.getByLabelText('Rekening')).toBeInTheDocument()
+    expect(screen.getByLabelText('Van')).toBeInTheDocument()
+
+    await klapFiltersOpen(user)
+    expect(screen.queryByLabelText('Richting')).not.toBeInTheDocument()
+  })
+
+  it('telt de actieve filters op de knop en toont ze als chips', async () => {
+    const user = userEvent.setup()
+    toon([tx({ id: '1', omschrijving: 'Loon', bedrag: 200000 })])
+    expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument()
+
+    await klapFiltersOpen(user)
+    await user.selectOptions(screen.getByLabelText('Richting'), 'in')
+    await user.selectOptions(screen.getByLabelText('Rekening'), 'r1')
+
+    expect(screen.getByRole('button', { name: 'Filters · 2' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Wis filter Inkomsten' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Wis filter Betaal' })).toBeInTheDocument()
+  })
+
+  it('wist met de × van een chip enkel dat ene filter', async () => {
+    const user = userEvent.setup()
+    toon([tx({ id: '1', omschrijving: 'Loon', bedrag: 200000 })])
+    await klapFiltersOpen(user)
+    await user.selectOptions(screen.getByLabelText('Richting'), 'in')
+    await user.selectOptions(screen.getByLabelText('Rekening'), 'r1')
+
+    await user.click(screen.getByRole('button', { name: 'Wis filter Inkomsten' }))
+
+    expect(screen.queryByRole('button', { name: 'Wis filter Inkomsten' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Wis filter Betaal' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Filters · 1' })).toBeInTheDocument()
+  })
+
+  it('staat al open wanneer er bij het laden filters actief zijn', () => {
+    render(
+      <TransactieLijst
+        transacties={[tx({ id: '1' })]}
+        categorieen={[]}
+        rekeningen={rekeningen}
+        onBewerk={vi.fn()}
+        onVerwijder={vi.fn()}
+        beginFilter={{ richting: 'uit' }}
+      />,
+    )
+    expect(screen.getByLabelText('Richting')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Filters · 1' })).toBeInTheDocument()
+  })
+
+  it('aantalActieveFilters telt het zoekveld niet mee', () => {
+    expect(aantalActieveFilters({})).toBe(0)
+    expect(aantalActieveFilters({ zoek: 'colruyt' })).toBe(0)
+    expect(aantalActieveFilters({ richting: 'uit', van: '2026-01-01' })).toBe(2)
+    expect(aantalActieveFilters({ richting: 'uit', rekeningId: 'r1', hoofdId: 'ov-voeding', catId: 'cat-x', van: '2026-01-01', tot: '2026-02-01' })).toBe(6)
   })
 })

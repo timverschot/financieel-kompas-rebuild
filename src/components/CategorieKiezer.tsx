@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
 import type { Categorie } from '../data/schema'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
 import { zoekItems } from '../data/categorieen/zoek'
-import { labelVanCategorie } from '../data/categorieen/resolve'
+import { groepVanCategorie, labelVanCategorie } from '../data/categorieen/resolve'
 import { useT } from '../i18n'
 
 // Vanaf hoeveel letters we in de items/subcategorieën beginnen te zoeken.
@@ -45,23 +45,169 @@ function suggestieKnop(gemarkeerd: boolean): CSSProperties {
   }
 }
 
+// Eén rij die horizontaal schuift: de chips blijven op één lijn en vullen dus
+// nooit het halve scherm.
+const chipRij: CSSProperties = {
+  display: 'flex',
+  gap: 6,
+  overflowX: 'auto',
+  padding: '2px 0',
+  marginTop: 6,
+}
+
+// De rij met de veertien hoofdcategorieën. Altijd zichtbaar (ook tijdens het
+// typen), want breed taggen — "dit was gewoon Huishouden" — moet even vlot gaan
+// als een precies item kiezen. Eén tik en de regel is getagd.
+export function HoofdcategorieChips({
+  actiefId,
+  onKies,
+}: {
+  actiefId?: string
+  onKies: (id: string, naam: string) => void
+}) {
+  const { t } = useT()
+  return (
+    <div role="group" aria-label={t('Hoofdcategorieën')} style={chipRij}>
+      {INGEBOUWDE_CATEGORIEEN.map((h) => (
+        <button
+          key={h.id}
+          type="button"
+          className={'chip' + (actiefId === h.id ? ' chip-actief' : '')}
+          style={{ flex: '0 0 auto', whiteSpace: 'nowrap' }}
+          // Voorkom dat het invoerveld de focus verliest vóór de klik telt.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onKies(h.id, h.naam)}
+        >
+          {h.icoon} {t(h.naam)}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// Het paneeltje dat verschijnt na "+ … toevoegen aan …": kies onder welke
+// (midden)categorie de nieuwe subcategorie hoort. Die keuze is verplicht, want
+// zonder plaats in de boom valt de uitgave uit alle analyses.
+export function NieuweSubcategoriePaneel({
+  naam,
+  hoofdIdInBeeld,
+  onBevestig,
+  onAnnuleer,
+}: {
+  naam: string
+  hoofdIdInBeeld?: string
+  onBevestig: (categorieId: string) => void | Promise<void>
+  onAnnuleer: () => void
+}) {
+  const { t } = useT()
+  const [categorieId, setCategorieId] = useState('')
+  // Bewust een ref en geen state: dit dient enkel om een dubbele klik tegen te
+  // houden terwijl er bewaard wordt, en hoeft niets opnieuw te tekenen.
+  const bezigRef = useRef(false)
+  const selectRef = useRef<HTMLSelectElement | null>(null)
+
+  // Meteen de keuzelijst focussen: wie met het toetsenbord werkt, blijft zo aan
+  // het typen/kiezen zonder naar de muis te grijpen.
+  useEffect(() => {
+    selectRef.current?.focus()
+  }, [])
+
+  // Staat er al een hoofdcategorie in beeld, dan zetten we háár categorieën
+  // bovenaan: negen van de tien keer hoort het nieuwe item daar.
+  const hoofden = useMemo(() => {
+    const eerst = INGEBOUWDE_CATEGORIEEN.filter((h) => h.id === hoofdIdInBeeld)
+    const rest = INGEBOUWDE_CATEGORIEEN.filter((h) => h.id !== hoofdIdInBeeld)
+    return [...eerst, ...rest]
+  }, [hoofdIdInBeeld])
+
+  async function bevestig() {
+    if (!categorieId || bezigRef.current) return
+    bezigRef.current = true
+    try {
+      await onBevestig(categorieId)
+    } finally {
+      bezigRef.current = false
+    }
+  }
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: '100%',
+        width: '100%',
+        zIndex: 20,
+        marginTop: 4,
+        padding: 12,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius)',
+        background: 'var(--surface)',
+        boxShadow: 'var(--shadow-sheet)',
+      }}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
+        {t('Nieuwe subcategorie “{naam}”', { naam })}
+      </p>
+      <select
+        ref={selectRef}
+        aria-label={t('Onder welke categorie')}
+        value={categorieId}
+        onChange={(e) => setCategorieId(e.target.value)}
+      >
+        <option value="">{t('— kies —')}</option>
+        {hoofden.map((h) => (
+          <optgroup key={h.id} label={`${h.icoon} ${t(h.naam)}`}>
+            {h.categorieen.map((c) => (
+              <option key={c.id} value={c.id}>
+                {t(c.naam)}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+      <div className="knoprij">
+        <button
+          type="button"
+          className="knop knop-secundair knop-klein"
+          disabled={!categorieId}
+          onClick={() => void bevestig()}
+        >
+          {t('Subcategorie toevoegen')}
+        </button>
+        <button type="button" className="knop knop-ghost knop-klein" onClick={onAnnuleer}>
+          {t('Annuleer')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // Categorie-kiezer met autocomplete, zoals in v1: begin te typen en vanaf twee
 // letters worden items (subcategorieën) herkend. Navigeer met pijl omhoog/omlaag
-// door de voorstellen; kies met Enter of Tab. Je kan ook een hoofdcategorie
-// (Voeding, Drank, …) of een eigen categorie kiezen. Beide niveaus werken overal.
+// door de voorstellen; kies met Enter of Tab. Breed taggen doe je met de chips
+// (de hoofdcategorieën) die altijd boven de lijst staan. Staat je item er nog
+// niet bij, dan maak je het ter plekke aan via de laatste regel in de lijst.
 export function CategorieKiezer({
   waarde,
   onKies,
   gebruikerCategorieen,
+  onNieuweSubcategorie,
 }: {
   waarde: string | undefined
   onKies: (id: string | undefined) => void
   gebruikerCategorieen: Categorie[]
+  onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
 }) {
   const { t } = useT()
   const [zoek, setZoek] = useState('')
   const [open, setOpen] = useState(false)
   const [hoog, setHoog] = useState(0)
+  // De naam waarvoor het "nieuwe subcategorie"-paneeltje openstaat (null = dicht).
+  const [nieuweNaam, setNieuweNaam] = useState<string | null>(null)
   // Ref naast state: de toetsaanslag-handler moet de ACTUELE markering lezen,
   // niet een verouderde waarde uit een oude render (bekende valkuil uit v1).
   const hoogRef = useRef(0)
@@ -71,54 +217,63 @@ export function CategorieKiezer({
   }
 
   const gekozenLabel = labelVanCategorie(waarde, gebruikerCategorieen)
-  const term = zoek.trim().toLowerCase()
+  const getypt = zoek.trim()
+  const term = getypt.toLowerCase()
+  // Onder welke hoofdcategorie valt de huidige keuze? Dat bepaalt welke
+  // categorieën we bovenaan voorstellen bij een nieuwe subcategorie, en welke
+  // chip we oplichten.
+  const hoofdInBeeld = waarde ? groepVanCategorie(waarde, gebruikerCategorieen).sleutel : undefined
 
-  // Bouw de voorstellenlijst (plat, zodat toetsenbordnavigatie er vlot doorheen gaat).
+  // Bouw de voorstellenlijst (plat, zodat toetsenbordnavigatie er vlot doorheen
+  // gaat). De hoofdcategorieën zelf staan hier niet meer in: die staan nu
+  // permanent als chips boven de lijst.
   const suggesties: Suggestie[] = []
-  if (open) {
-    if (term.length >= ZOEK_VANAF) {
-      for (const h of INGEBOUWDE_CATEGORIEEN) {
-        if (h.naam.toLowerCase().includes(term)) suggesties.push({ id: h.id, titel: `${h.icoon} ${h.naam}` })
-      }
-      for (const it of zoekItems(term, MAX_SUGGESTIES)) {
-        suggesties.push({ id: it.id, titel: it.naam, sub: it.hoofdNaam })
-      }
-      for (const c of gebruikerCategorieen) {
-        if (c.naam.toLowerCase().includes(term)) suggesties.push({ id: c.id, titel: c.naam, sub: t('eigen') })
-      }
-    } else {
-      // Nog geen twee letters: toon de hoofdcategorieën als snelkeuze.
-      for (const h of INGEBOUWDE_CATEGORIEEN) suggesties.push({ id: h.id, titel: `${h.icoon} ${h.naam}` })
+  if (open && term.length >= ZOEK_VANAF) {
+    for (const it of zoekItems(term, MAX_SUGGESTIES)) {
+      suggesties.push({ id: it.id, titel: it.naam, sub: it.hoofdNaam })
+    }
+    for (const c of gebruikerCategorieen) {
+      if (c.naam.toLowerCase().includes(term)) suggesties.push({ id: c.id, titel: c.naam, sub: t('eigen') })
     }
   }
   const zichtbaar = suggesties.slice(0, MAX_SUGGESTIES)
-  const gemarkeerd = Math.min(hoog, Math.max(0, zichtbaar.length - 1))
+  // De "toevoegen"-regel telt mee in de toetsenbordnavigatie: ze is gewoon de
+  // laatste regel van de lijst.
+  const toonToevoegen = Boolean(onNieuweSubcategorie) && open && getypt.length >= ZOEK_VANAF
+  const aantalRegels = zichtbaar.length + (toonToevoegen ? 1 : 0)
+  const gemarkeerd = Math.min(hoog, Math.max(0, aantalRegels - 1))
 
   function kies(id: string | undefined) {
     onKies(id)
     setZoek('')
     setOpen(false)
+    setNieuweNaam(null)
     zetHoog(0)
   }
 
+  function startToevoegen() {
+    setNieuweNaam(getypt)
+  }
+
+  async function bewaarNieuwe(categorieId: string) {
+    if (!onNieuweSubcategorie || !nieuweNaam) return
+    const id = await onNieuweSubcategorie(categorieId, nieuweNaam)
+    kies(id)
+  }
+
   function opToets(e: KeyboardEvent<HTMLInputElement>) {
-    if (!open || zichtbaar.length === 0) return
+    if (!open || aantalRegels === 0) return
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      zetHoog(Math.min(hoogRef.current + 1, zichtbaar.length - 1))
+      zetHoog(Math.min(hoogRef.current + 1, aantalRegels - 1))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       zetHoog(Math.max(hoogRef.current - 1, 0))
-    } else if (e.key === 'Enter') {
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      const index = Math.min(hoogRef.current, aantalRegels - 1)
       e.preventDefault() // niet het formulier verzenden, maar het voorstel kiezen
-      const s = zichtbaar[Math.min(hoogRef.current, zichtbaar.length - 1)]
-      if (s) kies(s.id)
-    } else if (e.key === 'Tab') {
-      const s = zichtbaar[Math.min(hoogRef.current, zichtbaar.length - 1)]
-      if (s) {
-        e.preventDefault()
-        kies(s.id)
-      }
+      if (index < zichtbaar.length) kies(zichtbaar[index].id)
+      else startToevoegen()
     } else if (e.key === 'Escape') {
       setOpen(false)
     }
@@ -137,7 +292,7 @@ export function CategorieKiezer({
       <input
         aria-label={t('Zoek categorie of item')}
         role="combobox"
-        aria-expanded={open && zichtbaar.length > 0}
+        aria-expanded={open && aantalRegels > 0}
         aria-autocomplete="list"
         style={{ display: 'block', width: '100%' }}
         value={zoek}
@@ -151,7 +306,8 @@ export function CategorieKiezer({
         }}
         onKeyDown={opToets}
       />
-      {open && zichtbaar.length > 0 && (
+      <HoofdcategorieChips actiefId={hoofdInBeeld} onKies={(id) => kies(id)} />
+      {open && aantalRegels > 0 && nieuweNaam === null && (
         <ul role="listbox" style={{ ...suggestieLijst, top: '100%' }}>
           {zichtbaar.map((s, i) => (
             <li key={s.id} role="option" aria-selected={i === gemarkeerd}>
@@ -168,7 +324,28 @@ export function CategorieKiezer({
               </button>
             </li>
           ))}
+          {toonToevoegen && (
+            <li role="option" aria-selected={gemarkeerd === zichtbaar.length}>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={startToevoegen}
+                onMouseEnter={() => zetHoog(zichtbaar.length)}
+                style={suggestieKnop(gemarkeerd === zichtbaar.length)}
+              >
+                {t('+ “{naam}” toevoegen aan …', { naam: getypt })}
+              </button>
+            </li>
+          )}
         </ul>
+      )}
+      {nieuweNaam !== null && (
+        <NieuweSubcategoriePaneel
+          naam={nieuweNaam}
+          hoofdIdInBeeld={hoofdInBeeld}
+          onBevestig={bewaarNieuwe}
+          onAnnuleer={() => setNieuweNaam(null)}
+        />
       )}
     </div>
   )

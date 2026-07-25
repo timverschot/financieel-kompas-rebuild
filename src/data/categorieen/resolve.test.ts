@@ -19,7 +19,9 @@ describe('groepVanCategorie', () => {
 
   it('behoudt een eigen (gebruiker-)categorie', () => {
     const g = groepVanCategorie('cat-eigen', eigen)
-    expect(g).toEqual({ sleutel: 'cat-eigen', naam: 'Mijn categorie', kleur: null })
+    // Een eigen categorie heeft geen kleur en geen icoon: die bestaan enkel op de
+    // ingebouwde hoofdcategorieën.
+    expect(g).toEqual({ sleutel: 'cat-eigen', naam: 'Mijn categorie', kleur: null, icoon: null })
   })
 
   it('geeft "Zonder categorie" bij geen id', () => {

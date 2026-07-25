@@ -93,6 +93,7 @@ import { InstellingenSectie } from './components/InstellingenSectie'
 import { AnalyseSectie } from './components/AnalyseSectie'
 import { SpaardoelSectie } from './components/SpaardoelSectie'
 import { CategorieBoom } from './components/CategorieBoom'
+import { SubcategorieSnelFormulier } from './components/SubcategorieSnelFormulier'
 import { Donut } from './components/Donut'
 import { StaafGrafiek } from './components/StaafGrafiek'
 import { IndexatieCalculator } from './components/IndexatieCalculator'
@@ -553,9 +554,13 @@ export function App() {
     if (oud) toonUndo(t('Spaardoel verwijderd'), () => bewaarSpaardoel(oud))
   }
 
-  async function voegSubcategorieToe(categorieId: string, naam: string) {
-    await bewaarSubcategorie({ id: nieuwId(), naam, categorieId })
+  // Geeft het nieuwe id terug, zodat een formulier de zopas gemaakte subcategorie
+  // meteen kan selecteren zonder ze opnieuw te moeten opzoeken.
+  async function voegSubcategorieToe(categorieId: string, naam: string): Promise<string> {
+    const id = nieuwId()
+    await bewaarSubcategorie({ id, naam, categorieId })
     await herlaad()
+    return id
   }
 
   async function wijzigSubcategorie(id: string, categorieId: string, naam: string) {
@@ -899,6 +904,7 @@ export function App() {
               bewerken={bewerkTransactie}
               streepjescodes={streepjescodes}
               onOnthoudStreepjescode={onthoudStreepjescode}
+              onNieuweSubcategorie={voegSubcategorieToe}
             />
           </Kaart>
 
@@ -1109,6 +1115,10 @@ export function App() {
               </ul>
             )}
             <CategorieFormulier onOpslaan={slaCategorieOp} onAnnuleer={() => setBewerkCategorie(null)} bewerken={bewerkCategorie} />
+          </Kaart>
+
+          <Kaart titel={t('Subcategorie toevoegen')} bijschrift={t('Zet een eigen item onder een bestaande categorie, zonder de boom te doorlopen.')}>
+            <SubcategorieSnelFormulier onToevoegen={voegSubcategorieToe} />
           </Kaart>
 
           <ErrorBoundary naam="Categorieën">

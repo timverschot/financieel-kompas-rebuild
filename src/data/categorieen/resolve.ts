@@ -15,6 +15,10 @@ export type CategorieGroep = {
   sleutel: string // groepeersleutel voor optellingen/grafieken
   naam: string // weergavenaam van de groep (hoofdcategorie)
   kleur: string | null // kleur van de hoofdcategorie (voor grafieken), of null
+  // Icoon van de hoofdcategorie (emoji), of null wanneer er geen is: bij een
+  // eigen categorie, bij 'zonder categorie' en bij een onbekend id. De
+  // transactielijst toont dan de beginletter van de handelaar als terugval.
+  icoon: string | null
 }
 
 // Rolt een categorieId op naar zijn groep (hoofdcategorie). Een ingebouwd item
@@ -24,18 +28,18 @@ export function groepVanCategorie(
   id: string | undefined,
   gebruikerCategorieen: { id: string; naam: string }[],
 ): CategorieGroep {
-  if (!id) return { sleutel: '', naam: 'Zonder categorie', kleur: null }
+  if (!id) return { sleutel: '', naam: 'Zonder categorie', kleur: null, icoon: null }
 
   const hoofd = HOOFD_PER_ID.get(id)
-  if (hoofd) return { sleutel: hoofd.id, naam: hoofd.naam, kleur: hoofd.kleur }
+  if (hoofd) return { sleutel: hoofd.id, naam: hoofd.naam, kleur: hoofd.kleur, icoon: hoofd.icoon }
 
   const item = itemPerId(id)
-  if (item) return { sleutel: item.hoofdId, naam: item.hoofdNaam, kleur: item.kleur }
+  if (item) return { sleutel: item.hoofdId, naam: item.hoofdNaam, kleur: item.kleur, icoon: item.icoon }
 
   const eigen = gebruikerCategorieen.find((c) => c.id === id)
-  if (eigen) return { sleutel: eigen.id, naam: eigen.naam, kleur: null }
+  if (eigen) return { sleutel: eigen.id, naam: eigen.naam, kleur: null, icoon: null }
 
-  return { sleutel: id, naam: 'Onbekend', kleur: null }
+  return { sleutel: id, naam: 'Onbekend', kleur: null, icoon: null }
 }
 
 // Het label dat je het best toont voor een categorieId: het SPECIFIEKE niveau dat

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { TransactieFormulier } from './TransactieFormulier'
@@ -92,5 +92,62 @@ describe('TransactieFormulier', () => {
     expect(screen.getAllByLabelText('Deelbedrag')).toHaveLength(1)
     await user.keyboard('{Enter}')
     expect(screen.getAllByLabelText('Deelbedrag')).toHaveLength(2)
+  })
+
+  it('tagt een ticketregel breed via een hoofdcategorie-chip', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = renderForm()
+
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Colruyt')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '12')
+    await user.click(screen.getByLabelText(/Kassaticket splitsen/))
+
+    await user.type(screen.getAllByLabelText('Item zoeken')[0], 'diversen')
+    await user.click(screen.getAllByRole('button', { name: /Huishouden en Verzorging/ })[0])
+    await user.type(screen.getAllByLabelText('Deelbedrag')[0], '12')
+
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+
+    expect(onOpslaan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        regels: [expect.objectContaining({ categorieId: 'ov-huishouden-en-verzorging', omschrijving: 'diversen', bedrag: -1200 })],
+      }),
+    )
+  })
+
+  it('maakt vanuit de kassaticket-zoeker een nieuwe subcategorie en tagt de regel erop', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = vi.fn()
+    const onNieuweSubcategorie = vi.fn().mockResolvedValue('sub-kefir-9')
+    render(
+      <TransactieFormulier
+        onOpslaan={onOpslaan}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        handelaars={[]}
+        onNieuweSubcategorie={onNieuweSubcategorie}
+      />,
+    )
+
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Colruyt')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '3')
+    await user.click(screen.getByLabelText(/Kassaticket splitsen/))
+
+    await user.type(screen.getAllByLabelText('Item zoeken')[0], 'Kefir')
+    await user.click(await screen.findByRole('button', { name: /Kefir.*toevoegen/ }))
+    await user.selectOptions(screen.getByLabelText('Onder welke categorie'), 'cat-zuivel-en-kaas')
+    await user.click(screen.getByRole('button', { name: 'Subcategorie toevoegen' }))
+
+    // Het bewaren is asynchroon; pas daarna wordt de regel op het nieuwe id getagd.
+    await waitFor(() => expect(onNieuweSubcategorie).toHaveBeenCalledWith('cat-zuivel-en-kaas', 'Kefir'))
+
+    await user.type(screen.getAllByLabelText('Deelbedrag')[0], '3')
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+
+    expect(onOpslaan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        regels: [expect.objectContaining({ categorieId: 'sub-kefir-9', omschrijving: 'Kefir', bedrag: -300 })],
+      }),
+    )
   })
 })
