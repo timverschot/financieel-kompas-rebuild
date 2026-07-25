@@ -90,6 +90,7 @@ import { DossierSectie } from './components/DossierSectie'
 import { LeningSectie } from './components/LeningSectie'
 import { GarantieSectie } from './components/GarantieSectie'
 import { InstellingenSectie } from './components/InstellingenSectie'
+import { AnalyseSectie } from './components/AnalyseSectie'
 import { SpaardoelSectie } from './components/SpaardoelSectie'
 import { CategorieBoom } from './components/CategorieBoom'
 import { Donut } from './components/Donut'
@@ -832,6 +833,12 @@ export function App() {
             </ErrorBoundary>
           </div>
         </>
+      )}
+
+      {pagina === 'analyse' && (
+        <ErrorBoundary naam="Analyse">
+          <AnalyseSectie transacties={transacties} categorieen={categorieen} />
+        </ErrorBoundary>
       )}
 
       {pagina === 'budget' && (

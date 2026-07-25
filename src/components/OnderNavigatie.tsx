@@ -3,11 +3,12 @@ import { useT } from '../i18n'
 
 // De vijf hoofdpagina's van de app. De interne id blijft taal-onafhankelijk;
 // enkel het label onder het icoon wordt vertaald.
-export type Pagina = 'overzicht' | 'transacties' | 'budget' | 'dossiers' | 'meer'
+export type Pagina = 'overzicht' | 'transacties' | 'analyse' | 'budget' | 'dossiers' | 'meer'
 
 const TABS: { id: Pagina; icoon: string; label: string }[] = [
   { id: 'overzicht', icoon: '🏠', label: 'Overzicht' },
   { id: 'transacties', icoon: '💳', label: 'Transacties' },
+  { id: 'analyse', icoon: '📊', label: 'Analyse' },
   { id: 'budget', icoon: '🎯', label: 'Budget' },
   { id: 'dossiers', icoon: '👨‍👧', label: 'Dossiers' },
   { id: 'meer', icoon: '⋯', label: 'Meer' },

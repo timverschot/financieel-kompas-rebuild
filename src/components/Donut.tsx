@@ -28,7 +28,15 @@ const swatch: CSSProperties = { display: 'inline-block', width: 12, height: 12, 
 
 // Donutgrafiek van bedragen per (hoofd)categorie, met legende. De kleuren komen
 // uit hetzelfde data-object als de cijfers.
-export function Donut({ items, middenLabel = 'uitgaven' }: { items: DonutInvoer[]; middenLabel?: string }) {
+export function Donut({
+  items,
+  middenLabel = 'uitgaven',
+  toonLegende = true,
+}: {
+  items: DonutInvoer[]
+  middenLabel?: string
+  toonLegende?: boolean
+}) {
   const { t } = useT()
   const segmenten = donutSegmenten(items)
   if (segmenten.length === 0) return null
@@ -58,6 +66,7 @@ export function Donut({ items, middenLabel = 'uitgaven' }: { items: DonutInvoer[
         </text>
       </svg>
 
+      {toonLegende && (
       <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0' }}>
         {segmenten.map((seg) => (
           <li key={seg.naam} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.15rem 0' }}>
@@ -68,6 +77,7 @@ export function Donut({ items, middenLabel = 'uitgaven' }: { items: DonutInvoer[
           </li>
         ))}
       </ul>
+      )}
     </div>
   )
 }
