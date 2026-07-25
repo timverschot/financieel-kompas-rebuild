@@ -837,7 +837,7 @@ export function App() {
 
       {pagina === 'analyse' && (
         <ErrorBoundary naam="Analyse">
-          <AnalyseSectie transacties={transacties} categorieen={categorieen} />
+          <AnalyseSectie transacties={transacties} categorieen={categorieen} rekeningen={rekeningen} overboekingen={overboekingen} />
         </ErrorBoundary>
       )}
 

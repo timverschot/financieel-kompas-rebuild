@@ -477,6 +477,10 @@ const en: Record<string, string> = {
   'Alle transacties': 'All transactions',
   'Kassaticket gesplitst': 'Receipt split',
   'Zonder omschrijving': 'No description',
+  // Vermogensevolutie (Ronde 5 · Brok S)
+  'Vermogensevolutie': 'Net worth over time',
+  'Je totale vermogen over de laatste 12 maanden': 'Your total net worth over the last 12 months',
+  'over 12 maanden': 'over 12 months',
   // Weergave / thema (Ronde 5 · Brok O)
   'Weergave': 'Appearance',
   'Kies licht of donker, of laat de app de voorkeur van je toestel volgen.':
@@ -954,6 +958,10 @@ const fr: Record<string, string> = {
   'Alle transacties': 'Toutes les transactions',
   'Kassaticket gesplitst': 'Ticket divisé',
   'Zonder omschrijving': 'Sans description',
+  // Vermogensevolutie (Ronde 5 · Brok S)
+  'Vermogensevolutie': 'Évolution du patrimoine',
+  'Je totale vermogen over de laatste 12 maanden': 'Votre patrimoine total sur les 12 derniers mois',
+  'over 12 maanden': 'sur 12 mois',
   // Weergave / thema (Ronde 5 · Brok O)
   'Weergave': 'Apparence',
   'Kies licht of donker, of laat de app de voorkeur van je toestel volgen.':

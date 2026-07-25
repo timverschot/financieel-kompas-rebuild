@@ -1,5 +1,6 @@
 import { useMemo, useState, type CSSProperties } from 'react'
-import type { Categorie, Transactie } from '../data/schema'
+import type { Categorie, Overboeking, Rekening, Transactie } from '../data/schema'
+import { Vermogensevolutie } from './Vermogensevolutie'
 import {
   perHoofdcategorie,
   perItem,
@@ -98,7 +99,17 @@ function DonutKaart({ titel, subtitel, posten, richting }: { titel: string; subt
   )
 }
 
-export function AnalyseSectie({ transacties, categorieen }: { transacties: Transactie[]; categorieen: Categorie[] }) {
+export function AnalyseSectie({
+  transacties,
+  categorieen,
+  rekeningen,
+  overboekingen,
+}: {
+  transacties: Transactie[]
+  categorieen: Categorie[]
+  rekeningen: Rekening[]
+  overboekingen: Overboeking[]
+}) {
   const { t } = useT()
   const [richting, setRichting] = useState<Richting>('uitgave')
   const [keuze, setKeuze] = useState<'maand' | 'vorige' | 'jaar' | 'alles' | 'aangepast'>('maand')
@@ -244,6 +255,8 @@ export function AnalyseSectie({ transacties, categorieen }: { transacties: Trans
               richting={richting}
             />
           )}
+
+          <Vermogensevolutie rekeningen={rekeningen} transacties={transacties} overboekingen={overboekingen} />
         </>
       )}
 
