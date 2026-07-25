@@ -244,6 +244,15 @@ const en: Record<string, string> = {
   'Zet een eigen item onder een bestaande categorie, zonder de boom te doorlopen.':
     'Add your own item under an existing category, without walking through the tree.',
   'bv. Kefir': 'e.g. Kefir',
+  // Ronde 9: desktoplayout
+  'Alle': 'All',
+  'Recente transacties': 'Recent transactions',
+  'Budgetstatus': 'Budget status',
+  'Nog geen transacties.': 'No transactions yet.',
+  'Nieuwe rekening': 'New account',
+  'Rekening bewerken': 'Edit account',
+  'Nieuwe categorie': 'New category',
+  'Categorie bewerken': 'Edit category',
   // Spaardoelen
   'Spaardoelen': 'Savings goals',
   'Leningen': 'Loans',
@@ -800,6 +809,15 @@ const fr: Record<string, string> = {
   'Zet een eigen item onder een bestaande categorie, zonder de boom te doorlopen.':
     'Ajoutez votre propre élément sous une catégorie existante, sans parcourir l’arborescence.',
   'bv. Kefir': 'p. ex. Kéfir',
+  // Ronde 9 : mise en page bureau
+  'Alle': 'Tout',
+  'Recente transacties': 'Transactions récentes',
+  'Budgetstatus': 'État des budgets',
+  'Nog geen transacties.': 'Aucune transaction pour l’instant.',
+  'Nieuwe rekening': 'Nouveau compte',
+  'Rekening bewerken': 'Modifier le compte',
+  'Nieuwe categorie': 'Nouvelle catégorie',
+  'Categorie bewerken': 'Modifier la catégorie',
   // Spaardoelen
   'Spaardoelen': 'Objectifs d’épargne',
   'Leningen': 'Prêts',

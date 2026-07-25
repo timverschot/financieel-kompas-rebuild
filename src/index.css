@@ -711,3 +711,109 @@ a:hover {
 ::selection {
   background: var(--accent-soft);
 }
+
+/* ---------------------------------------------------------------------------
+   Desktoprasters (ronde 9)
+
+   Eén set klassen die op smalle schermen gewoon één kolom is en pas vanaf
+   1024 px in kolommen splitst. Zo blijft de mobiele weergave letterlijk
+   ongewijzigd en staat er maar één versie van de inhoud in de code.
+   --------------------------------------------------------------------------- */
+
+/* Breedte van de inhoudskolom op desktop. Bewust niet onbeperkt: boven ~1600 px
+   worden leesregels vermoeiend en grafieken lachwekkend groot. */
+.inhoud-breed {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+/* Rij met kengetallen (saldo, inkomsten, uitgaven, netto). */
+.tegelrij {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+/* Hoofdraster: brede kolom links, smalle zijkolom rechts. */
+.raster-hoofd,
+.raster-twee,
+.raster-lijst-formulier {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.kolom-zij {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 1024px) {
+  .inhoud-breed {
+    max-width: 1180px;
+  }
+
+  .tegelrij {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .raster-hoofd {
+    grid-template-columns: 2fr 1fr;
+  }
+
+  .raster-twee {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Lijst links, formulier rechts. Het formulier staat in de HTML eerst (zodat
+     het op een telefoon bovenaan blijft), en wordt hier naar rechts geplaatst. */
+  .raster-lijst-formulier {
+    grid-template-columns: 1fr 380px;
+  }
+
+  .raster-lijst-formulier > .kolom-formulier {
+    grid-column: 2;
+    grid-row: 1;
+    position: sticky;
+    top: 76px;
+  }
+
+  .raster-lijst-formulier > .kolom-lijst {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  /* De zijkolom scrollt mee tot ze zelf te lang wordt. */
+  .kolom-zij {
+    position: sticky;
+    top: 76px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .inhoud-breed {
+    max-width: 1560px;
+  }
+
+  .tegelrij {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .raster-lijst-formulier {
+    grid-template-columns: 1fr 420px;
+  }
+}
+
+/* Kengetal-tegel: hetzelfde vlak als een kaart, maar compacter en met het cijfer
+   als hoofdzaak. */
+.kengetal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

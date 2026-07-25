@@ -93,6 +93,7 @@ import { InstellingenSectie } from './components/InstellingenSectie'
 import { AnalyseSectie } from './components/AnalyseSectie'
 import { SpaardoelSectie } from './components/SpaardoelSectie'
 import { CategorieBoom } from './components/CategorieBoom'
+import { OverzichtZijkolom } from './components/OverzichtZijkolom'
 import { SubcategorieSnelFormulier } from './components/SubcategorieSnelFormulier'
 import { Donut } from './components/Donut'
 import { StaafGrafiek } from './components/StaafGrafiek'
@@ -846,45 +847,86 @@ export function App() {
 
           <PaginaKop titel={paginaTitel} actie={maandNav} />
 
-          <div className="saldotegel" data-saldo>
-            <span className="label-caps">{t('Saldo')}</span>
-            <span className="bedrag-groot">{formatEuro(totaalSaldo)}</span>
+          {/* Kengetallen. Op een breed scherm staan de vier cijfers naast elkaar
+              en vervangen ze de maandoverzicht-kaart; op een telefoon blijft het
+              bij de saldotegel met de kaart eronder, precies zoals voorheen. */}
+          <div className="tegelrij" data-kengetallen>
+            <div className="saldotegel" data-saldo>
+              <span className="label-caps">{t('Saldo')}</span>
+              <span className="bedrag-groot">{formatEuro(totaalSaldo)}</span>
+            </div>
+            {isDesktop && (
+              <>
+                <div className="kengetal">
+                  <span className="label-caps">{t('Inkomsten')}</span>
+                  <Bedrag centen={inkomsten} richting="in" groot />
+                </div>
+                <div className="kengetal">
+                  <span className="label-caps">{t('Uitgaven')}</span>
+                  <Bedrag centen={uitgaven} richting="uit" groot />
+                </div>
+                <div className="kengetal">
+                  <span className="label-caps">{t('Netto')}</span>
+                  <Bedrag centen={inkomsten - uitgaven} richting="auto" groot />
+                </div>
+              </>
+            )}
           </div>
 
           <ErrorBoundary naam="Maandoverzicht">
-            <div className="stapel">
-              <Kaart titel={t('Maandoverzicht')} bijschrift={maandLabel(maand)}>
-                <div>
-                  <div className="rij">
-                    <span className="rij-midden rij-titel">{t('Inkomsten')}</span>
-                    <Bedrag centen={inkomsten} richting="in" />
-                  </div>
-                  <div className="rij">
-                    <span className="rij-midden rij-titel">{t('Uitgaven')}</span>
-                    <Bedrag centen={uitgaven} richting="uit" />
-                  </div>
-                  <div className="rij">
-                    <span className="rij-midden rij-titel">{t('Netto')}</span>
-                    <Bedrag centen={inkomsten - uitgaven} richting="auto" />
-                  </div>
+            <div className="raster-hoofd">
+              <div className="stapel">
+                {!isDesktop && (
+                  <Kaart titel={t('Maandoverzicht')} bijschrift={maandLabel(maand)}>
+                    <div>
+                      <div className="rij">
+                        <span className="rij-midden rij-titel">{t('Inkomsten')}</span>
+                        <Bedrag centen={inkomsten} richting="in" />
+                      </div>
+                      <div className="rij">
+                        <span className="rij-midden rij-titel">{t('Uitgaven')}</span>
+                        <Bedrag centen={uitgaven} richting="uit" />
+                      </div>
+                      <div className="rij">
+                        <span className="rij-midden rij-titel">{t('Netto')}</span>
+                        <Bedrag centen={inkomsten - uitgaven} richting="auto" />
+                      </div>
+                    </div>
+                  </Kaart>
+                )}
+
+                <div className="raster-twee">
+                  {perCategorie.length > 0 && (
+                    <Kaart titel={t('Uitgaven per categorie')}>
+                      <Donut items={perCategorie} />
+                    </Kaart>
+                  )}
+
+                  {perInkomsten.length > 0 && (
+                    <Kaart titel={t('Inkomsten per categorie')}>
+                      <Donut items={perInkomsten} middenLabel="inkomsten" />
+                    </Kaart>
+                  )}
                 </div>
-              </Kaart>
 
-              {perCategorie.length > 0 && (
-                <Kaart titel={t('Uitgaven per categorie')}>
-                  <Donut items={perCategorie} />
+                <Kaart titel={t('Uitgaven per maand')}>
+                  <StaafGrafiek data={maandVerloop} />
                 </Kaart>
-              )}
+              </div>
 
-              {perInkomsten.length > 0 && (
-                <Kaart titel={t('Inkomsten per categorie')}>
-                  <Donut items={perInkomsten} middenLabel="inkomsten" />
-                </Kaart>
+              {/* Enkel op desktop: de ruimte rechts vullen met dingen waarvoor je
+                  anders naar een andere pagina moet. */}
+              {isDesktop && (
+                <OverzichtZijkolom
+                  transacties={transacties}
+                  categorieen={categorieen}
+                  budgetten={budgetten}
+                  maand={maandLabel(maand)}
+                  categorieNaam={categorieNaam}
+                  onGaNaarTransacties={() => setPagina('transacties')}
+                  onGaNaarBudget={() => setPagina('budget')}
+                />
               )}
-
-              <Kaart titel={t('Uitgaven per maand')}>
-                <StaafGrafiek data={maandVerloop} />
-              </Kaart>
             </div>
           </ErrorBoundary>
         </>
@@ -894,29 +936,38 @@ export function App() {
         <>
           <PaginaKop titel={paginaTitel} />
 
-          <Kaart titel={bewerkTransactie ? t('Transactie bewerken') : t('Transactie toevoegen')}>
-            <TransactieFormulier
-              onOpslaan={slaTransactieOp}
-              onAnnuleer={() => setBewerkTransactie(null)}
-              rekeningen={actieveRekeningen}
-              categorieen={categorieen}
-              handelaars={handelaars}
-              bewerken={bewerkTransactie}
-              streepjescodes={streepjescodes}
-              onOnthoudStreepjescode={onthoudStreepjescode}
-              onNieuweSubcategorie={voegSubcategorieToe}
-            />
-          </Kaart>
+          {/* Op desktop staat het formulier in een vaste kolom rechts en blijft
+              het staan terwijl je door de lijst scrolt. Op een telefoon blijft
+              het gewoon bovenaan, zoals voorheen. */}
+          <div className="raster-lijst-formulier">
+            <div className="kolom-formulier">
+              <Kaart titel={bewerkTransactie ? t('Transactie bewerken') : t('Transactie toevoegen')}>
+                <TransactieFormulier
+                  onOpslaan={slaTransactieOp}
+                  onAnnuleer={() => setBewerkTransactie(null)}
+                  rekeningen={actieveRekeningen}
+                  categorieen={categorieen}
+                  handelaars={handelaars}
+                  bewerken={bewerkTransactie}
+                  streepjescodes={streepjescodes}
+                  onOnthoudStreepjescode={onthoudStreepjescode}
+                  onNieuweSubcategorie={voegSubcategorieToe}
+                />
+              </Kaart>
+            </div>
 
-          <ErrorBoundary naam="Transactielijst">
-            <TransactieLijst
-              transacties={transacties}
-              categorieen={categorieen}
-              rekeningen={rekeningen}
-              onBewerk={setBewerkTransactie}
-              onVerwijder={verwijder}
-            />
-          </ErrorBoundary>
+            <div className="kolom-lijst">
+              <ErrorBoundary naam="Transactielijst">
+                <TransactieLijst
+                  transacties={transacties}
+                  categorieen={categorieen}
+                  rekeningen={rekeningen}
+                  onBewerk={setBewerkTransactie}
+                  onVerwijder={verwijder}
+                />
+              </ErrorBoundary>
+            </div>
+          </div>
         </>
       )}
 
@@ -930,6 +981,16 @@ export function App() {
         <>
           <PaginaKop titel={paginaTitel} actie={maandNav} />
 
+          <div className="raster-lijst-formulier">
+          <div className="kolom-formulier">
+            {/* Het formulier biedt zelf alle ingebouwde hoofdcategorieën aan, dus het
+                hoort er ook te staan als je nog geen eigen categorie hebt gemaakt. */}
+            <Kaart titel={t('Budget instellen')}>
+              <BudgetFormulier categorieen={categorieen} onOpslaan={voegBudgetToe} />
+            </Kaart>
+          </div>
+
+          <div className="kolom-lijst stapel">
           <ErrorBoundary naam="Budgetten">
             <Kaart titel={t('Budgetten')} bijschrift={t('voor {maand}', { maand: maandLabel(maand) })}>
               {budgetten.length === 0 && <Leeg>{t('Nog geen budgetten ingesteld.')}</Leeg>}
@@ -968,9 +1029,6 @@ export function App() {
                   })}
                 </ul>
               )}
-              {/* Het formulier biedt zelf alle ingebouwde hoofdcategorieën aan, dus het
-                  hoort er ook te staan als je nog geen eigen categorie hebt gemaakt. */}
-              <BudgetFormulier categorieen={categorieen} onOpslaan={voegBudgetToe} />
             </Kaart>
           </ErrorBoundary>
 
@@ -987,6 +1045,8 @@ export function App() {
               onBoek={boekTerugkerend}
             />
           </ErrorBoundary>
+          </div>
+          </div>
         </>
       )}
 
@@ -1019,6 +1079,14 @@ export function App() {
         <>
           <PaginaKop titel={paginaTitel} />
 
+          <div className="raster-lijst-formulier">
+          <div className="kolom-formulier">
+            <Kaart titel={bewerkRekening ? t('Rekening bewerken') : t('Nieuwe rekening')}>
+              <RekeningFormulier onOpslaan={slaRekeningOp} onAnnuleer={() => setBewerkRekening(null)} bewerken={bewerkRekening} />
+            </Kaart>
+          </div>
+
+          <div className="kolom-lijst stapel">
           <Kaart>
             {rekeningen.length > 0 && (
               <ul className="lijst">
@@ -1061,7 +1129,6 @@ export function App() {
                 })}
               </ul>
             )}
-            <RekeningFormulier onOpslaan={slaRekeningOp} onAnnuleer={() => setBewerkRekening(null)} bewerken={bewerkRekening} />
           </Kaart>
 
           <ErrorBoundary naam="Overboekingen">
@@ -1076,6 +1143,8 @@ export function App() {
               onStopBewerken={() => setBewerkOverboeking(null)}
             />
           </ErrorBoundary>
+          </div>
+          </div>
         </>
       )}
 
@@ -1096,6 +1165,18 @@ export function App() {
         <>
           <PaginaKop titel={paginaTitel} />
 
+          <div className="raster-lijst-formulier">
+          <div className="kolom-formulier stapel">
+            <Kaart titel={bewerkCategorie ? t('Categorie bewerken') : t('Nieuwe categorie')}>
+              <CategorieFormulier onOpslaan={slaCategorieOp} onAnnuleer={() => setBewerkCategorie(null)} bewerken={bewerkCategorie} />
+            </Kaart>
+
+            <Kaart titel={t('Subcategorie toevoegen')} bijschrift={t('Zet een eigen item onder een bestaande categorie, zonder de boom te doorlopen.')}>
+              <SubcategorieSnelFormulier onToevoegen={voegSubcategorieToe} />
+            </Kaart>
+          </div>
+
+          <div className="kolom-lijst stapel">
           <Kaart>
             {categorieen.length > 0 && (
               <ul className="lijst">
@@ -1114,11 +1195,6 @@ export function App() {
                 ))}
               </ul>
             )}
-            <CategorieFormulier onOpslaan={slaCategorieOp} onAnnuleer={() => setBewerkCategorie(null)} bewerken={bewerkCategorie} />
-          </Kaart>
-
-          <Kaart titel={t('Subcategorie toevoegen')} bijschrift={t('Zet een eigen item onder een bestaande categorie, zonder de boom te doorlopen.')}>
-            <SubcategorieSnelFormulier onToevoegen={voegSubcategorieToe} />
           </Kaart>
 
           <ErrorBoundary naam="Categorieën">
@@ -1129,6 +1205,8 @@ export function App() {
               onVerwijderen={verwijderSubcategorieH}
             />
           </ErrorBoundary>
+          </div>
+          </div>
         </>
       )}
 
@@ -1283,7 +1361,7 @@ export function App() {
             )}
           </header>
           <div style={{ padding: '1.5rem 1.5rem 3rem' }}>
-            <div style={{ maxWidth: 760, margin: '0 auto' }}>{paginaInhoud}</div>
+            <div className="inhoud-breed">{paginaInhoud}</div>
           </div>
         </div>
         {undoBalk}
