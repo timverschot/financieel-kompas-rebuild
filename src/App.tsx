@@ -85,6 +85,7 @@ import { vraagToken, heeftOoitVerbonden, meldAf } from './data/sync/drive/auth'
 import { TransactieFormulier } from './components/TransactieFormulier'
 import { TransactieLijst } from './components/TransactieLijst'
 import { RekeningFormulier, REKENING_TYPE_LABEL } from './components/RekeningFormulier'
+import { RekeningDetail } from './components/RekeningDetail'
 import { CategorieFormulier } from './components/CategorieFormulier'
 import { BudgetFormulier } from './components/BudgetFormulier'
 import { DossierSectie } from './components/DossierSectie'
@@ -182,6 +183,8 @@ export function App() {
   const [bewerkTransactie, setBewerkTransactie] = useState<Transactie | null>(null)
   const [bewerkCategorie, setBewerkCategorie] = useState<Categorie | null>(null)
   const [bewerkRekening, setBewerkRekening] = useState<Rekening | null>(null)
+  // Welke rekening staat rechts open? null = het formulier voor een nieuwe rekening.
+  const [gekozenRekeningId, setGekozenRekeningId] = useState<string | null>(null)
   const [bewerkOverboeking, setBewerkOverboeking] = useState<Overboeking | null>(null)
   const [maand, setMaand] = useState(huidigeMaand())
   const [pagina, setPagina] = useState<Pagina>('overzicht')
@@ -413,6 +416,7 @@ export function App() {
   }
 
   async function slaRekeningOp(r: Rekening) {
+    setGekozenRekeningId(r.id)
     await bewaarRekening(r)
     await herlaad()
     setBewerkRekening(null)
@@ -441,6 +445,7 @@ export function App() {
       return
     }
     await verwijderRekening(id)
+    setGekozenRekeningId(null)
     await herlaad()
     if (oud) toonUndo(t('Rekening verwijderd'), () => bewaarRekening(oud))
   }
@@ -810,6 +815,7 @@ export function App() {
   // Gearchiveerde rekeningen blijven in het overzicht staan, maar verdwijnen uit
   // de keuzelijsten waar je nieuwe dingen aan koppelt.
   const actieveRekeningen = rekeningen.filter((r) => !r.gearchiveerd)
+  const gekozenRekening = rekeningen.find((r) => r.id === gekozenRekeningId) ?? null
   const maandVerloop = uitgavenPerMaand(transacties, maand, 6)
 
   // Eén maand-schakelaar, hergebruikt op de pagina's die per maand tonen
@@ -1096,25 +1102,73 @@ export function App() {
           <PaginaKop titel={paginaTitel} />
 
           <div className="raster-lijst-formulier">
+          {/* Rechts staat het detail van de rekening die je aanklikt: haar saldo,
+              wat er deze maand op gebeurde, en haar laatste boekingen. Is er niets
+              gekozen (of ben je aan het bewerken), dan staat daar het formulier. */}
           <div className="kolom-formulier">
-            <Kaart titel={bewerkRekening ? t('Rekening bewerken') : t('Nieuwe rekening')}>
-              <RekeningFormulier onOpslaan={slaRekeningOp} onAnnuleer={() => setBewerkRekening(null)} bewerken={bewerkRekening} />
-            </Kaart>
+            {bewerkRekening || !gekozenRekening ? (
+              <Kaart titel={bewerkRekening ? t('Rekening bewerken') : t('Nieuwe rekening')}>
+                <RekeningFormulier onOpslaan={slaRekeningOp} onAnnuleer={() => setBewerkRekening(null)} bewerken={bewerkRekening} />
+              </Kaart>
+            ) : (
+              <RekeningDetail
+                rekening={gekozenRekening}
+                transacties={transacties}
+                overboekingen={overboekingen}
+                categorieen={categorieen}
+                rekeningNaam={(id) => rekeningen.find((r) => r.id === id)?.naam}
+                onBewerk={setBewerkRekening}
+                onArchiveer={archiveerRekening}
+                onVerwijder={verwijderRek}
+              />
+            )}
           </div>
 
           <div className="kolom-lijst stapel">
-          <Kaart>
+          <Kaart
+            actie={
+              gekozenRekening ? (
+                <button
+                  className="knop knop-ghost knop-klein"
+                  onClick={() => {
+                    setGekozenRekeningId(null)
+                    setBewerkRekening(null)
+                  }}
+                >
+                  + {t('Nieuwe rekening')}
+                </button>
+              ) : undefined
+            }
+          >
             {rekeningen.length > 0 && (
               <ul className="lijst">
                 {rekeningen.map((r) => {
                   const meta = [t(REKENING_TYPE_LABEL[r.type ?? 'betaal']), r.rubriek, r.rekeningnummer].filter(Boolean).join(' · ')
                   // Het saldo van vandaag: beginsaldo + transacties + overboekingen.
-                  // Vroeger stond hier enkel het startbedrag dat je ooit invulde,
-                  // waardoor je nooit zag wat er nu echt op de rekening staat.
                   const saldoNu = saldoVanRekening(r, transacties, overboekingen, vandaag())
+                  const gekozen = r.id === gekozenRekeningId
                   return (
-                    <li key={r.id} className="rij" style={{ opacity: r.gearchiveerd ? 0.55 : 1 }}>
-                      <div className="rij-midden">
+                    <li
+                      key={r.id}
+                      className="rij"
+                      style={{
+                        opacity: r.gearchiveerd ? 0.55 : 1,
+                        background: gekozen ? 'var(--accent-soft)' : undefined,
+                      }}
+                    >
+                      {/* De hele regel is de knop: aanklikken opent het detail rechts
+                          (op een telefoon: eronder). */}
+                      <button
+                        type="button"
+                        className="rij-midden"
+                        aria-current={gekozen ? 'true' : undefined}
+                        aria-label={t('Toon rekening {naam}', { naam: r.naam })}
+                        onClick={() => {
+                          setGekozenRekeningId(r.id)
+                          setBewerkRekening(null)
+                        }}
+                        style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit' }}
+                      >
                         <span className="rij-titel">
                           {r.naam}
                           {r.gearchiveerd && <span className="rij-meta"> · {t('gearchiveerd')}</span>}
@@ -1123,23 +1177,8 @@ export function App() {
                           {t('startsaldo {saldo}', { saldo: formatEuro(r.beginsaldo) })}
                           {meta ? ' · ' + meta : ''}
                         </span>
-                      </div>
+                      </button>
                       <Bedrag centen={saldoNu} />
-                      <span className="rij-acties">
-                        <button className="knop knop-kaal" aria-label={t('Bewerk rekening {naam}', { naam: r.naam })} onClick={() => setBewerkRekening(r)}>
-                          ✎
-                        </button>
-                        <button
-                          className="knop knop-ghost knop-klein"
-                          aria-label={r.gearchiveerd ? t('Herstel rekening {naam}', { naam: r.naam }) : t('Archiveer rekening {naam}', { naam: r.naam })}
-                          onClick={() => archiveerRekening(r, !r.gearchiveerd)}
-                        >
-                          {r.gearchiveerd ? t('herstel') : t('archiveer')}
-                        </button>
-                        <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder rekening {naam}', { naam: r.naam })} onClick={() => verwijderRek(r.id)}>
-                          ×
-                        </button>
-                      </span>
                     </li>
                   )
                 })}

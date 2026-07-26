@@ -59,7 +59,7 @@ export function uitsplitsingTekst(groepen: TransactieGroep[], max = MAX_GROEPEN_
 // en blijft het in donkere modus rustig en leesbaar — geen vlakke volle kleur.
 // Kent een browser color-mix niet, dan valt deze stijl gewoon weg en blijft de
 // standaard var(--accent-soft) uit .rij-teken staan.
-function zachteAchtergrond(kleur: string | null): string | undefined {
+export function zachteAchtergrond(kleur: string | null): string | undefined {
   if (!kleur) return undefined
   return `color-mix(in srgb, ${kleur} 18%, transparent)`
 }
@@ -280,7 +280,19 @@ export function TransactieLijst({
         </p>
 
         {zichtbaar.length > 0 && (
-          <ul className="lijst">
+          <>
+            {/* Kolomkop: verschijnt enkel vanaf 1024 px, wanneer de lijst een tabel
+                wordt. Puur decoratief — elke rij is zelfstandig leesbaar. */}
+            <div className="tx-kop label-caps" aria-hidden>
+              <span />
+              <span>{t('Handelaar / winkel')}</span>
+              <span>{t('Datum')}</span>
+              <span>{t('Categorie')}</span>
+              <span>{t('Rekening')}</span>
+              <span className="tx-bedrag">{t('Bedrag')}</span>
+              <span />
+            </div>
+          <ul className="lijst tx-lijst">
             {zichtbaar.map((tx) => (
               <TransactieRij
                 key={tx.id}
@@ -294,6 +306,7 @@ export function TransactieLijst({
               />
             ))}
           </ul>
+          </>
         )}
 
         {zichtbaar.length === 0 && <Leeg>{t('Geen transacties gevonden.')}</Leeg>}
@@ -342,8 +355,12 @@ function TransactieRij({
   const gesplitst = isGesplitstOverCategorieen(tx, categorieen)
   const { teken, kleur } = tekenVanTransactie(tx, groepen, gesplitst)
   const cat = gesplitst ? uitsplitsingTekst(groepen) : categorieNaam(tx.categorieId)
-  const meta = [tx.datum, cat, rekeningNaam(tx.rekeningId)].filter(Boolean).join(' · ')
+  const rek = rekeningNaam(tx.rekeningId)
 
+  // Datum, categorie en rekening staan elk in een eigen element. Op een telefoon
+  // vloeien ze samen tot één grijze meta-regel (de scheidingspuntjes komen uit
+  // index.css); vanaf 1024 px worden het drie kolommen van de tabel. Zo staat er
+  // maar één versie van de rij in de code.
   return (
     <li className="rij">
       {/* Decoratief: wat het icoon zegt, staat ook in de meta-regel eronder. */}
@@ -352,7 +369,11 @@ function TransactieRij({
       </span>
       <span className="rij-midden">
         <span className="rij-titel">{tx.omschrijving}</span>
-        <span className="rij-meta">{meta}</span>
+        <span className="rij-meta tx-meta">
+          <span>{tx.datum}</span>
+          {cat && <span>{cat}</span>}
+          {rek && <span>{rek}</span>}
+        </span>
       </span>
       <Bedrag centen={tx.bedrag} richting="auto" />
       <span className="rij-acties">

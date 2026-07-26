@@ -785,6 +785,15 @@ a:hover {
     grid-row: 1;
   }
 
+  /* Zonder dit mag een kolom niet smaller worden dan haar breedste inhoud (een
+     rij chips, een lange categorienaam). Het raster liep daardoor buiten het
+     scherm. min-width:0 laat de kolom wél krimpen; de inhoud schuift of breekt af. */
+  .raster-hoofd > *,
+  .raster-twee > *,
+  .raster-lijst-formulier > * {
+    min-width: 0;
+  }
+
   /* De zijkolom scrollt mee tot ze zelf te lang wordt. */
   .kolom-zij {
     position: sticky;
@@ -816,4 +825,67 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/* ---------------------------------------------------------------------------
+   Transactietabel op brede schermen (ronde 13)
+
+   Op een telefoon blijft een transactie één rij met een tekenvlakje, de
+   handelaar met een grijze meta-regel eronder, het bedrag en de acties — precies
+   zoals voorheen. Vanaf 1024 px worden dezelfde elementen kolommen van een
+   tabel, zonder dat er een tweede versie van de rij in de code moet staan:
+   `display: contents` laat de tussenliggende omhulsels verdwijnen zodat hun
+   kinderen zelf rastercellen worden.
+   --------------------------------------------------------------------------- */
+
+/* De kolomkop staat er enkel op desktop. */
+.tx-kop {
+  display: none;
+}
+
+/* Scheidingspunten tussen datum, categorie en rekening — enkel wanneer ze op
+   één regel onder elkaar staan (telefoon). */
+.tx-meta > * + *::before {
+  content: ' · ';
+  color: var(--text-subtle);
+}
+
+@media (min-width: 1024px) {
+  .tx-lijst .rij,
+  .tx-kop {
+    display: grid;
+    grid-template-columns: 34px minmax(120px, 1.6fr) 104px minmax(120px, 1.6fr) minmax(90px, 1fr) 120px 68px;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* De omhulsels verdwijnen, hun kinderen worden zelf kolommen. */
+  .tx-lijst .rij-midden,
+  .tx-lijst .tx-meta {
+    display: contents;
+  }
+
+  .tx-lijst .tx-meta > * + *::before {
+    content: none;
+  }
+
+  /* In tabelvorm hoort elke cel op één regel te blijven staan. */
+  .tx-lijst .rij-titel,
+  .tx-lijst .tx-meta > * {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .tx-lijst .bedrag,
+  .tx-kop .tx-bedrag {
+    text-align: right;
+  }
+
+  .tx-kop {
+    display: grid;
+    padding: 0 16px 8px;
+    border-bottom: 1px solid var(--border);
+  }
 }
