@@ -103,6 +103,35 @@ Labels krijgen `className="label-caps"`.
 <Balk label={naam} fractie={0.62} nu={620} max={1000} kleur="var(--positive)" />
 ```
 
+## Popups: altijd `src/ui/Dialoog.tsx`
+
+```tsx
+<Dialoog titel={t('Uitgave toevoegen')} open={open} onSluiten={() => setOpen(false)}>
+  …velden…
+</Dialoog>
+```
+
+Bouw nooit zelf een popup met `position: fixed`. `Dialoog` regelt de vijf dingen
+die een los `div`-je niet doet: Escape sluit (ook vanuit een invoerveld), de
+tab-focus blijft binnen de popup, de focus gaat bij het sluiten terug naar de knop
+waarmee je ze opende, de pagina eronder scrollt niet mee, en hulpsoftware weet dat
+de rest van het scherm even niet bestaat (`aria-modal` + een titel die aan de popup
+hangt).
+
+Bij het openen springt de focus naar het **eerste invoerveld** in de inhoud — niet
+naar het kruisje in de kop (dan sluit Enter je popup meteen weer) en niet naar een
+knop die vóór dat veld staat (dan moet je alsnog tabben voor je kan typen).
+
+Vorm: op een breed scherm een gecentreerde kaart, op een telefoon een blad dat van
+onderen komt en de volle breedte neemt. Alleen `.dialoog-inhoud` scrollt.
+
+**Invoerformulieren horen in de popup, niet op een pagina.** Toevoegen gaat overal
+via `BoekingDialoog` (de ➕). Een formulier dat óók in de popup moet kunnen hangen,
+krijgt de prop `onOpgeslagen?: (opties: { blijfOpen: boolean }) => void`: zodra die
+meegegeven is, verschijnt de knop "Opslaan + volgende" en weet de popup wanneer ze
+zich mag sluiten. Zo hoeft de popup niets over de invoerlogica te weten en bestaat
+er van elk formulier precies één versie.
+
 ## Layout-invariant die je niet mag breken
 
 **`min-width: 0` op elke rasterkolom staat BUITEN elke mediaquery**, bij de

@@ -1111,3 +1111,125 @@ a:hover {
     transform: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Popup (ronde 21) — zie src/ui/Dialoog.tsx
+
+   Op een breed scherm een gecentreerde kaart; op een telefoon een blad dat van
+   onderen komt en de volle breedte neemt. Op een klein scherm is een gecentreerd
+   venstertje met marge rondom verspilde ruimte, en je duim zit onderaan.
+   --------------------------------------------------------------------------- */
+.dialoog-laag {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(23, 25, 30, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  /* De laag zelf houdt rekening met de veilige zones, zodat het blad niet onder
+     de Dynamic Island of de home-indicator duikt. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+}
+
+:root[data-theme='dark'] .dialoog-laag {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.dialoog {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: var(--shadow-sheet);
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100dvh - env(safe-area-inset-top));
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dialoog-kop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--divider);
+  flex-shrink: 0;
+}
+
+/* Alleen de inhoud scrollt; kop en voet blijven staan, zodat de opslaan-knop
+   altijd bereikbaar is zonder eerst naar beneden te vegen. */
+.dialoog-inhoud {
+  padding: 16px 18px;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+}
+
+.dialoog-voet {
+  padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--divider);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+@media (min-width: 640px) {
+  .dialoog-laag {
+    align-items: center;
+    padding: 24px;
+  }
+
+  .dialoog {
+    border-radius: var(--radius-xl);
+    max-height: calc(100dvh - 48px);
+  }
+}
+
+/* De vier soortknoppen bovenaan de boekingspopup: grote tikdoelen met een icoon,
+   niet twee radiorondjes onderaan een formulier. */
+.soortrij {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.soortknop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 64px;
+  padding: 8px 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: inherit;
+  /* Klein genoeg dat "Vaste last" op een smalle telefoon in één kolom van vier
+     past zonder te breken. */
+  font-size: var(--tekst-xs);
+  line-height: 1.2;
+  text-align: center;
+  color: var(--text-muted);
+  transition: border-color var(--overgang), color var(--overgang), background-color var(--overgang);
+}
+
+.soortknop:hover {
+  border-color: var(--border-strong);
+}
+
+.soortknop-actief {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.soortknop-teken {
+  font-size: 1.35rem;
+  line-height: 1;
+}

@@ -35,6 +35,13 @@ describe('vertaaltabellen', () => {
     expect([...fr].filter((k) => !en.has(k))).toEqual([])
   })
 
+  it('vertaalt de nieuwe teksten van ronde 21', () => {
+    expect(vertaal('en', 'Vaste last')).toBe('Fixed cost')
+    expect(vertaal('fr', 'Sparen')).toBe('Épargner')
+    expect(vertaal('en', 'Opslaan + volgende')).toBe('Save + next')
+    expect(vertaal('fr', 'Wat wil je boeken?')).toBe('Que voulez-vous enregistrer ?')
+  })
+
   it('vertaalt de nieuwe teksten van ronde 18', () => {
     expect(vertaal('en', 'Op schema')).toBe('On track')
     expect(vertaal('fr', 'Achter op schema')).toBe('En retard')

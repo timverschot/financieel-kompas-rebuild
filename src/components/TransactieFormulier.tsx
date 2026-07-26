@@ -62,6 +62,8 @@ export function TransactieFormulier({
   onNieuweSubcategorie,
   gezinsleden = [],
   handelaarIndex,
+  soort: soortVanBuiten,
+  onOpgeslagen,
 }: {
   onOpslaan: (t: Transactie) => Promise<void> | void
   onAnnuleer?: () => void
@@ -79,24 +81,42 @@ export function TransactieFormulier({
   // Optioneel: welke categorie deze handelaar de vorige keer kreeg. Zonder deze
   // index blijft het formulier zich exact gedragen zoals voorheen.
   handelaarIndex?: HandelaarIndex
+  /**
+   * Uitgave of inkomst, van buitenaf gezet. De invoerpopup heeft daar bovenaan
+   * knoppen voor; wordt deze prop meegegeven, dan verdwijnen de twee bolletjes
+   * onderaan het formulier zodat dezelfde keuze niet op twee plaatsen staat.
+   * Zonder deze prop gedraagt het formulier zich exact zoals voorheen.
+   */
+  soort?: 'uitgave' | 'inkomst'
+  /**
+   * Wordt aangeroepen ná een gelukte opslag. `blijfOpen` is waar wanneer je op
+   * "Opslaan + volgende" duwde. Zodra deze prop meegegeven wordt, verschijnt die
+   * tweede knop.
+   */
+  onOpgeslagen?: (opties: { blijfOpen: boolean }) => void
 }) {
   const { t } = useT()
   const [omschrijving, setOmschrijving] = useState('')
   const [bedrag, setBedrag] = useState('')
   const [datum, setDatum] = useState(vandaag())
   const [persoonIds, setPersoonIds] = useState<string[]>([])
-  const [soort, setSoort] = useState<'uitgave' | 'inkomst'>('uitgave')
+  const [eigenSoort, setEigenSoort] = useState<'uitgave' | 'inkomst'>('uitgave')
+  // Van buiten gezet heeft voorrang; anders houdt het formulier zijn eigen keuze bij.
+  const soort = soortVanBuiten ?? eigenSoort
   const [rekeningId, setRekeningId] = useState(() => standaardRekening(rekeningen))
   const [categorieId, setCategorieId] = useState('')
   const [gesplitst, setGesplitst] = useState(false)
   const [kassaRegels, setKassaRegels] = useState<KassaRegel[]>(() => [nieuweKassaRegel()])
   const zoekRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const [scanVoor, setScanVoor] = useState<string | null>(null)
+  // Welke van de twee opslaanknoppen ingedrukt werd. Een klik komt altijd vóór de
+  // verzending van het formulier, dus dit staat juist op het moment dat we het lezen.
+  const blijfOpen = useRef(false)
 
   useEffect(() => {
     if (bewerken) {
       setOmschrijving(bewerken.omschrijving)
-      setSoort(bewerken.bedrag < 0 ? 'uitgave' : 'inkomst')
+      setEigenSoort(bewerken.bedrag < 0 ? 'uitgave' : 'inkomst')
       setDatum(bewerken.datum)
       setRekeningId(bewerken.rekeningId)
       setPersoonIds(bewerken.persoonIds ?? [])
@@ -120,7 +140,7 @@ export function TransactieFormulier({
     } else {
       setOmschrijving('')
       setBedrag('')
-      setSoort('uitgave')
+      setEigenSoort('uitgave')
       setDatum(vandaag())
       setPersoonIds([])
       setCategorieId('')
@@ -247,6 +267,10 @@ export function TransactieFormulier({
       setGesplitst(false)
       setKassaRegels([nieuweKassaRegel()])
     }
+
+    const nog = blijfOpen.current
+    blijfOpen.current = false
+    onOpgeslagen?.({ blijfOpen: nog })
   }
 
   // Het voorstel wordt enkel getoond zolang je zelf nog niets gekozen hebt, en
@@ -414,19 +438,36 @@ export function TransactieFormulier({
         </div>
       </div>
 
-      <div className="veldrij" style={{ gap: 18 }}>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <input type="radio" name="soort" checked={soort === 'uitgave'} onChange={() => setSoort('uitgave')} /> {t('Uitgave')}
-        </label>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <input type="radio" name="soort" checked={soort === 'inkomst'} onChange={() => setSoort('inkomst')} /> {t('Inkomst')}
-        </label>
-      </div>
+      {/* Staat de soort van buitenaf vast (de knoppenrij bovenaan de invoerpopup),
+          dan verdwijnen deze bolletjes: dezelfde keuze twee keer op één scherm is
+          precies hoe je een uitgave als inkomst boekt zonder het te merken. */}
+      {soortVanBuiten === undefined && (
+        <div className="veldrij" style={{ gap: 18 }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <input type="radio" name="soort" checked={soort === 'uitgave'} onChange={() => setEigenSoort('uitgave')} /> {t('Uitgave')}
+          </label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <input type="radio" name="soort" checked={soort === 'inkomst'} onChange={() => setEigenSoort('inkomst')} /> {t('Inkomst')}
+          </label>
+        </div>
+      )}
 
       <div className="knoprij">
         <button type="submit" className="knop knop-primair" disabled={!geldig}>
           {bewerken ? t('Wijzigen') : t('Toevoegen')}
         </button>
+        {onOpgeslagen && !bewerken && (
+          <button
+            type="submit"
+            className="knop knop-ghost"
+            disabled={!geldig}
+            onClick={() => {
+              blijfOpen.current = true
+            }}
+          >
+            {t('Opslaan + volgende')}
+          </button>
+        )}
         {bewerken && onAnnuleer && (
           <button type="button" className="knop knop-secundair" onClick={onAnnuleer}>
             {t('Annuleer')}

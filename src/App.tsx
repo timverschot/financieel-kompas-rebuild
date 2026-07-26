@@ -110,6 +110,8 @@ import { TerugkerendeSectie } from './components/TerugkerendeSectie'
 import { OverboekingSectie } from './components/OverboekingSectie'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { OnderNavigatie, PAGINAS, type Pagina } from './components/OnderNavigatie'
+import { BoekingDialoog } from './components/BoekingDialoog'
+import { Dialoog } from './ui/Dialoog'
 import { Meldingenbel } from './components/Meldingenbel'
 import { BalansRegel } from './components/BalansRegel'
 import { BufferRegel } from './components/BufferRegel'
@@ -188,6 +190,10 @@ export function App() {
   const [bezig, setBezig] = useState(false)
   const [statusTekst, setStatusTekst] = useState<string | null>(null)
   const [bewerkTransactie, setBewerkTransactie] = useState<Transactie | null>(null)
+  // Staat de invoerpopup open? Toevoegen gebeurt sinds kort altijd hier, op elke
+  // pagina — niet meer door eerst naar Transacties (of Budget, of Rekeningen) te
+  // navigeren en daar het juiste formulier te zoeken.
+  const [boekingOpen, setBoekingOpen] = useState(false)
   const [bewerkCategorie, setBewerkCategorie] = useState<Categorie | null>(null)
   const [bewerkRekening, setBewerkRekening] = useState<Rekening | null>(null)
   // Welke rekening staat rechts open? null = het formulier voor een nieuwe rekening.
@@ -876,12 +882,62 @@ export function App() {
     </div>
   )
 
-  // Snel een nieuwe transactie: leeg het bewerk-veld en ga naar de transactiepagina
-  // (waar het formulier bovenaan staat). Gekoppeld aan de centrale ➕ en de bovenbalk.
+  // Iets inboeken. Dit opende vroeger geen formulier maar *verplaatste je*: het
+  // zette je op de Transacties-pagina en hoopte dat je het formulier daar zag. Je
+  // verloor dus de pagina waar je mee bezig was, en voor een vaste last of een
+  // overboeking werkte de knop niet eens. Nu opent de popup gewoon waar je staat.
   const nieuweTransactie = () => {
     setBewerkTransactie(null)
-    setPagina('transacties')
+    setBoekingOpen(true)
   }
+
+  // De twee popuplagen. Ze staan buiten `paginaInhoud` en worden in élke indeling
+  // (breed én smal) getoond, zodat de ➕ overal hetzelfde doet.
+  const boekingLagen = (
+    <>
+      <BoekingDialoog
+        open={boekingOpen}
+        onSluiten={() => setBoekingOpen(false)}
+        rekeningen={actieveRekeningen}
+        categorieen={categorieen}
+        handelaars={handelaars}
+        handelaarIndex={handelaarIndex}
+        streepjescodes={streepjescodes}
+        onOnthoudStreepjescode={onthoudStreepjescode}
+        onNieuweSubcategorie={voegSubcategorieToe}
+        gezinsleden={kinderen}
+        overboekingen={overboekingen}
+        transacties={transacties}
+        onTransactie={slaTransactieOp}
+        onVastePost={voegTerugkerendToe}
+        onOverboeking={voegOverboekingToe}
+      />
+
+      {/* Bewerken krijgt dezelfde popup-vorm als toevoegen. Anders zou je een
+          boeking in het ene scherm invullen en in het andere aanpassen. */}
+      <Dialoog
+        titel={t('Transactie bewerken')}
+        open={bewerkTransactie !== null}
+        onSluiten={() => setBewerkTransactie(null)}
+      >
+        {bewerkTransactie && (
+          <TransactieFormulier
+            onOpslaan={slaTransactieOp}
+            onAnnuleer={() => setBewerkTransactie(null)}
+            rekeningen={actieveRekeningen}
+            categorieen={categorieen}
+            handelaars={handelaars}
+            handelaarIndex={handelaarIndex}
+            bewerken={bewerkTransactie}
+            streepjescodes={streepjescodes}
+            onOnthoudStreepjescode={onthoudStreepjescode}
+            onNieuweSubcategorie={voegSubcategorieToe}
+            gezinsleden={kinderen}
+          />
+        )}
+      </Dialoog>
+    </>
+  )
 
   const paginaTitel = t(PAGINAS.find((p) => p.id === pagina)?.label ?? 'Overzicht')
 
@@ -1007,40 +1063,20 @@ export function App() {
         <>
           <PaginaKop titel={paginaTitel} />
 
-          {/* Op desktop staat het formulier in een vaste kolom rechts en blijft
-              het staan terwijl je door de lijst scrolt. Op een telefoon blijft
-              het gewoon bovenaan, zoals voorheen. */}
-          <div className="raster-lijst-formulier">
-            <div className="kolom-formulier">
-              <Kaart titel={bewerkTransactie ? t('Transactie bewerken') : t('Transactie toevoegen')}>
-                <TransactieFormulier
-                  onOpslaan={slaTransactieOp}
-                  onAnnuleer={() => setBewerkTransactie(null)}
-                  rekeningen={actieveRekeningen}
-                  categorieen={categorieen}
-                  handelaars={handelaars}
-                  handelaarIndex={handelaarIndex}
-                  bewerken={bewerkTransactie}
-                  streepjescodes={streepjescodes}
-                  onOnthoudStreepjescode={onthoudStreepjescode}
-                  onNieuweSubcategorie={voegSubcategorieToe}
-                  gezinsleden={kinderen}
-                />
-              </Kaart>
-            </div>
-
-            <div className="kolom-lijst">
-              <ErrorBoundary naam="Transactielijst">
-                <TransactieLijst
-                  transacties={transacties}
-                  categorieen={categorieen}
-                  rekeningen={rekeningen}
-                  onBewerk={setBewerkTransactie}
-                  onVerwijder={verwijder}
-                />
-              </ErrorBoundary>
-            </div>
-          </div>
+          {/* Deze pagina is nu puur overzicht. Het invoerformulier stond hier in een
+              kolom naast de lijst en nam op een telefoon het hele eerste beeld in,
+              zodat je je eigen transacties niet zag zonder te scrollen. Toevoegen
+              gaat via de popup (de ➕), bewerken via het potloodje in de lijst — in
+              dezelfde popup, zodat er één vorm is om een boeking in te vullen. */}
+          <ErrorBoundary naam="Transactielijst">
+            <TransactieLijst
+              transacties={transacties}
+              categorieen={categorieen}
+              rekeningen={rekeningen}
+              onBewerk={setBewerkTransactie}
+              onVerwijder={verwijder}
+            />
+          </ErrorBoundary>
         </>
       )}
 
@@ -1484,6 +1520,7 @@ export function App() {
           </div>
         </div>
         {undoBalk}
+        {boekingLagen}
       </div>
     )
   }
@@ -1503,6 +1540,7 @@ export function App() {
         {paginaInhoud}
       </main>
       {undoBalk}
+      {boekingLagen}
       <OnderNavigatie actief={pagina} onKies={setPagina} onNieuweTransactie={nieuweTransactie} />
     </>
   )

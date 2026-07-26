@@ -88,7 +88,22 @@ describe('App op een breed scherm', () => {
 
     // De eerste 'Alle'-knop hoort bij de kaart met recente transacties.
     await user.click(screen.getAllByRole('button', { name: 'Alle' })[0])
-    await waitFor(() => expect(screen.getByLabelText('Handelaar / winkel')).toBeInTheDocument())
+    // De pagina is nu puur overzicht: de zoekbalk van de lijst hoort er te staan,
+    // en het invoerformulier niet meer (dat zit in de popup).
+    await waitFor(() => expect(screen.getByLabelText('Zoek in transacties')).toBeInTheDocument())
+    expect(screen.queryByLabelText('Handelaar / winkel')).toBeNull()
+  })
+
+  it('opent de invoerpopup vanuit de bovenbalk, zonder de pagina te verlaten', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.click(screen.getByRole('button', { name: '+ Nieuwe transactie' }))
+    const popup = await screen.findByRole('dialog')
+    expect(within(popup).getByLabelText('Handelaar / winkel')).toBeInTheDocument()
+    // We staan nog steeds op het Overzicht — deze knop verplaatste je vroeger.
+    expect(screen.getByText('Recente transacties')).toBeInTheDocument()
   })
 
   it('valt terug op de mobiele weergave zodra het scherm smal wordt', async () => {

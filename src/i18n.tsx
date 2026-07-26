@@ -986,6 +986,19 @@ const en: Record<string, string> = {
   '{n} oudere boeking(en) vallen buiten dit venster van {maanden} maanden.':
     '{n} older entry/entries fall outside this window of {maanden} months.',
   'Toon ze ook': 'Show those too',
+  // Ronde 21 — de invoerpopup
+  'Wat wil je boeken?': 'What do you want to record?',
+  'Vaste last': 'Fixed cost',
+  'Sparen': 'Save',
+  'Uitgave toevoegen': 'Add an expense',
+  'Inkomst toevoegen': 'Add income',
+  'Vaste last toevoegen': 'Add a fixed cost',
+  'Opslaan + volgende': 'Save + next',
+  'Komt dit geld binnen of gaat het eruit?': 'Is this money coming in or going out?',
+  'Een vaste last komt elke maand terug. Je boekt ze per maand in, ze wordt niet automatisch afgeschreven.':
+    'A fixed cost comes back every month. You record it per month; it is not deducted automatically.',
+  'Sparen is geld verschuiven tussen je eigen rekeningen. Het is geen uitgave en telt nergens in een budget mee.':
+    'Saving moves money between your own accounts. It is not an expense and never counts towards a budget.',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -1956,6 +1969,19 @@ const fr: Record<string, string> = {
   '{n} oudere boeking(en) vallen buiten dit venster van {maanden} maanden.':
     '{n} écriture(s) plus ancienne(s) se situent en dehors de cette fenêtre de {maanden} mois.',
   'Toon ze ook': 'Les afficher aussi',
+  // Ronde 21 — de invoerpopup
+  'Wat wil je boeken?': 'Que voulez-vous enregistrer ?',
+  'Vaste last': 'Charge fixe',
+  'Sparen': 'Épargner',
+  'Uitgave toevoegen': 'Ajouter une dépense',
+  'Inkomst toevoegen': 'Ajouter un revenu',
+  'Vaste last toevoegen': 'Ajouter une charge fixe',
+  'Opslaan + volgende': 'Enregistrer + suivant',
+  'Komt dit geld binnen of gaat het eruit?': "Cet argent entre-t-il ou sort-il ?",
+  'Een vaste last komt elke maand terug. Je boekt ze per maand in, ze wordt niet automatisch afgeschreven.':
+    "Une charge fixe revient chaque mois. Vous l'enregistrez mois par mois ; elle n'est pas prélevée automatiquement.",
+  'Sparen is geld verschuiven tussen je eigen rekeningen. Het is geen uitgave en telt nergens in een budget mee.':
+    "Épargner, c'est déplacer de l'argent entre vos propres comptes. Ce n'est pas une dépense et cela ne compte dans aucun budget.",
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 

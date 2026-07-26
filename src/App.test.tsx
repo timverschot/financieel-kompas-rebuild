@@ -71,6 +71,14 @@ async function zetAandeel(user: Gebruiker, waarde: string) {
   await user.type(veld, waarde)
 }
 
+// Toevoegen gaat sinds ronde 21 altijd via de invoerpopup (de centrale ➕), op
+// welke pagina je ook staat. Deze helper opent ze en kiest de soort.
+async function openBoeking(user: Gebruiker, soort = 'Uitgave') {
+  await user.click(screen.getByRole('button', { name: 'Nieuwe transactie' }))
+  await screen.findByRole('dialog')
+  await user.click(screen.getByRole('button', { name: soort }))
+}
+
 describe('App', () => {
   it('laadt transacties en toont het juiste totaalsaldo (2400 - 950 - 320 = 1130)', async () => {
     render(<App />)
@@ -83,14 +91,70 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Transacties')
+    // Vanuit het Overzicht, zonder eerst naar Transacties te navigeren: dat is
+    // precies wat de popup mogelijk maakt.
+    await openBoeking(user, 'Uitgave')
     await user.type(screen.getByLabelText('Handelaar / winkel'), 'Boek')
     await user.type(screen.getByLabelText('Bedrag (€)'), '15')
     await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+    // De popup sluit na het opslaan.
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    await ga(user, 'Transacties')
     expect(await screen.findByText('Boek')).toBeInTheDocument()
 
     await ga(user, 'Overzicht')
     await waitFor(() => expect(saldoRegel()).toHaveTextContent(/1[.\s]?115/))
+  })
+
+  it('boekt een inkomst via de popup als een plusbedrag (1130 + 50 = 1180)', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    // De soortknop bovenaan de popup bepaalt het teken. Stond die keuze óók nog
+    // eens als bolletje onderaan het formulier, dan kon je hier een uitgave van
+    // maken zonder het te merken; daarom is dat bolletje in de popup verborgen.
+    await openBoeking(user, 'Inkomst')
+    expect(screen.queryByLabelText('Uitgave')).toBeNull()
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Terugbetaling')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '50')
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+
+    await waitFor(() => expect(saldoRegel()).toHaveTextContent(/1[.\s]?180/))
+  })
+
+  it('houdt de popup open bij "Opslaan + volgende" en leegt de velden', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await openBoeking(user, 'Uitgave')
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Boek')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '15')
+    await user.click(screen.getByRole('button', { name: 'Opslaan + volgende' }))
+
+    // Nog steeds open, maar leeg: zo tik je een stapel bonnetjes achter elkaar in.
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByLabelText('Handelaar / winkel')).toHaveValue(''))
+    expect(screen.getByLabelText('Bedrag (€)')).toHaveValue('')
+  })
+
+  it('boekt sparen via de popup als een overboeking, niet als uitgave', async () => {
+    await bewaarRekening({ id: 'r2', naam: 'Spaarrekening', beginsaldo: 0 })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await openBoeking(user, 'Sparen')
+    await user.selectOptions(screen.getByLabelText('Van rekening'), 'r1')
+    await user.selectOptions(screen.getByLabelText('Naar rekening'), 'r2')
+    await user.type(screen.getByLabelText('Over te boeken bedrag (€)'), '100')
+    await user.click(screen.getByRole('button', { name: 'Overboeking toevoegen' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    // Geld verschoven tussen eigen rekeningen: het totaalsaldo blijft gelijk.
+    await waitFor(() => expect(saldoRegel()).toHaveTextContent(/1[.\s]?130/))
   })
 
   it('verwijdert een transactie en past het saldo aan (na wissen van Boodschappen: 1450)', async () => {
@@ -364,13 +428,16 @@ describe('App', () => {
     await waitFor(() => expect(screen.queryByText('Welkom bij Kompal')).not.toBeInTheDocument())
   })
 
-  it('zegt op Transacties dat je eerst een rekening nodig hebt', async () => {
+  it('zegt in de invoerpopup dat je eerst een rekening nodig hebt', async () => {
     for (const tabel of db.tables) await tabel.clear()
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Welkom bij Kompal')
 
-    await ga(user, 'Transacties')
+    // Deze uitleg stond op de Transacties-pagina, waar het formulier woonde. Nu
+    // het formulier in de popup zit, moet ze mee verhuizen — anders duw je op de
+    // ➕ en zie je een uitgeschakelde knop zonder te weten waarom.
+    await openBoeking(user, 'Uitgave')
     expect(
       await screen.findByText('Maak eerst een rekening aan — een transactie moet ergens op geboekt worden.'),
     ).toBeInTheDocument()
