@@ -18,7 +18,9 @@ const garantieMelding: Melding = {
   soort: 'garantie',
   sleutel: 'Garantie op {product} verloopt binnen {n} dag(en)',
   params: { product: 'Koffiezet', n: 9 },
-  pagina: 'leningen',
+  // Sinds ronde 29 wonen de garanties als subtab op de Dossiers-pagina.
+  pagina: 'dossiers',
+  subtab: 'garantie',
   dringend: true,
 }
 
@@ -56,7 +58,9 @@ describe('Meldingenbel', () => {
     await user.click(screen.getByRole('button', { name: 'Meldingen (2)' }))
 
     await user.click(screen.getByText('Garantie op Koffiezet verloopt binnen 9 dag(en)'))
-    expect(onGaNaar).toHaveBeenCalledWith('leningen')
+    // Niet alleen de pagina, ook de lade: anders land je op de gedeelde kosten en
+    // mag je zelf gaan zoeken waar die aflopende garantie staat.
+    expect(onGaNaar).toHaveBeenCalledWith('dossiers', 'garantie')
   })
 
   it('sluit het paneel na een keuze', async () => {

@@ -2,6 +2,7 @@ import type { Budget, Garantie, TerugkerendePost, Transactie } from '../data/sch
 import { uitgavenInMaand } from './budget'
 import { garantieStatus } from './garantie'
 import { maandVooruitblik } from './vooruitblik'
+import type { DossierSoort } from './dossiersoort'
 
 // De rekenkern achter het belletje in de bovenbalk.
 //
@@ -23,7 +24,7 @@ export const BUDGETDREMPELS = [70, 75, 80, 85, 90, 95, 100]
 const GARANTIE_DRINGEND_DAGEN = 14
 
 /** Naar welke pagina een melding je brengt. Beide zijn geldige `Pagina`-waarden. */
-export type MeldingPagina = 'budget' | 'leningen'
+export type MeldingPagina = 'budget' | 'dossiers'
 
 export type MeldingSoort = 'budget-over' | 'budget-bijna' | 'garantie' | 'vastelast'
 
@@ -35,6 +36,12 @@ export type Melding = {
   sleutel: string
   params?: Record<string, string | number>
   pagina: MeldingPagina
+  /**
+   * Welke lade op die pagina open moet. Alleen zinvol voor de Dossiers-pagina,
+   * die sinds ronde 29 drie subtabs heeft. Ontbreekt dit, dan blijft de subtab
+   * staan waar hij stond.
+   */
+  subtab?: DossierSoort
   /** Dringend = rood; anders amber. */
   dringend: boolean
   /**
@@ -110,7 +117,11 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
       soort: 'garantie',
       sleutel: 'Garantie op {product} verloopt binnen {n} dag(en)',
       params: { product: g.product, n: status.dagenResterend },
-      pagina: 'leningen',
+      // De Dossiers-pagina, en daarbinnen de lade met de garanties. Zonder die
+      // tweede aanwijzing zou je op de eerste subtab landen (gedeelde kosten) en
+      // zelf moeten zoeken waar die aflopende garantie staat.
+      pagina: 'dossiers',
+      subtab: 'garantie',
       dringend: status.dagenResterend <= GARANTIE_DRINGEND_DAGEN,
     })
   }

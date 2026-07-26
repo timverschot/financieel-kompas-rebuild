@@ -10,10 +10,30 @@ import { isOpenKost, kostenVoorAfrekening, type AfrekeningFilter } from '../util
 import { verrekenTekst, afrekeningSamenvatting } from '../utils/afrekeningTekst'
 import { exporteerAfrekeningPDF } from '../utils/afrekeningPdf'
 import { labelVanCategorie } from '../data/categorieen/resolve'
-import { Bedrag, Kaart, Leeg, PaginaKop } from '../ui/basis'
+import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { GezinsledenKiezer } from './GezinslidKiezer'
 import { useT } from '../i18n'
 import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
+
+// De onderdelen van een dossier die je kan wegklikken.
+//
+// Niet elk dossier gebruikt alles. De ene co-ouder rekent alles fiftyfifty af en
+// heeft nooit een verdeelsleutel per categorie nodig; de andere heeft geen
+// gezamenlijke pot en bewaart de papieren elders. Die kaarten scrollen dan eeuwig
+// mee zonder ooit iets te doen.
+//
+// Wat er BEWUST niet in staat: de lijst met open kosten en het afrekenen zelf. Dat
+// is waar een dossier voor bestaat — verberg je die, dan blijft er een lege pagina
+// over. De keuze zit op het dossier (`Dossier.verborgenOnderdelen`), dus ze klopt
+// ook op je gsm.
+export const DOSSIER_ONDERDELEN = [
+  { id: 'verdeling-categorie', label: 'Verdeling per categorie' },
+  { id: 'verdeling-kostensoort', label: 'Verdeling per kostensoort' },
+  { id: 'gezamenlijke-pot', label: 'Kindrekening (gezamenlijke pot)' },
+  { id: 'documentkluis', label: 'Documentkluis' },
+] as const
+
+export type DossierOnderdeel = (typeof DOSSIER_ONDERDELEN)[number]['id']
 
 // Leest een percentageveld: leeg betekent 'niet ingesteld', een getal van 0 tot en
 // met 100 is geldig, al de rest is ongeldig (dan blijft de knop uit).
@@ -97,6 +117,9 @@ export function DossierSectie({
   const [typeGewoon, setTypeGewoon] = useState('')
   const [typeBuitengewoon, setTypeBuitengewoon] = useState('')
   const [gekopieerd, setGekopieerd] = useState('')
+  // Staat het rijtje "welke onderdelen toon je?" open? Bewust per sessie en niet
+  // bewaard: het is een instelknopje, geen scherm waar je in werkt.
+  const [onderdelenOpen, setOnderdelenOpen] = useState(false)
 
   const dossier = dossiers.find((d) => d.id === geselecteerd) ?? (dossiers[0] ?? null)
   const dossierId = dossier?.id ?? ''
@@ -142,6 +165,23 @@ export function DossierSectie({
     const bijgewerkt: Dossier = { ...dossier }
     if (Object.keys(nieuw).length > 0) bijgewerkt.typeAandelen = nieuw
     else delete bijgewerkt.typeAandelen
+    await onDossierOpslaan(bijgewerkt)
+  }
+
+  // Welke onderdelen zijn zichtbaar? We bewaren wat VERBORGEN is, dus een dossier
+  // zonder dat veld toont gewoon alles — precies zoals vóór deze ronde.
+  const verborgen = dossier?.verborgenOnderdelen ?? []
+  const toont = (id: DossierOnderdeel) => !verborgen.includes(id)
+
+  async function zetOnderdeel(id: DossierOnderdeel, zichtbaar: boolean) {
+    if (!dossier) return
+    const nieuw = zichtbaar ? verborgen.filter((v) => v !== id) : [...verborgen, id]
+    const bijgewerkt: Dossier = { ...dossier }
+    // Niets verborgen? Dan halen we het veld helemaal weg in plaats van een lege
+    // lijst weg te schrijven. Zo blijft een dossier dat nooit iets verborg exact
+    // hetzelfde record als voorheen.
+    if (nieuw.length > 0) bijgewerkt.verborgenOnderdelen = nieuw
+    else delete bijgewerkt.verborgenOnderdelen
     await onDossierOpslaan(bijgewerkt)
   }
 
@@ -201,10 +241,13 @@ export function DossierSectie({
     await onGenereer(dossier, filter)
   }
 
+  const aantalVerborgen = DOSSIER_ONDERDELEN.filter((o) => !toont(o.id)).length
+
   return (
     <>
-      <PaginaKop titel={t('Dossiers (gedeelde kosten)')} />
-
+      {/* Geen eigen paginakop meer: deze sectie is sinds ronde 29 één subtab van de
+          Dossiers-pagina, en die pagina zet de kop. Twee koppen boven elkaar zou
+          alleen ruimte kosten. */}
       <Kaart>
         {dossiers.length === 0 && <Leeg>{t('Nog geen dossiers. Maak er hieronder een aan.')}</Leeg>}
 
@@ -232,12 +275,53 @@ export function DossierSectie({
           </div>
         )}
 
+        {/* Welke onderdelen zijn van toepassing op dít dossier? Ingeklapt achter één
+            regel, in dezelfde vorm als "Meer opties" in het invoerformulier, zodat
+            een instelling nooit belangrijker oogt dan het werk eronder. */}
+        {dossier && (
+          <div className="veldgroep">
+            <button
+              type="button"
+              className="knop knop-ghost knop-klein"
+              style={{ alignSelf: 'flex-start' }}
+              aria-expanded={onderdelenOpen}
+              onClick={() => setOnderdelenOpen((o) => !o)}
+            >
+              {aantalVerborgen > 0 ? t('Onderdelen ({n} verborgen)', { n: aantalVerborgen }) : t('Onderdelen')}
+            </button>
+            {onderdelenOpen && (
+              <>
+                <div className="chiprooster" role="group" aria-label={t('Welke onderdelen toon je in dit dossier?')}>
+                  {DOSSIER_ONDERDELEN.map((o) => {
+                    const aan = toont(o.id)
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        aria-pressed={aan}
+                        className={aan ? 'chip chip-actief' : 'chip'}
+                        onClick={() => zetOnderdeel(o.id, !aan)}
+                      >
+                        {t(o.label)}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="rij-meta" style={{ margin: 0 }}>
+                  {t('Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren.')}
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
         <DossierFormulier onOpslaan={onDossierOpslaan} />
       </Kaart>
 
       {dossier && (
         <div className="stapel">
           {/* Verdeling per categorie */}
+          {toont('verdeling-categorie') && (
           <Kaart
             titel={t('Verdeling per categorie')}
             bijschrift={t('Standaard draag jij {p}%. Stel hier per categorie een afwijkend percentage in.', { p: dossier.aandeelJij })}
@@ -281,8 +365,10 @@ export function DossierSectie({
               </p>
             )}
           </Kaart>
+          )}
 
           {/* Verdeling per kostensoort */}
+          {toont('verdeling-kostensoort') && (
           <Kaart
             titel={t('Verdeling per kostensoort')}
             bijschrift={t('Voor buitengewone kosten (medisch, schools, ontwikkeling) spreken ouders vaak een andere sleutel af dan voor gewone kosten. Leeg laten = de standaard van het dossier ({p}%).', { p: dossier.aandeelJij })}
@@ -308,6 +394,7 @@ export function DossierSectie({
               </p>
             )}
           </Kaart>
+          )}
 
           {/* Open kosten */}
           <Kaart>
@@ -451,6 +538,7 @@ export function DossierSectie({
           )}
 
           {/* Kindrekening: de gezamenlijke pot als tweede manier van afrekenen. */}
+          {toont('gezamenlijke-pot') && (
           <KindrekeningSectie
             dossier={dossier}
             kindrekening={kindrekening}
@@ -463,15 +551,18 @@ export function DossierSectie({
             onPostVerwijderen={onKindrekeningPostVerwijderen}
             onNieuweSubcategorie={onNieuweSubcategorie}
           />
+          )}
 
           {/* De documentkluis: overeenkomst, attesten, bonnen en vonnis van dit
               dossier op één plek, zodat je ze niet in je mailbox moet zoeken. */}
+          {toont('documentkluis') && (
           <Documentkluis
             eigenaar={{ soort: 'dossier', id: dossier.id }}
             documenten={documenten}
             onOpslaan={onDocumentOpslaan}
             onVerwijderen={onDocumentVerwijderen}
           />
+          )}
         </div>
       )}
     </>

@@ -281,6 +281,15 @@ const en: Record<string, string> = {
   'Onbekend gezinslid': 'Unknown family member',
   'Nieuw dossier': 'New case',
   'Wat wil je bijhouden?': 'What do you want to track?',
+  // Ronde 29 — de subtabs op de Dossiers-pagina en de keuze welke onderdelen van
+  // een dossier je toont.
+  'Soort dossier': 'Type of case',
+  'Facturen & garantiebewijzen': 'Invoices & warranties',
+  'Onderdelen': 'Sections',
+  'Onderdelen ({n} verborgen)': 'Sections ({n} hidden)',
+  'Welke onderdelen toon je in dit dossier?': 'Which sections do you show in this case?',
+  'Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren.':
+    'What you switch off only disappears from view — nothing is lost.',
   'Gedeelde kosten': 'Shared expenses',
   'Kosten verdelen met een co-ouder of ex-partner, met een verdeelsleutel en afrekeningen.':
     'Split expenses with a co-parent or ex-partner, with a split key and settlements.',
@@ -1366,6 +1375,14 @@ const fr: Record<string, string> = {
   'Het gezin': 'La famille',
   'Onbekend gezinslid': 'Membre inconnu',
   'Nieuw dossier': 'Nouveau dossier',
+  // Ronde 29 — les sous-onglets de la page Dossiers.
+  'Soort dossier': 'Type de dossier',
+  'Facturen & garantiebewijzen': 'Factures & garanties',
+  'Onderdelen': 'Sections',
+  'Onderdelen ({n} verborgen)': 'Sections ({n} masquée(s))',
+  'Welke onderdelen toon je in dit dossier?': 'Quelles sections affichez-vous dans ce dossier ?',
+  'Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren.':
+    'Ce que vous désactivez disparaît seulement de l’écran — rien n’est perdu.',
   'Wat wil je bijhouden?': 'Que voulez-vous suivre ?',
   'Gedeelde kosten': 'Frais partagés',
   'Kosten verdelen met een co-ouder of ex-partner, met een verdeelsleutel en afrekeningen.':

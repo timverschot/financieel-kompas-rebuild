@@ -145,6 +145,24 @@ export const DossierSchema = z.object({
   // 22 april 2019) bijvoorbeeld strikt 50/50. Optioneel, dus bestaande dossiers
   // blijven geldig en gedragen zich exact zoals voorheen.
   typeAandelen: z.record(z.enum(KOSTENTYPES), z.number().min(0).max(100)).optional(),
+  // Welke onderdelen van dit dossier je NIET wil zien. Niet elk dossier gebruikt
+  // alle mogelijkheden: de ene co-ouder rekent alles fiftyfifty af en heeft dus
+  // geen verdeelsleutel per categorie nodig, de andere heeft geen gezamenlijke
+  // pot. Die kaarten blijven anders eeuwig meescrollen.
+  //
+  // Twee bewuste keuzes:
+  // 1. We bewaren wat VERBORGEN is, niet wat zichtbaar is. Ontbreekt het veld,
+  //    dan is alles zichtbaar — precies het oude gedrag, dus geen migratie. En
+  //    komt er ooit een vijfde onderdeel bij, dan is dat meteen zichtbaar in
+  //    bestaande dossiers in plaats van stil te ontbreken.
+  // 2. Dit staat op het DOSSIER, niet in localStorage. Of de gezamenlijke pot van
+  //    toepassing is, is een eigenschap van de afspraak met de andere ouder — niet
+  //    van het toestel waarop je toevallig kijkt. Zo klopt het ook op je gsm.
+  //
+  // Onbekende sleutels worden bewust toegelaten (gewone strings): een dossier dat
+  // op een nieuwere versie een onderdeel verborg, mag op een oudere versie niet
+  // ongeldig worden en uit de replay vallen.
+  verborgenOnderdelen: z.array(z.string()).optional(),
 })
 export type Dossier = z.infer<typeof DossierSchema>
 

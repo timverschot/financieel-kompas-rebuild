@@ -1374,3 +1374,77 @@ a:hover {
   font-size: 1.35rem;
   line-height: 1;
 }
+
+/* Subtabs: de laden binnen één pagina (Dossiers → gedeelde kosten / leningen /
+   facturen & garantiebewijzen).
+
+   Bewust dezelfde vormtaal als de soortknoppen hierboven: omlijnd vlak, en de
+   gekozen tab krijgt de amberrand met het zachte ambervlak. Zo herkent iemand die
+   de boekingspopup kent meteen wat hier gebeurt.
+
+   Twee dingen die je niet mag weghalen:
+   - `flex-wrap: wrap` met een flex-basis van 140px. De strook BREEKT dus af op een
+     smal scherm in plaats van zijwaarts te schuiven. Op 390 px staan er twee tabs
+     op de eerste regel en zakt de derde naar de tweede; op desktop passen ze samen
+     op één regel.
+   - `min-width: 0`, om dezelfde reden als bij de rasterkolommen: zonder dat mag
+     een tab niet smaller worden dan haar langste woord en loopt de pagina buiten
+     het scherm. */
+.subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  min-width: 0;
+}
+
+.subtab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1 1 140px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--tekst-sm);
+  line-height: 1.25;
+  text-align: center;
+  color: var(--text-muted);
+  transition: border-color var(--overgang), color var(--overgang), background-color var(--overgang);
+}
+
+.subtab:hover:not(.subtab-actief) {
+  border-color: var(--border-strong);
+}
+
+.subtab-actief {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.subtab-teken {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+/* Een lange tabnaam mag over twee regels: liever twee regels dan een strook die
+   buiten het scherm loopt. */
+.subtab-label {
+  min-width: 0;
+}
+
+/* Hoeveel er in die lade zit. Cijfers zijn overal monospace in deze app. */
+.subtab-telling {
+  font-family: var(--font-mono);
+  font-size: var(--tekst-xs);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}

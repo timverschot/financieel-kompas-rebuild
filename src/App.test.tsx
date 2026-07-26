@@ -8,7 +8,9 @@ import {
   bewaarCategorie,
   bewaarDossier,
   bewaarDossierDocument,
+  bewaarGarantie,
   bewaarGedeeldeKost,
+  bewaarLening,
   bewaarRekening,
   bewaarTransactie,
 } from './data/repository'
@@ -609,5 +611,181 @@ describe('App — balans, overschot of tekort', () => {
     await screen.findByText('Saldo')
 
     expect(document.querySelector('[data-balans]')).toBeNull()
+  })
+})
+
+// Ronde 29 — Dossiers is één pagina met drie laden.
+//
+// Wat hiervoor bestond: 'Dossiers' was de pagina voor gedeelde kosten, en
+// 'Leningen' was een tweede hoofdpagina die niets meer was dan twee secties onder
+// elkaar (leningen én garanties). Je moest maar weten dat die laatste daar zat.
+describe('App — Dossiers met subtabs', () => {
+  beforeEach(async () => {
+    await Promise.all([db.leningen.clear(), db.aflossingen.clear(), db.garanties.clear()])
+  })
+
+  it('heeft geen aparte pagina Leningen meer in de navigatie', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.click(screen.getByRole('button', { name: 'Meer' }))
+    expect(screen.queryByRole('button', { name: 'Leningen' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Dossiers' })).toBeInTheDocument()
+  })
+
+  it('toont de drie laden en opent standaard de gedeelde kosten', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Dossiers')
+
+    const strook = await screen.findByRole('tablist', { name: 'Soort dossier' })
+    expect(within(strook).getAllByRole('tab')).toHaveLength(3)
+    expect(screen.getByRole('tab', { name: /Gedeelde kosten/ })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByLabelText('Dossiernaam')).toBeInTheDocument()
+  })
+
+  it('brengt je met één klik bij de leningen en bij de garanties', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Dossiers')
+
+    await user.click(await screen.findByRole('tab', { name: /Leningen/ }))
+    expect(await screen.findByText('Leningen & kredieten')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: /Facturen & garantiebewijzen/ }))
+    expect(await screen.findByText('Garanties & facturen')).toBeInTheDocument()
+    // De vorige lade is echt weg, niet alleen verborgen: anders scroll je nog
+    // steeds langs alles wat je niet zocht.
+    expect(screen.queryByText('Leningen & kredieten')).toBeNull()
+  })
+
+  it('zet het aantal per lade op de tab', async () => {
+    await bewaarLening({ id: 'l1', naam: 'Aan broer', richting: 'uitgeleend', hoofdsom: 50000, startdatum: vandaag() })
+    await bewaarGarantie({ id: 'g1', product: 'Koffiezet', aankoopdatum: vandaag(), garantieMaanden: 24 })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Dossiers')
+
+    expect(await screen.findByRole('tab', { name: /Leningen 1/ })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Facturen & garantiebewijzen 1/ })).toBeInTheDocument()
+  })
+
+  it('wijst een lege app de weg, maar houdt daarmee op zodra er iets staat', async () => {
+    const user = userEvent.setup()
+    const { unmount } = render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Dossiers')
+    expect(await screen.findByText('Wat wil je bijhouden?')).toBeInTheDocument()
+
+    // De keuze doet nu ook echt iets: vroeger bleef het scherm onbewogen staan.
+    await user.click(screen.getByRole('button', { name: /Aankoop met garantie/ }))
+    expect(await screen.findByText('Garanties & facturen')).toBeInTheDocument()
+
+    unmount()
+    await bewaarGarantie({ id: 'g1', product: 'Koffiezet', aankoopdatum: vandaag(), garantieMaanden: 24 })
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Dossiers')
+    await screen.findByRole('tablist', { name: 'Soort dossier' })
+    expect(screen.queryByText('Wat wil je bijhouden?')).toBeNull()
+  })
+
+  it('brengt een aflopende garantie meteen naar de juiste lade', async () => {
+    // Een garantie die binnen twee weken verloopt: 23 maanden geleden gekocht met
+    // 24 maanden garantie.
+    const gekocht = new Date()
+    gekocht.setMonth(gekocht.getMonth() - 24)
+    gekocht.setDate(gekocht.getDate() + 7)
+    const iso = `${gekocht.getFullYear()}-${String(gekocht.getMonth() + 1).padStart(2, '0')}-${String(gekocht.getDate()).padStart(2, '0')}`
+    await bewaarGarantie({ id: 'g1', product: 'Koffiezet', aankoopdatum: iso, garantieMaanden: 24 })
+
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.click(await screen.findByRole('button', { name: /^Meldingen \(/ }))
+    await user.click(await screen.findByText(/Garantie op Koffiezet verloopt/))
+
+    // Niet op de gedeelde kosten, maar meteen bij de garanties.
+    expect(await screen.findByRole('tab', { name: /Facturen & garantiebewijzen/ })).toHaveAttribute('aria-selected', 'true')
+    expect(await screen.findByText('Garanties & facturen')).toBeInTheDocument()
+  })
+})
+
+// Ronde 29 — niet elk dossier gebruikt alle onderdelen.
+//
+// Let op bij het schrijven van deze tests: een kaarttitel en de chip om die kaart
+// aan of uit te zetten dragen dezelfde tekst. Zoek dus altijd op de KOP.
+function kaartkop(naam: string): HTMLElement {
+  return screen.getByRole('heading', { name: naam })
+}
+function geenKaartkop(naam: string): boolean {
+  return screen.queryByRole('heading', { name: naam }) === null
+}
+
+describe('App — onderdelen van een dossier aan- en uitzetten', () => {
+  async function maakDossier(user: Gebruiker) {
+    await gaMeer(user, 'Dossiers')
+    await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
+    await zetAandeel(user, '50')
+    await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
+    await screen.findByText('Verdeling per categorie')
+  }
+
+  it('toont standaard alles', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await maakDossier(user)
+
+    // Op de KAARTKOP kijken, niet op de tekst: de chip om een onderdeel aan of uit
+    // te zetten draagt exact dezelfde naam, dus getByText zou altijd iets vinden.
+    expect(kaartkop('Verdeling per kostensoort')).toBeInTheDocument()
+    expect(kaartkop('Kindrekening (gezamenlijke pot)')).toBeInTheDocument()
+    expect(kaartkop('Documentkluis')).toBeInTheDocument()
+    // Zolang er niets verborgen is, staat er geen aantal bij.
+    expect(screen.getByRole('button', { name: 'Onderdelen' })).toBeInTheDocument()
+  })
+
+  it('verbergt een onderdeel en onthoudt dat, zonder iets weg te gooien', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await maakDossier(user)
+
+    await user.click(screen.getByRole('button', { name: 'Onderdelen' }))
+    await user.click(screen.getByRole('button', { name: 'Kindrekening (gezamenlijke pot)' }))
+
+    await waitFor(() => expect(geenKaartkop('Kindrekening (gezamenlijke pot)')).toBe(true))
+    expect(await screen.findByRole('button', { name: 'Onderdelen (1 verborgen)' })).toBeInTheDocument()
+    // De rest blijft staan: je zet één kaart uit, geen halve pagina.
+    expect(kaartkop('Verdeling per categorie')).toBeInTheDocument()
+
+    // Het staat op het DOSSIER, niet in localStorage: zo klopt het ook op je gsm.
+    const alle = await db.dossiers.toArray()
+    expect(alle[0].verborgenOnderdelen).toEqual(['gezamenlijke-pot'])
+  })
+
+  it('zet een verborgen onderdeel weer aan', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await maakDossier(user)
+
+    await user.click(screen.getByRole('button', { name: 'Onderdelen' }))
+    await user.click(screen.getByRole('button', { name: 'Documentkluis' }))
+    await waitFor(() => expect(geenKaartkop('Documentkluis')).toBe(true))
+
+    await user.click(screen.getByRole('button', { name: 'Documentkluis' }))
+    await waitFor(() => expect(geenKaartkop('Documentkluis')).toBe(false))
+    // Niets meer verborgen: het veld verdwijnt weer van het record.
+    await waitFor(async () => {
+      const alle = await db.dossiers.toArray()
+      expect(alle[0].verborgenOnderdelen).toBeUndefined()
+    })
   })
 })

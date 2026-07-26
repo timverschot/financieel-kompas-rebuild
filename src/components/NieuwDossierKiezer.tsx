@@ -1,18 +1,24 @@
 import { Kaart } from '../ui/basis'
 import { useT } from '../i18n'
+import type { DossierSoort } from '../utils/dossiersoort'
 
-// Waar zet je wat? Een dossier voor gedeelde kosten (co-ouderschap), geld dat je
-// uitleende of leende, of een aankoop met garantie — het zijn drie verschillende
-// soorten, maar dat was tot nu toe nergens te zien: leningen en garanties stonden
-// op een andere pagina zonder dat iets je daarheen wees.
+// De wegwijzer voor een lege Dossiers-pagina: wat kan je hier eigenlijk bijhouden?
 //
-// Bewuste keuze: we voegen de opslag NIET samen. Een lening en een garantie hebben
-// een eigen vorm die goed werkt; ze samenpersen in één dossiermodel zou de
-// validatie van de verdeelsleutel verzwakken en een datamigratie vragen. Wat we
-// wél verenigen is het BEGIN van de flow: hier kies je de soort, en de app brengt
-// je naar de juiste plek.
+// Deze kaart ontstond toen leningen en garanties nog op een eigen, verborgen pagina
+// woonden en je maar moest raden dat ze bestonden. Nu de drie soorten als subtabs
+// bovenaan de pagina staan, doet de tabstrook dat werk — en zou deze kaart er bij
+// élk bezoek bij staan zonder nog iets toe te voegen.
+//
+// Daarom verschijnt ze alleen zolang je nog NIETS hebt: geen dossier, geen lening
+// en geen aankoop met garantie. App.tsx beslist dat; deze component toont enkel wat
+// ze krijgt. Klik je een soort aan, dan springt de app naar die subtab — vroeger
+// gebeurde er bij 'Gedeelde kosten' letterlijk niets.
+//
+// Bewuste keuze die blijft gelden: we voegen de OPSLAG niet samen. Een lening en een
+// garantie hebben een eigen recordvorm die goed werkt; ze in één dossiermodel persen
+// zou de validatie van de verdeelsleutel verzwakken en een datamigratie vragen.
 
-export type DossierSoort = 'coouderschap' | 'lening' | 'garantie'
+export type { DossierSoort }
 
 export function NieuwDossierKiezer({ onKies }: { onKies: (soort: DossierSoort) => void }) {
   const { t } = useT()

@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import { useT } from '../i18n'
 import type { Melding, MeldingPagina } from '../utils/meldingen'
+import type { DossierSoort } from '../utils/dossiersoort'
 
 // Het belletje in de bovenbalk, mét een echt paneel eronder.
 //
@@ -49,7 +50,11 @@ export function Meldingenbel({
   onBoekVasteLast,
 }: {
   meldingen: Melding[]
-  onGaNaar: (pagina: MeldingPagina) => void
+  /**
+   * De tweede parameter zegt welke lade op die pagina open moet (de Dossiers-pagina
+   * heeft er drie). Ontbreekt ze, dan verandert er niets aan de lade.
+   */
+  onGaNaar: (pagina: MeldingPagina, subtab?: DossierSoort) => void
   /**
    * Een vaste last meteen inboeken vanuit het paneel. Zonder deze prop gedraagt de
    * bel zich zoals voorheen: elke melding brengt je enkel naar een pagina.
@@ -60,9 +65,9 @@ export function Meldingenbel({
   const [open, setOpen] = useState(false)
   const aantal = meldingen.length
 
-  function kies(pagina: MeldingPagina) {
+  function kies(pagina: MeldingPagina, subtab?: DossierSoort) {
     setOpen(false)
-    onGaNaar(pagina)
+    onGaNaar(pagina, subtab)
   }
 
   function boek(postId: string) {
@@ -134,7 +139,7 @@ export function Meldingenbel({
                           knop in een knop bestaat niet in HTML. */}
                       <button
                         type="button"
-                        onClick={() => kies(m.pagina)}
+                        onClick={() => kies(m.pagina, m.subtab)}
                         style={{ ...meldingKnop, borderBottom: 'none', flex: 1, minWidth: 0 }}
                       >
                         <span

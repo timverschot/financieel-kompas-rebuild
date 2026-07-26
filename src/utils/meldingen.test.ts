@@ -99,7 +99,8 @@ describe('bouwMeldingen — garanties', () => {
     expect(meldingen).toHaveLength(1)
     expect(meldingen[0].soort).toBe('garantie')
     expect(meldingen[0].params).toEqual({ product: 'Koffiezet', n: 17 })
-    expect(meldingen[0].pagina).toBe('leningen')
+    expect(meldingen[0].pagina).toBe('dossiers')
+    expect(meldingen[0].subtab).toBe('garantie')
     expect(meldingen[0].dringend).toBe(false)
   })
 

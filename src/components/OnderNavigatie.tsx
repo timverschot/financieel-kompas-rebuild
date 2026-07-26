@@ -12,7 +12,6 @@ export type Pagina =
   | 'spaardoelen'
   | 'budget'
   | 'dossiers'
-  | 'leningen'
   | 'analyse'
   | 'categorieen'
   | 'rekenhulpen'
@@ -25,8 +24,10 @@ export const PAGINAS: { id: Pagina; icoon: string; label: string }[] = [
   { id: 'rekeningen', icoon: '🏦', label: 'Rekeningen' },
   { id: 'spaardoelen', icoon: '💰', label: 'Spaardoelen' },
   { id: 'budget', icoon: '🎯', label: 'Budget' },
+  // Eén ingang voor alle dossiers. Leningen en garanties stonden vroeger op een
+  // eigen pagina 'leningen' die niets meer was dan twee secties onder elkaar; ze
+  // zitten nu als subtab op déze pagina. Zie `ui/Subtabs.tsx`.
   { id: 'dossiers', icoon: '👨‍👧', label: 'Dossiers' },
-  { id: 'leningen', icoon: '📄', label: 'Leningen' },
   { id: 'analyse', icoon: '📊', label: 'Analyse' },
   { id: 'categorieen', icoon: '🏷️', label: 'Categorieën' },
   { id: 'rekenhulpen', icoon: '🧮', label: 'Rekenhulpen' },
@@ -37,7 +38,7 @@ export const PAGINAS: { id: Pagina; icoon: string; label: string }[] = [
 // en Transacties, rechts Analyse, en dan Meer. De rest zit onder 'Meer'.
 const PRIMAIR_LINKS: Pagina[] = ['overzicht', 'transacties']
 const PRIMAIR_RECHTS: Pagina[] = ['analyse']
-const SECUNDAIR: Pagina[] = ['rekeningen', 'spaardoelen', 'budget', 'dossiers', 'leningen', 'categorieen', 'rekenhulpen', 'instellingen']
+const SECUNDAIR: Pagina[] = ['rekeningen', 'spaardoelen', 'budget', 'dossiers', 'categorieen', 'rekenhulpen', 'instellingen']
 
 const balk: CSSProperties = {
   position: 'fixed',

@@ -103,6 +103,35 @@ Labels krijgen `className="label-caps"`.
 <Balk label={naam} fractie={0.62} nu={620} max={1000} kleur="var(--positive)" />
 ```
 
+## Subtabs: altijd `src/ui/Subtabs.tsx`
+
+```tsx
+<Subtabs
+  naam="dossiers"
+  label={t('Soort dossier')}
+  actief={tab}
+  onKies={setTab}
+  tabs={[{ id: 'lening', teken: '📄', label: t('Leningen'), telling: leningen.length }]}
+>
+  …inhoud van de gekozen tab…
+</Subtabs>
+```
+
+Heeft een pagina laden, gebruik dan dit component — bouw geen rij losse knoppen.
+Het regelt de vier dingen die je met losse knoppen stil overslaat: hulpsoftware ziet
+één groep met een gekozen tab (`role="tablist"` + `aria-selected`), de pijltjes lopen
+tussen de tabs in plaats van erdoorheen te tabben (rollende tabindex), de inhoud
+hangt aan de gekozen tab (`role="tabpanel"` + `aria-labelledby`), en de strook
+**breekt af** in plaats van zijwaarts te schuiven.
+
+Dat laatste is geen detail: sinds ronde 28 schuift er in de hele app niets meer
+horizontaal weg. Een tabstrook waarvan de derde tab half buiten beeld hangt zou dat
+opnieuw introduceren. Gemeten op 390 px: twee tabs op de eerste regel, de derde op
+de tweede; vanaf ongeveer 1000 px staan ze samen op één regel.
+
+`telling` is optioneel en verschijnt alleen als ze groter is dan nul — een lege lade
+heeft geen cijfer nodig.
+
 ## Popups: altijd `src/ui/Dialoog.tsx`
 
 ```tsx

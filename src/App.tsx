@@ -95,6 +95,8 @@ import { DossierSectie } from './components/DossierSectie'
 import { NieuwDossierKiezer } from './components/NieuwDossierKiezer'
 import { LeningSectie } from './components/LeningSectie'
 import { GarantieSectie } from './components/GarantieSectie'
+import { Subtabs } from './ui/Subtabs'
+import type { DossierSoort } from './utils/dossiersoort'
 import { InstellingenSectie } from './components/InstellingenSectie'
 import { wisAlles } from './data/herstart'
 import { EersteStap } from './components/EersteStap'
@@ -204,6 +206,10 @@ export function App() {
   const [bewerkOverboeking, setBewerkOverboeking] = useState<Overboeking | null>(null)
   const [maand, setMaand] = useState(huidigeMaand())
   const [pagina, setPagina] = useState<Pagina>('overzicht')
+  // Welke lade van de Dossiers-pagina staat open. Leningen en garanties hadden tot
+  // ronde 29 een eigen pagina die niets meer was dan twee secties onder elkaar;
+  // ze zijn nu subtabs naast de gedeelde kosten.
+  const [dossierTab, setDossierTab] = useState<DossierSoort>('coouderschap')
   const isDesktop = useIsDesktop()
   const [backupTekst, setBackupTekst] = useState<string | null>(null)
   const [undoInfo, setUndoInfo] = useState<{ boodschap: string; herstel: () => Promise<void> } | null>(null)
@@ -1088,6 +1094,14 @@ export function App() {
 
   const paginaTitel = t(PAGINAS.find((p) => p.id === pagina)?.label ?? 'Overzicht')
 
+  // Een melding brengt je naar een pagina, en bij de Dossiers-pagina ook naar de
+  // juiste lade: een aflopende garantie hoort je bij de garanties te zetten, niet
+  // bij de gedeelde kosten.
+  function gaNaarMelding(doel: Pagina, subtab?: DossierSoort) {
+    setPagina(doel)
+    if (subtab) setDossierTab(subtab)
+  }
+
   const paginaInhoud = (
     <div className="stapel">
 
@@ -1347,45 +1361,89 @@ export function App() {
 
       {pagina === 'dossiers' && (
         <>
-          {/* Één plek om te kiezen wat voor dossier je wil; leningen en garanties
-              wonen op hun eigen pagina, maar je moest maar raden dat ze bestonden. */}
-          <NieuwDossierKiezer
-            onKies={(soort) => {
-              if (soort === 'lening' || soort === 'garantie') setPagina('leningen')
-              // 'coouderschap' hoort op déze pagina. Vroeger gebeurde er dan
-              // NIETS: je tikte op een keuze en het scherm bleef onbewogen staan,
-              // zonder enige aanwijzing dat je goed zat. Nu gaat de aandacht naar
-              // het naamveld van het dossierformulier eronder.
-              else document.getElementById('dossiernaam')?.focus()
-            }}
-          />
+          <PaginaKop titel={paginaTitel} />
 
-        <ErrorBoundary naam="Dossiers">
-          <DossierSectie
-            dossiers={dossiers}
-            kosten={gedeeldeKosten}
-            verrekeningen={verrekeningen}
-            kinderen={kinderen}
-            categorieen={categorieen}
-            kindrekeningen={kindrekeningen}
-            kindrekeningposten={kindrekeningposten}
-            onDossierOpslaan={voegDossierToe}
-            onDossierVerwijderen={verwijderDoss}
-            onKostOpslaan={voegGedeeldeKostToe}
-            onKostVerwijderen={verwijderKost}
-            onGenereer={genereerAfrekening}
-            onMarkeerOvergemaakt={markeerOvergemaakt}
-            onVerwijderAfrekening={verwijderAfrekening}
-            onKindrekeningOpslaan={kindrekeningOpslaan}
-            onKindrekeningVerwijderen={kindrekeningVerwijderen}
-            onKindrekeningPostOpslaan={kindrekeningPostOpslaan}
-            onKindrekeningPostVerwijderen={kindrekeningPostVerwijderen}
-            documenten={dossierdocumenten}
-            onDocumentOpslaan={dossierDocumentOpslaan}
-            onDocumentVerwijderen={dossierDocumentVerwijderen}
-            onNieuweSubcategorie={voegSubcategorieToe}
-          />
-        </ErrorBoundary>
+          {/* De wegwijzer alleen zolang je nog helemaal niets hebt. Zodra er één
+              dossier, lening of aankoop bestaat, doen de subtabs hieronder dat
+              werk en zou de kaart bij elk bezoek ruimte innemen zonder iets te
+              zeggen. Klik je hier een soort aan, dan opent die subtab — vroeger
+              gebeurde er bij 'Gedeelde kosten' letterlijk niets. */}
+          {dossiers.length === 0 && leningen.length === 0 && garanties.length === 0 && (
+            <NieuwDossierKiezer onKies={setDossierTab} />
+          )}
+
+          <Subtabs
+            naam="dossiers"
+            label={t('Soort dossier')}
+            actief={dossierTab}
+            onKies={setDossierTab}
+            tabs={[
+              { id: 'coouderschap', teken: '👨‍👧', label: t('Gedeelde kosten'), telling: dossiers.length },
+              { id: 'lening', teken: '📄', label: t('Leningen'), telling: leningen.length },
+              { id: 'garantie', teken: '🧾', label: t('Facturen & garantiebewijzen'), telling: garanties.length },
+            ]}
+          >
+            {dossierTab === 'coouderschap' && (
+              <ErrorBoundary naam="Dossiers">
+                <DossierSectie
+                  dossiers={dossiers}
+                  kosten={gedeeldeKosten}
+                  verrekeningen={verrekeningen}
+                  kinderen={kinderen}
+                  categorieen={categorieen}
+                  kindrekeningen={kindrekeningen}
+                  kindrekeningposten={kindrekeningposten}
+                  onDossierOpslaan={voegDossierToe}
+                  onDossierVerwijderen={verwijderDoss}
+                  onKostOpslaan={voegGedeeldeKostToe}
+                  onKostVerwijderen={verwijderKost}
+                  onGenereer={genereerAfrekening}
+                  onMarkeerOvergemaakt={markeerOvergemaakt}
+                  onVerwijderAfrekening={verwijderAfrekening}
+                  onKindrekeningOpslaan={kindrekeningOpslaan}
+                  onKindrekeningVerwijderen={kindrekeningVerwijderen}
+                  onKindrekeningPostOpslaan={kindrekeningPostOpslaan}
+                  onKindrekeningPostVerwijderen={kindrekeningPostVerwijderen}
+                  documenten={dossierdocumenten}
+                  onDocumentOpslaan={dossierDocumentOpslaan}
+                  onDocumentVerwijderen={dossierDocumentVerwijderen}
+                  onNieuweSubcategorie={voegSubcategorieToe}
+                />
+              </ErrorBoundary>
+            )}
+
+            {dossierTab === 'lening' && (
+              <ErrorBoundary naam="Leningen">
+                <LeningSectie
+                  gezinsleden={kinderen}
+                  leningen={leningen}
+                  aflossingen={aflossingen}
+                  onOpslaan={leningOpslaan}
+                  onVerwijderen={leningVerwijderen}
+                  onAflossingOpslaan={aflossingOpslaan}
+                  onAflossingVerwijderen={aflossingVerwijderen}
+                  documenten={dossierdocumenten}
+                  onDocumentOpslaan={dossierDocumentOpslaan}
+                  onDocumentVerwijderen={dossierDocumentVerwijderen}
+                />
+              </ErrorBoundary>
+            )}
+
+            {dossierTab === 'garantie' && (
+              <ErrorBoundary naam="Garanties">
+                <GarantieSectie
+                  gezinsleden={kinderen}
+                  garanties={garanties}
+                  transacties={transacties}
+                  onOpslaan={garantieOpslaan}
+                  onVerwijderen={garantieVerwijderen}
+                  documenten={dossierdocumenten}
+                  onDocumentOpslaan={dossierDocumentOpslaan}
+                  onDocumentVerwijderen={dossierDocumentVerwijderen}
+                />
+              </ErrorBoundary>
+            )}
+          </Subtabs>
         </>
       )}
 
@@ -1572,40 +1630,6 @@ export function App() {
         </>
       )}
 
-      {pagina === 'leningen' && (
-        <>
-          <PaginaKop titel={paginaTitel} />
-
-          <ErrorBoundary naam="Leningen">
-            <LeningSectie
-              gezinsleden={kinderen}
-              leningen={leningen}
-              aflossingen={aflossingen}
-              onOpslaan={leningOpslaan}
-              onVerwijderen={leningVerwijderen}
-              onAflossingOpslaan={aflossingOpslaan}
-              onAflossingVerwijderen={aflossingVerwijderen}
-              documenten={dossierdocumenten}
-              onDocumentOpslaan={dossierDocumentOpslaan}
-              onDocumentVerwijderen={dossierDocumentVerwijderen}
-            />
-          </ErrorBoundary>
-
-          <ErrorBoundary naam="Garanties">
-            <GarantieSectie
-              gezinsleden={kinderen}
-              garanties={garanties}
-              transacties={transacties}
-              onOpslaan={garantieOpslaan}
-              onVerwijderen={garantieVerwijderen}
-              documenten={dossierdocumenten}
-              onDocumentOpslaan={dossierDocumentOpslaan}
-              onDocumentVerwijderen={dossierDocumentVerwijderen}
-            />
-          </ErrorBoundary>
-        </>
-      )}
-
       {pagina === 'instellingen' && (
         <>
           <ErrorBoundary naam="Instellingen">
@@ -1697,7 +1721,7 @@ export function App() {
               + {t('Nieuwe transactie')}
             </button>
 
-            <Meldingenbel meldingen={meldingen} onGaNaar={setPagina} onBoekVasteLast={boekVasteLastPerId} />
+            <Meldingenbel meldingen={meldingen} onGaNaar={gaNaarMelding} onBoekVasteLast={boekVasteLastPerId} />
 
             {verbonden && (
               <button className="knop knop-icoon" aria-label={t('Uitloggen')} onClick={verbreekVerbinding}>
@@ -1725,7 +1749,7 @@ export function App() {
           {/* Hetzelfde belletje als op desktop. Het stond hier vroeger niet, dus op
               een telefoon zag je nooit dat een budget bijna op was. */}
           <div style={{ flex: 1 }} />
-          <Meldingenbel meldingen={meldingen} onGaNaar={setPagina} onBoekVasteLast={boekVasteLastPerId} />
+          <Meldingenbel meldingen={meldingen} onGaNaar={gaNaarMelding} onBoekVasteLast={boekVasteLastPerId} />
         </div>
         {paginaInhoud}
       </main>
