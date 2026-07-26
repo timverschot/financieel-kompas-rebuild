@@ -47,7 +47,8 @@ export function CategorieSelect({
       </optgroup>
       {categorieen.length > 0 && (
         <optgroup label={t('Eigen categorieën')}>
-          {categorieen.map((c) => (
+          {/* Alleen eigen HOOFDcategorieën; de middenlaag hoort hier niet los. */}
+          {categorieen.filter((c) => !c.ouderId).map((c) => (
             <option key={c.id} value={c.id}>
               {c.icoon ? `${c.icoon} ` : ''}
               {c.naam}

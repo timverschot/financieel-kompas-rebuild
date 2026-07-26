@@ -1,8 +1,9 @@
 import { INGEBOUWDE_CATEGORIEEN } from './ingebouwd'
 import { itemPerId, midPerId } from './zoek'
 
-// Een transactie kan getagd zijn op twee niveaus: een hoofdcategorie (bv.
-// 'Voeding') of een specifiek item/subcategorie (bv. 'Brood (wit)'). Daarnaast
+// Een transactie kan getagd zijn op drie niveaus: een hoofdcategorie (bv.
+// 'Voeding'), een middencategorie (bv. 'Elektriciteit') of een specifiek
+// item/subcategorie (bv. 'Brood (wit)'). Daarnaast
 // kan ze nog verwijzen naar een eigen, door de gebruiker gemaakte categorie
 // (uit de oude, platte lijst). Deze helpers zetten zo'n opgeslagen id om naar:
 //  - de GROEP waaronder ze valt (voor optellen en grafieken: altijd de
@@ -14,7 +15,7 @@ const HOOFD_PER_ID = new Map(INGEBOUWDE_CATEGORIEEN.map((h) => [h.id, h]))
 // Het minimum dat we van een eigen (zelfgemaakte) categorie nodig hebben. Bewust
 // structureel getypt, zodat elke aanroeper gewoon zijn categorieënlijst kan
 // meegeven zonder extra omzetting.
-export type EigenCategorie = { id: string; naam: string; icoon?: string; kleur?: string }
+export type EigenCategorie = { id: string; naam: string; icoon?: string; kleur?: string; ouderId?: string }
 
 export type CategorieGroep = {
   sleutel: string // groepeersleutel voor optellingen/grafieken
@@ -40,6 +41,15 @@ export function groepVanCategorie(
 
   const item = itemPerId(id)
   if (item) return { sleutel: item.hoofdId, naam: item.hoofdNaam, kleur: item.kleur, icoon: item.icoon }
+
+  // De MIDDENLAAG (cat-*). Tot ronde 27 kende deze functie die laag niet, en
+  // daarom mocht een transactie er niet op getagd worden: ze zou uit elke
+  // grafiek, elk budget en elke analyse vallen. Nu rolt ze gewoon op naar haar
+  // hoofdcategorie, precies zoals een item dat doet — en dus kan je een vaste
+  // last of een boeking wél op "Elektriciteit" zetten in plaats van op het veel
+  // te brede "Woning en vaste lasten".
+  const mid = midPerId(id)
+  if (mid) return { sleutel: mid.hoofdId, naam: mid.hoofdNaam, kleur: mid.kleur, icoon: mid.icoon }
 
   const eigen = gebruikerCategorieen.find((c) => c.id === id)
   if (eigen) return { sleutel: eigen.id, naam: eigen.naam, kleur: eigen.kleur ?? null, icoon: eigen.icoon ?? null }

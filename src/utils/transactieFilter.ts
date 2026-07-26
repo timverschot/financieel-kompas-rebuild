@@ -1,5 +1,5 @@
 import type { Transactie } from '../data/schema'
-import { itemPerId } from '../data/categorieen/zoek'
+import { itemPerId, midPerId } from '../data/categorieen/zoek'
 import { categorieBedragen } from './transactie'
 
 // Filter- en zoeklaag voor de transactielijst. Zuivere functies zodat ze los
@@ -38,7 +38,12 @@ function raaktCategorie(tx: Transactie, hoofdId?: string, catId?: string): boole
   const ids = categorieIdsVan(tx)
   return ids.some((id) => {
     const item = itemPerId(id)
-    const hoofdOk = !hoofdId || id === hoofdId || item?.hoofdId === hoofdId
+    // Sinds ronde 27 kan een boeking ook op de MIDDENLAAG staan (bv. rechtstreeks
+    // op 'Elektriciteit'). Die hoort dan bij haar eigen hoofdcategorie te vallen,
+    // net als een item — anders vind je zo'n boeking niet terug met het filter op
+    // hoofdcategorie.
+    const mid = midPerId(id)
+    const hoofdOk = !hoofdId || id === hoofdId || item?.hoofdId === hoofdId || mid?.hoofdId === hoofdId
     const catOk = !catId || id === catId || item?.categorieId === catId
     return hoofdOk && catOk
   })

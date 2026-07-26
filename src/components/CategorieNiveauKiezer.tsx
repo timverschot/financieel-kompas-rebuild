@@ -5,35 +5,39 @@ import { zoekItems, zoekMidCategorieen } from '../data/categorieen/zoek'
 import { padVanCategorie } from '../data/categorieen/resolve'
 import { useT } from '../i18n'
 
-// De categoriekiezer van het BUDGETformulier: alle drie de niveaus, met een
-// zoekveld ervoor.
+// Eén categoriekiezer die ALLE DRIE de niveaus aanbiedt, met een zoekveld ervoor.
 //
-// Waarom een eigen component en niet `CategorieSelect`: die biedt bewust enkel
-// hoofdcategorieën aan, en dat is voor een transactie ook juist. Een budget mag
-// wél op de middenlaag of op één item staan (zie utils/budget.ts), en dan wordt
-// de keuzelijst duizend regels lang. Een `<select>` met duizend opties is
-// technisch prima maar praktisch onbruikbaar: je scrollt eindeloos.
+// Gebruikt door het budgetformulier en door het formulier voor vaste lasten en
+// inkomsten. Waarom niet `CategorieSelect`: die biedt bewust enkel de veertien
+// hoofdcategorieën aan. Dat was lang de enige veilige keuze, omdat
+// `groepVanCategorie` de middenlaag niet kende — een vaste last op
+// "Elektriciteit" zou dan bij het inboeken uit elke analyse vallen. Sinds ronde 27
+// rolt die laag gewoon op naar haar hoofdcategorie, dus mag ze overal gekozen
+// worden.
 //
 // Waarom niet `CategorieKiezer` (de zoeker uit het transactieformulier): die kent
-// de middenlaag niet, geeft altijd een item terug en heeft de chiprij die in
-// ronde 27 sowieso hertekend wordt. Deze kiezer blijft daarom klein en doet één
-// ding: een niveau kiezen om een budget op te zetten.
+// de middenlaag niet, geeft altijd een item terug en heeft de horizontaal
+// schuivende chiprij die in ronde 28 hertekend wordt. Deze kiezer blijft klein en
+// doet één ding: een niveau kiezen.
 
 const ZOEK_VANAF = 2
 const MAX_SUGGESTIES = 20
 
 type Keuze = { id: string; naam: string; pad: string }
 
-export function BudgetcategorieKiezer({
+export function CategorieNiveauKiezer({
   id,
   waarde,
   onKies,
   categorieen,
+  metGeenKeuze = false,
 }: {
   id: string
   waarde: string
   onKies: (id: string) => void
   categorieen: Categorie[]
+  /** Voegt bovenaan een lege keuze toe, voor velden waar geen categorie mag. */
+  metGeenKeuze?: boolean
 }) {
   const { t } = useT()
   const [zoek, setZoek] = useState('')
@@ -44,16 +48,19 @@ export function BudgetcategorieKiezer({
   // Zodra je typt, komen de middenlaag en de items erbij.
   const keuzes: Keuze[] = useMemo(() => {
     const uit: Keuze[] = []
+    // Enkel eigen HOOFDcategorieën in de basislijst: een eigen middencategorie
+    // komt via de zoekfunctie mee, mét haar ouder ervoor.
+    const eigenHoofd = categorieen.filter((c) => !c.ouderId)
     if (term.length < ZOEK_VANAF) {
       for (const h of INGEBOUWDE_CATEGORIEEN) uit.push({ id: h.id, naam: h.naam, pad: h.naam })
-      for (const c of categorieen) uit.push({ id: c.id, naam: c.naam, pad: c.naam })
+      for (const c of eigenHoofd) uit.push({ id: c.id, naam: c.naam, pad: c.naam })
       return uit
     }
 
     for (const h of INGEBOUWDE_CATEGORIEEN) {
       if (h.naam.toLowerCase().includes(term)) uit.push({ id: h.id, naam: h.naam, pad: h.naam })
     }
-    for (const c of categorieen) {
+    for (const c of eigenHoofd) {
       if (c.naam.toLowerCase().includes(term)) uit.push({ id: c.id, naam: c.naam, pad: c.naam })
     }
     for (const m of zoekMidCategorieen(term, MAX_SUGGESTIES)) {
@@ -89,8 +96,9 @@ export function BudgetcategorieKiezer({
         id={id}
         value={waarde}
         onChange={(e) => onKies(e.target.value)}
-        size={term.length >= ZOEK_VANAF ? Math.min(6, Math.max(2, compleet.length)) : 1}
+        size={term.length >= ZOEK_VANAF ? Math.min(6, Math.max(2, compleet.length + (metGeenKeuze ? 1 : 0))) : 1}
       >
+        {metGeenKeuze && <option value="">{t('Geen categorie')}</option>}
         {compleet.map((k) => (
           <option key={k.id} value={k.id}>
             {k.pad}

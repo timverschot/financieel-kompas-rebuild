@@ -70,3 +70,18 @@ describe('padVanCategorie', () => {
     expect(padVanCategorie(undefined, [])).toBeUndefined()
   })
 })
+
+// --- Ronde 27: de middenlaag rolt op naar haar hoofdcategorie ---
+describe('groepVanCategorie op de middenlaag', () => {
+  it('rolt een ingebouwde middencategorie op naar haar hoofdcategorie', () => {
+    // Hierdoor kan een vaste last of een boeking rechtstreeks op "Elektriciteit"
+    // staan zonder uit de grafieken te vallen — vóór ronde 27 gaf dit 'Onbekend'.
+    expect(groepVanCategorie('cat-broodwaren', []).sleutel).toBe('ov-voeding')
+    expect(groepVanCategorie('cat-broodwaren', []).naam).toBe('Voeding')
+  })
+
+  it('geeft de middencategorie haar eigen naam als label, en het pad met de ouder', () => {
+    expect(labelVanCategorie('cat-broodwaren', [])).toBe('Broodwaren')
+    expect(padVanCategorie('cat-broodwaren', [])).toBe('Voeding › Broodwaren')
+  })
+})

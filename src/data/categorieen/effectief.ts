@@ -1,17 +1,38 @@
 import { INGEBOUWDE_CATEGORIEEN } from './ingebouwd'
-import type { Subcategorie } from '../schema'
+import type { Categorie, Subcategorie } from '../schema'
 
-// De boom zoals hij effectief getoond wordt: de vaste basis, met de gebruikers-
-// aanpassingen erin verwerkt. Items dragen 'eigen' zodat de UI weet welke items
-// door de gebruiker zijn toegevoegd (en dus verwijderbaar zijn).
+// De boom zoals hij effectief getoond wordt: de vaste basis, met de eigen
+// categorieën en de gebruikersaanpassingen erin verwerkt.
+//
+// Sinds ronde 27 is een EIGEN categorie niet meer noodzakelijk een losse, vlakke
+// naam. Een `Categorie` zonder `ouderId` is een eigen HOOFDcategorie; een
+// `Categorie` mét `ouderId` is een eigen MIDDENcategorie die onder die ouder
+// hangt — en die ouder mag een eigen hoofdcategorie zijn óf een ingebouwde. Zo
+// krijg je ook voor je eigen categorieën de volledige boom
+// hoofdcategorie → categorie → item, precies zoals bij de ingebouwde.
+//
+// 'eigen' op een tak zegt of de gebruiker hem zelf gemaakt heeft; alleen die
+// takken mag je verwijderen zonder de ingebouwde referentie te raken.
 export type EffectiefItem = { id: string; naam: string; eenheid: string | null; eigen: boolean }
-export type EffectieveCategorie = { id: string; naam: string; items: EffectiefItem[] }
-export type EffectieveHoofd = { id: string; naam: string; icoon: string; categorieen: EffectieveCategorie[] }
+export type EffectieveCategorie = { id: string; naam: string; eigen: boolean; items: EffectiefItem[] }
+export type EffectieveHoofd = {
+  id: string
+  naam: string
+  icoon: string
+  kleur: string | null
+  eigen: boolean
+  categorieen: EffectieveCategorie[]
+}
 
-export function bouwEffectieveBoom(aanpassingen: Subcategorie[]): EffectieveHoofd[] {
+export function bouwEffectieveBoom(
+  aanpassingen: Subcategorie[],
+  eigenCategorieen: Categorie[] = [],
+): EffectieveHoofd[] {
   const basisIds = new Set<string>()
   for (const h of INGEBOUWDE_CATEGORIEEN) for (const c of h.categorieen) for (const it of c.items) basisIds.add(it.id)
 
+  // Een aanpassing op een BESTAAND item is een hernoeming; al de rest is een
+  // toevoeging onder haar categorie.
   const overrideNaam = new Map<string, string>()
   const toevoegingenPerCat = new Map<string, Subcategorie[]>()
   for (const a of aanpassingen) {
@@ -24,27 +45,68 @@ export function bouwEffectieveBoom(aanpassingen: Subcategorie[]): EffectieveHoof
     }
   }
 
-  return INGEBOUWDE_CATEGORIEEN.map((hoofd) => ({
+  const eigenHoofd = eigenCategorieen.filter((c) => !c.ouderId)
+  const eigenMid = eigenCategorieen.filter((c) => c.ouderId)
+  const midPerOuder = new Map<string, Categorie[]>()
+  for (const m of eigenMid) {
+    const lijst = midPerOuder.get(m.ouderId as string) ?? []
+    lijst.push(m)
+    midPerOuder.set(m.ouderId as string, lijst)
+  }
+
+  const eigenTak = (c: Categorie): EffectieveCategorie => ({
+    id: c.id,
+    naam: c.naam,
+    eigen: true,
+    items: (toevoegingenPerCat.get(c.id) ?? []).map((a) => ({
+      id: a.id,
+      naam: a.naam,
+      eenheid: null,
+      eigen: true,
+    })),
+  })
+
+  const ingebouwd: EffectieveHoofd[] = INGEBOUWDE_CATEGORIEEN.map((hoofd) => ({
     id: hoofd.id,
     naam: hoofd.naam,
     icoon: hoofd.icoon,
-    categorieen: hoofd.categorieen.map((cat) => ({
-      id: cat.id,
-      naam: cat.naam,
-      items: [
-        ...cat.items.map((it) => ({
-          id: it.id,
-          naam: overrideNaam.get(it.id) ?? it.naam,
-          eenheid: it.eenheid,
-          eigen: false,
-        })),
-        ...(toevoegingenPerCat.get(cat.id) ?? []).map((a) => ({
-          id: a.id,
-          naam: a.naam,
-          eenheid: null,
-          eigen: true,
-        })),
-      ],
-    })),
+    kleur: hoofd.kleur,
+    eigen: false,
+    categorieen: [
+      ...hoofd.categorieen.map((cat) => ({
+        id: cat.id,
+        naam: cat.naam,
+        eigen: false,
+        items: [
+          ...cat.items.map((it) => ({
+            id: it.id,
+            naam: overrideNaam.get(it.id) ?? it.naam,
+            eenheid: it.eenheid,
+            eigen: false,
+          })),
+          ...(toevoegingenPerCat.get(cat.id) ?? []).map((a) => ({
+            id: a.id,
+            naam: a.naam,
+            eenheid: null,
+            eigen: true,
+          })),
+        ],
+      })),
+      // Eigen middencategorieën die je onder een INGEBOUWDE hoofdcategorie hing.
+      ...(midPerOuder.get(hoofd.id) ?? []).map(eigenTak),
+    ],
   }))
+
+  const eigen: EffectieveHoofd[] = eigenHoofd.map((h) => ({
+    id: h.id,
+    naam: h.naam,
+    icoon: h.icoon ?? '',
+    kleur: h.kleur ?? null,
+    eigen: true,
+    categorieen: (midPerOuder.get(h.id) ?? []).map(eigenTak),
+  }))
+
+  // Eigen hoofdcategorieën vooraan: het zijn er weinig, je hebt ze zelf gemaakt,
+  // en je zoekt ze dus ook het eerst.
+  return [...eigen, ...ingebouwd]
 }

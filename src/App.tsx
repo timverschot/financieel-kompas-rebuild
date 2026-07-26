@@ -124,7 +124,7 @@ import { nieuwId } from './data/sync/id'
 import { inkomstenPerCategorie, maandInkomsten, maandUitgaven, uitgavenPerCategorie } from './utils/overzicht'
 import { uitgavenPerMaand } from './utils/maandverloop'
 import { labelVanCategorie } from './data/categorieen/resolve'
-import { stelSubcategorieenIn } from './data/categorieen/zoek'
+import { stelCategorieboomIn } from './data/categorieen/zoek'
 import { uitgavenInMaand } from './utils/budget'
 import { bouwHandelaarIndex } from './utils/categorieVoorstel'
 import { bonVanTransactie } from './utils/kluis'
@@ -396,7 +396,9 @@ export function App() {
 
   // Houd het categorie-register in sync met je aanpassingen, zodat zoeken,
   // weergave en oprollen de toegevoegde/hernoemde subcategorieën meteen tonen.
-  useMemo(() => stelSubcategorieenIn(subcategorieen), [subcategorieen])
+  // De volledige boom klaarzetten: de ingebouwde basis, de eigen categorieën (die
+  // sinds ronde 27 zelf een middenlaag kunnen zijn) en de eigen subcategorieën.
+  useMemo(() => stelCategorieboomIn(subcategorieen, categorieen), [subcategorieen, categorieen])
 
   async function exporteerNu() {
     const json = await exporteerBackup()
@@ -537,11 +539,35 @@ export function App() {
     if (oud) toonUndo(t('Kind verwijderd'), () => bewaarKind(oud))
   }
 
+  // Een eigen MIDDENcategorie maken onder een hoofdcategorie (eigen óf ingebouwd).
+  // Zo krijgt ook je eigen indeling de volledige boom hoofd → categorie → item.
+  async function voegCategorieOnderToe(ouderId: string, naam: string) {
+    await bewaarCategorie({ id: nieuwId(), naam, ouderId })
+    await herlaad()
+  }
+
   async function verwijderCat(id: string) {
     const oud = categorieen.find((c) => c.id === id)
+    // Alles wat eronder hangt gaat mee: de eigen middencategorieën en de
+    // subcategorieën daarin. Bleven die staan, dan zouden het weesrecords zijn die
+    // nergens meer verschijnen maar wél mee gesynchroniseerd worden — dezelfde
+    // regel als bij het verwijderen van een dossier of een transactie.
+    const kinderen = categorieen.filter((c) => c.ouderId === id)
+    const onderliggendeIds = new Set([id, ...kinderen.map((c) => c.id)])
+    const oudeSubs = subcategorieen.filter((sub) => onderliggendeIds.has(sub.categorieId))
+
     await verwijderCategorie(id)
+    for (const k of kinderen) await verwijderCategorie(k.id)
+    for (const sub of oudeSubs) await verwijderSubcategorie(sub.id)
     await herlaad()
-    if (oud) toonUndo(t('Categorie verwijderd'), () => bewaarCategorie(oud))
+
+    if (oud) {
+      toonUndo(t('Categorie verwijderd'), async () => {
+        await bewaarCategorie(oud)
+        for (const k of kinderen) await bewaarCategorie(k)
+        for (const sub of oudeSubs) await bewaarSubcategorie(sub)
+      })
+    }
   }
 
   async function verwijderBud(id: string) {
@@ -1502,7 +1528,9 @@ export function App() {
           <Kaart>
             {categorieen.length > 0 && (
               <ul className="lijst">
-                {categorieen.map((c) => (
+                {/* Enkel je eigen HOOFDcategorieën. De middencategorieën die je
+                    eronder maakt, staan in de boom hieronder op hun plaats. */}
+                {categorieen.filter((c) => !c.ouderId).map((c) => (
                   <li key={c.id} className="rij">
                     {/* Zelfde vierkantje als in de transactielijst, zodat je hier meteen
                         ziet wat je gekozen hebt. Zonder icoon: de beginletter. */}
@@ -1531,9 +1559,12 @@ export function App() {
           <ErrorBoundary naam="Categorieën">
             <CategorieBoom
               aanpassingen={subcategorieen}
+              eigenCategorieen={categorieen}
               onToevoegen={voegSubcategorieToe}
               onWijzigen={wijzigSubcategorie}
               onVerwijderen={verwijderSubcategorieH}
+              onCategorieToevoegen={voegCategorieOnderToe}
+              onCategorieVerwijderen={verwijderCat}
             />
           </ErrorBoundary>
           </div>

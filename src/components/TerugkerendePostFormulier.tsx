@@ -8,7 +8,7 @@ import { huidigeMaand } from '../utils/datum'
 import { INTERVAL_MAANDEN } from '../utils/vastelast'
 import { useT } from '../i18n'
 import type { Vertaler } from '../i18n'
-import { CategorieSelect } from './CategorieSelect'
+import { CategorieNiveauKiezer } from './CategorieNiveauKiezer'
 
 // De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
 // en het leegmaken na het opslaan niet uit elkaar kunnen lopen. De gekozen rekening
@@ -238,35 +238,36 @@ export function TerugkerendePostFormulier({
         </div>
       )}
 
-      <div className="veldrij">
-        <div className="veldgroep">
-          <label className="label-caps" htmlFor={`${veldId}-vaste-rekening`}>
-            {t('Vaste rekening')}
-          </label>
-          <select id={`${veldId}-vaste-rekening`} value={rekeningId} onChange={(e) => setRekeningId(e.target.value)}>
-            {rekeningen.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.naam}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="veldgroep">
-          <label className="label-caps" htmlFor={`${veldId}-vaste-categorie`}>
-            {t('Vaste categorie')}
-          </label>
-          {/* Dezelfde bron als het budgetformulier: de ingebouwde hoofdcategorieën
-              én de eigen categorieën. Voorheen stonden hier alleen de eigen
-              categorieën, dus wie er nog geen gemaakt had, kon een vaste last aan
-              niets hangen — en die viel dan uit elke telling. */}
-          <CategorieSelect
-            id={`${veldId}-vaste-categorie`}
-            waarde={categorieId}
-            onKies={setCategorieId}
-            categorieen={categorieen}
-            metGeenKeuze
-          />
-        </div>
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor={`${veldId}-vaste-rekening`}>
+          {t('Vaste rekening')}
+        </label>
+        <select id={`${veldId}-vaste-rekening`} value={rekeningId} onChange={(e) => setRekeningId(e.target.value)}>
+          {rekeningen.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.naam}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor={`${veldId}-vaste-categorie`}>
+          {t('Vaste categorie')}
+        </label>
+        {/* Alle drie de niveaus, met een zoekveld. Tot ronde 27 kon je hier alleen
+            een hoofdcategorie kiezen, dus stond je huur op "Woning en vaste lasten"
+            en je elektriciteit ook — en dan zegt de analyse niets meer dan dat er
+            geld naar je woning ging. Nu kan je rechtstreeks "Huur" of
+            "Elektriciteit" kiezen, en die tag verhuist mee naar de transactie
+            zodra je de vaste last inboekt. */}
+        <CategorieNiveauKiezer
+          id={`${veldId}-vaste-categorie`}
+          waarde={categorieId}
+          onKies={setCategorieId}
+          categorieen={categorieen}
+          metGeenKeuze
+        />
       </div>
 
       {/* Deze twee bolletjes stonden zonder enige uitleg onder het formulier. In de

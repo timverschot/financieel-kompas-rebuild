@@ -1084,6 +1084,14 @@ const en: Record<string, string> = {
   // Ronde 26 — de Analyse-pagina
   'Klik een rij open voor de details erachter.': 'Open a row for the details behind it.',
   'Toon details van {naam}': 'Show details for {naam}',
+  // Ronde 27 — een eigen boom en de Categorieën-pagina
+  '+ categorie': '+ category',
+  'Naam categorie': 'Category name',
+  'Nieuwe categorie in {naam}': 'New category in {naam}',
+  'Voeg categorie toe aan {naam}': 'Add a category to {naam}',
+  'Vouw open om te bekijken. Je kan op elk niveau iets toevoegen.':
+    'Expand to browse. You can add something at every level.',
+  '{c} cat. · {i} items': '{c} cat. · {i} items',
   'Zoek een categorie': 'Search for a category',
   'Typ om ook subcategorieën en producten te zoeken…': 'Type to search subcategories and products too…',
   'Niets gevonden voor deze zoekterm.': 'Nothing found for this search.',
@@ -2157,6 +2165,14 @@ const fr: Record<string, string> = {
   // Ronde 26 — de Analyse-pagina
   'Klik een rij open voor de details erachter.': 'Ouvrez une ligne pour voir le détail.',
   'Toon details van {naam}': 'Afficher le détail de {naam}',
+  // Ronde 27 — een eigen boom en de Categorieën-pagina
+  '+ categorie': '+ catégorie',
+  'Naam categorie': 'Nom de la catégorie',
+  'Nieuwe categorie in {naam}': 'Nouvelle catégorie dans {naam}',
+  'Voeg categorie toe aan {naam}': 'Ajouter une catégorie à {naam}',
+  'Vouw open om te bekijken. Je kan op elk niveau iets toevoegen.':
+    "Dépliez pour parcourir. Vous pouvez ajouter quelque chose à chaque niveau.",
+  '{c} cat. · {i} items': '{c} cat. · {i} articles',
   'Zoek een categorie': 'Rechercher une catégorie',
   'Typ om ook subcategorieën en producten te zoeken…': 'Tapez pour chercher aussi les sous-catégories et produits…',
   'Niets gevonden voor deze zoekterm.': 'Rien trouvé pour cette recherche.',

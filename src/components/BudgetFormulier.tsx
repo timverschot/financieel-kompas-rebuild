@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import type { Budget, Categorie } from '../data/schema'
 import { invoerNaarCenten } from '../utils/format'
 import { STANDAARD_CATEGORIE_ID } from './CategorieSelect'
-import { BudgetcategorieKiezer } from './BudgetcategorieKiezer'
+import { CategorieNiveauKiezer } from './CategorieNiveauKiezer'
 import { useT } from '../i18n'
 
 // De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
@@ -54,7 +54,7 @@ export function BudgetFormulier({
           {/* Sinds ronde 25 mag een budget ook op een subcategorie of op één
               product staan (zie utils/budget.ts), en dan is een gewone keuzelijst
               met duizend regels onbruikbaar. */}
-          <BudgetcategorieKiezer id="budgetcategorie" waarde={categorieId} onKies={setCategorieId} categorieen={categorieen} />
+          <CategorieNiveauKiezer id="budgetcategorie" waarde={categorieId} onKies={setCategorieId} categorieen={categorieen} />
       </div>
 
       <div className="veldrij">

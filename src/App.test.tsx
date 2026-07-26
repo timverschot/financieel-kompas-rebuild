@@ -385,10 +385,12 @@ describe('App', () => {
     await gaMeer(user, 'Categorieën')
     await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
     await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
-    expect(await screen.findByText('Vervoer')).toBeInTheDocument()
+    // Sinds ronde 27 staat een eigen hoofdcategorie op twee plaatsen: in de lijst
+    // én als tak in de boom eronder. We toetsen dus op de verwijderknop.
+    expect(await screen.findByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Verwijder categorie Vervoer' }))
-    await waitFor(() => expect(screen.queryByText('Vervoer')).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeNull())
   })
 
   it('hernoemt een bestaande categorie', async () => {

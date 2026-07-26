@@ -76,7 +76,9 @@ export function HoofdcategorieChips({
   const { t } = useT()
   const chips = [
     ...INGEBOUWDE_CATEGORIEEN.map((h) => ({ id: h.id, icoon: h.icoon, label: t(h.naam) })),
-    ...eigenCategorieen.map((c) => ({ id: c.id, icoon: c.icoon ?? '🏷️', label: c.naam })),
+    // Alleen eigen HOOFDcategorieën: een eigen middencategorie (met ouderId) hoort
+    // onder haar ouder en niet als losse chip in deze rij.
+    ...eigenCategorieen.filter((c) => !c.ouderId).map((c) => ({ id: c.id, icoon: c.icoon ?? '🏷️', label: c.naam })),
   ]
   return (
     <div role="group" aria-label={t('Hoofdcategorieën')} style={chipRij}>

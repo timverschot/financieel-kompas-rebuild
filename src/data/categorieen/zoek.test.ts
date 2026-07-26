@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { INGEBOUWDE_CATEGORIEEN } from './ingebouwd'
-import { PLATTE_ITEMS, itemPerId, zoekItems, stelSubcategorieenIn } from './zoek'
+import { PLATTE_ITEMS, itemPerId, midPerId, zoekItems, zoekMidCategorieen, stelCategorieboomIn, stelSubcategorieenIn } from './zoek'
 
 describe('ingebouwde categorieboom', () => {
   it('heeft 14 hoofdcategorieën', () => {
@@ -74,5 +74,46 @@ describe('gebruikersaanpassingen (register)', () => {
   it('toont een hernoeming van een ingebouwd item', () => {
     stelSubcategorieenIn([{ id: 'i-eieren-4688', naam: 'Bio-eieren', categorieId: 'cat-zuivel-en-kaas' }])
     expect(itemPerId('i-eieren-4688')?.naam).toBe('Bio-eieren')
+  })
+})
+
+// --- Ronde 27: de middenlaag in het register, ingebouwd én eigen ---
+describe('de middenlaag', () => {
+  afterEach(() => stelCategorieboomIn([], []))
+
+  it('kent elke ingebouwde middencategorie', () => {
+    expect(midPerId('cat-broodwaren')?.hoofdId).toBe('ov-voeding')
+  })
+
+  it('neemt een eigen middencategorie op onder haar eigen hoofdcategorie', () => {
+    stelCategorieboomIn([], [
+      { id: 'eig-hoofd', naam: 'Hobby' },
+      { id: 'eig-mid', naam: 'Muziek', ouderId: 'eig-hoofd' },
+    ])
+    expect(midPerId('eig-mid')).toMatchObject({ naam: 'Muziek', hoofdId: 'eig-hoofd', hoofdNaam: 'Hobby' })
+  })
+
+  it('laat een subcategorie onder een eigen middencategorie NIET verdwijnen', () => {
+    // Precies het gevaar waarom dit tot ronde 27 niet mocht: bouwEffectieveItems
+    // sloeg een toevoeging met een onbekende ouder over, en dan viel het item uit
+    // elke telling zonder dat iemand het zag.
+    stelCategorieboomIn([{ id: 'eig-item', naam: 'Snaren', categorieId: 'eig-mid' }], [
+      { id: 'eig-hoofd', naam: 'Hobby' },
+      { id: 'eig-mid', naam: 'Muziek', ouderId: 'eig-hoofd' },
+    ])
+    expect(itemPerId('eig-item')).toMatchObject({ naam: 'Snaren', categorieId: 'eig-mid', hoofdId: 'eig-hoofd' })
+  })
+
+  it('slaat een middencategorie zonder bestaande ouder over', () => {
+    stelCategorieboomIn([], [{ id: 'wees', naam: 'Wees', ouderId: 'bestaat-niet' }])
+    expect(midPerId('wees')).toBeUndefined()
+  })
+
+  it('vindt een eigen middencategorie terug via het zoeken', () => {
+    stelCategorieboomIn([], [
+      { id: 'eig-hoofd', naam: 'Hobby' },
+      { id: 'eig-mid', naam: 'Muziek', ouderId: 'eig-hoofd' },
+    ])
+    expect(zoekMidCategorieen('muziek').map((m) => m.id)).toContain('eig-mid')
   })
 })

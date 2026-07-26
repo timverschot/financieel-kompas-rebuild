@@ -430,7 +430,7 @@ export function TransactieLijst({
                   ))}
                   {categorieen.length > 0 && (
                     <optgroup label={t('Eigen categorieën')}>
-                      {categorieen.map((c) => (
+                      {categorieen.filter((c) => !c.ouderId).map((c) => (
                         <option key={c.id} value={c.id}>{c.naam}</option>
                       ))}
                     </optgroup>

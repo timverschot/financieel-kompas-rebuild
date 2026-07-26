@@ -36,6 +36,19 @@ export const CategorieSchema = z.object({
   // dus bestaande categorieën blijven geldig — geen migratie.
   icoon: z.string().min(1).max(8).optional(),
   kleur: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'kleur moet #rrggbb zijn').optional(),
+  // WAARONDER deze categorie hangt. Dit maakt van de vlakke eigen-categorielijst
+  // een echte boom, net als bij de ingebouwde categorieën:
+  //
+  //   ontbreekt        → een eigen HOOFDcategorie (het gedrag van vóór ronde 27,
+  //                      dus elke bestaande categorie blijft precies wat ze was)
+  //   ingevuld         → een eigen MIDDENcategorie, hangend onder die ouder. De
+  //                      ouder mag een eigen hoofdcategorie zijn óf een ingebouwde
+  //                      (ov-*), zodat je ook onder "Voeding" iets eigens kan zetten.
+  //
+  // Onder zo'n eigen middencategorie kan je vervolgens gewone subcategorieën
+  // hangen (SubcategorieSchema), en dan is de boom hoofd → categorie → item ook
+  // voor je eigen categorieën compleet.
+  ouderId: z.string().min(1).optional(),
 })
 export type Categorie = z.infer<typeof CategorieSchema>
 
