@@ -3,7 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { zetSchermbreedte, herstelSchermbreedte } from '../test/schermbreedte'
 import { SpaardoelSectie } from './SpaardoelSectie'
-import type { Spaardoel } from '../data/schema'
+import type { Overboeking, Rekening, Spaardoel, Transactie } from '../data/schema'
+import { vandaag } from '../utils/datum'
+import { voegMaandenToe } from '../utils/rekenhulp'
 
 const rekeningen = [{ id: 'r1', naam: 'Betaalrekening', beginsaldo: 0 }]
 
@@ -97,5 +99,55 @@ describe('SpaardoelSectie', () => {
     } finally {
       herstelSchermbreedte()
     }
+  })
+})
+
+// Ronde 18: elk doel zegt nu zelf of je het haalt.
+describe('SpaardoelSectie — haal ik het?', () => {
+  const spaarRekeningen: Rekening[] = [{ id: 'sp', naam: 'Spaar', beginsaldo: 0, type: 'spaar' }]
+
+  function toonDoel(doel: Spaardoel, transacties: Transactie[] = [], overboekingen: Overboeking[] = []) {
+    render(
+      <SpaardoelSectie
+        spaardoelen={[doel]}
+        rekeningen={spaarRekeningen}
+        transacties={transacties}
+        overboekingen={overboekingen}
+        onOpslaan={vi.fn()}
+        onVerwijderen={vi.fn()}
+      />,
+    )
+  }
+
+  it('legt uit wat er ontbreekt bij een doel zonder datum en zonder tempo', () => {
+    toonDoel({ id: 'd1', naam: 'Auto', doelbedrag: 600000, huidigBedrag: 0 })
+    expect(screen.getByText('Koppel een rekening of zet een doeldatum om te zien of je op schema zit.')).toBeInTheDocument()
+  })
+
+  it('meldt een bereikt doel', () => {
+    toonDoel({ id: 'd1', naam: 'Auto', doelbedrag: 600000, huidigBedrag: 600000 })
+    expect(screen.getByText('Doel gehaald')).toBeInTheDocument()
+  })
+
+  // De doeldatum wordt uit de dag van vandaag afgeleid, zodat de test niet
+  // vastzit aan de maand waarin ze gedraaid wordt.
+  const overDrieMaanden = voegMaandenToe(vandaag(), 3)
+
+  it('zegt bij een streefbedrag dat te laag is dat je achterloopt', () => {
+    // € 6.000 te gaan in ongeveer drie maanden: dat is zo'n € 2.000 per maand.
+    // Met een streefbedrag van € 10 per maand haal je dat nooit.
+    toonDoel({ id: 'd1', naam: 'Auto', doelbedrag: 600000, huidigBedrag: 0, doeldatum: overDrieMaanden, maandbedrag: 1000 })
+    expect(screen.getByText('Achter op schema')).toBeInTheDocument()
+    expect(screen.getByText(/jouw streefbedrag: € 10,00/)).toBeInTheDocument()
+  })
+
+  it('meldt "Op schema" wanneer het streefbedrag volstaat', () => {
+    toonDoel({ id: 'd1', naam: 'Auto', doelbedrag: 600000, huidigBedrag: 0, doeldatum: overDrieMaanden, maandbedrag: 500000 })
+    expect(screen.getByText('Op schema')).toBeInTheDocument()
+  })
+
+  it('waarschuwt wanneer de doeldatum verstreken is', () => {
+    toonDoel({ id: 'd1', naam: 'Auto', doelbedrag: 600000, huidigBedrag: 10000, doeldatum: '2020-01-01' })
+    expect(screen.getByText('Datum voorbij')).toBeInTheDocument()
   })
 })

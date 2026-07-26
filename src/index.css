@@ -757,6 +757,21 @@ a:hover {
   order: 2;
 }
 
+/* Zonder dit mag een rasterkolom niet smaller worden dan haar breedste inhoud
+   (een rij chips, een lange categorienaam), en loopt het raster buiten het
+   scherm. min-width:0 laat de kolom wél krimpen; de inhoud breekt of schuift af.
+
+   LET OP: deze regel stond tot ronde 18 binnen de desktop-mediaquery, waardoor
+   ze op een telefoon NIET gold. Gevolg: de pagina Transacties was daar ruim
+   2.200 px breed en je moest zijwaarts scrollen om het formulier te zien. Een
+   rasterkolom mag op géén enkele schermbreedte breder worden dan haar spoor, dus
+   hoort dit hier, bij de rasterdefinitie zelf. */
+.raster-hoofd > *,
+.raster-twee > *,
+.raster-lijst-formulier > * {
+  min-width: 0;
+}
+
 .kolom-zij {
   display: flex;
   flex-direction: column;
@@ -796,15 +811,6 @@ a:hover {
   .raster-lijst-formulier > .kolom-lijst {
     grid-column: 1;
     grid-row: 1;
-  }
-
-  /* Zonder dit mag een kolom niet smaller worden dan haar breedste inhoud (een
-     rij chips, een lange categorienaam). Het raster liep daardoor buiten het
-     scherm. min-width:0 laat de kolom wél krimpen; de inhoud schuift of breekt af. */
-  .raster-hoofd > *,
-  .raster-twee > *,
-  .raster-lijst-formulier > * {
-    min-width: 0;
   }
 
   /* De zijkolom scrollt mee tot ze zelf te lang wordt. */

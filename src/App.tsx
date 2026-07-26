@@ -112,6 +112,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { OnderNavigatie, PAGINAS, type Pagina } from './components/OnderNavigatie'
 import { Meldingenbel } from './components/Meldingenbel'
 import { BalansRegel } from './components/BalansRegel'
+import { BufferRegel } from './components/BufferRegel'
 import { Zijbalk } from './components/Zijbalk'
 import { Merkteken } from './components/Merkteken'
 import { saldoVerrekeningDossier } from './utils/dossier'
@@ -122,6 +123,7 @@ import { uitgavenPerMaand } from './utils/maandverloop'
 import { labelVanCategorie } from './data/categorieen/resolve'
 import { stelSubcategorieenIn } from './data/categorieen/zoek'
 import { uitgavenInMaand } from './utils/budget'
+import { bouwHandelaarIndex } from './utils/categorieVoorstel'
 import { formatEuro } from './utils/format'
 import { bouwMeldingen } from './utils/meldingen'
 import { useInstellingen } from './instellingen'
@@ -856,6 +858,9 @@ export function App() {
   const perCategorie = uitgavenPerCategorie(transacties, categorieen, maand)
   const perInkomsten = inkomstenPerCategorie(transacties, categorieen, maand)
   const handelaars = [...new Set(transacties.map((t) => t.omschrijving).filter((s) => s.trim().length > 0))]
+  // Welke categorie elke handelaar de vorige keer kreeg. Zo hoeft het formulier
+  // die niet elke keer opnieuw te vragen; het stelt ze voor.
+  const handelaarIndex = bouwHandelaarIndex(transacties)
   // Gearchiveerde rekeningen blijven in het overzicht staan, maar verdwijnen uit
   // de keuzelijsten waar je nieuwe dingen aan koppelt.
   const actieveRekeningen = rekeningen.filter((r) => !r.gearchiveerd)
@@ -934,6 +939,16 @@ export function App() {
           {/* Benoemt wat het netto-cijfer betekent: overschot, tekort of balans. */}
           <BalansRegel inkomsten={inkomsten} uitgaven={uitgaven} />
 
+          {/* Het enige cijfer dat verder kijkt dan deze maand: hoelang je toekomt
+              zonder inkomen. Zwijgt zolang het niets kan betekenen. */}
+          <BufferRegel
+            rekeningen={rekeningen}
+            transacties={transacties}
+            overboekingen={overboekingen}
+            terugkerendePosten={terugkerendePosten}
+            vandaagISO={vandaag()}
+          />
+
           <ErrorBoundary naam="Maandoverzicht">
             <div className="raster-hoofd">
               <div className="stapel">
@@ -1009,6 +1024,7 @@ export function App() {
                   rekeningen={actieveRekeningen}
                   categorieen={categorieen}
                   handelaars={handelaars}
+                  handelaarIndex={handelaarIndex}
                   bewerken={bewerkTransactie}
                   streepjescodes={streepjescodes}
                   onOnthoudStreepjescode={onthoudStreepjescode}

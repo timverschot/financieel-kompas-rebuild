@@ -35,6 +35,13 @@ describe('vertaaltabellen', () => {
     expect([...fr].filter((k) => !en.has(k))).toEqual([])
   })
 
+  it('vertaalt de nieuwe teksten van ronde 18', () => {
+    expect(vertaal('en', 'Op schema')).toBe('On track')
+    expect(vertaal('fr', 'Achter op schema')).toBe('En retard')
+    expect(vertaal('en', '{n} maanden buffer', { n: '5,2' })).toBe('5,2 months of buffer')
+    expect(vertaal('fr', 'Vorige keer bij deze handelaar:')).toBe('La dernière fois chez ce commerçant :')
+  })
+
   it('vertaalt de nieuwe teksten van ronde 17', () => {
     expect(vertaal('en', 'Je gegevens en je privacy')).toBe('Your data and your privacy')
     expect(vertaal('fr', 'Waar kan je besparen?')).toBe('Où pouvez-vous économiser ?')

@@ -27,3 +27,19 @@ export function vandaag(nu: Date = new Date()): string {
 export function huidigeMaand(nu: Date = new Date()): string {
   return naarDatumTekst(nu).slice(0, 7)
 }
+
+// 'JJJJ-MM-DD' of 'JJJJ-MM' als leesbare maand + jaar, bv. "juli 2028".
+//
+// Voor een SCHATTING is dit de juiste vorm: een exacte dag ("2028-07-26")
+// suggereert een precisie die een berekening op maandbasis niet heeft.
+// Een datum die de gebruiker zélf koos, hoort wél volledig getoond te worden.
+//
+// De maandnaam is Nederlands, net als in de vijf andere plaatsen waar de app een
+// maand schrijft (staafgrafiek, vermogensevolutie, vooruitblik, analyse en de
+// maandschakelaar). Zouden die ooit met de taalkeuze mee moeten gaan, dan is dit
+// de plek om dat één keer te regelen.
+export function maandJaarLabel(datumISO: string): string {
+  const [jaar, maand] = datumISO.split('-').map(Number)
+  if (!Number.isFinite(jaar) || !Number.isFinite(maand)) return datumISO
+  return new Intl.DateTimeFormat('nl-BE', { month: 'long', year: 'numeric' }).format(new Date(jaar, maand - 1, 1))
+}

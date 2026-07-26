@@ -1,12 +1,83 @@
 import { useState } from 'react'
 import type { Kind, Overboeking, Rekening, Spaardoel, Transactie } from '../data/schema'
 import { SpaardoelFormulier } from './SpaardoelFormulier'
-import { spaardoelVoortgang } from '../utils/spaardoel'
+import { spaardoelPlan, spaardoelTempo, TEMPO_VENSTER_MAANDEN } from '../utils/spaardoel'
+import { spaardoelVoortgang, type SpaardoelPlan } from '../utils/spaardoel'
+import { maandJaarLabel, vandaag } from '../utils/datum'
 import { naamVanPersoon } from '../utils/persoon'
 import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { Balk, Kaart, Leeg, PaginaKop } from '../ui/basis'
 import { useT } from '../i18n'
 import { zachteAchtergrond } from './TransactieLijst'
+
+// Eén regel per doel die zegt of je het haalt: wat er per maand bij moet, wat je
+// effectief doet, en wanneer je aan dat tempo klaar bent. Zwijgt volledig zolang
+// er niets zinnigs te zeggen is (geen doeldatum, geen streefbedrag, geen tempo) —
+// een lege regel met streepjes is erger dan geen regel.
+function PlanRegel({ doel, plan }: { doel: Spaardoel; plan: SpaardoelPlan }) {
+  const { t } = useT()
+
+  if (plan.alBereikt) {
+    return (
+      <div>
+        <span className="badge badge-ok">{t('Doel gehaald')}</span>
+      </div>
+    )
+  }
+
+  if (plan.datumVerstreken) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span className="badge badge-laat">{t('Datum voorbij')}</span>
+        <span className="rij-meta">{t('De doeldatum is verstreken. Zet een nieuwe datum om weer een tempo te kunnen berekenen.')}</span>
+      </div>
+    )
+  }
+
+  const stukken: string[] = []
+  if (plan.benodigdPerMaand !== null) {
+    stukken.push(
+      t('{bedrag} per maand nodig ({n} mnd te gaan)', {
+        bedrag: formatEuro(plan.benodigdPerMaand),
+        n: plan.maandenTotDoeldatum ?? 0,
+      }),
+    )
+  }
+  if (plan.tempoPerMaand !== null) {
+    stukken.push(
+      plan.tempoBron === 'streefbedrag'
+        ? t('jouw streefbedrag: {bedrag}', { bedrag: formatEuro(plan.tempoPerMaand) })
+        : t('je tempo: {bedrag} per maand (gemiddeld over {n} maanden)', {
+            bedrag: formatEuro(plan.tempoPerMaand),
+            n: TEMPO_VENSTER_MAANDEN,
+          }),
+    )
+  }
+  if (plan.verwachteDatum) {
+    // Bewust maand + jaar: het is een schatting, geen afspraak op de dag.
+    stukken.push(t('zo klaar rond {datum}', { datum: maandJaarLabel(plan.verwachteDatum) }))
+  }
+
+  if (stukken.length === 0) {
+    // Niets te zeggen: geen doeldatum, geen streefbedrag, geen meetbaar tempo.
+    // Dan is het nuttigste wat we kunnen doen, uitleggen wat eraan ontbreekt.
+    return (
+      <span className="rij-meta">
+        {doel.gekoppeldeRekeningId
+          ? t('Zet een doeldatum of een maandbedrag om te zien of je op schema zit.')
+          : t('Koppel een rekening of zet een doeldatum om te zien of je op schema zit.')}
+      </span>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      {plan.opSchema === true && <span className="badge badge-ok">{t('Op schema')}</span>}
+      {plan.opSchema === false && <span className="badge badge-laat">{t('Achter op schema')}</span>}
+      <span className="rij-meta">{stukken.join(' · ')}</span>
+    </div>
+  )
+}
 
 // De volledige Spaardoelen-sectie: overzicht met voortgangsbalken, snel het
 // huidige bedrag bijwerken (bij manueel bijgehouden doelen), en een formulier om
@@ -32,6 +103,9 @@ export function SpaardoelSectie({
   onVerwijderen: (id: string) => Promise<void> | void
 }) {
   const { t } = useT()
+  // Eén keer per render dezelfde dag gebruiken, zodat alle doelen met exact
+  // dezelfde 'vandaag' rekenen.
+  const nu = vandaag()
   const [bewerk, setBewerk] = useState<Spaardoel | null>(null)
   // Welk doel er rechts (op een telefoon: eronder) opengeklapt staat. Zolang er
   // niets gekozen is, staat rechts gewoon het formulier voor een nieuw doel.
@@ -100,6 +174,8 @@ export function SpaardoelSectie({
           <ul className="lijst">
             {spaardoelen.map((d) => {
               const v = spaardoelVoortgang(d, rekeningen, transacties, overboekingen)
+              const tempo = spaardoelTempo(d, rekeningen, transacties, overboekingen, nu)
+              const plan = spaardoelPlan(d, v, tempo, nu)
               const kleur = d.kleur ?? 'var(--positive)'
               const manueel = !d.gekoppeldeRekeningId
               // De naam van het gezinslid komt uit de lijst; staat het lid er niet
@@ -162,6 +238,10 @@ export function SpaardoelSectie({
                       {d.doeldatum ? t(' · tegen {datum}', { datum: d.doeldatum }) : ''}
                     </span>
                   </div>
+
+                  {/* Haal je het? Dit stond vroeger enkel als losse rekenhulp waar je
+                      alles zelf moest intikken; nu zegt het doel het zelf. */}
+                  <PlanRegel doel={d} plan={plan} />
 
                   {manueel && (
                     <div className="knoprij" style={{ flexWrap: 'nowrap' }}>

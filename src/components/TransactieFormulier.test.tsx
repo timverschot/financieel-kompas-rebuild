@@ -2,6 +2,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { TransactieFormulier } from './TransactieFormulier'
+import { bouwHandelaarIndex } from '../utils/categorieVoorstel'
+import type { Transactie } from '../data/schema'
 
 const rekeningen = [{ id: 'r1', naam: 'Betaalrekening', beginsaldo: 0 }]
 
@@ -149,5 +151,69 @@ describe('TransactieFormulier', () => {
         regels: [expect.objectContaining({ categorieId: 'sub-kefir-9', omschrijving: 'Kefir', bedrag: -300 })],
       }),
     )
+  })
+})
+
+// Ronde 18: boekte je deze handelaar eerder, dan stelt het formulier die
+// categorie voor. Bewust een voorstel, geen stille invulling.
+describe('TransactieFormulier — categorie van de vorige keer', () => {
+  const eerder: Transactie[] = [
+    { id: 't1', datum: '2026-06-01', omschrijving: 'Colruyt', bedrag: -3200, rekeningId: 'r1', categorieId: 'ov-voeding' },
+  ]
+
+  function toonMetIndex() {
+    return render(
+      <TransactieFormulier
+        onOpslaan={vi.fn()}
+        rekeningen={[{ id: 'r1', naam: 'Zicht', beginsaldo: 0 }]}
+        categorieen={[]}
+        handelaars={['Colruyt']}
+        handelaarIndex={bouwHandelaarIndex(eerder)}
+      />,
+    )
+  }
+
+  it('stelt niets voor zolang de handelaar leeg is', () => {
+    toonMetIndex()
+    expect(screen.queryByText('Vorige keer bij deze handelaar:')).not.toBeInTheDocument()
+  })
+
+  it('stelt de categorie van de vorige keer voor, ook met andere hoofdletters', async () => {
+    const user = userEvent.setup()
+    toonMetIndex()
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'colruyt')
+
+    expect(await screen.findByText('Vorige keer bij deze handelaar:')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Gebruik Voeding, zoals de vorige keer' })).toBeInTheDocument()
+  })
+
+  it('stelt niets voor bij een onbekende handelaar', async () => {
+    const user = userEvent.setup()
+    toonMetIndex()
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Delhaize')
+    expect(screen.queryByText('Vorige keer bij deze handelaar:')).not.toBeInTheDocument()
+  })
+
+  it('verdwijnt zodra je het voorstel overneemt', async () => {
+    const user = userEvent.setup()
+    toonMetIndex()
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Colruyt')
+    await user.click(await screen.findByRole('button', { name: 'Gebruik Voeding, zoals de vorige keer' }))
+
+    expect(screen.queryByText('Vorige keer bij deze handelaar:')).not.toBeInTheDocument()
+  })
+
+  it('doet niets wanneer er geen index meegegeven is', async () => {
+    const user = userEvent.setup()
+    render(
+      <TransactieFormulier
+        onOpslaan={vi.fn()}
+        rekeningen={[{ id: 'r1', naam: 'Zicht', beginsaldo: 0 }]}
+        categorieen={[]}
+        handelaars={['Colruyt']}
+      />,
+    )
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Colruyt')
+    expect(screen.queryByText('Vorige keer bij deze handelaar:')).not.toBeInTheDocument()
   })
 })

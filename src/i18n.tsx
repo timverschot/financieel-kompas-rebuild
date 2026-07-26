@@ -942,6 +942,28 @@ const en: Record<string, string> = {
   'Geen advertenties, geen doorverkoop': 'No ads, no reselling',
   'Er zit geen advertentie- of volgcode in de app, en je gegevens gaan naar niemand anders.':
     'There is no advertising or tracking code in the app, and your data goes to no one else.',
+  // Ronde 18 — spaardoelen, buffer en auto-categorisatie
+  'Doel gehaald': 'Goal reached',
+  'Datum voorbij': 'Date passed',
+  'De doeldatum is verstreken. Zet een nieuwe datum om weer een tempo te kunnen berekenen.':
+    'The target date has passed. Set a new date to get a pace again.',
+  'Op schema': 'On track',
+  'Achter op schema': 'Behind schedule',
+  '{bedrag} per maand nodig ({n} mnd te gaan)': '{bedrag} per month needed ({n} mo to go)',
+  'jouw streefbedrag: {bedrag}': 'your target amount: {bedrag}',
+  'je tempo: {bedrag} per maand (gemiddeld over {n} maanden)':
+    'your pace: {bedrag} per month (average over {n} months)',
+  'zo klaar rond {datum}': 'at that pace, done around {datum}',
+  'Zet een doeldatum of een maandbedrag om te zien of je op schema zit.':
+    'Set a target date or a monthly amount to see whether you are on track.',
+  'Koppel een rekening of zet een doeldatum om te zien of je op schema zit.':
+    'Link an account or set a target date to see whether you are on track.',
+  '{n} maanden buffer': '{n} months of buffer',
+  '1 maand buffer': '1 month of buffer',
+  'Je vaste lasten zijn {last} per maand. Met {geld} op je spaar- en cashrekeningen kom je zo lang toe zonder inkomen — eten en tanken komen daar nog bij.':
+    'Your fixed costs are {last} per month. With {geld} in your savings and cash accounts you would last that long without income — food and fuel come on top of that.',
+  'Vorige keer bij deze handelaar:': 'Last time at this merchant:',
+  'Gebruik {naam}, zoals de vorige keer': 'Use {naam}, same as last time',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -1867,6 +1889,28 @@ const fr: Record<string, string> = {
   'Geen advertenties, geen doorverkoop': 'Pas de publicité, pas de revente',
   'Er zit geen advertentie- of volgcode in de app, en je gegevens gaan naar niemand anders.':
     'L’application ne contient aucun code publicitaire ou de pistage, et vos données ne vont à personne d’autre.',
+  // Ronde 18 — spaardoelen, buffer en auto-categorisatie
+  'Doel gehaald': 'Objectif atteint',
+  'Datum voorbij': 'Date dépassée',
+  'De doeldatum is verstreken. Zet een nieuwe datum om weer een tempo te kunnen berekenen.':
+    'La date cible est dépassée. Fixez une nouvelle date pour obtenir à nouveau un rythme.',
+  'Op schema': 'Dans les temps',
+  'Achter op schema': 'En retard',
+  '{bedrag} per maand nodig ({n} mnd te gaan)': '{bedrag} par mois nécessaires ({n} mois restants)',
+  'jouw streefbedrag: {bedrag}': 'votre montant cible : {bedrag}',
+  'je tempo: {bedrag} per maand (gemiddeld over {n} maanden)':
+    'votre rythme : {bedrag} par mois (moyenne sur {n} mois)',
+  'zo klaar rond {datum}': 'à ce rythme, terminé vers {datum}',
+  'Zet een doeldatum of een maandbedrag om te zien of je op schema zit.':
+    'Fixez une date cible ou un montant mensuel pour voir si vous êtes dans les temps.',
+  'Koppel een rekening of zet een doeldatum om te zien of je op schema zit.':
+    'Liez un compte ou fixez une date cible pour voir si vous êtes dans les temps.',
+  '{n} maanden buffer': '{n} mois de réserve',
+  '1 maand buffer': '1 mois de réserve',
+  'Je vaste lasten zijn {last} per maand. Met {geld} op je spaar- en cashrekeningen kom je zo lang toe zonder inkomen — eten en tanken komen daar nog bij.':
+    'Vos charges fixes sont de {last} par mois. Avec {geld} sur vos comptes d’épargne et en liquide, vous tiendriez ce temps-là sans revenu — la nourriture et le carburant viennent en plus.',
+  'Vorige keer bij deze handelaar:': 'La dernière fois chez ce commerçant :',
+  'Gebruik {naam}, zoals de vorige keer': 'Utiliser {naam}, comme la dernière fois',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 

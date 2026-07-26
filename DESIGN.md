@@ -103,6 +103,25 @@ Labels krijgen `className="label-caps"`.
 <Balk label={naam} fractie={0.62} nu={620} max={1000} kleur="var(--positive)" />
 ```
 
+## Layout-invariant die je niet mag breken
+
+**`min-width: 0` op elke rasterkolom staat BUITEN elke mediaquery**, bij de
+rasterdefinitie zelf (`.raster-hoofd > *`, `.raster-twee > *`,
+`.raster-lijst-formulier > *` in `index.css`).
+
+Zonder die regel mag een grid-kolom niet smaller worden dan haar breedste inhoud
+— een rij chips, een lange categorienaam — en loopt de pagina buiten het scherm.
+De regel stond een tijd lang binnen `@media (min-width: 1024px)`, dus gold ze
+alleen op desktop. Gevolg: de pagina Transacties was op een telefoon ruim
+2.200 px breed en je moest zijwaarts scrollen om het formulier te zien.
+
+**Dit soort fout kan de testsuite niet vangen.** jsdom rekent geen layout uit, dus
+geen enkele component-test ziet dat een pagina te breed wordt. De enige manier om
+het te controleren is de gebouwde app in een echte browser openen en per pagina
+`document.documentElement.scrollWidth` vergelijken met de schermbreedte. Doe dat bij
+elke wijziging aan de rasters of aan brede inhoud (chips, tabellen, lange namen),
+op 390 px én op 1440 px.
+
 ## Wat je niet doet
 
 - Geen hexkleuren, geen `#fff`, geen `rgba(...)` behalve in `index.css`.

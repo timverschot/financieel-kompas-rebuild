@@ -7,6 +7,7 @@ import { labelVanCategorie } from '../data/categorieen/resolve'
 import { zoekProduct } from '../utils/openFoodFacts'
 import { CategorieKiezer } from './CategorieKiezer'
 import { HandelaarVeld } from './HandelaarVeld'
+import { voorstelCategorie, type HandelaarIndex } from '../utils/categorieVoorstel'
 import { ItemZoeker } from './ItemZoeker'
 import { NutriScoreBadge } from './NutriScoreBadge'
 import { Kaart } from '../ui/basis'
@@ -60,6 +61,7 @@ export function TransactieFormulier({
   onOnthoudStreepjescode,
   onNieuweSubcategorie,
   gezinsleden = [],
+  handelaarIndex,
 }: {
   onOpslaan: (t: Transactie) => Promise<void> | void
   onAnnuleer?: () => void
@@ -74,6 +76,9 @@ export function TransactieFormulier({
   onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
   // Optioneel: voor of door welke gezinsleden was deze uitgave?
   gezinsleden?: Kind[]
+  // Optioneel: welke categorie deze handelaar de vorige keer kreeg. Zonder deze
+  // index blijft het formulier zich exact gedragen zoals voorheen.
+  handelaarIndex?: HandelaarIndex
 }) {
   const { t } = useT()
   const [omschrijving, setOmschrijving] = useState('')
@@ -244,6 +249,12 @@ export function TransactieFormulier({
     }
   }
 
+  // Het voorstel wordt enkel getoond zolang je zelf nog niets gekozen hebt, en
+  // nooit bij een gesplitst kassaticket (daar heeft elke regel zijn eigen categorie).
+  const voorsteldId = !gesplitst && !categorieId && handelaarIndex ? voorstelCategorie(omschrijving, handelaarIndex) : null
+  const voorstelNaam = voorsteldId ? labelVanCategorie(voorsteldId, categorieen) : undefined
+  const voorstel = voorsteldId && voorstelNaam ? { id: voorsteldId, naam: voorstelNaam } : null
+
   return (
     <form onSubmit={verzend} className="stapel">
       <div className="veldrij">
@@ -269,12 +280,31 @@ export function TransactieFormulier({
       </label>
 
       {!gesplitst ? (
-        <CategorieKiezer
-          waarde={categorieId || undefined}
-          onKies={(id) => setCategorieId(id ?? '')}
-          gebruikerCategorieen={categorieen}
-          onNieuweSubcategorie={onNieuweSubcategorie}
-        />
+        <>
+          <CategorieKiezer
+            waarde={categorieId || undefined}
+            onKies={(id) => setCategorieId(id ?? '')}
+            gebruikerCategorieen={categorieen}
+            onNieuweSubcategorie={onNieuweSubcategorie}
+          />
+
+          {/* Boekte je deze handelaar eerder, dan stellen we die categorie voor.
+              Bewust een voorstel en geen stille invulling: een verkeerd geraden
+              categorie die je niet ziet, vervuilt je analyses maanden later. */}
+          {voorstel && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span className="rij-meta">{t('Vorige keer bij deze handelaar:')}</span>
+              <button
+                type="button"
+                className="chip"
+                aria-label={t('Gebruik {naam}, zoals de vorige keer', { naam: voorstel.naam })}
+                onClick={() => setCategorieId(voorstel.id)}
+              >
+                {voorstel.naam}
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         <Kaart compact style={{ background: 'var(--surface-2)' }}>
           {kassaRegels.map((r, i) => (

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { huidigeMaand, naarDatumTekst, vandaag } from './datum'
+import { huidigeMaand, maandJaarLabel, naarDatumTekst, vandaag } from './datum'
 
 describe('datum', () => {
   it('zet een datum om naar JJJJ-MM-DD met voorloopnullen', () => {
@@ -17,5 +17,16 @@ describe('datum', () => {
 
   it('geeft de maand als JJJJ-MM', () => {
     expect(huidigeMaand(new Date(2026, 2, 9))).toBe('2026-03')
+  })
+})
+
+describe('maandJaarLabel', () => {
+  it('schrijft een maand en jaar leesbaar uit', () => {
+    expect(maandJaarLabel('2028-07-26')).toBe('juli 2028')
+    expect(maandJaarLabel('2026-01')).toBe('januari 2026')
+  })
+
+  it('laat onleesbare invoer ongemoeid in plaats van iets te verzinnen', () => {
+    expect(maandJaarLabel('geen datum')).toBe('geen datum')
   })
 })
