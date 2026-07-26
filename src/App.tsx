@@ -829,6 +829,39 @@ export function App() {
     }
   }
 
+  // Meerdere transacties tegelijk verwijderen, met ÉÉN keer ongedaan maken voor de
+  // hele groep. Wat aan een transactie hangt (een gedeelde kost, een bon) gaat mee,
+  // net als bij het verwijderen van één rij — anders blijven er weesrecords staan
+  // die onzichtbaar in een dossier blijven meetellen.
+  async function verwijderMeerdere(ids: string[]) {
+    if (ids.length === 0) return
+    const oude = (transacties ?? []).filter((t) => ids.includes(t.id))
+    const oudeKosten = gedeeldeKosten.filter((k) => k.transactieId && ids.includes(k.transactieId))
+    const oudeBonnen = ids.map((id) => bonVanTransactie(dossierdocumenten, id)).filter(Boolean) as DossierDocument[]
+    for (const id of ids) await verwijderTransactie(id)
+    for (const k of oudeKosten) await verwijderGedeeldeKost(k.id)
+    for (const d of oudeBonnen) await verwijderDossierDocument(d.id)
+    await herlaad()
+    toonUndo(t('{n} transactie(s) verwijderd', { n: ids.length }), async () => {
+      for (const o of oude) await bewaarTransactie(o)
+      for (const k of oudeKosten) await bewaarGedeeldeKost(k)
+      for (const d of oudeBonnen) await bewaarDossierDocument(d)
+    })
+  }
+
+  // Meerdere transacties in één keer dezelfde categorie geven. Gesplitste
+  // kassatickets komen hier niet binnen: de lijst houdt ze er al buiten, omdat zij
+  // een categorie per regel hebben en die niet stil overschreven mag worden.
+  async function categoriseerMeerdere(ids: string[], categorieId: string) {
+    if (ids.length === 0 || !categorieId) return
+    const oude = (transacties ?? []).filter((t) => ids.includes(t.id))
+    for (const o of oude) await bewaarTransactie({ ...o, categorieId })
+    await herlaad()
+    toonUndo(t('{n} transactie(s) gewijzigd', { n: oude.length }), async () => {
+      for (const o of oude) await bewaarTransactie(o)
+    })
+  }
+
   async function verbindEnSynchroniseer() {
     setBezig(true)
     setStatusTekst(null)
@@ -1135,8 +1168,11 @@ export function App() {
               transacties={transacties}
               categorieen={categorieen}
               rekeningen={rekeningen}
+              gedeeldeKosten={gedeeldeKosten}
               onBewerk={setBewerkTransactie}
               onVerwijder={verwijder}
+              onVerwijderMeerdere={verwijderMeerdere}
+              onCategoriseerMeerdere={categoriseerMeerdere}
             />
           </ErrorBoundary>
         </>

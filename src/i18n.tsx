@@ -1042,6 +1042,25 @@ const en: Record<string, string> = {
   'Over het hele jaar kosten je vaste lasten gemiddeld {bedrag} per maand.':
     'Across the year, your fixed costs average {bedrag} a month.',
   '{naam} staat nog niet ingeboekt deze maand': '{naam} has not been recorded this month yet',
+  // Ronde 24 — de Transacties-pagina
+  'Alle maanden': 'All months',
+  'Meer filters': 'More filters',
+  'Meer filters · {n}': 'More filters · {n}',
+  'Sorteer op': 'Sort by',
+  'Sorteer op {kolom}': 'Sort by {kolom}',
+  'Alles selecteren': 'Select all',
+  'Selecteer {oms}': 'Select {oms}',
+  '{n} geselecteerd': '{n} selected',
+  'Categorie toekennen': 'Assign category',
+  'Selectie wissen': 'Clear selection',
+  'Ja, verwijder {n}': 'Yes, delete {n}',
+  '{n} gesplitst(e) kassaticket(s) krijgen geen categorie: die hebben er een per regel.':
+    '{n} split receipt(s) get no category: those have one per line.',
+  'Categorie voor de selectie': 'Category for the selection',
+  'Gedeeld in een dossier': 'Shared in a case',
+  'gedeeld': 'shared',
+  '{n} transactie(s) verwijderd': '{n} transaction(s) deleted',
+  '{n} transactie(s) gewijzigd': '{n} transaction(s) updated',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -2068,6 +2087,26 @@ const fr: Record<string, string> = {
   'Over het hele jaar kosten je vaste lasten gemiddeld {bedrag} per maand.':
     'Sur toute l’année, vos charges fixes reviennent en moyenne à {bedrag} par mois.',
   '{naam} staat nog niet ingeboekt deze maand': "{naam} n'a pas encore été enregistré ce mois-ci",
+  // Ronde 24 — de Transacties-pagina
+  'Alle maanden': 'Tous les mois',
+  'Meer filters': 'Plus de filtres',
+  'Meer filters · {n}': 'Plus de filtres · {n}',
+  'Sorteer op': 'Trier par',
+  'Sorteer op {kolom}': 'Trier par {kolom}',
+  'Alles selecteren': 'Tout sélectionner',
+  'Selecteer {oms}': 'Sélectionner {oms}',
+  '{n} geselecteerd': '{n} sélectionné(s)',
+  'Categorie toekennen': 'Attribuer une catégorie',
+  'Selectie wissen': 'Effacer la sélection',
+  'Ja, verwijder {n}': 'Oui, supprimer {n}',
+  '{n} gesplitst(e) kassaticket(s) krijgen geen categorie: die hebben er een per regel.':
+    "{n} ticket(s) ventilé(s) ne reçoivent pas de catégorie : ils en ont une par ligne.",
+  'Categorie voor de selectie': 'Catégorie pour la sélection',
+  'Gedeeld in een dossier': 'Partagé dans un dossier',
+  'gedeeld': 'partagé',
+  '{n} transactie(s) verwijderd': '{n} transaction(s) supprimée(s)',
+  '{n} transactie(s) gewijzigd': '{n} transaction(s) modifiée(s)',
+
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 

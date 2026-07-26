@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { groepVanCategorie, labelVanCategorie } from './resolve'
+import { groepVanCategorie, labelVanCategorie, padVanCategorie } from './resolve'
 
 const eigen = [{ id: 'cat-eigen', naam: 'Mijn categorie' }]
 
@@ -48,5 +48,25 @@ describe('labelVanCategorie', () => {
 
   it('geeft undefined zonder id', () => {
     expect(labelVanCategorie(undefined, [])).toBeUndefined()
+  })
+})
+
+// Ronde 24: in de transactielijst staat de categorie als pad, zodat je weet waar
+// "Brood (wit)" of "Persoonlijke verzorging" onder valt.
+describe('padVanCategorie', () => {
+  it('zet een item onder zijn hoofdcategorie', () => {
+    expect(padVanCategorie('i-brood--wit-9238', [])).toBe('Voeding › Brood (wit)')
+  })
+
+  it('geeft een hoofdcategorie gewoon haar eigen naam — er is niets boven', () => {
+    expect(padVanCategorie('ov-voeding', [])).toBe('Voeding')
+  })
+
+  it('geeft een eigen categorie haar eigen naam', () => {
+    expect(padVanCategorie('eigen-1', [{ id: 'eigen-1', naam: 'Hobby' }])).toBe('Hobby')
+  })
+
+  it('geeft niets zonder categorie', () => {
+    expect(padVanCategorie(undefined, [])).toBeUndefined()
   })
 })

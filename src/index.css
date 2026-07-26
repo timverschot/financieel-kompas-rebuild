@@ -1052,10 +1052,69 @@ a:hover {
 }
 
 /* Scheidingspunten tussen datum, categorie en rekening — enkel wanneer ze op
-   één regel onder elkaar staan (telefoon). */
-.tx-meta > * + *::before {
+   één regel onder elkaar staan (telefoon). Een badge krijgt er geen: die staat
+   visueel al los. */
+.tx-meta > * + *:not(.badge)::before {
   content: ' · ';
   color: var(--text-subtle);
+}
+
+/* Een lege cel (geen categorie, geen rekening) mag op een telefoon geen lege
+   regel of scheidingspunt opleveren. In tabelvorm moet ze haar kolom wél bezet
+   houden — zie de opmerking bij tx-meta in TransactieLijst.tsx. */
+.tx-meta > *:empty {
+  display: none;
+}
+
+/* Rustiger regelhoogte: iets meer lucht boven en onder, en meer ruimte tussen de
+   titel en de meta-regel. Bij een lijst die je scant is dichtheid geen winst. */
+.tx-lijst .rij {
+  padding-block: 12px;
+}
+
+.tx-lijst .rij-titel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+/* Het selectievakje neemt de plaats van het icoonvlakje in; het icoon schuift dan
+   mee naar voren in de titel, zodat je nog altijd in één blik ziet waar een
+   boeking over gaat. */
+.tx-vinkje {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+
+.rij-teken-klein {
+  width: 22px;
+  height: 22px;
+  font-size: var(--tekst-s);
+  flex-shrink: 0;
+}
+
+.rij-aangevinkt {
+  background: var(--accent-soft);
+}
+
+/* Een sorteerbare kolomkop is een knop, maar mag er niet als knop uitzien: ze
+   staat in de kop van een tabel. */
+.tx-kolomkop {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  padding: 0;
+  min-height: 0;
+  justify-content: flex-start;
+}
+
+.tx-kop .tx-bedrag .tx-kolomkop {
+  justify-content: flex-end;
+  width: 100%;
 }
 
 @media (min-width: 1024px) {
@@ -1089,6 +1148,16 @@ a:hover {
   .tx-lijst .bedrag,
   .tx-kop .tx-bedrag {
     text-align: right;
+  }
+
+  /* In tabelvorm houdt elke cel haar kolom bezet, ook wanneer ze leeg is. */
+  .tx-meta > *:empty {
+    display: block;
+  }
+
+  /* Een badge is geen kolomvulling: ze blijft links staan op haar eigen breedte. */
+  .tx-lijst .tx-meta > .badge {
+    justify-self: start;
   }
 
   .tx-kop {

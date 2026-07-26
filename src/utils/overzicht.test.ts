@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { inkomstenPerCategorie, maandInkomsten, maandUitgaven, uitgavenPerCategorie } from './overzicht'
+import { inkomstenPerCategorie, kengetallenVan, maandInkomsten, maandUitgaven, uitgavenPerCategorie } from './overzicht'
 import type { Categorie, Transactie } from '../data/schema'
 
 const tx = (over: Partial<Transactie>): Transactie => ({
@@ -64,5 +64,38 @@ describe('maandoverzicht', () => {
       { naam: 'Voeding', bedrag: 300, kleur: null },
       { naam: 'Wonen', bedrag: 200, kleur: null },
     ])
+  })
+})
+
+// Ronde 24: de kengetallen bovenaan de Transacties-pagina gaan over een
+// willekeurige selectie rijen, niet over een maand.
+describe('kengetallenVan', () => {
+  const tx = (bedrag: number, regels?: { bedrag: number }[]): Transactie => ({
+    id: Math.abs(bedrag) + (regels ? 'r' : ''),
+    datum: '2026-07-05',
+    omschrijving: 'X',
+    bedrag,
+    rekeningId: 'r1',
+    ...(regels ? { regels } : {}),
+  })
+
+  it('telt inkomsten, uitgaven en saldo', () => {
+    expect(kengetallenVan([tx(200000), tx(-3000)])).toEqual({ inkomsten: 200000, uitgaven: 3000, saldo: 197000 })
+  })
+
+  it('is nul voor een lege selectie', () => {
+    expect(kengetallenVan([])).toEqual({ inkomsten: 0, uitgaven: 0, saldo: 0 })
+  })
+
+  it('splitst een kassaticket uit, net als de donut', () => {
+    // € 53 uitgave met € 3 statiegeld terug: dat is 3 inkomst én 53 uitgave.
+    const c = kengetallenVan([tx(-5000, [{ bedrag: -5300 }, { bedrag: 300 }])])
+    expect(c.inkomsten).toBe(300)
+    expect(c.uitgaven).toBe(5300)
+  })
+
+  it('kijkt niet naar de datum — dat doet het filter al', () => {
+    const oud: Transactie = { ...tx(-1000), id: 'oud', datum: '2020-01-01' }
+    expect(kengetallenVan([oud]).uitgaven).toBe(1000)
   })
 })

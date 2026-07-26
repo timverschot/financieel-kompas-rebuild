@@ -47,6 +47,25 @@ export function groepVanCategorie(
   return { sleutel: id, naam: 'Onbekend', kleur: null, icoon: null }
 }
 
+/**
+ * Het VOLLEDIGE pad van een categorie, bv. "Voeding › Brood (wit)".
+ *
+ * Waarom naast `labelVanCategorie`: dat label toont alleen het laagste niveau, en
+ * "Brood (wit)" of "Persoonlijke verzorging" zegt op zichzelf niet waar het onder
+ * valt. In de transactielijst is die context precies wat je zoekt wanneer je een
+ * rij overloopt. Voor een hoofdcategorie of een eigen categorie is het pad gewoon
+ * de naam zelf — er is dan geen niveau boven.
+ */
+export function padVanCategorie(
+  id: string | undefined,
+  gebruikerCategorieen: EigenCategorie[],
+): string | undefined {
+  if (!id) return undefined
+  const item = itemPerId(id)
+  if (item) return `${item.hoofdNaam} › ${item.naam}`
+  return labelVanCategorie(id, gebruikerCategorieen)
+}
+
 // Het label dat je het best toont voor een categorieId: het SPECIFIEKE niveau dat
 // gekozen werd (item toont zijn eigen naam, hoofdcategorie haar naam, eigen
 // categorie haar naam). Geeft undefined bij geen categorie.

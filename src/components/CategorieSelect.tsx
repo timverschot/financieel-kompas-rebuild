@@ -24,16 +24,19 @@ export function CategorieSelect({
   categorieen,
   /** Voegt bovenaan een lege keuze toe, voor velden waar geen categorie mag. */
   metGeenKeuze = false,
+  /** Voor plekken zonder zichtbaar label, zoals de bulkbalk in de lijst. */
+  ariaLabel,
 }: {
   id: string
   waarde: string
   onKies: (id: string) => void
   categorieen: Categorie[]
   metGeenKeuze?: boolean
+  ariaLabel?: string
 }) {
   const { t } = useT()
   return (
-    <select id={id} value={waarde} onChange={(e) => onKies(e.target.value)}>
+    <select id={id} aria-label={ariaLabel} value={waarde} onChange={(e) => onKies(e.target.value)}>
       {metGeenKeuze && <option value="">{t('Geen categorie')}</option>}
       <optgroup label={t('Hoofdcategorieën')}>
         {INGEBOUWDE_CATEGORIEEN.map((h) => (

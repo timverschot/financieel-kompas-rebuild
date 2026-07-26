@@ -27,6 +27,32 @@ export function maandUitgaven(transacties: Transactie[], maand: string): number 
   return som
 }
 
+/**
+ * Inkomsten, uitgaven en saldo van een WILLEKEURIGE selectie transacties — dus
+ * niet van een maand, maar van precies de rijen die in de lijst staan.
+ *
+ * Waarom dat verschil telt: de kengetallen bovenaan de Transacties-pagina horen
+ * over dezelfde rijen te gaan als de lijst eronder. Zou je ze op de maand
+ * berekenen terwijl er een filter aanstaat, dan lees je bovenaan € 1.200 uitgaven
+ * en tel je in de lijst € 300 — en dan vertrouw je geen van beide nog.
+ *
+ * Op regelniveau geteld, net als het maandoverzicht, zodat een gesplitst ticket
+ * met een positieve regel (statiegeld, korting) hier exact even zwaar meetelt.
+ */
+export type Kengetallen = { inkomsten: number; uitgaven: number; saldo: number }
+
+export function kengetallenVan(transacties: Transactie[]): Kengetallen {
+  let inkomsten = 0
+  let uitgaven = 0
+  for (const t of transacties) {
+    for (const regel of categorieBedragen(t)) {
+      if (regel.bedrag > 0) inkomsten += regel.bedrag
+      else if (regel.bedrag < 0) uitgaven += -regel.bedrag
+    }
+  }
+  return { inkomsten, uitgaven, saldo: inkomsten - uitgaven }
+}
+
 export type CategorieUitgave = { naam: string; bedrag: number; kleur: string | null }
 
 // Uitgaven per (hoofd)categorie in één maand, gesorteerd van groot naar klein.

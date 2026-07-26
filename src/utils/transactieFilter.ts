@@ -13,6 +13,12 @@ export type TxFilter = {
   rekeningId?: string
   van?: string // JJJJ-MM-DD (inclusief)
   tot?: string // JJJJ-MM-DD (inclusief)
+  // Eén kalendermaand ('JJJJ-MM'). Bewust een eigen filter en geen van/tot-paar:
+  // de maandschakelaar bovenaan de lijst moet met één pijl een maand op kunnen
+  // schuiven, en dat kan niet met twee losse datums zonder ze allebei te
+  // herberekenen. Staat er ook een van/tot bereik aan, dan gelden ze samen (AND),
+  // net als alle andere filters.
+  maand?: string
 }
 
 // Alle categorie-id's waar een transactie naar verwijst: de hoofd-categorieId en
@@ -70,6 +76,7 @@ export function filterTransacties(transacties: Transactie[], filter: TxFilter): 
     if (filter.rekeningId && tx.rekeningId !== filter.rekeningId) return false
     if (filter.van && tx.datum < filter.van) return false
     if (filter.tot && tx.datum > filter.tot) return false
+    if (filter.maand && !tx.datum.startsWith(filter.maand)) return false
     if (!raaktCategorie(tx, filter.hoofdId, filter.catId)) return false
     if (filter.zoek && !raaktZoek(tx, filter.zoek)) return false
     return true
@@ -90,7 +97,16 @@ export function isOmgekeerdBereik(van?: string, tot?: string): boolean {
 // Is er een actief filter (buiten de standaardweergave)? Dan zoekt de gebruiker
 // bewust in de volledige historiek en mag het historiek-venster niet beperken.
 export function heeftActiefFilter(filter: TxFilter): boolean {
-  return !!(filter.zoek?.trim() || filter.richting || filter.hoofdId || filter.catId || filter.rekeningId || filter.van || filter.tot)
+  return !!(
+    filter.zoek?.trim() ||
+    filter.richting ||
+    filter.hoofdId ||
+    filter.catId ||
+    filter.rekeningId ||
+    filter.van ||
+    filter.tot ||
+    filter.maand
+  )
 }
 
 // De grensdatum (JJJJ-MM-DD) van 'n maanden terug' t.o.v. een referentiedatum:

@@ -29,10 +29,11 @@ function toon(transacties: Transactie[]) {
   return { onBewerk, onVerwijder }
 }
 
-// De filters zitten voortaan achter de knop 'Filters'. Deze helper doet wat de
-// gebruiker doet: eerst openklappen, dan pas een veld gebruiken.
+// Zoek, richting, rekening, sortering en de maandschakelaar staan sinds ronde 24
+// altijd open. Categorie en het datumbereik zitten achter 'Meer filters'; deze
+// helper doet wat de gebruiker dan doet.
 async function klapFiltersOpen(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('button', { name: /^Filters/ }))
+  await user.click(screen.getByRole('button', { name: /^Meer filters/ }))
 }
 
 // De meta-regel (datum · categorie · rekening, of de uitsplitsing) van een rij.
@@ -66,7 +67,7 @@ describe('TransactieLijst', () => {
       tx({ id: '1', omschrijving: 'Loon', bedrag: 200000 }),
       tx({ id: '2', omschrijving: 'Winkel', bedrag: -3000 }),
     ])
-    await klapFiltersOpen(user)
+    // De richting staat nu meteen in de balk: geen klik om ze te vinden.
     await user.selectOptions(screen.getByLabelText('Richting'), 'in')
     expect(screen.getByText('Loon')).toBeInTheDocument()
     expect(screen.queryByText('Winkel')).not.toBeInTheDocument()
@@ -212,33 +213,37 @@ describe('TransactieLijst — de meta-regel', () => {
   })
 })
 
-describe('TransactieLijst — de inklapbare filterbalk', () => {
-  it('houdt de filters dicht tot je op Filters klikt, en klapt weer dicht', async () => {
-    const user = userEvent.setup()
+describe('TransactieLijst — de open filterbalk', () => {
+  it('zet zoeken, richting, rekening en sorteren meteen op het scherm', () => {
     toon([tx({ id: '1' })])
-    // Het zoekveld blijft altijd zichtbaar; de rest zit weg.
+    // Voorheen zaten deze drie achter een knop "Filters": twee klikken vóór je
+    // zag wat je kon.
     expect(screen.getByLabelText('Zoek in transacties')).toBeInTheDocument()
-    expect(screen.queryByLabelText('Richting')).not.toBeInTheDocument()
-
-    await klapFiltersOpen(user)
     expect(screen.getByLabelText('Richting')).toBeInTheDocument()
     expect(screen.getByLabelText('Rekening')).toBeInTheDocument()
+    expect(screen.getByLabelText('Sorteer op')).toBeInTheDocument()
+  })
+
+  it('houdt categorie en datumbereik achter "Meer filters"', async () => {
+    const user = userEvent.setup()
+    toon([tx({ id: '1' })])
+    expect(screen.queryByLabelText('Van')).not.toBeInTheDocument()
+
+    await klapFiltersOpen(user)
+    expect(screen.getByLabelText('Hoofdcategorie')).toBeInTheDocument()
     expect(screen.getByLabelText('Van')).toBeInTheDocument()
 
     await klapFiltersOpen(user)
-    expect(screen.queryByLabelText('Richting')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Van')).not.toBeInTheDocument()
   })
 
-  it('telt de actieve filters op de knop en toont ze als chips', async () => {
+  it('toont elk actief filter als chip, ook de altijd zichtbare', async () => {
     const user = userEvent.setup()
     toon([tx({ id: '1', omschrijving: 'Loon', bedrag: 200000 })])
-    expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument()
 
-    await klapFiltersOpen(user)
     await user.selectOptions(screen.getByLabelText('Richting'), 'in')
     await user.selectOptions(screen.getByLabelText('Rekening'), 'r1')
 
-    expect(screen.getByRole('button', { name: 'Filters · 2' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Wis filter Inkomsten' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Wis filter Betaal' })).toBeInTheDocument()
   })
@@ -246,7 +251,6 @@ describe('TransactieLijst — de inklapbare filterbalk', () => {
   it('wist met de × van een chip enkel dat ene filter', async () => {
     const user = userEvent.setup()
     toon([tx({ id: '1', omschrijving: 'Loon', bedrag: 200000 })])
-    await klapFiltersOpen(user)
     await user.selectOptions(screen.getByLabelText('Richting'), 'in')
     await user.selectOptions(screen.getByLabelText('Rekening'), 'r1')
 
@@ -254,10 +258,21 @@ describe('TransactieLijst — de inklapbare filterbalk', () => {
 
     expect(screen.queryByRole('button', { name: 'Wis filter Inkomsten' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Wis filter Betaal' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Filters · 1' })).toBeInTheDocument()
   })
 
-  it('staat al open wanneer er bij het laden filters actief zijn', () => {
+  it('telt op de knop alleen de filters die eronder verstopt zitten', async () => {
+    const user = userEvent.setup()
+    toon([tx({ id: '1' })])
+    // Richting staat zichtbaar in de balk, dus die hoort niet in de teller.
+    await user.selectOptions(screen.getByLabelText('Richting'), 'in')
+    expect(screen.getByRole('button', { name: 'Meer filters' })).toBeInTheDocument()
+
+    await klapFiltersOpen(user)
+    await user.selectOptions(screen.getByLabelText('Hoofdcategorie'), 'ov-voeding')
+    expect(screen.getByRole('button', { name: 'Meer filters · 1' })).toBeInTheDocument()
+  })
+
+  it('staat al open wanneer er bij het laden een verborgen filter actief is', () => {
     render(
       <TransactieLijst
         transacties={[tx({ id: '1' })]}
@@ -265,18 +280,19 @@ describe('TransactieLijst — de inklapbare filterbalk', () => {
         rekeningen={rekeningen}
         onBewerk={vi.fn()}
         onVerwijder={vi.fn()}
-        beginFilter={{ richting: 'uit' }}
+        beginFilter={{ hoofdId: 'ov-voeding' }}
       />,
     )
-    expect(screen.getByLabelText('Richting')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Filters · 1' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Van')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Meer filters · 1' })).toBeInTheDocument()
   })
 
-  it('aantalActieveFilters telt het zoekveld niet mee', () => {
+  it('aantalActieveFilters telt enkel wat achter de knop zit', () => {
     expect(aantalActieveFilters({})).toBe(0)
     expect(aantalActieveFilters({ zoek: 'colruyt' })).toBe(0)
-    expect(aantalActieveFilters({ richting: 'uit', van: '2026-01-01' })).toBe(2)
-    expect(aantalActieveFilters({ richting: 'uit', rekeningId: 'r1', hoofdId: 'ov-voeding', catId: 'cat-x', van: '2026-01-01', tot: '2026-02-01' })).toBe(6)
+    // Zoek, richting, rekening en maand staan zichtbaar in de balk.
+    expect(aantalActieveFilters({ richting: 'uit', rekeningId: 'r1', maand: '2026-07' })).toBe(0)
+    expect(aantalActieveFilters({ hoofdId: 'ov-voeding', catId: 'cat-x', van: '2026-01-01', tot: '2026-02-01' })).toBe(4)
   })
 })
 
@@ -331,5 +347,211 @@ describe('TransactieLijst — het venster van zes maanden', () => {
     // Anders zou het venster altijd meteen opengaan en had het geen zin.
     toon([tx({ id: 'nieuw', omschrijving: 'Vandaag' }), tx({ id: 'oud', datum: lang, omschrijving: 'Lang geleden' })])
     expect(screen.queryByText('Lang geleden')).not.toBeInTheDocument()
+  })
+})
+
+// --- Ronde 24: kengetallen, maandschakelaar, sorteren, selectie, badges ---
+
+function toonUitgebreid(transacties: Transactie[], over: Partial<React.ComponentProps<typeof TransactieLijst>> = {}) {
+  const onVerwijderMeerdere = vi.fn()
+  const onCategoriseerMeerdere = vi.fn()
+  render(
+    <TransactieLijst
+      transacties={transacties}
+      categorieen={[]}
+      rekeningen={rekeningen}
+      onBewerk={vi.fn()}
+      onVerwijder={vi.fn()}
+      onVerwijderMeerdere={onVerwijderMeerdere}
+      onCategoriseerMeerdere={onCategoriseerMeerdere}
+      {...over}
+    />,
+  )
+  return { onVerwijderMeerdere, onCategoriseerMeerdere }
+}
+
+// De woorden "Inkomsten" en "Uitgaven" staan ook in de richting-keuzelijst, dus
+// zoeken we bewust binnen het kengetallenblok.
+function kengetal(label: string): string {
+  const blok = document.querySelector('[data-kengetallen]') as HTMLElement
+  const stat = within(blok).getByText(label).closest('.stat') as HTMLElement
+  return stat?.textContent ?? ''
+}
+
+describe('TransactieLijst — kengetallen', () => {
+  it('telt inkomsten, uitgaven en saldo van de getoonde rijen', () => {
+    toon([
+      tx({ id: '1', omschrijving: 'Loon', bedrag: 200000 }),
+      tx({ id: '2', omschrijving: 'Winkel', bedrag: -3000 }),
+    ])
+    expect(kengetal('Inkomsten')).toMatch(/2[.\s]?000/)
+    expect(kengetal('Uitgaven')).toMatch(/30,00/)
+    expect(kengetal('Saldo')).toMatch(/1[.\s]?970/)
+  })
+
+  it('volgt het filter, zodat de cijfers en de lijst nooit iets anders zeggen', async () => {
+    const user = userEvent.setup()
+    toon([
+      tx({ id: '1', omschrijving: 'Loon', bedrag: 200000 }),
+      tx({ id: '2', omschrijving: 'Winkel', bedrag: -3000 }),
+    ])
+    await user.selectOptions(screen.getByLabelText('Richting'), 'uit')
+    expect(kengetal('Inkomsten')).toMatch(/0,00/)
+    expect(kengetal('Uitgaven')).toMatch(/30,00/)
+  })
+
+  it('splitst een kassaticket uit, net als de rest van de app', () => {
+    // € 50 uitgave met een statiegeldregel van € 3 erin.
+    toon([
+      tx({
+        id: '1',
+        omschrijving: 'Colruyt',
+        bedrag: -5000,
+        regels: [{ bedrag: -5300 }, { bedrag: 300 }],
+      }),
+    ])
+    expect(kengetal('Inkomsten')).toMatch(/3,00/)
+    expect(kengetal('Uitgaven')).toMatch(/53,00/)
+  })
+})
+
+describe('TransactieLijst — maandschakelaar', () => {
+  it('begint op alle maanden en filtert zodra je een maand kiest', async () => {
+    const user = userEvent.setup()
+    const dezeMaand = recent.slice(0, 7)
+    toon([tx({ id: '1', omschrijving: 'Nu' }), tx({ id: '2', omschrijving: 'Toen', datum: '2020-03-05' })])
+    expect(screen.getByText('Alle maanden')).toBeInTheDocument()
+
+    // Eén klik terug vanaf de huidige maand: 'Nu' valt weg.
+    await user.click(screen.getByRole('button', { name: 'Vorige maand' }))
+    expect(screen.queryByText('Nu')).not.toBeInTheDocument()
+    expect(screen.queryByText(dezeMaand)).not.toBeInTheDocument()
+  })
+
+  it('toont de gekozen maand als chip en laat ze weer los', async () => {
+    const user = userEvent.setup()
+    toon([tx({ id: '1' })])
+    await user.click(screen.getByRole('button', { name: 'Vorige maand' }))
+    // De maand staat nu als filter; de knop 'Alle maanden' zet hem weer af.
+    await user.click(screen.getByRole('button', { name: 'Alle maanden' }))
+    expect(screen.getByText('Winkel')).toBeInTheDocument()
+  })
+})
+
+describe('TransactieLijst — sorteren', () => {
+  it('zet standaard de nieuwste bovenaan', () => {
+    toon([
+      tx({ id: 'oud', omschrijving: 'Oud', datum: '2026-07-01' }),
+      tx({ id: 'nieuw', omschrijving: 'Nieuw', datum: '2026-07-20' }),
+    ])
+    const titels = screen.getAllByText(/Oud|Nieuw/)
+    expect(titels[0].textContent).toBe('Nieuw')
+  })
+
+  it('sorteert op bedrag van groot naar klein, ongeacht het teken', async () => {
+    const user = userEvent.setup()
+    toon([
+      tx({ id: 'a', omschrijving: 'Klein', bedrag: -500 }),
+      tx({ id: 'b', omschrijving: 'Groot', bedrag: -90000 }),
+      tx({ id: 'c', omschrijving: 'Midden', bedrag: 2000 }),
+    ])
+    await user.selectOptions(screen.getByLabelText('Sorteer op'), 'bedrag-af')
+    const titels = screen.getAllByText(/Klein|Groot|Midden/).map((el) => el.textContent)
+    expect(titels).toEqual(['Groot', 'Midden', 'Klein'])
+  })
+
+  it('sorteert op handelaar van A naar Z', async () => {
+    const user = userEvent.setup()
+    toon([tx({ id: 'a', omschrijving: 'Zeeman' }), tx({ id: 'b', omschrijving: 'Aldi' })])
+    await user.selectOptions(screen.getByLabelText('Sorteer op'), 'omschrijving-op')
+    const titels = screen.getAllByText(/Zeeman|Aldi/).map((el) => el.textContent)
+    expect(titels).toEqual(['Aldi', 'Zeeman'])
+  })
+})
+
+describe('TransactieLijst — meerdere rijen tegelijk', () => {
+  it('toont geen selectievakjes zonder bulkacties', () => {
+    toon([tx({ id: '1' })])
+    expect(screen.queryByLabelText('Alles selecteren')).not.toBeInTheDocument()
+  })
+
+  it('verwijdert de aangevinkte rijen pas na een bevestiging', async () => {
+    const user = userEvent.setup()
+    const { onVerwijderMeerdere } = toonUitgebreid([
+      tx({ id: '1', omschrijving: 'Een' }),
+      tx({ id: '2', omschrijving: 'Twee' }),
+    ])
+
+    await user.click(screen.getByLabelText('Selecteer Een'))
+    await user.click(screen.getByLabelText('Selecteer Twee'))
+    expect(screen.getByText('2 geselecteerd')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Verwijderen' }))
+    expect(onVerwijderMeerdere).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Ja, verwijder 2' }))
+    expect(onVerwijderMeerdere).toHaveBeenCalledWith(['1', '2'])
+  })
+
+  it('vinkt alles aan en weer uit met de kop', async () => {
+    const user = userEvent.setup()
+    toonUitgebreid([tx({ id: '1', omschrijving: 'Een' }), tx({ id: '2', omschrijving: 'Twee' })])
+    await user.click(screen.getByLabelText('Alles selecteren'))
+    expect(screen.getByText('2 geselecteerd')).toBeInTheDocument()
+    await user.click(screen.getByLabelText('Alles selecteren'))
+    expect(screen.queryByText('2 geselecteerd')).not.toBeInTheDocument()
+  })
+
+  it('laat een gesplitst kassaticket buiten de bulk-categorisering en zegt dat', async () => {
+    const user = userEvent.setup()
+    const { onCategoriseerMeerdere } = toonUitgebreid([
+      tx({ id: 'gewoon', omschrijving: 'Gewoon' }),
+      tx({ id: 'ticket', omschrijving: 'Ticket', regels: [{ bedrag: -500 }, { bedrag: -500 }] }),
+    ])
+
+    await user.click(screen.getByLabelText('Alles selecteren'))
+    // Nooit stil overslaan: de gebruiker leest waarom.
+    expect(
+      screen.getByText('1 gesplitst(e) kassaticket(s) krijgen geen categorie: die hebben er een per regel.'),
+    ).toBeInTheDocument()
+
+    await user.selectOptions(screen.getByLabelText('Categorie voor de selectie'), 'ov-voeding')
+    await user.click(screen.getByRole('button', { name: 'Categorie toekennen' }))
+    expect(onCategoriseerMeerdere).toHaveBeenCalledWith(['gewoon'], 'ov-voeding')
+  })
+})
+
+describe('TransactieLijst — wat een rij toont', () => {
+  it('zet de categorie als pad, met haar hoofdcategorie erbij', () => {
+    toon([tx({ id: '1', categorieId: 'i-brood--wit-9238' })])
+    expect(metaVan('Winkel')).toContain('Voeding › Brood (wit)')
+  })
+
+  it('zet de rekening als badge', () => {
+    toon([tx({ id: '1' })])
+    const rij = screen.getByText('Winkel').closest('li') as HTMLElement
+    expect(rij.querySelector('.tx-rekening')?.textContent).toBe('Betaal')
+  })
+
+  it('merkt een boeking die in een dossier gedeeld wordt', () => {
+    toonUitgebreid([tx({ id: '1' })], {
+      gedeeldeKosten: [
+        {
+          id: 'k1',
+          dossierId: 'dos-1',
+          transactieId: '1',
+          omschrijving: 'Winkel',
+          bedrag: 1000,
+          betaaldDoor: 'jij',
+          datum: recent,
+        },
+      ],
+    })
+    expect(screen.getByText('gedeeld')).toBeInTheDocument()
+  })
+
+  it('zwijgt over dossiers wanneer er geen koppeling is', () => {
+    toonUitgebreid([tx({ id: '1' })])
+    expect(screen.queryByText('gedeeld')).not.toBeInTheDocument()
   })
 })
