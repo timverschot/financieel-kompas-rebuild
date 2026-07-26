@@ -3,6 +3,7 @@ import {
   BudgetSchema,
   CategorieSchema,
   AflossingSchema,
+  DossierDocumentSchema,
   DossierSchema,
   GarantieSchema,
   GedeeldeKostSchema,
@@ -59,6 +60,8 @@ export const GebeurtenisSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('garantie.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
   z.object({ type: z.literal('streepjescode.bewaard'), payload: StreepjescodeSchema }),
   z.object({ type: z.literal('streepjescode.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
+  z.object({ type: z.literal('dossierdocument.bewaard'), payload: DossierDocumentSchema }),
+  z.object({ type: z.literal('dossierdocument.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
 ])
 export type Gebeurtenis = z.infer<typeof GebeurtenisSchema>
 

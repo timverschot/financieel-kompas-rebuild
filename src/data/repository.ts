@@ -5,6 +5,7 @@ import {
   BudgetSchema,
   CategorieSchema,
   DossierSchema,
+  DossierDocumentSchema,
   GarantieSchema,
   GedeeldeKostSchema,
   KindSchema,
@@ -23,6 +24,7 @@ import {
   type Categorie,
   type Aflossing,
   type Dossier,
+  type DossierDocument,
   type Garantie,
   type GedeeldeKost,
   type Kind,
@@ -173,6 +175,15 @@ export async function verwijderGarantie(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'garantie.verwijderd', payload: { id } })
 }
 
+export async function bewaarDossierDocument(d: DossierDocument): Promise<void> {
+  const geldig = DossierDocumentSchema.parse(d)
+  await pasGebeurtenisToe({ type: 'dossierdocument.bewaard', payload: geldig })
+}
+
+export async function verwijderDossierDocument(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'dossierdocument.verwijderd', payload: { id } })
+}
+
 export async function bewaarStreepjescode(s: Streepjescode): Promise<void> {
   const geldig = StreepjescodeSchema.parse(s)
   await pasGebeurtenisToe({ type: 'streepjescode.bewaard', payload: geldig })
@@ -292,6 +303,10 @@ export async function laadLeningen(): Promise<LeesResultaat<Lening>> {
 
 export async function laadAflossingen(): Promise<LeesResultaat<Aflossing>> {
   return valideerLijst(await db.aflossingen.toArray(), AflossingSchema)
+}
+
+export async function laadDossierDocumenten(): Promise<LeesResultaat<DossierDocument>> {
+  return valideerLijst(await db.dossierdocumenten.toArray(), DossierDocumentSchema)
 }
 
 export async function laadGaranties(): Promise<LeesResultaat<Garantie>> {

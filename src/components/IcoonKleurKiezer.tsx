@@ -96,6 +96,7 @@ export function IcoonKleurKiezer({
   onKleur,
   naam = '',
   idVoorvoegsel = 'icoonkleur',
+  voorbeeldTekst,
 }: {
   /** Het gekozen icoon, of undefined wanneer er geen gekozen is. */
   icoon?: string
@@ -107,6 +108,8 @@ export function IcoonKleurKiezer({
   naam?: string
   /** Voorvoegsel voor veld-id's, zodat twee kiezers op één pagina niet botsen. */
   idVoorvoegsel?: string
+  /** Uitleg naast het voorbeeld. Standaard: de transactielijst. */
+  voorbeeldTekst?: string
 }) {
   const { t } = useT()
   const tekenVeldId = `${idVoorvoegsel}-teken`
@@ -123,7 +126,7 @@ export function IcoonKleurKiezer({
           <span className="rij-teken" aria-hidden="true" style={{ backgroundColor: zachteTint(kleur) }}>
             {voorbeeldTeken(icoon, naam)}
           </span>
-          <span className="rij-meta">{t('Zo verschijnt ze straks in de transactielijst.')}</span>
+          <span className="rij-meta">{voorbeeldTekst ?? t('Zo verschijnt ze straks in de transactielijst.')}</span>
         </div>
       </div>
 

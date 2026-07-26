@@ -818,6 +818,35 @@ const en: Record<string, string> = {
   'Sluiten': 'Close',
   'Scan streepjescode voor regel {n}': 'Scan barcode for line {n}',
   'Nutri-Score': 'Nutri-Score',
+  // --- Documentkluis per dossier ---
+  'Documentkluis': 'Document vault',
+  'Bewaar de ouderschapsovereenkomst, attesten, bonnen en het vonnis van dit dossier op één plek.':
+    'Keep the parenting agreement, certificates, receipts and the court order for this case in one place.',
+  'Nog geen documenten. Voeg er hieronder een toe.': 'No documents yet. Add one below.',
+  'Nieuw document': 'New document',
+  'Overeenkomst': 'Agreement',
+  'Attest': 'Certificate',
+  'Bon': 'Receipt',
+  'Vonnis': 'Court order',
+  'Ander': 'Other',
+  'Openen': 'Open',
+  'Bewaren': 'Save to device',
+  'Ja, verwijder': 'Yes, delete',
+  'Verwijder document {naam}': 'Delete document {naam}',
+  'Bestand (foto of PDF)': 'File (photo or PDF)',
+  'Gekozen bestand': 'Selected file',
+  'Ander bestand kiezen': 'Choose another file',
+  'Document toevoegen': 'Add document',
+  'bv. Ouderschapsovereenkomst 2026': 'e.g. Parenting agreement 2026',
+  'Geef een naam en kies een bestand om op te slaan.': 'Enter a name and choose a file to save.',
+  'Dit bestand is te groot (max. 4 MB). Kies een kleinere scan of foto.':
+    'This file is too large (max. 4 MB). Choose a smaller scan or photo.',
+  'Dit bestand kon niet gelezen worden. Probeer een andere scan of foto.':
+    'This file could not be read. Try another scan or photo.',
+  'Opslaan is mislukt. Probeer het opnieuw; je invoer blijft staan.':
+    'Saving failed. Please try again; your input is kept.',
+  'Document verwijderd': 'Document deleted',
+  'Zo verschijnt dit doel straks in de lijst.': 'This is how the goal will look in the list.',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -1619,6 +1648,35 @@ const fr: Record<string, string> = {
   'Sluiten': 'Fermer',
   'Scan streepjescode voor regel {n}': 'Scanner le code-barres pour la ligne {n}',
   'Nutri-Score': 'Nutri-Score',
+  // --- Coffre à documents par dossier ---
+  'Documentkluis': 'Coffre à documents',
+  'Bewaar de ouderschapsovereenkomst, attesten, bonnen en het vonnis van dit dossier op één plek.':
+    'Conservez la convention parentale, les attestations, les tickets et le jugement de ce dossier au même endroit.',
+  'Nog geen documenten. Voeg er hieronder een toe.': 'Pas encore de documents. Ajoutez-en un ci-dessous.',
+  'Nieuw document': 'Nouveau document',
+  'Overeenkomst': 'Convention',
+  'Attest': 'Attestation',
+  'Bon': 'Ticket',
+  'Vonnis': 'Jugement',
+  'Ander': 'Autre',
+  'Openen': 'Ouvrir',
+  'Bewaren': 'Enregistrer',
+  'Ja, verwijder': 'Oui, supprimer',
+  'Verwijder document {naam}': 'Supprimer le document {naam}',
+  'Bestand (foto of PDF)': 'Fichier (photo ou PDF)',
+  'Gekozen bestand': 'Fichier choisi',
+  'Ander bestand kiezen': 'Choisir un autre fichier',
+  'Document toevoegen': 'Ajouter le document',
+  'bv. Ouderschapsovereenkomst 2026': 'p. ex. Convention parentale 2026',
+  'Geef een naam en kies een bestand om op te slaan.': 'Indiquez un nom et choisissez un fichier pour enregistrer.',
+  'Dit bestand is te groot (max. 4 MB). Kies een kleinere scan of foto.':
+    'Ce fichier est trop volumineux (max. 4 Mo). Choisissez un scan ou une photo plus petite.',
+  'Dit bestand kon niet gelezen worden. Probeer een andere scan of foto.':
+    'Ce fichier n’a pas pu être lu. Essayez un autre scan ou une autre photo.',
+  'Opslaan is mislukt. Probeer het opnieuw; je invoer blijft staan.':
+    'Échec de l’enregistrement. Réessayez ; votre saisie est conservée.',
+  'Document verwijderd': 'Document supprimé',
+  'Zo verschijnt dit doel straks in de lijst.': 'Voici comment cet objectif apparaîtra dans la liste.',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 

@@ -6,6 +6,7 @@ import { naamVanPersoon } from '../utils/persoon'
 import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { Balk, Kaart, Leeg, PaginaKop } from '../ui/basis'
 import { useT } from '../i18n'
+import { zachteAchtergrond } from './TransactieLijst'
 
 // De volledige Spaardoelen-sectie: overzicht met voortgangsbalken, snel het
 // huidige bedrag bijwerken (bij manueel bijgehouden doelen), en een formulier om
@@ -71,6 +72,11 @@ export function SpaardoelSectie({
               return (
                 <li key={d.id} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {/* Hetzelfde gekleurde vlakje als in de transactielijst: het
+                        gekozen icoon, of anders de beginletter van het doel. */}
+                    <span className="rij-teken" aria-hidden="true" style={{ backgroundColor: zachteAchtergrond(d.kleur ?? null) }}>
+                      {d.icoon ?? d.naam.trim().charAt(0).toUpperCase()}
+                    </span>
                     <div className="rij-midden">
                       <span className="rij-titel">{d.naam}</span>
                       <span className="rij-meta">

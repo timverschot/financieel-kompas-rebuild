@@ -205,6 +205,7 @@ export const SpaardoelSchema = z.object({
   gekoppeldeRekeningId: z.string().min(1).optional(),
   maandbedrag: z.number().int().positive().optional(), // maandelijks streefbedrag
   kleur: z.string().optional(),
+  icoon: z.string().min(1).max(8).optional(), // optioneel eigen icoon, zoals bij categorieën
   persoonId: z.string().min(1).optional(), // optioneel: doel op naam van een gezinslid
 })
 export type Spaardoel = z.infer<typeof SpaardoelSchema>
@@ -333,3 +334,24 @@ export const StreepjescodeSchema = z.object({
   nutriScore: z.string().optional(), // 'a'..'e' (Open Food Facts)
 })
 export type Streepjescode = z.infer<typeof StreepjescodeSchema>
+
+// De soorten documenten die in een documentkluis passen. Deze waarden worden
+// opgeslagen en zijn dus taal-onafhankelijk; alleen de weergavenaam wordt vertaald.
+export const DOCUMENTSOORTEN = ['overeenkomst', 'attest', 'bon', 'vonnis', 'ander'] as const
+export type Documentsoort = (typeof DOCUMENTSOORTEN)[number]
+
+// Een document in de kluis van een dossier: de ouderschapsovereenkomst, een
+// schoolattest, een bonnetje of een vonnis. Het bestand zelf zit als data-URL in
+// 'bestand' (afbeeldingen worden verkleind vóór het bewaren, zie utils/afbeelding.ts),
+// zodat alles lokaal blijft en gewoon mee in de back-up gaat.
+export const DossierDocumentSchema = z.object({
+  id: z.string().min(1),
+  dossierId: z.string().min(1),
+  naam: z.string().min(1),
+  soort: z.enum(DOCUMENTSOORTEN),
+  bestand: z.string().min(1), // data-URL
+  bestandsnaam: z.string().optional(),
+  toegevoegdOp: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  notitie: z.string().optional(),
+})
+export type DossierDocument = z.infer<typeof DossierDocumentSchema>

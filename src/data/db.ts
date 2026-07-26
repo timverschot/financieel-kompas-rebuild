@@ -4,6 +4,7 @@ import type {
   Budget,
   Categorie,
   Dossier,
+  DossierDocument,
   Garantie,
   GedeeldeKost,
   Kind,
@@ -46,6 +47,7 @@ export class FinancieelKompasDB extends Dexie {
   aflossingen!: Table<Aflossing, string>
   garanties!: Table<Garantie, string>
   streepjescodes!: Table<Streepjescode, string>
+  dossierdocumenten!: Table<DossierDocument, string>
 
   constructor() {
     super('financieel-kompas')
@@ -367,6 +369,32 @@ export class FinancieelKompasDB extends Dexie {
       aflossingen: 'id, leningId',
       garanties: 'id, aankoopdatum',
       streepjescodes: 'id',
+    })
+
+    // Versie 17 - documentkluis per dossier (overeenkomst, attesten, bonnen).
+    // Nieuwe tabel; geen omzetting nodig.
+    this.version(17).stores({
+      rekeningen: 'id, naam',
+      transacties: 'id, rekeningId, datum, categorieId',
+      events: 'id, toestelId, volgnummer',
+      meta: 'sleutel',
+      categorieen: 'id, naam',
+      budgetten: 'id, categorieId',
+      dossiers: 'id, naam',
+      gedeeldeKosten: 'id, dossierId, verrekeningId',
+      verrekeningen: 'id, dossierId',
+      terugkerendePosten: 'id',
+      spaardoelen: 'id, naam',
+      subcategorieen: 'id, categorieId',
+      overboekingen: 'id, datum',
+      kinderen: 'id, naam',
+      kindrekeningen: 'id, dossierId',
+      kindrekeningposten: 'id, kindrekeningId',
+      leningen: 'id, richting',
+      aflossingen: 'id, leningId',
+      garanties: 'id, aankoopdatum',
+      streepjescodes: 'id',
+      dossierdocumenten: 'id, dossierId',
     })
   }
 }

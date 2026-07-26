@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import type { Categorie, Dossier, GedeeldeKost, Kind, Kindrekening, Kindrekeningpost, Verrekening } from '../data/schema'
+import type { Categorie, Dossier, DossierDocument, GedeeldeKost, Kind, Kindrekening, Kindrekeningpost, Verrekening } from '../data/schema'
 import { DossierFormulier } from './DossierFormulier'
 import { GedeeldeKostFormulier } from './GedeeldeKostFormulier'
 import { KindrekeningSectie } from './KindrekeningSectie'
+import { DossierKluis } from './DossierKluis'
 import { CategorieKiezer } from './CategorieKiezer'
 import { saldoVerrekeningDossier } from '../utils/dossier'
 import { isOpenKost, kostenVoorAfrekening, type AfrekeningFilter } from '../utils/afrekening'
@@ -47,6 +48,9 @@ export function DossierSectie({
   onKindrekeningVerwijderen,
   onKindrekeningPostOpslaan,
   onKindrekeningPostVerwijderen,
+  documenten,
+  onDocumentOpslaan,
+  onDocumentVerwijderen,
 }: {
   dossiers: Dossier[]
   kosten: GedeeldeKost[]
@@ -66,6 +70,9 @@ export function DossierSectie({
   onKindrekeningVerwijderen: (id: string) => Promise<void> | void
   onKindrekeningPostOpslaan: (p: Kindrekeningpost) => Promise<void> | void
   onKindrekeningPostVerwijderen: (id: string) => Promise<void> | void
+  documenten: DossierDocument[]
+  onDocumentOpslaan: (d: DossierDocument) => Promise<void> | void
+  onDocumentVerwijderen: (id: string) => Promise<void> | void
 }) {
   const { t } = useT()
   const [geselecteerd, setGeselecteerd] = useState('')
@@ -444,6 +451,15 @@ export function DossierSectie({
             onVerwijderen={onKindrekeningVerwijderen}
             onPostOpslaan={onKindrekeningPostOpslaan}
             onPostVerwijderen={onKindrekeningPostVerwijderen}
+          />
+
+          {/* De documentkluis: overeenkomst, attesten, bonnen en vonnis van dit
+              dossier op één plek, zodat je ze niet in je mailbox moet zoeken. */}
+          <DossierKluis
+            dossierId={dossier.id}
+            documenten={documenten}
+            onOpslaan={onDocumentOpslaan}
+            onVerwijderen={onDocumentVerwijderen}
           />
         </div>
       )}

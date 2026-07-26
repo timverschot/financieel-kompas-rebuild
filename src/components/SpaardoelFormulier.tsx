@@ -6,6 +6,7 @@ import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { GezinslidKiezer } from './GezinslidKiezer'
 import { heeftKiesbareLeden } from '../utils/persoon'
 import { useT } from '../i18n'
+import { IcoonKleurKiezer } from './IcoonKleurKiezer'
 
 // De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
 // en het leegmaken na het opslaan niet uit elkaar kunnen lopen.
@@ -16,7 +17,8 @@ const BEGIN = {
   huidig: '',
   doeldatum: '',
   maandbedrag: '',
-  kleur: '#3F8A58',
+  kleur: '#3F8A58' as string | undefined,
+  icoon: undefined as string | undefined,
   persoonId: '',
 }
 
@@ -44,6 +46,7 @@ export function SpaardoelFormulier({
   const [doeldatum, setDoeldatum] = useState(BEGIN.doeldatum)
   const [maandbedrag, setMaandbedrag] = useState(BEGIN.maandbedrag)
   const [kleur, setKleur] = useState(BEGIN.kleur)
+  const [icoon, setIcoon] = useState(BEGIN.icoon)
   const [persoonId, setPersoonId] = useState(BEGIN.persoonId)
 
   // Zet alle velden terug op hun beginwaarde.
@@ -55,6 +58,7 @@ export function SpaardoelFormulier({
     setDoeldatum(BEGIN.doeldatum)
     setMaandbedrag(BEGIN.maandbedrag)
     setKleur(BEGIN.kleur)
+    setIcoon(BEGIN.icoon)
     setPersoonId(BEGIN.persoonId)
   }, [])
 
@@ -67,6 +71,7 @@ export function SpaardoelFormulier({
       setDoeldatum(bewerken.doeldatum ?? '')
       setMaandbedrag(bewerken.maandbedrag ? centenNaarInvoer(bewerken.maandbedrag) : '')
       setKleur(bewerken.kleur ?? '#3F8A58')
+      setIcoon(bewerken.icoon)
       setPersoonId(bewerken.persoonId ?? '')
     } else {
       leegmaken()
@@ -90,6 +95,7 @@ export function SpaardoelFormulier({
       ...(gekoppeldeRekeningId ? { gekoppeldeRekeningId } : {}),
       ...(Number.isFinite(maandCenten) && maandCenten > 0 ? { maandbedrag: maandCenten } : {}),
       ...(kleur ? { kleur } : {}),
+      ...(icoon && icoon.trim() ? { icoon: icoon.trim() } : {}),
       // Ook bewaren als het veld niet zichtbaar is (bv. het gekoppelde lid werd
       // intussen gearchiveerd): een koppeling mag nooit stil verdwijnen.
       ...(persoonId ? { persoonId } : {}),
@@ -164,18 +170,17 @@ export function SpaardoelFormulier({
         />
       )}
 
-      <div className="veldgroep">
-        <label className="label-caps" htmlFor="doelkleur">
-          {t('Kleur')}
-        </label>
-        <input
-          id="doelkleur"
-          type="color"
-          value={kleur}
-          onChange={(e) => setKleur(e.target.value)}
-          style={{ width: 56, height: 40, padding: 4 }}
-        />
-      </div>
+      {/* Dezelfde icoon- en kleurkiezer als bij categorieën: één plek waar je
+          kiest hoe iets eruitziet, met de kleuren van de app zelf. */}
+      <IcoonKleurKiezer
+        icoon={icoon}
+        kleur={kleur}
+        onIcoon={setIcoon}
+        onKleur={setKleur}
+        naam={naam}
+        idVoorvoegsel="spaardoel"
+        voorbeeldTekst={t('Zo verschijnt dit doel straks in de lijst.')}
+      />
 
       <div className="knoprij">
         <button type="submit" disabled={!geldig} className="knop knop-primair">

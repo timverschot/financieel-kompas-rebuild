@@ -5,6 +5,7 @@ import type {
   Budget,
   Categorie,
   Dossier,
+  DossierDocument,
   Garantie,
   GedeeldeKost,
   Gezinsrol,
@@ -27,6 +28,7 @@ import {
   bewaarDossier,
   bewaarGedeeldeKost,
   bewaarAflossing,
+  bewaarDossierDocument,
   bewaarGarantie,
   bewaarKind,
   bewaarKindrekening,
@@ -48,6 +50,7 @@ import {
   laadDossiers,
   laadGedeeldeKosten,
   laadAflossingen,
+  laadDossierDocumenten,
   laadGaranties,
   laadKinderen,
   laadKindrekeningen,
@@ -65,6 +68,7 @@ import {
   verwijderCategorie,
   verwijderGedeeldeKost,
   verwijderAflossing,
+  verwijderDossierDocument,
   verwijderGarantie,
   verwijderKind,
   verwijderKindrekening,
@@ -175,6 +179,7 @@ export function App() {
   const [leningen, setLeningen] = useState<Lening[]>([])
   const [aflossingen, setAflossingen] = useState<Aflossing[]>([])
   const [garanties, setGaranties] = useState<Garantie[]>([])
+  const [dossierdocumenten, setDossierdocumenten] = useState<DossierDocument[]>([])
   const [streepjescodes, setStreepjescodes] = useState<Streepjescode[]>([])
   const [ongeldig, setOngeldig] = useState(0)
   const [verbonden, setVerbonden] = useState(false)
@@ -196,7 +201,7 @@ export function App() {
   const { t, taal, zetTaal } = useT()
 
   async function herlaad() {
-    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc] = await Promise.all([
+    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, docs] = await Promise.all([
       laadTransacties(),
       laadRekeningen(),
       laadCategorieen(),
@@ -215,6 +220,7 @@ export function App() {
       laadAflossingen(),
       laadGaranties(),
       laadStreepjescodes(),
+      laadDossierDocumenten(),
     ])
     setTransacties(tx.geldig)
     setOngeldig(tx.ongeldig)
@@ -235,6 +241,7 @@ export function App() {
     setAflossingen(afl.geldig)
     setGaranties(gar.geldig)
     setStreepjescodes(sc.geldig)
+    setDossierdocumenten(docs.geldig)
   }
 
   // Toon een korte "ongedaan maken"-melding na een verwijdering. Herstellen is
@@ -263,7 +270,7 @@ export function App() {
     let actief = true
     async function laad() {
       await seedIndienLeeg()
-      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc] = await Promise.all([
+      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, docs] = await Promise.all([
         laadTransacties(),
         laadRekeningen(),
         laadCategorieen(),
@@ -282,6 +289,7 @@ export function App() {
         laadAflossingen(),
         laadGaranties(),
         laadStreepjescodes(),
+        laadDossierDocumenten(),
       ])
       if (!actief) return
       setTransacties(tx.geldig)
@@ -303,6 +311,7 @@ export function App() {
       setAflossingen(afl.geldig)
       setGaranties(gar.geldig)
       setStreepjescodes(sc.geldig)
+      setDossierdocumenten(docs.geldig)
     }
     void laad()
     return () => {
@@ -728,6 +737,19 @@ export function App() {
     if (oud) toonUndo(t('Garantie verwijderd'), () => bewaarGarantie(oud))
   }
 
+  // --- Documentkluis per dossier ---
+  async function dossierDocumentOpslaan(d: DossierDocument) {
+    await bewaarDossierDocument(d)
+    await herlaad()
+  }
+
+  async function dossierDocumentVerwijderen(id: string) {
+    const oud = dossierdocumenten.find((d) => d.id === id)
+    await verwijderDossierDocument(id)
+    await herlaad()
+    if (oud) toonUndo(t('Document verwijderd'), () => bewaarDossierDocument(oud))
+  }
+
   // Onthoud een gescande streepjescode (barcode -> product). Stil bijwerken; geen
   // volledige herlaad nodig — de lijst wordt bij een volgende actie meegeladen.
   async function onthoudStreepjescode(s: Streepjescode) {
@@ -1092,6 +1114,9 @@ export function App() {
             onKindrekeningVerwijderen={kindrekeningVerwijderen}
             onKindrekeningPostOpslaan={kindrekeningPostOpslaan}
             onKindrekeningPostVerwijderen={kindrekeningPostVerwijderen}
+            documenten={dossierdocumenten}
+            onDocumentOpslaan={dossierDocumentOpslaan}
+            onDocumentVerwijderen={dossierDocumentVerwijderen}
           />
         </ErrorBoundary>
         </>
