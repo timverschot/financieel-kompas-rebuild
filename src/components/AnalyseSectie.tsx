@@ -3,6 +3,7 @@ import type { Categorie, Kind, Overboeking, Rekening, TerugkerendePost, Transact
 import { Vermogensevolutie } from './Vermogensevolutie'
 import { TrendsSectie } from './TrendsSectie'
 import { VooruitblikSectie } from './VooruitblikSectie'
+import { BesparenKaart } from './BesparenKaart'
 import {
   perHoofdcategorie,
   perItem,
@@ -370,6 +371,10 @@ export function AnalyseSectie({
               </>
             )}
           </Kaart>
+
+          {/* Waar valt er te besparen? Enkel bij uitgaven: bij inkomsten is de
+              vraag zinloos. */}
+          {richting === 'uitgave' && <BesparenKaart transacties={transacties} periode={periode} />}
 
           {byItem.length > 0 && (
             <DonutKaart

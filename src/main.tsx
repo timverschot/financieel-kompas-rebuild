@@ -5,6 +5,7 @@ import { App } from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { TaalProvider } from './i18n'
 import { ThemaProvider } from './thema'
+import { InstellingenProvider } from './instellingen'
 import { startSentry } from './sentry'
 
 // Crash-rapportage starten vóór het renderen, zodat ook opstartfouten gemeld worden.
@@ -15,7 +16,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <ThemaProvider>
         <TaalProvider>
-          <App />
+          <InstellingenProvider>
+            <App />
+          </InstellingenProvider>
         </TaalProvider>
       </ThemaProvider>
     </ErrorBoundary>

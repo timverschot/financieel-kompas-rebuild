@@ -199,7 +199,6 @@ const en: Record<string, string> = {
   'Versie {v}': 'Version {v}',
   'Uitloggen': 'Sign out',
   'Meldingen': 'Notifications',
-  '{n} budget(ten) bijna op': '{n} budget(s) almost used up',
   'Verbinding met Google Drive verbroken. Je gegevens blijven op dit toestel staan.':
     'Disconnected from Google Drive. Your data stays on this device.',
   'Geef een naam en een geldig bedrag om op te slaan.': 'Enter a name and a valid amount to save.',
@@ -889,6 +888,60 @@ const en: Record<string, string> = {
     'Create an account first — a transaction has to be booked somewhere.',
   'Geef een handelaar en een bedrag om op te slaan.': 'Enter a merchant and an amount to save.',
   'Zo verschijnt dit doel straks in de lijst.': 'This is how the goal will look in the list.',
+  // Ronde 17 — meldingen, balans, besparen en privacy
+  'Budget {naam} is overschreden ({pct}%)': 'Budget {naam} is over budget ({pct}%)',
+  'Budget {naam} is {pct}% verbruikt': 'Budget {naam} is {pct}% used',
+  'Garantie op {product} verloopt binnen {n} dag(en)': 'Warranty on {product} expires in {n} day(s)',
+  '{n} vaste last(en) van deze maand staan nog niet ingeboekt':
+    '{n} recurring item(s) for this month have not been recorded yet',
+  'Meldingen ({n})': 'Notifications ({n})',
+  'Niets om te melden. Al je budgetten en garanties zijn in orde.':
+    'Nothing to report. Your budgets and warranties are all fine.',
+  'Overschot': 'Surplus',
+  'Tekort': 'Shortfall',
+  'In balans': 'Balanced',
+  'Je houdt deze maand {bedrag} over. Dat is het deel dat naar sparen of een doel kan.':
+    'You have {bedrag} left this month. That is the part you can put towards savings or a goal.',
+  'Je geeft deze maand {bedrag} meer uit dan er binnenkomt. Dat komt uit je spaargeld of van je rekening.':
+    'This month you are spending {bedrag} more than comes in. That comes out of your savings or your account.',
+  'Inkomsten en uitgaven zijn deze maand exact gelijk: je houdt niets over, maar komt ook niets tekort.':
+    'Income and expenses are exactly equal this month: nothing left over, but nothing short either.',
+  'Telecom en abonnementen': 'Telecom and subscriptions',
+  'Verzekeringen': 'Insurance',
+  'Vergelijk de prijzen van de winkels in je buurt en overloop je kassabonnen.':
+    'Compare prices at the shops near you and go through your receipts.',
+  'Pas je verbruik aan en vergelijk de contracten van de leveranciers.':
+    'Adjust your usage and compare the suppliers’ contracts.',
+  'Vergelijk de pakketten voor internet, tv en gsm — en schrap wat je niet gebruikt.':
+    'Compare internet, TV and mobile bundles — and drop what you do not use.',
+  'Vergelijk je polissen; vooral auto en hospitalisatie schelen vaak veel.':
+    'Compare your policies; car and hospital cover in particular often differ a lot.',
+  'Waar kan je besparen?': 'Where can you save?',
+  'De vier domeinen waar voor een gezin doorgaans het meeste te winnen valt.':
+    'The four areas where a household usually has the most to gain.',
+  'Nog geen uitgaven in deze vier domeinen. Zodra je boodschappen, energie, telecom of verzekeringen boekt, zie je hier hoeveel ze kosten.':
+    'No spending in these four areas yet. As soon as you record groceries, energy, telecom or insurance, you will see what they cost here.',
+  'Het belletje bovenaan waarschuwt je zodra een budget van deze maand tegen zijn grens loopt.':
+    'The bell at the top warns you as soon as one of this month’s budgets approaches its limit.',
+  'Waarschuw vanaf': 'Warn from',
+  '{n}% verbruikt': '{n}% used',
+  'Een overschreden budget, een garantie die bijna verloopt en een vaste last die nog niet geboekt is, meldt de app altijd — die staan los van deze keuze.':
+    'An exceeded budget, a warranty about to expire and an unrecorded recurring item are always reported — those do not depend on this setting.',
+  'Je gegevens en je privacy': 'Your data and your privacy',
+  'Waar je cijfers staan, en wat de app wel en niet verstuurt.':
+    'Where your figures live, and what the app does and does not send.',
+  'Alles staat op dit toestel': 'Everything is on this device',
+  'Je rekeningen, transacties en documenten zitten in de database van deze browser, op dit toestel. Er is geen account nodig en er staat geen kopie op een server van ons — die server bestaat niet.':
+    'Your accounts, transactions and documents sit in this browser’s database, on this device. No account is required and there is no copy on a server of ours — that server does not exist.',
+  'De back-up staat in jouw Google Drive': 'The backup is in your own Google Drive',
+  'Verbind je Drive, dan schrijft de app een logboek in één eigen map in jouw Drive. De app krijgt alleen toegang tot de bestanden die ze zelf maakt, niet tot de rest van je Drive. Die back-up is niet extra versleuteld: wie bij je Google-account kan, kan ze lezen — beveilig dat account dus goed.':
+    'If you connect Drive, the app writes a log into a single folder of its own in your Drive. It can only reach the files it creates itself, not the rest of your Drive. That backup is not separately encrypted: anyone who can reach your Google account can read it — so protect that account well.',
+  'Wat er wél het toestel verlaat': 'What does leave the device',
+  'Scan je een streepjescode, dan gaat enkel die code naar de open productendatabank Open Food Facts om de productnaam op te halen. Loopt de app vast, dan wordt een technisch foutrapport verstuurd (welke fout, welke browser) — nooit een bedrag of een naam. Verder gaat er niets weg.':
+    'When you scan a barcode, only that code goes to the open product database Open Food Facts to look up the product name. If the app crashes, a technical error report is sent (which error, which browser) — never an amount or a name. Nothing else leaves.',
+  'Geen advertenties, geen doorverkoop': 'No ads, no reselling',
+  'Er zit geen advertentie- of volgcode in de app, en je gegevens gaan naar niemand anders.':
+    'There is no advertising or tracking code in the app, and your data goes to no one else.',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -1071,7 +1124,6 @@ const fr: Record<string, string> = {
   'Versie {v}': 'Version {v}',
   'Uitloggen': 'Se déconnecter',
   'Meldingen': 'Notifications',
-  '{n} budget(ten) bijna op': '{n} budget(s) presque épuisé(s)',
   'Verbinding met Google Drive verbroken. Je gegevens blijven op dit toestel staan.':
     'Déconnecté de Google Drive. Vos données restent sur cet appareil.',
   'Geef een naam en een geldig bedrag om op te slaan.': 'Indiquez un nom et un montant valide pour enregistrer.',
@@ -1761,8 +1813,69 @@ const fr: Record<string, string> = {
     'Créez d’abord un compte — une transaction doit être imputée quelque part.',
   'Geef een handelaar en een bedrag om op te slaan.': 'Indiquez un commerçant et un montant pour enregistrer.',
   'Zo verschijnt dit doel straks in de lijst.': 'Voici comment cet objectif apparaîtra dans la liste.',
+  // Ronde 17 — meldingen, balans, besparen en privacy
+  'Budget {naam} is overschreden ({pct}%)': 'Le budget {naam} est dépassé ({pct}%)',
+  'Budget {naam} is {pct}% verbruikt': 'Le budget {naam} est utilisé à {pct}%',
+  'Garantie op {product} verloopt binnen {n} dag(en)': 'La garantie de {product} expire dans {n} jour(s)',
+  '{n} vaste last(en) van deze maand staan nog niet ingeboekt':
+    '{n} charge(s) fixe(s) de ce mois ne sont pas encore enregistrée(s)',
+  'Meldingen ({n})': 'Notifications ({n})',
+  'Niets om te melden. Al je budgetten en garanties zijn in orde.':
+    'Rien à signaler. Vos budgets et vos garanties sont en ordre.',
+  'Overschot': 'Excédent',
+  'Tekort': 'Déficit',
+  'In balans': 'Équilibré',
+  'Je houdt deze maand {bedrag} over. Dat is het deel dat naar sparen of een doel kan.':
+    'Il vous reste {bedrag} ce mois-ci. C’est la part que vous pouvez mettre de côté ou affecter à un objectif.',
+  'Je geeft deze maand {bedrag} meer uit dan er binnenkomt. Dat komt uit je spaargeld of van je rekening.':
+    'Ce mois-ci, vous dépensez {bedrag} de plus qu’il n’entre. Cela vient de votre épargne ou de votre compte.',
+  'Inkomsten en uitgaven zijn deze maand exact gelijk: je houdt niets over, maar komt ook niets tekort.':
+    'Revenus et dépenses sont exactement égaux ce mois-ci : rien ne reste, mais rien ne manque non plus.',
+  'Telecom en abonnementen': 'Télécom et abonnements',
+  'Verzekeringen': 'Assurances',
+  'Vergelijk de prijzen van de winkels in je buurt en overloop je kassabonnen.':
+    'Comparez les prix des magasins de votre quartier et relisez vos tickets de caisse.',
+  'Pas je verbruik aan en vergelijk de contracten van de leveranciers.':
+    'Adaptez votre consommation et comparez les contrats des fournisseurs.',
+  'Vergelijk de pakketten voor internet, tv en gsm — en schrap wat je niet gebruikt.':
+    'Comparez les formules internet, TV et mobile — et supprimez ce que vous n’utilisez pas.',
+  'Vergelijk je polissen; vooral auto en hospitalisatie schelen vaak veel.':
+    'Comparez vos polices ; l’auto et l’hospitalisation font souvent une grosse différence.',
+  'Waar kan je besparen?': 'Où pouvez-vous économiser ?',
+  'De vier domeinen waar voor een gezin doorgaans het meeste te winnen valt.':
+    'Les quatre domaines où un ménage a généralement le plus à gagner.',
+  'Nog geen uitgaven in deze vier domeinen. Zodra je boodschappen, energie, telecom of verzekeringen boekt, zie je hier hoeveel ze kosten.':
+    'Pas encore de dépenses dans ces quatre domaines. Dès que vous enregistrez des courses, de l’énergie, du télécom ou des assurances, vous verrez ici ce qu’elles coûtent.',
+  'Het belletje bovenaan waarschuwt je zodra een budget van deze maand tegen zijn grens loopt.':
+    'La cloche en haut vous avertit dès qu’un budget de ce mois approche de sa limite.',
+  'Waarschuw vanaf': 'Avertir à partir de',
+  '{n}% verbruikt': '{n}% utilisé',
+  'Een overschreden budget, een garantie die bijna verloopt en een vaste last die nog niet geboekt is, meldt de app altijd — die staan los van deze keuze.':
+    'Un budget dépassé, une garantie qui expire bientôt et une charge fixe non enregistrée sont toujours signalés — indépendamment de ce choix.',
+  'Je gegevens en je privacy': 'Vos données et votre vie privée',
+  'Waar je cijfers staan, en wat de app wel en niet verstuurt.':
+    'Où vivent vos chiffres, et ce que l’application envoie ou non.',
+  'Alles staat op dit toestel': 'Tout se trouve sur cet appareil',
+  'Je rekeningen, transacties en documenten zitten in de database van deze browser, op dit toestel. Er is geen account nodig en er staat geen kopie op een server van ons — die server bestaat niet.':
+    'Vos comptes, transactions et documents se trouvent dans la base de données de ce navigateur, sur cet appareil. Aucun compte n’est nécessaire et il n’existe aucune copie sur un serveur à nous — ce serveur n’existe pas.',
+  'De back-up staat in jouw Google Drive': 'La sauvegarde se trouve dans votre propre Google Drive',
+  'Verbind je Drive, dan schrijft de app een logboek in één eigen map in jouw Drive. De app krijgt alleen toegang tot de bestanden die ze zelf maakt, niet tot de rest van je Drive. Die back-up is niet extra versleuteld: wie bij je Google-account kan, kan ze lezen — beveilig dat account dus goed.':
+    'Si vous connectez Drive, l’application écrit un journal dans un seul dossier qui lui appartient, dans votre Drive. Elle n’accède qu’aux fichiers qu’elle crée elle-même, pas au reste de votre Drive. Cette sauvegarde n’est pas chiffrée en plus : qui accède à votre compte Google peut la lire — protégez donc bien ce compte.',
+  'Wat er wél het toestel verlaat': 'Ce qui quitte bel et bien l’appareil',
+  'Scan je een streepjescode, dan gaat enkel die code naar de open productendatabank Open Food Facts om de productnaam op te halen. Loopt de app vast, dan wordt een technisch foutrapport verstuurd (welke fout, welke browser) — nooit een bedrag of een naam. Verder gaat er niets weg.':
+    'Quand vous scannez un code-barres, seul ce code est envoyé à la base de données ouverte Open Food Facts pour retrouver le nom du produit. Si l’application plante, un rapport d’erreur technique est envoyé (quelle erreur, quel navigateur) — jamais un montant ni un nom. Rien d’autre ne sort.',
+  'Geen advertenties, geen doorverkoop': 'Pas de publicité, pas de revente',
+  'Er zit geen advertentie- of volgcode in de app, en je gegevens gaan naar niemand anders.':
+    'L’application ne contient aucun code publicitaire ou de pistage, et vos données ne vont à personne d’autre.',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
+
+// De sleutels die voor één taal ingevuld zijn. Bestaat vooral om in een test te
+// kunnen controleren dat EN en FR gelijk lopen: een sleutel die maar in één van
+// de twee zit, geeft in de andere taal stille Nederlandse tekst.
+export function vertaalSleutels(taal: Taal): string[] {
+  return Object.keys(woordenboeken[taal])
+}
 
 function pasParametersToe(tekst: string, params?: Record<string, string | number>): string {
   if (!params) return tekst

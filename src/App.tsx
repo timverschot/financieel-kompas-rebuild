@@ -110,17 +110,21 @@ import { TerugkerendeSectie } from './components/TerugkerendeSectie'
 import { OverboekingSectie } from './components/OverboekingSectie'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { OnderNavigatie, PAGINAS, type Pagina } from './components/OnderNavigatie'
+import { Meldingenbel } from './components/Meldingenbel'
+import { BalansRegel } from './components/BalansRegel'
 import { Zijbalk } from './components/Zijbalk'
 import { Merkteken } from './components/Merkteken'
 import { saldoVerrekeningDossier } from './utils/dossier'
 import { kostenVoorAfrekening, type AfrekeningFilter } from './utils/afrekening'
 import { nieuwId } from './data/sync/id'
-import { uitgavenInMaand } from './utils/budget'
 import { inkomstenPerCategorie, maandInkomsten, maandUitgaven, uitgavenPerCategorie } from './utils/overzicht'
 import { uitgavenPerMaand } from './utils/maandverloop'
 import { labelVanCategorie } from './data/categorieen/resolve'
 import { stelSubcategorieenIn } from './data/categorieen/zoek'
+import { uitgavenInMaand } from './utils/budget'
 import { formatEuro } from './utils/format'
+import { bouwMeldingen } from './utils/meldingen'
+import { useInstellingen } from './instellingen'
 import { huidigeMaand, vandaag } from './utils/datum'
 import { saldoVanRekening, totaalSaldoVan } from './utils/saldo'
 import { Balk, Bedrag, Kaart, Leeg, PaginaKop } from './ui/basis'
@@ -200,6 +204,7 @@ export function App() {
   const backendRef = useRef<DriveBackend | null>(null)
   const undoTimer = useRef<number | null>(null)
   const { t, taal, zetTaal } = useT()
+  const { budgetDrempel } = useInstellingen()
 
   async function herlaad() {
     const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, docs] = await Promise.all([
@@ -817,11 +822,19 @@ export function App() {
     return resultaat
   }
 
-  // Budgetten die deze maand tegen hun grens aanlopen (vanaf 85% verbruikt), voor
-  // het belletje in de bovenbalk — hetzelfde signaal als in V1.
-  const budgetWaarschuwingen = budgetten.filter(
-    (b) => b.bedrag > 0 && uitgavenInMaand(transacties ?? [], b.categorieId, maand) >= b.bedrag * 0.85,
-  ).length
+  // Alles wat het belletje moet melden. De logica zit in utils/meldingen.ts, zodat
+  // ze zuiver testbaar is EN op elk schermformaat identiek — het belletje stond
+  // voorheen alleen in de desktopweergave, met de drempel hard op 85% in de code.
+  const meldingen = bouwMeldingen({
+    budgetten,
+    transacties: transacties ?? [],
+    maand,
+    garanties,
+    terugkerendePosten,
+    vandaagISO: vandaag(),
+    drempel: budgetDrempel,
+    naamVanCategorie: (id) => labelVanCategorie(id, categorieen) ?? t('Geen categorie'),
+  })
 
   if (transacties === null) {
     return (
@@ -917,6 +930,9 @@ export function App() {
               </>
             )}
           </div>
+
+          {/* Benoemt wat het netto-cijfer betekent: overschot, tekort of balans. */}
+          <BalansRegel inkomsten={inkomsten} uitgaven={uitgaven} />
 
           <ErrorBoundary naam="Maandoverzicht">
             <div className="raster-hoofd">
@@ -1438,34 +1454,7 @@ export function App() {
               + {t('Nieuwe transactie')}
             </button>
 
-            {/* Belletje met een amberen stip zodra een budget deze maand boven 85%
-                zit. Klikken brengt je naar de budgetpagina. */}
-            <button
-              className="knop knop-icoon"
-              style={{ position: 'relative' }}
-              aria-label={
-                budgetWaarschuwingen > 0
-                  ? t('{n} budget(ten) bijna op', { n: budgetWaarschuwingen })
-                  : t('Meldingen')
-              }
-              onClick={() => setPagina('budget')}
-            >
-              <span aria-hidden>🔔</span>
-              {budgetWaarschuwingen > 0 && (
-                <span
-                  aria-hidden
-                  style={{
-                    position: 'absolute',
-                    top: 4,
-                    right: 4,
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    background: 'var(--accent-dot)',
-                  }}
-                />
-              )}
-            </button>
+            <Meldingenbel meldingen={meldingen} onGaNaar={setPagina} />
 
             {verbonden && (
               <button className="knop knop-icoon" aria-label={t('Uitloggen')} onClick={verbreekVerbinding}>
@@ -1489,6 +1478,10 @@ export function App() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
           <Merkteken grootte={30} />
           <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, letterSpacing: '-0.03em' }}>Kompal</span>
+          {/* Hetzelfde belletje als op desktop. Het stond hier vroeger niet, dus op
+              een telefoon zag je nooit dat een budget bijna op was. */}
+          <div style={{ flex: 1 }} />
+          <Meldingenbel meldingen={meldingen} onGaNaar={setPagina} />
         </div>
         {paginaInhoud}
       </main>

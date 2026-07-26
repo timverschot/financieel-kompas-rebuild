@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { ComponentProps } from 'react'
 import { InstellingenSectie } from './InstellingenSectie'
+import { InstellingenProvider } from '../instellingen'
 
 function toon(props: Partial<ComponentProps<typeof InstellingenSectie>> = {}) {
   const handlers = {
@@ -23,9 +24,19 @@ function toon(props: Partial<ComponentProps<typeof InstellingenSectie>> = {}) {
     onBeginOpnieuw: vi.fn(async () => ({ backupGewist: true })),
     ...props,
   }
-  render(<InstellingenSectie {...(handlers as ComponentProps<typeof InstellingenSectie>)} />)
+  // Mét de Provider, zodat het scherm zich net zo gedraagt als in de app: een
+  // gewijzigde waarschuwingsgrens blijft staan.
+  render(
+    <InstellingenProvider>
+      <InstellingenSectie {...(handlers as ComponentProps<typeof InstellingenSectie>)} />
+    </InstellingenProvider>,
+  )
   return handlers
 }
+
+beforeEach(() => {
+  localStorage.clear()
+})
 
 describe('InstellingenSectie', () => {
   it('wijzigt de taal', async () => {
@@ -158,5 +169,43 @@ describe('InstellingenSectie — begin opnieuw', () => {
     // Opnieuw openen begint met een leeg veld.
     await openBevestiging(user)
     expect(screen.getByLabelText('Typ WISSEN om te bevestigen')).toHaveValue('')
+  })
+})
+
+// Ronde 17: de waarschuwingsgrens voor budgetten is instelbaar, en de app legt
+// nu uit waar je gegevens staan.
+describe('InstellingenSectie — meldingen en privacy', () => {
+  it('laat de waarschuwingsgrens kiezen', async () => {
+    const user = userEvent.setup()
+    toon()
+    const veld = screen.getByLabelText('Waarschuw vanaf')
+    // Standaard staat ze op 85% — precies het gedrag van voorheen.
+    expect(veld).toHaveValue('85')
+
+    await user.selectOptions(veld, '70')
+    expect(veld).toHaveValue('70')
+  })
+
+  it('zegt welke meldingen los van die grens staan', () => {
+    toon()
+    expect(
+      screen.getByText(
+        'Een overschreden budget, een garantie die bijna verloopt en een vaste last die nog niet geboekt is, meldt de app altijd — die staan los van deze keuze.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('legt in klare taal uit waar de gegevens staan', () => {
+    toon()
+    expect(screen.getByText('Je gegevens en je privacy')).toBeInTheDocument()
+    expect(screen.getByText('Alles staat op dit toestel')).toBeInTheDocument()
+    expect(screen.getByText('De back-up staat in jouw Google Drive')).toBeInTheDocument()
+    expect(screen.getByText('Wat er wél het toestel verlaat')).toBeInTheDocument()
+    expect(screen.getByText('Geen advertenties, geen doorverkoop')).toBeInTheDocument()
+  })
+
+  it('verzwijgt niet dat de Drive-back-up niet extra versleuteld is', () => {
+    toon()
+    expect(screen.getByText(/niet extra versleuteld/)).toBeInTheDocument()
   })
 })

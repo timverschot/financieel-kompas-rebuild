@@ -4,6 +4,8 @@ import { KinderenSectie } from './KinderenSectie'
 import { Kaart, PaginaKop } from '../ui/basis'
 import { useT, TALEN, type Taal } from '../i18n'
 import { useThema, THEMAKEUZES } from '../thema'
+import { useInstellingen } from '../instellingen'
+import { BUDGETDREMPELS } from '../utils/meldingen'
 
 // Keuzelijsten blijven smal: ze staan alleen, zonder zichtbaar label ernaast.
 const keuzelijst: CSSProperties = { maxWidth: 260, alignSelf: 'flex-start' }
@@ -56,6 +58,7 @@ export function InstellingenSectie({
 }) {
   const { t } = useT()
   const { keuze, zetKeuze } = useThema()
+  const { budgetDrempel, zetBudgetDrempel } = useInstellingen()
 
   // "Begin opnieuw": de knop opent eerst een bevestiging waarin je een woord moet
   // typen. Zo kan je nooit met één misklik al je gegevens kwijtraken.
@@ -137,6 +140,35 @@ export function InstellingenSectie({
         </select>
       </Kaart>
 
+      {/* Meldingen — vanaf welk percentage een budget een waarschuwing geeft. */}
+      <Kaart
+        titel={t('Meldingen')}
+        bijschrift={t('Het belletje bovenaan waarschuwt je zodra een budget van deze maand tegen zijn grens loopt.')}
+      >
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="budget-drempel">
+            {t('Waarschuw vanaf')}
+          </label>
+          <select
+            id="budget-drempel"
+            value={budgetDrempel}
+            onChange={(e) => zetBudgetDrempel(Number(e.target.value))}
+            style={keuzelijst}
+          >
+            {BUDGETDREMPELS.map((d) => (
+              <option key={d} value={d}>
+                {t('{n}% verbruikt', { n: d })}
+              </option>
+            ))}
+          </select>
+        </div>
+        <p style={statusRegel}>
+          {t(
+            'Een overschreden budget, een garantie die bijna verloopt en een vaste last die nog niet geboekt is, meldt de app altijd — die staan los van deze keuze.',
+          )}
+        </p>
+      </Kaart>
+
       {/* Google Drive */}
       <Kaart
         titel={t('Synchronisatie (Google Drive)')}
@@ -184,6 +216,56 @@ export function InstellingenSectie({
           </label>
         </div>
         {backupTekst && <p style={statusRegel}>{backupTekst}</p>}
+      </Kaart>
+
+      {/* Privacy — wat er met je gegevens gebeurt, in klare taal.
+          Dit is de sterkste eigenschap van de app (alles blijft bij jou), maar tot
+          nu toe stond dat nergens. Alleen feiten, geen beloftes: elk punt komt
+          overeen met wat de code effectief doet. */}
+      <Kaart
+        titel={t('Je gegevens en je privacy')}
+        bijschrift={t('Waar je cijfers staan, en wat de app wel en niet verstuurt.')}
+      >
+        <ul className="lijst">
+          <li className="rij">
+            <span className="rij-midden">
+              <span className="rij-titel">{t('Alles staat op dit toestel')}</span>
+              <span className="rij-meta">
+                {t(
+                  'Je rekeningen, transacties en documenten zitten in de database van deze browser, op dit toestel. Er is geen account nodig en er staat geen kopie op een server van ons — die server bestaat niet.',
+                )}
+              </span>
+            </span>
+          </li>
+          <li className="rij">
+            <span className="rij-midden">
+              <span className="rij-titel">{t('De back-up staat in jouw Google Drive')}</span>
+              <span className="rij-meta">
+                {t(
+                  'Verbind je Drive, dan schrijft de app een logboek in één eigen map in jouw Drive. De app krijgt alleen toegang tot de bestanden die ze zelf maakt, niet tot de rest van je Drive. Die back-up is niet extra versleuteld: wie bij je Google-account kan, kan ze lezen — beveilig dat account dus goed.',
+                )}
+              </span>
+            </span>
+          </li>
+          <li className="rij">
+            <span className="rij-midden">
+              <span className="rij-titel">{t('Wat er wél het toestel verlaat')}</span>
+              <span className="rij-meta">
+                {t(
+                  'Scan je een streepjescode, dan gaat enkel die code naar de open productendatabank Open Food Facts om de productnaam op te halen. Loopt de app vast, dan wordt een technisch foutrapport verstuurd (welke fout, welke browser) — nooit een bedrag of een naam. Verder gaat er niets weg.',
+                )}
+              </span>
+            </span>
+          </li>
+          <li className="rij" style={{ borderBottom: 'none' }}>
+            <span className="rij-midden">
+              <span className="rij-titel">{t('Geen advertenties, geen doorverkoop')}</span>
+              <span className="rij-meta">
+                {t('Er zit geen advertentie- of volgcode in de app, en je gegevens gaan naar niemand anders.')}
+              </span>
+            </span>
+          </li>
+        </ul>
       </Kaart>
 
       {/* Kinderen — KinderenSectie is zélf al een kaart, dus geen extra omhulsel. */}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { vertaal } from './i18n'
+import { vertaal, vertaalSleutels } from './i18n'
 
 describe('vertaal', () => {
   it('geeft de Nederlandse sleutel ongewijzigd terug voor taal nl', () => {
@@ -22,5 +22,23 @@ describe('vertaal', () => {
 
   it('laat een onbekende parameter-plaatshouder ongemoeid', () => {
     expect(vertaal('nl', 'Hallo {x}')).toBe('Hallo {x}')
+  })
+})
+
+// Drietalig blijven vraagt discipline: een sleutel die je alleen in het Engels
+// invult, geeft in het Frans stille Nederlandse tekst. Deze test merkt dat op.
+describe('vertaaltabellen', () => {
+  it('heeft voor elke Engelse sleutel ook een Franse, en omgekeerd', () => {
+    const en = new Set(vertaalSleutels('en'))
+    const fr = new Set(vertaalSleutels('fr'))
+    expect([...en].filter((k) => !fr.has(k))).toEqual([])
+    expect([...fr].filter((k) => !en.has(k))).toEqual([])
+  })
+
+  it('vertaalt de nieuwe teksten van ronde 17', () => {
+    expect(vertaal('en', 'Je gegevens en je privacy')).toBe('Your data and your privacy')
+    expect(vertaal('fr', 'Waar kan je besparen?')).toBe('Où pouvez-vous économiser ?')
+    expect(vertaal('en', 'Budget {naam} is {pct}% verbruikt', { naam: 'Food', pct: 92 })).toBe('Budget Food is 92% used')
+    expect(vertaal('fr', 'Overschot')).toBe('Excédent')
   })
 })

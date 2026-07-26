@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { App } from './App'
 import { db } from './data/db'
-import { bewaarCategorie, bewaarRekening, bewaarTransactie } from './data/repository'
+import { bewaarBudget, bewaarCategorie, bewaarRekening, bewaarTransactie } from './data/repository'
+import { vandaag } from './utils/datum'
 
 beforeEach(async () => {
   await Promise.all([
@@ -373,5 +374,85 @@ describe('App', () => {
     expect(
       await screen.findByText('Maak eerst een rekening aan — een transactie moet ergens op geboekt worden.'),
     ).toBeInTheDocument()
+  })
+})
+
+// Het belletje stond tot nu toe ALLEEN in de desktopweergave, met de drempel hard
+// op 85% in App.tsx. Op een telefoon kreeg je dus nooit een signaal dat een budget
+// bijna op was. Deze tests draaien in de mobiele weergave (de standaard in jsdom)
+// en bewijzen dat het signaal daar nu wél staat.
+describe('App — meldingen op een smal scherm', () => {
+  // Alles op de dag van vandaag boeken, zodat de test niet afhangt van de maand
+  // waarin ze gedraaid wordt.
+  async function zetBudgetBijnaOp() {
+    await bewaarCategorie({ id: 'cat-testpot', naam: 'Testpot' })
+    await bewaarBudget({ id: 'bud-test', categorieId: 'cat-testpot', bedrag: 10000 })
+    await bewaarTransactie({
+      id: 'tx-testpot',
+      datum: vandaag(),
+      omschrijving: 'Testaankoop',
+      bedrag: -9500,
+      rekeningId: 'r1',
+      categorieId: 'cat-testpot',
+    })
+  }
+
+  it('heet gewoon "Meldingen" zolang er niets aan de hand is', async () => {
+    render(<App />)
+    await screen.findByText('Saldo')
+    expect(screen.getByRole('button', { name: 'Meldingen' })).toBeInTheDocument()
+  })
+
+  it('toont het aantal meldingen in de kop van de mobiele weergave', async () => {
+    await zetBudgetBijnaOp()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    expect(await screen.findByRole('button', { name: 'Meldingen (1)' })).toBeInTheDocument()
+  })
+
+  it('vertelt in het paneel wélk budget bijna op is, en brengt je erheen', async () => {
+    await zetBudgetBijnaOp()
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.click(await screen.findByRole('button', { name: 'Meldingen (1)' }))
+    await user.click(await screen.findByText('Budget Testpot is 95% verbruikt'))
+
+    // We staan nu op de budgetpagina.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Budget' })).toBeInTheDocument()
+  })
+})
+
+// De maandcijfers stonden er al; wat er ontbrak was de betekenis ervan.
+describe('App — balans, overschot of tekort', () => {
+  it('benoemt een overschot onder de kengetallen', async () => {
+    await bewaarTransactie({ id: 'tx-in', datum: vandaag(), omschrijving: 'Loon', bedrag: 200000, rekeningId: 'r1' })
+    await bewaarTransactie({ id: 'tx-uit', datum: vandaag(), omschrijving: 'Winkel', bedrag: -50000, rekeningId: 'r1' })
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    expect(await screen.findByText('Overschot')).toBeInTheDocument()
+  })
+
+  it('benoemt een tekort', async () => {
+    for (const tabel of db.tables) await tabel.clear()
+    await bewaarRekening({ id: 'r1', naam: 'Betaalrekening', beginsaldo: 0 })
+    await bewaarTransactie({ id: 'tx-in', datum: vandaag(), omschrijving: 'Loon', bedrag: 50000, rekeningId: 'r1' })
+    await bewaarTransactie({ id: 'tx-uit', datum: vandaag(), omschrijving: 'Winkel', bedrag: -80000, rekeningId: 'r1' })
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    expect(await screen.findByText('Tekort')).toBeInTheDocument()
+  })
+
+  it('zwijgt over de balans zolang er deze maand niets geboekt is', async () => {
+    for (const tabel of db.tables) await tabel.clear()
+    await bewaarRekening({ id: 'r1', naam: 'Betaalrekening', beginsaldo: 0 })
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    expect(document.querySelector('[data-balans]')).toBeNull()
   })
 })
