@@ -12,9 +12,15 @@ describe('ingebouwde categorieboom', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
-  it('heeft voor elk item een geldig hoofdtype', () => {
-    const geldig = new Set(['Vaste Uitgaven', 'Variabele Uitgaven', 'Sparen', 'Inkomsten'])
-    expect(PLATTE_ITEMS.every((i) => geldig.has(i.hoofdtype))).toBe(true)
+  // Elke hoofdcategorie droeg vroeger een etiket 'Vaste Uitgaven' /
+  // 'Variabele Uitgaven'. Dat is in ronde 23 geschrapt: er werd nergens mee
+  // gerekend, en het was inhoudelijk fout — een lamp kopen viel onder "Woning en
+  // vaste lasten" en gold dus als vaste last, tanken onder "Vervoer en Mobiliteit"
+  // idem. Of iets vastligt, bepaalt de gebruiker per contract (TerugkerendePost),
+  // niet de categorie waarin het valt.
+  it('draagt geen vast/variabel-etiket meer', () => {
+    expect(INGEBOUWDE_CATEGORIEEN.every((h) => !('hoofdtype' in h))).toBe(true)
+    expect(PLATTE_ITEMS.every((i) => !('hoofdtype' in i))).toBe(true)
   })
 })
 

@@ -107,6 +107,7 @@ import { Donut } from './components/Donut'
 import { StaafGrafiek } from './components/StaafGrafiek'
 import { RekenhulpenSectie } from './components/RekenhulpenSectie'
 import { TerugkerendeSectie } from './components/TerugkerendeSectie'
+import { PlanRegels } from './components/PlanRegels'
 import { OverboekingSectie } from './components/OverboekingSectie'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { OnderNavigatie, PAGINAS, type Pagina } from './components/OnderNavigatie'
@@ -129,6 +130,7 @@ import { bouwHandelaarIndex } from './utils/categorieVoorstel'
 import { bonVanTransactie } from './utils/kluis'
 import { formatEuro } from './utils/format'
 import { bouwMeldingen } from './utils/meldingen'
+import { maandVooruitblik } from './utils/vooruitblik'
 import { useInstellingen } from './instellingen'
 import { huidigeMaand, maandJaarLabel, vandaag } from './utils/datum'
 import { saldoVanRekening, totaalSaldoVan } from './utils/saldo'
@@ -645,6 +647,13 @@ export function App() {
     if (oud) toonUndo(t('Vaste post verwijderd'), () => bewaarTerugkerendePost(oud))
   }
 
+  // Vanuit het meldingenpaneel komt alleen een id binnen; de post zelf zoeken we
+  // hier op. Zo hoeft de bel niets van vaste lasten te weten.
+  async function boekVasteLastPerId(postId: string) {
+    const post = terugkerendePosten.find((p) => p.id === postId)
+    if (post) await boekTerugkerend(post)
+  }
+
   async function boekTerugkerend(post: TerugkerendePost) {
     const dag = String(post.dag).padStart(2, '0')
     const t: Transactie = {
@@ -1154,6 +1163,19 @@ export function App() {
           </div>
 
           <div className="kolom-lijst stapel">
+          {/* Bovenaan het plan: wat er van je inkomen al vergeven is, en wat er
+              overblijft. Budgetten en vaste lasten beantwoorden dezelfde vraag van
+              twee kanten; ze stonden hier als twee losse lijstjes zonder dat er
+              ooit één cijfer uit kwam. */}
+          <ErrorBoundary naam="Plan">
+            <PlanRegels
+              posten={terugkerendePosten}
+              budgetten={budgetten}
+              maand={maand}
+              verwachteInkomsten={maandVooruitblik(transacties, terugkerendePosten, maand).verwachteInkomsten}
+            />
+          </ErrorBoundary>
+
           <ErrorBoundary naam="Budgetten">
             <Kaart titel={t('Budgetten')} bijschrift={t('voor {maand}', { maand: maandJaarLabel(maand) })}>
               {budgetten.length === 0 && <Leeg>{t('Nog geen budgetten ingesteld.')}</Leeg>}
@@ -1560,7 +1582,7 @@ export function App() {
               + {t('Nieuwe transactie')}
             </button>
 
-            <Meldingenbel meldingen={meldingen} onGaNaar={setPagina} />
+            <Meldingenbel meldingen={meldingen} onGaNaar={setPagina} onBoekVasteLast={boekVasteLastPerId} />
 
             {verbonden && (
               <button className="knop knop-icoon" aria-label={t('Uitloggen')} onClick={verbreekVerbinding}>
@@ -1588,7 +1610,7 @@ export function App() {
           {/* Hetzelfde belletje als op desktop. Het stond hier vroeger niet, dus op
               een telefoon zag je nooit dat een budget bijna op was. */}
           <div style={{ flex: 1 }} />
-          <Meldingenbel meldingen={meldingen} onGaNaar={setPagina} />
+          <Meldingenbel meldingen={meldingen} onGaNaar={setPagina} onBoekVasteLast={boekVasteLastPerId} />
         </div>
         {paginaInhoud}
       </main>

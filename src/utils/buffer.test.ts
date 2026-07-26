@@ -70,3 +70,31 @@ describe('bepaalBuffer', () => {
     expect(BUFFERTYPES).toEqual(['spaar', 'cash'])
   })
 })
+
+// Ronde 23: vaste lasten hoeven niet meer maandelijks te zijn. De buffer moet dan
+// het OMGEREKENDE maandbedrag gebruiken. Zou ze het volle bedrag nemen, dan zou je
+// buffer instorten zodra je een jaarpremie invoert — en dat is niet waar.
+describe('bepaalBuffer — andere termijnen dan maandelijks', () => {
+  const spaar: Rekening = { id: 's1', naam: 'Spaar', beginsaldo: 600000, type: 'spaar' }
+  const jaarpremie: TerugkerendePost = {
+    id: 'prem',
+    omschrijving: 'Autoverzekering',
+    bedrag: -120000, // € 1.200 per jaar
+    rekeningId: 's1',
+    dag: 5,
+    frequentie: 'jaar',
+    startMaand: '2026-08',
+  }
+
+  it('rekent een jaarlijkse kost om naar één maand', () => {
+    const b = bepaalBuffer([spaar], [], [], [jaarpremie], '2026-07-15')
+    // € 1.200 per jaar = € 100 per maand, dus € 6.000 spaargeld dekt 60 maanden.
+    expect(b.vasteLastenPerMaand).toBe(10000)
+    expect(b.maanden).toBe(60)
+  })
+
+  it('telt een kwartaalkost als een derde per maand', () => {
+    const kwartaal: TerugkerendePost = { ...jaarpremie, bedrag: -30000, frequentie: 'kwartaal' }
+    expect(bepaalBuffer([spaar], [], [], [kwartaal], '2026-07-15').vasteLastenPerMaand).toBe(10000)
+  })
+})

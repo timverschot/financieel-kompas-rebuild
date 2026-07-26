@@ -177,9 +177,15 @@ export const VerrekeningSchema = z.object({
 })
 export type Verrekening = z.infer<typeof VerrekeningSchema>
 
-// Een terugkerende (vaste) post, bv. huur of een abonnement. 'dag' is de dag van
-// de maand (1-28, zodat elke maand gedekt is). Bij het inboeken wordt hij een
-// gewone transactie.
+// Hoe vaak een vaste last terugkomt. De sleutels zijn taal-onafhankelijk; het
+// getal erachter (zie utils/vastelast.ts) is het aantal maanden tussen twee
+// betalingen.
+export const FREQUENTIES = ['maand', 'kwartaal', 'semester', 'jaar'] as const
+export type Frequentie = (typeof FREQUENTIES)[number]
+
+// Een terugkerende (vaste) post, bv. huur, een abonnement of een jaarlijkse
+// verzekering. 'dag' is de dag van de maand (1-28, zodat elke maand gedekt is).
+// Bij het inboeken wordt hij een gewone transactie.
 export const TerugkerendePostSchema = z.object({
   id: z.string().min(1),
   omschrijving: z.string().min(1),
@@ -187,6 +193,21 @@ export const TerugkerendePostSchema = z.object({
   rekeningId: z.string().min(1),
   categorieId: z.string().min(1).optional(),
   dag: z.number().int().min(1).max(28),
+  // Onderstaande drie velden zijn OPTIONEEL, zodat elke bestaande post geldig
+  // blijft en zich exact gedraagt zoals voorheen: maandelijks, elke maand.
+  //
+  // 'frequentie' ontbreekt = 'maand'.
+  frequentie: z.enum(FREQUENTIES).optional(),
+  // De maand van de EERSTE betaling ('JJJJ-MM'). Het ritme telt vanaf daar, niet
+  // vanaf het kalenderkwartaal: een halfjaarlijkse post die in augustus begint,
+  // valt in februari en augustus — niet in januari en juli. Ontbreekt dit veld bij
+  // een niet-maandelijkse post, dan valt ze terug op de maand waarin je haar
+  // aanmaakt (het formulier vult dat in).
+  startMaand: z.string().regex(/^\d{4}-\d{2}$/, 'maand moet JJJJ-MM zijn').optional(),
+  // Wil je het bedrag maandelijks opzijzetten in plaats van het in één keer te
+  // dragen? Puur informatief: de app houdt geen echte pot bij, ze rekent uit
+  // hoeveel je per maand opzij moet leggen en toont dat in je plan.
+  opbouwen: z.boolean().optional(),
 })
 export type TerugkerendePost = z.infer<typeof TerugkerendePostSchema>
 

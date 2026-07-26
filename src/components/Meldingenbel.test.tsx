@@ -67,3 +67,38 @@ describe('Meldingenbel', () => {
     expect(document.querySelector('[data-meldingen]')).toBeNull()
   })
 })
+
+// Ronde 23: inboeken is een maandelijkse handeling. Ze moet vanuit het paneel
+// kunnen, zonder eerst naar de Plan-pagina te navigeren.
+describe('Meldingenbel — een vaste last meteen inboeken', () => {
+  const melding: Melding = {
+    id: 'vastelast-p1',
+    soort: 'vastelast',
+    sleutel: '{naam} staat nog niet ingeboekt deze maand',
+    params: { naam: 'Huur' },
+    pagina: 'budget',
+    dringend: false,
+    actie: { soort: 'boek-vastelast', postId: 'p1' },
+  }
+
+  it('boekt de post in zonder de pagina te verlaten', async () => {
+    const user = userEvent.setup()
+    const onGaNaar = vi.fn()
+    const onBoekVasteLast = vi.fn()
+    render(<Meldingenbel meldingen={[melding]} onGaNaar={onGaNaar} onBoekVasteLast={onBoekVasteLast} />)
+
+    await user.click(screen.getByRole('button', { name: 'Meldingen (1)' }))
+    await user.click(screen.getByRole('button', { name: 'Boek in' }))
+
+    expect(onBoekVasteLast).toHaveBeenCalledWith('p1')
+    // Navigeren is precies wat we wilden vermijden.
+    expect(onGaNaar).not.toHaveBeenCalled()
+  })
+
+  it('toont geen knop wanneer de app er geen meegeeft', async () => {
+    const user = userEvent.setup()
+    render(<Meldingenbel meldingen={[melding]} onGaNaar={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Meldingen (1)' }))
+    expect(screen.queryByRole('button', { name: 'Boek in' })).not.toBeInTheDocument()
+  })
+})

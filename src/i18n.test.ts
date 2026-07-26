@@ -42,6 +42,16 @@ describe('vertaaltabellen', () => {
     expect(vertaal('fr', 'Wat wil je boeken?')).toBe('Que voulez-vous enregistrer ?')
   })
 
+  it('vertaalt de nieuwe teksten van ronde 23', () => {
+    expect(vertaal('en', 'Te verdelen')).toBe('Left to allocate')
+    expect(vertaal('fr', 'Om de 6 maanden')).toBe('Tous les 6 mois')
+    expect(vertaal('en', 'Eerste betaling in')).toBe('First payment in')
+    expect(vertaal('fr', 'Niet deze maand')).toBe('Pas ce mois-ci')
+    expect(vertaal('en', '{naam} staat nog niet ingeboekt deze maand', { naam: 'Rent' })).toBe(
+      'Rent has not been recorded this month yet',
+    )
+  })
+
   it('vertaalt de nieuwe teksten van ronde 22', () => {
     expect(vertaal('en', 'Meer opties')).toBe('More options')
     expect(vertaal('fr', 'Minder opties')).toBe("Moins d'options")

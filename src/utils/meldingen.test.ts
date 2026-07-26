@@ -120,8 +120,31 @@ describe('bouwMeldingen — vaste lasten', () => {
     const meldingen = basis({ terugkerendePosten: [huur], vandaagISO: '2026-07-15' })
     expect(meldingen).toHaveLength(1)
     expect(meldingen[0].soort).toBe('vastelast')
-    expect(meldingen[0].params).toEqual({ n: 1 })
+    // Sinds ronde 23 één melding PER post, met de naam erbij en een actie om ze
+    // meteen in te boeken — niet meer één regel "{n} vaste last(en)".
+    expect(meldingen[0].params).toEqual({ naam: 'Huur' })
+    expect(meldingen[0].actie).toEqual({ soort: 'boek-vastelast', postId: 'p1' })
     expect(meldingen[0].pagina).toBe('budget')
+  })
+
+  it('meldt elke niet-geboekte post apart', () => {
+    const gas: TerugkerendePost = { id: 'p2', omschrijving: 'Gas', bedrag: -8000, rekeningId: 'r1', dag: 5 }
+    const meldingen = basis({ terugkerendePosten: [huur, gas], vandaagISO: '2026-07-15' })
+    expect(meldingen.map((m) => m.params?.naam).sort()).toEqual(['Gas', 'Huur'])
+  })
+
+  it('zwijgt over een post die deze maand niet vervalt', () => {
+    // Halfjaarlijks, eerste betaling in augustus: in juli valt er niets te boeken.
+    const premie: TerugkerendePost = {
+      id: 'p3',
+      omschrijving: 'Autoverzekering',
+      bedrag: -60000,
+      rekeningId: 'r1',
+      dag: 5,
+      frequentie: 'semester',
+      startMaand: '2026-08',
+    }
+    expect(basis({ terugkerendePosten: [premie], vandaagISO: '2026-07-15' })).toHaveLength(0)
   })
 
   it('zwijgt zolang de dag nog niet voorbij is', () => {

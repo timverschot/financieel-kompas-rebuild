@@ -1,4 +1,4 @@
-import { INGEBOUWDE_CATEGORIEEN, type Hoofdtype } from './ingebouwd'
+import { INGEBOUWDE_CATEGORIEEN } from './ingebouwd'
 import type { Subcategorie } from '../schema'
 
 // Een item uit de boom, "plat" gemaakt met al zijn context (categorie +
@@ -12,7 +12,6 @@ export type PlatItem = {
   categorieNaam: string
   hoofdId: string
   hoofdNaam: string
-  hoofdtype: Hoofdtype
   kleur: string
   icoon: string
 }
@@ -32,7 +31,6 @@ export const PLATTE_ITEMS: PlatItem[] = (() => {
           categorieNaam: cat.naam,
           hoofdId: hoofd.id,
           hoofdNaam: hoofd.naam,
-          hoofdtype: hoofd.hoofdtype,
           kleur: hoofd.kleur,
           icoon: hoofd.icoon,
         })
@@ -44,7 +42,7 @@ export const PLATTE_ITEMS: PlatItem[] = (() => {
 
 // De context (categorie + hoofdcategorie) van elke mid-categorie (cat-*), zodat
 // een toegevoegde subcategorie zijn plaats in de boom kent.
-type CatContext = { categorieNaam: string; hoofdId: string; hoofdNaam: string; hoofdtype: Hoofdtype; kleur: string; icoon: string }
+type CatContext = { categorieNaam: string; hoofdId: string; hoofdNaam: string; kleur: string; icoon: string }
 const CONTEXT_PER_CAT = new Map<string, CatContext>()
 for (const hoofd of INGEBOUWDE_CATEGORIEEN) {
   for (const cat of hoofd.categorieen) {
@@ -52,7 +50,6 @@ for (const hoofd of INGEBOUWDE_CATEGORIEEN) {
       categorieNaam: cat.naam,
       hoofdId: hoofd.id,
       hoofdNaam: hoofd.naam,
-      hoofdtype: hoofd.hoofdtype,
       kleur: hoofd.kleur,
       icoon: hoofd.icoon,
     })
@@ -71,7 +68,6 @@ export function bouwEffectieveItems(aanpassingen: Subcategorie[]): PlatItem[] {
       categorieNaam: bestaand!.categorieNaam,
       hoofdId: bestaand!.hoofdId,
       hoofdNaam: bestaand!.hoofdNaam,
-      hoofdtype: bestaand!.hoofdtype,
       kleur: bestaand!.kleur,
       icoon: bestaand!.icoon,
     }
@@ -84,7 +80,6 @@ export function bouwEffectieveItems(aanpassingen: Subcategorie[]): PlatItem[] {
       categorieNaam: basis.categorieNaam,
       hoofdId: basis.hoofdId,
       hoofdNaam: basis.hoofdNaam,
-      hoofdtype: basis.hoofdtype,
       kleur: basis.kleur,
       icoon: basis.icoon,
     })

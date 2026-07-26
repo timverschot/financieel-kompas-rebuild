@@ -4,14 +4,11 @@
 // zodat verwijzingen stabiel blijven. Dit is STATISCHE data (geen event-log):
 // enkel aanpassingen die de gebruiker zelf maakt, worden gebeurtenissen.
 
-export type Hoofdtype = 'Vaste Uitgaven' | 'Variabele Uitgaven' | 'Sparen' | 'Inkomsten'
-
 export type IngebouwdItem = { id: string; naam: string; synoniemen: string[]; eenheid: string | null }
 export type IngebouwdeCategorie = { id: string; naam: string; items: IngebouwdItem[] }
 export type IngebouwdeHoofdcategorie = {
   id: string
   naam: string
-  hoofdtype: Hoofdtype
   kleur: string
   icoon: string
   categorieen: IngebouwdeCategorie[]
@@ -21,7 +18,6 @@ export const INGEBOUWDE_CATEGORIEEN: IngebouwdeHoofdcategorie[] = [
   {
     "id": "ov-voeding",
     "naam": "Voeding",
-    "hoofdtype": "Variabele Uitgaven",
     "kleur": "#F59E0B",
     "icoon": "🍽️",
     "categorieen": [
@@ -3561,7 +3557,6 @@ export const INGEBOUWDE_CATEGORIEEN: IngebouwdeHoofdcategorie[] = [
   {
     "id": "ov-drank",
     "naam": "Drank",
-    "hoofdtype": "Variabele Uitgaven",
     "kleur": "#C56A1F",
     "icoon": "🍺",
     "categorieen": [
@@ -4204,7 +4199,6 @@ export const INGEBOUWDE_CATEGORIEEN: IngebouwdeHoofdcategorie[] = [
   {
     "id": "ov-huishouden-en-verzorging",
     "naam": "Huishouden en Verzorging",
-    "hoofdtype": "Variabele Uitgaven",
     "kleur": "#6B7280",
     "icoon": "🧹",
     "categorieen": [
@@ -4571,7 +4565,6 @@ export const INGEBOUWDE_CATEGORIEEN: IngebouwdeHoofdcategorie[] = [
   {
     "id": "ov-apotheek-en-gezondheid",
     "naam": "Apotheek en gezondheid",
-    "hoofdtype": "Variabele Uitgaven",
     "kleur": "#D64545",
     "icoon": "❤️",
     "categorieen": [
@@ -5080,7 +5073,6 @@ export const INGEBOUWDE_CATEGORIEEN: IngebouwdeHoofdcategorie[] = [
   {
     "id": "ov-kinderen-en-gezin",
     "naam": "Kinderen en Gezin",
-    "hoofdtype": "Variabele Uitgaven",
     "kleur": "#C1502E",
     "icoon": "👨‍👩‍👧‍👦",
     "categorieen": [
@@ -5516,7 +5508,6 @@ export const INGEBOUWDE_CATEGORIEEN: IngebouwdeHoofdcategorie[] = [
   {
     "id": "ov-woning-en-vaste-lasten",
     "naam": "Woning en vaste lasten",
-    "hoofdtype": "Vaste Uitgaven",
     "kleur": "#96588A",
     "icoon": "🏠",
     "categorieen": [
@@ -6227,7 +6218,6 @@ export const INGEBOUWDE_CATEGORIEEN: IngebouwdeHoofdcategorie[] = [
   {
     "id": "ov-vervoer-en-mobiliteit",
     "naam": "Vervoer en Mobiliteit",
-    "hoofdtype": "Vaste Uitgaven",
     "kleur": "#3E7C7B",
     "icoon": "🚗",
     "categorieen": [
@@ -6589,7 +6579,6 @@ export const INGEBOUWDE_CATEGORIEEN: IngebouwdeHoofdcategorie[] = [
   {
     "id": "ov-vrije-tijd-en-lifestyle",
     "naam": "Vrije Tijd en Lifestyle",
-    "hoofdtype": "Variabele Uitgaven",
     "kleur": "#3F8A58",
     "icoon": "🎭",
     "categorieen": [
@@ -7243,7 +7232,6 @@ export const INGEBOUWDE_CATEGORIEEN: IngebouwdeHoofdcategorie[] = [
   {
     "id": "ov-inkomsten",
     "naam": "Inkomsten",
-    "hoofdtype": "Inkomsten",
     "kleur": "#3F8A58",
     "icoon": "💵",
     "categorieen": [
@@ -7492,7 +7480,6 @@ export const INGEBOUWDE_CATEGORIEEN: IngebouwdeHoofdcategorie[] = [
   {
     "id": "ov-sparen---investeren",
     "naam": "Sparen & Investeren",
-    "hoofdtype": "Sparen",
     "kleur": "#3E7C7B",
     "icoon": "💰",
     "categorieen": [
@@ -7605,7 +7592,6 @@ export const INGEBOUWDE_CATEGORIEEN: IngebouwdeHoofdcategorie[] = [
   {
     "id": "ov-kledij-en-schoenen",
     "naam": "Kledij en Schoenen",
-    "hoofdtype": "Variabele Uitgaven",
     "kleur": "#C97B8B",
     "icoon": "👗",
     "categorieen": [
@@ -7789,7 +7775,6 @@ export const INGEBOUWDE_CATEGORIEEN: IngebouwdeHoofdcategorie[] = [
   {
     "id": "ov-belastingen-en-offici-le-koste",
     "naam": "Belastingen en Officiële Kosten",
-    "hoofdtype": "Vaste Uitgaven",
     "kleur": "#83705C",
     "icoon": "📋",
     "categorieen": [
@@ -7933,7 +7918,6 @@ export const INGEBOUWDE_CATEGORIEEN: IngebouwdeHoofdcategorie[] = [
   {
     "id": "ov-huisdieren",
     "naam": "Huisdieren",
-    "hoofdtype": "Variabele Uitgaven",
     "kleur": "#92400E",
     "icoon": "🐾",
     "categorieen": [
@@ -8084,7 +8068,6 @@ export const INGEBOUWDE_CATEGORIEEN: IngebouwdeHoofdcategorie[] = [
   {
     "id": "ov-diensten-en-ontwikkeling",
     "naam": "Diensten en Ontwikkeling",
-    "hoofdtype": "Vaste Uitgaven",
     "kleur": "#0891B2",
     "icoon": "🛠️",
     "categorieen": [

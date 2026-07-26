@@ -37,6 +37,13 @@ export type Melding = {
   pagina: MeldingPagina
   /** Dringend = rood; anders amber. */
   dringend: boolean
+  /**
+   * Iets wat je meteen vanuit het paneel kan doen, zonder ergens naartoe te gaan.
+   * Een vaste last inboeken herhaal je élke maand voor élke post; daarvoor eerst
+   * naar de Plan-pagina moeten navigeren is precies de omweg die de invoerpopup in
+   * ronde 21 heeft weggewerkt.
+   */
+  actie?: { soort: 'boek-vastelast'; postId: string }
 }
 
 export type MeldingenInvoer = {
@@ -114,14 +121,21 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
   // eigen telling zou vroeg of laat uit elkaar lopen met de Vooruitblik-pagina.
   if (invoer.terugkerendePosten.length > 0) {
     const blik = maandVooruitblik(invoer.transacties, invoer.terugkerendePosten, invoer.maand, invoer.vandaagISO)
-    if (blik.aantalAchterstallig > 0) {
+    // Eén melding PER post, met de naam erbij. Vroeger stond er één regel
+    // "{n} vaste last(en) staan nog niet ingeboekt": je wist dan wel dát er iets
+    // ontbrak, maar niet wat — en je moest hoe dan ook naar de Plan-pagina om te
+    // zien welke. Nu staat de naam er, en kan je ze meteen inboeken.
+    for (const id of blik.achterstalligeIds) {
+      const post = invoer.terugkerendePosten.find((p) => p.id === id)
+      if (!post) continue
       uit.push({
-        id: 'vastelast-achterstallig',
+        id: `vastelast-${post.id}`,
         soort: 'vastelast',
-        sleutel: '{n} vaste last(en) van deze maand staan nog niet ingeboekt',
-        params: { n: blik.aantalAchterstallig },
+        sleutel: '{naam} staat nog niet ingeboekt deze maand',
+        params: { naam: post.omschrijving },
         pagina: 'budget',
         dringend: false,
+        actie: { soort: 'boek-vastelast', postId: post.id },
       })
     }
   }

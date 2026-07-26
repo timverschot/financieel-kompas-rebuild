@@ -1013,6 +1013,35 @@ const en: Record<string, string> = {
     'Income cannot be a shared expense. If you save it like this, the link with the case disappears.',
   'Bewaar de bon of factuur van deze transactie.': 'Keep the receipt or invoice for this transaction.',
   'bv. Kassaticket Colruyt': 'e.g. Colruyt receipt',
+  // Ronde 23 — de Plan-pagina en vaste lasten met andere termijnen
+  'Hoe vaak?': 'How often?',
+  'Elke maand': 'Every month',
+  'Om de 3 maanden': 'Every 3 months',
+  'Om de 6 maanden': 'Every 6 months',
+  'Eén keer per jaar': 'Once a year',
+  'Eerste betaling in': 'First payment in',
+  'Hier maandelijks voor opzijzetten': 'Set money aside for this every month',
+  'In de maanden zonder betaling rekent je plan op {bedrag} opzij.':
+    'In the months without a payment, your plan sets {bedrag} aside.',
+  'Zonder dit staat het volle bedrag in één keer in je plan, in de maand dat het vervalt.':
+    'Without this, the full amount lands in your plan in one go, in the month it is due.',
+  'Niet deze maand': 'Not this month',
+  'volgende keer {datum}': 'next time {datum}',
+  ' · {bedrag} per maand opzij': ' · {bedrag} a month set aside',
+  ' · {bedrag} per maand omgerekend': ' · {bedrag} a month when spread out',
+  'Wat ligt vast, wat blijft over': 'What is committed, what is left',
+  'Op basis van je vaste lasten en je verwachte inkomsten deze maand.':
+    'Based on your fixed costs and the income you expect this month.',
+  'Verwachte inkomsten': 'Expected income',
+  'Vaste lasten deze maand': 'Fixed costs this month',
+  'Opzij voor later': 'Set aside for later',
+  'Te verdelen': 'Left to allocate',
+  'Je budgetten vragen samen {gebudgetteerd} hiervan.': 'Your budgets claim {gebudgetteerd} of this.',
+  'Je budgetten vragen samen {gebudgetteerd} — dat is meer dan er te verdelen valt.':
+    'Your budgets claim {gebudgetteerd} together — more than there is to allocate.',
+  'Over het hele jaar kosten je vaste lasten gemiddeld {bedrag} per maand.':
+    'Across the year, your fixed costs average {bedrag} a month.',
+  '{naam} staat nog niet ingeboekt deze maand': '{naam} has not been recorded this month yet',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -2010,6 +2039,35 @@ const fr: Record<string, string> = {
     'Un revenu ne peut pas être un frais partagé. Si vous enregistrez ainsi, le lien avec le dossier disparaît.',
   'Bewaar de bon of factuur van deze transactie.': 'Conservez le reçu ou la facture de cette transaction.',
   'bv. Kassaticket Colruyt': 'p.ex. ticket de caisse Colruyt',
+  // Ronde 23 — de Plan-pagina en vaste lasten met andere termijnen
+  'Hoe vaak?': 'À quelle fréquence ?',
+  'Elke maand': 'Chaque mois',
+  'Om de 3 maanden': 'Tous les 3 mois',
+  'Om de 6 maanden': 'Tous les 6 mois',
+  'Eén keer per jaar': 'Une fois par an',
+  'Eerste betaling in': 'Premier paiement en',
+  'Hier maandelijks voor opzijzetten': 'Mettre de côté chaque mois pour ceci',
+  'In de maanden zonder betaling rekent je plan op {bedrag} opzij.':
+    "Les mois sans paiement, votre plan met {bedrag} de côté.",
+  'Zonder dit staat het volle bedrag in één keer in je plan, in de maand dat het vervalt.':
+    "Sans cela, le montant complet apparaît en une fois dans votre plan, le mois de l'échéance.",
+  'Niet deze maand': 'Pas ce mois-ci',
+  'volgende keer {datum}': 'prochaine fois le {datum}',
+  ' · {bedrag} per maand opzij': ' · {bedrag} par mois de côté',
+  ' · {bedrag} per maand omgerekend': ' · {bedrag} par mois une fois réparti',
+  'Wat ligt vast, wat blijft over': 'Ce qui est engagé, ce qui reste',
+  'Op basis van je vaste lasten en je verwachte inkomsten deze maand.':
+    'Sur la base de vos charges fixes et des revenus attendus ce mois-ci.',
+  'Verwachte inkomsten': 'Revenus attendus',
+  'Vaste lasten deze maand': 'Charges fixes ce mois-ci',
+  'Opzij voor later': 'Mis de côté pour plus tard',
+  'Te verdelen': 'À répartir',
+  'Je budgetten vragen samen {gebudgetteerd} hiervan.': 'Vos budgets en réclament {gebudgetteerd}.',
+  'Je budgetten vragen samen {gebudgetteerd} — dat is meer dan er te verdelen valt.':
+    "Vos budgets réclament {gebudgetteerd} au total — plus qu'il n'y a à répartir.",
+  'Over het hele jaar kosten je vaste lasten gemiddeld {bedrag} per maand.':
+    'Sur toute l’année, vos charges fixes reviennent en moyenne à {bedrag} par mois.',
+  '{naam} staat nog niet ingeboekt deze maand': "{naam} n'a pas encore été enregistré ce mois-ci",
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 

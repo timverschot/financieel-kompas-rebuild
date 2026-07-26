@@ -2,6 +2,7 @@ import type { TerugkerendePost, Transactie } from '../data/schema'
 import { categorieBedragen } from './transactie'
 import { inPeriode, type Periode } from './analyse'
 import { vandaag } from './datum'
+import { valtInMaand } from './vastelast'
 
 // Rekenkern voor het blok "Vooruitblik & spaarquote" op de Analyse-pagina.
 // Zuiver en los testbaar (geen datum/klok binnenin). Inkomsten en uitgaven worden
@@ -58,6 +59,12 @@ export type Vooruitblik = {
   achterstallig: { inkomsten: number; uitgaven: number } // dag voorbij, nog niet geboekt
   aantalKomend: number
   aantalAchterstallig: number
+  /**
+   * De id's van de posten die deze maand vervallen zijn maar nog niet geboekt.
+   * Het belletje gebruikt ze om per post een "boek in"-knop te tonen: inboeken is
+   * een maandelijkse handeling en mag geen navigatie naar een andere pagina kosten.
+   */
+  achterstalligeIds: string[]
   verwachteInkomsten: number
   verwachteUitgaven: number
   verwachtSaldo: number
@@ -93,10 +100,15 @@ function isMogelijkeBoeking(t: Transactie, p: TerugkerendePost, maand: string): 
 
 export function maandVooruitblik(
   transacties: Transactie[],
-  posten: TerugkerendePost[],
+  alleposten: TerugkerendePost[],
   maand: string,
   vandaagISO: string = vandaag(),
 ): Vooruitblik {
+  // Alleen de posten die déze maand vervallen. Een halfjaarlijkse verzekering is
+  // in de vijf tussenliggende maanden geen "nog te komen" uitgave; zonder deze
+  // filter zou ze de vooruitblik elke maand met haar volle bedrag verzwaren en
+  // zou het belletje elke maand klagen dat ze niet geboekt is.
+  const posten = alleposten.filter((p) => valtInMaand(p, maand))
   const geboekt = telInUit(transacties, (d) => d.startsWith(maand))
 
   // Ronde 1: de zekere herkenning op id ("Boek in"). Die krijgt voorrang, zodat
@@ -141,10 +153,12 @@ export function maandVooruitblik(
   let achterstalligeInkomsten = 0
   let achterstalligeUitgaven = 0
   let aantalAchterstallig = 0
+  const achterstalligeIds: string[] = []
   for (const p of posten) {
     if (geboekteposten.has(p.id)) continue
     if (isVoorbij(p.dag)) {
       aantalAchterstallig++
+      achterstalligeIds.push(p.id)
       if (p.bedrag > 0) achterstalligeInkomsten += p.bedrag
       else if (p.bedrag < 0) achterstalligeUitgaven += -p.bedrag
     } else {
@@ -168,6 +182,7 @@ export function maandVooruitblik(
     achterstallig: { inkomsten: achterstalligeInkomsten, uitgaven: achterstalligeUitgaven },
     aantalKomend,
     aantalAchterstallig,
+    achterstalligeIds,
     verwachteInkomsten,
     verwachteUitgaven,
     verwachtSaldo,

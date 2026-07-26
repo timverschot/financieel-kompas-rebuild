@@ -46,9 +46,15 @@ const meldingKnop: CSSProperties = {
 export function Meldingenbel({
   meldingen,
   onGaNaar,
+  onBoekVasteLast,
 }: {
   meldingen: Melding[]
   onGaNaar: (pagina: MeldingPagina) => void
+  /**
+   * Een vaste last meteen inboeken vanuit het paneel. Zonder deze prop gedraagt de
+   * bel zich zoals voorheen: elke melding brengt je enkel naar een pagina.
+   */
+  onBoekVasteLast?: (postId: string) => void
 }) {
   const { t } = useT()
   const [open, setOpen] = useState(false)
@@ -57,6 +63,12 @@ export function Meldingenbel({
   function kies(pagina: MeldingPagina) {
     setOpen(false)
     onGaNaar(pagina)
+  }
+
+  function boek(postId: string) {
+    // Het paneel blijft open: heb je er drie staan, dan wil je ze na elkaar
+    // wegwerken zonder telkens opnieuw op het belletje te duwen.
+    onBoekVasteLast?.(postId)
   }
 
   return (
@@ -105,28 +117,52 @@ export function Meldingenbel({
               </p>
             ) : (
               <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                {meldingen.map((m, i) => (
-                  <li key={m.id}>
-                    <button
-                      type="button"
-                      onClick={() => kies(m.pagina)}
-                      style={{ ...meldingKnop, borderBottom: i === aantal - 1 ? 'none' : meldingKnop.borderBottom }}
+                {meldingen.map((m, i) => {
+                  const kanBoeken = m.actie?.soort === 'boek-vastelast' && onBoekVasteLast
+                  return (
+                    <li
+                      key={m.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        borderBottom: i === aantal - 1 ? 'none' : '1px solid var(--rij-lijn)',
+                      }}
                     >
-                      <span
-                        aria-hidden
-                        style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          marginTop: 5,
-                          flexShrink: 0,
-                          background: m.dringend ? 'var(--negative)' : 'var(--accent-dot)',
-                        }}
-                      />
-                      <span>{t(m.sleutel, m.params)}</span>
-                    </button>
-                  </li>
-                ))}
+                      {/* De tekst brengt je naar de pagina; de knop ernaast doet het
+                          werk meteen. Bewust twee losse knoppen naast elkaar: een
+                          knop in een knop bestaat niet in HTML. */}
+                      <button
+                        type="button"
+                        onClick={() => kies(m.pagina)}
+                        style={{ ...meldingKnop, borderBottom: 'none', flex: 1, minWidth: 0 }}
+                      >
+                        <span
+                          aria-hidden
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            marginTop: 5,
+                            flexShrink: 0,
+                            background: m.dringend ? 'var(--negative)' : 'var(--accent-dot)',
+                          }}
+                        />
+                        <span>{t(m.sleutel, m.params)}</span>
+                      </button>
+                      {kanBoeken && m.actie && (
+                        <button
+                          type="button"
+                          className="knop knop-secundair knop-klein"
+                          style={{ flexShrink: 0 }}
+                          onClick={() => boek(m.actie!.postId)}
+                        >
+                          {t('Boek in')}
+                        </button>
+                      )}
+                    </li>
+                  )
+                })}
               </ul>
             )}
           </div>

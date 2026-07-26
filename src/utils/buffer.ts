@@ -1,5 +1,6 @@
 import type { Overboeking, Rekening, RekeningType, TerugkerendePost, Transactie } from '../data/schema'
 import { saldoVanRekening } from './saldo'
+import { maandbedrag } from './vastelast'
 
 // "Hoelang kom ik toe als er even niets binnenkomt?"
 //
@@ -55,7 +56,16 @@ export function bepaalBuffer(
 
   // Enkel de uitgaven onder de terugkerende posten; een terugkerende inkomst
   // (bv. loon) is geen last en hoort hier niet in.
-  const vasteLastenPerMaand = terugkerendePosten.reduce((som, p) => (p.bedrag < 0 ? som + -p.bedrag : som), 0)
+  //
+  // Elke post wordt omgerekend naar één maand: een jaarlijkse verzekering van
+  // € 1.200 telt hier als € 100. Nam je het volle bedrag, dan zou je buffer van
+  // vijf maanden naar één zakken zodra je die verzekering invoert — en dat is niet
+  // waar. Sloeg je haar over, dan zou de buffer te rooskleurig zijn. De omrekening
+  // staat in utils/vastelast.ts.
+  const vasteLastenPerMaand = terugkerendePosten.reduce(
+    (som, p) => (p.bedrag < 0 ? som + -maandbedrag(p) : som),
+    0,
+  )
 
   const bruikbaar = bufferRekeningen.length > 0 && vasteLastenPerMaand > 0
   const maanden = vasteLastenPerMaand > 0 ? beschikbaar / vasteLastenPerMaand : null

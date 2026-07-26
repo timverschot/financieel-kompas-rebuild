@@ -61,7 +61,6 @@ function nieuwPlatItem(id: string, naam: string, categorieId: string): PlatItem 
           categorieNaam: c.naam,
           hoofdId: h.id,
           hoofdNaam: h.naam,
-          hoofdtype: h.hoofdtype,
           kleur: h.kleur,
           icoon: h.icoon,
         }
