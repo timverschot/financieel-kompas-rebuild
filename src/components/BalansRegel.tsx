@@ -8,7 +8,12 @@ import { useT } from '../i18n'
 //
 // Bewust géén kaart met kop: het is een korte, rustige regel bij de cijfers die
 // er al staan, niet een nieuw blok dat om aandacht vraagt.
-export function BalansRegel({ inkomsten, uitgaven }: { inkomsten: number; uitgaven: number }) {
+//
+// Sinds ronde 31 kan ze ook KAAL: dan tekent ze haar eigen kaartvlak niet, omdat
+// ze binnen het kengetallenblok van het Overzicht staat. Drie losse kaartjes onder
+// elkaar die alle drie over hetzelfde maandcijfer gaan, was precies de rommeligheid
+// die daar weg moest.
+export function BalansRegel({ inkomsten, uitgaven, kaal = false }: { inkomsten: number; uitgaven: number; kaal?: boolean }) {
   const { t } = useT()
   const { stand, verschil, leeg } = bepaalBalans(inkomsten, uitgaven)
 
@@ -32,7 +37,11 @@ export function BalansRegel({ inkomsten, uitgaven }: { inkomsten: number; uitgav
     // LET OP: `.kaart` is in index.css een flex-KOLOM. Zonder `flexDirection: 'row'`
     // blijft die kolomrichting staan, en dan centreert `alignItems: 'center'`
     // horizontaal — de badge kwam bovenop de tekst te staan in plaats van ernaast.
-    <div className="kaart kaart-compact" data-balans style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+    <div
+      className={kaal ? undefined : 'kaart kaart-compact'}
+      data-balans
+      style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}
+    >
       <span className={badge}>{label}</span>
       <span className="rij-meta" style={{ flex: 1, minWidth: 200 }}>
         {uitleg}

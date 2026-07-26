@@ -15,12 +15,15 @@ export function BufferRegel({
   overboekingen,
   terugkerendePosten,
   vandaagISO,
+  kaal = false,
 }: {
   rekeningen: Rekening[]
   transacties: Transactie[]
   overboekingen: Overboeking[]
   terugkerendePosten: TerugkerendePost[]
   vandaagISO: string
+  /** Zonder eigen kaartvlak, voor gebruik binnen een groter blok. */
+  kaal?: boolean
 }) {
   const { t } = useT()
   const b = bepaalBuffer(rekeningen, transacties, overboekingen, terugkerendePosten, vandaagISO)
@@ -33,7 +36,7 @@ export function BufferRegel({
 
   return (
     <div
-      className="kaart kaart-compact"
+      className={kaal ? undefined : 'kaart kaart-compact'}
       data-buffer
       style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}
     >

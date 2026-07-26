@@ -13,6 +13,13 @@ function klassen(...delen: Array<string | false | undefined>): string {
   return delen.filter(Boolean).join(' ')
 }
 
+// De kaart mag ook `data-*`-attributen doorgeven. Waarom dat nodig is: sommige
+// blokken worden in een test op hun rol gezocht (bv. `[data-maandblok]`) in plaats
+// van op een zichtbare tekst, want die tekst mag veranderen zonder dat de test
+// breekt. React geeft onbekende props niet door, dus zonder deze doorgeeflijn
+// verdwenen ze stil — en dan zoekt de test naar iets wat er nooit stond.
+type DataAttributen = { [sleutel: `data-${string}`]: string | boolean | undefined }
+
 type KaartProps = {
   /** Titel bovenaan de kaart (Bricolage-kop). Weglaten = kaart zonder kop. */
   titel?: ReactNode
@@ -25,13 +32,13 @@ type KaartProps = {
   className?: string
   style?: CSSProperties
   children?: ReactNode
-}
+} & DataAttributen
 
 /** Het standaard inhoudsvlak: crème vlak, zachte rand, grote radius. */
-export function Kaart({ titel, bijschrift, actie, compact, className, style, children }: KaartProps) {
+export function Kaart({ titel, bijschrift, actie, compact, className, style, children, ...rest }: KaartProps) {
   const heeftKop = titel !== undefined || actie !== undefined
   return (
-    <section className={klassen('kaart', compact && 'kaart-compact', className)} style={style}>
+    <section className={klassen('kaart', compact && 'kaart-compact', className)} style={style} {...rest}>
       {heeftKop && (
         <div className="kaart-kop">
           <div>

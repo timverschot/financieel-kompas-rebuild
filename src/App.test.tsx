@@ -872,3 +872,70 @@ describe('App — volgorde van de hoofdcategorieën', () => {
     expect(namen.indexOf('Mijn hobby')).toBeGreaterThanOrEqual(14)
   })
 })
+
+// Ronde 31 — het Overzicht opnieuw ingedeeld.
+//
+// Wat er mis was: drie losse kaarten die alle drie over hetzelfde maandcijfer
+// gingen (kengetallen, balans, buffer), een aparte kaart 'Maandoverzicht' op de
+// telefoon met dezelfde drie bedragen nóg eens, een waslijst met alle categorieën
+// onder elke donut, en je laatste boekingen die op een smal scherm helemaal
+// nergens stonden.
+describe('App — het Overzicht', () => {
+  it('zet de kengetallen, de balans en de buffer in één blok', async () => {
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    const blok = document.querySelector('[data-maandblok]') as HTMLElement
+    expect(blok).not.toBeNull()
+    // De vier cijfers staan er nu ook op een smal scherm; de aparte kaart
+    // 'Maandoverzicht' met dezelfde drie bedragen is daardoor overbodig.
+    const tegels = within(blok.querySelector('[data-kengetallen]') as HTMLElement)
+    expect(tegels.getByText('Saldo')).toBeInTheDocument()
+    expect(tegels.getByText('Inkomsten')).toBeInTheDocument()
+    expect(tegels.getByText('Uitgaven')).toBeInTheDocument()
+    expect(tegels.getByText('Netto')).toBeInTheDocument()
+    expect(screen.queryByText('Maandoverzicht')).toBeNull()
+    // En de balansuitspraak hoort in datzelfde blok, niet in een eigen kaartje.
+    expect(blok.querySelector('[data-balans]')).not.toBeNull()
+  })
+
+  it('toont je laatste boekingen op een smal scherm', async () => {
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    // Dit stond alleen in de zijkolom, en die bestaat pas vanaf 1024 px.
+    expect(await screen.findByText('Recente transacties')).toBeInTheDocument()
+    expect(screen.getByText('Boodschappen')).toBeInTheDocument()
+  })
+
+  it('zet onder de donut alleen de top drie, met een knop naar Analyse', async () => {
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    const kaart = screen.getByText('Uitgaven per categorie').closest('section.kaart') as HTMLElement
+    // Twee uitgavencategorieën in de startgegevens, dus geen 'alle {n}'-variant.
+    expect(within(kaart).getByRole('button', { name: /Bekijk/ })).toBeInTheDocument()
+    expect(kaart.querySelectorAll('.lijst .rij').length).toBeLessThanOrEqual(3)
+  })
+
+  it('opent Analyse op de inkomsten wanneer je dat vanuit de inkomstendonut vraagt', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    const kaart = screen.getByText('Inkomsten per categorie').closest('section.kaart') as HTMLElement
+    await user.click(within(kaart).getByRole('button', { name: /Bekijk/ }))
+
+    // Niet op de uitgaven landen: dat is precies waar je NIET naar vroeg.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Analyse' })).toBeInTheDocument()
+    expect(await screen.findByText('Verdeling inkomsten')).toBeInTheDocument()
+  })
+
+  it('toont de maandgrafiek met beide reeksen', async () => {
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    expect(screen.getByText('Inkomsten en uitgaven per maand')).toBeInTheDocument()
+    expect(screen.getByText('* Deze maand loopt nog, dus die staaf is nog niet volledig.')).toBeInTheDocument()
+  })
+})

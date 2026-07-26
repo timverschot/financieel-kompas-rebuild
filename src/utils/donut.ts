@@ -83,3 +83,38 @@ export function donutSegmenten(items: DonutInvoer[]): DonutSegment[] {
     }
   })
 }
+
+// Hoeveel tekens er in het gat van de donut passen, per regel.
+//
+// SVG-tekst breekt niet vanzelf af: één lange naam als "Woning en vaste lasten"
+// loopt gewoon dwars over de ring heen. We knippen ze daarom zelf in hoogstens
+// twee regels, op een spatie, en korten de rest in met een beletselteken.
+const TEKENS_PER_REGEL = 16
+const MAX_REGELS = 2
+
+export function splitsLabel(naam: string, perRegel = TEKENS_PER_REGEL): string[] {
+  if (naam.length <= perRegel) return [naam]
+
+  const regels: string[] = []
+  let huidig = ''
+  for (const woord of naam.split(' ')) {
+    // Past het woord er nog bij? Zo ja, aanvullen; zo nee, regel afsluiten.
+    const kandidaat = huidig ? `${huidig} ${woord}` : woord
+    if (kandidaat.length <= perRegel) {
+      huidig = kandidaat
+      continue
+    }
+    if (huidig) regels.push(huidig)
+    huidig = woord
+    if (regels.length === MAX_REGELS) break
+  }
+  if (huidig && regels.length < MAX_REGELS) regels.push(huidig)
+
+  const zichtbaar = regels.slice(0, MAX_REGELS)
+  const restVolgt = zichtbaar.join(' ').length < naam.length
+  return zichtbaar.map((r, i) => {
+    const laatste = i === zichtbaar.length - 1
+    if (r.length > perRegel) return r.slice(0, perRegel - 1) + '…'
+    return laatste && restVolgt ? r.slice(0, perRegel - 1) + '…' : r
+  })
+}

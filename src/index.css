@@ -752,6 +752,46 @@ a:focus-visible {
   min-width: 0;
 }
 
+/* De donut: de schijven schuiven zacht naar buiten wanneer je ze kiest, en de
+   hele tekening komt bij het verschijnen even rustig in beeld. Beide bewegingen
+   zijn klein en kort — het is een grafiek, geen animatiefilm. */
+.donut-schijf {
+  transition: transform var(--overgang);
+}
+
+/* De tekst in het gat vangt geen muis: ze staat er om gelezen te worden, niet om
+   aangewezen te worden. Zonder deze regel ligt ze als een schild over het midden
+   van de tekening en kan ze het aanwijzen van een schijf in de weg zitten. */
+.donut text {
+  pointer-events: none;
+}
+
+.donut-interactief {
+  animation: donut-in 380ms ease-out both;
+}
+
+@keyframes donut-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Wie beweging liever niet ziet, krijgt ze niet: geen inkomst-animatie en geen
+   schuivende schijven. De donut blijft precies even bruikbaar. */
+@media (prefers-reduced-motion: reduce) {
+  .donut-interactief {
+    animation: none;
+  }
+  .donut-schijf {
+    transition: none;
+  }
+}
+
 /* De keuze van de hoofdcategorie: één knop, en daaronder het volledige rooster
    zodra je ze opent. In rust is dit dus maar één knop hoog, zodat de
    voorstellenlijst van het invoerveld er vlak onder blijft staan. */
@@ -932,11 +972,34 @@ a:hover {
   margin: 0 auto;
 }
 
-/* Rij met kengetallen (saldo, inkomsten, uitgaven, netto). */
+/* Rij met kengetallen (saldo, inkomsten, uitgaven, netto).
+
+   Sinds ronde 31 staan alle vier de cijfers op ELK schermformaat. Op een telefoon
+   stond er in de plaats een aparte kaart "Maandoverzicht" met exact dezelfde drie
+   bedragen eronder — twee blokken die hetzelfde zeiden. Twee kolommen op een
+   smal scherm, met het saldo over de volle breedte omdat dat het hoofdcijfer is. */
 .tegelrij {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.tegelrij > .saldotegel {
+  grid-column: 1 / -1;
+}
+
+/* Netto is de uitkomst van de twee cijfers erboven (inkomsten min uitgaven), dus
+   op een smal scherm krijgt het de volle breedte in plaats van een halve tegel
+   naast een gat. */
+.tegelrij > .kengetal:last-child {
+  grid-column: 1 / -1;
+}
+
+/* Het hoofdcijfer van --tekst-2xl (28 px) past niet in een halve tegel op 390 px:
+   "€ 2.400,00" is in monospace breder dan het vak en werd afgekapt. Op een smal
+   scherm dus een stap kleiner; vanaf 1024 px is er ruimte genoeg. */
+.tegelrij > .kengetal .bedrag-groot {
+  font-size: var(--tekst-xl);
 }
 
 /* Hoofdraster: brede kolom links, smalle zijkolom rechts. */
@@ -989,7 +1052,18 @@ a:hover {
   }
 
   .tegelrij {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  /* Vanaf hier passen de vier cijfers naast elkaar, op hun volle grootte. */
+  .tegelrij > .saldotegel,
+  .tegelrij > .kengetal:last-child {
+    grid-column: auto;
+  }
+
+  .tegelrij > .kengetal .bedrag-groot {
+    font-size: var(--tekst-2xl);
   }
 
   .raster-hoofd {
@@ -1028,10 +1102,6 @@ a:hover {
 @media (min-width: 1440px) {
   .inhoud-breed {
     max-width: 1560px;
-  }
-
-  .tegelrij {
-    grid-template-columns: repeat(4, 1fr);
   }
 
   .raster-lijst-formulier {

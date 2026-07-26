@@ -117,3 +117,51 @@ export function uitgavenPerBesparingsdomein(transacties: Transactie[], periode: 
     bedrag: som.get(d.sleutel) ?? 0,
   }))
 }
+
+/**
+ * Eén besparingsdomein, vergeleken met de vorige even lange periode.
+ *
+ * Waarom deze uitbreiding er is: het blok toonde vier bedragen met een algemene
+ * tip ("vergelijk je polissen"). Dat is informatie die je ook uit de ranglijst
+ * haalt, zonder norm en zonder aanleiding om iets te doen. Een bedrag alleen zegt
+ * niets — pas een VERGELIJKING zegt iets: is dit meer of minder dan de vorige keer,
+ * en hoeveel scheelt dat op een jaar?
+ *
+ * We vergelijken bewust met de vorige VERGELIJKBARE periode (dezelfde bron als
+ * "Stijgers en dalers"), niet met een vast gemiddelde over zes maanden: zo volgt
+ * het blok de periode die je bovenaan koos, in plaats van er stilzwijgend van af te
+ * wijken.
+ */
+export type DomeinVergelijking = DomeinUitgave & {
+  /** Hetzelfde domein in de vorige periode; null wanneer die er niet is. */
+  vorig: number | null
+  /** Huidig min vorig, in centen. Positief = duurder geworden. */
+  verschil: number | null
+  /**
+   * Het verschil in procent van de vorige periode. Null wanneer er geen vorige
+   * periode is, of wanneer je toen niets uitgaf — dan is "oneindig procent meer"
+   * een misleidend getal en tonen we liever alleen het bedrag.
+   */
+  procent: number | null
+}
+
+export function vergelijkBesparingsdomeinen(
+  transacties: Transactie[],
+  periode: Periode,
+  vorigePeriode: Periode | null,
+): DomeinVergelijking[] {
+  const nu = uitgavenPerBesparingsdomein(transacties, periode)
+  if (!vorigePeriode) return nu.map((d) => ({ ...d, vorig: null, verschil: null, procent: null }))
+
+  const toen = new Map(uitgavenPerBesparingsdomein(transacties, vorigePeriode).map((d) => [d.sleutel, d.bedrag]))
+  return nu.map((d) => {
+    const vorig = toen.get(d.sleutel) ?? 0
+    const verschil = d.bedrag - vorig
+    return {
+      ...d,
+      vorig,
+      verschil,
+      procent: vorig > 0 ? Math.round((verschil / vorig) * 100) : null,
+    }
+  })
+}

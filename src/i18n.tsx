@@ -580,6 +580,41 @@ const en: Record<string, string> = {
   // Ronde 30 — de hoofdcategorieën zitten achter één knop, en hun volgorde is
   // instelbaar op de Categorieën-pagina.
   'Selecteer hoofdcategorie': 'Select a main category',
+  // Ronde 31 — het herwerkte Overzicht en de Analyse-pagina.
+  '* Deze maand loopt nog, dus die staaf is nog niet volledig.':
+    '* This month is still running, so that bar is not complete yet.',
+  'Bekijk alle {n} in Analyse ›': 'View all {n} in Analysis ›',
+  'Bekijk in Analyse ›': 'View in Analysis ›',
+  'De laatste zes maanden, met je gemiddelde als lijn.': 'The last six months, with your average as a line.',
+  'Even veel als de vorige periode. {tip}': 'The same as the previous period. {tip}',
+  'Gemiddeld {bedrag} per maand': 'On average {bedrag} per month',
+  'Het lijntje loopt over {venster}. Het verschil ernaast vergelijkt {periode} met de vorige even lange periode.':
+    'The line covers {venster}. The difference next to it compares {periode} with the previous period of the same length.',
+  'Het lijntje loopt over {venster}. Kies een periode (niet Alles) om er een verschil bij te zien.':
+    'The line covers {venster}. Pick a period (not All) to see a difference alongside it.',
+  'Houdt dit een jaar aan, dan bespaar je {bedrag}. {tip}': 'If this keeps up for a year, you save {bedrag}. {tip}',
+  'Houdt dit een jaar aan, dan kost het {bedrag} extra. {tip}':
+    'If this keeps up for a year, it costs {bedrag} extra. {tip}',
+  'Inkomsten en uitgaven per maand': 'Income and expenses per month',
+  'Nog geen uitgaven in deze vier domeinen.': 'No expenses in these four areas yet.',
+  'Nog geen uitgaven in deze vier domeinen. Zodra je boodschappen, energie, telecom of verzekeringen boekt, zie je hier hoeveel ze kosten en of ze stijgen.':
+    'No expenses in these four areas yet. As soon as you record groceries, energy, telecom or insurance, you will see here what they cost and whether they are rising.',
+  'Nog niets geboekt in deze maanden.': 'Nothing recorded in these months yet.',
+  'Per hoofdcategorie — klik een rij open voor de details erachter.':
+    'Per main category — click a row to see what is behind it.',
+  'Samen {bedrag} in deze periode.': '{bedrag} in total this period.',
+  'Samen {bedrag}. Sterkst gestegen: {naam}, {verschil} meer.':
+    '{bedrag} in total. Biggest rise: {naam}, {verschil} more.',
+  'Toon details': 'Show details',
+  'Verberg details': 'Hide details',
+  'Verloop per categorie': 'Trend per category',
+  'Verloop van {naam} over {venster}': 'Trend of {naam} over {venster}',
+  'Vorige periode: {bedrag}. {tip}': 'Previous period: {bedrag}. {tip}',
+  'Waar loopt het op?': 'Where is it adding up?',
+  'in': 'in',
+  'loopt nog': 'still running',
+  'uit': 'out',
+  '{label} per categorie: {inhoud}': '{label} per category: {inhoud}',
   'Hoofdcategorie: {naam}': 'Main category: {naam}',
   'Zet {naam} hoger': 'Move {naam} up',
   'Zet {naam} lager': 'Move {naam} down',
@@ -1677,6 +1712,41 @@ const fr: Record<string, string> = {
     'Si vous ne sélectionnez personne, cette dépense compte pour la famille.',
   // Ronde 30
   'Selecteer hoofdcategorie': 'Choisir une catégorie principale',
+  // Ronde 31
+  '* Deze maand loopt nog, dus die staaf is nog niet volledig.':
+    '* Ce mois est en cours, cette barre n’est donc pas complète.',
+  'Bekijk alle {n} in Analyse ›': 'Voir les {n} dans Analyse ›',
+  'Bekijk in Analyse ›': 'Voir dans Analyse ›',
+  'De laatste zes maanden, met je gemiddelde als lijn.': 'Les six derniers mois, avec votre moyenne en ligne.',
+  'Even veel als de vorige periode. {tip}': 'Autant que la période précédente. {tip}',
+  'Gemiddeld {bedrag} per maand': 'En moyenne {bedrag} par mois',
+  'Het lijntje loopt over {venster}. Het verschil ernaast vergelijkt {periode} met de vorige even lange periode.':
+    'La courbe couvre {venster}. La différence à côté compare {periode} à la période précédente de même durée.',
+  'Het lijntje loopt over {venster}. Kies een periode (niet Alles) om er een verschil bij te zien.':
+    'La courbe couvre {venster}. Choisissez une période (pas Tout) pour voir une différence.',
+  'Houdt dit een jaar aan, dan bespaar je {bedrag}. {tip}': 'Si cela dure un an, vous économisez {bedrag}. {tip}',
+  'Houdt dit een jaar aan, dan kost het {bedrag} extra. {tip}':
+    'Si cela dure un an, cela coûte {bedrag} de plus. {tip}',
+  'Inkomsten en uitgaven per maand': 'Revenus et dépenses par mois',
+  'Nog geen uitgaven in deze vier domeinen.': 'Pas encore de dépenses dans ces quatre domaines.',
+  'Nog geen uitgaven in deze vier domeinen. Zodra je boodschappen, energie, telecom of verzekeringen boekt, zie je hier hoeveel ze kosten en of ze stijgen.':
+    'Pas encore de dépenses dans ces quatre domaines. Dès que vous enregistrez des courses, de l’énergie, des télécoms ou des assurances, vous verrez ici ce qu’elles coûtent et si elles augmentent.',
+  'Nog niets geboekt in deze maanden.': 'Rien d’enregistré durant ces mois.',
+  'Per hoofdcategorie — klik een rij open voor de details erachter.':
+    'Par catégorie principale — cliquez sur une ligne pour voir le détail.',
+  'Samen {bedrag} in deze periode.': '{bedrag} au total sur cette période.',
+  'Samen {bedrag}. Sterkst gestegen: {naam}, {verschil} meer.':
+    '{bedrag} au total. Plus forte hausse : {naam}, {verschil} de plus.',
+  'Toon details': 'Afficher le détail',
+  'Verberg details': 'Masquer le détail',
+  'Verloop per categorie': 'Évolution par catégorie',
+  'Verloop van {naam} over {venster}': 'Évolution de {naam} sur {venster}',
+  'Vorige periode: {bedrag}. {tip}': 'Période précédente : {bedrag}. {tip}',
+  'Waar loopt het op?': 'Où cela s’accumule-t-il ?',
+  'in': 'in',
+  'loopt nog': 'en cours',
+  'uit': 'out',
+  '{label} per categorie: {inhoud}': '{label} par catégorie : {inhoud}',
   'Hoofdcategorie: {naam}': 'Catégorie principale : {naam}',
   'Zet {naam} hoger': 'Monter {naam}',
   'Zet {naam} lager': 'Descendre {naam}',

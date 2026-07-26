@@ -1,55 +1,31 @@
-import type { Budget, Categorie, Transactie } from '../data/schema'
-import { groepenVanTransactie, isGesplitstOverCategorieen } from '../utils/transactie'
+import type { Budget, Transactie } from '../data/schema'
 import { uitgavenInMaand } from '../utils/budget'
-import { Balk, Bedrag, Kaart, Leeg } from '../ui/basis'
+import { Balk, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 
-// De zijkolom van het Overzicht op brede schermen. Ze toont dingen waarvoor je
-// anders naar een andere pagina moet: je laatste transacties en hoe je budgetten
-// ervoor staan. Op smalle schermen wordt deze kolom niet getoond — daar zou ze de
-// pagina enkel langer maken, want je bereikt beide met één tik op de onderbalk.
+// De zijkolom van het Overzicht op brede schermen: hoe je budgetten ervoor staan.
+//
+// De lijst met je laatste boekingen stond hier ook, maar die is in ronde 31 naar
+// de hoofdkolom verhuisd (components/RecenteTransacties.tsx). Reden: deze kolom
+// bestaat alleen vanaf 1024 px, dus op een telefoon zag je je eigen laatste
+// boekingen nergens op de startpagina.
 
-const AANTAL_RECENT = 6
 const AANTAL_BUDGETTEN = 4
-
-function TekenVoor({ tx, categorieen }: { tx: Transactie; categorieen: Categorie[] }) {
-  const groepen = groepenVanTransactie(tx, categorieen)
-  const gesplitst = isGesplitstOverCategorieen(tx, categorieen)
-  // Zelfde logica als in de transactielijst: winkelkar voor een ticket met
-  // meerdere categorieën, anders het icoon van de categorie, anders de beginletter.
-  const icoon = gesplitst ? '🛒' : groepen[0]?.icoon
-  const kleur = gesplitst ? null : (groepen[0]?.kleur ?? null)
-  return (
-    <span
-      className="rij-teken"
-      style={kleur ? { backgroundColor: `color-mix(in srgb, ${kleur} 18%, transparent)` } : undefined}
-      aria-hidden
-    >
-      {icoon ?? tx.omschrijving.trim().slice(0, 1).toUpperCase()}
-    </span>
-  )
-}
 
 export function OverzichtZijkolom({
   transacties,
-  categorieen,
   budgetten,
   maand,
   categorieNaam,
-  onGaNaarTransacties,
   onGaNaarBudget,
 }: {
   transacties: Transactie[]
-  categorieen: Categorie[]
   budgetten: Budget[]
   maand: string
   categorieNaam: (id: string) => string | undefined
-  onGaNaarTransacties: () => void
   onGaNaarBudget: () => void
 }) {
   const { t } = useT()
-
-  const recent = [...transacties].sort((a, b) => b.datum.localeCompare(a.datum)).slice(0, AANTAL_RECENT)
 
   // De budgetten die het dichtst bij hun grens zitten, want dat is wat je wil zien.
   const budgetStand = budgetten
@@ -62,33 +38,6 @@ export function OverzichtZijkolom({
 
   return (
     <div className="kolom-zij">
-      <Kaart
-        titel={t('Recente transacties')}
-        actie={
-          <button className="knop knop-ghost knop-klein" onClick={onGaNaarTransacties}>
-            {t('Alle')}
-          </button>
-        }
-      >
-        {recent.length === 0 && <Leeg>{t('Nog geen transacties.')}</Leeg>}
-        {recent.length > 0 && (
-          <ul className="lijst">
-            {recent.map((tx) => (
-              <li key={tx.id} className="rij" style={{ gap: 10 }}>
-                <TekenVoor tx={tx} categorieen={categorieen} />
-                <span className="rij-midden">
-                  <span className="rij-titel" style={{ fontSize: 'var(--tekst-sm)' }}>
-                    {tx.omschrijving}
-                  </span>
-                  <span className="rij-meta">{tx.datum}</span>
-                </span>
-                <Bedrag centen={tx.bedrag} richting="auto" />
-              </li>
-            ))}
-          </ul>
-        )}
-      </Kaart>
-
       <Kaart
         titel={t('Budgetstatus')}
         bijschrift={t('voor {maand}', { maand })}

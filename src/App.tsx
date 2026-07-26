@@ -112,7 +112,9 @@ import { CategorieBoom } from './components/CategorieBoom'
 import { OverzichtZijkolom } from './components/OverzichtZijkolom'
 import { SubcategorieSnelFormulier } from './components/SubcategorieSnelFormulier'
 import { Donut } from './components/Donut'
-import { StaafGrafiek } from './components/StaafGrafiek'
+import { MaandGrafiek } from './components/MaandGrafiek'
+import { RecenteTransacties } from './components/RecenteTransacties'
+import { TopDrie } from './components/TopDrie'
 import { RekenhulpenSectie } from './components/RekenhulpenSectie'
 import { TerugkerendeSectie } from './components/TerugkerendeSectie'
 import { PlanRegels } from './components/PlanRegels'
@@ -130,7 +132,7 @@ import { saldoVerrekeningDossier } from './utils/dossier'
 import { kostenVoorAfrekening, type AfrekeningFilter } from './utils/afrekening'
 import { nieuwId } from './data/sync/id'
 import { inkomstenPerCategorie, maandInkomsten, maandUitgaven, uitgavenPerCategorie } from './utils/overzicht'
-import { uitgavenPerMaand } from './utils/maandverloop'
+import { inkomstenUitgavenPerMaand } from './utils/maandverloop'
 import { labelVanCategorie } from './data/categorieen/resolve'
 import { stelCategorieboomIn } from './data/categorieen/zoek'
 import { uitgavenInMaand } from './utils/budget'
@@ -217,6 +219,10 @@ export function App() {
   // ronde 29 een eigen pagina die niets meer was dan twee secties onder elkaar;
   // ze zijn nu subtabs naast de gedeelde kosten.
   const [dossierTab, setDossierTab] = useState<DossierSoort>('coouderschap')
+  // Met welke richting de Analyse-pagina opent. De knop onder een donut op het
+  // Overzicht zet die mee: klik je bij "Inkomsten per categorie" op "Bekijk in
+  // Analyse", dan hoor je daar niet op de uitgaven te landen.
+  const [analyseRichting, setAnalyseRichting] = useState<'uitgave' | 'inkomst'>('uitgave')
   const isDesktop = useIsDesktop()
   const [backupTekst, setBackupTekst] = useState<string | null>(null)
   const [undoInfo, setUndoInfo] = useState<{ boodschap: string; herstel: () => Promise<void> } | null>(null)
@@ -1022,7 +1028,7 @@ export function App() {
   // de keuzelijsten waar je nieuwe dingen aan koppelt.
   const actieveRekeningen = rekeningen.filter((r) => !r.gearchiveerd)
   const gekozenRekening = rekeningen.find((r) => r.id === gekozenRekeningId) ?? null
-  const maandVerloop = uitgavenPerMaand(transacties, maand, 6)
+  const maandPaar = inkomstenUitgavenPerMaand(transacties, maand, 6)
 
   // Eén maand-schakelaar, hergebruikt op de pagina's die per maand tonen
   // (Overzicht en Budget). Zo hoeft de gebruiker niet terug naar Overzicht.
@@ -1128,6 +1134,11 @@ export function App() {
     if (subtab) setDossierTab(subtab)
   }
 
+  function gaNaarAnalyse(richting: 'uitgave' | 'inkomst') {
+    setAnalyseRichting(richting)
+    setPagina('analyse')
+  }
+
   const paginaInhoud = (
     <div className="stapel">
 
@@ -1148,83 +1159,86 @@ export function App() {
               ding belangrijker dan alle cijfers: weten wat je eerst moet doen. */}
           {rekeningen.length === 0 && <EersteStap onNaarRekeningen={() => setPagina('rekeningen')} />}
 
-          {/* Kengetallen. Op een breed scherm staan de vier cijfers naast elkaar
-              en vervangen ze de maandoverzicht-kaart; op een telefoon blijft het
-              bij de saldotegel met de kaart eronder, precies zoals voorheen. */}
-          <div className="tegelrij" data-kengetallen>
-            <div className="saldotegel glans glans-sterk" data-saldo>
-              <span className="label-caps">{t('Saldo')}</span>
-              <span className="bedrag-groot">{formatEuro(totaalSaldo)}</span>
+          {/* Eén blok met alles over deze maand.
+              Dit waren drie losse kaarten onder elkaar — de kengetallen, de
+              balansregel en de bufferregel — die alle drie over hetzelfde
+              maandcijfer gingen. Ze staan nu in één kaart, met een scheidingslijn
+              ertussen: eerst de cijfers, dan wat ze betekenen.
+
+              De vier cijfers verschijnen nu op ELK schermformaat. Op een telefoon
+              stond er in de plaats een aparte kaart "Maandoverzicht" met exact
+              dezelfde drie bedragen eronder; die is dus overbodig geworden. */}
+          <Kaart className="stapel" data-maandblok>
+            <div className="tegelrij" data-kengetallen>
+              <div className="saldotegel glans glans-sterk" data-saldo>
+                <span className="label-caps">{t('Saldo')}</span>
+                <span className="bedrag-groot">{formatEuro(totaalSaldo)}</span>
+              </div>
+              <div className="kengetal">
+                <span className="label-caps">{t('Inkomsten')}</span>
+                <Bedrag centen={inkomsten} richting="in" groot />
+              </div>
+              <div className="kengetal">
+                <span className="label-caps">{t('Uitgaven')}</span>
+                <Bedrag centen={uitgaven} richting="uit" groot />
+              </div>
+              <div className="kengetal">
+                <span className="label-caps">{t('Netto')}</span>
+                <Bedrag centen={inkomsten - uitgaven} richting="auto" groot />
+              </div>
             </div>
-            {isDesktop && (
-              <>
-                <div className="kengetal">
-                  <span className="label-caps">{t('Inkomsten')}</span>
-                  <Bedrag centen={inkomsten} richting="in" groot />
-                </div>
-                <div className="kengetal">
-                  <span className="label-caps">{t('Uitgaven')}</span>
-                  <Bedrag centen={uitgaven} richting="uit" groot />
-                </div>
-                <div className="kengetal">
-                  <span className="label-caps">{t('Netto')}</span>
-                  <Bedrag centen={inkomsten - uitgaven} richting="auto" groot />
-                </div>
-              </>
-            )}
-          </div>
 
-          {/* Benoemt wat het netto-cijfer betekent: overschot, tekort of balans. */}
-          <BalansRegel inkomsten={inkomsten} uitgaven={uitgaven} />
-
-          {/* Het enige cijfer dat verder kijkt dan deze maand: hoelang je toekomt
-              zonder inkomen. Zwijgt zolang het niets kan betekenen. */}
-          <BufferRegel
-            rekeningen={rekeningen}
-            transacties={transacties}
-            overboekingen={overboekingen}
-            terugkerendePosten={terugkerendePosten}
-            vandaagISO={vandaag()}
-          />
+            {/* Benoemt wat het netto-cijfer betekent (overschot, tekort of balans)
+                en hoelang je toekomt zonder inkomen. Allebei kaal: ze horen bij de
+                cijfers hierboven en niet in een eigen kaartje. */}
+            <BalansRegel inkomsten={inkomsten} uitgaven={uitgaven} kaal />
+            <BufferRegel
+              rekeningen={rekeningen}
+              transacties={transacties}
+              overboekingen={overboekingen}
+              terugkerendePosten={terugkerendePosten}
+              vandaagISO={vandaag()}
+              kaal
+            />
+          </Kaart>
 
           <ErrorBoundary naam="Maandoverzicht">
             <div className="raster-hoofd">
               <div className="stapel">
-                {!isDesktop && (
-                  <Kaart titel={t('Maandoverzicht')} bijschrift={maandJaarLabel(maand)}>
-                    <div>
-                      <div className="rij">
-                        <span className="rij-midden rij-titel">{t('Inkomsten')}</span>
-                        <Bedrag centen={inkomsten} richting="in" />
-                      </div>
-                      <div className="rij">
-                        <span className="rij-midden rij-titel">{t('Uitgaven')}</span>
-                        <Bedrag centen={uitgaven} richting="uit" />
-                      </div>
-                      <div className="rij">
-                        <span className="rij-midden rij-titel">{t('Netto')}</span>
-                        <Bedrag centen={inkomsten - uitgaven} richting="auto" />
-                      </div>
-                    </div>
-                  </Kaart>
-                )}
-
+                {/* Twee grote donuts. Geen lijst met alle categorieën eronder meer:
+                    hang je met de muis over een schijf (of tik je erop), dan komt
+                    haar naam, bedrag en aandeel in het GAT van de donut te staan.
+                    Onder de grafiek staan enkel de drie grootste, met een knop naar
+                    de Analyse-pagina voor het volledige verhaal. */}
                 <div className="raster-twee">
                   {perCategorie.length > 0 && (
-                    <Kaart titel={t('Uitgaven per categorie')}>
-                      <Donut items={perCategorie} />
+                    <Kaart titel={t('Uitgaven per categorie')} bijschrift={maandJaarLabel(maand)}>
+                      <Donut items={perCategorie} interactief toonLegende={false} grootte={240} />
+                      <TopDrie posten={perCategorie} onAlles={() => gaNaarAnalyse('uitgave')} />
                     </Kaart>
                   )}
 
                   {perInkomsten.length > 0 && (
-                    <Kaart titel={t('Inkomsten per categorie')}>
-                      <Donut items={perInkomsten} middenLabel="inkomsten" />
+                    <Kaart titel={t('Inkomsten per categorie')} bijschrift={maandJaarLabel(maand)}>
+                      <Donut items={perInkomsten} middenLabel="inkomsten" interactief toonLegende={false} grootte={240} />
+                      <TopDrie posten={perInkomsten} onAlles={() => gaNaarAnalyse('inkomst')} />
                     </Kaart>
                   )}
                 </div>
 
-                <Kaart titel={t('Uitgaven per maand')}>
-                  <StaafGrafiek data={maandVerloop} />
+                {/* Je laatste boekingen. Stonden alleen in de zijkolom, dus op een
+                    telefoon zag je ze op de startpagina helemaal niet. */}
+                <RecenteTransacties
+                  transacties={transacties}
+                  categorieen={categorieen}
+                  onAlle={() => setPagina('transacties')}
+                />
+
+                <Kaart
+                  titel={t('Inkomsten en uitgaven per maand')}
+                  bijschrift={t('De laatste zes maanden, met je gemiddelde als lijn.')}
+                >
+                  <MaandGrafiek data={maandPaar} lopendeMaand={huidigeMaand()} />
                 </Kaart>
               </div>
 
@@ -1233,11 +1247,9 @@ export function App() {
               {isDesktop && (
                 <OverzichtZijkolom
                   transacties={transacties}
-                  categorieen={categorieen}
                   budgetten={budgetten}
                   maand={maandJaarLabel(maand)}
                   categorieNaam={categorieNaam}
-                  onGaNaarTransacties={() => setPagina('transacties')}
                   onGaNaarBudget={() => setPagina('budget')}
                 />
               )}
@@ -1273,6 +1285,7 @@ export function App() {
       {pagina === 'analyse' && (
         <ErrorBoundary naam="Analyse">
           <AnalyseSectie
+            beginRichting={analyseRichting}
             gezinsleden={kinderen} transacties={transacties} categorieen={categorieen} rekeningen={rekeningen} overboekingen={overboekingen} terugkerendePosten={terugkerendePosten} />
         </ErrorBoundary>
       )}

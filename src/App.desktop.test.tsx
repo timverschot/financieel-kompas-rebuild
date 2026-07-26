@@ -71,17 +71,19 @@ describe('App op een breed scherm', () => {
     expect(screen.queryByText('Maandoverzicht')).not.toBeInTheDocument()
   })
 
-  it('toont de zijkolom met recente transacties en budgetstatus', async () => {
+  it('toont de recente transacties en de budgetstatus', async () => {
     render(<App />)
     await screen.findByText('Saldo')
 
+    // De recente transacties staan sinds ronde 31 in de HOOFDkolom (ze waren op een
+    // telefoon anders nergens te zien); de zijkolom houdt de budgetstatus.
     expect(screen.getByText('Recente transacties')).toBeInTheDocument()
     expect(screen.getByText('Budgetstatus')).toBeInTheDocument()
     // De voorbeelddata bevat een transactie 'Loon'.
     expect(await screen.findByText('Loon')).toBeInTheDocument()
   })
 
-  it('springt vanuit de zijkolom naar de transactiepagina', async () => {
+  it('springt vanuit de recente transacties naar de transactiepagina', async () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Recente transacties')

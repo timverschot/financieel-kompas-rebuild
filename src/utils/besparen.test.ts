@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Transactie } from '../data/schema'
-import { BESPARINGSDOMEINEN, domeinVanCategorie, uitgavenPerBesparingsdomein } from './besparen'
+import { BESPARINGSDOMEINEN, domeinVanCategorie, uitgavenPerBesparingsdomein, vergelijkBesparingsdomeinen } from './besparen'
 
 // Echte id's uit de ingebouwde boom (data/categorieen/ingebouwd.ts). Ze staan
 // hier bewust letterlijk: zou er ooit een id verdwijnen, dan faalt deze test —
@@ -85,5 +85,58 @@ describe('uitgavenPerBesparingsdomein', () => {
   it('draagt voor elk domein een kleur mee, uit hetzelfde object als het bedrag', () => {
     const uit = uitgavenPerBesparingsdomein([], {})
     expect(uit.every((d) => /^#[0-9A-F]{6}$/i.test(d.kleur))).toBe(true)
+  })
+})
+
+// Ronde 31: een bedrag alleen zegt niets. Pas een vergelijking met de vorige even
+// lange periode maakt er informatie van waar je iets mee kan.
+describe('vergelijkBesparingsdomeinen', () => {
+  const juli = { van: '2026-07-01', tot: '2026-07-31' }
+  const juni = { van: '2026-06-01', tot: '2026-06-30' }
+  const energie = (datum: string, centen: number): Transactie => ({
+    id: `e-${datum}`,
+    datum,
+    omschrijving: 'x',
+    bedrag: -centen,
+    rekeningId: 'r1',
+    categorieId: 'cat-energie-en-nutsvoorzieningen',
+  })
+
+  function domein(uit: ReturnType<typeof vergelijkBesparingsdomeinen>, sleutel: string) {
+    return uit.find((d) => d.sleutel === sleutel)!
+  }
+
+  it('rekent het verschil en het percentage uit', () => {
+    const uit = vergelijkBesparingsdomeinen([energie('2026-07-03', 12000), energie('2026-06-03', 8000)], juli, juni)
+    const e = domein(uit, 'energie')
+    expect(e.bedrag).toBe(12000)
+    expect(e.vorig).toBe(8000)
+    expect(e.verschil).toBe(4000)
+    expect(e.procent).toBe(50)
+  })
+
+  it('meldt een daling met een negatief verschil', () => {
+    const uit = vergelijkBesparingsdomeinen([energie('2026-07-03', 6000), energie('2026-06-03', 8000)], juli, juni)
+    expect(domein(uit, 'energie').verschil).toBe(-2000)
+    expect(domein(uit, 'energie').procent).toBe(-25)
+  })
+
+  it('zwijgt over het percentage wanneer er vorige periode niets was', () => {
+    // "Oneindig procent meer" is geen bruikbaar getal; dan tonen we enkel het bedrag.
+    const uit = vergelijkBesparingsdomeinen([energie('2026-07-03', 6000)], juli, juni)
+    expect(domein(uit, 'energie').verschil).toBe(6000)
+    expect(domein(uit, 'energie').procent).toBeNull()
+  })
+
+  it('geeft geen vergelijking wanneer er geen vorige periode is', () => {
+    const uit = vergelijkBesparingsdomeinen([energie('2026-07-03', 6000)], juli, null)
+    expect(domein(uit, 'energie').bedrag).toBe(6000)
+    expect(domein(uit, 'energie').vorig).toBeNull()
+    expect(domein(uit, 'energie').verschil).toBeNull()
+  })
+
+  it('houdt de vaste volgorde van de vier domeinen aan', () => {
+    const uit = vergelijkBesparingsdomeinen([], juli, juni)
+    expect(uit.map((d) => d.sleutel)).toEqual(['boodschappen', 'energie', 'telecom', 'verzekeringen'])
   })
 })

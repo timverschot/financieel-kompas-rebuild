@@ -137,6 +137,7 @@ export function AnalyseSectie({
   overboekingen,
   terugkerendePosten,
   gezinsleden = [],
+  beginRichting = 'uitgave',
 }: {
   transacties: Transactie[]
   categorieen: Categorie[]
@@ -146,9 +147,16 @@ export function AnalyseSectie({
   // Optioneel: zonder ingestelde gezinsleden blijft het blok 'per gezinslid'
   // gewoon weg — het zou dan alleen maar verwarren.
   gezinsleden?: Kind[]
+  /**
+   * Met welke richting de pagina opent. Kom je hier via de knop onder de donut
+   * "Inkomsten per categorie" op het Overzicht, dan hoor je niet op de uitgaven te
+   * landen. Verander je daarna zelf van richting, dan blijft die keuze staan: dit
+   * is enkel de BEGINstand.
+   */
+  beginRichting?: Richting
 }) {
   const { t } = useT()
-  const [richting, setRichting] = useState<Richting>('uitgave')
+  const [richting, setRichting] = useState<Richting>(beginRichting)
   const [keuze, setKeuze] = useState<'maand' | 'vorige' | 'jaar' | 'alles' | 'aangepast'>('maand')
   const [van, setVan] = useState('')
   const [tot, setTot] = useState('')
@@ -338,6 +346,18 @@ export function AnalyseSectie({
 
       {!drill && !bereikOmgekeerd && (
         <>
+          {/* Waar loopt het op? Bovenaan maar INGEKLAPT: het is een signaal, geen
+              hoofdgerecht. Enkel bij uitgaven — bij inkomsten is de vraag zinloos.
+              Ze stond eerder middenin de pagina en brak daar de leesvolgorde. */}
+          {richting === 'uitgave' && (
+            <BesparenKaart
+              transacties={transacties}
+              periode={periode}
+              vorigePeriode={vorige}
+              perMaand={keuze === 'maand' || keuze === 'vorige'}
+            />
+          )}
+
           {/* Verdeling én ranglijst in ÉÉN kaart, met de donut links en de lijst
               rechts — precies dezelfde vorm als de andere donutkaarten op deze
               pagina (product/dienst, winkel, gezinslid).
@@ -401,10 +421,6 @@ export function AnalyseSectie({
             </Kaart>
           )}
 
-          {/* Waar valt er te besparen? Enkel bij uitgaven: bij inkomsten is de
-              vraag zinloos. */}
-          {richting === 'uitgave' && <BesparenKaart transacties={transacties} periode={periode} />}
-
           {byItem.length > 0 && (
             <DonutKaart
               titel={t('Verdeling per product/dienst')}
@@ -431,7 +447,14 @@ export function AnalyseSectie({
             />
           )}
 
-          <TrendsSectie transacties={transacties} categorieen={categorieen} richting={richting} huidige={periode} vorige={vorige} />
+          <TrendsSectie
+            transacties={transacties}
+            categorieen={categorieen}
+            richting={richting}
+            huidige={periode}
+            vorige={vorige}
+            periodeLabel={periodeLabel}
+          />
 
           <Vermogensevolutie rekeningen={rekeningen} transacties={transacties} overboekingen={overboekingen} />
 
