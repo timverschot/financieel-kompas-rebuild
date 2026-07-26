@@ -13,6 +13,11 @@ export interface SyncBackend {
   // niets van iemand anders kwijtmaken; en omdat de lokale database de bron van
   // waarheid is, herstelt een mislukte schrijfbeurt zich vanzelf bij de volgende.
   stuur(toestelId: string, alleEigenRegels: Logregel[]): Promise<void>
+  // Gooit ALLE logbestanden in de back-upmap weg (van élk toestel). Enkel voor
+  // "Begin opnieuw": zonder dit zou de eerstvolgende sync alles wat je net gewist
+  // hebt gewoon weer binnenhalen — ook van een ander toestel. Bij Google Drive
+  // gaan de bestanden naar de prullenbak, dus je kan ze daar nog terughalen.
+  wisAlles(): Promise<void>
 }
 
 // Een eenvoudige backend in het geheugen, voor tests en ontwikkeling. Elk
@@ -28,5 +33,9 @@ export class GeheugenBackend implements SyncBackend {
 
   async stuur(toestelId: string, alleEigenRegels: Logregel[]): Promise<void> {
     this.opslag.set(toestelId, [...alleEigenRegels])
+  }
+
+  async wisAlles(): Promise<void> {
+    this.opslag.clear()
   }
 }

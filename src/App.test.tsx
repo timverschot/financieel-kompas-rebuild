@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { App } from './App'
 import { db } from './data/db'
+import { bewaarCategorie, bewaarRekening, bewaarTransactie } from './data/repository'
 
 beforeEach(async () => {
   await Promise.all([
@@ -21,7 +22,23 @@ beforeEach(async () => {
     db.events.clear(),
     db.meta.clear(),
   ])
+  await maakStartgegevens()
 })
+
+// De app start sinds ronde 16 volledig leeg — er wordt géén voorbeelddata meer
+// aangemaakt. Deze tests gaan wél uit van een rekening met wat boekingen, dus
+// zetten ze die hier zelf klaar. Precies dezelfde gegevens als de vroegere seed,
+// zodat alle bestaande verwachtingen blijven kloppen.
+async function maakStartgegevens() {
+  await bewaarRekening({ id: 'r1', naam: 'Betaalrekening', beginsaldo: 0 })
+  await bewaarCategorie({ id: 'cat-inkomsten', naam: 'Inkomsten' })
+  await bewaarCategorie({ id: 'cat-wonen', naam: 'Huisvesting' })
+  await bewaarCategorie({ id: 'cat-voeding', naam: 'Voeding' })
+  // Bedragen in centen: €2400,00 / -€950,00 / -€320,00.
+  await bewaarTransactie({ id: 't1', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 240000, rekeningId: 'r1', categorieId: 'cat-inkomsten' })
+  await bewaarTransactie({ id: 't2', datum: '2026-07-03', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', categorieId: 'cat-wonen' })
+  await bewaarTransactie({ id: 't3', datum: '2026-07-05', omschrijving: 'Boodschappen', bedrag: -32000, rekeningId: 'r1', categorieId: 'cat-voeding' })
+}
 
 // Zoekt het bedrag binnen de Saldo-tegel, zodat het niet verwart met andere
 // bedragen elders op het scherm (zoals het netto in het maandoverzicht). De
@@ -325,5 +342,36 @@ describe('App', () => {
     await user.click(await screen.findByRole('button', { name: 'Verwijder dossier Kinderen' }))
 
     expect(await screen.findByText(/Nog geen dossiers/)).toBeInTheDocument()
+  })
+
+  it('wijst een lege app de weg naar de eerste rekening', async () => {
+    // Een gloednieuwe app: geen rekening, geen boekingen.
+    for (const tabel of db.tables) await tabel.clear()
+    const user = userEvent.setup()
+    render(<App />)
+
+    expect(await screen.findByText('Welkom bij Kompal')).toBeInTheDocument()
+
+    // De knop brengt je meteen naar Rekeningen, waar je er een kan aanmaken.
+    await user.click(screen.getByRole('button', { name: 'Maak je eerste rekening aan' }))
+    expect(await screen.findByLabelText('Rekeningnaam')).toBeInTheDocument()
+
+    // En de wegwijzer verdwijnt zodra er een rekening is.
+    await user.type(screen.getByLabelText('Rekeningnaam'), 'Zichtrekening')
+    await user.click(screen.getByRole('button', { name: 'Rekening toevoegen' }))
+    await ga(user, 'Overzicht')
+    await waitFor(() => expect(screen.queryByText('Welkom bij Kompal')).not.toBeInTheDocument())
+  })
+
+  it('zegt op Transacties dat je eerst een rekening nodig hebt', async () => {
+    for (const tabel of db.tables) await tabel.clear()
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Welkom bij Kompal')
+
+    await ga(user, 'Transacties')
+    expect(
+      await screen.findByText('Maak eerst een rekening aan — een transactie moet ergens op geboekt worden.'),
+    ).toBeInTheDocument()
   })
 })

@@ -92,12 +92,25 @@ export class DriveBackend implements SyncBackend {
     })
   }
 
-  async haalOp(): Promise<Logregel[]> {
+  // Gooit alle logbestanden in de back-upmap naar de Drive-prullenbak. Bewust
+  // 'trashed' en geen definitieve verwijdering: gaat er iets mis, dan staan de
+  // bestanden nog in je prullenbak op Drive. De MAP zelf blijft bestaan en houdt
+  // haar naam — die hernoemen zou bestaande back-ups onvindbaar maken.
+  async wisAlles(): Promise<void> {
     const mapId = await this.zorgVoorMap()
-    const q = `'${mapId}' in parents and trashed=false`
+    for (const bestand of await this.bestandenInMap(mapId)) {
+      await driveFetch(`${API}/files/${bestand.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trashed: true }),
+      })
+    }
+  }
 
-    // Alle bestanden oplijsten, met paginatie: boven één pagina (1000) blijven we
-    // 'nextPageToken' volgen, zodat er nooit bestanden stil wegvallen.
+  // Alle bestanden in de back-upmap, met paginatie: boven één pagina (1000)
+  // blijven we 'nextPageToken' volgen, zodat er nooit bestanden stil wegvallen.
+  private async bestandenInMap(mapId: string): Promise<{ id: string }[]> {
+    const q = `'${mapId}' in parents and trashed=false`
     const bestanden: { id: string }[] = []
     let pageToken: string | undefined
     do {
@@ -113,6 +126,12 @@ export class DriveBackend implements SyncBackend {
       bestanden.push(...data.files)
       pageToken = data.nextPageToken
     } while (pageToken)
+    return bestanden
+  }
+
+  async haalOp(): Promise<Logregel[]> {
+    const mapId = await this.zorgVoorMap()
+    const bestanden = await this.bestandenInMap(mapId)
 
     const alle: Logregel[] = []
     for (const bestand of bestanden) {

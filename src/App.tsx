@@ -80,7 +80,6 @@ import {
   verwijderTransactie,
   verwijderVerrekening,
 } from './data/repository'
-import { seedIndienLeeg } from './data/seed'
 import { exporteerBackup, importeerBackup } from './data/backup'
 import { vraagBlijvendeOpslag } from './data/opslag'
 import { synchroniseer } from './data/sync/sync'
@@ -97,6 +96,8 @@ import { NieuwDossierKiezer } from './components/NieuwDossierKiezer'
 import { LeningSectie } from './components/LeningSectie'
 import { GarantieSectie } from './components/GarantieSectie'
 import { InstellingenSectie } from './components/InstellingenSectie'
+import { wisAlles } from './data/herstart'
+import { EersteStap } from './components/EersteStap'
 import { AnalyseSectie } from './components/AnalyseSectie'
 import { SpaardoelSectie } from './components/SpaardoelSectie'
 import { CategorieBoom } from './components/CategorieBoom'
@@ -269,7 +270,6 @@ export function App() {
   useEffect(() => {
     let actief = true
     async function laad() {
-      await seedIndienLeeg()
       const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, docs] = await Promise.all([
         laadTransacties(),
         laadRekeningen(),
@@ -808,6 +808,15 @@ export function App() {
     setStatusTekst(t('Verbinding met Google Drive verbroken. Je gegevens blijven op dit toestel staan.'))
   }
 
+  // "Begin opnieuw": alles wissen, inclusief de logbestanden in de Drive-back-up
+  // wanneer die verbonden is. Zonder dat laatste haalt de eerstvolgende sync
+  // gewoon alles weer binnen. Daarna herladen we de (nu lege) gegevens.
+  async function beginOpnieuw() {
+    const resultaat = await wisAlles(verbonden ? backendRef.current : null)
+    await herlaad()
+    return resultaat
+  }
+
   // Budgetten die deze maand tegen hun grens aanlopen (vanaf 85% verbruikt), voor
   // het belletje in de bovenbalk — hetzelfde signaal als in V1.
   const budgetWaarschuwingen = budgetten.filter(
@@ -878,6 +887,10 @@ export function App() {
           )}
 
           <PaginaKop titel={paginaTitel} actie={maandNav} />
+
+          {/* Een gloednieuwe (of net gewiste) app is helemaal leeg. Dan is één
+              ding belangrijker dan alle cijfers: weten wat je eerst moet doen. */}
+          {rekeningen.length === 0 && <EersteStap onNaarRekeningen={() => setPagina('rekeningen')} />}
 
           {/* Kengetallen. Op een breed scherm staan de vier cijfers naast elkaar
               en vervangen ze de maandoverzicht-kaart; op een telefoon blijft het
@@ -1352,6 +1365,7 @@ export function App() {
               onKindToevoegen={voegKindToe}
               onKindWijzigen={wijzigKind}
               onKindVerwijderen={verwijderKindH}
+              onBeginOpnieuw={beginOpnieuw}
             />
           </ErrorBoundary>
 

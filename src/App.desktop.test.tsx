@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { App } from './App'
 import { db } from './data/db'
+import { bewaarCategorie, bewaarRekening, bewaarTransactie } from './data/repository'
 import { herstelSchermbreedte, zetSchermbreedte } from './test/schermbreedte'
 
 // De desktopweergave (zijpaneel + brede rasters) werd tot nu toe nooit getest:
@@ -19,8 +20,22 @@ beforeEach(async () => {
     db.events.clear(),
     db.meta.clear(),
   ])
+  await maakStartgegevens()
   zetSchermbreedte(1440)
 })
+
+// De app start sinds ronde 16 volledig leeg — er wordt géén voorbeelddata meer
+// aangemaakt. Deze tests gaan wél uit van een rekening met wat boekingen, dus
+// zetten ze die hier zelf klaar (dezelfde gegevens als de vroegere seed).
+async function maakStartgegevens() {
+  await bewaarRekening({ id: 'r1', naam: 'Betaalrekening', beginsaldo: 0 })
+  await bewaarCategorie({ id: 'cat-inkomsten', naam: 'Inkomsten' })
+  await bewaarCategorie({ id: 'cat-wonen', naam: 'Huisvesting' })
+  await bewaarCategorie({ id: 'cat-voeding', naam: 'Voeding' })
+  await bewaarTransactie({ id: 't1', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 240000, rekeningId: 'r1', categorieId: 'cat-inkomsten' })
+  await bewaarTransactie({ id: 't2', datum: '2026-07-03', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', categorieId: 'cat-wonen' })
+  await bewaarTransactie({ id: 't3', datum: '2026-07-05', omschrijving: 'Boodschappen', bedrag: -32000, rekeningId: 'r1', categorieId: 'cat-voeding' })
+}
 
 afterEach(() => {
   herstelSchermbreedte()

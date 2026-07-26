@@ -403,6 +403,17 @@ export function TransactieFormulier({
         )}
       </div>
 
+      {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt.
+          Zonder rekening kan een transactie nergens op geboekt worden, en dat is
+          bij een gloednieuwe app het allereerste wat je moet doen. */}
+      {!geldig && (
+        <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+          {rekeningen.length === 0
+            ? t('Maak eerst een rekening aan — een transactie moet ergens op geboekt worden.')
+            : t('Geef een handelaar en een bedrag om op te slaan.')}
+        </p>
+      )}
+
       {scanVoor && (
         <Suspense fallback={null}>
           <BarcodeScanner onGevonden={(code) => void verwerkScan(scanVoor, code)} onSluiten={() => setScanVoor(null)} />

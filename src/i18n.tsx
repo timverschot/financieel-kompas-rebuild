@@ -857,6 +857,37 @@ const en: Record<string, string> = {
   'Documenten verbergen': 'Hide documents',
   'Nieuw doel': 'New goal',
   'Doel bewerken': 'Edit goal',
+  // --- Begin opnieuw ---
+  'Begin opnieuw': 'Start over',
+  'Begin opnieuw…': 'Start over…',
+  'Wist al je gegevens op dit toestel en begint met een schone lei.':
+    'Erases all your data on this device and starts you with a clean slate.',
+  'Ook de logbestanden in je Google Drive-back-up worden opgeruimd, anders komt alles bij de volgende synchronisatie gewoon terug. Ze gaan naar de prullenbak van Drive, dus je kan ze daar nog terughalen.':
+    'The log files in your Google Drive backup are cleared too, otherwise everything would simply come back at the next sync. They go to the Drive bin, so you can still recover them there.',
+  'Er is nu geen Google Drive-back-up verbonden. Gebruik je de app op meerdere toestellen, doe dit dan ook daar — anders komt hun data bij een volgende synchronisatie terug.':
+    'No Google Drive backup is connected right now. If you use the app on more than one device, do this there as well — otherwise their data comes back at the next sync.',
+  'Dit kan niet ongedaan gemaakt worden. Maak eerst een back-up als je je gegevens wil bewaren.':
+    'This cannot be undone. Make a backup first if you want to keep your data.',
+  'Typ WISSEN om te bevestigen': 'Type ERASE to confirm',
+  'WISSEN': 'ERASE',
+  'Alles wissen': 'Erase everything',
+  'Alles is gewist. Je begint met een schone lei.': 'Everything has been erased. You are starting with a clean slate.',
+  'Lokaal is alles gewist, maar de back-up kon niet opgeruimd worden. Verbind opnieuw en probeer het nog eens, anders komt je oude data bij de volgende synchronisatie terug.':
+    'Everything was erased locally, but the backup could not be cleared. Reconnect and try again, otherwise your old data will come back at the next sync.',
+  'Alles is gewist op dit toestel.': 'Everything has been erased on this device.',
+  'Wissen is mislukt. Er is niets gewist.': 'Erasing failed. Nothing has been erased.',
+  // --- Lege app: eerste stap ---
+  'Welkom bij Kompal': 'Welcome to Kompal',
+  'De app is nog helemaal leeg — alles wat er straks in staat, is van jou.':
+    'The app is still completely empty — everything that ends up in it will be yours.',
+  'Begin met een rekening: je betaalrekening, je spaarrekening, of gewoon je portemonnee. Daarna kan je transacties ingeven.':
+    'Start with an account: your current account, your savings account, or simply your wallet. After that you can enter transactions.',
+  'Maak je eerste rekening aan': 'Create your first account',
+  'Wil je je gegevens ook op je andere toestellen? Verbind dan later even met Google Drive via Instellingen.':
+    'Want your data on your other devices too? Connect to Google Drive later via Settings.',
+  'Maak eerst een rekening aan — een transactie moet ergens op geboekt worden.':
+    'Create an account first — a transaction has to be booked somewhere.',
+  'Geef een handelaar en een bedrag om op te slaan.': 'Enter a merchant and an amount to save.',
   'Zo verschijnt dit doel straks in de lijst.': 'This is how the goal will look in the list.',
 }
 const fr: Record<string, string> = {
@@ -1698,6 +1729,37 @@ const fr: Record<string, string> = {
   'Documenten verbergen': 'Masquer les documents',
   'Nieuw doel': 'Nouvel objectif',
   'Doel bewerken': 'Modifier l’objectif',
+  // --- Recommencer à zéro ---
+  'Begin opnieuw': 'Recommencer à zéro',
+  'Begin opnieuw…': 'Recommencer à zéro…',
+  'Wist al je gegevens op dit toestel en begint met een schone lei.':
+    'Efface toutes vos données sur cet appareil et repart de zéro.',
+  'Ook de logbestanden in je Google Drive-back-up worden opgeruimd, anders komt alles bij de volgende synchronisatie gewoon terug. Ze gaan naar de prullenbak van Drive, dus je kan ze daar nog terughalen.':
+    'Les fichiers journaux de votre sauvegarde Google Drive sont également supprimés ; sinon, tout reviendrait à la prochaine synchronisation. Ils vont à la corbeille de Drive, vous pouvez donc encore les récupérer.',
+  'Er is nu geen Google Drive-back-up verbonden. Gebruik je de app op meerdere toestellen, doe dit dan ook daar — anders komt hun data bij een volgende synchronisatie terug.':
+    'Aucune sauvegarde Google Drive n’est connectée pour le moment. Si vous utilisez l’application sur plusieurs appareils, faites-le aussi sur ceux-ci — sinon leurs données reviendront à la prochaine synchronisation.',
+  'Dit kan niet ongedaan gemaakt worden. Maak eerst een back-up als je je gegevens wil bewaren.':
+    'Cette action est irréversible. Faites d’abord une sauvegarde si vous souhaitez conserver vos données.',
+  'Typ WISSEN om te bevestigen': 'Tapez EFFACER pour confirmer',
+  'WISSEN': 'EFFACER',
+  'Alles wissen': 'Tout effacer',
+  'Alles is gewist. Je begint met een schone lei.': 'Tout a été effacé. Vous repartez de zéro.',
+  'Lokaal is alles gewist, maar de back-up kon niet opgeruimd worden. Verbind opnieuw en probeer het nog eens, anders komt je oude data bij de volgende synchronisatie terug.':
+    'Tout a été effacé localement, mais la sauvegarde n’a pas pu être nettoyée. Reconnectez-vous et réessayez, sinon vos anciennes données reviendront à la prochaine synchronisation.',
+  'Alles is gewist op dit toestel.': 'Tout a été effacé sur cet appareil.',
+  'Wissen is mislukt. Er is niets gewist.': 'L’effacement a échoué. Rien n’a été effacé.',
+  // --- Application vide : premiere etape ---
+  'Welkom bij Kompal': 'Bienvenue dans Kompal',
+  'De app is nog helemaal leeg — alles wat er straks in staat, is van jou.':
+    'L’application est encore totalement vide — tout ce qui s’y trouvera sera à vous.',
+  'Begin met een rekening: je betaalrekening, je spaarrekening, of gewoon je portemonnee. Daarna kan je transacties ingeven.':
+    'Commencez par un compte : votre compte courant, votre compte d’épargne, ou simplement votre portefeuille. Ensuite, vous pourrez saisir des transactions.',
+  'Maak je eerste rekening aan': 'Créer votre premier compte',
+  'Wil je je gegevens ook op je andere toestellen? Verbind dan later even met Google Drive via Instellingen.':
+    'Vous voulez vos données sur vos autres appareils ? Connectez-vous plus tard à Google Drive via les Paramètres.',
+  'Maak eerst een rekening aan — een transactie moet ergens op geboekt worden.':
+    'Créez d’abord un compte — une transaction doit être imputée quelque part.',
+  'Geef een handelaar en een bedrag om op te slaan.': 'Indiquez un commerçant et un montant pour enregistrer.',
   'Zo verschijnt dit doel straks in de lijst.': 'Voici comment cet objectif apparaîtra dans la liste.',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }

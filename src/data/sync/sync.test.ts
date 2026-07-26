@@ -84,6 +84,7 @@ describe('synchroniseer', () => {
       async stuur(_toestelId, regels) {
         verstuurd.push(regels)
       },
+      async wisAlles() {},
     }
 
     await bewaarTransactie({ id: 't1', datum: '2026-07-01', omschrijving: 'Een', bedrag: 100, rekeningId: 'r1' })
