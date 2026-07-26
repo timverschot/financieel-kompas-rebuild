@@ -43,3 +43,25 @@ export function maandJaarLabel(datumISO: string): string {
   if (!Number.isFinite(jaar) || !Number.isFinite(maand)) return datumISO
   return new Intl.DateTimeFormat('nl-BE', { month: 'long', year: 'numeric' }).format(new Date(jaar, maand - 1, 1))
 }
+
+// 'JJJJ-MM' of 'JJJJ-MM-DD' als korte maandnaam, bv. "jul". Voor aslabels in
+// grafieken, waar de volle naam niet past.
+export function maandKort(maandOfDatum: string): string {
+  const [jaar, maand] = maandOfDatum.split('-').map(Number)
+  if (!Number.isFinite(jaar) || !Number.isFinite(maand)) return maandOfDatum
+  return new Intl.DateTimeFormat('nl-BE', { month: 'short' }).format(new Date(jaar, maand - 1, 1))
+}
+
+// Alleen de maandnaam voluit, bv. "juli". Voor een zin die het jaar niet nodig heeft.
+export function maandVoluit(maandOfDatum: string): string {
+  const [jaar, maand] = maandOfDatum.split('-').map(Number)
+  if (!Number.isFinite(jaar) || !Number.isFinite(maand)) return maandOfDatum
+  return new Intl.DateTimeFormat('nl-BE', { month: 'long' }).format(new Date(jaar, maand - 1, 1))
+}
+
+// 'JJJJ-MM-DD' als korte dag + maand, bv. "04 jul". Voor lijstjes met veel regels.
+export function dagKort(datumISO: string): string {
+  const [jaar, maand, dag] = datumISO.split('-').map(Number)
+  if (!Number.isFinite(jaar) || !Number.isFinite(maand) || !Number.isFinite(dag)) return datumISO
+  return new Intl.DateTimeFormat('nl-BE', { day: '2-digit', month: 'short' }).format(new Date(jaar, maand - 1, dag))
+}

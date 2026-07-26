@@ -193,10 +193,10 @@ export function Documentkluis({
                 </span>
               </div>
               <span className="rij-acties">
-                <a href={d.bestand} target="_blank" rel="noreferrer" style={{ fontSize: 13 }}>
+                <a href={d.bestand} target="_blank" rel="noreferrer" style={{ fontSize: 'var(--tekst-s)' }}>
                   {t('Openen')}
                 </a>
-                <a href={d.bestand} download={d.bestandsnaam || d.naam} style={{ fontSize: 13 }}>
+                <a href={d.bestand} download={d.bestandsnaam || d.naam} style={{ fontSize: 'var(--tekst-s)' }}>
                   {t('Bewaren')}
                 </a>
                 {bevestigId === d.id ? (

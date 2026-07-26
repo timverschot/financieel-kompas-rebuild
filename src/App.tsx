@@ -127,7 +127,7 @@ import { bouwHandelaarIndex } from './utils/categorieVoorstel'
 import { formatEuro } from './utils/format'
 import { bouwMeldingen } from './utils/meldingen'
 import { useInstellingen } from './instellingen'
-import { huidigeMaand, vandaag } from './utils/datum'
+import { huidigeMaand, maandJaarLabel, vandaag } from './utils/datum'
 import { saldoVanRekening, totaalSaldoVan } from './utils/saldo'
 import { Balk, Bedrag, Kaart, Leeg, PaginaKop } from './ui/basis'
 import { useT } from './i18n'
@@ -161,11 +161,6 @@ function useIsDesktop(): boolean {
     return () => mq.removeEventListener('change', luister)
   }, [])
   return isDesktop
-}
-
-function maandLabel(maand: string): string {
-  const [jaar, m] = maand.split('-').map(Number)
-  return new Intl.DateTimeFormat('nl-BE', { month: 'long', year: 'numeric' }).format(new Date(jaar, m - 1, 1))
 }
 
 export function App() {
@@ -874,7 +869,7 @@ export function App() {
       <button className="knop knop-icoon" aria-label={t('Vorige maand')} onClick={() => setMaand(verschuifMaand(maand, -1))}>
         ‹
       </button>
-      <span style={{ minWidth: 140, textAlign: 'center', fontWeight: 600 }}>{maandLabel(maand)}</span>
+      <span style={{ minWidth: 140, textAlign: 'center', fontWeight: 600 }}>{maandJaarLabel(maand)}</span>
       <button className="knop knop-icoon" aria-label={t('Volgende maand')} onClick={() => setMaand(verschuifMaand(maand, 1))}>
         ›
       </button>
@@ -914,7 +909,7 @@ export function App() {
               en vervangen ze de maandoverzicht-kaart; op een telefoon blijft het
               bij de saldotegel met de kaart eronder, precies zoals voorheen. */}
           <div className="tegelrij" data-kengetallen>
-            <div className="saldotegel" data-saldo>
+            <div className="saldotegel glans glans-sterk" data-saldo>
               <span className="label-caps">{t('Saldo')}</span>
               <span className="bedrag-groot">{formatEuro(totaalSaldo)}</span>
             </div>
@@ -953,7 +948,7 @@ export function App() {
             <div className="raster-hoofd">
               <div className="stapel">
                 {!isDesktop && (
-                  <Kaart titel={t('Maandoverzicht')} bijschrift={maandLabel(maand)}>
+                  <Kaart titel={t('Maandoverzicht')} bijschrift={maandJaarLabel(maand)}>
                     <div>
                       <div className="rij">
                         <span className="rij-midden rij-titel">{t('Inkomsten')}</span>
@@ -997,7 +992,7 @@ export function App() {
                   transacties={transacties}
                   categorieen={categorieen}
                   budgetten={budgetten}
-                  maand={maandLabel(maand)}
+                  maand={maandJaarLabel(maand)}
                   categorieNaam={categorieNaam}
                   onGaNaarTransacties={() => setPagina('transacties')}
                   onGaNaarBudget={() => setPagina('budget')}
@@ -1071,7 +1066,7 @@ export function App() {
 
           <div className="kolom-lijst stapel">
           <ErrorBoundary naam="Budgetten">
-            <Kaart titel={t('Budgetten')} bijschrift={t('voor {maand}', { maand: maandLabel(maand) })}>
+            <Kaart titel={t('Budgetten')} bijschrift={t('voor {maand}', { maand: maandJaarLabel(maand) })}>
               {budgetten.length === 0 && <Leeg>{t('Nog geen budgetten ingesteld.')}</Leeg>}
               {budgetten.length > 0 && (
                 <p className="rij-meta" style={{ margin: 0 }}>
@@ -1118,7 +1113,7 @@ export function App() {
               categorieen={categorieen}
               transacties={transacties}
               maand={maand}
-              maandLabel={maandLabel(maand)}
+              maandLabel={maandJaarLabel(maand)}
               onOpslaan={voegTerugkerendToe}
               onVerwijderen={verwijderTerugkerend}
               onBoek={boekTerugkerend}
@@ -1437,7 +1432,7 @@ export function App() {
         boxShadow: 'var(--shadow-sheet)',
         zIndex: 1000,
         maxWidth: '90%',
-        fontSize: 14,
+        fontSize: 'var(--tekst-sm)',
       }}
     >
       <span>{undoInfo.boodschap}</span>
@@ -1471,7 +1466,7 @@ export function App() {
             }}
           >
             <div style={{ flex: 1 }} />
-            {statusTekst && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{statusTekst}</span>}
+            {statusTekst && <span style={{ fontSize: 'var(--tekst-s)', color: 'var(--text-muted)' }}>{statusTekst}</span>}
             <button className="knop knop-primair knop-klein" onClick={nieuweTransactie}>
               + {t('Nieuwe transactie')}
             </button>
@@ -1499,7 +1494,7 @@ export function App() {
       <main style={{ ...container, paddingBottom: '5.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
           <Merkteken grootte={30} />
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, letterSpacing: '-0.03em' }}>Kompal</span>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--tekst-xl)', letterSpacing: '-0.03em' }}>Kompal</span>
           {/* Hetzelfde belletje als op desktop. Het stond hier vroeger niet, dus op
               een telefoon zag je nooit dat een budget bijna op was. */}
           <div style={{ flex: 1 }} />

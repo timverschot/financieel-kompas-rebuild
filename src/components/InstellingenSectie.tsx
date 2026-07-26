@@ -12,7 +12,7 @@ import { InstallerenKaart } from './InstallerenKaart'
 const keuzelijst: CSSProperties = { maxWidth: 260, alignSelf: 'flex-start' }
 // Klein grijs regeltje binnen een kaart: een status (laatste synchronisatie,
 // back-upmelding) of een stukje uitleg. De kaart zorgt zelf voor de tussenruimte.
-const statusRegel: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--text-muted)' }
+const statusRegel: CSSProperties = { margin: 0, fontSize: 'var(--tekst-s)', color: 'var(--text-muted)' }
 
 /** Wat `onBeginOpnieuw` teruggeeft: of de Drive-back-up mee opgeruimd raakte. */
 export type BeginOpnieuwResultaat = { backupGewist: boolean; backupFout?: string }

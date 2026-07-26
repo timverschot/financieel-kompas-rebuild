@@ -18,7 +18,7 @@ export const uitkomstVlak: CSSProperties = {
 }
 
 // Kleine bijregel binnen dat amberen vlak (de toelichting onder het hoofdcijfer).
-export const uitkomstBijregel: CSSProperties = { margin: '6px 0 0', fontSize: 13, fontWeight: 500 }
+export const uitkomstBijregel: CSSProperties = { margin: '6px 0 0', fontSize: 'var(--tekst-s)', fontWeight: 500 }
 
 /**
  * Rekenhulp voor de Belgische indexatie. Alimentatie en huur gebruiken exact
@@ -65,7 +65,7 @@ export function IndexatieCalculator() {
         </button>
       </div>
 
-      <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-muted)' }}>
+      <p style={{ margin: '0 0 12px', fontSize: 'var(--tekst-s)', color: 'var(--text-muted)' }}>
         {soort === 'huur'
           ? t('Voor huur gebruik je de gezondheidsindex: de aanvangsindex is die van de maand vóór de ondertekening van het huurcontract.')
           : t('Voor onderhoudsgeld is de aanvangsindex die van de maand waarin het bedrag werd vastgelegd.')}
@@ -112,7 +112,7 @@ export function IndexatieCalculator() {
       )}
 
       {!uitkomst.ok && ingevuld && (
-        <p style={{ margin: '14px 0 0', fontSize: 13, color: 'var(--negative-ink)' }}>
+        <p style={{ margin: '14px 0 0', fontSize: 'var(--tekst-s)', color: 'var(--negative-ink)' }}>
           {uitkomst.fout === 'index-ongeldig'
             ? t('Vul twee indexcijfers groter dan nul in.')
             : t('Vul een basisbedrag groter dan nul in.')}

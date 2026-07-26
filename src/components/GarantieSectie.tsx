@@ -122,7 +122,7 @@ export function GarantieSectie({
 
                 {g.bonnetje && (
                   <div>
-                    <a href={g.bonnetje} target="_blank" rel="noreferrer" style={{ fontSize: 13 }}>
+                    <a href={g.bonnetje} target="_blank" rel="noreferrer" style={{ fontSize: 'var(--tekst-s)' }}>
                       {t('bon/factuur')}
                     </a>
                   </div>

@@ -35,7 +35,7 @@ function suggestieKnop(gemarkeerd: boolean): CSSProperties {
     width: '100%',
     textAlign: 'left',
     fontFamily: 'inherit',
-    fontSize: 14,
+    fontSize: 'var(--tekst-sm)',
     color: 'var(--text)',
     padding: '9px 12px',
     border: 'none',
@@ -161,7 +161,7 @@ export function NieuweSubcategoriePaneel({
       }}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
+      <p style={{ margin: 0, fontSize: 'var(--tekst-s)', color: 'var(--text-muted)' }}>
         {t('Nieuwe subcategorie “{naam}”', { naam })}
       </p>
       <select

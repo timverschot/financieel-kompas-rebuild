@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { huidigeMaand, maandJaarLabel, naarDatumTekst, vandaag } from './datum'
+import { dagKort, huidigeMaand, maandJaarLabel, maandKort, maandVoluit, naarDatumTekst, vandaag } from './datum'
 
 describe('datum', () => {
   it('zet een datum om naar JJJJ-MM-DD met voorloopnullen', () => {
@@ -28,5 +28,28 @@ describe('maandJaarLabel', () => {
 
   it('laat onleesbare invoer ongemoeid in plaats van iets te verzinnen', () => {
     expect(maandJaarLabel('geen datum')).toBe('geen datum')
+  })
+})
+
+// Ronde 20: de vijf plaatsen die elk hun eigen Intl-regel schreven, gebruiken nu
+// deze helpers. Zo staat er één plek waar de maandnamen vandaan komen.
+describe('maandnamen', () => {
+  it('schrijft een korte maandnaam voor aslabels', () => {
+    expect(maandKort('2026-07')).toBe('jul')
+    expect(maandKort('2026-01-15')).toBe('jan')
+  })
+
+  it('schrijft een maandnaam voluit', () => {
+    expect(maandVoluit('2026-07')).toBe('juli')
+  })
+
+  it('schrijft een korte dag met maand', () => {
+    expect(dagKort('2026-07-04')).toBe('04 jul')
+  })
+
+  it('laat onleesbare invoer ongemoeid in plaats van iets te verzinnen', () => {
+    expect(maandKort('geen maand')).toBe('geen maand')
+    expect(maandVoluit('x')).toBe('x')
+    expect(dagKort('x')).toBe('x')
   })
 })

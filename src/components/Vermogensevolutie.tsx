@@ -4,6 +4,7 @@ import { vermogensEvolutie, laatsteMaanden } from '../utils/vermogen'
 import { formatEuro } from '../utils/format'
 import { Kaart } from '../ui/basis'
 import { useT } from '../i18n'
+import { maandKort } from '../utils/datum'
 
 // Vaste, onderscheidbare lijnkleuren per rekening. De kleur reist mee met de
 // reeks (zelfde data-object als de waarden), zodat lijn en schakelaar nooit uit
@@ -17,10 +18,7 @@ const PAD_R = 6
 const PAD_T = 10
 const PAD_B = 18
 
-function maandKort(maand: string): string {
-  const [j, m] = maand.split('-').map(Number)
-  return new Intl.DateTimeFormat('nl-BE', { month: 'short' }).format(new Date(j, m - 1, 1))
-}
+
 
 // Vermogensevolutie: een lijn van je totale vermogen over de laatste 12 maanden,
 // met elke rekening apart aan/uit te zetten. Het totaal blijft altijd zichtbaar.
@@ -108,7 +106,7 @@ export function Vermogensevolutie({
             x={x(i)}
             y={H - 5}
             textAnchor={i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}
-            style={{ fontFamily: 'var(--font-body)', fontSize: 9, fill: 'var(--text-subtle)' }}
+            style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--tekst-xxs)', fill: 'var(--text-subtle)' }}
           >
             {maandKort(maanden[i])}
           </text>

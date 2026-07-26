@@ -374,7 +374,7 @@ export function TransactieFormulier({
             </button>
           </div>
 
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
+          <p style={{ margin: 0, fontSize: 'var(--tekst-s)', color: 'var(--text-muted)' }}>
             {t('Verdeeld:')} <strong className="bedrag">{formatEuro(verdeeld)}</strong> {t('van')}{' '}
             <strong className="bedrag">{formatEuro(totaalCenten)}</strong>{' '}
             {Math.abs(verschil) < 1 ? (

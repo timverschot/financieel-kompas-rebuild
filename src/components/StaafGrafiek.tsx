@@ -1,10 +1,8 @@
 import { formatEuro } from '../utils/format'
 import type { MaandBedrag } from '../utils/maandverloop'
+import { maandKort } from '../utils/datum'
 
-function maandKort(maand: string): string {
-  const [jaar, m] = maand.split('-').map(Number)
-  return new Intl.DateTimeFormat('nl-BE', { month: 'short' }).format(new Date(jaar, m - 1, 1))
-}
+
 
 // Eenvoudige staafgrafiek van de uitgaven per maand. De laatste (huidige) maand
 // krijgt de amberkleur, de rest een zachtere tint. Deze component zet bewust geen

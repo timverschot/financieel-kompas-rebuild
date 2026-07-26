@@ -5,7 +5,7 @@ import type { Periode } from '../utils/analyse'
 import { formatEuro } from '../utils/format'
 import { Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
-import { huidigeMaand, vandaag } from '../utils/datum'
+import { huidigeMaand, vandaag, maandVoluit } from '../utils/datum'
 
 function kleurVanSaldo(saldo: number): string {
   return saldo >= 0 ? 'var(--positive)' : 'var(--negative)'
@@ -51,7 +51,7 @@ export function VooruitblikSectie({
   const nu = new Date()
   const vandaagISO = vandaag(nu)
   const maand = huidigeMaand(nu)
-  const maandNaam = new Intl.DateTimeFormat('nl-BE', { month: 'long' }).format(nu)
+  const maandNaam = maandVoluit(maand)
   const vb = useMemo(
     () => maandVooruitblik(transacties, terugkerendePosten, maand, vandaagISO),
     [transacties, terugkerendePosten, maand, vandaagISO],
@@ -96,7 +96,7 @@ export function VooruitblikSectie({
           {t('Vooruitblik — {maand}', { maand: maandNaam })}
         </p>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-          <span className="bedrag-groot" style={{ fontSize: 22, color: kleurVanSaldo(vb.verwachtSaldo) }}>
+          <span className="bedrag-groot" style={{ color: kleurVanSaldo(vb.verwachtSaldo) }}>
             {vb.verwachtSaldo >= 0 ? '+' : '−'}
             {formatEuro(Math.abs(vb.verwachtSaldo))}
           </span>

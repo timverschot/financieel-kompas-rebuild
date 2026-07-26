@@ -93,7 +93,7 @@ function Tab({ icoon, label, aan, onClick }: { icoon: string; label: string; aan
       <span style={{ fontSize: '1.3rem', lineHeight: 1, opacity: aan ? 1 : 0.7 }} aria-hidden>
         {icoon}
       </span>
-      <span style={{ fontSize: '0.68rem', fontWeight: aan ? 600 : 400 }}>{label}</span>
+      <span style={{ fontSize: 'var(--tekst-s)', fontWeight: aan ? 600 : 400 }}>{label}</span>
     </button>
   )
 }

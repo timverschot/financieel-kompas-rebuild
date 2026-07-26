@@ -39,7 +39,7 @@ const meldingKnop: CSSProperties = {
   cursor: 'pointer',
   color: 'var(--text)',
   font: 'inherit',
-  fontSize: 13,
+  fontSize: 'var(--tekst-s)',
   lineHeight: 1.35,
 }
 

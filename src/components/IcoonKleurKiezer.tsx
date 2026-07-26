@@ -1,4 +1,5 @@
 import { useT } from '../i18n'
+import { PALET } from '../ui/palet'
 
 // Kiezer voor een icoon (emoji) en een kleur. Bewust los van het
 // categorieformulier: een volgende ronde kan hem net zo goed voor spaardoelen of
@@ -54,20 +55,9 @@ export const ICOON_KEUZES: IcoonKeuze[] = [
 // Exact de twaalf kleuren die de ingebouwde hoofdcategorieën gebruiken, zodat een
 // eigen categorie in de grafieken niet uit de toon valt. Hier staan ze bewust als
 // hexcode (het ís de data die we opslaan, geen opmaak van het thema).
-export const KLEUR_KEUZES: KleurKeuze[] = [
-  { kleur: '#F59E0B', naam: 'Amber' },
-  { kleur: '#C56A1F', naam: 'Oranje' },
-  { kleur: '#C1502E', naam: 'Terracotta' },
-  { kleur: '#D64545', naam: 'Rood' },
-  { kleur: '#C97B8B', naam: 'Oudroze' },
-  { kleur: '#96588A', naam: 'Paars' },
-  { kleur: '#3F8A58', naam: 'Mosgroen' },
-  { kleur: '#3E7C7B', naam: 'Zeegroen' },
-  { kleur: '#0891B2', naam: 'Turkoois' },
-  { kleur: '#92400E', naam: 'Bruin' },
-  { kleur: '#83705C', naam: 'Zandbruin' },
-  { kleur: '#6B7280', naam: 'Grijs' },
-]
+// De twaalf kleuren staan sinds ronde 20 in src/ui/palet.ts, samen met het palet
+// dat de diagrammen gebruiken. Twee lijsten die uit elkaar konden lopen, zijn nu één.
+export const KLEUR_KEUZES: KleurKeuze[] = PALET
 
 const MAX_TEKENS = 8 // zelfde grens als het schema (icoon: max 8 tekens)
 

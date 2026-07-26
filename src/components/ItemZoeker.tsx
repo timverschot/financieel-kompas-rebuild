@@ -34,7 +34,7 @@ function suggestieKnop(gemarkeerd: boolean): CSSProperties {
     width: '100%',
     textAlign: 'left',
     fontFamily: 'inherit',
-    fontSize: 14,
+    fontSize: 'var(--tekst-sm)',
     color: 'var(--text)',
     padding: '8px 12px',
     border: 'none',

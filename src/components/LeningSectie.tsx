@@ -208,7 +208,7 @@ export function LeningSectie({
 
                 {l.bonnetje && (
                   <div>
-                    <a href={l.bonnetje} target="_blank" rel="noreferrer" style={{ fontSize: 13 }}>
+                    <a href={l.bonnetje} target="_blank" rel="noreferrer" style={{ fontSize: 'var(--tekst-s)' }}>
                       {t('contract/bewijs')}
                     </a>
                   </div>

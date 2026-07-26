@@ -15,13 +15,13 @@ const takKnop: CSSProperties = {
   textAlign: 'left',
   gap: 8,
   padding: '6px 8px',
-  fontSize: 15,
+  fontSize: 'var(--tekst-m)',
   color: 'var(--text)',
 }
 const driehoek: CSSProperties = {
   width: 12,
   flexShrink: 0,
-  fontSize: 10,
+  fontSize: 'var(--tekst-xxs)',
   color: 'var(--text-subtle)',
 }
 // Compacte bladrij: geen scheidingslijn per item, anders wordt de lijst rumoerig.
@@ -115,7 +115,7 @@ export function CategorieBoom({
                             {cOpen ? '▾' : '▸'}
                           </span>
                           <span className="rij-midden">
-                            <span style={{ fontSize: 14 }}>{c.naam}</span>
+                            <span style={{ fontSize: 'var(--tekst-sm)' }}>{c.naam}</span>
                           </span>
                           <span className="rij-meta">{c.items.length}</span>
                         </button>
@@ -143,7 +143,7 @@ export function CategorieBoom({
                                 ) : (
                                   <>
                                     <span className="rij-midden">
-                                      <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+                                      <span style={{ fontSize: 'var(--tekst-sm)', color: 'var(--text-muted)' }}>
                                         {it.naam}
                                         {it.eigen && <span style={{ color: 'var(--accent-ink)' }}> · {t('eigen')}</span>}
                                       </span>

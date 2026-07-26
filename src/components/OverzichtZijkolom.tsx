@@ -77,7 +77,7 @@ export function OverzichtZijkolom({
               <li key={tx.id} className="rij" style={{ gap: 10 }}>
                 <TekenVoor tx={tx} categorieen={categorieen} />
                 <span className="rij-midden">
-                  <span className="rij-titel" style={{ fontSize: 14 }}>
+                  <span className="rij-titel" style={{ fontSize: 'var(--tekst-sm)' }}>
                     {tx.omschrijving}
                   </span>
                   <span className="rij-meta">{tx.datum}</span>
@@ -106,10 +106,10 @@ export function OverzichtZijkolom({
           return (
             <div key={budget.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
-                <span className="rij-titel" style={{ fontSize: 14 }}>
+                <span className="rij-titel" style={{ fontSize: 'var(--tekst-sm)' }}>
                   {naam}
                 </span>
-                <span className="bedrag" style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                <span className="bedrag" style={{ fontSize: 'var(--tekst-s)', color: 'var(--text-muted)' }}>
                   {Math.round(fractie * 100)}%
                 </span>
               </span>

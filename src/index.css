@@ -68,6 +68,40 @@
   --shadow-zwevend: 0 12px 26px rgba(201, 118, 26, 0.35);
   --shadow-sheet: 0 24px 60px rgba(80, 64, 44, 0.14);
   --focus-ring: 0 0 0 3px rgba(201, 118, 26, 0.12);
+  /* Een duidelijk zichtbare ring voor toetsenbordgebruik, sterker dan de zachte
+     ring op een invoerveld. */
+  --focus-ring-sterk: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+
+  /* ---------------------------------------------------------------------
+     Typografische schaal. Vóór ronde 20 stonden er tien losse, hardgecodeerde
+     lettergroottes in dit bestand (10 t.e.m. 34 px) plus nog inline waarden in
+     AnalyseSectie en Donut. Daardoor was "te klein en te druk" een klacht die
+     per pagina opnieuw opduikt. Dit is de enige schaal; gebruik nooit een los
+     px-getal voor tekst.
+
+     De kleine trappen zijn één stap groter dan voorheen: legendes, metaregels en
+     tabelcellen waren op 11-12 px te fijn. --tekst-m blijft 15 px, want dat is de
+     leesmaat van de body en die was in orde.
+     --------------------------------------------------------------------- */
+  --tekst-xxs: 11px; /* was 10 — badge-mini */
+  --tekst-xs: 12px; /* was 11 — label-caps */
+  --tekst-s: 13px; /* was 12 — metaregels, bijschriften, chips, badges */
+  --tekst-sm: 14px; /* kleine knop, lege toestand */
+  --tekst-m: 15px; /* body, rijtitel, bedrag, knop, invoerveld */
+  --tekst-l: 17px; /* stat-waarde */
+  --tekst-xl: 19px; /* was 18 — kaarttitel */
+  --tekst-2xl: 28px; /* was 27 — groot bedrag */
+  --tekst-3xl: 34px; /* het hoofdcijfer op de saldotegel */
+
+  /* Eén overgang voor alles wat op de muis of het toetsenbord reageert. */
+  --overgang: 140ms ease;
+
+  /* De amberglans: de warme cirkel die de saldotegel zijn eigen gezicht geeft.
+     Sinds ronde 20 is dit een designLIJN in plaats van een eenmalig effect, dus
+     staat de kleur hier als token. In het lichte thema moet ze dichter zijn: op
+     crème verdwijnt dezelfde waarde die op bijna-zwart wél leest. */
+  --glans: rgba(201, 118, 26, 0.1);
+  --glans-sterk: rgba(201, 118, 26, 0.2);
 
   /* Zijpaneel (desktop): een donkere, warm-bruine chrome naast de crème pagina.
      Zie components/Zijbalk.tsx. In donkere modus krijgt het paneel eigen,
@@ -118,6 +152,11 @@
   --shadow-zwevend: 0 12px 30px rgba(240, 166, 60, 0.3);
   --shadow-sheet: 0 24px 60px rgba(0, 0, 0, 0.5);
   --focus-ring: 0 0 0 3px rgba(240, 166, 60, 0.14);
+  --focus-ring-sterk: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-dot);
+  /* In het donker mag de glans losser en helderder: er is meer ruimte tussen de
+     achtergrond en het amber. */
+  --glans: rgba(240, 166, 60, 0.14);
+  --glans-sterk: rgba(240, 166, 60, 0.24);
 
   /* Zijpaneel in donkere modus: net tussen de paginakleur (#0e1116) en de
      kaartkleur (#171c23), zodat de balk herkenbaar blijft zonder eruit te
@@ -152,7 +191,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: var(--tekst-m);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.2s ease, color 0.2s ease;
@@ -193,20 +232,20 @@ h4 {
   font-weight: 800;
   /* Schaalt mee op smalle schermen, zodat een lange titel niet uit de kolom
      loopt (bv. "Dossiers (gedeelde kosten)" op een telefoon). */
-  font-size: clamp(21px, 6.2vw, 27px);
+  font-size: clamp(23px, 6.4vw, 30px);
   line-height: 1.1;
   letter-spacing: -0.03em;
 }
 
 .paginasub {
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: var(--tekst-s);
   color: var(--text-muted);
 }
 
 /* Klein hoofdletterlabel: kolomkoppen, veldlabels, tegellabels. */
 .label-caps {
-  font-size: 11px;
+  font-size: var(--tekst-xs);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -244,17 +283,17 @@ h4 {
   margin: 0;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 18px;
+  font-size: var(--tekst-xl);
   letter-spacing: -0.02em;
 }
 
 .kaart-compact .kaart-titel {
-  font-size: 15px;
+  font-size: var(--tekst-m);
 }
 
 .kaart-bijschrift {
   margin: 3px 0 0;
-  font-size: 12px;
+  font-size: var(--tekst-s);
   color: var(--text-muted);
 }
 
@@ -318,12 +357,12 @@ h4 {
 }
 
 .rij-titel {
-  font-size: 15px;
+  font-size: var(--tekst-m);
   font-weight: 600;
 }
 
 .rij-meta {
-  font-size: 12px;
+  font-size: var(--tekst-s);
   color: var(--text-subtle);
 }
 
@@ -341,7 +380,7 @@ h4 {
   border-radius: 11px;
   display: grid;
   place-items: center;
-  font-size: 13px;
+  font-size: var(--tekst-s);
   font-weight: 700;
   background: var(--accent-soft);
   color: var(--accent-ink);
@@ -359,7 +398,7 @@ h4 {
 }
 
 .bedrag {
-  font-size: 15px;
+  font-size: var(--tekst-m);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -376,7 +415,7 @@ h4 {
 .bedrag-groot {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 27px;
+  font-size: var(--tekst-2xl);
   font-weight: 600;
   letter-spacing: -0.02em;
 }
@@ -391,7 +430,7 @@ h4 {
 .stat-waarde {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 17px;
+  font-size: var(--tekst-l);
   font-weight: 600;
 }
 
@@ -401,11 +440,62 @@ h4 {
   flex-wrap: wrap;
 }
 
-/* Donkere accenttegel met amberglow — voor één hoofdcijfer per scherm. */
+/* ---------------------------------------------------------------------------
+   De amberglans als DESIGNLIJN (ronde 20)
+
+   Voorheen was dit een eenmalig effect: één donkere tegel met een amberen gloed
+   in de rechterbovenhoek, en nergens anders in de app iets dat erop leek. Een
+   uitzondering dus, geen taal. En omdat de gloed in beide thema's dezelfde
+   waarde had, was ze op crème praktisch onzichtbaar terwijl ze op bijna-zwart
+   wél las — waardoor de saldotegel in de lichte weergave een zwart blok tussen
+   crème kaarten bleef.
+
+   `.glans` is nu een klasse die je op elk vlak kan zetten. De kleur komt uit
+   `--glans` / `--glans-sterk`, die per thema hun eigen dichtheid hebben.
+   --------------------------------------------------------------------------- */
+.glans {
+  position: relative;
+  overflow: hidden;
+}
+
+.glans::after {
+  content: '';
+  position: absolute;
+  right: -40px;
+  top: -40px;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--glans), transparent 70%);
+  pointer-events: none;
+}
+
+/* Een tweede, kleinere gloed linksonder geeft de hoofdtegel diepte. */
+.glans-sterk::after {
+  background: radial-gradient(circle, var(--glans-sterk), transparent 70%);
+}
+
+.glans-sterk::before {
+  content: '';
+  position: absolute;
+  left: -30px;
+  bottom: -50px;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--glans), transparent 70%);
+  pointer-events: none;
+}
+
+/* De hoofdtegel: één hoofdcijfer per scherm.
+   In het LICHTE thema is dit een warm, licht vlak met een amberen rand en een
+   dubbele gloed — niet langer een zwart blok. In het DONKERE thema blijft ze
+   donker, want daar is licht-op-donker juist het contrast dat werkt. */
 .saldotegel {
   position: relative;
   overflow: hidden;
-  background: #17191e;
+  background: linear-gradient(135deg, #fffdf8, #f7ead7);
+  border: 1px solid var(--accent-soft);
   border-radius: var(--radius-xl);
   padding: 16px 18px;
   display: flex;
@@ -414,43 +504,95 @@ h4 {
 }
 
 :root[data-theme='dark'] .saldotegel {
-  background: #1b2029;
+  background: linear-gradient(135deg, #1d232c, #161b22);
   border: 1px solid var(--border-strong);
 }
 
-.saldotegel::after {
-  content: '';
-  position: absolute;
-  right: -40px;
-  top: -40px;
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(240, 166, 60, 0.22), transparent 70%);
-  pointer-events: none;
+.saldotegel .label-caps {
+  color: var(--accent-ink);
 }
 
-.saldotegel .label-caps {
-  color: #a79e90;
+:root[data-theme='dark'] .saldotegel .label-caps {
+  color: var(--accent-dot);
 }
 
 .saldotegel .bedrag-groot {
-  color: #fff8ed;
-  font-size: 34px;
+  font-size: var(--tekst-3xl);
+  color: var(--text);
 }
 
 .saldotegel-sub {
-  font-size: 13px;
-  color: #c9bfaf;
+  font-size: var(--tekst-s);
+  color: var(--text-muted);
 }
 
 /* ---------------------------------------------------------------------------
    Knoppen
    --------------------------------------------------------------------------- */
 
+/* ---------------------------------------------------------------------------
+   Interactietaal (ronde 20)
+
+   Vóór deze ronde stonden er zeven `:hover`-regels in dit bestand, alle zeven op
+   een knop of een link. Kaarten, lijstrijen en chips reageerden op niets: op een
+   scherm dat je met een muis gebruikt, was dus niet te zien wat aanklikbaar was.
+   En er waren drie `transition`-regels, waarvan die op `.knop` de schaduw niet
+   meenam — de primaire knop sprong daardoor hard.
+
+   Drie regels die we volhouden:
+   1. Alleen wat écht iets doet, reageert. Een gewone kaart is geen knop.
+   2. Beweging is klein: 1 px omhoog, niet meer. De pagina moet rustig blijven.
+   3. Toetsenbord krijgt hetzelfde als de muis, met een duidelijker ring.
+   --------------------------------------------------------------------------- */
+
+/* Eén zichtbare focusring voor alles wat je met de tab-toets kan bereiken. Wie
+   met een muis klikt, ziet niets — dat is het verschil tussen :focus en
+   :focus-visible. */
+.knop:focus-visible,
+.chip:focus-visible,
+.rij button:focus-visible,
+.klikbaar:focus-visible,
+a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring-sterk);
+}
+
+/* Een lijstrij die je kan aanklikken licht zacht op. `.rij` zelf krijgt niets:
+   de meeste rijen zijn gewoon tekst met een bedrag. */
+.lijst .rij:has(button):hover,
+.rij-klikbaar:hover {
+  background: var(--surface-2);
+}
+
+/* Een kaart die ergens naartoe leidt. Zet deze klasse er alleen op wanneer de
+   hele kaart aanklikbaar is — anders beloof je iets dat niet gebeurt. */
+.klikbaar {
+  cursor: pointer;
+  transition: transform var(--overgang), box-shadow var(--overgang), border-color var(--overgang);
+}
+
+.klikbaar:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow);
+}
+
+.chip {
+  transition: background-color var(--overgang), border-color var(--overgang), color var(--overgang);
+}
+
+.chip:hover:not(.chip-actief) {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.lijst .rij {
+  transition: background-color var(--overgang);
+}
+
 .knop {
   font-family: inherit;
-  font-size: 15px;
+  font-size: var(--tekst-m);
   font-weight: 600;
   line-height: 1.2;
   border-radius: var(--radius);
@@ -463,7 +605,8 @@ h4 {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition: background-color var(--overgang), border-color var(--overgang), color var(--overgang),
+    box-shadow var(--overgang), transform var(--overgang);
 }
 
 .knop-primair {
@@ -475,6 +618,12 @@ h4 {
 
 .knop-primair:hover:not(:disabled) {
   background: var(--accent-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-zwevend);
+}
+
+.knop-primair:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .knop-secundair {
@@ -498,7 +647,7 @@ h4 {
 }
 
 .knop-klein {
-  font-size: 13px;
+  font-size: var(--tekst-sm);
   padding: 8px 14px;
   border-radius: var(--radius-sm);
 }
@@ -520,7 +669,7 @@ h4 {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text-muted);
-  font-size: 15px;
+  font-size: var(--tekst-m);
 }
 
 .knop-icoon:hover:not(:disabled) {
@@ -537,7 +686,7 @@ h4 {
   background: none;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
-  font-size: 15px;
+  font-size: var(--tekst-m);
 }
 
 .knop-kaal:hover:not(:disabled) {
@@ -575,7 +724,7 @@ h4 {
 
 .chip {
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--tekst-s);
   font-weight: 600;
   padding: 7px 13px;
   border-radius: var(--radius-pill);
@@ -593,7 +742,7 @@ h4 {
 
 .badge {
   display: inline-block;
-  font-size: 12px;
+  font-size: var(--tekst-s);
   font-weight: 600;
   padding: 5px 11px;
   border-radius: var(--radius-pill);
@@ -626,7 +775,7 @@ h4 {
 }
 
 .badge-mini {
-  font-size: 10px;
+  font-size: var(--tekst-xxs);
   padding: 2px 8px;
 }
 
@@ -655,7 +804,7 @@ input,
 select,
 textarea {
   font-family: inherit;
-  font-size: 15px;
+  font-size: var(--tekst-m);
   background: var(--surface);
   color: var(--text);
   border: 1.5px solid var(--border);
@@ -715,7 +864,7 @@ a:focus-visible,
   margin: 0;
   padding: 18px 4px;
   text-align: center;
-  font-size: 14px;
+  font-size: var(--tekst-sm);
   color: var(--text-subtle);
 }
 
@@ -868,6 +1017,22 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  /* Dezelfde gloed als de hoofdtegel, zwakker: zo lezen de vier tegels als één
+     familie in plaats van als één uitzondering plus drie gewone vakjes. */
+  position: relative;
+  overflow: hidden;
+}
+
+.kengetal::after {
+  content: '';
+  position: absolute;
+  right: -46px;
+  top: -46px;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--glans), transparent 70%);
+  pointer-events: none;
 }
 
 /* ---------------------------------------------------------------------------
@@ -930,5 +1095,19 @@ a:hover {
     display: grid;
     padding: 0 16px 8px;
     border-bottom: 1px solid var(--border);
+  }
+}
+
+/* Respecteer de systeeminstelling "beperk beweging": dan blijft alles staan waar
+   het staat. De kleurwissels blijven wel, want die dragen informatie. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+
+  .klikbaar:hover,
+  .knop-primair:hover:not(:disabled) {
+    transform: none;
   }
 }

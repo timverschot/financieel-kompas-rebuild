@@ -82,7 +82,7 @@ export function Donut({
           x={MIDDEN}
           y={MIDDEN - 5}
           textAnchor="middle"
-          style={{ fontFamily: 'var(--font-body)', fontSize: 11, fill: 'var(--text-subtle)' }}
+          style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--tekst-xs)', fill: 'var(--text-subtle)' }}
         >
           {t(middenLabel)}
         </text>
@@ -90,7 +90,7 @@ export function Donut({
           x={MIDDEN}
           y={MIDDEN + 14}
           textAnchor="middle"
-          style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 600, fill: 'var(--text)' }}
+          style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--tekst-m)', fontWeight: 600, fill: 'var(--text)' }}
         >
           {formatEuro(totaal)}
         </text>

@@ -27,8 +27,8 @@ import { useT } from '../i18n'
 // Gedeelde stukjes
 // ---------------------------------------------------------------------------
 
-const hulpregel: CSSProperties = { margin: '0 0 12px', fontSize: 13, color: 'var(--text-muted)' }
-const foutregel: CSSProperties = { margin: '14px 0 0', fontSize: 13, color: 'var(--negative-ink)' }
+const hulpregel: CSSProperties = { margin: '0 0 12px', fontSize: 'var(--tekst-s)', color: 'var(--text-muted)' }
+const foutregel: CSSProperties = { margin: '14px 0 0', fontSize: 'var(--tekst-s)', color: 'var(--negative-ink)' }
 const resultaatVlak: CSSProperties = { ...uitkomstVlak, marginTop: 14 }
 
 // Elke foutcode uit de rekenkern krijgt hier één begrijpelijke zin. De sleutel is

@@ -25,15 +25,16 @@ import { Kaart, PaginaKop, Leeg, Bedrag, Stat, Balk } from '../ui/basis'
 import { useT } from '../i18n'
 import { naarDatumTekst } from '../utils/datum'
 import { isOmgekeerdBereik } from '../utils/transactieFilter'
+import { kleurVoor, OVERIGE_KLEUR } from '../ui/palet'
+import { dagKort } from '../utils/datum'
 
-// Palet voor lijstjes zonder eigen kleur (producten, winkels). Bewust vaste,
-// onderscheidbare tinten; de kleur reist mee met het bedrag (zelfde data-object).
-const PALET = ['#C56A1F', '#F59E0B', '#96588A', '#3E7C7B', '#3F8A58', '#C97B8B', '#C1502E', '#4E8D8C', '#7A8B3E', '#A34A5E', '#83705C', '#2C6CB0']
-const OVERIGE_KLEUR = '#A08C77'
-
+// De kleuren komen uit het gedeelde palet (src/ui/palet.ts) — dezelfde twaalf die
+// de hoofdcategorieën en de eigen categorieën gebruiken. Deze pagina had er een
+// eigen lijst van twaalf, waarvan zeven afweken; hetzelfde soort schijfje kreeg dus
+// in het ene diagram een andere kleur dan in het andere.
 type Gekleurd = AnalysePost & { kleur: string }
 function kleuren(posten: AnalysePost[]): Gekleurd[] {
-  return posten.map((p, i) => ({ ...p, kleur: PALET[i % PALET.length] }))
+  return posten.map((p, i) => ({ ...p, kleur: kleurVoor(i) }))
 }
 
 // Kleurstipje links in een rij: enkel de vorm ligt vast, de kleur komt uit de
@@ -61,10 +62,7 @@ const rijKnop: CSSProperties = {
 function maandStr(d: Date): string {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
 }
-function datumKort(datum: string): string {
-  const [j, m, d] = datum.split('-').map(Number)
-  return new Intl.DateTimeFormat('nl-BE', { day: '2-digit', month: 'short' }).format(new Date(j, m - 1, d))
-}
+
 
 // Uitklapbare donutkaart: het diagram toont top 10 + een 'Overige'-schijf; de
 // legende toont standaard de top 10 en kan naar alles uitklappen.
@@ -307,9 +305,9 @@ export function AnalyseSectie({
         ))}
         {keuze === 'aangepast' && (
           <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <input type="date" aria-label={t('Periode van')} value={van} onChange={(e) => setVan(e.target.value)} style={{ fontSize: 13, padding: '8px 10px' }} />
+            <input type="date" aria-label={t('Periode van')} value={van} onChange={(e) => setVan(e.target.value)} style={{ fontSize: 'var(--tekst-s)', padding: '8px 10px' }} />
             <span className="rij-meta">{t('t/m')}</span>
-            <input type="date" aria-label={t('Periode tot')} value={tot} onChange={(e) => setTot(e.target.value)} style={{ fontSize: 13, padding: '8px 10px' }} />
+            <input type="date" aria-label={t('Periode tot')} value={tot} onChange={(e) => setTot(e.target.value)} style={{ fontSize: 'var(--tekst-s)', padding: '8px 10px' }} />
           </span>
         )}
       </div>
@@ -415,7 +413,7 @@ export function AnalyseSectie({
           <Kaart>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span className="rij-midden">
-                <span className="rij-titel" style={{ fontSize: 17 }}>
+                <span className="rij-titel" style={{ fontSize: 'var(--tekst-l)' }}>
                   {drill.naam}
                 </span>
                 <span className="rij-meta">{t('{n} transacties in de periode', { n: drillTxs.length })}</span>
@@ -469,7 +467,7 @@ export function AnalyseSectie({
                 {drillTxs.map((d, i) => (
                   <li key={d.transactie.id || i} className="rij">
                     <span className="rij-meta" style={{ width: 52, flexShrink: 0 }}>
-                      {datumKort(d.transactie.datum)}
+                      {dagKort(d.transactie.datum)}
                     </span>
                     <span className="rij-midden">
                       <span className="rij-titel" style={afkap}>
