@@ -1081,6 +1081,9 @@ const en: Record<string, string> = {
   'Uitboeken: wis de transactie van {naam}': 'Unrecord: delete the transaction for {naam}',
   'Inboeken ongedaan gemaakt': 'Recording undone',
   '{naam} ingeboekt': '{naam} recorded',
+  // Ronde 26 — de Analyse-pagina
+  'Klik een rij open voor de details erachter.': 'Open a row for the details behind it.',
+  'Toon details van {naam}': 'Show details for {naam}',
   'Zoek een categorie': 'Search for a category',
   'Typ om ook subcategorieën en producten te zoeken…': 'Type to search subcategories and products too…',
   'Niets gevonden voor deze zoekterm.': 'Nothing found for this search.',
@@ -2151,6 +2154,9 @@ const fr: Record<string, string> = {
   'Uitboeken: wis de transactie van {naam}': 'Annuler l’écriture : supprimer la transaction de {naam}',
   'Inboeken ongedaan gemaakt': 'Enregistrement annulé',
   '{naam} ingeboekt': '{naam} enregistré',
+  // Ronde 26 — de Analyse-pagina
+  'Klik een rij open voor de details erachter.': 'Ouvrez une ligne pour voir le détail.',
+  'Toon details van {naam}': 'Afficher le détail de {naam}',
   'Zoek een categorie': 'Rechercher une catégorie',
   'Typ om ook subcategorieën en producten te zoeken…': 'Tapez pour chercher aussi les sous-catégories et produits…',
   'Niets gevonden voor deze zoekterm.': 'Rien trouvé pour cette recherche.',

@@ -2,6 +2,7 @@ import type { Transactie } from '../data/schema'
 import { uitgavenPerBesparingsdomein } from '../utils/besparen'
 import type { Periode } from '../utils/analyse'
 import { Kaart, Leeg, Bedrag, Balk } from '../ui/basis'
+import { afgerondePercentages } from '../utils/donut'
 import { useT } from '../i18n'
 
 // "Waar kan je besparen?" — dezelfde uitgaven, maar door een andere bril.
@@ -18,6 +19,9 @@ export function BesparenKaart({ transacties, periode }: { transacties: Transacti
   const domeinen = uitgavenPerBesparingsdomein(transacties, periode)
   const hoogste = Math.max(...domeinen.map((d) => d.bedrag), 0)
   const totaal = domeinen.reduce((s, d) => s + d.bedrag, 0)
+  // Percentages in één keer, zodat de vier samen exact 100% geven — dezelfde
+  // aanpak als in de ranglijst ernaast.
+  const percentages = afgerondePercentages(domeinen.map((d) => d.bedrag))
 
   return (
     <Kaart
@@ -42,6 +46,9 @@ export function BesparenKaart({ transacties, periode }: { transacties: Transacti
                   <span className="rij-titel">{t(d.naam)}</span>
                   <span className="rij-meta">{t(d.tip)}</span>
                 </span>
+                {/* Zelfde ritme als de ranglijst sinds ronde 26: aandeel en bedrag
+                    als twee kolommen naast elkaar. */}
+                <span className="rij-pct">{percentages[i]}%</span>
                 <Bedrag centen={d.bedrag} />
               </span>
               {/* De balk is relatief t.o.v. het zwaarste domein: zo zie je in één

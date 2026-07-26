@@ -1047,6 +1047,66 @@ a:hover {
    --------------------------------------------------------------------------- */
 
 /* De kolomkop staat er enkel op desktop. */
+/* ---------------------------------------------------------------------------
+   Analyse: donut met de legende ERNAAST op een breed scherm.
+   Op een telefoon staat de legende gewoon onder de donut; daar is naast elkaar
+   niet leesbaar. Vanaf 1024 px krijgt de donut een vaste kolom links en vult de
+   legende de rest — zo hoef je je ogen niet van boven naar onder te slepen om
+   een schijf bij haar bedrag te zoeken.
+   --------------------------------------------------------------------------- */
+.donut-naast {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+/* Zelfde invariant als bij de andere rasters: een kolom mag nooit breder worden
+   dan haar spoor, anders loopt de pagina buiten het scherm. Bewust BUITEN de
+   mediaquery — zie de opmerking bij .raster-hoofd. */
+.donut-naast > * {
+  min-width: 0;
+}
+
+/* Een rij in een analyse-ranglijst die je kan aanklikken. De chevron is het
+   zichtbare teken dat er iets achter zit; hij wordt sterker zodra je erover
+   gaat, zodat de rij zelf reageert en niet alleen de cursor verandert. */
+.analyse-rij:hover,
+.analyse-rij:focus-visible {
+  background: var(--surface-2);
+}
+
+.rij-chevron {
+  color: var(--text-subtle);
+  transition: color var(--overgang), transform var(--overgang);
+  flex-shrink: 0;
+}
+
+.analyse-rij:hover .rij-chevron,
+.analyse-rij:focus-visible .rij-chevron {
+  color: var(--accent);
+  transform: translateX(2px);
+}
+
+/* Het percentage naast het bedrag in plaats van eronder in dezelfde grijstint:
+   zo lees je "aandeel" en "bedrag" als twee kolommen in plaats van als één
+   grijze brij. Monospace en rechts uitgelijnd, net als elk cijfer in de app. */
+.rij-pct {
+  font-family: var(--font-mono);
+  font-size: var(--tekst-s);
+  color: var(--text-muted);
+  min-width: 46px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+@media (min-width: 1024px) {
+  .donut-naast {
+    grid-template-columns: 210px 1fr;
+    gap: 20px;
+    align-items: center;
+  }
+}
+
 .tx-kop {
   display: none;
 }

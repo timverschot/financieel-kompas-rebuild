@@ -83,21 +83,27 @@ function DonutKaart({ titel, subtitel, posten, richting }: { titel: string; subt
 
   return (
     <Kaart titel={titel} bijschrift={subtitel}>
-      <Donut items={ring} toonLegende={false} middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'} />
-      <ul className="lijst" style={{ maxHeight: toonAlles ? 260 : undefined, overflowY: toonAlles ? 'auto' : undefined }}>
-        {legende.map((p, i) => (
-          <li key={`${i}-${p.naam}`} className="rij">
-            <span style={{ ...stip, background: p.kleur }} />
-            <span className="rij-midden">
-              <span className="rij-titel" style={afkap}>
-                {p.naam}
+      {/* Donut links, legende rechts vanaf 1024 px (zie .donut-naast in
+          index.css). Voorheen stond de legende altijd onder de donut, ook op een
+          breed scherm — dan sleep je je ogen van boven naar onder om een schijf
+          bij haar bedrag te zoeken. */}
+      <div className="donut-naast">
+        <Donut items={ring} toonLegende={false} middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'} />
+        <ul className="lijst" style={{ maxHeight: toonAlles ? 260 : undefined, overflowY: toonAlles ? 'auto' : undefined }}>
+          {legende.map((p, i) => (
+            <li key={`${i}-${p.naam}`} className="rij">
+              <span style={{ ...stip, background: p.kleur }} />
+              <span className="rij-midden">
+                <span className="rij-titel" style={afkap}>
+                  {p.naam}
+                </span>
               </span>
-              <span className="rij-meta">{percentages[i]}%</span>
-            </span>
-            <Bedrag centen={p.bedrag} />
-          </li>
-        ))}
-      </ul>
+              <span className="rij-pct">{percentages[i]}%</span>
+              <Bedrag centen={p.bedrag} />
+            </li>
+          ))}
+        </ul>
+      </div>
       {rest.length > 0 && (
         <div className="knoprij">
           <button className="knop knop-ghost knop-klein" onClick={() => setToonAlles((s) => !s)}>
@@ -320,25 +326,39 @@ export function AnalyseSectie({
 
       {!drill && !bereikOmgekeerd && (
         <>
-          {/* Verdeling per hoofdcategorie + ranglijst */}
-          <Kaart
-            titel={richting === 'uitgave' ? t('Verdeling uitgaven') : t('Verdeling inkomsten')}
-            bijschrift={t('Per hoofdcategorie')}
-          >
-            {byOv.length === 0 ? (
+          {/* De verdeling en de ranglijst staan sinds ronde 26 in TWEE kaarten
+              naast elkaar op een breed scherm. Ze zaten in één kaart onder
+              elkaar, waardoor je op desktop moest scrollen om van de grafiek naar
+              de cijfers te gaan terwijl er rechts een halve pagina leeg stond.
+              Op een telefoon vallen ze gewoon onder elkaar, met de donut eerst. */}
+          {byOv.length === 0 ? (
+            <Kaart
+              titel={richting === 'uitgave' ? t('Verdeling uitgaven') : t('Verdeling inkomsten')}
+              bijschrift={t('Per hoofdcategorie')}
+            >
               <Leeg>{leegTekst}</Leeg>
-            ) : (
-              <>
+            </Kaart>
+          ) : (
+            <div className="raster-twee">
+              <Kaart
+                titel={richting === 'uitgave' ? t('Verdeling uitgaven') : t('Verdeling inkomsten')}
+                bijschrift={t('Per hoofdcategorie')}
+              >
                 <Donut items={donutInvoer} toonLegende={false} middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'} />
-                <p className="kaart-bijschrift" style={{ margin: 0 }}>
-                  {t('Ranglijst')} — {t('klik voor detail')}
-                </p>
+                <div className="stat-rij" style={{ paddingTop: 12, borderTop: '1px solid var(--divider)' }}>
+                  <Stat label={t('Totaal')}>{formatEuro(totaal)}</Stat>
+                </div>
+              </Kaart>
+
+              <Kaart titel={t('Ranglijst')} bijschrift={t('Klik een rij open voor de details erachter.')}>
                 <ul className="lijst">
                   {byOv.map((g, i) => {
                     const fractie = totaal > 0 ? g.bedrag / totaal : 0
                     return (
                       <li key={g.sleutel}>
                         <button
+                          className="analyse-rij"
+                          aria-label={t('Toon details van {naam}', { naam: g.naam })}
                           onClick={() => setDrill({ sleutel: g.sleutel, naam: g.naam })}
                           style={{ ...rijKnop, borderBottom: i === byOv.length - 1 ? 'none' : rijKnop.borderBottom }}
                         >
@@ -348,10 +368,12 @@ export function AnalyseSectie({
                               <span className="rij-titel" style={afkap}>
                                 {g.naam}
                               </span>
-                              <span className="rij-meta">{ovPercentages[i]}%</span>
                             </span>
+                            {/* Aandeel en bedrag als twee kolommen, niet als één
+                                grijze regel onder de naam. */}
+                            <span className="rij-pct">{ovPercentages[i]}%</span>
                             <Bedrag centen={g.bedrag} />
-                            <span className="rij-meta">›</span>
+                            <span className="rij-chevron" aria-hidden>›</span>
                           </span>
                           {/* Balkje in de knop: bewust de kale balk-klassen, zodat we geen
                               tweede rol/naam binnen de knop introduceren. */}
@@ -363,12 +385,9 @@ export function AnalyseSectie({
                     )
                   })}
                 </ul>
-                <div className="stat-rij" style={{ paddingTop: 12, borderTop: '1px solid var(--divider)' }}>
-                  <Stat label={t('Totaal')}>{formatEuro(totaal)}</Stat>
-                </div>
-              </>
-            )}
-          </Kaart>
+              </Kaart>
+            </div>
+          )}
 
           {/* Waar valt er te besparen? Enkel bij uitgaven: bij inkomsten is de
               vraag zinloos. */}
@@ -431,31 +450,35 @@ export function AnalyseSectie({
 
           {drillSub.length > 0 && (
             <Kaart titel={t('Per subcategorie')}>
-              <Donut
-                items={drillSub.map((p) => ({ naam: p.naam, bedrag: p.bedrag, kleur: p.kleur }))}
-                toonLegende={false}
-                middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'}
-              />
-              <ul className="lijst">
-                {drillSub.map((p, i) => {
-                  const fractie = drillTotaal > 0 ? p.bedrag / drillTotaal : 0
-                  return (
-                    <li key={`${i}-${p.naam}`} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span style={{ ...stip, background: p.kleur }} />
-                        <span className="rij-midden">
-                          <span className="rij-titel" style={afkap}>
-                            {p.naam}
+              {/* Zelfde vorm als de kaarten op de hoofdpagina: donut links, lijst
+                  rechts op een breed scherm, aandeel als eigen kolom. */}
+              <div className="donut-naast">
+                <Donut
+                  items={drillSub.map((p) => ({ naam: p.naam, bedrag: p.bedrag, kleur: p.kleur }))}
+                  toonLegende={false}
+                  middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'}
+                />
+                <ul className="lijst">
+                  {drillSub.map((p, i) => {
+                    const fractie = drillTotaal > 0 ? p.bedrag / drillTotaal : 0
+                    return (
+                      <li key={`${i}-${p.naam}`} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span style={{ ...stip, background: p.kleur }} />
+                          <span className="rij-midden">
+                            <span className="rij-titel" style={afkap}>
+                              {p.naam}
+                            </span>
                           </span>
-                          <span className="rij-meta">{drillSubPercentages[i]}%</span>
+                          <span className="rij-pct">{drillSubPercentages[i]}%</span>
+                          <Bedrag centen={p.bedrag} />
                         </span>
-                        <Bedrag centen={p.bedrag} />
-                      </span>
-                      <Balk label={p.naam} fractie={fractie} kleur={p.kleur} />
-                    </li>
-                  )
-                })}
-              </ul>
+                        <Balk label={p.naam} fractie={fractie} kleur={p.kleur} />
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
             </Kaart>
           )}
 
