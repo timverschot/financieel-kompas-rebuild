@@ -1,5 +1,5 @@
 import { INGEBOUWDE_CATEGORIEEN } from './ingebouwd'
-import { itemPerId } from './zoek'
+import { itemPerId, midPerId } from './zoek'
 
 // Een transactie kan getagd zijn op twee niveaus: een hoofdcategorie (bv.
 // 'Voeding') of een specifiek item/subcategorie (bv. 'Brood (wit)'). Daarnaast
@@ -63,6 +63,8 @@ export function padVanCategorie(
   if (!id) return undefined
   const item = itemPerId(id)
   if (item) return `${item.hoofdNaam} › ${item.naam}`
+  const mid = midPerId(id)
+  if (mid) return `${mid.hoofdNaam} › ${mid.naam}`
   return labelVanCategorie(id, gebruikerCategorieen)
 }
 
@@ -78,6 +80,10 @@ export function labelVanCategorie(
   if (item) return item.naam
   const hoofd = HOOFD_PER_ID.get(id)
   if (hoofd) return hoofd.naam
+  // De middenlaag: sinds ronde 25 kan een BUDGET erop staan, dus moet haar naam
+  // gekend zijn. Voor een transactie blijft ze onbereikbaar — zie zoek.ts.
+  const mid = midPerId(id)
+  if (mid) return mid.naam
   const eigen = gebruikerCategorieen.find((c) => c.id === id)
   if (eigen) return eigen.naam
   return 'Onbekend'

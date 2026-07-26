@@ -32,6 +32,7 @@ export function PlanRegels({
   budgetten,
   maand,
   verwachteInkomsten,
+  geboekteInkomsten,
 }: {
   posten: TerugkerendePost[]
   budgetten: Budget[]
@@ -39,11 +40,17 @@ export function PlanRegels({
   maand: string
   /** Uit `maandVooruitblik`: geboekt + wat deze maand nog binnenkomt. */
   verwachteInkomsten: number
+  /** Uit `maandVooruitblik`: wat er deze maand effectief al binnengekomen is. */
+  geboekteInkomsten: number
 }) {
   const { t } = useT()
   const cijfers = plancijfers(posten, maand)
   const teVerdelen = verwachteInkomsten - cijfers.vastDezeMaand - cijfers.opzij
   const gebudgetteerd = budgetten.reduce((som, b) => som + b.bedrag, 0)
+  // Zonder vaste inkomst weet de app niet waarop je plan gebaseerd is. Dan een
+  // groot rood negatief bedrag tonen is erger dan niets: het lijkt een oordeel
+  // over je situatie, terwijl het gewoon betekent dat er nog niets ingevuld is.
+  const kentInkomsten = cijfers.vasteInkomsten > 0 || verwachteInkomsten > 0
 
   // Zonder inkomsten én zonder vaste lasten valt er niets te plannen; dan is een
   // rij nullen alleen maar ruis op een lege app.
@@ -60,19 +67,46 @@ export function PlanRegels({
         {cijfers.opzij > 0 && <Regel label={t('Opzij voor later')} bedrag={cijfers.opzij} teken="−" />}
       </ul>
 
-      <div
-        className="rij"
-        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottom: 'none' }}
-        data-te-verdelen
-      >
-        <span className="rij-titel">{t('Te verdelen')}</span>
-        <strong
-          className="bedrag bedrag-groot"
-          style={{ color: teVerdelen < 0 ? 'var(--negative)' : 'var(--text)' }}
+      {kentInkomsten ? (
+        <div
+          className="rij"
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottom: 'none' }}
+          data-te-verdelen
         >
-          {formatEuro(teVerdelen)}
-        </strong>
-      </div>
+          <span className="rij-titel">{t('Te verdelen')}</span>
+          <strong
+            className="bedrag bedrag-groot"
+            style={{ color: teVerdelen < 0 ? 'var(--negative)' : 'var(--text)' }}
+          >
+            {formatEuro(teVerdelen)}
+          </strong>
+        </div>
+      ) : (
+        <p className="leeg" style={{ padding: 0, textAlign: 'left' }} data-geen-inkomsten>
+          {t('Vul hieronder je vaste inkomsten in — je loon bijvoorbeeld — dan berekent de app wat er te verdelen valt.')}
+        </p>
+      )}
+
+      {/* Wat er werkelijk binnenkwam tegenover wat je verwachtte. Nuttig zodra er
+          iets geboekt is: een maand met een dertiende maand of een onverwacht
+          lager loon zie je hier meteen, zonder zelf te vergelijken. */}
+      {cijfers.vasteInkomsten > 0 && geboekteInkomsten > 0 && (
+        <p className="rij-meta" style={{ margin: 0 }} data-inkomstenvergelijking>
+          {geboekteInkomsten === cijfers.vasteInkomsten
+            ? t('Er kwam deze maand {gekregen} binnen — precies je vaste inkomsten.', {
+                gekregen: formatEuro(geboekteInkomsten),
+              })
+            : geboekteInkomsten > cijfers.vasteInkomsten
+              ? t('Er kwam deze maand {gekregen} binnen — {verschil} meer dan je vaste inkomsten.', {
+                  gekregen: formatEuro(geboekteInkomsten),
+                  verschil: formatEuro(geboekteInkomsten - cijfers.vasteInkomsten),
+                })
+              : t('Er kwam deze maand {gekregen} binnen — {verschil} minder dan je vaste inkomsten.', {
+                  gekregen: formatEuro(geboekteInkomsten),
+                  verschil: formatEuro(cijfers.vasteInkomsten - geboekteInkomsten),
+                })}
+        </p>
+      )}
 
       {/* De brug naar de budgetten eronder: eisen ze samen meer op dan er is? */}
       {gebudgetteerd > 0 && (

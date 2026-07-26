@@ -30,6 +30,20 @@ import { vandaag } from '../utils/datum'
 // De scanner (en de ZXing-bibliotheek) worden pas geladen wanneer je effectief scant.
 const BarcodeScanner = lazy(() => import('./BarcodeScanner'))
 
+/**
+ * Het invoertijdstip van een boeking: bij een nieuwe het moment van nu, bij een
+ * bewerking het oorspronkelijke moment.
+ *
+ * Waarom niet bijwerken bij een bewerking: dan zou een boeking van vorige maand
+ * waar je een typfout in verbetert, bovenaan de lijst van die dag springen. Het
+ * veld zegt "wanneer heb je dit ingevoerd", niet "wanneer heb je dit laatst
+ * aangeraakt".
+ */
+function invoertijdstip(bewerken?: Transactie | null): { ingevoerdOp?: string } {
+  if (bewerken) return bewerken.ingevoerdOp ? { ingevoerdOp: bewerken.ingevoerdOp } : {}
+  return { ingevoerdOp: new Date().toISOString() }
+}
+
 // Dezelfde grens als in de documentkluis: boven ~4 MB weigeren we het bestand.
 // Een zwaardere data-URL maakt de lokale database én elke back-up traag, en dat
 // merk je pas veel later — beter meteen zeggen dat de foto kleiner moet.
@@ -303,6 +317,7 @@ export function TransactieFormulier({
         rekeningId,
         ...(regels.length > 0 ? { regels } : {}),
         ...(persoonIds.length > 0 ? { persoonIds } : {}),
+        ...invoertijdstip(bewerken),
       }
     } else {
       t = {
@@ -313,6 +328,7 @@ export function TransactieFormulier({
         rekeningId,
         ...(categorieId ? { categorieId } : {}),
         ...(persoonIds.length > 0 ? { persoonIds } : {}),
+        ...invoertijdstip(bewerken),
       }
     }
 

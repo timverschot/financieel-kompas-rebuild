@@ -21,16 +21,39 @@ export type OpDatum = {
   datum: string // JJJJ-MM-DD, dus tekstvergelijking = chronologisch
   id?: string
   omschrijving?: string
+  /**
+   * Wanneer het record INGEVOERD is (ISO-tijdstempel met tijd). Optioneel: alleen
+   * transacties dragen dit, en enkel die van ná ronde 25.
+   */
+  ingevoerdOp?: string
 }
 
 /**
  * Vergelijkt twee records op datum, NIEUWSTE EERST, met een vaste uitkomst bij
  * gelijke datums. Bedoeld voor `Array.prototype.sort`.
+ *
+ * Binnen dezelfde dag wint het LAATST INGEVOERDE record. Tik je 's avonds vijf
+ * bonnetjes van vandaag in, dan hoort het bonnetje dat je zonet getikt hebt
+ * bovenaan te staan — niet ergens in het midden omdat de winkel toevallig met een
+ * M begint. Records zonder invoertijdstip komen ná de records die er wél een
+ * hebben: die laatste zijn per definitie later ingevoerd.
  */
 export function nieuwsteEerst(a: OpDatum, b: OpDatum): number {
   if (a.datum !== b.datum) return a.datum < b.datum ? 1 : -1
-  // Zelfde dag: op iets vergelijken dat de gebruiker ziet, zodat de volgorde
-  // leesbaar én stabiel is.
+
+  // Zelfde dag: eerst op het moment van invoeren, laatst ingevoerd bovenaan.
+  const ia = a.ingevoerdOp
+  const ib = b.ingevoerdOp
+  if (ia && ib) {
+    if (ia !== ib) return ia < ib ? 1 : -1
+  } else if (ia) {
+    return -1
+  } else if (ib) {
+    return 1
+  }
+
+  // Geen van beide heeft een invoertijdstip: op iets vergelijken dat de gebruiker
+  // ziet, zodat de volgorde leesbaar én stabiel is.
   const oa = a.omschrijving ?? ''
   const ob = b.omschrijving ?? ''
   if (oa !== ob) return oa.localeCompare(ob, 'nl')

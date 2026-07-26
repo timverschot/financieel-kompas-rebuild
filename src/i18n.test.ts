@@ -42,6 +42,21 @@ describe('vertaaltabellen', () => {
     expect(vertaal('fr', 'Wat wil je boeken?')).toBe('Que voulez-vous enregistrer ?')
   })
 
+  it('vertaalt de nieuwe teksten van ronde 25', () => {
+    expect(vertaal('en', 'Vaste inkomsten')).toBe('Recurring income')
+    expect(vertaal('fr', 'Uitboeken')).toBe('Annuler l’écriture')
+    expect(vertaal('en', 'Zoek een categorie')).toBe('Search for a category')
+    expect(vertaal('fr', 'Nog geen vaste lasten.')).toBe('Pas encore de charges fixes.')
+    expect(vertaal('en', '{naam} ingeboekt', { naam: 'Rent' })).toBe('Rent recorded')
+  })
+
+  it('vertaalt de nieuwe teksten van ronde 24', () => {
+    expect(vertaal('en', 'Te verdelen')).toBe('Left to allocate')
+    expect(vertaal('fr', 'Alle maanden')).toBe('Tous les mois')
+    expect(vertaal('en', 'Categorie toekennen')).toBe('Assign category')
+    expect(vertaal('fr', 'gedeeld')).toBe('partagé')
+  })
+
   it('vertaalt de nieuwe teksten van ronde 23', () => {
     expect(vertaal('en', 'Te verdelen')).toBe('Left to allocate')
     expect(vertaal('fr', 'Om de 6 maanden')).toBe('Tous les 6 mois')

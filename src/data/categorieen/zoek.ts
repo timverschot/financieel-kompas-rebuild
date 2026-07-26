@@ -122,3 +122,58 @@ export function zoekItems(term: string, limiet = 25): PlatItem[] {
   gescoord.sort((a, b) => a.score - b.score || a.item.naam.localeCompare(b.item.naam, 'nl'))
   return gescoord.slice(0, limiet).map((g) => g.item)
 }
+
+// --- De MIDDENLAAG (cat-*) --------------------------------------------------
+//
+// De middenlaag bestond wel in de boom, maar was nergens op te zoeken of op te
+// vragen. Sinds ronde 25 kan je er een BUDGET op zetten ("€ 150 voor Persoonlijke
+// verzorging"), en dan moet de app haar naam kennen en haar kunnen vinden.
+//
+// LET OP: dit maakt de middenlaag NIET kiesbaar als categorie van een transactie.
+// `groepVanCategorie` kent die laag nog altijd niet, dus een transactie die erop
+// getagd zou zijn, valt uit elke grafiek. Zie de projectinstructies.
+
+/** Eén middencategorie met haar plaats in de boom. */
+export type MidCategorie = {
+  id: string
+  naam: string
+  hoofdId: string
+  hoofdNaam: string
+  kleur: string
+  icoon: string
+}
+
+export const MID_CATEGORIEEN: MidCategorie[] = INGEBOUWDE_CATEGORIEEN.flatMap((hoofd) =>
+  hoofd.categorieen.map((cat) => ({
+    id: cat.id,
+    naam: cat.naam,
+    hoofdId: hoofd.id,
+    hoofdNaam: hoofd.naam,
+    kleur: hoofd.kleur,
+    icoon: hoofd.icoon,
+  })),
+)
+
+const MID_PER_ID = new Map(MID_CATEGORIEEN.map((c) => [c.id, c]))
+
+/** Zoekt een middencategorie op haar id. */
+export function midPerId(id: string): MidCategorie | undefined {
+  return MID_PER_ID.get(id)
+}
+
+/** Zoekt middencategorieën op naam, op dezelfde manier als `zoekItems`. */
+export function zoekMidCategorieen(term: string, limiet = 25): MidCategorie[] {
+  const t = term.trim().toLowerCase()
+  if (!t) return []
+  const gescoord: { cat: MidCategorie; score: number }[] = []
+  for (const cat of MID_CATEGORIEEN) {
+    const naam = cat.naam.toLowerCase()
+    let score = -1
+    if (naam === t) score = 0
+    else if (naam.startsWith(t)) score = 1
+    else if (naam.includes(t)) score = 2
+    if (score >= 0) gescoord.push({ cat, score })
+  }
+  gescoord.sort((a, b) => a.score - b.score || a.cat.naam.localeCompare(b.cat.naam, 'nl'))
+  return gescoord.slice(0, limiet).map((g) => g.cat)
+}

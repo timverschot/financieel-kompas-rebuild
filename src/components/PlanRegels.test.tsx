@@ -15,8 +15,22 @@ const premie: TerugkerendePost = {
   opbouwen: true,
 }
 
-function toon(posten: TerugkerendePost[], budgetten: Budget[] = [], maand = '2026-07', inkomsten = 240000) {
-  render(<PlanRegels posten={posten} budgetten={budgetten} maand={maand} verwachteInkomsten={inkomsten} />)
+function toon(
+  posten: TerugkerendePost[],
+  budgetten: Budget[] = [],
+  maand = '2026-07',
+  inkomsten = 240000,
+  geboekt = 0,
+) {
+  render(
+    <PlanRegels
+      posten={posten}
+      budgetten={budgetten}
+      maand={maand}
+      verwachteInkomsten={inkomsten}
+      geboekteInkomsten={geboekt}
+    />,
+  )
 }
 
 function teVerdelen(): string {
@@ -65,8 +79,57 @@ describe('PlanRegels', () => {
 
   it('toont niets op een lege app', () => {
     const { container } = render(
-      <PlanRegels posten={[]} budgetten={[]} maand="2026-07" verwachteInkomsten={0} />,
+      <PlanRegels posten={[]} budgetten={[]} maand="2026-07" verwachteInkomsten={0} geboekteInkomsten={0} />,
     )
     expect(container).toBeEmptyDOMElement()
+  })
+})
+
+// --- Ronde 25: geen misleidend cijfer, en de vergelijking met wat er binnenkwam ---
+
+const loon: TerugkerendePost = { id: 'loon', omschrijving: 'Loon', bedrag: 240000, rekeningId: 'r1', dag: 25 }
+
+describe('PlanRegels — zonder bekende inkomsten', () => {
+  it('toont geen negatief "te verdelen" maar zegt wat er ontbreekt', () => {
+    // Wel vaste lasten, geen vaste inkomst en nog niets geboekt: een groot rood
+    // bedrag zou hier een oordeel lijken over je situatie, terwijl het gewoon
+    // betekent dat er nog niets ingevuld is.
+    toon([huur], [], '2026-07', 0)
+    expect(document.querySelector('[data-te-verdelen]')).toBeNull()
+    expect(screen.getByText(/Vul hieronder je vaste inkomsten in/)).toBeInTheDocument()
+  })
+
+  it('toont het cijfer wél zodra er een vaste inkomst is', () => {
+    toon([huur, loon], [], '2026-07', 240000)
+    expect(document.querySelector('[data-te-verdelen]')).not.toBeNull()
+  })
+})
+
+describe('PlanRegels — verwacht tegenover werkelijk binnengekomen', () => {
+  function vergelijking(): string {
+    return document.querySelector('[data-inkomstenvergelijking]')?.textContent ?? ''
+  }
+
+  it('zwijgt zolang er nog niets binnengekomen is', () => {
+    toon([huur, loon], [], '2026-07', 240000, 0)
+    expect(vergelijking()).toBe('')
+  })
+
+  it('meldt hoeveel er méér binnenkwam', () => {
+    // € 2.530 gekregen tegenover € 2.400 vaste inkomsten = € 130 meer.
+    toon([huur, loon], [], '2026-07', 253000, 253000)
+    expect(vergelijking()).toMatch(/meer dan je vaste inkomsten/)
+    expect(vergelijking()).toMatch(/130,00/)
+  })
+
+  it('meldt hoeveel er minder binnenkwam', () => {
+    toon([huur, loon], [], '2026-07', 230000, 230000)
+    expect(vergelijking()).toMatch(/minder dan je vaste inkomsten/)
+    expect(vergelijking()).toMatch(/100,00/)
+  })
+
+  it('zegt het ook wanneer het precies klopt', () => {
+    toon([huur, loon], [], '2026-07', 240000, 240000)
+    expect(vergelijking()).toMatch(/precies je vaste inkomsten/)
   })
 })

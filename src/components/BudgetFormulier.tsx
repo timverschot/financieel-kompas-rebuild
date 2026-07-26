@@ -2,7 +2,8 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Budget, Categorie } from '../data/schema'
 import { invoerNaarCenten } from '../utils/format'
-import { CategorieSelect, STANDAARD_CATEGORIE_ID } from './CategorieSelect'
+import { STANDAARD_CATEGORIE_ID } from './CategorieSelect'
+import { BudgetcategorieKiezer } from './BudgetcategorieKiezer'
 import { useT } from '../i18n'
 
 // De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
@@ -43,13 +44,20 @@ export function BudgetFormulier({
 
   return (
     <form onSubmit={verzend} className="stapel">
-      <div className="veldrij">
-        <div className="veldgroep">
+      {/* De categoriekiezer op een eigen regel: met een zoekveld én een lijst
+          erin is een halve kolom te smal om iets als "Huishouden en Verzorging ›
+          Persoonlijke verzorging" te lezen. */}
+      <div className="veldgroep">
           <label className="label-caps" htmlFor="budgetcategorie">
             {t('Budgetcategorie')}
           </label>
-          <CategorieSelect id="budgetcategorie" waarde={categorieId} onKies={setCategorieId} categorieen={categorieen} />
-        </div>
+          {/* Sinds ronde 25 mag een budget ook op een subcategorie of op één
+              product staan (zie utils/budget.ts), en dan is een gewone keuzelijst
+              met duizend regels onbruikbaar. */}
+          <BudgetcategorieKiezer id="budgetcategorie" waarde={categorieId} onKies={setCategorieId} categorieen={categorieen} />
+      </div>
+
+      <div className="veldrij">
         <div className="veldgroep">
           <label className="label-caps" htmlFor="maandbudget">
             {t('Maandbudget (€)')}

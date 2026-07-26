@@ -4,7 +4,7 @@ import { TerugkerendePostFormulier, frequentieNaam } from './TerugkerendePostFor
 import { formatEuro } from '../utils/format'
 import { vandaag } from '../utils/datum'
 import { frequentieVan, maandbedrag, opzijPerMaand, valtInMaand, volgendeVervaldag } from '../utils/vastelast'
-import { Kaart } from '../ui/basis'
+import { Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 
 // Sectie voor vaste (terugkerende) lasten: overzicht, inboeken voor de gekozen
@@ -25,6 +25,8 @@ export function TerugkerendeSectie({
   onOpslaan,
   onVerwijderen,
   onBoek,
+  onOngedaan,
+  soort = 'uitgave',
 }: {
   posten: TerugkerendePost[]
   rekeningen: Rekening[]
@@ -35,9 +37,21 @@ export function TerugkerendeSectie({
   onOpslaan: (p: TerugkerendePost) => Promise<void> | void
   onVerwijderen: (id: string) => Promise<void> | void
   onBoek: (p: TerugkerendePost) => Promise<void> | void
+  /** Een ingeboekte post weer losmaken: wist de transactie die eraan hangt. */
+  onOngedaan?: (p: TerugkerendePost) => Promise<void> | void
+  /**
+   * Toont deze sectie de vaste INKOMSTEN of de vaste LASTEN? Ze stonden tot ronde
+   * 25 door elkaar in één lijst met de keuze onderaan het formulier — daardoor was
+   * "waar vul ik mijn loon in?" onvindbaar, en bleef "verwachte inkomsten" op nul
+   * staan zonder dat iemand kon zien waarom.
+   */
+  soort?: 'uitgave' | 'inkomst'
 }) {
   const { t } = useT()
   const [bewerken, setBewerken] = useState<TerugkerendePost | null>(null)
+  // Elke sectie toont enkel haar eigen soort.
+  const eigen = posten.filter((p) => (soort === 'inkomst' ? p.bedrag > 0 : p.bedrag < 0))
+  const isInkomst = soort === 'inkomst'
 
   async function opslaan(p: TerugkerendePost) {
     await onOpslaan(p)
@@ -45,10 +59,24 @@ export function TerugkerendeSectie({
   }
 
   return (
-    <Kaart titel={t('Vaste lasten')} bijschrift={t('Inboeken voor {maand}', { maand: maandLabel })}>
-      {posten.length > 0 && (
+    <Kaart
+      titel={isInkomst ? t('Vaste inkomsten') : t('Vaste lasten')}
+      bijschrift={
+        isInkomst
+          ? t('Je loon en alles wat elke maand binnenkomt. Hierop rekent je plan.')
+          : t('Inboeken voor {maand}', { maand: maandLabel })
+      }
+    >
+      {eigen.length === 0 && (
+        <Leeg>
+          {isInkomst
+            ? t('Nog geen vaste inkomsten. Vul hieronder je loon in, anders weet je plan niet wat er te verdelen valt.')
+            : t('Nog geen vaste lasten.')}
+        </Leeg>
+      )}
+      {eigen.length > 0 && (
         <ul className="lijst">
-          {posten.map((p) => {
+          {eigen.map((p) => {
             const geboekt = transacties.some((tx) => tx.id === `tk-${p.id}-${maand}`)
             const dezeMaand = valtInMaand(p, maand)
             const periodiek = frequentieVan(p) !== 'maand'
@@ -80,7 +108,27 @@ export function TerugkerendeSectie({
                     // je een jaarpremie elke maand opnieuw kunnen inboeken.
                     <span className="badge badge-neutraal">{t('Niet deze maand')}</span>
                   ) : geboekt ? (
-                    <span className="badge badge-ok">{t('Geboekt ✓')}</span>
+                    // "Geboekt ✓" was een doodlopend punt: inboeken maakt een echte
+                    // transactie, en die kon je alleen op de Transacties-pagina weer
+                    // wissen. Nu kan het hier, waar je geklikt hebt.
+                    onOngedaan ? (
+                      <>
+                        <span className="badge badge-ok">{t('Geboekt ✓')}</span>
+                        {/* Bewust NIET 'Ongedaan maken': die knop staat op dat
+                            moment ook in de undo-melding onderaan het scherm, en
+                            twee identieke knoppen naast elkaar zijn verwarrend.
+                            'Uitboeken' is bovendien het spiegelbeeld van 'Boek in'. */}
+                        <button
+                          className="knop knop-ghost knop-klein"
+                          aria-label={t('Uitboeken: wis de transactie van {naam}', { naam: p.omschrijving })}
+                          onClick={() => onOngedaan(p)}
+                        >
+                          {t('Uitboeken')}
+                        </button>
+                      </>
+                    ) : (
+                      <span className="badge badge-ok">{t('Geboekt ✓')}</span>
+                    )
                   ) : (
                     <button className="knop knop-secundair knop-klein" onClick={() => onBoek(p)}>
                       {t('Boek in')}
@@ -113,6 +161,7 @@ export function TerugkerendeSectie({
         onOpslaan={opslaan}
         onAnnuleer={() => setBewerken(null)}
         bewerken={bewerken}
+        soort={soort}
       />
     </Kaart>
   )

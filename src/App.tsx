@@ -130,7 +130,7 @@ import { bouwHandelaarIndex } from './utils/categorieVoorstel'
 import { bonVanTransactie } from './utils/kluis'
 import { formatEuro } from './utils/format'
 import { bouwMeldingen } from './utils/meldingen'
-import { maandVooruitblik } from './utils/vooruitblik'
+import { maandVooruitblik, vasteLastTransactieId } from './utils/vooruitblik'
 import { useInstellingen } from './instellingen'
 import { huidigeMaand, maandJaarLabel, vandaag } from './utils/datum'
 import { saldoVanRekening, totaalSaldoVan } from './utils/saldo'
@@ -656,16 +656,38 @@ export function App() {
 
   async function boekTerugkerend(post: TerugkerendePost) {
     const dag = String(post.dag).padStart(2, '0')
-    const t: Transactie = {
+    // Bewust 'tx' en niet 't': 't' is in dit bestand de vertaalfunctie, en die
+    // hebben we hieronder nodig voor de ongedaan-maken-melding.
+    const tx: Transactie = {
       id: `tk-${post.id}-${maand}`,
       datum: `${maand}-${dag}`,
       omschrijving: post.omschrijving,
       bedrag: post.bedrag,
       rekeningId: post.rekeningId,
       ...(post.categorieId ? { categorieId: post.categorieId } : {}),
+      // Ook een ingeboekte vaste last krijgt het moment van invoeren mee, zodat ze
+      // in de lijst boven de boekingen van dezelfde dag staat die je eerder tikte.
+      ingevoerdOp: new Date().toISOString(),
     }
-    await bewaarTransactie(t)
+    await bewaarTransactie(tx)
     await herlaad()
+    // Inboeken maakt een ECHTE transactie: je saldo daalt ermee. Dan hoort er ook
+    // een weg terug te zijn, net als bij elke andere actie in de app.
+    toonUndo(t('{naam} ingeboekt', { naam: post.omschrijving }), async () => {
+      await verwijderTransactie(tx.id)
+    })
+  }
+
+  // Een ingeboekte vaste last weer losmaken. Wist precies de transactie die het
+  // inboeken maakte (het id ligt vast), dus nooit een andere boeking van dezelfde
+  // dag met hetzelfde bedrag.
+  async function maakInboekenOngedaan(post: TerugkerendePost) {
+    const id = vasteLastTransactieId(post.id, maand)
+    const oud = (transacties ?? []).find((x) => x.id === id)
+    if (!oud) return
+    await verwijderTransactie(id)
+    await herlaad()
+    toonUndo(t('Inboeken ongedaan gemaakt'), () => bewaarTransactie(oud))
   }
 
   // Genereer een afrekening als momentopname over de gekozen periode + kinderen.
@@ -925,6 +947,10 @@ export function App() {
     drempel: budgetDrempel,
     naamVanCategorie: (id) => labelVanCategorie(id, categorieen) ?? t('Geen categorie'),
   })
+
+  // Eén vooruitblik voor de Plan-pagina: zowel de verwachte als de al geboekte
+  // inkomsten komen hieruit, zodat beide cijfers gegarandeerd bij elkaar horen.
+  const planBlik = maandVooruitblik(transacties ?? [], terugkerendePosten, maand)
 
   if (transacties === null) {
     return (
@@ -1208,7 +1234,27 @@ export function App() {
               posten={terugkerendePosten}
               budgetten={budgetten}
               maand={maand}
-              verwachteInkomsten={maandVooruitblik(transacties, terugkerendePosten, maand).verwachteInkomsten}
+              verwachteInkomsten={planBlik.verwachteInkomsten}
+              geboekteInkomsten={planBlik.geboekt.inkomsten}
+            />
+          </ErrorBoundary>
+
+          {/* Eerst wat binnenkomt, dan wat eruit gaat — in die volgorde lees je je
+              plan. De vaste inkomsten stonden tot ronde 25 verstopt in dezelfde
+              lijst als de lasten, met de keuze onderaan het formulier. */}
+          <ErrorBoundary naam="Vaste inkomsten">
+            <TerugkerendeSectie
+              soort="inkomst"
+              posten={terugkerendePosten}
+              rekeningen={actieveRekeningen}
+              categorieen={categorieen}
+              transacties={transacties}
+              maand={maand}
+              maandLabel={maandJaarLabel(maand)}
+              onOpslaan={voegTerugkerendToe}
+              onVerwijderen={verwijderTerugkerend}
+              onBoek={boekTerugkerend}
+              onOngedaan={maakInboekenOngedaan}
             />
           </ErrorBoundary>
 
@@ -1255,6 +1301,7 @@ export function App() {
 
           <ErrorBoundary naam="Vaste lasten">
             <TerugkerendeSectie
+              soort="uitgave"
               posten={terugkerendePosten}
               rekeningen={actieveRekeningen}
               categorieen={categorieen}
@@ -1264,6 +1311,7 @@ export function App() {
               onOpslaan={voegTerugkerendToe}
               onVerwijderen={verwijderTerugkerend}
               onBoek={boekTerugkerend}
+              onOngedaan={maakInboekenOngedaan}
             />
           </ErrorBoundary>
           </div>

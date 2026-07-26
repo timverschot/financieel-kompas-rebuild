@@ -1061,6 +1061,31 @@ const en: Record<string, string> = {
   'gedeeld': 'shared',
   '{n} transactie(s) verwijderd': '{n} transaction(s) deleted',
   '{n} transactie(s) gewijzigd': '{n} transaction(s) updated',
+  // Ronde 25 — vaste inkomsten, budgetdiepte en inboeken ongedaan maken
+  'Vaste inkomsten': 'Recurring income',
+  'Vaste inkomst toevoegen': 'Add recurring income',
+  'Je loon en alles wat elke maand binnenkomt. Hierop rekent je plan.':
+    'Your salary and everything that comes in every month. This is what your plan is based on.',
+  'Nog geen vaste inkomsten. Vul hieronder je loon in, anders weet je plan niet wat er te verdelen valt.':
+    'No recurring income yet. Add your salary below, otherwise your plan cannot tell what there is to allocate.',
+  'Nog geen vaste lasten.': 'No fixed costs yet.',
+  'Vul hieronder je vaste inkomsten in — je loon bijvoorbeeld — dan berekent de app wat er te verdelen valt.':
+    'Add your recurring income below — your salary, for instance — and the app will work out what there is to allocate.',
+  'Er kwam deze maand {gekregen} binnen — precies je vaste inkomsten.':
+    '{gekregen} came in this month — exactly your recurring income.',
+  'Er kwam deze maand {gekregen} binnen — {verschil} meer dan je vaste inkomsten.':
+    '{gekregen} came in this month — {verschil} more than your recurring income.',
+  'Er kwam deze maand {gekregen} binnen — {verschil} minder dan je vaste inkomsten.':
+    '{gekregen} came in this month — {verschil} less than your recurring income.',
+  'Uitboeken': 'Unrecord',
+  'Uitboeken: wis de transactie van {naam}': 'Unrecord: delete the transaction for {naam}',
+  'Inboeken ongedaan gemaakt': 'Recording undone',
+  '{naam} ingeboekt': '{naam} recorded',
+  'Zoek een categorie': 'Search for a category',
+  'Typ om ook subcategorieën en producten te zoeken…': 'Type to search subcategories and products too…',
+  'Niets gevonden voor deze zoekterm.': 'Nothing found for this search.',
+  'Je kan een budget ook op een subcategorie of op één product zetten — typ dan de naam.':
+    'You can also set a budget on a subcategory or on a single product — just type its name.',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -2106,6 +2131,32 @@ const fr: Record<string, string> = {
   'gedeeld': 'partagé',
   '{n} transactie(s) verwijderd': '{n} transaction(s) supprimée(s)',
   '{n} transactie(s) gewijzigd': '{n} transaction(s) modifiée(s)',
+  // Ronde 25 — vaste inkomsten, budgetdiepte en inboeken ongedaan maken
+  'Vaste inkomsten': 'Revenus réguliers',
+  'Vaste inkomst toevoegen': 'Ajouter un revenu régulier',
+  'Je loon en alles wat elke maand binnenkomt. Hierop rekent je plan.':
+    "Votre salaire et tout ce qui rentre chaque mois. C'est la base de votre plan.",
+  'Nog geen vaste inkomsten. Vul hieronder je loon in, anders weet je plan niet wat er te verdelen valt.':
+    "Pas encore de revenus réguliers. Ajoutez votre salaire ci-dessous, sinon votre plan ne sait pas ce qu'il y a à répartir.",
+  'Nog geen vaste lasten.': 'Pas encore de charges fixes.',
+  'Vul hieronder je vaste inkomsten in — je loon bijvoorbeeld — dan berekent de app wat er te verdelen valt.':
+    "Ajoutez vos revenus réguliers ci-dessous — votre salaire par exemple — et l'application calculera ce qu'il y a à répartir.",
+  'Er kwam deze maand {gekregen} binnen — precies je vaste inkomsten.':
+    '{gekregen} sont rentrés ce mois-ci — exactement vos revenus réguliers.',
+  'Er kwam deze maand {gekregen} binnen — {verschil} meer dan je vaste inkomsten.':
+    '{gekregen} sont rentrés ce mois-ci — {verschil} de plus que vos revenus réguliers.',
+  'Er kwam deze maand {gekregen} binnen — {verschil} minder dan je vaste inkomsten.':
+    '{gekregen} sont rentrés ce mois-ci — {verschil} de moins que vos revenus réguliers.',
+  'Uitboeken': 'Annuler l’écriture',
+  'Uitboeken: wis de transactie van {naam}': 'Annuler l’écriture : supprimer la transaction de {naam}',
+  'Inboeken ongedaan gemaakt': 'Enregistrement annulé',
+  '{naam} ingeboekt': '{naam} enregistré',
+  'Zoek een categorie': 'Rechercher une catégorie',
+  'Typ om ook subcategorieën en producten te zoeken…': 'Tapez pour chercher aussi les sous-catégories et produits…',
+  'Niets gevonden voor deze zoekterm.': 'Rien trouvé pour cette recherche.',
+  'Je kan een budget ook op een subcategorie of op één product zetten — typ dan de naam.':
+    "Vous pouvez aussi définir un budget sur une sous-catégorie ou sur un seul produit — tapez alors son nom.",
+
 
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }

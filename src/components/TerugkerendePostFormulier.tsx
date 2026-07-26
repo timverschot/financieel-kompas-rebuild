@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Categorie, Frequentie, Rekening, TerugkerendePost } from '../data/schema'
 import { FREQUENTIES } from '../data/schema'
@@ -46,12 +46,20 @@ export function TerugkerendePostFormulier({
   onAnnuleer,
   bewerken,
   onOpgeslagen,
+  soort: soortVanBuiten,
 }: {
   rekeningen: Rekening[]
   categorieen: Categorie[]
   onOpslaan: (p: TerugkerendePost) => Promise<void> | void
   onAnnuleer?: () => void
   bewerken?: TerugkerendePost | null
+  /**
+   * Inkomst of uitgave, van buitenaf gezet. De Plan-pagina heeft sinds ronde 25
+   * twee aparte lijsten ("Vaste inkomsten" en "Vaste lasten"), en elk formulier
+   * hoort daar maar één soort te maken. Dan verdwijnen de twee bolletjes onderaan:
+   * dezelfde keuze op twee plaatsen is hoe je je loon per ongeluk als kost boekt.
+   */
+  soort?: 'uitgave' | 'inkomst'
   /**
    * Wordt aangeroepen ná een gelukte opslag. `blijfOpen` is waar wanneer je op
    * "Opslaan + volgende" duwde. Zodra deze prop meegegeven wordt, verschijnt die
@@ -60,9 +68,15 @@ export function TerugkerendePostFormulier({
   onOpgeslagen?: (opties: { blijfOpen: boolean }) => void
 }) {
   const { t } = useT()
+  // Sinds ronde 25 staan er TWEE van deze formulieren op de Plan-pagina (één voor
+  // inkomsten, één voor lasten). Vaste id's zouden dan dubbel voorkomen, en dan
+  // wijst een label naar het veld van de andere kaart.
+  const veldId = useId()
   const [omschrijving, setOmschrijving] = useState(BEGIN.omschrijving)
   const [bedrag, setBedrag] = useState(BEGIN.bedrag)
-  const [soort, setSoort] = useState<'uitgave' | 'inkomst'>(BEGIN.soort)
+  const [eigenSoort, setEigenSoort] = useState<'uitgave' | 'inkomst'>(BEGIN.soort)
+  // Van buiten gezet heeft voorrang; anders houdt het formulier zijn eigen keuze bij.
+  const soort = soortVanBuiten ?? eigenSoort
   const [rekeningId, setRekeningId] = useState(rekeningen[0]?.id ?? '')
   const [categorieId, setCategorieId] = useState(BEGIN.categorieId)
   const [dag, setDag] = useState(BEGIN.dag)
@@ -80,7 +94,7 @@ export function TerugkerendePostFormulier({
   const leegmaken = useCallback(() => {
     setOmschrijving(BEGIN.omschrijving)
     setBedrag(BEGIN.bedrag)
-    setSoort(BEGIN.soort)
+    setEigenSoort(BEGIN.soort)
     setCategorieId(BEGIN.categorieId)
     setDag(BEGIN.dag)
     setFrequentie(BEGIN.frequentie)
@@ -92,7 +106,7 @@ export function TerugkerendePostFormulier({
     if (bewerken) {
       setOmschrijving(bewerken.omschrijving)
       setBedrag(centenNaarInvoer(Math.abs(bewerken.bedrag)))
-      setSoort(bewerken.bedrag < 0 ? 'uitgave' : 'inkomst')
+      setEigenSoort(bewerken.bedrag < 0 ? 'uitgave' : 'inkomst')
       setRekeningId(bewerken.rekeningId)
       setCategorieId(bewerken.categorieId ?? '')
       setDag(String(bewerken.dag))
@@ -150,24 +164,24 @@ export function TerugkerendePostFormulier({
   return (
     <form onSubmit={verzend} className="stapel">
       <div className="veldgroep">
-        <label className="label-caps" htmlFor="vaste-omschrijving">
+        <label className="label-caps" htmlFor={`${veldId}-vaste-omschrijving`}>
           {t('Vaste omschrijving')}
         </label>
-        <input id="vaste-omschrijving" value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} />
+        <input id={`${veldId}-vaste-omschrijving`} value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} />
       </div>
 
       <div className="veldrij">
         <div className="veldgroep">
-          <label className="label-caps" htmlFor="vast-bedrag">
+          <label className="label-caps" htmlFor={`${veldId}-vast-bedrag`}>
             {t('Vast bedrag (€)')}
           </label>
-          <input id="vast-bedrag" inputMode="decimal" placeholder="0,00" value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
+          <input id={`${veldId}-vast-bedrag`} inputMode="decimal" placeholder="0,00" value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
         </div>
         <div className="veldgroep">
-          <label className="label-caps" htmlFor="vaste-dag">
+          <label className="label-caps" htmlFor={`${veldId}-vaste-dag`}>
             {t('Dag van de maand')}
           </label>
-          <input id="vaste-dag" inputMode="numeric" value={dag} onChange={(e) => setDag(e.target.value)} />
+          <input id={`${veldId}-vaste-dag`} inputMode="numeric" value={dag} onChange={(e) => setDag(e.target.value)} />
         </div>
       </div>
 
@@ -178,11 +192,11 @@ export function TerugkerendePostFormulier({
           buffercijfer niet. */}
       <div className="veldrij">
         <div className="veldgroep">
-          <label className="label-caps" htmlFor="vaste-frequentie">
+          <label className="label-caps" htmlFor={`${veldId}-vaste-frequentie`}>
             {t('Hoe vaak?')}
           </label>
           <select
-            id="vaste-frequentie"
+            id={`${veldId}-vaste-frequentie`}
             value={frequentie}
             onChange={(e) => setFrequentie(e.target.value as Frequentie)}
           >
@@ -195,13 +209,13 @@ export function TerugkerendePostFormulier({
         </div>
         {periodiek && (
           <div className="veldgroep">
-            <label className="label-caps" htmlFor="vaste-start">
+            <label className="label-caps" htmlFor={`${veldId}-vaste-start`}>
               {t('Eerste betaling in')}
             </label>
             {/* Het ritme telt vanaf hier, niet vanaf het kalenderjaar: begin je in
                 augustus met een halfjaarlijkse premie, dan volgt februari. */}
             <input
-              id="vaste-start"
+              id={`${veldId}-vaste-start`}
               type="month"
               value={startMaand}
               onChange={(e) => setStartMaand(e.target.value)}
@@ -226,10 +240,10 @@ export function TerugkerendePostFormulier({
 
       <div className="veldrij">
         <div className="veldgroep">
-          <label className="label-caps" htmlFor="vaste-rekening">
+          <label className="label-caps" htmlFor={`${veldId}-vaste-rekening`}>
             {t('Vaste rekening')}
           </label>
-          <select id="vaste-rekening" value={rekeningId} onChange={(e) => setRekeningId(e.target.value)}>
+          <select id={`${veldId}-vaste-rekening`} value={rekeningId} onChange={(e) => setRekeningId(e.target.value)}>
             {rekeningen.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.naam}
@@ -238,7 +252,7 @@ export function TerugkerendePostFormulier({
           </select>
         </div>
         <div className="veldgroep">
-          <label className="label-caps" htmlFor="vaste-categorie">
+          <label className="label-caps" htmlFor={`${veldId}-vaste-categorie`}>
             {t('Vaste categorie')}
           </label>
           {/* Dezelfde bron als het budgetformulier: de ingebouwde hoofdcategorieën
@@ -246,7 +260,7 @@ export function TerugkerendePostFormulier({
               categorieën, dus wie er nog geen gemaakt had, kon een vaste last aan
               niets hangen — en die viel dan uit elke telling. */}
           <CategorieSelect
-            id="vaste-categorie"
+            id={`${veldId}-vaste-categorie`}
             waarde={categorieId}
             onKies={setCategorieId}
             categorieen={categorieen}
@@ -260,21 +274,29 @@ export function TerugkerendePostFormulier({
           losse keuze "Uitgave / Inkomst" eronder een tegenspraak. Ze is het niet:
           een vaste post kán ook geld zijn dat elke maand binnenkomt (loon, huurgeld
           dat je ontvangt). Vandaar dit kopje. */}
-      <span className="label-caps">{t('Komt dit geld binnen of gaat het eruit?')}</span>
-      <div className="veldrij" style={{ gap: 18, marginTop: -6 }}>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <input type="radio" name="vastsoort" checked={soort === 'uitgave'} onChange={() => setSoort('uitgave')} /> {t('Uitgave')}
-        </label>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <input type="radio" name="vastsoort" checked={soort === 'inkomst'} onChange={() => setSoort('inkomst')} /> {t('Inkomst')}
-        </label>
-      </div>
+      {soortVanBuiten === undefined && (
+        <>
+          <span className="label-caps">{t('Komt dit geld binnen of gaat het eruit?')}</span>
+          <div className="veldrij" style={{ gap: 18, marginTop: -6 }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <input type="radio" name="vastsoort" checked={soort === 'uitgave'} onChange={() => setEigenSoort('uitgave')} /> {t('Uitgave')}
+            </label>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <input type="radio" name="vastsoort" checked={soort === 'inkomst'} onChange={() => setEigenSoort('inkomst')} /> {t('Inkomst')}
+            </label>
+          </div>
+        </>
+      )}
 
       <div className="knoprij">
         {/* In de popup is dit de hoofdactie van het scherm; in de kaart op de
             budgetpagina is het één actie tussen andere. */}
         <button type="submit" disabled={!geldig} className={onOpgeslagen ? 'knop knop-primair' : 'knop knop-secundair'}>
-          {bewerken ? t('Vaste post wijzigen') : t('Vaste post toevoegen')}
+          {bewerken
+            ? t('Vaste post wijzigen')
+            : soortVanBuiten === 'inkomst'
+              ? t('Vaste inkomst toevoegen')
+              : t('Vaste post toevoegen')}
         </button>
         {onOpgeslagen && !bewerken && (
           <button

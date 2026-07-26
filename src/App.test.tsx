@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { App } from './App'
@@ -247,19 +247,61 @@ describe('App', () => {
     expect((await screen.findAllByRole('option', { name: /Vakantiepot/ })).length).toBeGreaterThan(0)
   })
 
+  // De Plan-pagina heeft sinds ronde 25 TWEE van deze kaarten (inkomsten en
+  // lasten), elk met een eigen formulier. Deze helper zoekt binnen de juiste kaart.
+  function kaart(titel: string): HTMLElement {
+    return screen.getByText(titel).closest('section, .kaart') as HTMLElement
+  }
+
   it('maakt een vaste post aan en boekt hem in voor de maand', async () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Saldo')
 
     await gaMeer(user, 'Budget')
-    await user.type(screen.getByLabelText('Vaste omschrijving'), 'Netflix')
-    await user.type(screen.getByLabelText('Vast bedrag (€)'), '15')
-    await user.click(screen.getByRole('button', { name: 'Vaste post toevoegen' }))
+    const lasten = kaart('Vaste lasten')
+    await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
+    await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
+    await user.click(within(lasten).getByRole('button', { name: 'Vaste post toevoegen' }))
 
     await user.click(await screen.findByRole('button', { name: 'Boek in' }))
 
     expect(await screen.findByText('Geboekt ✓')).toBeInTheDocument()
+  })
+
+  it('boekt een vaste last in en maakt dat weer ongedaan', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await gaMeer(user, 'Budget')
+    const lasten = kaart('Vaste lasten')
+    await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
+    await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
+    await user.click(within(lasten).getByRole('button', { name: 'Vaste post toevoegen' }))
+    await user.click(await screen.findByRole('button', { name: 'Boek in' }))
+    await screen.findByText('Geboekt ✓')
+
+    // Inboeken maakt een echte transactie; die moet je hier weer los kunnen maken.
+    await user.click(screen.getByRole('button', { name: /^Uitboeken/ }))
+    expect(await screen.findByRole('button', { name: 'Boek in' })).toBeInTheDocument()
+  })
+
+  it('zet een vaste inkomst in de inkomstenkaart, niet bij de lasten', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await gaMeer(user, 'Budget')
+    const inkomsten = kaart('Vaste inkomsten')
+    await user.type(within(inkomsten).getByLabelText('Vaste omschrijving'), 'Loon')
+    await user.type(within(inkomsten).getByLabelText('Vast bedrag (€)'), '2400')
+    await user.click(within(inkomsten).getByRole('button', { name: 'Vaste inkomst toevoegen' }))
+
+    // Ze hoort bij de inkomsten te staan — de keuze uitgave/inkomst zit niet meer
+    // onderaan het formulier, maar in de kaart waarin je typt.
+    expect(await within(kaart('Vaste inkomsten')).findByText('Loon')).toBeInTheDocument()
+    expect(within(kaart('Vaste lasten')).queryByText('Loon')).not.toBeInTheDocument()
   })
 
   it('voegt een nieuwe categorie toe en maakt ze beschikbaar', async () => {
@@ -401,15 +443,16 @@ describe('App', () => {
     await screen.findByText('Saldo')
 
     await gaMeer(user, 'Budget')
-    await user.type(screen.getByLabelText('Vaste omschrijving'), 'Netflix')
-    await user.type(screen.getByLabelText('Vast bedrag (€)'), '15')
-    await user.click(screen.getByRole('button', { name: 'Vaste post toevoegen' }))
+    const lasten = kaart('Vaste lasten')
+    await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
+    await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
+    await user.click(within(lasten).getByRole('button', { name: 'Vaste post toevoegen' }))
 
     await user.click(await screen.findByRole('button', { name: 'Bewerk vaste post Netflix' }))
-    const oms = screen.getByLabelText('Vaste omschrijving')
+    const oms = within(kaart('Vaste lasten')).getByLabelText('Vaste omschrijving')
     await user.clear(oms)
     await user.type(oms, 'Disney')
-    await user.click(screen.getByRole('button', { name: 'Vaste post wijzigen' }))
+    await user.click(within(kaart('Vaste lasten')).getByRole('button', { name: 'Vaste post wijzigen' }))
 
     expect(await screen.findByText('Disney')).toBeInTheDocument()
   })

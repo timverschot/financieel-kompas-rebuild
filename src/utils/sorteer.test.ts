@@ -68,3 +68,45 @@ describe('oudsteEerst', () => {
     expect(Math.sign(oudsteEerst(a, b))).toBe(-Math.sign(oudsteEerst(b, a)))
   })
 })
+
+// Ronde 25: binnen dezelfde dag wint het laatst ingevoerde record. Tik je 's avonds
+// vijf bonnetjes van vandaag in, dan hoort het laatste bovenaan te staan.
+describe('nieuwsteEerst — invoervolgorde binnen dezelfde dag', () => {
+  const dag = '2026-07-26'
+
+  it('zet het laatst ingevoerde bovenaan', () => {
+    const eerst = { datum: dag, id: 'a', omschrijving: 'Aldi', ingevoerdOp: '2026-07-26T19:00:00.000Z' }
+    const later = { datum: dag, id: 'z', omschrijving: 'Zeeman', ingevoerdOp: '2026-07-26T19:05:00.000Z' }
+    expect([eerst, later].sort(nieuwsteEerst).map((r) => r.id)).toEqual(['z', 'a'])
+    // Zonder invoertijdstip zou 'Aldi' hier bovenaan staan, puur op alfabet.
+    expect([later, eerst].sort(nieuwsteEerst).map((r) => r.id)).toEqual(['z', 'a'])
+  })
+
+  it('laat de datum altijd voorgaan op het invoermoment', () => {
+    // Een boeking van gisteren die je zonet intikte, hoort onder die van vandaag.
+    const gisteren = { datum: '2026-07-25', id: 'g', ingevoerdOp: '2026-07-26T20:00:00.000Z' }
+    const vandaag = { datum: dag, id: 'v', ingevoerdOp: '2026-07-26T08:00:00.000Z' }
+    expect([gisteren, vandaag].sort(nieuwsteEerst).map((r) => r.id)).toEqual(['v', 'g'])
+  })
+
+  it('zet een record mét invoertijdstip boven een record zonder', () => {
+    // Alles van vóór ronde 25 heeft geen tijdstip; wat er wél een heeft, is later
+    // ingevoerd.
+    const oud = { datum: dag, id: 'oud', omschrijving: 'Aldi' }
+    const nieuw = { datum: dag, id: 'nieuw', omschrijving: 'Zeeman', ingevoerdOp: '2026-07-26T19:00:00.000Z' }
+    expect([oud, nieuw].sort(nieuwsteEerst).map((r) => r.id)).toEqual(['nieuw', 'oud'])
+  })
+
+  it('valt zonder invoertijdstip terug op het oude, stabiele gedrag', () => {
+    const a = { datum: dag, id: 'a', omschrijving: 'Aldi' }
+    const z = { datum: dag, id: 'z', omschrijving: 'Zeeman' }
+    expect([z, a].sort(nieuwsteEerst).map((r) => r.id)).toEqual(['a', 'z'])
+  })
+
+  it('geeft dezelfde uitkomst bij exact hetzelfde invoertijdstip', () => {
+    const stempel = '2026-07-26T19:00:00.000Z'
+    const a = { datum: dag, id: 'a', omschrijving: 'Aldi', ingevoerdOp: stempel }
+    const z = { datum: dag, id: 'z', omschrijving: 'Zeeman', ingevoerdOp: stempel }
+    expect([a, z].sort(nieuwsteEerst).map((r) => r.id)).toEqual([a, z].reverse().sort(nieuwsteEerst).map((r) => r.id))
+  })
+})

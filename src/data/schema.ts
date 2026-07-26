@@ -64,6 +64,18 @@ export const TransactieSchema = z.object({
   // niveau van de hele transactie en niet per ticketregel — dat laatste zou de
   // splitsingslogica verdubbelen en elke ticketinvoer traag maken.
   persoonIds: z.array(z.string().min(1)).optional(),
+  // WANNEER je deze boeking hebt ingevoerd (ISO-tijdstempel met tijd), los van de
+  // datum waarop ze plaatsvond. Alleen om binnen dezelfde dag te sorteren: tik je
+  // 's avonds vijf bonnetjes van vandaag in, dan hoort het laatst ingetikte
+  // bovenaan te staan. Zonder dit veld viel de app terug op alfabetische volgorde
+  // op handelaarsnaam, en dan verdwijnt wat je net boekte ergens in het midden.
+  //
+  // Wordt bij het BEWERKEN bewust niet bijgewerkt: je wil dat een oude boeking waar
+  // je een typfout in verbetert, op haar plaats blijft staan.
+  //
+  // Dit is een tijdstip, geen kalenderdatum — hier mag `toISOString()` dus wél
+  // (zie de waarschuwing in utils/datum.ts, die over datums gaat).
+  ingevoerdOp: z.string().datetime().optional(),
 })
 export type Transactie = z.infer<typeof TransactieSchema>
 
