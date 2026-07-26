@@ -740,6 +740,18 @@ a:focus-visible {
   color: var(--bg);
 }
 
+/* Een rij chips die AFBREEKT in plaats van zijwaarts weg te schuiven. Zijwaarts
+   schuiven verbergt keuzes: op een telefoon zag je zo drie van de veertien
+   categorieën, en niets verklapte dat er meer was. Wat past staat nu in beeld,
+   de rest valt op de volgende regel. */
+.chiprooster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+  min-width: 0;
+}
+
 .badge {
   display: inline-block;
   font-size: var(--tekst-s);

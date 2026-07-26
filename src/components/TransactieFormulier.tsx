@@ -491,6 +491,9 @@ export function TransactieFormulier({
             onKies={(id) => setCategorieId(id ?? '')}
             gebruikerCategorieen={categorieen}
             onNieuweSubcategorie={onNieuweSubcategorie}
+            // Boek je een inkomst, dan hoort "Inkomsten" vooraan te staan in
+            // plaats van ergens achteraan in de rij.
+            voorkeurId={soort === 'inkomst' ? 'ov-inkomsten' : undefined}
           />
 
           {/* Boekte je deze handelaar eerder, dan stellen we die categorie voor.
@@ -617,12 +620,16 @@ export function TransactieFormulier({
           {meerOpen && (
             <div className="stapel" style={{ gap: 12, borderLeft: '2px solid var(--border)', paddingLeft: 12 }}>
               {/* Voor of door wie was deze uitgave? Verschijnt enkel als er
-                  gezinsleden ingesteld zijn, en is altijd optioneel. */}
+                  gezinsleden ingesteld zijn. "Het gezin" staat standaard aan: de
+                  meeste uitgaven zijn van iedereen samen, en pas wanneer je
+                  iemand aanduidt wordt het persoonlijk. */}
               <GezinsledenKiezer
-                label={t('Voor wie? (optioneel)')}
+                label={t('Voor wie?')}
                 waarden={persoonIds}
                 onWijzig={setPersoonIds}
                 gezinsleden={gezinsleden}
+                metGezin
+                hint={t('Duid je niemand aan, dan telt dit als een uitgave voor het gezin.')}
               />
 
               {onBon && (

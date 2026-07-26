@@ -230,12 +230,12 @@ export function AnalyseSectie({
       }))
       .filter((p) => p.bedrag > 0)
     return uitgavenPerPersoon(posten, gezinsleden, {
-      nietToegewezen: t('Niet toegewezen'),
+      gezin: t('Het gezin'),
       onbekend: t('Onbekend gezinslid'),
     })
   }, [bereikOmgekeerd, gezinsleden, transacties, periode, richting, t])
 
-  // Kleuren zoals elders op deze pagina; de restgroep krijgt bewust de neutrale
+  // Kleuren zoals elders op deze pagina; de gezinsgroep krijgt bewust de neutrale
   // 'overige'-tint, zodat ze niet als een persoon leest.
   const perPersoonGekleurd = useMemo(
     () =>

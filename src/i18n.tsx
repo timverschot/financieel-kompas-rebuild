@@ -277,7 +277,7 @@ const en: Record<string, string> = {
   'Inkomsten per gezinslid': 'Income per family member',
   'Hangt een transactie aan meerdere gezinsleden, dan wordt het bedrag gelijk over hen verdeeld.':
     'If a transaction is linked to several family members, the amount is split equally between them.',
-  'Niet toegewezen': 'Unassigned',
+  'Het gezin': 'The family',
   'Onbekend gezinslid': 'Unknown family member',
   'Nieuw dossier': 'New case',
   'Wat wil je bijhouden?': 'What do you want to track?',
@@ -565,6 +565,12 @@ const en: Record<string, string> = {
   'Verwijder kind {naam}': 'Delete child {naam}',
   'Kind verwijderd': 'Child deleted',
   'Voor wie? (optioneel)': 'For whom? (optional)',
+  'Voor wie?': 'For whom?',
+  'Duid je niemand aan, dan telt dit als een uitgave voor het gezin.':
+    'If you select no one, this counts as an expense for the family.',
+  'Minder tonen': 'Show fewer',
+  'Nog {n} …': '{n} more …',
+  '{hoofd} · hele categorie': '{hoofd} · whole category',
   'Eigen verdeling (% jij, optioneel)': 'Custom split (% you, optional)',
   'leeg = standaard van het dossier': 'empty = case default',
   'voor {namen}': 'for {namen}',
@@ -1357,7 +1363,7 @@ const fr: Record<string, string> = {
   'Inkomsten per gezinslid': 'Revenus par membre du foyer',
   'Hangt een transactie aan meerdere gezinsleden, dan wordt het bedrag gelijk over hen verdeeld.':
     'Si une transaction concerne plusieurs membres, le montant est réparti également entre eux.',
-  'Niet toegewezen': 'Non attribué',
+  'Het gezin': 'La famille',
   'Onbekend gezinslid': 'Membre inconnu',
   'Nieuw dossier': 'Nouveau dossier',
   'Wat wil je bijhouden?': 'Que voulez-vous suivre ?',
@@ -1645,6 +1651,12 @@ const fr: Record<string, string> = {
   'Verwijder kind {naam}': 'Supprimer l’enfant {naam}',
   'Kind verwijderd': 'Enfant supprimé',
   'Voor wie? (optioneel)': 'Pour qui ? (optionnel)',
+  'Voor wie?': 'Pour qui ?',
+  'Duid je niemand aan, dan telt dit als een uitgave voor het gezin.':
+    'Si vous ne sélectionnez personne, cette dépense compte pour la famille.',
+  'Minder tonen': 'Afficher moins',
+  'Nog {n} …': '{n} de plus …',
+  '{hoofd} · hele categorie': '{hoofd} · catégorie entière',
   'Eigen verdeling (% jij, optioneel)': 'Répartition personnalisée (% vous, optionnel)',
   'leeg = standaard van het dossier': 'vide = valeur par défaut du dossier',
   'voor {namen}': 'pour {namen}',

@@ -52,40 +52,45 @@ export function verdeelBedrag(bedrag: number, aantal: number): number[] {
 /** Eén post om te verdelen: een bedrag (positief, in centen) en de personen eraan. */
 export type TeVerdelenPost = { bedrag: number; persoonIds?: string[] }
 
-/** Eén regel in de verdeling. 'id' is null voor de restgroep 'Niet toegewezen'. */
+/** Eén regel in de verdeling. 'id' is null voor de groep 'Het gezin'. */
 export type PersoonPost = { id: string | null; naam: string; bedrag: number }
 
 /**
  * De teksten die de verdeling nodig heeft. Ze komen van buiten (via t()), zodat
  * deze functie zelf taal-onafhankelijk blijft.
+ *
+ * `gezin` is de groep voor alles wat aan niemand persoonlijk hangt. Die heette
+ * vroeger "Niet toegewezen", wat las alsof je iets vergeten was — terwijl een
+ * uitgave zonder persoon net het normale geval is: boodschappen, elektriciteit,
+ * de huur. Dat is het gezin.
  */
-export type PersoonLabels = { nietToegewezen: string; onbekend: string }
+export type PersoonLabels = { gezin: string; onbekend: string }
 
 // Verdeelt een reeks bedragen over de gezinsleden waaraan ze hangen.
 //
 // Regels:
 //  - hangt een post aan meerdere personen, dan wordt het bedrag GELIJK verdeeld
 //    (met het restje naar het laatste deel, zie verdeelBedrag);
-//  - een post zonder personen komt in de restgroep 'Niet toegewezen';
+//  - een post zonder personen komt in de groep 'Het gezin';
 //  - een id dat geen bestaand lid meer is, krijgt een eigen regel 'Onbekend'
 //    (het bedrag verdwijnt dus nooit stil uit het totaal);
-//  - de restgroep staat altijd onderaan, de rest van groot naar klein.
+//  - de gezinsgroep staat altijd onderaan, de rest van groot naar klein.
 export function uitgavenPerPersoon(
   posten: TeVerdelenPost[],
   leden: Gezinslid[],
   labels: PersoonLabels,
 ): PersoonPost[] {
   const perPersoon = new Map<string, number>()
-  let nietToegewezen = 0
-  let heeftNietToegewezen = false
+  let gezin = 0
+  let heeftGezin = false
 
   for (const post of posten) {
     // Dubbele id's binnen één post tellen als één persoon: anders zou dezelfde
     // persoon twee keer een deel krijgen.
     const ids = [...new Set((post.persoonIds ?? []).filter((id) => id))]
     if (ids.length === 0) {
-      nietToegewezen += post.bedrag
-      heeftNietToegewezen = true
+      gezin += post.bedrag
+      heeftGezin = true
       continue
     }
     const delen = verdeelBedrag(post.bedrag, ids.length)
@@ -96,6 +101,6 @@ export function uitgavenPerPersoon(
     .map(([id, bedrag]) => ({ id, naam: naamVanPersoon(id, leden) ?? labels.onbekend, bedrag }))
     .sort((a, b) => b.bedrag - a.bedrag || a.naam.localeCompare(b.naam))
 
-  if (heeftNietToegewezen) rijen.push({ id: null, naam: labels.nietToegewezen, bedrag: nietToegewezen })
+  if (heeftGezin) rijen.push({ id: null, naam: labels.gezin, bedrag: gezin })
   return rijen
 }

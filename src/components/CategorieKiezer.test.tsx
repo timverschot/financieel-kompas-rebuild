@@ -40,8 +40,27 @@ describe('CategorieKiezer', () => {
     render(<CategorieKiezer waarde={undefined} onKies={onKies} gebruikerCategorieen={[]} />)
 
     await user.type(screen.getByLabelText('Zoek categorie of item'), 'brood')
-    await user.keyboard('{ArrowDown}{Enter}') // van 'Brood (bruin)' naar 'Brood (wit)'
-    expect(onKies).toHaveBeenCalledWith('i-brood--wit-9238')
+    // 'Broodwaren' staat bovenaan, 'Broodwaren (zoet)' er net onder.
+    await user.keyboard('{ArrowDown}{Enter}')
+    expect(onKies).toHaveBeenCalledWith('cat-broodwaren--zoet')
+  })
+
+  // Ronde 28: de MIDDENlaag is kiesbaar geworden. Dat mocht pas nadat ronde 27
+  // ervoor zorgde dat zo'n id netjes oprolt naar zijn hoofdcategorie — anders was
+  // de transactie uit elke grafiek gevallen.
+  it('stelt ook de hele categorie voor, niet enkel losse items', async () => {
+    const user = userEvent.setup()
+    const onKies = vi.fn()
+    render(<CategorieKiezer waarde={undefined} onKies={onKies} gebruikerCategorieen={[]} />)
+
+    await user.type(screen.getByLabelText('Zoek categorie of item'), 'broodwaren')
+    await user.click(await screen.findByRole('button', { name: /^Broodwaren · .*hele categorie/ }))
+    expect(onKies).toHaveBeenCalledWith('cat-broodwaren')
+  })
+
+  it('toont het label van een gekozen middencategorie', () => {
+    render(<CategorieKiezer waarde="cat-broodwaren" onKies={() => {}} gebruikerCategorieen={[]} />)
+    expect(screen.getByText('Broodwaren')).toBeInTheDocument()
   })
 
   it('kiest met Tab het gemarkeerde voorstel', async () => {
@@ -68,6 +87,32 @@ describe('CategorieKiezer', () => {
     // De chips blijven zichtbaar terwijl de voorstellen getoond worden.
     await user.click(screen.getByRole('button', { name: /Huishouden en Verzorging/ }))
     expect(onKies).toHaveBeenCalledWith('ov-huishouden-en-verzorging')
+  })
+
+  // Ronde 28: de chiprij schoof vroeger zijwaarts weg. Nu breekt ze af, en zit de
+  // staart achter één knop in plaats van achter een onzichtbare schuifbeweging.
+  it('houdt de chiprij kort en klapt de rest pas open op vraag', async () => {
+    const user = userEvent.setup()
+    render(<CategorieKiezer waarde={undefined} onKies={() => {}} gebruikerCategorieen={[]} />)
+
+    expect(screen.queryByRole('button', { name: /Huisdieren/ })).toBeNull()
+    await user.click(screen.getByRole('button', { name: /^Nog \d+/ }))
+    expect(screen.getByRole('button', { name: /Huisdieren/ })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Minder tonen' }))
+    expect(screen.queryByRole('button', { name: /Huisdieren/ })).toBeNull()
+  })
+
+  it('toont de gekozen categorie ook als ze buiten de korte rij valt', () => {
+    render(<CategorieKiezer waarde="ov-huisdieren" onKies={() => {}} gebruikerCategorieen={[]} />)
+    expect(screen.getByRole('button', { name: /Huisdieren/ })).toBeInTheDocument()
+  })
+
+  it('zet een voorkeurcategorie vooraan', () => {
+    render(
+      <CategorieKiezer waarde={undefined} onKies={() => {}} gebruikerCategorieen={[]} voorkeurId="ov-inkomsten" />,
+    )
+    const groep = screen.getByRole('group', { name: 'Hoofdcategorieën' })
+    expect(groep.querySelectorAll('button')[0].textContent).toContain('Inkomsten')
   })
 
   it('maakt ter plekke een nieuwe subcategorie en tagt meteen op het nieuwe id', async () => {

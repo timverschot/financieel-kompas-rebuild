@@ -90,8 +90,8 @@ export function labelVanCategorie(
   if (item) return item.naam
   const hoofd = HOOFD_PER_ID.get(id)
   if (hoofd) return hoofd.naam
-  // De middenlaag: sinds ronde 25 kan een BUDGET erop staan, dus moet haar naam
-  // gekend zijn. Voor een transactie blijft ze onbereikbaar — zie zoek.ts.
+  // De middenlaag: sinds ronde 25 kan een BUDGET erop staan en sinds ronde 28 ook
+  // een transactie of een vaste last, dus moet haar naam gekend zijn.
   const mid = midPerId(id)
   if (mid) return mid.naam
   const eigen = gebruikerCategorieen.find((c) => c.id === id)

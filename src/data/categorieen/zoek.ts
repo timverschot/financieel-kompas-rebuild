@@ -197,9 +197,9 @@ export function zoekItems(term: string, limiet = 25): PlatItem[] {
 // vragen. Sinds ronde 25 kan je er een BUDGET op zetten ("€ 150 voor Persoonlijke
 // verzorging"), en dan moet de app haar naam kennen en haar kunnen vinden.
 //
-// LET OP: dit maakt de middenlaag NIET kiesbaar als categorie van een transactie.
-// `groepVanCategorie` kent die laag nog altijd niet, dus een transactie die erop
-// getagd zou zijn, valt uit elke grafiek. Zie de projectinstructies.
+// Sinds ronde 27 kent `groepVanCategorie` deze laag, en sinds ronde 28 staat ze
+// ook in de categoriekiezer van een transactie: een boeking op "Elektriciteit"
+// rolt gewoon op naar haar hoofdcategorie en telt dus overal mee.
 
 /** Eén middencategorie met haar plaats in de boom. */
 export type MidCategorie = {

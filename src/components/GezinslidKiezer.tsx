@@ -18,6 +18,18 @@ function kiesbareLeden(gezinsleden: Gezinslid[], gekozen: string[]): Gezinslid[]
   return gezinsleden.filter((l) => !l.gearchiveerd || gekozen.includes(l.id))
 }
 
+// De chip "Het gezin": aan zolang je niemand apart aanduidt, en aanklikken zet
+// de keuze weer leeg. Zo is "voor ons allemaal" een echte, zichtbare keuze in
+// plaats van iets wat je herkent aan een leeg veld.
+function GezinChip({ aan, onKies }: { aan: boolean; onKies: () => void }) {
+  const { t } = useT()
+  return (
+    <button type="button" className={aan ? 'chip chip-actief' : 'chip'} aria-pressed={aan} onClick={onKies}>
+      {t('Het gezin')}
+    </button>
+  )
+}
+
 export function GezinslidKiezer({
   label,
   waarde,
@@ -62,6 +74,7 @@ export function GezinsledenKiezer({
   onWijzig,
   gezinsleden,
   hint,
+  metGezin = false,
 }: {
   /** Het zichtbare label, al vertaald door de aanroeper. */
   label: string
@@ -71,6 +84,16 @@ export function GezinsledenKiezer({
   gezinsleden: Gezinslid[]
   /** Optionele uitleg onder het veld. */
   hint?: string
+  /**
+   * Toont een extra chip "Het gezin" die aanstaat zolang er niemand apart
+   * aangeduid is. Technisch verandert er niets — geen gezinslid gekozen bétekende
+   * altijd al "voor iedereen samen" — maar dat stond nergens. In de analyse heette
+   * die groep zelfs "Niet toegewezen", alsof je iets vergeten was.
+   *
+   * Enkel voor een gewone transactie. In een dossier of op een kindrekening is een
+   * kost per definitie van iemand, dus daar zou "het gezin" een foute uitweg zijn.
+   */
+  metGezin?: boolean
 }) {
   const labelId = useId()
   const leden = kiesbareLeden(gezinsleden, waarden)
@@ -86,6 +109,7 @@ export function GezinsledenKiezer({
         {label}
       </span>
       <div className="knoprij" style={{ gap: 8 }}>
+        {metGezin && <GezinChip aan={waarden.length === 0} onKies={() => onWijzig([])} />}
         {leden.map((l) => {
           const aan = waarden.includes(l.id)
           return (

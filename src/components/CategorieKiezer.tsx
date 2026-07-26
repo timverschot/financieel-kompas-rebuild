@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
 import type { Categorie } from '../data/schema'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
-import { zoekItems } from '../data/categorieen/zoek'
+import { zoekItems, zoekMidCategorieen } from '../data/categorieen/zoek'
 import { groepVanCategorie, labelVanCategorie, type EigenCategorie } from '../data/categorieen/resolve'
 import { useT } from '../i18n'
 
@@ -45,26 +45,39 @@ function suggestieKnop(gemarkeerd: boolean): CSSProperties {
   }
 }
 
-// Eén rij die horizontaal schuift: de chips blijven op één lijn en vullen dus
-// nooit het halve scherm.
-const chipRij: CSSProperties = {
-  display: 'flex',
-  gap: 6,
-  overflowX: 'auto',
-  padding: '2px 0',
-  marginTop: 6,
-}
+// Hoeveel chips er standaard in beeld staan: de acht die je dagelijks nodig hebt.
+// De rest (sparen, kledij, belastingen, huisdieren, diensten) zit achter één knop.
+// Waarom niet alle veertien meteen: hun namen zijn lang ("Woning en vaste
+// lasten"), dus op een telefoon vullen ze een half scherm nog vóór je iets
+// getypt hebt. Waarom niet zijwaarts schuiven (wat het tot nu toe deed): dan zie
+// je er drie en verklapt niets dat er meer is.
+const CHIPS_INGEKLAPT = 8
 
-// De rij met de veertien hoofdcategorieën. Altijd zichtbaar (ook tijdens het
-// typen), want breed taggen — "dit was gewoon Huishouden" — moet even vlot gaan
-// als een precies item kiezen. Eén tik en de regel is getagd.
+// Terwijl je typt houden we de rij extra kort: de voorstellenlijst verschijnt
+// eronder, en die hoort dicht bij het invoerveld te blijven in plaats van onder
+// een half scherm chips weg te zakken. Breed taggen blijft dus mogelijk tijdens
+// het typen, alleen met minder chips in beeld.
+const CHIPS_TIJDENS_TYPEN = 3
+
+// De rij met de hoofdcategorieën. Altijd zichtbaar (ook tijdens het typen), want
+// breed taggen — "dit was gewoon Huishouden" — moet even vlot gaan als een
+// precies item kiezen. Eén tik en de regel is getagd.
 export function HoofdcategorieChips({
   actiefId,
   onKies,
   eigenCategorieen = [],
+  voorkeurId,
+  compact = false,
 }: {
   actiefId?: string
   onKies: (id: string, naam: string) => void
+  /**
+   * Een hoofdcategorie die vooraan hoort te staan. Het transactieformulier zet
+   * hier "Inkomsten" wanneer je een inkomst boekt: die chip stond anders ergens
+   * in de staart van de rij, terwijl ze op dat moment net de enige is die je
+   * zoekt.
+   */
+  voorkeurId?: string
   /**
    * De zelfgemaakte categorieën van de gebruiker. Die stonden hier niet, waardoor
    * je een eigen categorie nergens met één tik kon kiezen — ook niet op een
@@ -72,22 +85,38 @@ export function HoofdcategorieChips({
    * verschil tussen "een categorie van de app" en "een categorie van mij".
    */
   eigenCategorieen?: EigenCategorie[]
+  /** Houd de rij extra kort omdat er een voorstellenlijst onder verschijnt. */
+  compact?: boolean
 }) {
   const { t } = useT()
-  const chips = [
-    ...INGEBOUWDE_CATEGORIEEN.map((h) => ({ id: h.id, icoon: h.icoon, label: t(h.naam) })),
+  const [alles, setAlles] = useState(false)
+
+  const alleChips = [
+    // Eigen hoofdcategorieën vooraan, net als in de categorieënboom: het zijn er
+    // weinig, je hebt ze zelf gemaakt, en je zoekt ze dus ook het eerst.
     // Alleen eigen HOOFDcategorieën: een eigen middencategorie (met ouderId) hoort
     // onder haar ouder en niet als losse chip in deze rij.
     ...eigenCategorieen.filter((c) => !c.ouderId).map((c) => ({ id: c.id, icoon: c.icoon ?? '🏷️', label: c.naam })),
+    ...INGEBOUWDE_CATEGORIEEN.map((h) => ({ id: h.id, icoon: h.icoon, label: t(h.naam) })),
   ]
+  const voorkeur = voorkeurId ? alleChips.find((c) => c.id === voorkeurId) : undefined
+  const chips = voorkeur ? [voorkeur, ...alleChips.filter((c) => c !== voorkeur)] : alleChips
+
+  // Ingeklapt tonen we de eerste acht (of drie terwijl je typt) — plus, als de
+  // gekozen categorie daar niet bij zit, die ene erbij. Anders zou je keuze
+  // onzichtbaar zijn zolang de rij dicht staat.
+  const kop = chips.slice(0, compact ? CHIPS_TIJDENS_TYPEN : CHIPS_INGEKLAPT)
+  const actief = chips.find((c) => c.id === actiefId)
+  const zichtbaar = alles ? chips : actief && !kop.includes(actief) ? [...kop, actief] : kop
+  const verborgen = chips.length - zichtbaar.length
+
   return (
-    <div role="group" aria-label={t('Hoofdcategorieën')} style={chipRij}>
-      {chips.map((c) => (
+    <div role="group" aria-label={t('Hoofdcategorieën')} className="chiprooster">
+      {zichtbaar.map((c) => (
         <button
           key={c.id}
           type="button"
           className={'chip' + (actiefId === c.id ? ' chip-actief' : '')}
-          style={{ flex: '0 0 auto', whiteSpace: 'nowrap' }}
           // Voorkom dat het invoerveld de focus verliest vóór de klik telt.
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onKies(c.id, c.label)}
@@ -95,6 +124,17 @@ export function HoofdcategorieChips({
           {c.icoon} {c.label}
         </button>
       ))}
+      {(verborgen > 0 || alles) && (
+        <button
+          type="button"
+          className="chip"
+          aria-expanded={alles}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => setAlles((v) => !v)}
+        >
+          {alles ? t('Minder tonen') : t('Nog {n} …', { n: verborgen })}
+        </button>
+      )}
     </div>
   )
 }
@@ -210,11 +250,14 @@ export function CategorieKiezer({
   onKies,
   gebruikerCategorieen,
   onNieuweSubcategorie,
+  voorkeurId,
 }: {
   waarde: string | undefined
   onKies: (id: string | undefined) => void
   gebruikerCategorieen: Categorie[]
   onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
+  /** Hoofdcategorie die vooraan in de chiprij hoort. Zie `HoofdcategorieChips`. */
+  voorkeurId?: string
 }) {
   const { t } = useT()
   const [zoek, setZoek] = useState('')
@@ -243,12 +286,31 @@ export function CategorieKiezer({
   // permanent als chips boven de lijst.
   const suggesties: Suggestie[] = []
   if (open && term.length >= ZOEK_VANAF) {
+    // Sinds ronde 27 rolt een middencategorie (cat-*) netjes op naar haar
+    // hoofdcategorie in élke grafiek, elk budget en elke analyse. Daarom mag je er
+    // nu ook een transactie op zetten. Dat scheelt echt iets: "Elektriciteit" is
+    // wat je bedoelt, terwijl je vroeger moest kiezen tussen het veel te brede
+    // "Woning en vaste lasten" en een willekeurig item eronder.
+    const mids = zoekMidCategorieen(term, MAX_SUGGESTIES)
+    const middenSuggestie = (m: (typeof mids)[number]): Suggestie => ({
+      id: m.id,
+      titel: m.naam,
+      sub: t('{hoofd} · hele categorie', { hoofd: t(m.hoofdNaam) }),
+    })
+    // Een middencategorie die met de zoekterm begint, is bijna altijd wat je
+    // bedoelt; de rest komt achter de items.
+    for (const m of mids.filter((m) => m.naam.toLowerCase().startsWith(term))) suggesties.push(middenSuggestie(m))
     for (const it of zoekItems(term, MAX_SUGGESTIES)) {
-      suggesties.push({ id: it.id, titel: it.naam, sub: it.hoofdNaam })
+      suggesties.push({ id: it.id, titel: it.naam, sub: t(it.hoofdNaam) })
     }
+    // Eigen MIDDENcategorieën staan al in `mids`; hier alleen de eigen
+    // hoofdcategorieën, anders stond dezelfde naam twee keer in de lijst.
     for (const c of gebruikerCategorieen) {
-      if (c.naam.toLowerCase().includes(term)) suggesties.push({ id: c.id, titel: c.naam, sub: t('eigen') })
+      if (!c.ouderId && c.naam.toLowerCase().includes(term)) {
+        suggesties.push({ id: c.id, titel: c.naam, sub: t('eigen') })
+      }
     }
+    for (const m of mids.filter((m) => !m.naam.toLowerCase().startsWith(term))) suggesties.push(middenSuggestie(m))
   }
   const zichtbaar = suggesties.slice(0, MAX_SUGGESTIES)
   // De "toevoegen"-regel telt mee in de toetsenbordnavigatie: ze is gewoon de
@@ -320,7 +382,13 @@ export function CategorieKiezer({
         }}
         onKeyDown={opToets}
       />
-      <HoofdcategorieChips actiefId={hoofdInBeeld} onKies={(id) => kies(id)} eigenCategorieen={gebruikerCategorieen} />
+      <HoofdcategorieChips
+        actiefId={hoofdInBeeld}
+        onKies={(id) => kies(id)}
+        eigenCategorieen={gebruikerCategorieen}
+        voorkeurId={voorkeurId}
+        compact={open && aantalRegels > 0}
+      />
       {open && aantalRegels > 0 && nieuweNaam === null && (
         <ul role="listbox" style={{ ...suggestieLijst, top: '100%' }}>
           {zichtbaar.map((s, i) => (

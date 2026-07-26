@@ -14,7 +14,7 @@ const leden: Gezinslid[] = [
   { id: 'p2', naam: 'Noah', rol: 'kind' },
   { id: 'p3', naam: 'Sofie', rol: 'partner', gearchiveerd: true },
 ]
-const labels = { nietToegewezen: 'Niet toegewezen', onbekend: 'Onbekend' }
+const labels = { gezin: 'Het gezin', onbekend: 'Onbekend' }
 const som = (n: number[]) => n.reduce((s, x) => s + x, 0)
 
 describe('naamVanPersoon', () => {
@@ -122,7 +122,7 @@ describe('uitgavenPerPersoon', () => {
     expect(rijen).toEqual([{ id: 'p1', naam: 'Emma', bedrag: 1000 }])
   })
 
-  it('zet posten zonder personen onder Niet toegewezen, altijd onderaan', () => {
+  it('zet posten zonder personen onder Het gezin, altijd onderaan', () => {
     const rijen = uitgavenPerPersoon(
       [
         { bedrag: 300, persoonIds: ['p1'] },
@@ -134,7 +134,7 @@ describe('uitgavenPerPersoon', () => {
     )
     expect(rijen).toEqual([
       { id: 'p1', naam: 'Emma', bedrag: 300 },
-      { id: null, naam: 'Niet toegewezen', bedrag: 1000 },
+      { id: null, naam: 'Het gezin', bedrag: 1000 },
     ])
   })
 
