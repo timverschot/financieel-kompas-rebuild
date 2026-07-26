@@ -1,0 +1,84 @@
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, it, expect, vi } from 'vitest'
+import { CategorieFormulier } from './CategorieFormulier'
+import { CategorieSchema } from '../data/schema'
+
+describe('CategorieFormulier', () => {
+  it('slaat een categorie op zonder icoon en kleur (velden ontbreken dan)', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = vi.fn()
+    render(<CategorieFormulier onOpslaan={onOpslaan} />)
+
+    await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
+    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
+
+    expect(onOpslaan).toHaveBeenCalledTimes(1)
+    const opgeslagen = onOpslaan.mock.calls[0][0]
+    expect(opgeslagen.naam).toBe('Vervoer')
+    // Geen lege strings in de database: de velden mogen er gewoon niet zijn.
+    expect('icoon' in opgeslagen).toBe(false)
+    expect('kleur' in opgeslagen).toBe(false)
+    expect(CategorieSchema.safeParse(opgeslagen).success).toBe(true)
+  })
+
+  it('slaat het gekozen icoon en de gekozen kleur mee op', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = vi.fn()
+    render(<CategorieFormulier onOpslaan={onOpslaan} />)
+
+    await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
+    await user.click(screen.getByRole('button', { name: 'Kies icoon Auto' }))
+    await user.click(screen.getByRole('button', { name: 'Kies kleur Turkoois' }))
+    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
+
+    expect(onOpslaan).toHaveBeenCalledWith(
+      expect.objectContaining({ naam: 'Vervoer', icoon: '🚗', kleur: '#0891B2' }),
+    )
+    expect(CategorieSchema.safeParse(onOpslaan.mock.calls[0][0]).success).toBe(true)
+  })
+
+  it('maakt zich leeg na een geslaagde opslag, ook het icoon en de kleur', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = vi.fn()
+    render(<CategorieFormulier onOpslaan={onOpslaan} />)
+
+    await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
+    await user.click(screen.getByRole('button', { name: 'Kies icoon Auto' }))
+    await user.click(screen.getByRole('button', { name: 'Kies kleur Turkoois' }))
+    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
+
+    await waitFor(() => expect(screen.getByLabelText('Categorienaam')).toHaveValue(''))
+    expect(screen.getByLabelText('Eigen teken')).toHaveValue('')
+    expect(screen.getByRole('button', { name: 'Kies icoon Auto' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Kies kleur Turkoois' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('vult icoon en kleur in bij het bewerken van een bestaande categorie', () => {
+    render(
+      <CategorieFormulier
+        onOpslaan={vi.fn()}
+        onAnnuleer={vi.fn()}
+        bewerken={{ id: 'c1', naam: 'Vervoer', icoon: '🚗', kleur: '#0891B2' }}
+      />,
+    )
+
+    expect(screen.getByLabelText('Categorienaam')).toHaveValue('Vervoer')
+    expect(screen.getByLabelText('Eigen teken')).toHaveValue('🚗')
+    expect(screen.getByRole('button', { name: 'Kies icoon Auto' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Kies kleur Turkoois' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('bewaart een gewijzigd icoon bij een bestaande categorie', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = vi.fn()
+    render(
+      <CategorieFormulier onOpslaan={onOpslaan} bewerken={{ id: 'c1', naam: 'Vervoer', icoon: '🚗' }} />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Kies icoon Fiets' }))
+    await user.click(screen.getByRole('button', { name: 'Categorie wijzigen' }))
+
+    expect(onOpslaan).toHaveBeenCalledWith({ id: 'c1', naam: 'Vervoer', icoon: '🚲' })
+  })
+})

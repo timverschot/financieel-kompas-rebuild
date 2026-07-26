@@ -11,6 +11,11 @@ import { itemPerId } from './zoek'
 
 const HOOFD_PER_ID = new Map(INGEBOUWDE_CATEGORIEEN.map((h) => [h.id, h]))
 
+// Het minimum dat we van een eigen (zelfgemaakte) categorie nodig hebben. Bewust
+// structureel getypt, zodat elke aanroeper gewoon zijn categorieënlijst kan
+// meegeven zonder extra omzetting.
+export type EigenCategorie = { id: string; naam: string; icoon?: string; kleur?: string }
+
 export type CategorieGroep = {
   sleutel: string // groepeersleutel voor optellingen/grafieken
   naam: string // weergavenaam van de groep (hoofdcategorie)
@@ -26,7 +31,7 @@ export type CategorieGroep = {
 // eigen categorie blijft zichzelf; niets = 'Zonder categorie'; onbekend = 'Onbekend'.
 export function groepVanCategorie(
   id: string | undefined,
-  gebruikerCategorieen: { id: string; naam: string }[],
+  gebruikerCategorieen: EigenCategorie[],
 ): CategorieGroep {
   if (!id) return { sleutel: '', naam: 'Zonder categorie', kleur: null, icoon: null }
 
@@ -37,7 +42,7 @@ export function groepVanCategorie(
   if (item) return { sleutel: item.hoofdId, naam: item.hoofdNaam, kleur: item.kleur, icoon: item.icoon }
 
   const eigen = gebruikerCategorieen.find((c) => c.id === id)
-  if (eigen) return { sleutel: eigen.id, naam: eigen.naam, kleur: null, icoon: null }
+  if (eigen) return { sleutel: eigen.id, naam: eigen.naam, kleur: eigen.kleur ?? null, icoon: eigen.icoon ?? null }
 
   return { sleutel: id, naam: 'Onbekend', kleur: null, icoon: null }
 }
@@ -47,7 +52,7 @@ export function groepVanCategorie(
 // categorie haar naam). Geeft undefined bij geen categorie.
 export function labelVanCategorie(
   id: string | undefined,
-  gebruikerCategorieen: { id: string; naam: string }[],
+  gebruikerCategorieen: EigenCategorie[],
 ): string | undefined {
   if (!id) return undefined
   const item = itemPerId(id)

@@ -30,6 +30,12 @@ export type Rekening = z.infer<typeof RekeningSchema>
 export const CategorieSchema = z.object({
   id: z.string().min(1),
   naam: z.string().min(1),
+  // Een eigen categorie mag, net als de ingebouwde hoofdcategorieën, een icoon en
+  // een kleur dragen. Zonder die twee toont de transactielijst de beginletter van
+  // de handelaar en blijft de grafiek op haar standaardkleur. Beide optioneel,
+  // dus bestaande categorieën blijven geldig — geen migratie.
+  icoon: z.string().min(1).max(8).optional(),
+  kleur: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'kleur moet #rrggbb zijn').optional(),
 })
 export type Categorie = z.infer<typeof CategorieSchema>
 

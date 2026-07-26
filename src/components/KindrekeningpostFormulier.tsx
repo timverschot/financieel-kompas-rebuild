@@ -4,6 +4,7 @@ import type { Categorie, Kind, Kindrekeningpost } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { CategorieKiezer } from './CategorieKiezer'
+import { GezinsledenKiezer } from './GezinslidKiezer'
 import { verkleinAfbeelding } from '../utils/afbeelding'
 import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
@@ -83,10 +84,6 @@ export function KindrekeningpostFormulier({
   const bedragCenten = invoerNaarCenten(bedrag)
   const geldig = Number.isFinite(bedragCenten) && bedragCenten > 0
 
-  function wisselKind(id: string) {
-    setKindIds((huidig) => (huidig.includes(id) ? huidig.filter((x) => x !== id) : [...huidig, id]))
-  }
-
   async function kiesBonnetje(bestand: File) {
     setBezigBon(true)
     try {
@@ -155,18 +152,15 @@ export function KindrekeningpostFormulier({
           <div className="veldgroep">
             <CategorieKiezer waarde={categorieId || undefined} onKies={(id) => setCategorieId(id ?? '')} gebruikerCategorieen={categorieen} />
           </div>
-          {kinderen.length > 0 && (
-            <div className="veldgroep">
-              <span className="label-caps">{t('Voor wie? (optioneel)')}</span>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                {kinderen.map((k) => (
-                  <label key={k.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <input type="checkbox" checked={kindIds.includes(k.id)} onChange={() => wisselKind(k.id)} /> {k.naam}
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Dezelfde gedeelde kiezer als in het transactieformulier en bij de gedeelde
+              kosten. Hij verbergt zichzelf als er geen gezinsleden zijn, dus er blijft
+              geen leeg label of lege veldgroep achter. De waarde blijft 'kindIds'. */}
+          <GezinsledenKiezer
+            label={t('Voor wie? (optioneel)')}
+            waarden={kindIds}
+            onWijzig={setKindIds}
+            gezinsleden={kinderen}
+          />
           <div className="veldgroep">
             <label className="label-caps" htmlFor="krp-bon">{t('Bon/factuur (optioneel)')}</label>
             {bonnetje ? (

@@ -1199,6 +1199,15 @@ export function App() {
               <ul className="lijst">
                 {categorieen.map((c) => (
                   <li key={c.id} className="rij">
+                    {/* Zelfde vierkantje als in de transactielijst, zodat je hier meteen
+                        ziet wat je gekozen hebt. Zonder icoon: de beginletter. */}
+                    <span
+                      className="rij-teken"
+                      style={c.kleur ? { backgroundColor: `color-mix(in srgb, ${c.kleur} 18%, transparent)`, color: c.kleur } : undefined}
+                      aria-hidden
+                    >
+                      {c.icoon ?? c.naam.trim().slice(0, 1).toUpperCase()}
+                    </span>
                     <span className="rij-midden rij-titel">{c.naam}</span>
                     <span className="rij-acties">
                       <button className="knop knop-kaal" aria-label={t('Bewerk categorie {naam}', { naam: c.naam })} onClick={() => setBewerkCategorie(c)}>

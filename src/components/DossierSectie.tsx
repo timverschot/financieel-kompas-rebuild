@@ -10,6 +10,7 @@ import { verrekenTekst, afrekeningSamenvatting } from '../utils/afrekeningTekst'
 import { exporteerAfrekeningPDF } from '../utils/afrekeningPdf'
 import { labelVanCategorie } from '../data/categorieen/resolve'
 import { Bedrag, Kaart, Leeg, PaginaKop } from '../ui/basis'
+import { GezinsledenKiezer } from './GezinslidKiezer'
 import { useT } from '../i18n'
 
 // Leest een percentageveld: leeg betekent 'niet ingesteld', een getal van 0 tot en
@@ -133,10 +134,6 @@ export function DossierSectie({
     const nieuw = { ...dossier.categorieAandelen }
     delete nieuw[catId]
     await onDossierOpslaan({ ...dossier, categorieAandelen: nieuw })
-  }
-
-  function wisselAfrKind(id: string) {
-    setAfrKindIds((huidig) => (huidig.includes(id) ? huidig.filter((x) => x !== id) : [...huidig, id]))
   }
 
   async function kopieerSamenvatting(v: Verrekening) {
@@ -365,29 +362,25 @@ export function DossierSectie({
                 <input type="date" value={afrTot} onChange={(e) => setAfrTot(e.target.value)} />
               </label>
             </div>
-            {kinderen.length > 0 && (
-              <div className="veldgroep">
-                <span className="label-caps">{t('Voor welke kinderen? (leeg = allemaal)')}</span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                  {kinderen.map((k) => (
-                    <label key={k.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <input type="checkbox" checked={afrKindIds.includes(k.id)} onChange={() => wisselAfrKind(k.id)} /> {k.naam}
-                    </label>
-                  ))}
-                </div>
-                {/* Enkel zinvol zodra je écht op kinderen filtert: anders zitten alle
-                    kosten er sowieso in. */}
-                {afrKindIds.length > 0 && (
-                  <label style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 6, marginTop: 8 }}>
-                    <input type="checkbox" checked={zonderKindMee} onChange={(e) => setZonderKindMee(e.target.checked)} />
-                    <span className="rij-meta">
-                      {t('Kosten zonder kind ook meetellen')}
-                      <br />
-                      {t('Bv. een gezamenlijke schoolrekening zonder kind erbij. Vink je dit uit, dan blijven die kosten open staan.')}
-                    </span>
-                  </label>
-                )}
-              </div>
+            {/* Dezelfde kiezer als bij een gedeelde kost en bij een transactie, zodat
+                dezelfde vraag er overal hetzelfde uitziet. */}
+            <GezinsledenKiezer
+              label={t('Voor welke kinderen? (leeg = allemaal)')}
+              waarden={afrKindIds}
+              onWijzig={setAfrKindIds}
+              gezinsleden={kinderen}
+            />
+            {/* Enkel zinvol zodra je écht op kinderen filtert: anders zitten alle
+                kosten er sowieso in. */}
+            {afrKindIds.length > 0 && (
+              <label style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 6 }}>
+                <input type="checkbox" checked={zonderKindMee} onChange={(e) => setZonderKindMee(e.target.checked)} />
+                <span className="rij-meta">
+                  {t('Kosten zonder kind ook meetellen')}
+                  <br />
+                  {t('Bv. een gezamenlijke schoolrekening zonder kind erbij. Vink je dit uit, dan blijven die kosten open staan.')}
+                </span>
+              </label>
             )}
             <p className="rij-meta" style={{ margin: 0 }}>
               {t('In deze selectie: {n} kost(en), {saldo}', { n: selectie.length, saldo: verrekenTekst(t, selectieSaldo) })}

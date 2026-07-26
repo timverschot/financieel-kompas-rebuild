@@ -4,6 +4,7 @@ import type { Categorie, GedeeldeKost, Kind } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { CategorieKiezer } from './CategorieKiezer'
+import { GezinsledenKiezer } from './GezinslidKiezer'
 import { verkleinAfbeelding } from '../utils/afbeelding'
 import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
@@ -88,10 +89,6 @@ export function GedeeldeKostFormulier({
   const bedragCenten = invoerNaarCenten(bedrag)
   const geldig = omschrijving.trim().length > 0 && Number.isFinite(bedragCenten) && bedragCenten > 0
 
-  function wisselKind(id: string) {
-    setKindIds((huidig) => (huidig.includes(id) ? huidig.filter((x) => x !== id) : [...huidig, id]))
-  }
-
   async function verzend(e: FormEvent) {
     e.preventDefault()
     if (!geldig) return
@@ -150,18 +147,16 @@ export function GedeeldeKostFormulier({
       <div className="veldgroep">
         <CategorieKiezer waarde={categorieId || undefined} onKies={(id) => setCategorieId(id ?? '')} gebruikerCategorieen={categorieen} />
       </div>
-      {kinderen.length > 0 && (
-        <div className="veldgroep">
-          <span className="label-caps">{t('Voor wie? (optioneel)')}</span>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-            {kinderen.map((k) => (
-              <label key={k.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <input type="checkbox" checked={kindIds.includes(k.id)} onChange={() => wisselKind(k.id)} /> {k.naam}
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Aan wie hangt deze kost? Dezelfde kiezer als in het transactieformulier, zodat
+          "voor wie is dit?" overal hetzelfde werkt. De kiezer verbergt zichzelf als er
+          geen gezinsleden zijn — er blijft dus geen leeg label of lege veldgroep staan.
+          Onder water blijft dit gewoon 'kindIds'. */}
+      <GezinsledenKiezer
+        label={t('Voor wie? (optioneel)')}
+        waarden={kindIds}
+        onWijzig={setKindIds}
+        gezinsleden={kinderen}
+      />
       <div className="veldgroep">
         <label className="label-caps" htmlFor="kostdatum">{t('Datum')}</label>
         <input id="kostdatum" type="date" value={datum} onChange={(e) => setDatum(e.target.value)} />
