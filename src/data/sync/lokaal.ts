@@ -46,6 +46,7 @@ const SCHRIJF_TABELLEN = () => [
   db.garanties,
   db.streepjescodes,
   db.dossierdocumenten,
+  db.ordeningen,
   db.meta,
 ]
 
@@ -70,6 +71,7 @@ const STAAT_TABELLEN = () => [
   db.garanties,
   db.streepjescodes,
   db.dossierdocumenten,
+  db.ordeningen,
 ]
 
 // Past één gebeurtenis toe op de huidige staat (voor eigen, nieuwe wijzigingen).
@@ -183,6 +185,12 @@ async function pasStaatToe(regel: Logregel): Promise<void> {
       break
     case 'streepjescode.verwijderd':
       await db.streepjescodes.delete(g.payload.id)
+      break
+    case 'ordening.bewaard':
+      await db.ordeningen.put(g.payload)
+      break
+    case 'ordening.verwijderd':
+      await db.ordeningen.delete(g.payload.id)
       break
     case 'dossierdocument.bewaard':
       await db.dossierdocumenten.put(g.payload)

@@ -6,6 +6,7 @@ import { filterTransacties, heeftActiefFilter, grensDatumMaandenTerug, type TxFi
 import { groepenVanTransactie, isGesplitstOverCategorieen, type TransactieGroep } from '../utils/transactie'
 import { formatEuro } from '../utils/format'
 import { kengetallenVan } from '../utils/overzicht'
+import { rekeningLabel } from '../utils/rekening'
 import {
   SORTEERVELDEN,
   STANDAARD_SORTERING,
@@ -330,7 +331,7 @@ export function TransactieLijst({
             >
               <option value="">{t('Alle rekeningen')}</option>
               {rekeningen.map((r) => (
-                <option key={r.id} value={r.id}>{r.naam}</option>
+                <option key={r.id} value={r.id}>{rekeningLabel(r)}</option>
               ))}
             </select>
           </div>

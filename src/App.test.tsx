@@ -789,3 +789,86 @@ describe('App — onderdelen van een dossier aan- en uitzetten', () => {
     })
   })
 })
+
+// Ronde 30 — de volgorde van de hoofdcategorieën.
+//
+// Uit de feedback van Timothy: een categorie die je net aanmaakte, sprong meteen
+// bovenaan. De volgorde ligt nu bij de gebruiker, ze wordt bewaard op dezelfde
+// manier als alle andere gegevens (dus ook op je gsm), en ze geldt overal waar de
+// hoofdcategorieën verschijnen.
+describe('App — volgorde van de hoofdcategorieën', () => {
+  beforeEach(async () => {
+    await db.ordeningen.clear()
+  })
+
+  // Alleen de hoofdcategorieën uit de categorieënboom, niet de rijtitels van
+  // andere kaarten op die pagina.
+  function hoofdnamen(): string[] {
+    const kaart = screen.getByText('Alle categorieën').closest('section.kaart') as HTMLElement
+    return [...kaart.querySelectorAll(':scope > ul > li > div > button .rij-titel')].map((el) => el.textContent ?? '')
+  }
+
+  it('bewaart een verplaatsing en houdt ze na een herstart', async () => {
+    const user = userEvent.setup()
+    const { unmount } = render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Categorieën')
+
+    await screen.findByRole('button', { name: 'Zet Drank hoger' })
+    expect(hoofdnamen()[1]).toBe('Drank')
+
+    await user.click(screen.getByRole('button', { name: 'Zet Drank hoger' }))
+    await waitFor(() => expect(hoofdnamen()[0]).toBe('Drank'))
+
+    // De volledige volgorde wordt weggeschreven, niet alleen wat je aanraakte:
+    // zo kan een latere toevoeging de rest niet meer door elkaar schudden.
+    const bewaard = await db.ordeningen.get('hoofdcategorieen')
+    expect(bewaard?.ids[0]).toBe('ov-drank')
+    expect(bewaard?.ids[1]).toBe('ov-voeding')
+    expect(bewaard?.ids.length).toBeGreaterThan(2)
+
+    unmount()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Categorieën')
+    await screen.findByText('Alle categorieën')
+    expect(hoofdnamen()[0]).toBe('Drank')
+  })
+
+  it('gebruikt dezelfde volgorde in de invoerpopup', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Categorieën')
+    await user.click(await screen.findByRole('button', { name: 'Zet Drank hoger' }))
+    await waitFor(() => expect(hoofdnamen()[0]).toBe('Drank'))
+
+    await openBoeking(user, 'Uitgave')
+    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie' }))
+    const groep = screen.getByRole('group', { name: 'Hoofdcategorieën' })
+    const knoppen = [...groep.querySelectorAll('button')]
+    expect(knoppen[0].textContent).toContain('Drank')
+    expect(knoppen[1].textContent).toContain('Voeding')
+  })
+
+  it('zet een nieuwe eigen categorie achteraan, niet vooraan', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Categorieën')
+
+    await user.type(screen.getByLabelText('Categorienaam'), 'Mijn hobby')
+    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
+
+    const namen = await waitFor(() => {
+      const n = hoofdnamen()
+      expect(n).toContain('Mijn hobby')
+      return n
+    })
+    // Er zijn veertien ingebouwde hoofdcategorieën; alles daarna is eigen werk.
+    // Vroeger stonden de eigen categorieën vooraan, dus sprong een nieuwe meteen
+    // bovenaan de lijst.
+    expect(namen[0]).not.toBe('Mijn hobby')
+    expect(namen.indexOf('Mijn hobby')).toBeGreaterThanOrEqual(14)
+  })
+})

@@ -38,10 +38,24 @@ export function Donut({
   items,
   middenLabel = 'uitgaven',
   toonLegende = true,
+  grootte = GROOTTE,
 }: {
   items: DonutInvoer[]
   middenLabel?: string
   toonLegende?: boolean
+  /**
+   * Hoe groot de donut op het scherm getekend wordt, in pixels.
+   *
+   * De rekenkunde erbinnen verandert niet mee: het tekenvlak blijft `GROOTTE`
+   * eenheden breed en de SVG schaalt dat naar deze maat. Ook de tekst in het gat
+   * schaalt dus mee, want die staat in hetzelfde coördinatenstelsel.
+   *
+   * Waarom dit een knop werd: op de Analyse-pagina kreeg de donut een kolom van
+   * 210 px terwijl de namen en bedragen ernaast alle overige ruimte namen. De
+   * grafiek — het enige waarvoor je die kaart openslaat — was het kleinste deel
+   * van de kaart.
+   */
+  grootte?: number
 }) {
   const { t } = useT()
   const segmenten = donutSegmenten(items)
@@ -55,8 +69,8 @@ export function Donut({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       <svg
         viewBox={`0 0 ${GROOTTE} ${GROOTTE}`}
-        width={GROOTTE}
-        height={GROOTTE}
+        width={grootte}
+        height={grootte}
         role="img"
         aria-label={t('{label} per categorie', { label: t(middenLabel) })}
         style={{ display: 'block', margin: '0 auto', maxWidth: '100%' }}

@@ -752,6 +752,26 @@ a:focus-visible {
   min-width: 0;
 }
 
+/* De keuze van de hoofdcategorie: één knop, en daaronder het volledige rooster
+   zodra je ze opent. In rust is dit dus maar één knop hoog, zodat de
+   voorstellenlijst van het invoerveld er vlak onder blijft staan. */
+.hoofdkiezer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  margin-top: 6px;
+  min-width: 0;
+}
+
+/* De knop mag over twee regels breken als de categorienaam lang is; hij mag nooit
+   breder worden dan het formulier. */
+.hoofdkiezer > .chip {
+  max-width: 100%;
+  text-align: left;
+  white-space: normal;
+}
+
 .badge {
   display: inline-block;
   font-size: var(--tekst-s);
@@ -1112,9 +1132,21 @@ a:hover {
 }
 
 @media (min-width: 1024px) {
+  /* De donut krijgt een ruimere kolom (was 210 px voor een tekening van 190 px):
+     de grafiek is het enige waarvoor je zo'n kaart openslaat en was het kleinste
+     deel ervan. De lijst ernaast krijgt daardoor minder breedte, waardoor naam,
+     aandeel en bedrag dichter bij elkaar komen te staan in plaats van uit elkaar
+     getrokken over de halve pagina. */
   .donut-naast {
-    grid-template-columns: 210px 1fr;
-    gap: 20px;
+    /* De donut krijgt een echte kolom (was 210 px voor een tekening van 190 px),
+       en de lijst ernaast een BEGRENSDE kolom in plaats van "de rest van de
+       kaart". Dat tweede is even belangrijk als het eerste: rekte de lijst over
+       de volle breedte uit, dan stond de naam helemaal links en het bedrag
+       helemaal rechts, met een halve pagina niets ertussen. Nu staan naam,
+       aandeel en bedrag bij elkaar, en het paar staat gecentreerd in de kaart. */
+    grid-template-columns: 320px minmax(0, 640px);
+    justify-content: center;
+    gap: 32px;
     align-items: center;
   }
 }

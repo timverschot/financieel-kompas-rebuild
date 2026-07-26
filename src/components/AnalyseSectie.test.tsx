@@ -39,16 +39,20 @@ function kaart(titel: string): HTMLElement {
 }
 
 describe('AnalyseSectie — verdeling en ranglijst', () => {
-  it('zet de donut en de ranglijst in twee aparte kaarten', () => {
+  // Ronde 30: de donut en haar cijfers horen in ÉÉN kaart, met de lijst ernaast —
+  // precies zoals de andere donutkaarten op deze pagina. Ronde 26 had er twee
+  // losse kaarten van gemaakt, en dat was het enige plekje dat afweek.
+  it('zet de donut en de ranglijst in één kaart, met de lijst ernaast', () => {
     toon([boodschappen, tanken])
-    // Voorheen stonden ze in één kaart onder elkaar, waardoor je op een breed
-    // scherm moest scrollen van de grafiek naar de cijfers.
-    expect(kaart('Verdeling uitgaven')).toBeInTheDocument()
-    expect(kaart('Ranglijst')).toBeInTheDocument()
-    expect(kaart('Verdeling uitgaven')).not.toBe(kaart('Ranglijst'))
+    const k = kaart('Verdeling uitgaven')
+    expect(screen.queryByText('Ranglijst')).toBeNull()
+    expect(k.querySelector('.donut-naast')).not.toBeNull()
+    // De donut én de aanklikbare rijen zitten in datzelfde raster.
+    expect(within(k).getByRole('button', { name: 'Toon details van Voeding' })).toBeInTheDocument()
+    expect(k.querySelector('svg')).not.toBeNull()
   })
 
-  it('zet het totaal bij de donut, niet bij de ranglijst', () => {
+  it('zet het totaal in dezelfde kaart', () => {
     toon([boodschappen, tanken])
     expect(within(kaart('Verdeling uitgaven')).getByText('Totaal')).toBeInTheDocument()
   })
@@ -56,13 +60,13 @@ describe('AnalyseSectie — verdeling en ranglijst', () => {
   it('toont per rij het aandeel als een eigen kolom', () => {
     toon([boodschappen, tanken])
     // € 75 van € 100 = 75%, € 25 = 25%. Samen exact 100%.
-    const pcts = kaart('Ranglijst').querySelectorAll('.rij-pct')
+    const pcts = kaart('Verdeling uitgaven').querySelectorAll('.rij-pct')
     expect([...pcts].map((el) => el.textContent)).toEqual(['75%', '25%'])
   })
 
   it('geeft elke ranglijstrij een zichtbare chevron', () => {
     toon([boodschappen, tanken])
-    expect(kaart('Ranglijst').querySelectorAll('.rij-chevron')).toHaveLength(2)
+    expect(kaart('Verdeling uitgaven').querySelectorAll('.rij-chevron')).toHaveLength(2)
   })
 
   it('klikt een rij open naar het detail', async () => {
@@ -75,7 +79,6 @@ describe('AnalyseSectie — verdeling en ranglijst', () => {
   it('toont één kaart met een lege toestand wanneer er niets is', () => {
     toon([])
     expect(screen.getByText('Geen uitgaven in deze periode')).toBeInTheDocument()
-    expect(screen.queryByText('Ranglijst')).not.toBeInTheDocument()
   })
 })
 
@@ -87,5 +90,47 @@ describe('AnalyseSectie — legende naast de donut', () => {
     const perProduct = kaart('Verdeling per product/dienst')
     expect(perProduct.querySelector('.donut-naast')).not.toBeNull()
     expect(perProduct.querySelectorAll('.donut-naast .rij-pct').length).toBeGreaterThan(0)
+  })
+})
+
+// Ronde 30: de knop "Toon alle 19 — incl. 9 overige" liet er MINDER zien.
+// Oorzaak: de lijst kreeg bij het uitklappen een hoogte van 260 px met een eigen
+// schuifbalk, dus tien volledig zichtbare rijen werden er negentien in een venster
+// dat kleiner was dan daarvoor.
+describe('AnalyseSectie — "toon alle" toont ook echt meer', () => {
+  // Vijftien verschillende items binnen Voeding, met aflopende bedragen zodat de
+  // volgorde vastligt en er dus een 'Overige'-schijf ontstaat.
+  const items = [
+    'i-brood--wit-9238',
+    'i-brood--bruin-6023',
+    'i-sandwiches-1736',
+    'i-pistolets-9968',
+    'i-wraps-2928',
+    'i-pitabroodjes-1623',
+    'i-knakbrood-3482',
+    'i-crackers-2702',
+    'i-rijstwafels-171',
+    'i-belegde-broodjes-2217',
+    'i-worstenbrood--curryrol-5080',
+    'i-worstenbrood-speciaal--curryro-8286',
+    'i-worstenbrood--klassiek-6316',
+    'i-appelbol-5409',
+    'i-x-stokbrood',
+  ]
+  const veel = items.map((id, i) => tx(`t${i}`, id, -(1000 - i * 10), `Winkel ${i}`))
+
+  it('laat na het uitklappen meer rijen zien dan ervoor, zonder eigen schuifvenster', async () => {
+    const user = userEvent.setup()
+    toon(veel)
+    const k = kaart('Verdeling per product/dienst')
+    const lijst = k.querySelector('.donut-naast .lijst') as HTMLElement
+    const voor = lijst.querySelectorAll('li').length
+
+    await user.click(within(k).getByRole('button', { name: /^Toon alle/ }))
+
+    const na = (k.querySelector('.donut-naast .lijst') as HTMLElement).querySelectorAll('li').length
+    expect(na).toBeGreaterThan(voor)
+    // En de lijst krijgt geen eigen hoogte meer: de kaart mag gewoon groeien.
+    expect((k.querySelector('.donut-naast .lijst') as HTMLElement).style.maxHeight).toBe('')
   })
 })

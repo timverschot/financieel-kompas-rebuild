@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Kind, Rekening, Spaardoel } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
+import { rekeningLabel } from '../utils/rekening'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { GezinslidKiezer } from './GezinslidKiezer'
 import { heeftKiesbareLeden } from '../utils/persoon'
@@ -140,7 +141,7 @@ export function SpaardoelFormulier({
           <option value="">{t('Geen — manueel bijhouden')}</option>
           {rekeningen.map((r) => (
             <option key={r.id} value={r.id}>
-              {r.naam}
+              {rekeningLabel(r)}
             </option>
           ))}
         </select>

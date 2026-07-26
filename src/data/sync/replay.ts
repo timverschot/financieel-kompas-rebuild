@@ -10,6 +10,7 @@ import type {
   Kindrekening,
   Kindrekeningpost,
   Lening,
+  Ordening,
   Overboeking,
   Rekening,
   Spaardoel,
@@ -42,6 +43,7 @@ export type Staat = {
   garanties: Map<string, Garantie>
   streepjescodes: Map<string, Streepjescode>
   dossierdocumenten: Map<string, DossierDocument>
+  ordeningen: Map<string, Ordening>
 }
 
 // Het HLC-stempel van een logregel, met terugval op 'tijdstip' voor oude regels
@@ -84,6 +86,7 @@ export function pasToe(regels: Logregel[]): Staat {
     garanties: new Map(),
     streepjescodes: new Map(),
     dossierdocumenten: new Map(),
+    ordeningen: new Map(),
   }
   for (const r of gesorteerd) {
     const g = r.gebeurtenis
@@ -195,6 +198,12 @@ export function pasToe(regels: Logregel[]): Staat {
         break
       case 'streepjescode.verwijderd':
         staat.streepjescodes.delete(g.payload.id)
+        break
+      case 'ordening.bewaard':
+        staat.ordeningen.set(g.payload.id, g.payload)
+        break
+      case 'ordening.verwijderd':
+        staat.ordeningen.delete(g.payload.id)
         break
       case 'dossierdocument.bewaard':
         staat.dossierdocumenten.set(g.payload.id, g.payload)

@@ -63,6 +63,12 @@ function maandStr(d: Date): string {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
 }
 
+// Hoe groot de donut op deze pagina getekend wordt. Stond op 190 px in een kolom
+// van 210, terwijl de namen en bedragen ernaast alle overige ruimte kregen: de
+// grafiek was het kleinste deel van een kaart die je juist voor die grafiek
+// openslaat. De kolombreedte ernaast staat in `.donut-naast` (index.css).
+const DONUT_GROOTTE = 300
+
 
 // Uitklapbare donutkaart: het diagram toont top 10 + een 'Overige'-schijf; de
 // legende toont standaard de top 10 en kan naar alles uitklappen.
@@ -88,8 +94,14 @@ function DonutKaart({ titel, subtitel, posten, richting }: { titel: string; subt
           breed scherm — dan sleep je je ogen van boven naar onder om een schijf
           bij haar bedrag te zoeken. */}
       <div className="donut-naast">
-        <Donut items={ring} toonLegende={false} middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'} />
-        <ul className="lijst" style={{ maxHeight: toonAlles ? 260 : undefined, overflowY: toonAlles ? 'auto' : undefined }}>
+        <Donut items={ring} toonLegende={false} grootte={DONUT_GROOTTE} middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'} />
+        {/* Bewust GEEN maxHeight op deze lijst.
+            Ze had er een van 260 px zodra je uitklapte, met een eigen schuifbalk.
+            Gevolg: ingeklapt zag je tien rijen volledig, en na "Toon alle 19" werden
+            negentien rijen in een venster geperst dat kleiner was dan wat je
+            daarvoor zag — de knop "toon meer" toonde dus mínder. De kaart mag
+            gewoon langer worden. */}
+        <ul className="lijst">
           {legende.map((p, i) => (
             <li key={`${i}-${p.naam}`} className="rij">
               <span style={{ ...stip, background: p.kleur }} />
@@ -326,11 +338,14 @@ export function AnalyseSectie({
 
       {!drill && !bereikOmgekeerd && (
         <>
-          {/* De verdeling en de ranglijst staan sinds ronde 26 in TWEE kaarten
-              naast elkaar op een breed scherm. Ze zaten in één kaart onder
-              elkaar, waardoor je op desktop moest scrollen om van de grafiek naar
-              de cijfers te gaan terwijl er rechts een halve pagina leeg stond.
-              Op een telefoon vallen ze gewoon onder elkaar, met de donut eerst. */}
+          {/* Verdeling én ranglijst in ÉÉN kaart, met de donut links en de lijst
+              rechts — precies dezelfde vorm als de andere donutkaarten op deze
+              pagina (product/dienst, winkel, gezinslid).
+
+              Ronde 26 had hier twee losse kaarten naast elkaar gemaakt. Dat was
+              inconsistent: het is één grafiek met haar eigen cijfers, en overal
+              elders op deze pagina horen die in dezelfde kaart. De rijen blijven
+              aanklikbaar voor de details erachter. */}
           {byOv.length === 0 ? (
             <Kaart
               titel={richting === 'uitgave' ? t('Verdeling uitgaven') : t('Verdeling inkomsten')}
@@ -339,18 +354,12 @@ export function AnalyseSectie({
               <Leeg>{leegTekst}</Leeg>
             </Kaart>
           ) : (
-            <div className="raster-twee">
-              <Kaart
-                titel={richting === 'uitgave' ? t('Verdeling uitgaven') : t('Verdeling inkomsten')}
-                bijschrift={t('Per hoofdcategorie')}
-              >
-                <Donut items={donutInvoer} toonLegende={false} middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'} />
-                <div className="stat-rij" style={{ paddingTop: 12, borderTop: '1px solid var(--divider)' }}>
-                  <Stat label={t('Totaal')}>{formatEuro(totaal)}</Stat>
-                </div>
-              </Kaart>
-
-              <Kaart titel={t('Ranglijst')} bijschrift={t('Klik een rij open voor de details erachter.')}>
+            <Kaart
+              titel={richting === 'uitgave' ? t('Verdeling uitgaven') : t('Verdeling inkomsten')}
+              bijschrift={t('Per hoofdcategorie — klik een rij open voor de details erachter.')}
+            >
+              <div className="donut-naast">
+                <Donut items={donutInvoer} toonLegende={false} grootte={DONUT_GROOTTE} middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'} />
                 <ul className="lijst">
                   {byOv.map((g, i) => {
                     const fractie = totaal > 0 ? g.bedrag / totaal : 0
@@ -385,8 +394,11 @@ export function AnalyseSectie({
                     )
                   })}
                 </ul>
-              </Kaart>
-            </div>
+              </div>
+              <div className="stat-rij" style={{ paddingTop: 12, borderTop: '1px solid var(--divider)' }}>
+                <Stat label={t('Totaal')}>{formatEuro(totaal)}</Stat>
+              </div>
+            </Kaart>
           )}
 
           {/* Waar valt er te besparen? Enkel bij uitgaven: bij inkomsten is de

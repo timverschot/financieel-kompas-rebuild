@@ -13,6 +13,7 @@ import type {
   TransactieRegel,
 } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
+import { rekeningLabel } from '../utils/rekening'
 import { invoerNaarCenten, centenNaarInvoer, formatEuro } from '../utils/format'
 import { labelVanCategorie } from '../data/categorieen/resolve'
 import { zoekProduct } from '../utils/openFoodFacts'
@@ -742,7 +743,7 @@ export function TransactieFormulier({
           <select id="rekening" value={rekeningId} onChange={(e) => setRekeningId(e.target.value)}>
             {rekeningen.map((r) => (
               <option key={r.id} value={r.id}>
-                {r.naam}
+                {rekeningLabel(r)}
               </option>
             ))}
           </select>

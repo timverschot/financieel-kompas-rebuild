@@ -11,6 +11,7 @@ import {
   KindrekeningSchema,
   KindrekeningpostSchema,
   LeningSchema,
+  OrdeningSchema,
   OverboekingSchema,
   RekeningSchema,
   SpaardoelSchema,
@@ -62,6 +63,8 @@ export const GebeurtenisSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('streepjescode.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
   z.object({ type: z.literal('dossierdocument.bewaard'), payload: DossierDocumentSchema }),
   z.object({ type: z.literal('dossierdocument.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
+  z.object({ type: z.literal('ordening.bewaard'), payload: OrdeningSchema }),
+  z.object({ type: z.literal('ordening.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
 ])
 export type Gebeurtenis = z.infer<typeof GebeurtenisSchema>
 

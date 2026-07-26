@@ -13,6 +13,7 @@ import type {
   Kindrekening,
   Kindrekeningpost,
   Lening,
+  Ordening,
   Overboeking,
   Rekening,
   Spaardoel,
@@ -60,6 +61,8 @@ import {
   laadRekeningen,
   laadSpaardoelen,
   laadStreepjescodes,
+  laadOrdeningen,
+  bewaarOrdening,
   laadSubcategorieen,
   laadTerugkerendePosten,
   laadTransacties,
@@ -96,6 +99,9 @@ import { NieuwDossierKiezer } from './components/NieuwDossierKiezer'
 import { LeningSectie } from './components/LeningSectie'
 import { GarantieSectie } from './components/GarantieSectie'
 import { Subtabs } from './ui/Subtabs'
+import { CategorieVolgordeProvider } from './categorievolgorde'
+import { alleHoofdcategorieen, bewaardeVolgorde, verplaats } from './utils/categorieVolgorde'
+import { ORDENING_HOOFDCATEGORIEEN } from './data/schema'
 import type { DossierSoort } from './utils/dossiersoort'
 import { InstellingenSectie } from './components/InstellingenSectie'
 import { wisAlles } from './data/herstart'
@@ -190,6 +196,7 @@ export function App() {
   const [garanties, setGaranties] = useState<Garantie[]>([])
   const [dossierdocumenten, setDossierdocumenten] = useState<DossierDocument[]>([])
   const [streepjescodes, setStreepjescodes] = useState<Streepjescode[]>([])
+  const [ordeningen, setOrdeningen] = useState<Ordening[]>([])
   const [ongeldig, setOngeldig] = useState(0)
   const [verbonden, setVerbonden] = useState(false)
   const [bezig, setBezig] = useState(false)
@@ -219,7 +226,7 @@ export function App() {
   const { budgetDrempel } = useInstellingen()
 
   async function herlaad() {
-    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, docs] = await Promise.all([
+    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs] = await Promise.all([
       laadTransacties(),
       laadRekeningen(),
       laadCategorieen(),
@@ -238,6 +245,7 @@ export function App() {
       laadAflossingen(),
       laadGaranties(),
       laadStreepjescodes(),
+      laadOrdeningen(),
       laadDossierDocumenten(),
     ])
     setTransacties(tx.geldig)
@@ -259,6 +267,7 @@ export function App() {
     setAflossingen(afl.geldig)
     setGaranties(gar.geldig)
     setStreepjescodes(sc.geldig)
+    setOrdeningen(ord.geldig)
     setDossierdocumenten(docs.geldig)
   }
 
@@ -287,7 +296,7 @@ export function App() {
   useEffect(() => {
     let actief = true
     async function laad() {
-      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, docs] = await Promise.all([
+      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs] = await Promise.all([
         laadTransacties(),
         laadRekeningen(),
         laadCategorieen(),
@@ -306,6 +315,7 @@ export function App() {
         laadAflossingen(),
         laadGaranties(),
         laadStreepjescodes(),
+        laadOrdeningen(),
         laadDossierDocumenten(),
       ])
       if (!actief) return
@@ -328,6 +338,7 @@ export function App() {
       setAflossingen(afl.geldig)
       setGaranties(gar.geldig)
       setStreepjescodes(sc.geldig)
+      setOrdeningen(ord.geldig)
       setDossierdocumenten(docs.geldig)
     }
     void laad()
@@ -1092,6 +1103,21 @@ export function App() {
     </>
   )
 
+  // De door de gebruiker gekozen volgorde van de hoofdcategorieën. Leeg = de
+  // standaardvolgorde; zie utils/categorieVolgorde.ts.
+  const hoofdVolgorde = bewaardeVolgorde(ordeningen)
+
+  // Eén hoofdcategorie een plaats omhoog of omlaag zetten (Categorieën-pagina).
+  // We bewaren daarbij bewust de VOLLEDIGE volgorde, ook de categorieën die je
+  // niet aanraakte: zo ligt vanaf de eerste verplaatsing alles vast en kan een
+  // latere toevoeging de rest niet meer door elkaar schudden.
+  async function verplaatsHoofdcategorie(id: string, richting: -1 | 1) {
+    const alle = alleHoofdcategorieen(categorieen)
+    const nieuw = verplaats(alle, hoofdVolgorde, id, richting)
+    await bewaarOrdening({ id: ORDENING_HOOFDCATEGORIEEN, ids: nieuw })
+    await herlaad()
+  }
+
   const paginaTitel = t(PAGINAS.find((p) => p.id === pagina)?.label ?? 'Overzicht')
 
   // Een melding brengt je naar een pagina, en bij de Dossiers-pagina ook naar de
@@ -1623,6 +1649,7 @@ export function App() {
               onVerwijderen={verwijderSubcategorieH}
               onCategorieToevoegen={voegCategorieOnderToe}
               onCategorieVerwijderen={verwijderCat}
+              onVerplaats={verplaatsHoofdcategorie}
             />
           </ErrorBoundary>
           </div>
@@ -1697,8 +1724,13 @@ export function App() {
   )
 
   // Brede schermen: vast zijpaneel + bovenbalk + gecentreerde inhoud (V1-logica).
+  //
+  // De hele boom hangt in CategorieVolgordeProvider: de kiezer met de
+  // hoofdcategorieën zit vier lagen diep en op vier plaatsen, dus de volgorde als
+  // prop doorgeven zou bestanden raken die er niets mee te maken hebben.
   if (isDesktop) {
     return (
+      <CategorieVolgordeProvider volgorde={hoofdVolgorde}>
       <div style={{ display: 'flex', minHeight: '100vh' }}>
         <Zijbalk actief={pagina} onKies={setPagina} verbonden={verbonden} bezig={bezig} statusTekst={statusTekst} />
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
@@ -1736,12 +1768,13 @@ export function App() {
         {undoBalk}
         {boekingLagen}
       </div>
+      </CategorieVolgordeProvider>
     )
   }
 
   // Smalle schermen: één kolom met de onderbalk (tabbalk + centrale ➕).
   return (
-    <>
+    <CategorieVolgordeProvider volgorde={hoofdVolgorde}>
       <main style={{ ...container, paddingBottom: '5.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
           <Merkteken grootte={30} />
@@ -1756,6 +1789,6 @@ export function App() {
       {undoBalk}
       {boekingLagen}
       <OnderNavigatie actief={pagina} onKies={setPagina} onNieuweTransactie={nieuweTransactie} />
-    </>
+    </CategorieVolgordeProvider>
   )
 }

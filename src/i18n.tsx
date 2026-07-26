@@ -577,8 +577,12 @@ const en: Record<string, string> = {
   'Voor wie?': 'For whom?',
   'Duid je niemand aan, dan telt dit als een uitgave voor het gezin.':
     'If you select no one, this counts as an expense for the family.',
-  'Minder tonen': 'Show fewer',
-  'Nog {n} …': '{n} more …',
+  // Ronde 30 — de hoofdcategorieën zitten achter één knop, en hun volgorde is
+  // instelbaar op de Categorieën-pagina.
+  'Selecteer hoofdcategorie': 'Select a main category',
+  'Hoofdcategorie: {naam}': 'Main category: {naam}',
+  'Zet {naam} hoger': 'Move {naam} up',
+  'Zet {naam} lager': 'Move {naam} down',
   '{hoofd} · hele categorie': '{hoofd} · whole category',
   'Eigen verdeling (% jij, optioneel)': 'Custom split (% you, optional)',
   'leeg = standaard van het dossier': 'empty = case default',
@@ -1671,8 +1675,11 @@ const fr: Record<string, string> = {
   'Voor wie?': 'Pour qui ?',
   'Duid je niemand aan, dan telt dit als een uitgave voor het gezin.':
     'Si vous ne sélectionnez personne, cette dépense compte pour la famille.',
-  'Minder tonen': 'Afficher moins',
-  'Nog {n} …': '{n} de plus …',
+  // Ronde 30
+  'Selecteer hoofdcategorie': 'Choisir une catégorie principale',
+  'Hoofdcategorie: {naam}': 'Catégorie principale : {naam}',
+  'Zet {naam} hoger': 'Monter {naam}',
+  'Zet {naam} lager': 'Descendre {naam}',
   '{hoofd} · hele categorie': '{hoofd} · catégorie entière',
   'Eigen verdeling (% jij, optioneel)': 'Répartition personnalisée (% vous, optionnel)',
   'leeg = standaard van het dossier': 'vide = valeur par défaut du dossier',

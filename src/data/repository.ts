@@ -12,6 +12,7 @@ import {
   KindrekeningSchema,
   KindrekeningpostSchema,
   LeningSchema,
+  OrdeningSchema,
   OverboekingSchema,
   StreepjescodeSchema,
   RekeningSchema,
@@ -31,6 +32,7 @@ import {
   type Kindrekening,
   type Kindrekeningpost,
   type Lening,
+  type Ordening,
   type Overboeking,
   type Streepjescode,
   type Rekening,
@@ -315,4 +317,15 @@ export async function laadGaranties(): Promise<LeesResultaat<Garantie>> {
 
 export async function laadStreepjescodes(): Promise<LeesResultaat<Streepjescode>> {
   return valideerLijst(await db.streepjescodes.toArray(), StreepjescodeSchema)
+}
+
+// De volgorde die de gebruiker zelf koos. Eén record per lijst; vandaag bestaat
+// alleen 'hoofdcategorieen'. Zie OrdeningSchema voor het waarom.
+export async function bewaarOrdening(o: Ordening): Promise<void> {
+  const geldig = OrdeningSchema.parse(o)
+  await pasGebeurtenisToe({ type: 'ordening.bewaard', payload: geldig })
+}
+
+export async function laadOrdeningen(): Promise<LeesResultaat<Ordening>> {
+  return valideerLijst(await db.ordeningen.toArray(), OrdeningSchema)
 }

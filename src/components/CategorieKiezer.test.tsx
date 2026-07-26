@@ -1,7 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { CategorieKiezer } from './CategorieKiezer'
+import { CategorieVolgordeProvider } from '../categorievolgorde'
 
 describe('CategorieKiezer', () => {
   it('toont hoofdcategorieën bij focus en laat er een kiezen', async () => {
@@ -10,6 +11,8 @@ describe('CategorieKiezer', () => {
     render(<CategorieKiezer waarde={undefined} onKies={onKies} gebruikerCategorieen={[]} />)
 
     await user.click(screen.getByLabelText('Zoek categorie of item'))
+    // Ronde 30: de hoofdcategorieën zitten achter één knop. Openen, dan kiezen.
+    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie' }))
     await user.click(screen.getByRole('button', { name: /Voeding/ }))
     expect(onKies).toHaveBeenCalledWith('ov-voeding')
   })
@@ -84,35 +87,68 @@ describe('CategorieKiezer', () => {
     render(<CategorieKiezer waarde={undefined} onKies={onKies} gebruikerCategorieen={[]} />)
 
     await user.type(screen.getByLabelText('Zoek categorie of item'), 'brood')
-    // De chips blijven zichtbaar terwijl de voorstellen getoond worden.
+    // De knop blijft bereikbaar terwijl de voorstellen getoond worden.
+    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie' }))
     await user.click(screen.getByRole('button', { name: /Huishouden en Verzorging/ }))
     expect(onKies).toHaveBeenCalledWith('ov-huishouden-en-verzorging')
   })
 
-  // Ronde 28: de chiprij schoof vroeger zijwaarts weg. Nu breekt ze af, en zit de
-  // staart achter één knop in plaats van achter een onzichtbare schuifbeweging.
-  it('houdt de chiprij kort en klapt de rest pas open op vraag', async () => {
+  // Ronde 30: geen halve rij met "Nog 6 …" meer. Eén knop, en daarachter ALLE
+  // hoofdcategorieën in één keer — zichtbaar én aanklikbaar.
+  it('toont in rust alleen de knop, en daarachter alle veertien hoofdcategorieën', async () => {
     const user = userEvent.setup()
     render(<CategorieKiezer waarde={undefined} onKies={() => {}} gebruikerCategorieen={[]} />)
 
+    expect(screen.queryByRole('group', { name: 'Hoofdcategorieën' })).toBeNull()
     expect(screen.queryByRole('button', { name: /Huisdieren/ })).toBeNull()
-    await user.click(screen.getByRole('button', { name: /^Nog \d+/ }))
-    expect(screen.getByRole('button', { name: /Huisdieren/ })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Minder tonen' }))
-    expect(screen.queryByRole('button', { name: /Huisdieren/ })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie' }))
+    const groep = screen.getByRole('group', { name: 'Hoofdcategorieën' })
+    expect(groep.querySelectorAll('button')).toHaveLength(14)
+    // Ook de staart van de lijst staat er nu bij; die zat vroeger achter "Nog 6 …".
+    expect(within(groep).getByRole('button', { name: /Huisdieren/ })).toBeInTheDocument()
   })
 
-  it('toont de gekozen categorie ook als ze buiten de korte rij valt', () => {
+  it('sluit het rooster na een keuze en zet die keuze op de knop', async () => {
+    const user = userEvent.setup()
+    const onKies = vi.fn()
+    render(<CategorieKiezer waarde={undefined} onKies={onKies} gebruikerCategorieen={[]} />)
+
+    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie' }))
+    await user.click(screen.getByRole('button', { name: /Huisdieren/ }))
+    expect(onKies).toHaveBeenCalledWith('ov-huisdieren')
+    expect(screen.queryByRole('group', { name: 'Hoofdcategorieën' })).toBeNull()
+  })
+
+  it('zet de gekozen categorie op de knop, ook zonder het rooster te openen', () => {
     render(<CategorieKiezer waarde="ov-huisdieren" onKies={() => {}} gebruikerCategorieen={[]} />)
-    expect(screen.getByRole('button', { name: /Huisdieren/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Hoofdcategorie: Huisdieren/ })).toBeInTheDocument()
   })
 
-  it('zet een voorkeurcategorie vooraan', () => {
+  it('zet een voorkeurcategorie vooraan in het rooster', async () => {
+    const user = userEvent.setup()
     render(
       <CategorieKiezer waarde={undefined} onKies={() => {}} gebruikerCategorieen={[]} voorkeurId="ov-inkomsten" />,
     )
+    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie' }))
     const groep = screen.getByRole('group', { name: 'Hoofdcategorieën' })
     expect(groep.querySelectorAll('button')[0].textContent).toContain('Inkomsten')
+  })
+
+  // Ronde 30: de volgorde die je op de Categorieën-pagina koos, geldt ook hier.
+  it('volgt de volgorde uit de context', async () => {
+    const user = userEvent.setup()
+    render(
+      <CategorieVolgordeProvider volgorde={['ov-huisdieren', 'ov-drank']}>
+        <CategorieKiezer waarde={undefined} onKies={() => {}} gebruikerCategorieen={[]} />
+      </CategorieVolgordeProvider>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie' }))
+    const knoppen = [...screen.getByRole('group', { name: 'Hoofdcategorieën' }).querySelectorAll('button')]
+    expect(knoppen[0].textContent).toContain('Huisdieren')
+    expect(knoppen[1].textContent).toContain('Drank')
+    // En de rest volgt gewoon achteraan in de standaardvolgorde.
+    expect(knoppen[2].textContent).toContain('Voeding')
   })
 
   it('maakt ter plekke een nieuwe subcategorie en tagt meteen op het nieuwe id', async () => {

@@ -408,6 +408,35 @@ export const StreepjescodeSchema = z.object({
 })
 export type Streepjescode = z.infer<typeof StreepjescodeSchema>
 
+// De sleutel van de enige ordening die vandaag bestaat: de volgorde van de
+// hoofdcategorieën. Taal-onafhankelijk en opgeslagen, dus niet vertalen.
+export const ORDENING_HOOFDCATEGORIEEN = 'hoofdcategorieen'
+
+// Een door de gebruiker gekozen VOLGORDE van een lijst.
+//
+// Waarom een eigen record en niet een 'volgorde'-getal op de categorie zelf: de
+// veertien ingebouwde hoofdcategorieën zijn géén records — ze staan in de code.
+// Een getal per record kan hun plaats dus nooit bepalen. Eén lijst met id's op
+// volgorde kan dat wel, en zet ingebouwde en eigen categorieën in dezelfde rij.
+//
+// Waarom niet in localStorage, zoals de budgetdrempel: dit is geen
+// weergavevoorkeur van één toestel maar een indeling die je zelf gemaakt hebt.
+// Ze hoort op je gsm hetzelfde te zijn als op je pc, dus ze gaat mee in het
+// logboek en dus in de back-up.
+//
+// 'id' is bewust een vrije string en geen enum: komt er ooit een tweede ordening
+// (rekeningen, spaardoelen), dan is daar geen schemawijziging voor nodig.
+//
+// Onbekende id's in 'ids' zijn geen fout. Verwijder je een eigen categorie, dan
+// blijft haar id hier staan; de rekenkern (utils/categorieVolgorde.ts) negeert wat
+// niet meer bestaat. Zo hoeft het verwijderen van een categorie deze lijst niet
+// aan te raken en kan ze ook niet half bijgewerkt achterblijven.
+export const OrdeningSchema = z.object({
+  id: z.string().min(1),
+  ids: z.array(z.string()),
+})
+export type Ordening = z.infer<typeof OrdeningSchema>
+
 // De soorten documenten die in een documentkluis passen. Deze waarden worden
 // opgeslagen en zijn dus taal-onafhankelijk; alleen de weergavenaam wordt vertaald.
 export const DOCUMENTSOORTEN = ['overeenkomst', 'attest', 'bon', 'vonnis', 'ander'] as const

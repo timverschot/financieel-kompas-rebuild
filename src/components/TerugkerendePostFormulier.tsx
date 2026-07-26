@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import type { Categorie, Frequentie, Rekening, TerugkerendePost } from '../data/schema'
 import { FREQUENTIES } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
+import { rekeningLabel } from '../utils/rekening'
 import { invoerNaarCenten, centenNaarInvoer, formatEuro } from '../utils/format'
 import { huidigeMaand } from '../utils/datum'
 import { INTERVAL_MAANDEN } from '../utils/vastelast'
@@ -245,7 +246,7 @@ export function TerugkerendePostFormulier({
         <select id={`${veldId}-vaste-rekening`} value={rekeningId} onChange={(e) => setRekeningId(e.target.value)}>
           {rekeningen.map((r) => (
             <option key={r.id} value={r.id}>
-              {r.naam}
+              {rekeningLabel(r)}
             </option>
           ))}
         </select>

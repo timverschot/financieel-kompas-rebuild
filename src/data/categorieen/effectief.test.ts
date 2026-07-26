@@ -31,23 +31,27 @@ describe('bouwEffectieveBoom met eigen categorieën', () => {
   const mid = { id: 'eig-mid', naam: 'Muziek', ouderId: 'eig-hoofd' }
   const item = { id: 'eig-item', naam: 'Snaren', categorieId: 'eig-mid' }
 
-  it('zet een eigen hoofdcategorie vooraan in de boom', () => {
+  // Ronde 30: eigen hoofdcategorieën stonden vooraan, waardoor een categorie die
+  // je pas aanmaakte meteen bovenaan sprong. Ze horen nu achter de ingebouwde —
+  // en de gebruiker zet ze daarna zelf waar hij wil (utils/categorieVolgorde.ts).
+  it('zet een eigen hoofdcategorie ACHTERAAN in de boom', () => {
     const boom = bouwEffectieveBoom([], [hoofd])
-    expect(boom[0].id).toBe('eig-hoofd')
-    expect(boom[0].eigen).toBe(true)
+    expect(boom[boom.length - 1].id).toBe('eig-hoofd')
+    expect(boom[boom.length - 1].eigen).toBe(true)
   })
 
   it('hangt een eigen middencategorie onder haar eigen hoofdcategorie', () => {
     const boom = bouwEffectieveBoom([], [hoofd, mid])
-    expect(boom[0].categorieen.map((c) => c.id)).toEqual(['eig-mid'])
-    expect(boom[0].categorieen[0].eigen).toBe(true)
+    const eigenHoofd = boom[boom.length - 1]
+    expect(eigenHoofd.categorieen.map((c) => c.id)).toEqual(['eig-mid'])
+    expect(eigenHoofd.categorieen[0].eigen).toBe(true)
   })
 
   it('hangt een subcategorie onder een eigen middencategorie', () => {
     // Dit kon vóór ronde 27 niet: zo'n item verdween stil uit elke telling omdat
     // de middenlaag alleen ingebouwde categorieën kende.
     const boom = bouwEffectieveBoom([item], [hoofd, mid])
-    expect(boom[0].categorieen[0].items.map((i) => i.naam)).toEqual(['Snaren'])
+    expect(boom[boom.length - 1].categorieen[0].items.map((i) => i.naam)).toEqual(['Snaren'])
   })
 
   it('kan een eigen middencategorie ook onder een INGEBOUWDE hoofdcategorie hangen', () => {

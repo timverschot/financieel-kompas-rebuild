@@ -105,6 +105,8 @@ describe('TransactieFormulier', () => {
     await user.click(screen.getByLabelText(/Kassaticket splitsen/))
 
     await user.type(screen.getAllByLabelText('Item zoeken')[0], 'diversen')
+    // Ronde 30: de hoofdcategorieën zitten achter één knop. Eerst openen.
+    await user.click(screen.getAllByRole('button', { name: 'Selecteer hoofdcategorie' })[0])
     await user.click(screen.getAllByRole('button', { name: /Huishouden en Verzorging/ })[0])
     await user.type(screen.getAllByLabelText('Deelbedrag')[0], '12')
 

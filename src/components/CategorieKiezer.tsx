@@ -4,6 +4,8 @@ import type { Categorie } from '../data/schema'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
 import { zoekItems, zoekMidCategorieen } from '../data/categorieen/zoek'
 import { groepVanCategorie, labelVanCategorie, type EigenCategorie } from '../data/categorieen/resolve'
+import { alleHoofdcategorieen, opVolgorde } from '../utils/categorieVolgorde'
+import { useHoofdvolgorde } from '../categorievolgorde'
 import { useT } from '../i18n'
 
 // Vanaf hoeveel letters we in de items/subcategorieën beginnen te zoeken.
@@ -45,37 +47,35 @@ function suggestieKnop(gemarkeerd: boolean): CSSProperties {
   }
 }
 
-// Hoeveel chips er standaard in beeld staan: de acht die je dagelijks nodig hebt.
-// De rest (sparen, kledij, belastingen, huisdieren, diensten) zit achter één knop.
-// Waarom niet alle veertien meteen: hun namen zijn lang ("Woning en vaste
-// lasten"), dus op een telefoon vullen ze een half scherm nog vóór je iets
-// getypt hebt. Waarom niet zijwaarts schuiven (wat het tot nu toe deed): dan zie
-// je er drie en verklapt niets dat er meer is.
-const CHIPS_INGEKLAPT = 8
-
-// Terwijl je typt houden we de rij extra kort: de voorstellenlijst verschijnt
-// eronder, en die hoort dicht bij het invoerveld te blijven in plaats van onder
-// een half scherm chips weg te zakken. Breed taggen blijft dus mogelijk tijdens
-// het typen, alleen met minder chips in beeld.
-const CHIPS_TIJDENS_TYPEN = 3
-
-// De rij met de hoofdcategorieën. Altijd zichtbaar (ook tijdens het typen), want
-// breed taggen — "dit was gewoon Huishouden" — moet even vlot gaan als een
-// precies item kiezen. Eén tik en de regel is getagd.
+// De hoofdcategorieën: één knop die het volledige rooster opent.
+//
+// Wat hiervoor stond: acht chips in beeld en de rest achter "Nog 6 …". Dat was al
+// beter dan de zijwaarts schuivende rij van daarvóór, maar het bleef een halve
+// oplossing — je zag een willekeurig lijkende selectie en moest zelf ontdekken dat
+// er meer was. Nu staat er één knop met je huidige keuze erop, en erachter komt
+// ALLES tevoorschijn: zichtbaar en aanklikbaar in één keer.
+//
+// Waarom klikken en niet hover, wat je zou verwachten van een uitklapper op een
+// pc: hover bestáát niet op een telefoon, dus dan zou de rij daar onbereikbaar
+// zijn. En ook met een muis heeft hover een nadeel — de rij klapt open zodra je er
+// toevallig overheen beweegt, en je kan hem niet bewust sluiten. Eén klik werkt op
+// beide toestellen identiek.
+//
+// De rij is daardoor in rust nog maar één knop hoog. Dat maakt meteen de aparte
+// 'compact'-stand overbodig: de voorstellenlijst blijft nu altijd vlak bij het
+// invoerveld, ook terwijl je typt.
 export function HoofdcategorieChips({
   actiefId,
   onKies,
   eigenCategorieen = [],
   voorkeurId,
-  compact = false,
 }: {
   actiefId?: string
   onKies: (id: string, naam: string) => void
   /**
    * Een hoofdcategorie die vooraan hoort te staan. Het transactieformulier zet
-   * hier "Inkomsten" wanneer je een inkomst boekt: die chip stond anders ergens
-   * in de staart van de rij, terwijl ze op dat moment net de enige is die je
-   * zoekt.
+   * hier "Inkomsten" wanneer je een inkomst boekt: die staat anders ergens in de
+   * staart, terwijl ze op dat moment net de enige is die je zoekt.
    */
   voorkeurId?: string
   /**
@@ -85,55 +85,66 @@ export function HoofdcategorieChips({
    * verschil tussen "een categorie van de app" en "een categorie van mij".
    */
   eigenCategorieen?: EigenCategorie[]
-  /** Houd de rij extra kort omdat er een voorstellenlijst onder verschijnt. */
-  compact?: boolean
 }) {
   const { t } = useT()
-  const [alles, setAlles] = useState(false)
+  // De volgorde die de gebruiker zelf koos op de Categorieën-pagina. Komt uit een
+  // context en niet als prop: deze kiezer zit vier lagen diep en op vier plaatsen.
+  const volgorde = useHoofdvolgorde()
+  const [open, setOpen] = useState(false)
 
-  const alleChips = [
-    // Eigen hoofdcategorieën vooraan, net als in de categorieënboom: het zijn er
-    // weinig, je hebt ze zelf gemaakt, en je zoekt ze dus ook het eerst.
-    // Alleen eigen HOOFDcategorieën: een eigen middencategorie (met ouderId) hoort
-    // onder haar ouder en niet als losse chip in deze rij.
-    ...eigenCategorieen.filter((c) => !c.ouderId).map((c) => ({ id: c.id, icoon: c.icoon ?? '🏷️', label: c.naam })),
-    ...INGEBOUWDE_CATEGORIEEN.map((h) => ({ id: h.id, icoon: h.icoon, label: t(h.naam) })),
-  ]
+  const alleChips = opVolgorde(
+    alleHoofdcategorieen(eigenCategorieen as Categorie[]).map((h) => ({
+      id: h.id,
+      icoon: h.icoon,
+      // Alleen ingebouwde namen lopen door t(): een eigen categorie draagt de naam
+      // die de gebruiker zelf intikte en die vertalen we nooit.
+      label: h.eigen ? h.naam : t(h.naam),
+    })),
+    volgorde,
+  )
   const voorkeur = voorkeurId ? alleChips.find((c) => c.id === voorkeurId) : undefined
   const chips = voorkeur ? [voorkeur, ...alleChips.filter((c) => c !== voorkeur)] : alleChips
 
-  // Ingeklapt tonen we de eerste acht (of drie terwijl je typt) — plus, als de
-  // gekozen categorie daar niet bij zit, die ene erbij. Anders zou je keuze
-  // onzichtbaar zijn zolang de rij dicht staat.
-  const kop = chips.slice(0, compact ? CHIPS_TIJDENS_TYPEN : CHIPS_INGEKLAPT)
   const actief = chips.find((c) => c.id === actiefId)
-  const zichtbaar = alles ? chips : actief && !kop.includes(actief) ? [...kop, actief] : kop
-  const verborgen = chips.length - zichtbaar.length
+  const knopTekst = actief
+    ? t('Hoofdcategorie: {naam}', { naam: actief.label })
+    : t('Selecteer hoofdcategorie')
 
   return (
-    <div role="group" aria-label={t('Hoofdcategorieën')} className="chiprooster">
-      {zichtbaar.map((c) => (
-        <button
-          key={c.id}
-          type="button"
-          className={'chip' + (actiefId === c.id ? ' chip-actief' : '')}
-          // Voorkom dat het invoerveld de focus verliest vóór de klik telt.
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => onKies(c.id, c.label)}
-        >
-          {c.icoon} {c.label}
-        </button>
-      ))}
-      {(verborgen > 0 || alles) && (
-        <button
-          type="button"
-          className="chip"
-          aria-expanded={alles}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => setAlles((v) => !v)}
-        >
-          {alles ? t('Minder tonen') : t('Nog {n} …', { n: verborgen })}
-        </button>
+    <div className="hoofdkiezer">
+      <button
+        type="button"
+        className={'chip' + (actief ? ' chip-actief' : '')}
+        aria-expanded={open}
+        // Voorkom dat het invoerveld de focus verliest vóór de klik telt.
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {actief ? `${actief.icoon} ` : ''}
+        {knopTekst}
+        <span aria-hidden> {open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div role="group" aria-label={t('Hoofdcategorieën')} className="chiprooster">
+          {chips.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={'chip' + (actiefId === c.id ? ' chip-actief' : '')}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onKies(c.id, c.label)
+                // Sluiten na de keuze: die staat nu op de knop, dus het rooster
+                // heeft zijn werk gedaan en de voorstellenlijst eronder mag weer
+                // dicht bij het invoerveld komen.
+                setOpen(false)
+              }}
+            >
+              {c.icoon} {c.label}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   )
@@ -387,7 +398,6 @@ export function CategorieKiezer({
         onKies={(id) => kies(id)}
         eigenCategorieen={gebruikerCategorieen}
         voorkeurId={voorkeurId}
-        compact={open && aantalRegels > 0}
       />
       {open && aantalRegels > 0 && nieuweNaam === null && (
         <ul role="listbox" style={{ ...suggestieLijst, top: '100%' }}>

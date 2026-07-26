@@ -1,3 +1,4 @@
+import { eigenOpNaam } from '../../utils/categorieVolgorde'
 import { INGEBOUWDE_CATEGORIEEN } from './ingebouwd'
 import type { Categorie, Subcategorie } from '../schema'
 
@@ -97,7 +98,7 @@ export function bouwEffectieveBoom(
     ],
   }))
 
-  const eigen: EffectieveHoofd[] = eigenHoofd.map((h) => ({
+  const eigen: EffectieveHoofd[] = eigenOpNaam(eigenHoofd).map((h) => ({
     id: h.id,
     naam: h.naam,
     icoon: h.icoon ?? '',
@@ -106,7 +107,13 @@ export function bouwEffectieveBoom(
     categorieen: (midPerOuder.get(h.id) ?? []).map(eigenTak),
   }))
 
-  // Eigen hoofdcategorieën vooraan: het zijn er weinig, je hebt ze zelf gemaakt,
-  // en je zoekt ze dus ook het eerst.
-  return [...eigen, ...ingebouwd]
+  // De ingebouwde eerst, de eigen erachter.
+  //
+  // Tot ronde 30 stonden de eigen hoofdcategorieën vooraan, met als redenering:
+  // het zijn er weinig en je hebt ze zelf gemaakt. In de praktijk sprong daardoor
+  // élke categorie die je pas aanmaakte meteen bovenaan de lijst, ook een die je
+  // zelden gebruikt. Dit is nu enkel nog de STANDAARDvolgorde: op de
+  // Categorieën-pagina zet je alles zelf op zijn plaats, en die keuze wordt
+  // bewaard (zie utils/categorieVolgorde.ts).
+  return [...ingebouwd, ...eigen]
 }

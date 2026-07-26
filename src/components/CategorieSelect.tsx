@@ -1,5 +1,7 @@
 import type { Categorie } from '../data/schema'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
+import { opVolgorde } from '../utils/categorieVolgorde'
+import { useHoofdvolgorde } from '../categorievolgorde'
 import { useT } from '../i18n'
 
 // Dé keuzelijst voor "welke categorie?" in een gewoon formulier.
@@ -35,11 +37,15 @@ export function CategorieSelect({
   ariaLabel?: string
 }) {
   const { t } = useT()
+  // Dezelfde volgorde als in de kiezer en op de Categorieën-pagina. De twee
+  // groepen blijven wél gescheiden: "van de app" en "van mij" zijn twee soorten,
+  // en die door elkaar zetten zou de lijst juist onoverzichtelijker maken.
+  const volgorde = useHoofdvolgorde()
   return (
     <select id={id} aria-label={ariaLabel} value={waarde} onChange={(e) => onKies(e.target.value)}>
       {metGeenKeuze && <option value="">{t('Geen categorie')}</option>}
       <optgroup label={t('Hoofdcategorieën')}>
-        {INGEBOUWDE_CATEGORIEEN.map((h) => (
+        {opVolgorde(INGEBOUWDE_CATEGORIEEN, volgorde).map((h) => (
           <option key={h.id} value={h.id}>
             {h.icoon} {t(h.naam)}
           </option>
@@ -48,7 +54,7 @@ export function CategorieSelect({
       {categorieen.length > 0 && (
         <optgroup label={t('Eigen categorieën')}>
           {/* Alleen eigen HOOFDcategorieën; de middenlaag hoort hier niet los. */}
-          {categorieen.filter((c) => !c.ouderId).map((c) => (
+          {opVolgorde(categorieen.filter((c) => !c.ouderId), volgorde).map((c) => (
             <option key={c.id} value={c.id}>
               {c.icoon ? `${c.icoon} ` : ''}
               {c.naam}

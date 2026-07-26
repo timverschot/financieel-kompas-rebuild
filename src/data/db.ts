@@ -11,6 +11,7 @@ import type {
   Kindrekening,
   Kindrekeningpost,
   Lening,
+  Ordening,
   Overboeking,
   Rekening,
   Spaardoel,
@@ -48,6 +49,7 @@ export class FinancieelKompasDB extends Dexie {
   garanties!: Table<Garantie, string>
   streepjescodes!: Table<Streepjescode, string>
   dossierdocumenten!: Table<DossierDocument, string>
+  ordeningen!: Table<Ordening, string>
 
   constructor() {
     super('financieel-kompas')
@@ -395,6 +397,35 @@ export class FinancieelKompasDB extends Dexie {
       garanties: 'id, aankoopdatum',
       streepjescodes: 'id',
       dossierdocumenten: 'id, dossierId',
+    })
+
+    // Versie 18 - de door de gebruiker gekozen volgorde van de hoofdcategorieën
+    // (zie OrdeningSchema). Alleen een nieuwe tabel: geen bestaande gegevens
+    // worden aangeraakt, dus er valt niets om te zetten. Ontbreekt er een
+    // ordening, dan geldt gewoon de standaardvolgorde.
+    this.version(18).stores({
+      rekeningen: 'id, naam',
+      transacties: 'id, rekeningId, datum, categorieId',
+      events: 'id, toestelId, volgnummer',
+      meta: 'sleutel',
+      categorieen: 'id, naam',
+      budgetten: 'id, categorieId',
+      dossiers: 'id, naam',
+      gedeeldeKosten: 'id, dossierId, verrekeningId',
+      verrekeningen: 'id, dossierId',
+      terugkerendePosten: 'id',
+      spaardoelen: 'id, naam',
+      subcategorieen: 'id, categorieId',
+      overboekingen: 'id, datum',
+      kinderen: 'id, naam',
+      kindrekeningen: 'id, dossierId',
+      kindrekeningposten: 'id, kindrekeningId',
+      leningen: 'id, richting',
+      aflossingen: 'id, leningId',
+      garanties: 'id, aankoopdatum',
+      streepjescodes: 'id',
+      dossierdocumenten: 'id, dossierId',
+      ordeningen: 'id',
     })
   }
 }

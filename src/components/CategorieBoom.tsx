@@ -3,6 +3,8 @@ import type { CSSProperties } from 'react'
 import { bouwEffectieveBoom } from '../data/categorieen/effectief'
 import type { Categorie, Subcategorie } from '../data/schema'
 import { Kaart } from '../ui/basis'
+import { opVolgorde } from '../utils/categorieVolgorde'
+import { useHoofdvolgorde } from '../categorievolgorde'
 import { useT } from '../i18n'
 
 // De uitklapregel van een tak is één kale knop over de volle breedte: zo blijft de
@@ -64,6 +66,7 @@ export function CategorieBoom({
   onVerwijderen,
   onCategorieToevoegen,
   onCategorieVerwijderen,
+  onVerplaats,
 }: {
   aanpassingen: Subcategorie[]
   /** De eigen categorieën: hoofdcategorieën (zonder ouder) én middencategorieën. */
@@ -75,9 +78,19 @@ export function CategorieBoom({
   onCategorieToevoegen?: (ouderId: string, naam: string) => void
   /** Verwijdert een eigen middencategorie, met alles wat eronder hangt. */
   onCategorieVerwijderen?: (id: string) => void
+  /**
+   * Zet een hoofdcategorie één plaats omhoog (-1) of omlaag (+1).
+   *
+   * Alleen HIER kan je de volgorde wijzigen — niet in de invoerpopup. Daar ben je
+   * aan het boeken, en dan wil je kiezen, niet inrichten. Zonder deze prop
+   * verschijnen de pijltjes gewoon niet.
+   */
+  onVerplaats?: (id: string, richting: -1 | 1) => void
 }) {
   const { t } = useT()
-  const boom = bouwEffectieveBoom(aanpassingen, eigenCategorieen)
+  // Dezelfde volgorde als overal elders; ze wordt hieronder ook ingesteld.
+  const volgorde = useHoofdvolgorde()
+  const boom = opVolgorde(bouwEffectieveBoom(aanpassingen, eigenCategorieen), volgorde)
   const [openHoofd, setOpenHoofd] = useState<Set<string>>(new Set())
   const [openCat, setOpenCat] = useState<Set<string>>(new Set())
   const [bewerkId, setBewerkId] = useState<string | null>(null)
@@ -117,17 +130,20 @@ export function CategorieBoom({
       bijschrift={t('Vouw open om te bekijken. Je kan op elk niveau iets toevoegen.')}
     >
       <ul className="lijst">
-        {boom.map((h) => {
+        {boom.map((h, hIndex) => {
           const hOpen = openHoofd.has(h.id)
           const aantalItems = h.categorieen.reduce((s, c) => s + c.items.length, 0)
           return (
             <li key={h.id} style={{ borderBottom: '1px solid var(--rij-lijn)', padding: '2px 0' }}>
+              {/* De open/dicht-knop en de twee pijltjes staan NAAST elkaar en niet
+                  in elkaar: een knop in een knop bestaat niet in HTML. */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <button
                 type="button"
                 className="knop knop-kaal"
                 aria-expanded={hOpen}
                 onClick={() => wissel(openHoofd, setOpenHoofd, h.id)}
-                style={{ ...takKnop, fontWeight: 600 }}
+                style={{ ...takKnop, fontWeight: 600, flex: 1, minWidth: 0 }}
               >
                 <span aria-hidden style={driehoek}>
                   {hOpen ? '▾' : '▸'}
@@ -146,6 +162,34 @@ export function CategorieBoom({
                   </span>
                 </span>
               </button>
+
+              {/* Volgorde wijzigen. Bewust twee knoppen en geen slepen: dit werkt
+                  identiek met een muis, met een vinger én met het toetsenbord, en
+                  het is volledig na te meten in de tests. De eerste kan niet
+                  omhoog, de laatste niet omlaag. */}
+              {onVerplaats && (
+                <span style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    className="knop knop-kaal"
+                    aria-label={t('Zet {naam} hoger', { naam: h.naam })}
+                    disabled={hIndex === 0}
+                    onClick={() => onVerplaats(h.id, -1)}
+                  >
+                    ▲
+                  </button>
+                  <button
+                    type="button"
+                    className="knop knop-kaal"
+                    aria-label={t('Zet {naam} lager', { naam: h.naam })}
+                    disabled={hIndex === boom.length - 1}
+                    onClick={() => onVerplaats(h.id, 1)}
+                  >
+                    ▼
+                  </button>
+                </span>
+              )}
+              </div>
 
               {hOpen && (
                 <ul className="lijst" style={subLijst}>
