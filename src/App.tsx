@@ -1136,6 +1136,11 @@ export function App() {
           <NieuwDossierKiezer
             onKies={(soort) => {
               if (soort === 'lening' || soort === 'garantie') setPagina('leningen')
+              // 'coouderschap' hoort op déze pagina. Vroeger gebeurde er dan
+              // NIETS: je tikte op een keuze en het scherm bleef onbewogen staan,
+              // zonder enige aanwijzing dat je goed zat. Nu gaat de aandacht naar
+              // het naamveld van het dossierformulier eronder.
+              else document.getElementById('dossiernaam')?.focus()
             }}
           />
 
@@ -1162,6 +1167,7 @@ export function App() {
             documenten={dossierdocumenten}
             onDocumentOpslaan={dossierDocumentOpslaan}
             onDocumentVerwijderen={dossierDocumentVerwijderen}
+            onNieuweSubcategorie={voegSubcategorieToe}
           />
         </ErrorBoundary>
         </>

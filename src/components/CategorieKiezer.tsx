@@ -3,7 +3,7 @@ import type { CSSProperties, KeyboardEvent } from 'react'
 import type { Categorie } from '../data/schema'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
 import { zoekItems } from '../data/categorieen/zoek'
-import { groepVanCategorie, labelVanCategorie } from '../data/categorieen/resolve'
+import { groepVanCategorie, labelVanCategorie, type EigenCategorie } from '../data/categorieen/resolve'
 import { useT } from '../i18n'
 
 // Vanaf hoeveel letters we in de items/subcategorieën beginnen te zoeken.
@@ -61,24 +61,36 @@ const chipRij: CSSProperties = {
 export function HoofdcategorieChips({
   actiefId,
   onKies,
+  eigenCategorieen = [],
 }: {
   actiefId?: string
   onKies: (id: string, naam: string) => void
+  /**
+   * De zelfgemaakte categorieën van de gebruiker. Die stonden hier niet, waardoor
+   * je een eigen categorie nergens met één tik kon kiezen — ook niet op een
+   * kassaticketregel. Ze horen in dezelfde rij: voor de gebruiker is er geen
+   * verschil tussen "een categorie van de app" en "een categorie van mij".
+   */
+  eigenCategorieen?: EigenCategorie[]
 }) {
   const { t } = useT()
+  const chips = [
+    ...INGEBOUWDE_CATEGORIEEN.map((h) => ({ id: h.id, icoon: h.icoon, label: t(h.naam) })),
+    ...eigenCategorieen.map((c) => ({ id: c.id, icoon: c.icoon ?? '🏷️', label: c.naam })),
+  ]
   return (
     <div role="group" aria-label={t('Hoofdcategorieën')} style={chipRij}>
-      {INGEBOUWDE_CATEGORIEEN.map((h) => (
+      {chips.map((c) => (
         <button
-          key={h.id}
+          key={c.id}
           type="button"
-          className={'chip' + (actiefId === h.id ? ' chip-actief' : '')}
+          className={'chip' + (actiefId === c.id ? ' chip-actief' : '')}
           style={{ flex: '0 0 auto', whiteSpace: 'nowrap' }}
           // Voorkom dat het invoerveld de focus verliest vóór de klik telt.
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => onKies(h.id, h.naam)}
+          onClick={() => onKies(c.id, c.label)}
         >
-          {h.icoon} {t(h.naam)}
+          {c.icoon} {c.label}
         </button>
       ))}
     </div>
@@ -306,7 +318,7 @@ export function CategorieKiezer({
         }}
         onKeyDown={opToets}
       />
-      <HoofdcategorieChips actiefId={hoofdInBeeld} onKies={(id) => kies(id)} />
+      <HoofdcategorieChips actiefId={hoofdInBeeld} onKies={(id) => kies(id)} eigenCategorieen={gebruikerCategorieen} />
       {open && aantalRegels > 0 && nieuweNaam === null && (
         <ul role="listbox" style={{ ...suggestieLijst, top: '100%' }}>
           {zichtbaar.map((s, i) => (

@@ -139,6 +139,15 @@ body {
   padding: 0;
 }
 
+html {
+  /* Safari op iOS mag de letters NIET zelf opblazen. Zonder deze regel past iOS
+     bij sommige pagina's "text autosizing" toe: de letters worden groter dan wat
+     de CSS zegt, en de hele opmaak schuift — terwijl er in een andere browser
+     niets aan de hand is. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   background: var(--bg);
   color: var(--text);
@@ -147,6 +156,21 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.2s ease, color 0.2s ease;
+  /* `viewport-fit=cover` in index.html laat de app tot in de afgeronde hoeken en
+     onder de Dynamic Island lopen. Dat is bedoeld — de tabbalk hoort tot de
+     onderrand door te lopen — maar dan moet de INHOUD zelf binnen het veilige
+     gebied blijven. Dat gebeurde alleen onderaan (OnderNavigatie + de
+     ongedaan-maken-balk); boven, links en rechts stond er niets. Op een grote
+     iPhone is de bovenmarge bijna 60 px, en in liggende stand zijn de zijkanten
+     elk zo'n 48 px: de inhoud liep daar onder de camera en onder de ronde hoeken
+     door. Op een toestel zonder uitsparingen zijn deze waarden 0, dus er
+     verandert daar niets.
+
+     De achtergrond van body vult ook het padding-gebied, dus er komen geen
+     lichte of donkere balken aan de randen. */
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 h1,

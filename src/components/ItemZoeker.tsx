@@ -4,6 +4,7 @@ import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
 import { zoekItems } from '../data/categorieen/zoek'
 import type { PlatItem } from '../data/categorieen/zoek'
 import { groepVanCategorie } from '../data/categorieen/resolve'
+import type { Categorie } from '../data/schema'
 import { HoofdcategorieChips, NieuweSubcategoriePaneel } from './CategorieKiezer'
 import { useT } from '../i18n'
 
@@ -83,6 +84,7 @@ export function ItemZoeker({
   categorieId,
   onKiesHoofdcategorie,
   onNieuweSubcategorie,
+  eigenCategorieen = [],
 }: {
   waarde: string
   onTekst: (tekst: string) => void
@@ -91,6 +93,12 @@ export function ItemZoeker({
   categorieId?: string
   onKiesHoofdcategorie?: (hoofdId: string, hoofdNaam: string) => void
   onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
+  /**
+   * De zelfgemaakte categorieën. Zonder deze lijst kon je een regel van een
+   * gesplitst kassaticket niet op een eigen categorie taggen — de chiprij bood er
+   * geen aan en de zoeker kende ze niet.
+   */
+  eigenCategorieen?: Categorie[]
 }) {
   const { t } = useT()
   const [open, setOpen] = useState(false)
@@ -111,7 +119,7 @@ export function ItemZoeker({
   const aantalRegels = resultaten.length + (toonToevoegen ? 1 : 0)
   const gemarkeerd = Math.min(hoog, Math.max(0, aantalRegels - 1))
   // Onder welke hoofdcategorie valt deze regel nu? Die chip lichten we op.
-  const hoofdInBeeld = categorieId ? groepVanCategorie(categorieId, []).sleutel : undefined
+  const hoofdInBeeld = categorieId ? groepVanCategorie(categorieId, eigenCategorieen).sleutel : undefined
 
   function kies(item: PlatItem) {
     onKiesItem(item)
@@ -173,7 +181,11 @@ export function ItemZoeker({
         onKeyDown={opToets}
       />
       {onKiesHoofdcategorie && (
-        <HoofdcategorieChips actiefId={hoofdInBeeld} onKies={(id, naam) => onKiesHoofdcategorie(id, naam)} />
+        <HoofdcategorieChips
+          actiefId={hoofdInBeeld}
+          onKies={(id, naam) => onKiesHoofdcategorie(id, naam)}
+          eigenCategorieen={eigenCategorieen}
+        />
       )}
       {aantalRegels > 0 && nieuweNaam === null && (
         <ul role="listbox" style={suggestieLijst}>

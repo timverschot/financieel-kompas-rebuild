@@ -36,6 +36,7 @@ export function GedeeldeKostFormulier({
   onOpslaan,
   onAnnuleer,
   bewerken,
+  onNieuweSubcategorie,
 }: {
   dossierId: string
   kinderen: Kind[]
@@ -43,6 +44,8 @@ export function GedeeldeKostFormulier({
   onOpslaan: (k: GedeeldeKost) => Promise<void> | void
   onAnnuleer?: () => void
   bewerken?: GedeeldeKost | null
+  /** Maakt ter plekke een nieuwe subcategorie aan en geeft het nieuwe id terug. */
+  onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
 }) {
   const { t } = useT()
   const [omschrijving, setOmschrijving] = useState(() => beginwaarden().omschrijving)
@@ -145,7 +148,12 @@ export function GedeeldeKostFormulier({
         </select>
       </div>
       <div className="veldgroep">
-        <CategorieKiezer waarde={categorieId || undefined} onKies={(id) => setCategorieId(id ?? '')} gebruikerCategorieen={categorieen} />
+        <CategorieKiezer
+          waarde={categorieId || undefined}
+          onKies={(id) => setCategorieId(id ?? '')}
+          gebruikerCategorieen={categorieen}
+          onNieuweSubcategorie={onNieuweSubcategorie}
+        />
       </div>
       {/* Aan wie hangt deze kost? Dezelfde kiezer als in het transactieformulier, zodat
           "voor wie is dit?" overal hetzelfde werkt. De kiezer verbergt zichzelf als er

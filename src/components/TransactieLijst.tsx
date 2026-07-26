@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Categorie, Rekening, Transactie } from '../data/schema'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
 import { labelVanCategorie } from '../data/categorieen/resolve'
@@ -8,6 +8,7 @@ import { formatEuro } from '../utils/format'
 import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { useT, type Vertaler } from '../i18n'
 import { vandaag } from '../utils/datum'
+import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 
 const STANDAARD_MAANDEN = 6
 
@@ -100,7 +101,7 @@ export function TransactieLijst({
   }, [filter.hoofdId])
 
   const gefilterd = useMemo(() => filterTransacties(transacties, filter), [transacties, filter])
-  const gesorteerd = useMemo(() => [...gefilterd].sort((a, b) => (a.datum < b.datum ? 1 : -1)), [gefilterd])
+  const gesorteerd = useMemo(() => gesorteerdNieuwsteEerst(gefilterd), [gefilterd])
 
   const actief = heeftActiefFilter(filter)
   const aantalFilters = aantalActieveFilters(filter)
@@ -108,6 +109,21 @@ export function TransactieLijst({
   const venster = !actief && !toonAlles
   const zichtbaar = venster ? gesorteerd.filter((tx) => tx.datum >= grens) : gesorteerd
   const verborgen = gesorteerd.length - zichtbaar.length
+
+  // Boek je iets met een datum ouder dan het venster, dan stond het er wél maar zag
+  // je het niet: het venster van zes maanden filterde het weg en de knop om het uit
+  // te klappen staat onderaan de lijst. Dat leest als "mijn invoer is niet bewaard".
+  // Daarom: zodra er een boeking BIJKOMT die buiten het venster valt, klapt het
+  // venster zelf open. Bij de eerste weergave gebeurt dat niet — dan is alles nieuw.
+  const geziene = useRef<Set<string> | null>(null)
+  useEffect(() => {
+    const nu = new Set(transacties.map((tx) => tx.id))
+    const vorige = geziene.current
+    geziene.current = nu
+    if (vorige === null) return // eerste weergave
+    const nieuweBuitenVenster = transacties.some((tx) => !vorige.has(tx.id) && tx.datum < grens)
+    if (nieuweBuitenVenster) setToonAlles(true)
+  }, [transacties, grens])
 
   function zet(deel: Partial<TxFilter>) {
     setFilter((f) => ({ ...f, ...deel }))
@@ -233,8 +249,10 @@ export function TransactieLijst({
                   onChange={(e) => zet({ hoofdId: e.target.value || undefined, catId: undefined })}
                 >
                   <option value="">{t('Alle categorieën')}</option>
+                  {/* Ook hier door t(): dezelfde hoofdcategorie mag niet in het
+                      ene formulier vertaald zijn en in het andere niet. */}
                   {INGEBOUWDE_CATEGORIEEN.map((h) => (
-                    <option key={h.id} value={h.id}>{h.naam}</option>
+                    <option key={h.id} value={h.id}>{h.icoon} {t(h.naam)}</option>
                   ))}
                   {categorieen.length > 0 && (
                     <optgroup label={t('Eigen categorieën')}>
@@ -278,6 +296,25 @@ export function TransactieLijst({
             ? t('{n} transactie(s) gevonden', { n: gesorteerd.length })
             : t('{n} transactie(s) getoond', { n: zichtbaar.length })}
         </p>
+
+        {/* Zeg het bovenaan, waar je het ziet: onderaan een lange lijst valt een
+            knop niet op, en dan lijkt het alsof er boekingen weg zijn. */}
+        {venster && verborgen > 0 && (
+          <p className="rij-meta" data-venstermelding style={{ margin: 0 }}>
+            {t('{n} oudere boeking(en) vallen buiten dit venster van {maanden} maanden.', {
+              n: verborgen,
+              maanden: STANDAARD_MAANDEN,
+            })}{' '}
+            <button
+              type="button"
+              className="knop knop-ghost knop-klein"
+              style={{ padding: 0, minHeight: 0 }}
+              onClick={() => setToonAlles(true)}
+            >
+              {t('Toon ze ook')}
+            </button>
+          </p>
+        )}
 
         {zichtbaar.length > 0 && (
           <>

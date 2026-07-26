@@ -13,6 +13,7 @@ import { labelVanCategorie } from '../data/categorieen/resolve'
 import { Bedrag, Kaart, Leeg, PaginaKop } from '../ui/basis'
 import { GezinsledenKiezer } from './GezinslidKiezer'
 import { useT } from '../i18n'
+import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 
 // Leest een percentageveld: leeg betekent 'niet ingesteld', een getal van 0 tot en
 // met 100 is geldig, al de rest is ongeldig (dan blijft de knop uit).
@@ -51,6 +52,7 @@ export function DossierSectie({
   documenten,
   onDocumentOpslaan,
   onDocumentVerwijderen,
+  onNieuweSubcategorie,
 }: {
   dossiers: Dossier[]
   kosten: GedeeldeKost[]
@@ -73,6 +75,13 @@ export function DossierSectie({
   documenten: DossierDocument[]
   onDocumentOpslaan: (d: DossierDocument) => Promise<void> | void
   onDocumentVerwijderen: (id: string) => Promise<void> | void
+  /**
+   * Maakt ter plekke een nieuwe subcategorie aan en geeft het nieuwe id terug.
+   * Ontbrak hier, waardoor je bij een gedeelde kost of een post op de gezamenlijke
+   * pot geen ontbrekend item kon toevoegen — terwijl dat in het transactieformulier
+   * wél kon. Dezelfde handeling hoorde overal hetzelfde te werken.
+   */
+  onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
 }) {
   const { t } = useT()
   const [geselecteerd, setGeselecteerd] = useState('')
@@ -176,7 +185,7 @@ export function DossierSectie({
   const selectieSaldo = dossier ? saldoVerrekeningDossier(dossier, selectie) : 0
 
   const afrekeningen = dossier
-    ? verrekeningen.filter((v) => v.dossierId === dossier.id).sort((a, b) => (a.datum < b.datum ? 1 : -1))
+    ? gesorteerdNieuwsteEerst(verrekeningen.filter((v) => v.dossierId === dossier.id))
     : []
 
   const kindrekening = dossier ? (kindrekeningen.find((k) => k.dossierId === dossier.id) ?? null) : null
@@ -351,6 +360,7 @@ export function DossierSectie({
               onOpslaan={kostOpslaan}
               onAnnuleer={() => setBewerkKost(null)}
               bewerken={bewerkKost}
+              onNieuweSubcategorie={onNieuweSubcategorie}
             />
           </Kaart>
 
@@ -451,6 +461,7 @@ export function DossierSectie({
             onVerwijderen={onKindrekeningVerwijderen}
             onPostOpslaan={onKindrekeningPostOpslaan}
             onPostVerwijderen={onKindrekeningPostVerwijderen}
+            onNieuweSubcategorie={onNieuweSubcategorie}
           />
 
           {/* De documentkluis: overeenkomst, attesten, bonnen en vonnis van dit

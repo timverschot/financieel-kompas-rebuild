@@ -6,6 +6,7 @@ import { useT, TALEN, type Taal } from '../i18n'
 import { useThema, THEMAKEUZES } from '../thema'
 import { useInstellingen } from '../instellingen'
 import { BUDGETDREMPELS } from '../utils/meldingen'
+import { InstallerenKaart } from './InstallerenKaart'
 
 // Keuzelijsten blijven smal: ze staan alleen, zonder zichtbaar label ernaast.
 const keuzelijst: CSSProperties = { maxWidth: 260, alignSelf: 'flex-start' }
@@ -109,6 +110,10 @@ export function InstellingenSectie({
   return (
     <div className="stapel">
       <PaginaKop titel={t('Instellingen')} />
+
+      {/* Op het beginscherm zetten. Staat vooraan, want zolang de app in een
+          browsertab leeft, voelt ze niet als een app. */}
+      <InstallerenKaart />
 
       {/* Weergave (licht/donker) */}
       <Kaart

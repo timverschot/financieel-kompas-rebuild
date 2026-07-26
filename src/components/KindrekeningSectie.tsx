@@ -9,6 +9,7 @@ import { Bedrag, Kaart } from '../ui/basis'
 import { useT } from '../i18n'
 import type { Vertaler } from '../i18n'
 import { vandaag } from '../utils/datum'
+import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 
 
 function getal(waarde: string): number {
@@ -36,6 +37,7 @@ export function KindrekeningSectie({
   onVerwijderen,
   onPostOpslaan,
   onPostVerwijderen,
+  onNieuweSubcategorie,
 }: {
   dossier: Dossier
   kindrekening: Kindrekening | null
@@ -46,6 +48,8 @@ export function KindrekeningSectie({
   onVerwijderen: (id: string) => Promise<void> | void
   onPostOpslaan: (p: Kindrekeningpost) => Promise<void> | void
   onPostVerwijderen: (id: string) => Promise<void> | void
+  /** Maakt ter plekke een nieuwe subcategorie aan en geeft het nieuwe id terug. */
+  onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
 }) {
   const { t } = useT()
   const [bewerkPost, setBewerkPost] = useState<Kindrekeningpost | null>(null)
@@ -113,7 +117,7 @@ export function KindrekeningSectie({
 
   const saldo = potSaldo(kindrekening, posten)
   const stand = standPerOuder(kindrekening, posten, vandaag())
-  const bewegingen = [...posten].sort((a, b) => (a.datum < b.datum ? 1 : -1))
+  const bewegingen = gesorteerdNieuwsteEerst(posten)
   const geindexeerdJij = geindexeerdeBijdrage(kindrekening, kindrekening.maandbijdrageJij)
   const geindexeerdPartner = geindexeerdeBijdrage(kindrekening, kindrekening.maandbijdragePartner)
   const heeftIndex = !!(kindrekening.aanvangsindex && kindrekening.huidigeIndex)
@@ -272,6 +276,7 @@ export function KindrekeningSectie({
         categorieen={categorieen}
         onOpslaan={postOpslaan}
         onAnnuleer={() => setBewerkPost(null)}
+        onNieuweSubcategorie={onNieuweSubcategorie}
         bewerken={bewerkPost}
       />
     </Kaart>

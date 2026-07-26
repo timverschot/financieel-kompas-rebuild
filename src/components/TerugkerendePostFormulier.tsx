@@ -4,6 +4,7 @@ import type { Categorie, Rekening, TerugkerendePost } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { useT } from '../i18n'
+import { CategorieSelect } from './CategorieSelect'
 
 // De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
 // en het leegmaken na het opslaan niet uit elkaar kunnen lopen. De gekozen rekening
@@ -123,14 +124,17 @@ export function TerugkerendePostFormulier({
           <label className="label-caps" htmlFor="vaste-categorie">
             {t('Vaste categorie')}
           </label>
-          <select id="vaste-categorie" value={categorieId} onChange={(e) => setCategorieId(e.target.value)}>
-            <option value="">{t('Geen categorie')}</option>
-            {categorieen.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.naam}
-              </option>
-            ))}
-          </select>
+          {/* Dezelfde bron als het budgetformulier: de ingebouwde hoofdcategorieën
+              én de eigen categorieën. Voorheen stonden hier alleen de eigen
+              categorieën, dus wie er nog geen gemaakt had, kon een vaste last aan
+              niets hangen — en die viel dan uit elke telling. */}
+          <CategorieSelect
+            id="vaste-categorie"
+            waarde={categorieId}
+            onKies={setCategorieId}
+            categorieen={categorieen}
+            metGeenKeuze
+          />
         </div>
       </div>
 

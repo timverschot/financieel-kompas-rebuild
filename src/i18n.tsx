@@ -964,6 +964,28 @@ const en: Record<string, string> = {
     'Your fixed costs are {last} per month. With {geld} in your savings and cash accounts you would last that long without income — food and fuel come on top of that.',
   'Vorige keer bij deze handelaar:': 'Last time at this merchant:',
   'Gebruik {naam}, zoals de vorige keer': 'Use {naam}, same as last time',
+  // Ronde 19 — installeren, venster en categorielijsten
+  'Op je beginscherm': 'On your home screen',
+  'Je gebruikt Kompal al als app. Zo werkt ze ook zonder internet.':
+    'You are already using Kompal as an app. That way it also works without internet.',
+  'Op je beginscherm zetten': 'Add to your home screen',
+  'Zet Kompal bij je andere apps: ze opent dan zonder browserbalken en werkt ook zonder internet.':
+    'Put Kompal next to your other apps: it then opens without browser bars and works without internet too.',
+  'Zet op beginscherm': 'Add to home screen',
+  'De app staat nu op je beginscherm.': 'The app is now on your home screen.',
+  'Niet toegevoegd. Je kan het later opnieuw proberen.': 'Not added. You can try again later.',
+  'Open deze pagina in Safari (niet in een andere browser).': 'Open this page in Safari (not in another browser).',
+  'Tik op de drie puntjes rechts van de adresbalk en kies "Deel".':
+    'Tap the three dots to the right of the address bar and choose “Share”.',
+  'Scroll in die lijst naar onder tot "Zet op beginscherm".': 'Scroll down that list until “Add to Home Screen”.',
+  'Zet de schakelaar "Open as Web App" AAN — anders krijg je enkel een bladwijzer.':
+    'Turn the “Open as Web App” switch ON — otherwise you only get a bookmark.',
+  'Tik op "Voeg toe".': 'Tap “Add”.',
+  'Je browser biedt hier nu niets aan. Op een telefoon lukt het meestal via het menu van je browser, met een keuze als "Toevoegen aan beginscherm" of "App installeren".':
+    'Your browser is not offering anything here right now. On a phone it usually works through your browser’s menu, with an option like “Add to home screen” or “Install app”.',
+  '{n} oudere boeking(en) vallen buiten dit venster van {maanden} maanden.':
+    '{n} older entry/entries fall outside this window of {maanden} months.',
+  'Toon ze ook': 'Show those too',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -1911,6 +1933,29 @@ const fr: Record<string, string> = {
     'Vos charges fixes sont de {last} par mois. Avec {geld} sur vos comptes d’épargne et en liquide, vous tiendriez ce temps-là sans revenu — la nourriture et le carburant viennent en plus.',
   'Vorige keer bij deze handelaar:': 'La dernière fois chez ce commerçant :',
   'Gebruik {naam}, zoals de vorige keer': 'Utiliser {naam}, comme la dernière fois',
+  // Ronde 19 — installeren, venster en categorielijsten
+  'Op je beginscherm': 'Sur votre écran d’accueil',
+  'Je gebruikt Kompal al als app. Zo werkt ze ook zonder internet.':
+    'Vous utilisez déjà Kompal comme application. Ainsi elle fonctionne aussi sans internet.',
+  'Op je beginscherm zetten': 'Ajouter à votre écran d’accueil',
+  'Zet Kompal bij je andere apps: ze opent dan zonder browserbalken en werkt ook zonder internet.':
+    'Placez Kompal à côté de vos autres applications : elle s’ouvre alors sans les barres du navigateur et fonctionne aussi sans internet.',
+  'Zet op beginscherm': 'Ajouter à l’écran d’accueil',
+  'De app staat nu op je beginscherm.': 'L’application est maintenant sur votre écran d’accueil.',
+  'Niet toegevoegd. Je kan het later opnieuw proberen.': 'Non ajoutée. Vous pouvez réessayer plus tard.',
+  'Open deze pagina in Safari (niet in een andere browser).': 'Ouvrez cette page dans Safari (pas dans un autre navigateur).',
+  'Tik op de drie puntjes rechts van de adresbalk en kies "Deel".':
+    'Touchez les trois points à droite de la barre d’adresse et choisissez « Partager ».',
+  'Scroll in die lijst naar onder tot "Zet op beginscherm".':
+    'Faites défiler cette liste jusqu’à « Sur l’écran d’accueil ».',
+  'Zet de schakelaar "Open as Web App" AAN — anders krijg je enkel een bladwijzer.':
+    'Activez le commutateur « Open as Web App » — sinon vous n’obtenez qu’un signet.',
+  'Tik op "Voeg toe".': 'Touchez « Ajouter ».',
+  'Je browser biedt hier nu niets aan. Op een telefoon lukt het meestal via het menu van je browser, met een keuze als "Toevoegen aan beginscherm" of "App installeren".':
+    'Votre navigateur ne propose rien ici pour le moment. Sur un téléphone, cela passe généralement par le menu du navigateur, avec une option comme « Ajouter à l’écran d’accueil » ou « Installer l’application ».',
+  '{n} oudere boeking(en) vallen buiten dit venster van {maanden} maanden.':
+    '{n} écriture(s) plus ancienne(s) se situent en dehors de cette fenêtre de {maanden} mois.',
+  'Toon ze ook': 'Les afficher aussi',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 

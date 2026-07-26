@@ -9,6 +9,7 @@ import { verkleinAfbeelding } from '../utils/afbeelding'
 import { STANDAARD_GARANTIE_MAANDEN } from '../utils/garantie'
 import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
+import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 
 // De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
 // en het leegmaken na het opslaan niet uit elkaar kunnen lopen.
@@ -91,7 +92,7 @@ export function GarantieFormulier({
   const geldig = product.trim().length > 0 && Number.isFinite(maandenGetal) && maandenGetal > 0
 
   // Transacties, nieuwste eerst, voor de optionele koppeling.
-  const gesorteerdeTx = [...transacties].sort((a, b) => (a.datum < b.datum ? 1 : -1))
+  const gesorteerdeTx = gesorteerdNieuwsteEerst(transacties)
 
   function kiesTransactie(id: string) {
     setTransactieId(id)

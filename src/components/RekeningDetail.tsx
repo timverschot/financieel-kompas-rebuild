@@ -9,6 +9,7 @@ import { huidigeMaand, vandaag } from '../utils/datum'
 import { formatEuro } from '../utils/format'
 import { Bedrag, Kaart, Leeg, Stat } from '../ui/basis'
 import { useT } from '../i18n'
+import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 
 // Hoeveel recente regels het detail toont vóór het afkapt met "+ nog n". Bewust
 // klein: dit scherm is een samenvatting, de volledige historiek staat in de
@@ -19,7 +20,7 @@ const MAX_OVERBOEKINGEN = 5
 // Nieuwste eerst. De datum is tekst in het formaat JJJJ-MM-DD, dus gewoon
 // omgekeerd alfabetisch sorteren geeft de juiste volgorde.
 function nieuwsteEerst<T extends { datum: string }>(rijen: T[]): T[] {
-  return [...rijen].sort((a, b) => (a.datum < b.datum ? 1 : -1))
+  return gesorteerdNieuwsteEerst(rijen)
 }
 
 /**

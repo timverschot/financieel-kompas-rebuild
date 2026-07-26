@@ -279,3 +279,57 @@ describe('TransactieLijst — de inklapbare filterbalk', () => {
     expect(aantalActieveFilters({ richting: 'uit', rekeningId: 'r1', hoofdId: 'ov-voeding', catId: 'cat-x', van: '2026-01-01', tot: '2026-02-01' })).toBe(6)
   })
 })
+
+// Het venster van zes maanden verborg oudere boekingen zonder dat te zeggen, en de
+// knop om het uit te klappen stond onderaan een lange lijst. Boek je iets van vorig
+// jaar, dan leek het alsof je invoer niet bewaard was.
+describe('TransactieLijst — het venster van zes maanden', () => {
+  const lang = '2020-03-04' // ruim buiten elk venster
+
+  it('meldt bovenaan hoeveel boekingen erbuiten vallen', () => {
+    toon([tx({ id: 'nieuw' }), tx({ id: 'oud', datum: lang })])
+    const melding = document.querySelector('[data-venstermelding]') as HTMLElement
+    expect(melding).not.toBeNull()
+    expect(melding.textContent).toContain('1 oudere boeking(en) vallen buiten dit venster van 6 maanden.')
+  })
+
+  it('zwijgt wanneer alles binnen het venster valt', () => {
+    toon([tx({ id: 'nieuw' })])
+    expect(document.querySelector('[data-venstermelding]')).toBeNull()
+  })
+
+  it('toont de oudere boekingen na een klik op "Toon ze ook"', async () => {
+    const user = userEvent.setup()
+    toon([tx({ id: 'nieuw', omschrijving: 'Vandaag' }), tx({ id: 'oud', datum: lang, omschrijving: 'Lang geleden' })])
+    expect(screen.queryByText('Lang geleden')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Toon ze ook' }))
+    expect(screen.getByText('Lang geleden')).toBeInTheDocument()
+  })
+
+  it('klapt het venster ZELF open zodra er een oudere boeking bijkomt', () => {
+    const eerste = [tx({ id: 'nieuw', omschrijving: 'Vandaag' })]
+    const { rerender } = render(
+      <TransactieLijst transacties={eerste} categorieen={[]} rekeningen={rekeningen} onBewerk={vi.fn()} onVerwijder={vi.fn()} />,
+    )
+    expect(screen.queryByText('Lang geleden')).not.toBeInTheDocument()
+
+    // Nu komt er een boeking bij met een datum buiten het venster.
+    rerender(
+      <TransactieLijst
+        transacties={[...eerste, tx({ id: 'oud', datum: lang, omschrijving: 'Lang geleden' })]}
+        categorieen={[]}
+        rekeningen={rekeningen}
+        onBewerk={vi.fn()}
+        onVerwijder={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('Lang geleden')).toBeInTheDocument()
+  })
+
+  it('klapt NIET open wanneer een oudere boeking er al bij de eerste weergave stond', () => {
+    // Anders zou het venster altijd meteen opengaan en had het geen zin.
+    toon([tx({ id: 'nieuw', omschrijving: 'Vandaag' }), tx({ id: 'oud', datum: lang, omschrijving: 'Lang geleden' })])
+    expect(screen.queryByText('Lang geleden')).not.toBeInTheDocument()
+  })
+})

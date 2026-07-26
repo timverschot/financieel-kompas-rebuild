@@ -315,6 +315,7 @@ export function TransactieFormulier({
                   onTekst={(tekst) => wijzigRegel(r.sleutel, { omschrijving: tekst, categorieId: '' })}
                   onKiesItem={(item) => wijzigRegel(r.sleutel, { categorieId: item.id, omschrijving: item.naam })}
                   categorieId={r.categorieId}
+                  eigenCategorieen={categorieen}
                   // Breed taggen: een regel "diversen" zet je zo op 'Huishouden'.
                   // Stond er nog geen omschrijving, dan nemen we de naam van de
                   // hoofdcategorie over.

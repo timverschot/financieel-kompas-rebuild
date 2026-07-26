@@ -34,6 +34,7 @@ export function KindrekeningpostFormulier({
   onOpslaan,
   onAnnuleer,
   bewerken,
+  onNieuweSubcategorie,
 }: {
   kindrekeningId: string
   kinderen: Kind[]
@@ -41,6 +42,8 @@ export function KindrekeningpostFormulier({
   onOpslaan: (p: Kindrekeningpost) => Promise<void> | void
   onAnnuleer?: () => void
   bewerken?: Kindrekeningpost | null
+  /** Maakt ter plekke een nieuwe subcategorie aan en geeft het nieuwe id terug. */
+  onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
 }) {
   const { t } = useT()
   const [soort, setSoort] = useState<'storting' | 'uitgave'>(() => beginwaarden().soort)
@@ -150,7 +153,12 @@ export function KindrekeningpostFormulier({
       {soort === 'uitgave' && (
         <>
           <div className="veldgroep">
-            <CategorieKiezer waarde={categorieId || undefined} onKies={(id) => setCategorieId(id ?? '')} gebruikerCategorieen={categorieen} />
+            <CategorieKiezer
+          waarde={categorieId || undefined}
+          onKies={(id) => setCategorieId(id ?? '')}
+          gebruikerCategorieen={categorieen}
+          onNieuweSubcategorie={onNieuweSubcategorie}
+        />
           </div>
           {/* Dezelfde gedeelde kiezer als in het transactieformulier en bij de gedeelde
               kosten. Hij verbergt zichzelf als er geen gezinsleden zijn, dus er blijft

@@ -2,12 +2,12 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Budget, Categorie } from '../data/schema'
 import { invoerNaarCenten } from '../utils/format'
-import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
+import { CategorieSelect, STANDAARD_CATEGORIE_ID } from './CategorieSelect'
 import { useT } from '../i18n'
 
 // De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
 // en het leegmaken na het opslaan niet uit elkaar kunnen lopen.
-const BEGIN = { categorieId: INGEBOUWDE_CATEGORIEEN[0]?.id ?? '', bedrag: '' }
+const BEGIN = { categorieId: STANDAARD_CATEGORIE_ID, bedrag: '' }
 
 // Formulier om een maandbudget voor een categorie in te stellen. De id is
 // afgeleid van de categorie, zodat opnieuw instellen hetzelfde budget bijwerkt.
@@ -48,24 +48,7 @@ export function BudgetFormulier({
           <label className="label-caps" htmlFor="budgetcategorie">
             {t('Budgetcategorie')}
           </label>
-          <select id="budgetcategorie" value={categorieId} onChange={(e) => setCategorieId(e.target.value)}>
-            <optgroup label={t('Hoofdcategorieën')}>
-              {INGEBOUWDE_CATEGORIEEN.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.naam}
-                </option>
-              ))}
-            </optgroup>
-            {categorieen.length > 0 && (
-              <optgroup label={t('Eigen categorieën')}>
-                {categorieen.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.naam}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-          </select>
+          <CategorieSelect id="budgetcategorie" waarde={categorieId} onKies={setCategorieId} categorieen={categorieen} />
         </div>
         <div className="veldgroep">
           <label className="label-caps" htmlFor="maandbudget">

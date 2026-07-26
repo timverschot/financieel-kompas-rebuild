@@ -1,6 +1,14 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
+
+// BEWUST alleen de ingebouwde middencategorieën (cat-*) als mogelijke ouder.
+// Een subcategorie onder een EIGEN categorie hangen kan de datalaag niet dragen:
+// `zoek.ts` vult `CONTEXT_PER_CAT` uitsluitend met ingebouwde cat-id's, en
+// `bouwEffectieveItems` slaat een toevoeging met een onbekende ouder over. Zo'n
+// item zou dus stil verdwijnen uit élke telling en analyse. Eigen categorieën zijn
+// vandaag een platte lijst zonder eigen tweede en derde laag; ze een echte boom
+// geven is een datamodelwijziging en hoort in een eigen ronde.
 import { useT } from '../i18n'
 
 // Snel een subcategorie toevoegen zonder eerst door de hele boom te klikken.

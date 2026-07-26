@@ -47,7 +47,11 @@ const balk: CSSProperties = {
   background: 'var(--surface)',
   borderTop: '1px solid var(--border)',
   zIndex: 900,
+  // De balk hoort tot de randen door te lopen, maar de knoppen erin niet: in
+  // liggende stand liggen de buitenste anders onder de afgeronde hoeken.
   paddingBottom: 'env(safe-area-inset-bottom)',
+  paddingLeft: 'env(safe-area-inset-left)',
+  paddingRight: 'env(safe-area-inset-right)',
 }
 const binnen: CSSProperties = { maxWidth: 480, margin: '0 auto', display: 'flex', alignItems: 'stretch' }
 // Tik-doel van een tab: ruim boven de 44 px die een duim nodig heeft.

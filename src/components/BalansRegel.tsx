@@ -29,7 +29,10 @@ export function BalansRegel({ inkomsten, uitgaven }: { inkomsten: number; uitgav
         : t('Inkomsten en uitgaven zijn deze maand exact gelijk: je houdt niets over, maar komt ook niets tekort.')
 
   return (
-    <div className="kaart kaart-compact" data-balans style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+    // LET OP: `.kaart` is in index.css een flex-KOLOM. Zonder `flexDirection: 'row'`
+    // blijft die kolomrichting staan, en dan centreert `alignItems: 'center'`
+    // horizontaal — de badge kwam bovenop de tekst te staan in plaats van ernaast.
+    <div className="kaart kaart-compact" data-balans style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
       <span className={badge}>{label}</span>
       <span className="rij-meta" style={{ flex: 1, minWidth: 200 }}>
         {uitleg}

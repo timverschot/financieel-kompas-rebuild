@@ -45,6 +45,12 @@ describe('BufferRegel', () => {
     expect(screen.getByText('1 maand buffer')).toBeInTheDocument()
   })
 
+  it('zet de badge naast de tekst, niet erboven', () => {
+    toon([spaar], [huur])
+    const regel = document.querySelector('[data-buffer]') as HTMLElement
+    expect(regel.style.flexDirection).toBe('row')
+  })
+
   it('zwijgt zonder spaar- of cashrekening', () => {
     toon([betaal], [huur])
     expect(document.querySelector('[data-buffer]')).toBeNull()

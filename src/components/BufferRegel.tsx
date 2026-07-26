@@ -35,7 +35,7 @@ export function BufferRegel({
     <div
       className="kaart kaart-compact"
       data-buffer
-      style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}
+      style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}
     >
       <span className={krap ? 'badge badge-laat' : 'badge badge-info'}>
         {/* Exact één maand krijgt het enkelvoud; "1 maanden buffer" zou fout staan. */}

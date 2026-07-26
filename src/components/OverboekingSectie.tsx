@@ -7,6 +7,7 @@ import { saldoVanRekening } from '../utils/saldo'
 import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 import { vandaag } from '../utils/datum'
+import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 
 
 // Overzicht + formulier voor interne overboekingen tussen je eigen rekeningen.
@@ -87,7 +88,7 @@ export function OverboekingSectie({
     }
   }
 
-  const gesorteerd = [...overboekingen].sort((a, b) => (a.datum < b.datum ? 1 : -1))
+  const gesorteerd = gesorteerdNieuwsteEerst(overboekingen)
 
   return (
     <Kaart titel={t('Overboekingen')} bijschrift={t('Geld verschuiven tussen je eigen rekeningen (geen inkomst of uitgave).')}>
