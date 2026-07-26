@@ -126,6 +126,7 @@ import { labelVanCategorie } from './data/categorieen/resolve'
 import { stelSubcategorieenIn } from './data/categorieen/zoek'
 import { uitgavenInMaand } from './utils/budget'
 import { bouwHandelaarIndex } from './utils/categorieVoorstel'
+import { bonVanTransactie } from './utils/kluis'
 import { formatEuro } from './utils/format'
 import { bouwMeldingen } from './utils/meldingen'
 import { useInstellingen } from './instellingen'
@@ -430,6 +431,36 @@ export function App() {
     await bewaarTransactie(t)
     await herlaad()
     setBewerkTransactie(null)
+  }
+
+  // De gedeelde kost die aan een transactie hangt. Het formulier geeft ze mee na
+  // het opslaan; `null` betekent "de koppeling is weggehaald". Welke kost dat dan
+  // was, weten we hier: het is de kost die naar de bewerkte transactie wijst.
+  async function transactieDossierKost(kost: GedeeldeKost | null) {
+    if (kost) {
+      await bewaarGedeeldeKost(kost)
+    } else {
+      const bestaand = bewerkTransactie
+        ? gedeeldeKosten.find((k) => k.transactieId === bewerkTransactie.id)
+        : undefined
+      if (!bestaand) return
+      await verwijderGedeeldeKost(bestaand.id)
+    }
+    await herlaad()
+  }
+
+  // Idem voor de bon of factuur bij een transactie. Die leeft als document in de
+  // kluis en niet als veld op de transactie zelf, zodat het logboek niet bij elke
+  // kleine wijziging opnieuw de hele foto moet wegschrijven.
+  async function transactieBon(document: DossierDocument | null) {
+    if (document) {
+      await bewaarDossierDocument(document)
+    } else {
+      const bestaand = bewerkTransactie ? bonVanTransactie(dossierdocumenten, bewerkTransactie.id) : null
+      if (!bestaand) return
+      await verwijderDossierDocument(bestaand.id)
+    }
+    await herlaad()
   }
 
   async function slaRekeningOp(r: Rekening) {
@@ -770,9 +801,23 @@ export function App() {
 
   async function verwijder(id: string) {
     const oud = transacties?.find((t) => t.id === id)
+    // Wat aan de transactie hing, gaat mee. Anders blijft een gedeelde kost als
+    // onzichtbaar weesrecord in het dossier meetellen in de afrekening, en blijft
+    // de bon als data-URL in de database én in elke back-up staan. Dezelfde regel
+    // als bij het verwijderen van een dossier.
+    const oudeKost = gedeeldeKosten.find((k) => k.transactieId === id)
+    const oudeBon = bonVanTransactie(dossierdocumenten, id)
     await verwijderTransactie(id)
+    if (oudeKost) await verwijderGedeeldeKost(oudeKost.id)
+    if (oudeBon) await verwijderDossierDocument(oudeBon.id)
     await herlaad()
-    if (oud) toonUndo(t('Transactie verwijderd'), () => bewaarTransactie(oud))
+    if (oud) {
+      toonUndo(t('Transactie verwijderd'), async () => {
+        await bewaarTransactie(oud)
+        if (oudeKost) await bewaarGedeeldeKost(oudeKost)
+        if (oudeBon) await bewaarDossierDocument(oudeBon)
+      })
+    }
   }
 
   async function verbindEnSynchroniseer() {
@@ -908,9 +953,12 @@ export function App() {
         gezinsleden={kinderen}
         overboekingen={overboekingen}
         transacties={transacties}
+        dossiers={dossiers}
         onTransactie={slaTransactieOp}
         onVastePost={voegTerugkerendToe}
         onOverboeking={voegOverboekingToe}
+        onDossierKost={transactieDossierKost}
+        onBon={transactieBon}
       />
 
       {/* Bewerken krijgt dezelfde popup-vorm als toevoegen. Anders zou je een
@@ -933,6 +981,11 @@ export function App() {
             onOnthoudStreepjescode={onthoudStreepjescode}
             onNieuweSubcategorie={voegSubcategorieToe}
             gezinsleden={kinderen}
+            dossiers={dossiers}
+            gekoppeldeKost={gedeeldeKosten.find((k) => k.transactieId === bewerkTransactie.id) ?? null}
+            onDossierKost={transactieDossierKost}
+            bon={bonVanTransactie(dossierdocumenten, bewerkTransactie.id)}
+            onBon={transactieBon}
           />
         )}
       </Dialoog>

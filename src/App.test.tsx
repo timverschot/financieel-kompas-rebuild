@@ -3,7 +3,15 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { App } from './App'
 import { db } from './data/db'
-import { bewaarBudget, bewaarCategorie, bewaarRekening, bewaarTransactie } from './data/repository'
+import {
+  bewaarBudget,
+  bewaarCategorie,
+  bewaarDossier,
+  bewaarDossierDocument,
+  bewaarGedeeldeKost,
+  bewaarRekening,
+  bewaarTransactie,
+} from './data/repository'
 import { vandaag } from './utils/datum'
 
 beforeEach(async () => {
@@ -20,6 +28,7 @@ beforeEach(async () => {
     db.subcategorieen.clear(),
     db.overboekingen.clear(),
     db.kinderen.clear(),
+    db.dossierdocumenten.clear(),
     db.events.clear(),
     db.meta.clear(),
   ])
@@ -169,6 +178,40 @@ describe('App', () => {
 
     await ga(user, 'Overzicht')
     await waitFor(() => expect(saldoRegel()).toHaveTextContent(/1[.\s]?450/))
+  })
+
+  // Ronde 22: aan een transactie kunnen nu een gedeelde kost en een bon hangen.
+  // Blijven die achter bij het verwijderen, dan telt die kost onzichtbaar mee in de
+  // afrekening van het dossier en blijft de foto in elke back-up staan.
+  it('verwijdert ook de gedeelde kost en de bon die aan een transactie hangen', async () => {
+    const user = userEvent.setup()
+    await bewaarDossier({ id: 'dos-1', naam: 'Kinderen', aandeelJij: 50 })
+    await bewaarGedeeldeKost({
+      id: 'k1',
+      dossierId: 'dos-1',
+      transactieId: 't3',
+      omschrijving: 'Boodschappen',
+      bedrag: 32000,
+      betaaldDoor: 'jij',
+      datum: '2026-07-05',
+    })
+    await bewaarDossierDocument({
+      id: 'doc-1',
+      transactieId: 't3',
+      naam: 'Kassaticket',
+      soort: 'bon',
+      bestand: 'data:application/pdf;base64,AA==',
+      toegevoegdOp: '2026-07-05',
+    })
+
+    render(<App />)
+    await screen.findByText('Saldo')
+    await ga(user, 'Transacties')
+    await screen.findByText('Boodschappen')
+    await user.click(screen.getByRole('button', { name: 'Verwijder Boodschappen' }))
+
+    await waitFor(async () => expect(await db.gedeeldeKosten.get('k1')).toBeUndefined())
+    expect(await db.dossierdocumenten.get('doc-1')).toBeUndefined()
   })
 
   it('bewerkt een bestaande transactie en past het saldo aan (Huur 950 -> 1000: saldo 1080)', async () => {

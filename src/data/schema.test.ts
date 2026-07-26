@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { BudgetSchema, OverboekingSchema, RekeningSchema, TransactieSchema } from './schema'
+import {
+  BudgetSchema,
+  DossierDocumentSchema,
+  GedeeldeKostSchema,
+  OverboekingSchema,
+  RekeningSchema,
+  TransactieSchema,
+} from './schema'
 
 const geldig = { id: 't1', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 2400, rekeningId: 'r1' }
 
@@ -104,5 +111,41 @@ describe('BudgetSchema', () => {
   it('weigert een budget met een negatief of nul bedrag', () => {
     expect(BudgetSchema.safeParse({ id: 'b1', categorieId: 'c1', bedrag: 0 }).success).toBe(false)
     expect(BudgetSchema.safeParse({ id: 'b1', categorieId: 'c1', bedrag: -5 }).success).toBe(false)
+  })
+})
+
+// Ronde 22: de twee nieuwe koppelingen zijn allebei OPTIONEEL, precies zodat
+// bestaande records geldig blijven en er geen migratie nodig is.
+describe('koppelingen aan een transactie (ronde 22)', () => {
+  const kost = {
+    id: 'k1',
+    dossierId: 'dos-1',
+    omschrijving: 'Dokter',
+    bedrag: 3000,
+    betaaldDoor: 'jij',
+    datum: '2026-07-01',
+  }
+
+  it('aanvaardt een gedeelde kost met én zonder transactieId', () => {
+    expect(GedeeldeKostSchema.safeParse(kost).success).toBe(true)
+    expect(GedeeldeKostSchema.safeParse({ ...kost, transactieId: 't1' }).success).toBe(true)
+  })
+
+  it('weigert een leeg transactieId op een gedeelde kost', () => {
+    expect(GedeeldeKostSchema.safeParse({ ...kost, transactieId: '' }).success).toBe(false)
+  })
+
+  const document = {
+    id: 'doc-1',
+    naam: 'Kassaticket',
+    soort: 'bon',
+    bestand: 'data:application/pdf;base64,AA==',
+    toegevoegdOp: '2026-07-01',
+  }
+
+  it('aanvaardt een document dat aan een transactie hangt', () => {
+    expect(DossierDocumentSchema.safeParse({ ...document, transactieId: 't1' }).success).toBe(true)
+    // En een document van vóór deze uitbreiding blijft gewoon geldig.
+    expect(DossierDocumentSchema.safeParse({ ...document, dossierId: 'dos-1' }).success).toBe(true)
   })
 })

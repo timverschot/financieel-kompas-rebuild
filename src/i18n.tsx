@@ -999,6 +999,20 @@ const en: Record<string, string> = {
     'A fixed cost comes back every month. You record it per month; it is not deducted automatically.',
   'Sparen is geld verschuiven tussen je eigen rekeningen. Het is geen uitgave en telt nergens in een budget mee.':
     'Saving moves money between your own accounts. It is not an expense and never counts towards a budget.',
+  // Ronde 22 — invoer completeren
+  'Meer opties': 'More options',
+  'Meer opties ({n} ingevuld)': 'More options ({n} filled in)',
+  'Minder opties': 'Fewer options',
+  'Delen in een dossier (optioneel)': 'Share in a case (optional)',
+  'Niet delen': 'Do not share',
+  'Je betaalde deze uitgave zelf. De verdeling volgt de afspraak van het dossier; op de Dossiers-pagina kan je ze voor deze kost nog aanpassen.':
+    'You paid this expense yourself. The split follows the case’s arrangement; on the Cases page you can still adjust it for this expense.',
+  'Deze uitgave zit al in een afrekening van een dossier en wordt hier niet meer gewijzigd.':
+    'This expense is already part of a case settlement and is no longer changed here.',
+  'Een inkomst kan geen gedeelde kost zijn. Bewaar je dit zo, dan verdwijnt de koppeling met het dossier.':
+    'Income cannot be a shared expense. If you save it like this, the link with the case disappears.',
+  'Bewaar de bon of factuur van deze transactie.': 'Keep the receipt or invoice for this transaction.',
+  'bv. Kassaticket Colruyt': 'e.g. Colruyt receipt',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -1982,6 +1996,20 @@ const fr: Record<string, string> = {
     "Une charge fixe revient chaque mois. Vous l'enregistrez mois par mois ; elle n'est pas prélevée automatiquement.",
   'Sparen is geld verschuiven tussen je eigen rekeningen. Het is geen uitgave en telt nergens in een budget mee.':
     "Épargner, c'est déplacer de l'argent entre vos propres comptes. Ce n'est pas une dépense et cela ne compte dans aucun budget.",
+  // Ronde 22 — invoer completeren
+  'Meer opties': "Plus d'options",
+  'Meer opties ({n} ingevuld)': "Plus d'options ({n} rempli(s))",
+  'Minder opties': "Moins d'options",
+  'Delen in een dossier (optioneel)': 'Partager dans un dossier (optionnel)',
+  'Niet delen': 'Ne pas partager',
+  'Je betaalde deze uitgave zelf. De verdeling volgt de afspraak van het dossier; op de Dossiers-pagina kan je ze voor deze kost nog aanpassen.':
+    "Vous avez payé cette dépense vous-même. La répartition suit l'accord du dossier ; sur la page Dossiers, vous pouvez encore l'ajuster pour ce frais.",
+  'Deze uitgave zit al in een afrekening van een dossier en wordt hier niet meer gewijzigd.':
+    "Cette dépense figure déjà dans un décompte de dossier et n'est plus modifiée ici.",
+  'Een inkomst kan geen gedeelde kost zijn. Bewaar je dit zo, dan verdwijnt de koppeling met het dossier.':
+    'Un revenu ne peut pas être un frais partagé. Si vous enregistrez ainsi, le lien avec le dossier disparaît.',
+  'Bewaar de bon of factuur van deze transactie.': 'Conservez le reçu ou la facture de cette transaction.',
+  'bv. Kassaticket Colruyt': 'p.ex. ticket de caisse Colruyt',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 

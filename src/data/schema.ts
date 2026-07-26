@@ -146,6 +146,15 @@ export const GedeeldeKostSchema = z.object({
   afgerekend: z.boolean().optional(),
   // Bon/factuur als (verkleinde) data-URL. Bewust optioneel en klein gehouden.
   bonnetje: z.string().optional(),
+  // Uit welke gewone transactie deze kost ontstaan is, wanneer je ze rechtstreeks
+  // in de invoerpopup aan een dossier hing. De link loopt bewust DEZE kant op:
+  // 'TransactieSchema' blijft ongemoeid, zodat een transactie niets van dossiers
+  // hoeft te weten. Optioneel, dus bestaande kosten blijven geldig — geen migratie.
+  //
+  // Waarom er überhaupt een link is: zonder dit veld zou een tweede bewaring van
+  // dezelfde transactie een tweede gedeelde kost maken, en zou je de koppeling
+  // nooit meer kunnen terugvinden of weghalen.
+  transactieId: z.string().min(1).optional(),
 })
 export type GedeeldeKost = z.infer<typeof GedeeldeKostSchema>
 
@@ -346,15 +355,22 @@ export type Documentsoort = (typeof DOCUMENTSOORTEN)[number]
 // bewaren, zie utils/afbeelding.ts), zodat alles lokaal blijft en gewoon mee in de
 // back-up gaat.
 //
-// Een document hangt aan PRECIES ÉÉN eigenaar: een dossier, een lening of een
-// garantie. Alle drie de velden zijn optioneel, zodat documenten van vóór deze
-// uitbreiding (die enkel 'dossierId' hebben) geldig blijven — geen migratie. Welke
-// eigenaar het is, lees je met eigenaarVanDocument() in utils/kluis.ts.
+// Een document hangt aan PRECIES ÉÉN eigenaar: een dossier, een lening, een
+// garantie of een transactie. Alle vier de velden zijn optioneel, zodat documenten
+// van vóór deze uitbreiding (die enkel 'dossierId' hebben) geldig blijven — geen
+// migratie. Welke eigenaar het is, lees je met eigenaarVanDocument() in utils/kluis.ts.
+//
+// 'transactieId' is de bon of factuur bij een gewone transactie. Die hangt bewust
+// hier en niet als 'bonnetje'-veld op de transactie zelf: het logboek is
+// append-only, dus elke wijziging aan een transactie zou anders de volledige
+// afbeelding opnieuw wegschrijven. Transacties zijn het talrijkst van alles in de
+// app; als eender welk record klein moet blijven, is het dit.
 export const DossierDocumentSchema = z.object({
   id: z.string().min(1),
   dossierId: z.string().min(1).optional(),
   leningId: z.string().min(1).optional(),
   garantieId: z.string().min(1).optional(),
+  transactieId: z.string().min(1).optional(),
   naam: z.string().min(1),
   soort: z.enum(DOCUMENTSOORTEN),
   bestand: z.string().min(1), // data-URL

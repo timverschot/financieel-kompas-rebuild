@@ -49,6 +49,12 @@ function kluisTekst(t: Vertaler, soort: KluisEigenaar['soort']): { bijschrift: s
         voorbeeld: t('bv. Factuur wasmachine'),
         begin: 'bon',
       }
+    case 'transactie':
+      return {
+        bijschrift: t('Bewaar de bon of factuur van deze transactie.'),
+        voorbeeld: t('bv. Kassaticket Colruyt'),
+        begin: 'bon',
+      }
     default:
       return {
         bijschrift: t('Bewaar de ouderschapsovereenkomst, attesten, bonnen en het vonnis van dit dossier op één plek.'),

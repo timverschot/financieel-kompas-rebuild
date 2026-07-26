@@ -42,6 +42,14 @@ describe('vertaaltabellen', () => {
     expect(vertaal('fr', 'Wat wil je boeken?')).toBe('Que voulez-vous enregistrer ?')
   })
 
+  it('vertaalt de nieuwe teksten van ronde 22', () => {
+    expect(vertaal('en', 'Meer opties')).toBe('More options')
+    expect(vertaal('fr', 'Minder opties')).toBe("Moins d'options")
+    expect(vertaal('en', 'Delen in een dossier (optioneel)')).toBe('Share in a case (optional)')
+    expect(vertaal('fr', 'Niet delen')).toBe('Ne pas partager')
+    expect(vertaal('en', 'Meer opties ({n} ingevuld)', { n: 2 })).toBe('More options (2 filled in)')
+  })
+
   it('vertaalt de nieuwe teksten van ronde 18', () => {
     expect(vertaal('en', 'Op schema')).toBe('On track')
     expect(vertaal('fr', 'Achter op schema')).toBe('En retard')

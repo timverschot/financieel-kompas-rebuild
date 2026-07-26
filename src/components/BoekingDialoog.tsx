@@ -1,5 +1,16 @@
 import { useState } from 'react'
-import type { Categorie, Kind, Overboeking, Rekening, Streepjescode, TerugkerendePost, Transactie } from '../data/schema'
+import type {
+  Categorie,
+  Dossier,
+  DossierDocument,
+  GedeeldeKost,
+  Kind,
+  Overboeking,
+  Rekening,
+  Streepjescode,
+  TerugkerendePost,
+  Transactie,
+} from '../data/schema'
 import { Dialoog } from '../ui/Dialoog'
 import { TransactieFormulier } from './TransactieFormulier'
 import { TerugkerendePostFormulier } from './TerugkerendePostFormulier'
@@ -55,9 +66,12 @@ export function BoekingDialoog({
   gezinsleden = [],
   overboekingen,
   transacties,
+  dossiers = [],
   onTransactie,
   onVastePost,
   onOverboeking,
+  onDossierKost,
+  onBon,
 }: {
   open: boolean
   onSluiten: () => void
@@ -72,9 +86,15 @@ export function BoekingDialoog({
   gezinsleden?: Kind[]
   overboekingen: Overboeking[]
   transacties: Transactie[]
+  /** De dossiers waarin een uitgave meteen gedeeld kan worden. */
+  dossiers?: Dossier[]
   onTransactie: (t: Transactie) => Promise<void> | void
   onVastePost: (p: TerugkerendePost) => Promise<void> | void
   onOverboeking: (o: Overboeking) => Promise<void> | void
+  /** De gedeelde kost die bij de zonet geboekte uitgave hoort (of null). */
+  onDossierKost?: (kost: GedeeldeKost | null) => Promise<void> | void
+  /** De bon/factuur die bij de zonet geboekte transactie hoort (of null). */
+  onBon?: (document: DossierDocument | null) => Promise<void> | void
 }) {
   const { t } = useT()
   const [soort, setSoort] = useState<Boekingsoort>(beginSoort)
@@ -129,6 +149,9 @@ export function BoekingDialoog({
           onOnthoudStreepjescode={onOnthoudStreepjescode}
           onNieuweSubcategorie={onNieuweSubcategorie}
           gezinsleden={gezinsleden}
+          dossiers={dossiers}
+          onDossierKost={onDossierKost}
+          onBon={onBon}
         />
       )}
 
