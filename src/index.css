@@ -744,6 +744,19 @@ a:hover {
   align-items: start;
 }
 
+/* Op één kolom (telefoon) hoort de LIJST bovenaan te staan en het formulier
+   eronder — je wil eerst zien wat je hebt, dan pas iets toevoegen. In de code
+   staat de formulierkolom eerst, omdat ze op desktop rechts hoort; 'order' zet
+   dat op een smal scherm recht. Vanaf 1024 px krijgen beide kolommen een vaste
+   plek in het raster (grid-column/grid-row), en telt 'order' niet meer mee. */
+.raster-lijst-formulier > .kolom-lijst {
+  order: 1;
+}
+
+.raster-lijst-formulier > .kolom-formulier {
+  order: 2;
+}
+
 .kolom-zij {
   display: flex;
   flex-direction: column;

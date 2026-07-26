@@ -3,7 +3,7 @@ import type { Categorie, Dossier, DossierDocument, GedeeldeKost, Kind, Kindreken
 import { DossierFormulier } from './DossierFormulier'
 import { GedeeldeKostFormulier } from './GedeeldeKostFormulier'
 import { KindrekeningSectie } from './KindrekeningSectie'
-import { DossierKluis } from './DossierKluis'
+import { Documentkluis } from './DossierKluis'
 import { CategorieKiezer } from './CategorieKiezer'
 import { saldoVerrekeningDossier } from '../utils/dossier'
 import { isOpenKost, kostenVoorAfrekening, type AfrekeningFilter } from '../utils/afrekening'
@@ -455,8 +455,8 @@ export function DossierSectie({
 
           {/* De documentkluis: overeenkomst, attesten, bonnen en vonnis van dit
               dossier op één plek, zodat je ze niet in je mailbox moet zoeken. */}
-          <DossierKluis
-            dossierId={dossier.id}
+          <Documentkluis
+            eigenaar={{ soort: 'dossier', id: dossier.id }}
             documenten={documenten}
             onOpslaan={onDocumentOpslaan}
             onVerwijderen={onDocumentVerwijderen}

@@ -1313,6 +1313,9 @@ export function App() {
               onVerwijderen={leningVerwijderen}
               onAflossingOpslaan={aflossingOpslaan}
               onAflossingVerwijderen={aflossingVerwijderen}
+              documenten={dossierdocumenten}
+              onDocumentOpslaan={dossierDocumentOpslaan}
+              onDocumentVerwijderen={dossierDocumentVerwijderen}
             />
           </ErrorBoundary>
 
@@ -1323,6 +1326,9 @@ export function App() {
               transacties={transacties}
               onOpslaan={garantieOpslaan}
               onVerwijderen={garantieVerwijderen}
+              documenten={dossierdocumenten}
+              onDocumentOpslaan={dossierDocumentOpslaan}
+              onDocumentVerwijderen={dossierDocumentVerwijderen}
             />
           </ErrorBoundary>
         </>

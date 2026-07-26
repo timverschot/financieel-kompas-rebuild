@@ -340,13 +340,21 @@ export type Streepjescode = z.infer<typeof StreepjescodeSchema>
 export const DOCUMENTSOORTEN = ['overeenkomst', 'attest', 'bon', 'vonnis', 'ander'] as const
 export type Documentsoort = (typeof DOCUMENTSOORTEN)[number]
 
-// Een document in de kluis van een dossier: de ouderschapsovereenkomst, een
-// schoolattest, een bonnetje of een vonnis. Het bestand zelf zit als data-URL in
-// 'bestand' (afbeeldingen worden verkleind vóór het bewaren, zie utils/afbeelding.ts),
-// zodat alles lokaal blijft en gewoon mee in de back-up gaat.
+// Een document in een kluis: de ouderschapsovereenkomst, een schoolattest, een
+// bonnetje, een vonnis, een leningovereenkomst of een garantiebewijs. Het bestand
+// zelf zit als data-URL in 'bestand' (afbeeldingen worden verkleind vóór het
+// bewaren, zie utils/afbeelding.ts), zodat alles lokaal blijft en gewoon mee in de
+// back-up gaat.
+//
+// Een document hangt aan PRECIES ÉÉN eigenaar: een dossier, een lening of een
+// garantie. Alle drie de velden zijn optioneel, zodat documenten van vóór deze
+// uitbreiding (die enkel 'dossierId' hebben) geldig blijven — geen migratie. Welke
+// eigenaar het is, lees je met eigenaarVanDocument() in utils/kluis.ts.
 export const DossierDocumentSchema = z.object({
   id: z.string().min(1),
-  dossierId: z.string().min(1),
+  dossierId: z.string().min(1).optional(),
+  leningId: z.string().min(1).optional(),
+  garantieId: z.string().min(1).optional(),
   naam: z.string().min(1),
   soort: z.enum(DOCUMENTSOORTEN),
   bestand: z.string().min(1), // data-URL

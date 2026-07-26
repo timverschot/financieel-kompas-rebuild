@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
+import { zetSchermbreedte, herstelSchermbreedte } from '../test/schermbreedte'
 import { SpaardoelSectie } from './SpaardoelSectie'
 import type { Spaardoel } from '../data/schema'
 
@@ -64,5 +65,37 @@ describe('SpaardoelSectie', () => {
     expect(onOpslaan).toHaveBeenCalledWith(
       expect.objectContaining({ naam: 'Reis', icoon: expect.any(String) }),
     )
+  })
+
+  it('opent een doel in het formulier wanneer je de regel aanklikt', async () => {
+    const user = userEvent.setup()
+    const doel: Spaardoel = { id: 'd1', naam: 'Buffer', doelbedrag: 300000, huidigBedrag: 150000 }
+    render(
+      <SpaardoelSectie spaardoelen={[doel]} rekeningen={rekeningen} transacties={[]} onOpslaan={vi.fn()} onVerwijderen={vi.fn()} />,
+    )
+
+    // Vooraf staat het formulier klaar voor een NIEUW doel.
+    expect(screen.getByRole('button', { name: 'Doel toevoegen' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Bewerk doel Buffer' }))
+
+    // Nu staat het doel in het formulier en verandert de knop mee.
+    expect(screen.getByLabelText('Doelnaam')).toHaveValue('Buffer')
+    expect(screen.getByRole('button', { name: 'Doel wijzigen' })).toBeInTheDocument()
+  })
+
+  it('zet lijst en formulier naast elkaar op desktop', () => {
+    zetSchermbreedte(1440)
+    try {
+      const { container } = render(
+        <SpaardoelSectie spaardoelen={[]} rekeningen={rekeningen} transacties={[]} onOpslaan={vi.fn()} onVerwijderen={vi.fn()} />,
+      )
+      const raster = container.querySelector('.raster-lijst-formulier')
+      expect(raster).not.toBeNull()
+      expect(raster?.querySelector('.kolom-formulier')).not.toBeNull()
+      expect(raster?.querySelector('.kolom-lijst')).not.toBeNull()
+    } finally {
+      herstelSchermbreedte()
+    }
   })
 })

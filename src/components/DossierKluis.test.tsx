@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
-import { DossierKluis } from './DossierKluis'
+import { Documentkluis } from './DossierKluis'
 import type { DossierDocument } from '../data/schema'
+import type { KluisEigenaar } from '../utils/kluis'
 
 function doc(over: Partial<DossierDocument> = {}): DossierDocument {
   return {
@@ -16,11 +17,11 @@ function doc(over: Partial<DossierDocument> = {}): DossierDocument {
   }
 }
 
-function toon(documenten: DossierDocument[] = [], dossierId = 'dos-1') {
+function toon(documenten: DossierDocument[] = [], eigenaar: KluisEigenaar = { soort: 'dossier', id: 'dos-1' }) {
   const onOpslaan = vi.fn()
   const onVerwijderen = vi.fn()
   render(
-    <DossierKluis dossierId={dossierId} documenten={documenten} onOpslaan={onOpslaan} onVerwijderen={onVerwijderen} />,
+    <Documentkluis eigenaar={eigenaar} documenten={documenten} onOpslaan={onOpslaan} onVerwijderen={onVerwijderen} />,
   )
   return { onOpslaan, onVerwijderen }
 }
@@ -31,7 +32,7 @@ function pdf(naam = 'vonnis.pdf') {
   return new File(['%PDF-1.4 test'], naam, { type: 'application/pdf' })
 }
 
-describe('DossierKluis', () => {
+describe('Documentkluis', () => {
   it('toont een lege staat wanneer er nog geen documenten zijn', () => {
     toon()
     expect(screen.getByText('Nog geen documenten. Voeg er hieronder een toe.')).toBeInTheDocument()
@@ -105,7 +106,7 @@ describe('DossierKluis', () => {
   it('behoudt de invoer wanneer het opslaan mislukt', async () => {
     const user = userEvent.setup()
     const onOpslaan = vi.fn().mockRejectedValue(new Error('schijf vol'))
-    render(<DossierKluis dossierId="dos-1" documenten={[]} onOpslaan={onOpslaan} onVerwijderen={vi.fn()} />)
+    render(<Documentkluis eigenaar={{ soort: 'dossier', id: 'dos-1' }} documenten={[]} onOpslaan={onOpslaan} onVerwijderen={vi.fn()} />)
 
     await user.type(screen.getByLabelText('Naam'), 'Schoolattest'
     )
@@ -147,5 +148,37 @@ describe('DossierKluis', () => {
     toon([doc({ id: 'l1', naam: 'Overeenkomst', bestandsnaam: 'overeenkomst.pdf' })])
     expect(screen.getByRole('link', { name: 'Openen' })).toHaveAttribute('href', 'data:application/pdf;base64,AAAA')
     expect(screen.getByRole('link', { name: 'Bewaren' })).toHaveAttribute('download', 'overeenkomst.pdf')
+  })
+
+  it('hangt een nieuw document aan de juiste eigenaar', async () => {
+    const user = userEvent.setup()
+    const { onOpslaan } = toon([], { soort: 'lening', id: 'len-1' })
+
+    await user.upload(screen.getByLabelText('Bestand (foto of PDF)'), pdf('overeenkomst.pdf'))
+    await user.click(await screen.findByRole('button', { name: 'Document toevoegen' }))
+
+    expect(onOpslaan).toHaveBeenCalledWith(expect.objectContaining({ leningId: 'len-1' }))
+    expect(onOpslaan.mock.calls[0][0]).not.toHaveProperty('dossierId')
+  })
+
+  it('toont bij een garantie de uitleg over factuur en garantiebewijs', () => {
+    toon([], { soort: 'garantie', id: 'gar-1' })
+    expect(
+      screen.getByText(
+        'Bewaar de factuur, het aankoopbewijs, het garantiebewijs en de handleiding van deze aankoop op één plek.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('toont enkel de documenten van deze lening, niet die van een dossier met dezelfde id', () => {
+    toon(
+      [
+        doc({ id: 'a', dossierId: 'x1', naam: 'Van het dossier' }),
+        doc({ id: 'b', dossierId: undefined, leningId: 'x1', naam: 'Van de lening' }),
+      ],
+      { soort: 'lening', id: 'x1' },
+    )
+    expect(screen.getByText('Van de lening')).toBeInTheDocument()
+    expect(screen.queryByText('Van het dossier')).not.toBeInTheDocument()
   })
 })

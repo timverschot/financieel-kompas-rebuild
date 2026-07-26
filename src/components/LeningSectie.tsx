@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import type { Aflossing, Kind, Lening } from '../data/schema'
+import type { Aflossing, DossierDocument, Kind, Lening } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { aflossingenVan, openstaandKapitaal, totaalAfgelost, totaalOpenstaand, voortgang, isAfbetaald, maandenTotEinde } from '../utils/lening'
 import { LeningFormulier } from './LeningFormulier'
 import { Kaart, Leeg, Bedrag, Balk, Stat } from '../ui/basis'
 import { useT } from '../i18n'
+import { Documentkluis } from './DossierKluis'
 import type { Vertaler } from '../i18n'
 import { vandaag } from '../utils/datum'
 
@@ -85,6 +86,9 @@ export function LeningSectie({
   onVerwijderen,
   onAflossingOpslaan,
   onAflossingVerwijderen,
+  documenten = [],
+  onDocumentOpslaan,
+  onDocumentVerwijderen,
 }: {
   // Optioneel: doorgegeven aan het formulier, om een lening aan een gezinslid te koppelen.
   gezinsleden?: Kind[]
@@ -94,6 +98,11 @@ export function LeningSectie({
   onVerwijderen: (id: string) => Promise<void> | void
   onAflossingOpslaan: (a: Aflossing) => Promise<void> | void
   onAflossingVerwijderen: (id: string) => Promise<void> | void
+  // Documentkluis per lening (overeenkomst, betalingsbewijzen). Optioneel: zonder
+  // de twee handlers verschijnt de kluis gewoon niet.
+  documenten?: DossierDocument[]
+  onDocumentOpslaan?: (d: DossierDocument) => Promise<void> | void
+  onDocumentVerwijderen?: (id: string) => Promise<void> | void
 }) {
   const { t } = useT()
   const [bewerk, setBewerk] = useState<Lening | null>(null)
@@ -232,6 +241,18 @@ export function LeningSectie({
                 )}
 
                 {!klaar && <AflossingToevoegen leningId={l.id} openstaand={open} onOpslaan={onAflossingOpslaan} />}
+
+                {/* De papieren bij deze lening: de overeenkomst en de bewijzen van
+                    betaling. Ingeklapt, zodat een lange lijst leesbaar blijft. */}
+                {onDocumentOpslaan && onDocumentVerwijderen && (
+                  <Documentkluis
+                    inklapbaar
+                    eigenaar={{ soort: 'lening', id: l.id }}
+                    documenten={documenten}
+                    onOpslaan={onDocumentOpslaan}
+                    onVerwijderen={onDocumentVerwijderen}
+                  />
+                )}
               </li>
             )
           })}

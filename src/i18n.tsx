@@ -846,6 +846,17 @@ const en: Record<string, string> = {
   'Opslaan is mislukt. Probeer het opnieuw; je invoer blijft staan.':
     'Saving failed. Please try again; your input is kept.',
   'Document verwijderd': 'Document deleted',
+  'Bewaar de leningovereenkomst en de betalingsbewijzen van deze lening op één plek.':
+    'Keep the loan agreement and the proofs of payment for this loan in one place.',
+  'Bewaar de factuur, het aankoopbewijs, het garantiebewijs en de handleiding van deze aankoop op één plek.':
+    'Keep the invoice, proof of purchase, warranty certificate and manual for this purchase in one place.',
+  'bv. Leningovereenkomst': 'e.g. Loan agreement',
+  'bv. Factuur wasmachine': 'e.g. Invoice washing machine',
+  'Documenten': 'Documents',
+  'Documenten ({n})': 'Documents ({n})',
+  'Documenten verbergen': 'Hide documents',
+  'Nieuw doel': 'New goal',
+  'Doel bewerken': 'Edit goal',
   'Zo verschijnt dit doel straks in de lijst.': 'This is how the goal will look in the list.',
 }
 const fr: Record<string, string> = {
@@ -1676,6 +1687,17 @@ const fr: Record<string, string> = {
   'Opslaan is mislukt. Probeer het opnieuw; je invoer blijft staan.':
     'Échec de l’enregistrement. Réessayez ; votre saisie est conservée.',
   'Document verwijderd': 'Document supprimé',
+  'Bewaar de leningovereenkomst en de betalingsbewijzen van deze lening op één plek.':
+    'Conservez le contrat de prêt et les preuves de paiement de ce prêt au même endroit.',
+  'Bewaar de factuur, het aankoopbewijs, het garantiebewijs en de handleiding van deze aankoop op één plek.':
+    'Conservez la facture, la preuve d’achat, le certificat de garantie et le mode d’emploi de cet achat au même endroit.',
+  'bv. Leningovereenkomst': 'p. ex. Contrat de prêt',
+  'bv. Factuur wasmachine': 'p. ex. Facture lave-linge',
+  'Documenten': 'Documents',
+  'Documenten ({n})': 'Documents ({n})',
+  'Documenten verbergen': 'Masquer les documents',
+  'Nieuw doel': 'Nouvel objectif',
+  'Doel bewerken': 'Modifier l’objectif',
   'Zo verschijnt dit doel straks in de lijst.': 'Voici comment cet objectif apparaîtra dans la liste.',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }

@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import type { Garantie, Kind, Transactie } from '../data/schema'
+import type { DossierDocument, Garantie, Kind, Transactie } from '../data/schema'
 import { formatEuro } from '../utils/format'
 import { garantieStatus, dagenTussen } from '../utils/garantie'
 import { GarantieFormulier } from './GarantieFormulier'
 import { Kaart, Leeg, Balk } from '../ui/basis'
 import { useT } from '../i18n'
+import { Documentkluis } from './DossierKluis'
 import type { Vertaler } from '../i18n'
 import { vandaag } from '../utils/datum'
 
@@ -26,6 +27,9 @@ export function GarantieSectie({
   transacties,
   onOpslaan,
   onVerwijderen,
+  documenten = [],
+  onDocumentOpslaan,
+  onDocumentVerwijderen,
 }: {
   // Optioneel: doorgegeven aan het formulier, om iets aan een gezinslid te koppelen.
   gezinsleden?: Kind[]
@@ -33,6 +37,11 @@ export function GarantieSectie({
   transacties: Transactie[]
   onOpslaan: (g: Garantie) => Promise<void> | void
   onVerwijderen: (id: string) => Promise<void> | void
+  // Documentkluis per aankoop (factuur, garantiebewijs, handleiding). Optioneel:
+  // zonder de twee handlers verschijnt de kluis gewoon niet.
+  documenten?: DossierDocument[]
+  onDocumentOpslaan?: (d: DossierDocument) => Promise<void> | void
+  onDocumentVerwijderen?: (id: string) => Promise<void> | void
 }) {
   const { t } = useT()
   const [bewerk, setBewerk] = useState<Garantie | null>(null)
@@ -117,6 +126,18 @@ export function GarantieSectie({
                       {t('bon/factuur')}
                     </a>
                   </div>
+                )}
+
+                {/* De papieren bij deze aankoop: factuur, garantiebewijs,
+                    handleiding. Ingeklapt, zodat de lijst leesbaar blijft. */}
+                {onDocumentOpslaan && onDocumentVerwijderen && (
+                  <Documentkluis
+                    inklapbaar
+                    eigenaar={{ soort: 'garantie', id: g.id }}
+                    documenten={documenten}
+                    onOpslaan={onDocumentOpslaan}
+                    onVerwijderen={onDocumentVerwijderen}
+                  />
                 )}
               </li>
             )
