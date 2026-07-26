@@ -2,17 +2,29 @@ import type { Dossier, GedeeldeKost } from '../data/schema'
 import { groepVanCategorie } from '../data/categorieen/resolve'
 
 // Bepaalt het effectieve percentage dat JIJ voor één kost draagt, volgens de
-// verdeel-hiërarchie: een eigen percentage op de kost wint, anders een percentage
-// dat per categorie is ingesteld op het dossier (waarbij een kost op een
-// subcategorie/item oprolt naar haar hoofdcategorie), en anders de dossier-standaard.
+// verdeel-hiërarchie, van sterk naar zwak:
+//   1. een eigen percentage op de kost zelf (aandeelJijOverride),
+//   2. een percentage per categorie (categorieAandelen; een kost op een
+//      subcategorie/item rolt op naar haar hoofdcategorie),
+//   3. een percentage per kostensoort (typeAandelen: gewoon/buitengewoon — in de
+//      Belgische praktijk spreken ouders voor buitengewone kosten vaak een andere
+//      sleutel af dan voor gewone),
+//   4. de dossier-standaard (aandeelJij).
+// Een kost zonder kostenType telt als 'gewoon': zo gedragen oude kosten van vóór
+// dat veld zich net als wat het formulier vandaag standaard invult.
 export function effectiefAandeel(dossier: Dossier, kost: GedeeldeKost): number {
   if (typeof kost.aandeelJijOverride === 'number') return kost.aandeelJijOverride
+
   const splits = dossier.categorieAandelen
   if (kost.categorieId && splits) {
     if (kost.categorieId in splits) return splits[kost.categorieId]
     const groep = groepVanCategorie(kost.categorieId, []).sleutel
     if (groep && groep in splits) return splits[groep]
   }
+
+  const perType = dossier.typeAandelen?.[kost.kostenType ?? 'gewoon']
+  if (typeof perType === 'number') return perType
+
   return dossier.aandeelJij
 }
 
@@ -43,7 +55,8 @@ export function saldoVerrekening(aandeelJij: number, kosten: GedeeldeKost[]): nu
 }
 
 // Verrekening voor een volledig dossier, waarbij elke kost zijn effectieve
-// percentage krijgt volgens de hiërarchie (kost-override -> categorie -> standaard).
+// percentage krijgt volgens de hiërarchie
+// (kost-override -> categorie -> kostensoort -> dossier-standaard).
 export function saldoVerrekeningDossier(dossier: Dossier, kosten: GedeeldeKost[]): number {
   return netto(kosten, (k) => effectiefAandeel(dossier, k))
 }

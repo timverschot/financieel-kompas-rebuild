@@ -610,7 +610,7 @@ export function App() {
   // Dit blokkeert niets: de kosten blijven open tot je de afrekening als
   // 'overgemaakt' markeert.
   async function genereerAfrekening(dossier: Dossier, filter: AfrekeningFilter) {
-    const gedekt = kostenVoorAfrekening(gedeeldeKosten, dossier.id, filter)
+    const gedekt = kostenVoorAfrekening(gedeeldeKosten, dossier.id, filter, verrekeningen)
     const bedrag = saldoVerrekeningDossier(dossier, gedekt)
     const datum = vandaag()
     await bewaarVerrekening({

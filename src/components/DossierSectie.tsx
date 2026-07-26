@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Categorie, Dossier, GedeeldeKost, Kind, Kindrekening, Kindrekeningpost, Verrekening } from '../data/schema'
 import { DossierFormulier } from './DossierFormulier'
 import { GedeeldeKostFormulier } from './GedeeldeKostFormulier'
@@ -12,10 +12,21 @@ import { labelVanCategorie } from '../data/categorieen/resolve'
 import { Bedrag, Kaart, Leeg, PaginaKop } from '../ui/basis'
 import { useT } from '../i18n'
 
+// Leest een percentageveld: leeg betekent 'niet ingesteld', een getal van 0 tot en
+// met 100 is geldig, al de rest is ongeldig (dan blijft de knop uit).
+function leesPercentage(waarde: string): number | 'leeg' | null {
+  const tekst = waarde.trim()
+  if (!tekst) return 'leeg'
+  const getal = Number.parseFloat(tekst.replace(',', '.'))
+  if (!Number.isFinite(getal) || getal < 0 || getal > 100) return null
+  return getal
+}
+
 // De volledige Dossiers-sectie: kies/maak/verwijder een dossier, stel de verdeling
-// per categorie in, beheer de open kosten, en genereer niet-blokkerende
-// afrekeningen over een gekozen periode + kinderen. Een afrekening blokkeert niets;
-// pas als je ze als 'overgemaakt' markeert, worden de kosten afgerekend.
+// per categorie en per kostensoort in, beheer de open kosten, en genereer
+// niet-blokkerende afrekeningen over een gekozen periode + kinderen. Een afrekening
+// blokkeert niets; pas als je ze als 'overgemaakt' markeert, worden de kosten
+// afgerekend.
 export function DossierSectie({
   dossiers,
   kosten,
@@ -63,20 +74,58 @@ export function DossierSectie({
   const [afrVan, setAfrVan] = useState('')
   const [afrTot, setAfrTot] = useState('')
   const [afrKindIds, setAfrKindIds] = useState<string[]>([])
+  // Standaard tellen kosten zonder kind mee: zo verdwijnt er nooit stil geld uit
+  // een afrekening zodra je op kinderen filtert.
+  const [zonderKindMee, setZonderKindMee] = useState(true)
+  const [typeGewoon, setTypeGewoon] = useState('')
+  const [typeBuitengewoon, setTypeBuitengewoon] = useState('')
   const [gekopieerd, setGekopieerd] = useState('')
 
   const dossier = dossiers.find((d) => d.id === geselecteerd) ?? (dossiers[0] ?? null)
   const dossierId = dossier?.id ?? ''
 
+  // Houd de twee velden voor de kostensoort-verdeling gelijk met het gekozen
+  // dossier (ook na een wissel van dossier of na het bewaren).
+  const bewaardGewoon = dossier?.typeAandelen?.gewoon
+  const bewaardBuitengewoon = dossier?.typeAandelen?.buitengewoon
+  useEffect(() => {
+    setTypeGewoon(typeof bewaardGewoon === 'number' ? String(bewaardGewoon) : '')
+    setTypeBuitengewoon(typeof bewaardBuitengewoon === 'number' ? String(bewaardBuitengewoon) : '')
+  }, [dossierId, bewaardGewoon, bewaardBuitengewoon])
+
   const kindNamen = (ids?: string[]) =>
     (ids ?? []).map((id) => kinderen.find((k) => k.id === id)?.naam).filter(Boolean).join(', ')
 
+  // De knop 'Toevoegen' blijft uit zolang dit niet klopt; daaronder staat één regel
+  // die zegt wat er nog ontbreekt.
+  const splitPctWaarde = leesPercentage(splitPct)
+  const splitGeldig = !!splitCat && typeof splitPctWaarde === 'number'
+
   async function voegSplitToe() {
-    const pct = Number.parseFloat(splitPct.replace(',', '.'))
-    if (!dossier || !splitCat || !Number.isFinite(pct) || pct < 0 || pct > 100) return
-    await onDossierOpslaan({ ...dossier, categorieAandelen: { ...(dossier.categorieAandelen ?? {}), [splitCat]: pct } })
+    if (!dossier || !splitGeldig || typeof splitPctWaarde !== 'number') return
+    await onDossierOpslaan({
+      ...dossier,
+      categorieAandelen: { ...(dossier.categorieAandelen ?? {}), [splitCat]: splitPctWaarde },
+    })
     setSplitCat('')
     setSplitPct('')
+  }
+
+  // Verdeling per kostensoort: leeg laten = die soort volgt gewoon de rest van de
+  // hiërarchie (categorie of dossier-standaard).
+  const gewoonWaarde = leesPercentage(typeGewoon)
+  const buitengewoonWaarde = leesPercentage(typeBuitengewoon)
+  const typeGeldig = gewoonWaarde !== null && buitengewoonWaarde !== null
+
+  async function bewaarTypeAandelen() {
+    if (!dossier || !typeGeldig) return
+    const nieuw: NonNullable<Dossier['typeAandelen']> = {}
+    if (typeof gewoonWaarde === 'number') nieuw.gewoon = gewoonWaarde
+    if (typeof buitengewoonWaarde === 'number') nieuw.buitengewoon = buitengewoonWaarde
+    const bijgewerkt: Dossier = { ...dossier }
+    if (Object.keys(nieuw).length > 0) bijgewerkt.typeAandelen = nieuw
+    else delete bijgewerkt.typeAandelen
+    await onDossierOpslaan(bijgewerkt)
   }
 
   async function verwijderSplit(catId: string) {
@@ -93,7 +142,7 @@ export function DossierSectie({
   async function kopieerSamenvatting(v: Verrekening) {
     if (!dossier) return
     try {
-      await navigator.clipboard.writeText(afrekeningSamenvatting(t, dossier, v, kosten, kinderen))
+      await navigator.clipboard.writeText(afrekeningSamenvatting(t, dossier, v, kosten, kinderen, categorieen))
       setGekopieerd(v.id)
       window.setTimeout(() => setGekopieerd(''), 2000)
     } catch {
@@ -103,7 +152,7 @@ export function DossierSectie({
 
   async function exportPdf(v: Verrekening) {
     if (!dossier) return
-    await exporteerAfrekeningPDF(t, dossier, v, kosten, kinderen)
+    await exporteerAfrekeningPDF(t, dossier, v, kosten, kinderen, categorieen)
   }
 
   const alleKosten = dossier ? kosten.filter((k) => k.dossierId === dossier.id) : []
@@ -113,9 +162,13 @@ export function DossierSectie({
   const filter: AfrekeningFilter = {
     ...(afrVan ? { periodeVan: afrVan } : {}),
     ...(afrTot ? { periodeTot: afrTot } : {}),
-    ...(afrKindIds.length > 0 ? { kindIds: afrKindIds } : {}),
+    ...(afrKindIds.length > 0 ? { kindIds: afrKindIds, zonderKindMeetellen: zonderKindMee } : {}),
   }
-  const selectie = dossier ? kostenVoorAfrekening(kosten, dossier.id, filter) : []
+  const selectie = dossier ? kostenVoorAfrekening(kosten, dossier.id, filter, verrekeningen) : []
+  // Dezelfde selectie zonder de blokkade van bestaande afrekeningen: het verschil
+  // is precies het aantal kosten dat al in een andere afrekening zit.
+  const zonderBlokkade = dossier ? kostenVoorAfrekening(kosten, dossier.id, filter, []) : []
+  const alElders = zonderBlokkade.length - selectie.length
   const selectieSaldo = dossier ? saldoVerrekeningDossier(dossier, selectie) : 0
 
   const afrekeningen = dossier
@@ -202,10 +255,45 @@ export function DossierSectie({
                 <CategorieKiezer waarde={splitCat || undefined} onKies={(id) => setSplitCat(id ?? '')} gebruikerCategorieen={categorieen} />
               </div>
               <input aria-label={t('Percentage jij')} style={{ width: 76 }} inputMode="decimal" placeholder="%" value={splitPct} onChange={(e) => setSplitPct(e.target.value)} />
-              <button type="button" className="knop knop-secundair" onClick={voegSplitToe}>
+              <button type="button" className="knop knop-secundair" onClick={voegSplitToe} disabled={!splitGeldig}>
                 {t('Toevoegen')}
               </button>
             </div>
+            {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt. */}
+            {!splitGeldig && (
+              <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+                {!splitCat
+                  ? t('Kies eerst een categorie en geef een percentage van 0 tot 100.')
+                  : t('Geef een percentage van 0 tot 100 om deze verdeling toe te voegen.')}
+              </p>
+            )}
+          </Kaart>
+
+          {/* Verdeling per kostensoort */}
+          <Kaart
+            titel={t('Verdeling per kostensoort')}
+            bijschrift={t('Voor buitengewone kosten (medisch, schools, ontwikkeling) spreken ouders vaak een andere sleutel af dan voor gewone kosten. Leeg laten = de standaard van het dossier ({p}%).', { p: dossier.aandeelJij })}
+          >
+            <div className="veldrij">
+              <label className="veldgroep">
+                <span className="label-caps">{t('Gewone kosten (% jij)')}</span>
+                <input inputMode="decimal" placeholder={t('leeg = {p}%', { p: dossier.aandeelJij })} value={typeGewoon} onChange={(e) => setTypeGewoon(e.target.value)} />
+              </label>
+              <label className="veldgroep">
+                <span className="label-caps">{t('Buitengewone kosten (% jij)')}</span>
+                <input inputMode="decimal" placeholder={t('leeg = {p}%', { p: dossier.aandeelJij })} value={typeBuitengewoon} onChange={(e) => setTypeBuitengewoon(e.target.value)} />
+              </label>
+            </div>
+            <div className="knoprij">
+              <button type="button" className="knop knop-secundair" onClick={bewaarTypeAandelen} disabled={!typeGeldig}>
+                {t('Bewaar verdeling per kostensoort')}
+              </button>
+            </div>
+            {!typeGeldig && (
+              <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+                {t('Geef een percentage van 0 tot 100, of laat het veld leeg.')}
+              </p>
+            )}
           </Kaart>
 
           {/* Open kosten */}
@@ -287,11 +375,28 @@ export function DossierSectie({
                     </label>
                   ))}
                 </div>
+                {/* Enkel zinvol zodra je écht op kinderen filtert: anders zitten alle
+                    kosten er sowieso in. */}
+                {afrKindIds.length > 0 && (
+                  <label style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 6, marginTop: 8 }}>
+                    <input type="checkbox" checked={zonderKindMee} onChange={(e) => setZonderKindMee(e.target.checked)} />
+                    <span className="rij-meta">
+                      {t('Kosten zonder kind ook meetellen')}
+                      <br />
+                      {t('Bv. een gezamenlijke schoolrekening zonder kind erbij. Vink je dit uit, dan blijven die kosten open staan.')}
+                    </span>
+                  </label>
+                )}
               </div>
             )}
             <p className="rij-meta" style={{ margin: 0 }}>
               {t('In deze selectie: {n} kost(en), {saldo}', { n: selectie.length, saldo: verrekenTekst(t, selectieSaldo) })}
             </p>
+            {alElders > 0 && (
+              <p className="rij-meta" style={{ margin: 0 }}>
+                {t('{n} kosten zitten al in een andere afrekening', { n: alElders })}
+              </p>
+            )}
             <div className="knoprij">
               <button type="button" className="knop knop-secundair" onClick={genereerNu} disabled={selectie.length === 0}>
                 {t('Genereer afrekening')}

@@ -92,6 +92,12 @@ export type Kind = z.infer<typeof KindSchema>
 /** Nieuwe naam voor hetzelfde ding; gebruik deze in nieuwe code. */
 export type Gezinslid = Kind
 
+// De twee kostensoorten uit de Belgische praktijk. 'gewoon' = de dagelijkse,
+// terugkerende kosten; 'buitengewoon' = uitzonderlijke, noodzakelijke of
+// onvoorzienbare uitgaven die het gewone budget overschrijden (KB 22 april 2019).
+export const KOSTENTYPES = ['gewoon', 'buitengewoon'] as const
+export type Kostentype = (typeof KOSTENTYPES)[number]
+
 // Een dossier voor gedeelde kosten (bv. tussen co-ouders). 'aandeelJij' is het
 // STANDAARD-percentage (0-100) van elke kost dat jij hoort te dragen. Dit kan per
 // categorie overschreven worden via 'categorieAandelen' (categorie-id -> jouw %),
@@ -102,6 +108,12 @@ export const DossierSchema = z.object({
   naam: z.string().min(1),
   aandeelJij: z.number().min(0).max(100),
   categorieAandelen: z.record(z.string(), z.number().min(0).max(100)).optional(),
+  // Verdeling per KOSTENSOORT (gewoon vs buitengewoon). In de Belgische praktijk
+  // wordt daar vaak een andere sleutel voor afgesproken: gewone kosten volgen de
+  // dossier-standaard, buitengewone kosten (medisch, schools, ontwikkeling — KB
+  // 22 april 2019) bijvoorbeeld strikt 50/50. Optioneel, dus bestaande dossiers
+  // blijven geldig en gedragen zich exact zoals voorheen.
+  typeAandelen: z.record(z.enum(KOSTENTYPES), z.number().min(0).max(100)).optional(),
 })
 export type Dossier = z.infer<typeof DossierSchema>
 
@@ -120,7 +132,7 @@ export const GedeeldeKostSchema = z.object({
   // en een eigen verdeel-percentage dat de dossier-/categorie-standaard overschrijft.
   kindIds: z.array(z.string()).optional(),
   categorieId: z.string().min(1).optional(),
-  kostenType: z.enum(['gewoon', 'buitengewoon']).optional(),
+  kostenType: z.enum(KOSTENTYPES).optional(),
   aandeelJijOverride: z.number().min(0).max(100).optional(),
   // Losse afgerekend-status: staat los van het genereren van een afrekening.
   // Een kost is pas 'afgerekend' als de bijhorende afrekening als overgemaakt is

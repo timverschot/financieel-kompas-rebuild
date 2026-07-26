@@ -63,6 +63,65 @@ describe('effectiefAandeel (verdeel-hiërarchie)', () => {
   })
 })
 
+describe('effectiefAandeel — verdeelsleutel per kostensoort (typeAandelen)', () => {
+  const dossier: Dossier = {
+    id: 'd1',
+    naam: 'Kinderen',
+    aandeelJij: 52,
+    typeAandelen: { buitengewoon: 50 },
+  }
+
+  it('gebruikt het percentage voor buitengewone kosten', () => {
+    expect(effectiefAandeel(dossier, kost({ kostenType: 'buitengewoon' }))).toBe(50)
+  })
+
+  it('valt voor gewone kosten terug op de dossier-standaard als er geen sleutel voor gewoon is', () => {
+    expect(effectiefAandeel(dossier, kost({ kostenType: 'gewoon' }))).toBe(52)
+  })
+
+  it('behandelt een kost zonder kostensoort als een gewone kost', () => {
+    const d: Dossier = { id: 'd1', naam: 'K', aandeelJij: 52, typeAandelen: { gewoon: 60, buitengewoon: 50 } }
+    expect(effectiefAandeel(d, kost({}))).toBe(60)
+  })
+
+  it('kan voor beide soorten een eigen sleutel hebben', () => {
+    const d: Dossier = { id: 'd1', naam: 'K', aandeelJij: 52, typeAandelen: { gewoon: 60, buitengewoon: 50 } }
+    expect(effectiefAandeel(d, kost({ kostenType: 'gewoon' }))).toBe(60)
+    expect(effectiefAandeel(d, kost({ kostenType: 'buitengewoon' }))).toBe(50)
+  })
+})
+
+describe('effectiefAandeel — volgorde van de volledige hiërarchie', () => {
+  // Alle vier de niveaus tegelijk ingesteld, zodat elke test toont wie wint.
+  const dossier: Dossier = {
+    id: 'd1',
+    naam: 'Kinderen',
+    aandeelJij: 52, // 4. dossier-standaard
+    categorieAandelen: { 'ov-gezondheid': 70 }, // 2. per categorie
+    typeAandelen: { gewoon: 60, buitengewoon: 50 }, // 3. per kostensoort
+  }
+
+  it('1. een eigen percentage op de kost wint van categorie, kostensoort en standaard', () => {
+    const k = kost({ categorieId: 'ov-gezondheid', kostenType: 'buitengewoon', aandeelJijOverride: 40 })
+    expect(effectiefAandeel(dossier, k)).toBe(40)
+  })
+
+  it('2. de categorie wint van de kostensoort en de standaard', () => {
+    const k = kost({ categorieId: 'ov-gezondheid', kostenType: 'buitengewoon' })
+    expect(effectiefAandeel(dossier, k)).toBe(70)
+  })
+
+  it('3. de kostensoort wint van de standaard wanneer de categorie niets zegt', () => {
+    const k = kost({ categorieId: 'ov-kleding', kostenType: 'buitengewoon' })
+    expect(effectiefAandeel(dossier, k)).toBe(50)
+  })
+
+  it('4. zonder categorie- en soortsleutel blijft de dossier-standaard over', () => {
+    const d: Dossier = { id: 'd1', naam: 'K', aandeelJij: 52 }
+    expect(effectiefAandeel(d, kost({ categorieId: 'ov-kleding', kostenType: 'buitengewoon' }))).toBe(52)
+  })
+})
+
 describe('saldoVerrekeningDossier', () => {
   it('rekent per kost met het juiste percentage (52/48 standaard, 70/30 voor kleding)', () => {
     const dossier: Dossier = { id: 'd1', naam: 'K', aandeelJij: 52, categorieAandelen: { 'ov-kleding': 70 } }
@@ -73,6 +132,17 @@ describe('saldoVerrekeningDossier', () => {
       kost({ id: 'b', bedrag: 100, betaaldDoor: 'jij', categorieId: 'ov-kleding' }),
     ])
     expect(netto).toBe(126)
+  })
+
+  it('gebruikt de sleutel per kostensoort in het saldo (buitengewoon strikt 50/50)', () => {
+    const dossier: Dossier = { id: 'd1', naam: 'K', aandeelJij: 60, typeAandelen: { buitengewoon: 50 } }
+    // Jij betaalt 200 gewoon (partner is jou 40% = 80 verschuldigd) en 100
+    // buitengewoon (partner is jou 50% = 50 verschuldigd) -> netto 130.
+    const netto = saldoVerrekeningDossier(dossier, [
+      kost({ id: 'a', bedrag: 200, betaaldDoor: 'jij', kostenType: 'gewoon' }),
+      kost({ id: 'b', bedrag: 100, betaaldDoor: 'jij', kostenType: 'buitengewoon' }),
+    ])
+    expect(netto).toBe(130)
   })
 
   it('valt zonder overrides terug op de dossier-standaard (gelijk aan saldoVerrekening)', () => {
