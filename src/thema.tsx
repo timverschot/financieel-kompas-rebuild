@@ -48,11 +48,23 @@ export function isDonkerActief(keuze: ThemaKeuze): boolean {
   return keuze === 'donker'
 }
 
+/**
+ * De kleur van de systeembalken rondom de geïnstalleerde app.
+ *
+ * Ronde 34: dit stond hardgecodeerd op donker in `index.html`, en werd nergens
+ * bijgewerkt. Wie de app op het lichte thema zette en haar op het beginscherm
+ * van zijn telefoon had staan, kreeg dus een bijna-zwarte band rond een crème
+ * app. Het is dezelfde waarde als `--surface` per thema.
+ */
+const BALKKLEUR: Record<ThemaKeuze, string> = { licht: '#FFFCF6', donker: '#171C23' }
+
 // Zet (of verwijder) data-theme op <html> zodat de juiste kleuren gelden.
 function pasThemaToe(keuze: ThemaKeuze) {
   const el = document.documentElement
   if (isDonkerActief(keuze)) el.setAttribute('data-theme', 'dark')
   else el.removeAttribute('data-theme')
+  const meta = document.querySelector('meta[name="theme-color"]')
+  if (meta) meta.setAttribute('content', BALKKLEUR[keuze])
 }
 
 type ThemaContextType = { keuze: ThemaKeuze; zetKeuze: (k: ThemaKeuze) => void }

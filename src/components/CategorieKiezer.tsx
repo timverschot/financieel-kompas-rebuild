@@ -22,6 +22,8 @@ const suggestieLijst: CSSProperties = {
   padding: 0,
   maxHeight: 240,
   overflowY: 'auto',
+  // Doorvegen aan het einde van de lijst mag de pagina eronder niet meeslepen.
+  overscrollBehavior: 'contain',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius)',
   background: 'var(--surface)',
@@ -126,12 +128,20 @@ export function HoofdcategorieChips({
       </button>
 
       {open && (
-        <div role="group" aria-label={t('Hoofdcategorieën')} className="chiprooster">
+        // Ronde 34: dit was een rij losse chips die afbrak waar ze toevallig
+        // uitkwam. Veertien tekstblokjes van heel verschillende breedte onder
+        // elkaar lezen als een hoop woorden, niet als een keuzelijst — precies
+        // wat er gemeld werd ("een onoverzichtelijk opgestelde groepering van
+        // woorden"). Nu is het een ROOSTER van even brede tegels: het icoon groot
+        // bovenaan, de naam eronder, alles even hoog. Twee kolommen op een
+        // telefoon, vier op een breed scherm (zie .categorierooster in index.css).
+        <div role="group" aria-label={t('Hoofdcategorieën')} className="categorierooster">
           {chips.map((c) => (
             <button
               key={c.id}
               type="button"
-              className={'chip' + (actiefId === c.id ? ' chip-actief' : '')}
+              className={'categorietegel' + (actiefId === c.id ? ' categorietegel-actief' : '')}
+              aria-pressed={actiefId === c.id}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 onKies(c.id, c.label)
@@ -141,7 +151,10 @@ export function HoofdcategorieChips({
                 setOpen(false)
               }}
             >
-              {c.icoon} {c.label}
+              <span className="categorietegel-teken" aria-hidden>
+                {c.icoon}
+              </span>
+              <span className="categorietegel-naam">{c.label}</span>
             </button>
           ))}
         </div>
@@ -378,6 +391,10 @@ export function CategorieKiezer({
       </p>
       <input
         aria-label={t('Zoek categorie of item')}
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        enterKeyHint="search"
         role="combobox"
         aria-expanded={open && aantalRegels > 0}
         aria-autocomplete="list"

@@ -466,8 +466,10 @@ describe('TransactieLijst — maandschakelaar', () => {
     const user = userEvent.setup()
     toon([tx({ id: '1' })])
     await user.click(screen.getByRole('button', { name: 'Vorige maand' }))
-    // De maand staat nu als filter; de knop 'Alle maanden' zet hem weer af.
-    await user.click(screen.getByRole('button', { name: 'Alle maanden' }))
+    // De maand staat nu als filter; de knop eronder zet hem weer af. Die knop
+    // draagt sinds ronde 34 een uitgeschreven naam, want "Alle maanden" alleen
+    // klinkt in een knoppenlijst als een filter dat je AANzet.
+    await user.click(screen.getByRole('button', { name: /wis het maandfilter/ }))
     expect(screen.getByText('Winkel')).toBeInTheDocument()
   })
 })

@@ -338,9 +338,13 @@ export function AnalyseSectie({
         )}
         {keuze === 'aangepast' && (
           <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <input type="date" aria-label={t('Periode van')} value={van} onChange={(e) => setVan(e.target.value)} style={{ fontSize: 'var(--tekst-s)', padding: '8px 10px' }} />
+            {/* Ronde 34: hier stond `fontSize: var(--tekst-s)` (13 px). Onder de
+                16 px zoomt Safari op iOS vanzelf in zodra je het veld aanraakt,
+                en die zoom blijft staan — zie de opmerking bij `input` in
+                index.css. Alleen de padding blijft compact. */}
+            <input type="date" aria-label={t('Periode van')} value={van} onChange={(e) => setVan(e.target.value)} style={{ padding: '8px 10px' }} />
             <span className="rij-meta">{t('t/m')}</span>
-            <input type="date" aria-label={t('Periode tot')} value={tot} onChange={(e) => setTot(e.target.value)} style={{ fontSize: 'var(--tekst-s)', padding: '8px 10px' }} />
+            <input type="date" aria-label={t('Periode tot')} value={tot} onChange={(e) => setTot(e.target.value)} style={{ padding: '8px 10px' }} />
           </span>
         )}
       </div>

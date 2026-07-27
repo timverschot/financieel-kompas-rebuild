@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 import type {
   Categorie,
@@ -248,6 +248,8 @@ export function TransactieFormulier({
   }, 0)
   const verschil = totaalCenten - verdeeld
 
+  // Waarom de opslaanknop uit staat, als tekst waar de knop naar kan verwijzen.
+  const redenId = useId()
   const geldig =
     omschrijving.trim().length > 0 && Number.isFinite(bedragCenten) && bedragCenten > 0 && rekeningId.length > 0
 
@@ -764,39 +766,63 @@ export function TransactieFormulier({
         </div>
       )}
 
-      <div className="knoprij">
-        <button type="submit" className="knop knop-primair" disabled={!geldig}>
-          {bewerken ? t('Wijzigen') : t('Toevoegen')}
-        </button>
-        {onOpgeslagen && !bewerken && (
+      {/* De knoppenbalk PLAKT onderaan (ronde 34, zie `.formulier-voet`).
+          Waarom: in de popup op een telefoon staat het toetsenbord open zodra je
+          in een veld tikt, en dan is er nog zo'n 380 px zichtbaar terwijl het
+          formulier er ruim 700 telt. De opslaanknop stond daardoor altijd buiten
+          beeld en je moest eerst terugscrollen om te bewaren. Nu blijft ze staan
+          waar je hem verwacht, met de reden waarom hij eventueel uit staat erbij.
+
+          Bewust `position: sticky` binnen het formulier en géén losse voet buiten
+          de <form>: een knop met `type="submit"` moet in zijn eigen formulier
+          staan, anders werkt Enter niet meer en moet er een `form`-koppeling
+          bijkomen die op oudere browsers stilletjes faalt. */}
+      <div className="formulier-voet">
+        <div className="knoprij">
+          {/* `aria-disabled` en niet `disabled`: een uitgeschakelde knop krijgt geen
+              focus, dus wie met een toetsenbord of schermlezer werkt kwam de
+              opslaanknop nooit tegen en hoorde ook nooit waaróm hij niet werkte.
+              Nu is hij bereikbaar, is de reden eraan gekoppeld, en weigert
+              `verzend` alsnog wanneer de invoer niet klopt. */}
           <button
             type="submit"
-            className="knop knop-ghost"
-            disabled={!geldig}
-            onClick={() => {
-              blijfOpen.current = true
-            }}
+            className="knop knop-primair"
+            aria-disabled={!geldig}
+            aria-describedby={!geldig ? redenId : undefined}
           >
-            {t('Opslaan + volgende')}
+            {bewerken ? t('Wijzigen') : t('Toevoegen')}
           </button>
-        )}
-        {bewerken && onAnnuleer && (
-          <button type="button" className="knop knop-secundair" onClick={onAnnuleer}>
-            {t('Annuleer')}
-          </button>
+          {onOpgeslagen && !bewerken && (
+            <button
+              type="submit"
+              className="knop knop-ghost"
+              aria-disabled={!geldig}
+              aria-describedby={!geldig ? redenId : undefined}
+              onClick={() => {
+                blijfOpen.current = true
+              }}
+            >
+              {t('Opslaan + volgende')}
+            </button>
+          )}
+          {bewerken && onAnnuleer && (
+            <button type="button" className="knop knop-secundair" onClick={onAnnuleer}>
+              {t('Annuleer')}
+            </button>
+          )}
+        </div>
+
+        {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt.
+            Zonder rekening kan een transactie nergens op geboekt worden, en dat is
+            bij een gloednieuwe app het allereerste wat je moet doen. */}
+        {!geldig && (
+          <p id={redenId} role="status" className="leeg" style={{ padding: '4px 0 0', textAlign: 'left', margin: 0 }}>
+            {rekeningen.length === 0
+              ? t('Maak eerst een rekening aan — een transactie moet ergens op geboekt worden.')
+              : t('Geef een handelaar en een bedrag om op te slaan.')}
+          </p>
         )}
       </div>
-
-      {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt.
-          Zonder rekening kan een transactie nergens op geboekt worden, en dat is
-          bij een gloednieuwe app het allereerste wat je moet doen. */}
-      {!geldig && (
-        <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
-          {rekeningen.length === 0
-            ? t('Maak eerst een rekening aan — een transactie moet ergens op geboekt worden.')
-            : t('Geef een handelaar en een bedrag om op te slaan.')}
-        </p>
-      )}
 
       {scanVoor && (
         <Suspense fallback={null}>

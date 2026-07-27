@@ -333,31 +333,37 @@ export function TransactieLijst({
 
             Kies je een maand, dan wordt dat gewoon een filter: zo blijven de
             kengetallen, de lijst en de chips altijd hetzelfde zeggen. */}
-        <div className="knoprij" style={{ alignItems: 'center' }}>
-          <button
-            type="button"
-            className="knop knop-icoon"
-            aria-label={t('Vorige maand')}
-            onClick={() => verschuifMaand(-1)}
-          >
-            ‹
-          </button>
-          <span style={{ minWidth: 140, textAlign: 'center', fontWeight: 600 }}>
-            {filter.maand ? maandJaarLabel(filter.maand) : t('Alle maanden')}
-          </span>
-          <button
-            type="button"
-            className="knop knop-icoon"
-            aria-label={t('Volgende maand')}
-            onClick={() => verschuifMaand(1)}
-          >
-            ›
-          </button>
-          {filter.maand && (
-            <button type="button" className="knop knop-ghost knop-klein" onClick={() => zet({ maand: undefined })}>
-              {t('Alle maanden')}
+        {/* Ronde 34: dit was één afbrekende knoppenrij, en op een telefoon viel de
+            zoekknop dan als losse regel rechtsonder — met een gat ernaast. Nu een
+            raster met twee vaste rollen: de maandschakelaar links, de zoekknop
+            rechts. Past het niet naast elkaar, dan komt de knop netjes over de
+            volle breedte eronder in plaats van scheef weg te zakken.
+            Zie `.filterbalk` in index.css. */}
+        <div className="filterbalk">
+          <div className="filterbalk-maand">
+            <button
+              type="button"
+              className="knop knop-icoon"
+              aria-label={t('Vorige maand')}
+              onClick={() => verschuifMaand(-1)}
+            >
+              ‹
             </button>
-          )}
+            {/* `aria-live`: druk je op ‹ of ›, dan blijft de focus op die knop
+                staan en verandert alleen deze tekst. Zonder deze regel hoort wie
+                met een schermlezer werkt nooit welke maand hij nu bekijkt. */}
+            <span className="filterbalk-label" aria-live="polite" aria-atomic="true">
+              {filter.maand ? maandJaarLabel(filter.maand) : t('Alle maanden')}
+            </span>
+            <button
+              type="button"
+              className="knop knop-icoon"
+              aria-label={t('Volgende maand')}
+              onClick={() => verschuifMaand(1)}
+            >
+              ›
+            </button>
+          </div>
 
           {/* Alles wat je kan zoeken en filteren zit achter ÉÉN knop (ronde 32).
               Voorheen stond de zoekbalk met drie keuzelijsten permanent open en zat
@@ -370,8 +376,7 @@ export function TransactieLijst({
               kijkt, en kan je elk filter met één tik weer weghalen. */}
           <button
             type="button"
-            className="knop knop-secundair knop-klein"
-            style={{ marginLeft: 'auto' }}
+            className="knop knop-secundair knop-klein filterbalk-knop"
             aria-expanded={filtersOpen}
             aria-controls="transactie-filters"
             onClick={() => setFiltersOpen((open) => !open)}
@@ -380,6 +385,23 @@ export function TransactieLijst({
             {aantalFilters > 0 ? t('Zoeken en filteren · {n}', { n: aantalFilters }) : t('Zoeken en filteren')}
           </button>
         </div>
+
+        {/* "Alle maanden" hoort bij de maandkeuze en niet bij de chips: het is geen
+            filter dat je wist, het is terug naar de volledige historiek. */}
+        {filter.maand && (
+          <div className="knoprij">
+            <button
+              type="button"
+              className="knop knop-ghost knop-klein"
+              // Zonder het label klinkt "Alle maanden" in een knoppenlijst als een
+              // filter dat je aanzet, terwijl het er juist een weghaalt.
+              aria-label={t('Toon alle maanden — wis het maandfilter')}
+              onClick={() => zet({ maand: undefined })}
+            >
+              {t('Alle maanden')}
+            </button>
+          </div>
+        )}
 
         {/* Wat er nu aanstaat. Elke chip haalt met één tik haar eigen filter weg. */}
         {(chips.length > 0 || actief) && (
@@ -410,7 +432,12 @@ export function TransactieLijst({
               <div className="veldgroep" style={{ flex: '2 1 200px' }}>
                 <span className="label-caps">{t('Zoeken')}</span>
                 <input
+                  type="search"
                   aria-label={t('Zoek in transacties')}
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  enterKeyHint="search"
                   placeholder={t('Zoek op omschrijving…')}
                   value={filter.zoek ?? ''}
                   onChange={(e) => zet({ zoek: e.target.value })}

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { Dialoog } from './Dialoog'
@@ -124,5 +124,100 @@ describe('Dialoog', () => {
     expect(document.body.style.overflow).toBe('hidden')
     unmount()
     expect(document.body.style.overflow).not.toBe('hidden')
+  })
+
+  // --- Ronde 34: het toetsenbord op een telefoon ---
+  it('krimpt mee met wat er nog zichtbaar is zodra het toetsenbord opengaat', async () => {
+    // Het toetsenbord nabootsen: `visualViewport` is het enige dat op iOS wéét
+    // hoeveel er nog te zien is. `100dvh` doet dat NIET — daar schuift het
+    // toetsenbord gewoon overheen, en dan staat de opslaanknop erachter.
+    const luisteraars: Record<string, (() => void)[]> = {}
+    const nep = {
+      height: 800,
+      offsetTop: 0,
+      addEventListener: (naam: string, fn: () => void) => {
+        luisteraars[naam] = [...(luisteraars[naam] ?? []), fn]
+      },
+      removeEventListener: () => {},
+    }
+    Object.defineProperty(window, 'visualViewport', { value: nep, configurable: true })
+
+    try {
+      render(
+        <Dialoog titel="Nieuwe boeking" open onSluiten={vi.fn()}>
+          <input aria-label="Bedrag" />
+        </Dialoog>,
+      )
+      const laag = document.querySelector('.dialoog-laag') as HTMLElement
+      expect(laag.style.height).toBe('800px')
+
+      // Toetsenbord op: nog 400 px zichtbaar.
+      nep.height = 400
+      await act(async () => {
+        luisteraars.resize?.forEach((fn) => fn())
+      })
+      expect(laag.style.height).toBe('400px')
+
+      // En op iOS schuift het zichtbare venster daarbij óók omhoog. Dat stuk moet
+      // meegeteld worden, anders zit de onderkant van de popup naast de plek waar
+      // ze hoort.
+      nep.offsetTop = 60
+      await act(async () => {
+        luisteraars.scroll?.forEach((fn) => fn())
+      })
+      expect(laag.style.height).toBe('460px')
+    } finally {
+      Reflect.deleteProperty(window, 'visualViewport')
+    }
+  })
+
+  it('vergeet de hoogte van de vorige keer bij het sluiten', async () => {
+    const luisteraars: Record<string, (() => void)[]> = {}
+    const nep = {
+      height: 400,
+      offsetTop: 0,
+      addEventListener: (naam: string, fn: () => void) => {
+        luisteraars[naam] = [...(luisteraars[naam] ?? []), fn]
+      },
+      removeEventListener: () => {},
+    }
+    Object.defineProperty(window, 'visualViewport', { value: nep, configurable: true })
+    try {
+      const { rerender } = render(
+        <Dialoog titel="Nieuwe boeking" open onSluiten={vi.fn()}>
+          <input aria-label="Bedrag" />
+        </Dialoog>,
+      )
+      expect((document.querySelector('.dialoog-laag') as HTMLElement).style.height).toBe('400px')
+
+      // Sluiten. Zonder het terugzetten op nul opent de popup de volgende keer
+      // één beeldje lang op de hoogte van tóén — met het toetsenbord erin.
+      rerender(
+        <Dialoog titel="Nieuwe boeking" open={false} onSluiten={vi.fn()}>
+          <input aria-label="Bedrag" />
+        </Dialoog>,
+      )
+      nep.height = 900
+      rerender(
+        <Dialoog titel="Nieuwe boeking" open onSluiten={vi.fn()}>
+          <input aria-label="Bedrag" />
+        </Dialoog>,
+      )
+      expect((document.querySelector('.dialoog-laag') as HTMLElement).style.height).toBe('900px')
+    } finally {
+      Reflect.deleteProperty(window, 'visualViewport')
+    }
+  })
+
+  it('laat de popup met rust wanneer de browser niet kan zeggen wat zichtbaar is', () => {
+    // Oudere browsers en de testomgeving kennen `visualViewport` niet. Dan mag er
+    // niets veranderen: geen inline hoogte, gewoon het gedrag van voorheen.
+    render(
+      <Dialoog titel="Nieuwe boeking" open onSluiten={vi.fn()}>
+        <input aria-label="Bedrag" />
+      </Dialoog>,
+    )
+    const laag = document.querySelector('.dialoog-laag') as HTMLElement
+    expect(laag.style.height).toBe('')
   })
 })

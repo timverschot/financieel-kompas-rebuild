@@ -99,6 +99,13 @@ export function HandelaarVeld({
         id={id}
         style={{ display: 'block', width: '100%' }}
         autoComplete="off"
+        // Merknamen mogen NIET door de autocorrectie van iOS: die maakt van "Q8"
+        // iets anders en van "Lidl" "Lid". Dezelfde reden waarom we ze nergens
+        // vertalen. Wel hoofdletters aan het woordbegin — het is een naam.
+        autoCorrect="off"
+        autoCapitalize="words"
+        spellCheck={false}
+        enterKeyHint="next"
         value={waarde}
         onChange={(e) => {
           onWijzig(e.target.value)

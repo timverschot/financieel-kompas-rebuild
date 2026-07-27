@@ -116,7 +116,11 @@
   --tekst-xs: 12px; /* was 11 — label-caps */
   --tekst-s: 13px; /* was 12 — metaregels, bijschriften, chips, badges */
   --tekst-sm: 14px; /* kleine knop, lege toestand */
-  --tekst-m: 15px; /* body, rijtitel, bedrag, knop, invoerveld */
+  --tekst-m: 15px; /* body, rijtitel, bedrag, knop */
+  /* Invoervelden apart, en NOOIT onder de 16 px: daaronder zoomt Safari op iOS
+     vanzelf in zodra je het veld aanraakt, en die zoom blijft staan. Zie de
+     uitleg bij `input, select, textarea` verderop. */
+  --tekst-veld: 16px;
   --tekst-l: 17px; /* stat-waarde */
   --tekst-xl: 19px; /* was 18 — kaarttitel */
   --tekst-2xl: 28px; /* was 27 — groot bedrag */
@@ -266,6 +270,13 @@ body::before {
     radial-gradient(760px 500px at 8% 92%, var(--glans-sterk), transparent 70%),
     radial-gradient(620px 620px at 96% 62%, var(--glans), transparent 72%);
   animation: was-dwaal 34s ease-in-out infinite;
+  /* Ronde 34: deze laag beslaat 140 % van het scherm én beweegt onophoudelijk.
+     Zonder deze regel moet Safari op iOS haar bij elke scrollstap opnieuw
+     samenstellen met alles wat eroverheen ligt — en dan gaan andere vaste
+     elementen (de onderbalk) haperen of verdwijnen. `will-change` zet haar in
+     een eigen laag op de grafische kaart, waar ze de rest met rust laat. */
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 /* Dezelfde dwaalbeweging als `glans-dwaal`, maar uitgedrukt in procenten van het
@@ -487,7 +498,9 @@ h4 {
 .rij-acties {
   display: flex;
   align-items: center;
-  gap: 6px;
+  /* Ronde 34: van 6 naar 10 px. Hier staan ✎ en × naast elkaar, en × verwijdert
+     meteen. Zes pixels tussen "bewerken" en "weg" is te weinig voor een duim. */
+  gap: 10px;
   flex-shrink: 0;
 }
 
@@ -701,8 +714,6 @@ h4 {
    Vóór deze ronde stonden er zeven `:hover`-regels in dit bestand, alle zeven op
    een knop of een link. Kaarten, lijstrijen en chips reageerden op niets: op een
    scherm dat je met een muis gebruikt, was dus niet te zien wat aanklikbaar was.
-   En er waren drie `transition`-regels, waarvan die op `.knop` de schaduw niet
-   meenam — de primaire knop sprong daardoor hard.
 
    Drie regels die we volhouden:
    1. Alleen wat écht iets doet, reageert. Een gewone kaart is geen knop.
@@ -712,7 +723,12 @@ h4 {
 
 /* Eén zichtbare focusring voor alles wat je met de tab-toets kan bereiken. Wie
    met een muis klikt, ziet niets — dat is het verschil tussen :focus en
-   :focus-visible. */
+   :focus-visible.
+
+   LET OP: deze regel hoort NIET in de hover-mediaquery hieronder. Een focusring
+   gaat over het TOETSENBORD, niet over de muis. Bij het inpakken van de
+   hover-regels in ronde 34 raakte ze daar één keer per ongeluk in verzeild, en
+   dan verdween de ring op een tablet met een los toetsenbord. */
 .knop:focus-visible,
 .chip:focus-visible,
 .rij button:focus-visible,
@@ -720,13 +736,29 @@ h4 {
 a:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring-sterk);
-}
+}@media (hover: hover) and (pointer: fine) {
+  /* ---------------------------------------------------------------------------
+   Hover op een aanraakscherm (ronde 34)
+
+   Op een telefoon bestaat "de muis staat erboven" niet. Safari op iOS lost dat
+   op door na een tik te DOEN alsof de aanwijzer daar blijft staan, tot je ergens
+   anders tikt. Gevolg: de rij die je net aanraakte blijft opgelicht, de knop die
+   je net indrukte houdt zijn kleur, en de app ziet er permanent uit alsof er van
+   alles half geselecteerd is.
+
+   Elke `:hover`-regel in dit bestand staat daarom in een eigen
+   `@media (hover: hover) and (pointer: fine)` — letterlijk: alleen op een toestel
+   met een echte aanwijzer die precies kan mikken. Op een telefoon valt ze weg, en
+   dat is precies de bedoeling. Zet je er een nieuwe hover-regel bij, doe dan
+   hetzelfde.
+   --------------------------------------------------------------------------- */
 
 /* Een lijstrij die je kan aanklikken licht zacht op. `.rij` zelf krijgt niets:
-   de meeste rijen zijn gewoon tekst met een bedrag. */
-.lijst .rij:has(button):hover,
-.rij-klikbaar:hover {
-  background: var(--surface-2);
+     de meeste rijen zijn gewoon tekst met een bedrag. */
+  .lijst .rij:has(button):hover,
+  .rij-klikbaar:hover {
+    background: var(--surface-2);
+  }
 }
 
 /* Een kaart die ergens naartoe leidt. Zet deze klasse er alleen op wanneer de
@@ -734,12 +766,12 @@ a:focus-visible {
 .klikbaar {
   cursor: pointer;
   transition: transform var(--overgang), box-shadow var(--overgang), border-color var(--overgang);
-}
-
-.klikbaar:hover {
-  transform: translateY(-1px);
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow);
+}@media (hover: hover) and (pointer: fine) {
+  .klikbaar:hover {
+    transform: translateY(-1px);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow);
+  }
 }
 
 /* Het merk linksboven is een knop naar Overzicht (ronde 32). Ze mag er niet als
@@ -758,10 +790,10 @@ a:focus-visible {
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition: opacity var(--overgang);
-}
-
-.merkknop:hover {
-  opacity: 0.78;
+}@media (hover: hover) and (pointer: fine) {
+  .merkknop:hover {
+    opacity: 0.78;
+  }
 }
 
 .merkknop:focus-visible {
@@ -771,11 +803,11 @@ a:focus-visible {
 
 .chip {
   transition: background-color var(--overgang), border-color var(--overgang), color var(--overgang);
-}
-
-.chip:hover:not(.chip-actief) {
-  border-color: var(--accent);
-  color: var(--accent-strong);
+}@media (hover: hover) and (pointer: fine) {
+  .chip:hover:not(.chip-actief) {
+    border-color: var(--accent);
+    color: var(--accent-strong);
+  }
 }
 
 .lijst .rij {
@@ -808,12 +840,12 @@ a:focus-visible {
   color: var(--on-accent);
   padding: 13px 22px;
   box-shadow: var(--shadow-knop);
-}
-
-.knop-primair:hover:not(:disabled) {
-  background: var(--accent-strong);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-zwevend);
+}@media (hover: hover) and (pointer: fine) {
+  .knop-primair:hover:not(:disabled) {
+    background: var(--accent-strong);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-zwevend);
+  }
 }
 
 .knop-primair:active:not(:disabled) {
@@ -824,20 +856,20 @@ a:focus-visible {
   background: var(--surface);
   border-color: var(--border-strong);
   color: var(--text);
-}
-
-.knop-secundair:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
+}@media (hover: hover) and (pointer: fine) {
+  .knop-secundair:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
 }
 
 .knop-ghost {
   color: var(--accent-tekst);
   padding: 12px 8px;
-}
-
-.knop-ghost:hover:not(:disabled) {
-  color: var(--accent-strong);
+}@media (hover: hover) and (pointer: fine) {
+  .knop-ghost:hover:not(:disabled) {
+    color: var(--accent-strong);
+  }
 }
 
 .knop-klein {
@@ -854,21 +886,25 @@ a:focus-visible {
   padding: 8px 6px;
 }
 
-/* Vierkante icoonknop (‹ › ✎ ×). */
+/* Vierkante icoonknop (‹ › ✎ ×).
+
+   Ronde 34: van 34 naar 44 px. Dat is de maat die een duim nodig heeft, en het is
+   ook de norm. Het TEKEN erin blijft even groot; alleen het raakvlak eromheen
+   groeit, dus het beeld verandert nauwelijks. */
 .knop-icoon {
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text-muted);
   font-size: var(--tekst-m);
-}
-
-.knop-icoon:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
+}@media (hover: hover) and (pointer: fine) {
+  .knop-icoon:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -880,8 +916,9 @@ a:focus-visible {
    --------------------------------------------------------------------------- */
 .bel {
   position: relative;
-  width: 42px;
-  height: 42px;
+  /* 44 px: de maat die een duim nodig heeft. Ze zat op 42 — net te weinig. */
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
 }
 
@@ -964,32 +1001,42 @@ a:focus-visible {
 
 /* Kale icoonknop zonder rand, voor acties in een lijstrij. */
 .knop-kaal {
-  width: 30px;
-  height: 30px;
+  /* Idem: 44 px raakvlak. Deze knop staat als ✎ en × in élke lijstrij, en die
+     twee stonden 6 px uit elkaar — één misser met de duim en je wiste een
+     boeking. Zie ook `.rij-acties`, waar de tussenruimte omhoog ging. */
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: none;
   background: none;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   font-size: var(--tekst-m);
-}
-
-.knop-kaal:hover:not(:disabled) {
-  background: var(--surface-2);
-  color: var(--text);
+}@media (hover: hover) and (pointer: fine) {
+  .knop-kaal:hover:not(:disabled) {
+    background: var(--surface-2);
+    color: var(--text);
+  }
 }
 
 .knop-gevaar {
   color: var(--negative);
+}@media (hover: hover) and (pointer: fine) {
+  .knop-gevaar:hover:not(:disabled) {
+    background: var(--negative-soft);
+    color: var(--negative);
+    border-color: var(--negative);
+  }
 }
 
-.knop-gevaar:hover:not(:disabled) {
-  background: var(--negative-soft);
-  color: var(--negative);
-  border-color: var(--negative);
-}
-
-.knop:disabled {
+/* Twee manieren om "kan nu niet" te tonen, met opzet.
+   `:disabled` haalt een knop volledig uit de tab-volgorde; dat is juist voor een
+   knop die er niet toe doet, maar fout voor een opslaanknop — dan komt wie met
+   een toetsenbord werkt hem nooit tegen en hoort hij ook de reden niet.
+   `aria-disabled` houdt hem bereikbaar en aankondigbaar; hij ziet er alleen
+   hetzelfde uit. */
+.knop:disabled,
+.knop[aria-disabled='true'] {
   opacity: 0.55;
   cursor: not-allowed;
   box-shadow: none;
@@ -1091,18 +1138,163 @@ a:focus-visible {
 .hoofdkiezer {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  /* `stretch` en niet `flex-start`: het rooster eronder moet de volle breedte
+     kunnen nemen. Met `flex-start` kreeg het enkel de breedte van zijn eigen
+     inhoud, en bij korte categorienamen ("Eten", "Auto") kromp het tot een smal
+     blokje tegen de linkerrand — precies het scheve beeld dat ronde 34 wegwerkt.
+     De knop erboven wordt apart teruggezet, want díe mag niet uitrekken. */
+  align-items: stretch;
   gap: 0;
   margin-top: 6px;
   min-width: 0;
 }
 
+
 /* De knop mag over twee regels breken als de categorienaam lang is; hij mag nooit
-   breder worden dan het formulier. */
+   breder worden dan het formulier, en hij rekt niet mee met het rooster eronder. */
 .hoofdkiezer > .chip {
+  align-self: flex-start;
   max-width: 100%;
+  min-height: 44px;
   text-align: left;
   white-space: normal;
+}
+
+/* ---------------------------------------------------------------------------
+   De balk boven de transactielijst (ronde 34)
+
+   Dit was één afbrekende knoppenrij met `margin-left: auto` op de zoekknop. Op
+   een breed scherm ging dat goed; op een telefoon paste de knop er niet naast en
+   viel ze als losse regel rechtsonder, met een leeg gat ernaast. Vandaar de
+   melding dat het kaartje "vreemd gevormd" was.
+
+   Nu twee vaste rollen in plaats van een rij die maar wat doet: de
+   maandschakelaar links, de zoekknop rechts. Past het niet naast elkaar, dan
+   staat de knop over de volle breedte eronder — een bewuste tweede regel in
+   plaats van een toevallige.
+   --------------------------------------------------------------------------- */
+.filterbalk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.filterbalk-maand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.filterbalk-label {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-weight: 600;
+}
+
+.filterbalk-knop {
+  /* Naast de maand wanneer het past, over de volle breedte wanneer niet. */
+  flex: 1 1 220px;
+  justify-content: center;
+  /* Even hoog als de maandknoppen ernaast (die zijn sinds ronde 34 44 px), én
+     meteen het tikdoel dat een duim nodig heeft. Een knop van 36 naast twee van
+     44 gaf een zichtbaar hoogteverschil in precies de balk die opgeruimd moest
+     worden. */
+  min-height: 44px;
+}
+
+@media (min-width: 560px) {
+  .filterbalk-label {
+    min-width: 150px;
+    flex: 0 0 auto;
+  }
+
+  .filterbalk-knop {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Het rooster met hoofdcategorieën (ronde 34)
+
+   Hier stond een rij losse chips die afbrak waar ze toevallig uitkwam. Veertien
+   tekstblokjes van heel verschillende breedte, in twee of drie ongelijke rijen:
+   dat leest als een hoop woorden en niet als een keuzelijst. De melding was
+   letterlijk "een onoverzichtelijk opgestelde groepering van woorden".
+
+   Nu: even brede tegels in een raster, het icoon groot bovenaan en de naam
+   eronder. Elke tegel even hoog, elke kolom even breed, dus je oog kan langs de
+   rijen lopen in plaats van te zoeken waar de volgende naam begint.
+   --------------------------------------------------------------------------- */
+.categorierooster {
+  display: grid;
+  /* `auto-fit` met een minimum van 108 px in plaats van een vast aantal kolommen.
+     Reden: ditzelfde rooster staat óók in een kassaticketregel (zie
+     `ItemZoeker`), en die kolom is op een telefoon maar zo'n 150 px breed. Met
+     twee vaste kolommen werden de tegels daar 70 px en brak elke naam midden in
+     een woord af. Nu past het aantal kolommen zich aan de plaats aan: één in een
+     smalle kolom, twee in de popup, meer op een breed scherm. */
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+  min-width: 0;
+}
+
+.categorietegel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  /* Ruim boven de 44 px die een duim nodig heeft, en alle tegels even hoog —
+     ook die met een naam over twee regels. */
+  min-height: 78px;
+  padding: 10px 6px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--tekst-s);
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color var(--overgang), background-color var(--overgang), color var(--overgang);
+}
+
+.categorietegel-teken {
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* De naam breekt af in plaats van de tegel breder te maken dan haar kolom.
+   Bewust GEEN afkapping op twee regels: zet iemand zijn letters groter (dat mag,
+   en de norm vraagt dat het blijft werken tot 200 %), dan zou het staartje van
+   een lange naam gewoon verdwijnen zonder dat er iets op wijst. De tegel mag
+   liever wat hoger worden. */
+.categorietegel-naam {
+  overflow-wrap: anywhere;
+}@media (hover: hover) and (pointer: fine) {
+  .categorietegel:hover {
+    border-color: var(--accent);
+    color: var(--accent-tekst);
+  }
+}
+
+.categorietegel:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring-sterk);
+}
+
+.categorietegel-actief {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
 }
 
 .badge {
@@ -1152,6 +1344,20 @@ a:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
+}
+
+/* Een invoerveld heeft een EIGEN natuurlijke breedte (zo'n twintig tekens) en
+   krimpt daar uit zichzelf niet onder — ook niet wanneer zijn omhulsel dat wel
+   mag. Zonder deze regel wordt de veldenrij dus breder dan nodig, en breken twee
+   velden die naast elkaar horen te staan af naar twee regels. Dat gebeurde in
+   ronde 34 toen de velden van 15 naar 16 px gingen: "Handelaar" en "Bedrag"
+   sprongen ineens onder elkaar. */
+.veldgroep > input,
+.veldgroep > select,
+.veldgroep > textarea {
+  width: 100%;
+  min-width: 0;
 }
 
 .veldrij {
@@ -1165,11 +1371,27 @@ a:focus-visible {
   min-width: 0;
 }
 
+/* ---------------------------------------------------------------------------
+   Invoervelden — en de belangrijkste regel van dit hele bestand (ronde 34)
+
+   **Een invoerveld op een aanraakscherm mag NOOIT letters kleiner dan 16 px
+   hebben.** Safari op iOS zoomt namelijk vanzelf in zodra je in zo'n veld tikt,
+   en die zoom blijft daarna gewoon staan. Het gevolg is dat de hele app buiten
+   het scherm loopt: je kan ineens zijwaarts schuiven, de popup is aan de randen
+   afgesneden, en de titelbalk staat half buiten beeld.
+
+   Precies dat werd gemeld na de eerste test op een echte iPhone. Het is géén
+   layoutfout — er is niets te breed — het is de browser die inzoomt. In Chromium
+   gebeurt dat niet, dus geen enkele meting in een testbrowser laat het zien.
+
+   `--tekst-m` is 15 px. Eén pixel te weinig. Vandaar `--tekst-veld` (16 px), dat
+   bij de andere tekstmaten bovenaan dit bestand staat.
+   --------------------------------------------------------------------------- */
 input,
 select,
 textarea {
   font-family: inherit;
-  font-size: var(--tekst-m);
+  font-size: var(--tekst-veld);
   background: var(--surface);
   color: var(--text);
   border: 1.5px solid var(--border);
@@ -1240,10 +1462,10 @@ a:focus-visible,
 a {
   color: var(--accent-tekst);
   text-decoration: none;
-}
-
-a:hover {
-  color: var(--accent-strong);
+}@media (hover: hover) and (pointer: fine) {
+  a:hover {
+    color: var(--accent-strong);
+  }
 }
 
 ::selection {
@@ -1511,11 +1733,17 @@ a:hover {
 }
 
 /* Een rij in een analyse-ranglijst die je kan aanklikken. De chevron is het
-   zichtbare teken dat er iets achter zit; hij wordt sterker zodra je erover
-   gaat, zodat de rij zelf reageert en niet alleen de cursor verandert. */
-.analyse-rij:hover,
+   zichtbare teken dat er iets achter zit; hij wordt sterker zodra je erover gaat
+   of erop landt met de tab-toets. De focus-variant staat buiten de mediaquery —
+   zie de opmerking bij de focusring hierboven. */
 .analyse-rij:focus-visible {
   background: var(--surface-2);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .analyse-rij:hover {
+    background: var(--surface-2);
+  }
 }
 
 .rij-chevron {
@@ -1524,10 +1752,16 @@ a:hover {
   flex-shrink: 0;
 }
 
-.analyse-rij:hover .rij-chevron,
 .analyse-rij:focus-visible .rij-chevron {
   color: var(--accent);
   transform: translateX(2px);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .analyse-rij:hover .rij-chevron {
+    color: var(--accent);
+    transform: translateX(2px);
+  }
 }
 
 /* Het percentage naast het bedrag in plaats van eronder in dezelfde grijstint:
@@ -1639,7 +1873,11 @@ a:hover {
   .tx-lijst .rij,
   .tx-kop {
     display: grid;
-    grid-template-columns: 34px minmax(120px, 1.6fr) 104px minmax(120px, 1.6fr) minmax(90px, 1fr) 120px 68px;
+    /* De laatste kolom is voor ✎ en ×. Ronde 34 bracht die knoppen van 30 naar
+     44 px en de tussenruimte van 6 naar 10, dus 44 + 10 + 44 = 98. Met de oude
+     68 px werden ze tot smalle staafjes geperst — precies het tegenovergestelde
+     van wat de vergroting moest bereiken. */
+  grid-template-columns: 34px minmax(120px, 1.6fr) 104px minmax(120px, 1.6fr) minmax(90px, 1fr) 120px 98px;
     align-items: center;
     gap: 12px;
   }
@@ -1795,6 +2033,10 @@ a:hover {
   .glans-sterk::before,
   .kengetal::after {
     animation: none;
+    /* Ook de laag-promotie eraf. Een `will-change` op een vlak van 140 % van het
+       scherm houdt geheugen bezet op de grafische kaart, en dat is precies wat
+       vaste elementen op iOS doet haperen — terwijl er hier niets meer beweegt. */
+    will-change: auto;
   }
 
   .pagina-in,
@@ -1821,7 +2063,23 @@ a:hover {
    --------------------------------------------------------------------------- */
 .dialoog-laag {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* Bewust een HOOGTE en geen `bottom: 0`. Dialoog.tsx overschrijft deze waarde
+     zodra de browser kan zeggen hoeveel er nog zichtbaar is (zie
+     `useZichtbareHoogte`), en dat lukt alleen wanneer de onderkant niet vastgezet
+     is — met zowel `top` als `bottom` op nul negeert de browser elke hoogte.
+     Zonder toetsenbord is dit gewoon de volle vensterhoogte; mét toetsenbord
+     krimpt de laag mee, zodat het blad met de opslaanknop erbóven blijft in
+     plaats van erachter te verdwijnen.
+
+     De eerste regel is de terugval: kent een browser `dvh` niet, dan gooit ze de
+     tweede regel weg en blijft `100vh` staan. Zonder die terugval zou de hoogte
+     op `auto` vallen — en dan bedekt de donkere laag alleen nog het blad zelf,
+     verduistert de pagina niet meer, en sluit een tik ernaast de popup niet. */
+  height: 100vh;
+  height: 100dvh;
   z-index: 2000;
   background: rgba(23, 25, 30, 0.45);
   display: flex;
@@ -1843,7 +2101,12 @@ a:hover {
   box-shadow: var(--shadow-sheet);
   width: 100%;
   max-width: 560px;
-  max-height: calc(100dvh - env(safe-area-inset-top));
+  /* `100%` van de LAAG, niet van het venster. Dat is het hele punt: de laag
+     krimpt mee met het toetsenbord (zie Dialoog.tsx), en zonder deze regel bleef
+     het paneel op vensterhoogte staan. Een flexitem dat hoger is dan zijn
+     container puilt naar buiten — met `align-items: flex-end` aan de BOVENkant,
+     dus dan schoven de titel en het kruisje van het scherm af. */
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -1864,8 +2127,53 @@ a:hover {
 .dialoog-inhoud {
   padding: 16px 18px;
   overflow-y: auto;
+  /* Ben je onderaan de lijst en veeg je door, dan mag die beweging NIET doorslaan
+     naar de pagina achter de popup. Zonder deze regel schuift de achtergrond weg
+     terwijl je in de popup aan het lezen bent — het bekendste ongemak van
+     geneste scrollvlakken op iOS. */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   min-height: 0;
   flex: 1;
+}
+
+/* ---------------------------------------------------------------------------
+   De knoppenbalk die onderaan een formulier blijft plakken (ronde 34)
+
+   In de invoerpopup op een telefoon is er met open toetsenbord zo'n 380 px
+   zichtbaar, terwijl het transactieformulier er ruim 700 telt. De opslaanknop
+   stond daardoor altijd buiten beeld: je moest eerst terugscrollen om te kunnen
+   bewaren, en dat is de handeling die je het vaakst doet.
+
+   `position: sticky` houdt haar onderaan het zichtbare deel van het scrollvlak.
+   De negatieve `bottom` en de negatieve marges heffen de padding van
+   `.dialoog-inhoud` op, zodat de balk tot in de hoeken doorloopt en er geen
+   streepje inhoud onderdoor schemert.
+   --------------------------------------------------------------------------- */
+.formulier-voet {
+  position: sticky;
+  /* -16 px, en dat is nagemeten in een echte browser, niet beredeneerd. Met
+     `bottom: 0` bleef er precies de onderpadding van `.dialoog-inhoud` (16 px)
+     onder de balk zichtbaar, en daar schoof de inhoud onderdoor. De negatieve
+     waarde duwt de balk tot in die padding, waar ze door de negatieve marge
+     hieronder ook echt breed genoeg voor is. */
+  bottom: -16px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 -18px -16px;
+  padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--divider);
+}
+
+/* Is er nauwelijks hoogte (sterk ingezoomd, of een liggende telefoon), dan neemt
+   een plakkende balk te veel van het weinige dat er is. Dan wint gewoon scrollen. */
+@media (max-height: 480px) {
+  .formulier-voet {
+    position: static;
+  }
 }
 
 .dialoog-voet {
@@ -1883,7 +2191,12 @@ a:hover {
 
   .dialoog {
     border-radius: var(--radius-xl);
-    max-height: calc(100dvh - 48px);
+  }
+
+  /* De popup is hier aan alle vier de hoeken rond. De plakkende knoppenbalk is
+     dekkend en zou onderaan met rechte hoeken uit die ronding steken. */
+  .formulier-voet {
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
   }
 }
 
@@ -1916,10 +2229,10 @@ a:hover {
   text-align: center;
   color: var(--text-muted);
   transition: border-color var(--overgang), color var(--overgang), background-color var(--overgang);
-}
-
-.soortknop:hover {
-  border-color: var(--border-strong);
+}@media (hover: hover) and (pointer: fine) {
+  .soortknop:hover {
+    border-color: var(--border-strong);
+  }
 }
 
 .soortknop-actief {
@@ -1976,10 +2289,10 @@ a:hover {
   text-align: center;
   color: var(--text-muted);
   transition: border-color var(--overgang), color var(--overgang), background-color var(--overgang);
-}
-
-.subtab:hover:not(.subtab-actief) {
-  border-color: var(--border-strong);
+}@media (hover: hover) and (pointer: fine) {
+  .subtab:hover:not(.subtab-actief) {
+    border-color: var(--border-strong);
+  }
 }
 
 .subtab-actief {

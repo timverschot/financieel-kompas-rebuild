@@ -19,9 +19,14 @@ const paneel: CSSProperties = {
   position: 'absolute',
   top: 'calc(100% + 8px)',
   right: 0,
-  width: 'min(320px, calc(100vw - 32px))',
+  // `100vw` telt de veilige zones aan de zijkanten MEE, terwijl body die er al
+  // afhaalt. In liggende stand op een iPhone werd het paneel daardoor zo'n 64 px
+  // te breed en liep het links buiten beeld. `dvw` bestaat niet overal, dus
+  // trekken we de insets er zelf af.
+  width: 'min(320px, calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right)))',
   maxHeight: 340,
   overflowY: 'auto',
+  overscrollBehavior: 'contain',
   zIndex: 1200,
   boxShadow: 'var(--shadow-sheet)',
   textAlign: 'left',

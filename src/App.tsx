@@ -1706,7 +1706,9 @@ export function App() {
         position: 'fixed',
         left: '50%',
         transform: 'translateX(-50%)',
-        bottom: 'calc(4.75rem + env(safe-area-inset-bottom))',
+        // Net boven de onderbalk (56 px) plus de veilige zone, zodat de melding
+        // niet half achter de zwevende ➕ verdwijnt.
+        bottom: 'calc(4.25rem + env(safe-area-inset-bottom))',
         background: '#17191e',
         color: '#fff8ed',
         padding: '12px 16px',
@@ -1780,7 +1782,7 @@ export function App() {
           </div>
         </div>
         {undoBalk}
-        {boekingLagen}
+        <ErrorBoundary naam="Boeking">{boekingLagen}</ErrorBoundary>
       </div>
       </CategorieVolgordeProvider>
     )
@@ -1789,7 +1791,13 @@ export function App() {
   // Smalle schermen: één kolom met de onderbalk (tabbalk + centrale ➕).
   return (
     <CategorieVolgordeProvider volgorde={hoofdVolgorde}>
-      <main style={{ ...container, paddingBottom: '5.5rem' }}>
+      {/* Ronde 34: van 5,5 naar 8 rem plus de veilige zone. De onderbalk is 56 px
+          hoog, de zwevende ➕ steekt daar nog 22 px bovenuit, en op een iPhone komt
+          de home-indicator er nog eens 34 px bij. Met 88 px lagen de onderste
+          rijen van élke lijst achter die knop — precies waar knoppen als "Toon ze
+          ook" staan. Balk 56 + uitstekende ➕ 22 + wat lucht = 6 rem, plus de
+          veilige zone die per toestel verschilt. */}
+      <main style={{ ...container, paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
           {/* Het merk brengt je terug naar Overzicht — dezelfde afspraak als het
               logo op zowat elke website. Een echte knop, geen aanklikbare div, zodat
@@ -1813,7 +1821,9 @@ export function App() {
         </div>
       </main>
       {undoBalk}
-      {boekingLagen}
+      {/* De popup stond buiten elke foutvang: één fout in het invoerformulier
+          legde daardoor de HELE app plat in plaats van alleen de popup. */}
+      <ErrorBoundary naam="Boeking">{boekingLagen}</ErrorBoundary>
       <OnderNavigatie actief={pagina} onKies={setPagina} onNieuweTransactie={nieuweTransactie} />
     </CategorieVolgordeProvider>
   )
