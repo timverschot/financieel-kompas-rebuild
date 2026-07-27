@@ -197,4 +197,31 @@ describe('splitsLabel', () => {
     )
     expect([...container.querySelectorAll('path.donut-schijf')].every((s) => s.getAttribute('opacity') === '1')).toBe(true)
   })
+
+  // Ronde 33: de uitvergrote schijf werd afgesneden aan een grens die je niet
+  // ziet — de rand van het tekenvlak liep exact tot aan de buitenkant van de
+  // ring, dus alles wat naar buiten schoof viel eraf.
+  it('houdt marge rond de ring zodat een uitgeschoven schijf niet afgesneden wordt', () => {
+    const { container } = render(
+      <Donut items={[{ naam: 'Wonen', bedrag: 7500, kleur: '#111' }, { naam: 'Voeding', bedrag: 2500, kleur: '#222' }]} interactief grootte={200} />,
+    )
+    const svg = container.querySelector('svg')!
+    const [x, y, b] = (svg.getAttribute('viewBox') ?? '').split(' ').map(Number)
+
+    // Het tekenvlak begint links/boven van het nulpunt en loopt door tot voorbij
+    // de ring: er is aan alle kanten ruimte.
+    expect(x).toBeLessThan(0)
+    expect(y).toBeLessThan(0)
+
+    // De verste plek die een gekozen schijf inneemt: midden + straal x vergroting
+    // + uitschuif. Die moet ruim binnen het vlak vallen, aan beide kanten.
+    const verste = 95 + 84 * 1.06 + 9
+    expect(verste).toBeLessThan(x + b)
+    expect(95 - 84 * 1.06 - 9).toBeGreaterThan(x)
+
+    // En het BEELD blijft even groot: de svg wordt in dezelfde verhouding breder
+    // getekend, dus de ring krimpt niet mee met de marge.
+    const opScherm = Number(svg.getAttribute('width'))
+    expect(Math.round((opScherm * 190) / b)).toBe(200)
+  })
 })

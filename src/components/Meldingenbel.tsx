@@ -97,13 +97,12 @@ export function Meldingenbel({
           🔔
         </span>
         {aantal > 0 && (
+          // Rood zodra er iets dringend is, anders de gewone amberen stip. De
+          // kleuren staan in index.css, want de letterkleur moet met de
+          // achtergrond én met het thema meewisselen om leesbaar te blijven.
           <span
             aria-hidden
-            className="bel-teller"
-            style={{
-              // Rood zodra er iets dringend is, anders de gewone amberen stip.
-              background: meldingen.some((m) => m.dringend) ? 'var(--negative)' : 'var(--accent-dot)',
-            }}
+            className={meldingen.some((m) => m.dringend) ? 'bel-teller bel-teller-dringend' : 'bel-teller'}
           >
             {aantal > 9 ? '9+' : aantal}
           </span>

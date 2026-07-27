@@ -21,8 +21,17 @@
   --surface-2: #ebe3d6;
   --surface-3: #e9e1d3;
   --text: #17191e;
-  --text-muted: #6c6459;
-  --text-subtle: #8a8175;
+  /* Ronde 33 — de twee grijzen zijn donkerder geworden.
+     Reden: ze haalden de leesbaarheidsnorm niet. `--text-subtle` was #8a8175 en
+     gaf op een kaart een contrast van 3,7:1 en op de paginakleur 3,1:1, terwijl
+     4,5:1 het minimum is voor gewone tekst (WCAG AA). En laat dat nu net de
+     kleur zijn van élk veldlabel, élke metaregel, élke lege toestand en élke
+     invulhint in de app — samen ruim tweehonderd plaatsen. Vandaar dat het
+     lichte thema "vaag" aanvoelde: dat was het ook, meetbaar.
+     Nu: 5,6:1 op een kaart en 4,6:1 op de pagina. `--text-muted` gaat mee omlaag
+     zodat het verschil tussen de twee grijzen bewaard blijft. */
+  --text-muted: #5a5346;
+  --text-subtle: #6d6558;
   --border: #e0d6c5;
   --border-strong: #d9cdb9;
   --divider: #eae1d2;
@@ -34,6 +43,26 @@
   --accent-soft: #f6e2c6;
   --accent-ink: #8f5510;
   --on-accent: #fff8ed;
+  /* Amber als TEKSTkleur is iets anders dan amber als vlak (ronde 33).
+     `--accent` (#c9761a) haalt als tekst maar 3,4:1 op een kaart en 2,8:1 op de
+     pagina — te weinig. Ghost-knoppen ("Alle", "Toon details", "Ongedaan maken")
+     en links stonden daardoor in de zwakst leesbare kleur van het scherm.
+     `--accent-tekst` is dezelfde amber, donkerder gemaakt tot 5,9:1 / 4,9:1.
+     In het donkere thema is amber-op-donker al ruim in orde; daar blijft ze wat
+     ze was. */
+  --accent-tekst: #95520a;
+  /* De VULLING van de primaire knop. `--accent` met bijna-witte letters gaf
+     3,3:1; een knop is het laatste waar je mag gokken of iemand hem leest. Deze
+     tint geeft 4,7:1 met dezelfde letterkleur, en blijft herkenbaar amber. */
+  --accent-vlak: #a75e10;
+  /* Letterkleur op een fel amber vlakje (het tellertje op de bel). Wit gaf daar
+     2,1:1 — praktisch onleesbaar. Amber is in beide thema's dezelfde kleur, dus
+     deze donkere inkt ook. */
+  --op-fel: #2a1b06;
+  /* Letterkleur op een rood vlakje. Verschilt WEL per thema, want het rood zelf
+     verschilt: licht #b44a2a is donker genoeg voor witte letters, donker
+     #f0784e niet. */
+  --op-negatief: #fff8ed;
 
   --positive: #2e7a56;
   --positive-soft: #ddede3;
@@ -105,9 +134,14 @@
      te zien — precies de melding die binnenkwam ("de ambergloed is nog niet
      voldoende zichtbaar"). Ze is nu ongeveer anderhalf keer zo dicht, en
      `--glans-rand` is nieuw: een zweem amber in de kaartrand, zodat een kaart
-     ook aan haar omtrek bij de familie hoort. */
-  --glans: rgba(201, 118, 26, 0.17);
-  --glans-sterk: rgba(201, 118, 26, 0.34);
+     ook aan haar omtrek bij de familie hoort.
+
+     Ronde 33: in het LICHTE thema nog een stap verder. Amber op crème is warm op
+     warm — dezelfde dichtheid die op bijna-zwart meteen opvalt, verdwijnt daar
+     bijna. De lichte waarden staan nu ruim boven de donkere; dat is geen
+     inconsistentie maar precies de compensatie die nodig is. */
+  --glans: rgba(197, 108, 12, 0.26);
+  --glans-sterk: rgba(197, 108, 12, 0.5);
   --glans-rand: rgba(201, 118, 26, 0.16);
 
   /* Zijpaneel (desktop): een donkere, warm-bruine chrome naast de crème pagina.
@@ -129,7 +163,9 @@
   --surface-3: #232b35;
   --text: #f4efe6;
   --text-muted: #99a2ad;
-  --text-subtle: #7c8592;
+  /* Was #7c8592 en haalde net de norm (4,6:1). Een stap lichter, zodat het
+     donkere thema dezelfde leesbaarheid heeft als het lichte na ronde 33. */
+  --text-subtle: #8e97a3;
   --border: #262e39;
   --border-strong: #313a46;
   --divider: #242c36;
@@ -141,6 +177,14 @@
   --accent-soft: #3a2a16;
   --accent-ink: #f0a63c;
   --on-accent: #1a1206;
+  /* In het donker is amber-op-donker al ruim leesbaar (8,3:1), dus tekst en vlak
+     mogen hier gewoon de gewone accentkleur zijn. */
+  --accent-tekst: #f0a63c;
+  --accent-vlak: #f0a63c;
+  --op-fel: #2a1b06;
+  /* Het rood is hier lichter (#f0784e), dus witte letters halen het niet meer:
+     op een rood vlakje komt in het donker donkere inkt. */
+  --op-negatief: #2a1b06;
 
   --positive: #57c596;
   --positive-soft: #17362b;
@@ -199,27 +243,55 @@ html {
 
    De gloed zat tot nu toe alleen ín twee tegels. Daardoor was het een detail van
    de startpagina in plaats van de sfeer van de app. Deze laag ligt VAST achter
-   alles: twee heel zachte, grote amberen velden — één rechtsboven, één linksonder
-   — die traag heen en weer schuiven. Ze vangt geen muis (`pointer-events: none`)
-   en staat achter de inhoud, dus ze kan niets in de weg zitten. */
+   alles, op élk tabblad: drie heel grote amberen velden die dezelfde dwaalbeweging
+   maken als de gloed op de kaarten, maar dan in het groot. Ze vangt geen muis
+   (`pointer-events: none`) en staat achter de inhoud, dus ze kan niets in de weg
+   zitten.
+
+   Waarom ze sterker mag zijn dan de gloed op een kaart: de kaarten zijn dekkend,
+   dus deze laag is alleen te zien in de marges en tussen de kaarten door. Daar
+   staat geen tekst, dus meer kleur kost daar geen leesbaarheid.
+
+   De laag is bewust 40 % groter dan het scherm en zit met een negatieve `inset`
+   naar buiten getrokken: de velden schuiven tot 8 % op, en zonder die overmaat
+   zou je aan de randen de rand van de laag zelf kunnen zien passeren. */
 body::before {
   content: '';
   position: fixed;
-  inset: 0;
+  inset: -20%;
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(760px 440px at 82% -6%, var(--glans), transparent 70%),
-    radial-gradient(560px 360px at 4% 104%, var(--glans), transparent 72%);
-  animation: was-drift 26s ease-in-out infinite alternate;
+    radial-gradient(900px 560px at 78% 4%, var(--glans-sterk), transparent 68%),
+    radial-gradient(760px 500px at 8% 92%, var(--glans-sterk), transparent 70%),
+    radial-gradient(620px 620px at 96% 62%, var(--glans), transparent 72%);
+  animation: was-dwaal 34s ease-in-out infinite;
 }
 
-@keyframes was-drift {
-  from {
-    transform: translate(0, 0);
+/* Dezelfde dwaalbeweging als `glans-dwaal`, maar uitgedrukt in procenten van het
+   scherm in plaats van in pixels — zo schuift ze op een telefoon evenveel als op
+   een breed scherm, en oogt het overal hetzelfde. */
+@keyframes was-dwaal {
+  0% {
+    transform: translate(0, 0) scale(1);
   }
-  to {
-    transform: translate(-3%, 2.5%);
+  19% {
+    transform: translate(-5%, 3%) scale(1.06);
+  }
+  37% {
+    transform: translate(2%, 6%) scale(0.97);
+  }
+  58% {
+    transform: translate(-7%, 1%) scale(1.09);
+  }
+  73% {
+    transform: translate(-1%, -4%) scale(1.01);
+  }
+  89% {
+    transform: translate(-4%, 5%) scale(1.05);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
   }
 }
 
@@ -514,12 +586,8 @@ h4 {
   border-radius: 50%;
   background: radial-gradient(circle, var(--glans), transparent 70%);
   pointer-events: none;
-  /* Ronde 32: de gloed staat niet meer stil. Ze schuift heel traag heen en weer,
-     zodat het vlak leeft zonder dat er iets te lezen valt dat beweegt. Achttien
-     seconden per heenweg is bewust traag: je merkt het als sfeer, niet als
-     animatie. Wie beweging uitzet (zie onderaan dit bestand) krijgt gewoon de
-     stilstaande gloed. */
-  animation: glans-drift 18s ease-in-out infinite alternate;
+  /* Ronde 32: de gloed staat niet meer stil. Ze DWAALT — zie `glans-dwaal`. */
+  animation: glans-dwaal 18s ease-in-out infinite;
 }
 
 /* Een tweede, kleinere gloed linksonder geeft de hoofdtegel diepte. */
@@ -537,17 +605,50 @@ h4 {
   border-radius: 50%;
   background: radial-gradient(circle, var(--glans), transparent 70%);
   pointer-events: none;
-  /* Tegengesteld aan de bovenste gloed: de twee ademen naar elkaar toe en van
-     elkaar weg in plaats van samen dezelfde kant op te schuiven. */
-  animation: glans-drift 22s ease-in-out infinite alternate-reverse;
+  animation: glans-dwaal 15s ease-in-out infinite reverse;
 }
 
-@keyframes glans-drift {
-  from {
+/* De saldotegel is het hoofdcijfer van de app en mag dus levendiger zijn dan de
+   rest: anderhalf keer sneller dan een gewoon vlak (12 s in plaats van 18, en
+   10 s in plaats van 15 voor de tweede gloed). De twee lopen bovendien in
+   tegengestelde richting én op een ander tempo, zodat ze nooit in de pas gaan
+   lopen — daardoor herhaalt het patroon zich pas na een minuut. */
+.glans-sterk::after {
+  animation-duration: 12s;
+}
+
+.glans-sterk::before {
+  animation-duration: 10s;
+}
+
+/* Waarom vijf tussenstappen en geen simpel heen-en-weer:
+   met twee punten en `alternate` volgt de gloed altijd exact hetzelfde lijntje
+   terug, en dat herken je na twee rondjes — dan leest het als een mechaniekje.
+   Met vijf onregelmatig verdeelde punten die op verschillende afstanden en in
+   verschillende richtingen liggen, dwaalt ze rond zonder ooit hetzelfde pad te
+   nemen. Het laatste punt is gelijk aan het eerste, zodat de lus rondloopt
+   zonder sprong; `alternate` is daardoor niet meer nodig. */
+@keyframes glans-dwaal {
+  0% {
     transform: translate(0, 0) scale(1);
   }
-  to {
-    transform: translate(-26px, 20px) scale(1.14);
+  19% {
+    transform: translate(-22px, 16px) scale(1.12);
+  }
+  37% {
+    transform: translate(8px, 28px) scale(0.94);
+  }
+  58% {
+    transform: translate(-30px, 6px) scale(1.18);
+  }
+  73% {
+    transform: translate(-6px, -14px) scale(1.02);
+  }
+  89% {
+    transform: translate(-18px, 22px) scale(1.09);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
   }
 }
 
@@ -701,7 +802,9 @@ a:focus-visible {
 }
 
 .knop-primair {
-  background: var(--accent);
+  /* `--accent-vlak` en niet `--accent`: zie de opmerking bij het token. Met de
+     gewone accentkleur haalde deze knop maar 3,3:1 met haar eigen letterkleur. */
+  background: var(--accent-vlak);
   color: var(--on-accent);
   padding: 13px 22px;
   box-shadow: var(--shadow-knop);
@@ -729,7 +832,7 @@ a:focus-visible {
 }
 
 .knop-ghost {
-  color: var(--accent);
+  color: var(--accent-tekst);
   padding: 12px 8px;
 }
 
@@ -805,12 +908,23 @@ a:focus-visible {
   padding: 0 4px;
   border-radius: var(--radius-pill);
   border: 2px solid var(--surface);
-  color: #fff;
+  /* Donkere inkt op het amberen vlakje. Wit gaf hier 2,1:1 — het cijfer was
+     er wel, maar je las het niet. */
+  background: var(--accent-dot);
+  color: var(--op-fel);
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 700;
   line-height: 14px;
   text-align: center;
+}
+
+/* Is er iets dringends bij, dan wordt het vlakje rood. De letterkleur moet dan
+   mee wisselen: het lichte thema heeft een donkerrood (witte letters), het
+   donkere een lichtrood (donkere letters). */
+.bel-teller-dringend {
+  background: var(--negative);
+  color: var(--op-negatief);
 }
 
 /* Een korte klop bij het verschijnen: drie keer, dan stil. Een belletje dat
@@ -1124,7 +1238,7 @@ a:focus-visible,
    --------------------------------------------------------------------------- */
 
 a {
-  color: var(--accent);
+  color: var(--accent-tekst);
   text-decoration: none;
 }
 
@@ -1361,7 +1475,7 @@ a:hover {
   border-radius: 50%;
   background: radial-gradient(circle, var(--glans), transparent 68%);
   pointer-events: none;
-  animation: glans-drift 20s ease-in-out infinite alternate;
+  animation: glans-dwaal 16s ease-in-out infinite;
 }
 
 /* ---------------------------------------------------------------------------
@@ -1441,7 +1555,10 @@ a:hover {
        de volle breedte uit, dan stond de naam helemaal links en het bedrag
        helemaal rechts, met een halve pagina niets ertussen. Nu staan naam,
        aandeel en bedrag bij elkaar, en het paar staat gecentreerd in de kaart. */
-    grid-template-columns: 320px minmax(0, 640px);
+    /* 340 px voor een tekening van 300 px plus de marge die de donut sinds
+       ronde 32 rondom zich houdt (zie MARGE in components/Donut.tsx): zonder die
+       marge werd een uitgeschoven schijf afgesneden. */
+    grid-template-columns: 340px minmax(0, 640px);
     justify-content: center;
     gap: 32px;
     align-items: center;

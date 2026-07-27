@@ -12,6 +12,23 @@ const MIDDEN = GROOTTE / 2
 const BUITEN = 84
 const BINNEN = 58
 
+/**
+ * De marge rondom de donut, in tekeneenheden.
+ *
+ * Waarom dit er moet zijn: een SVG snijdt alles af wat buiten haar `viewBox`
+ * valt, en die viewBox liep tot nu toe exact tot aan de buitenrand van de ring.
+ * Zolang er niets bewoog was dat geen probleem. Maar sinds de gekozen schijf
+ * naar buiten schuift (9 eenheden) én groter wordt (6 %), komt haar buitenrand
+ * op 95 + 84 × 1,06 + 9 ≈ 193 te liggen — drie eenheden voorbij de rand van een
+ * vlak van 190. Precies daar werd ze afgesneden, aan een grens die je niet ziet.
+ *
+ * Het tekenvlak is nu aan alle kanten zes eenheden groter. Het getekende BEELD
+ * blijft even groot als voorheen: de svg wordt in dezelfde verhouding breder
+ * getekend (zie `vlakOpScherm`), dus de ring krimpt niet.
+ */
+const MARGE = 6
+const VLAK = GROOTTE + 2 * MARGE
+
 // Hoever een gekozen schijf naar buiten schuift, in tekeneenheden. Ronde 32:
 // van 5 naar 9. Met 5 was de beweging er wel, maar zag je ze nauwelijks — de
 // melding was letterlijk "de bewegende donutdelen zijn niet expressief genoeg".
@@ -133,12 +150,17 @@ export function Donut({
   // ze in het gat past) of het woord 'uitgaven'/'inkomsten' als er niets gekozen is.
   const naamRegels = actief ? splitsLabel(actief.naam) : [t(middenLabel)]
 
+  // De maat waarop het tekenvlak (ring + marge) op het scherm komt. `grootte`
+  // blijft betekenen "zo groot moet de ring zijn"; de marge komt daar bovenop,
+  // zodat een uitgeschoven schijf ruimte heeft zonder dat de ring kleiner wordt.
+  const vlakOpScherm = Math.round((grootte * VLAK) / GROOTTE)
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       <svg
-        viewBox={`0 0 ${GROOTTE} ${GROOTTE}`}
-        width={grootte}
-        height={grootte}
+        viewBox={`${-MARGE} ${-MARGE} ${VLAK} ${VLAK}`}
+        width={vlakOpScherm}
+        height={vlakOpScherm}
         role="img"
         aria-label={
           interactief
