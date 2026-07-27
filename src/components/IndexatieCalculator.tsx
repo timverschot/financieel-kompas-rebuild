@@ -39,7 +39,11 @@ export function IndexatieCalculator() {
 
   return (
     <Kaart
-      titel={soort === 'huur' ? t('Huurindexatie') : t('Alimentatie-indexatie')}
+      // Ronde 32: één vaste titel. De titel wisselde mee met de gekozen tab
+      // ("Huurindexatie" / "Alimentatie-indexatie"), terwijl de tabs er vlak onder
+      // al staan — de kop herhaalde dus wat je zelf net had aangeklikt. "Indexatie-
+      // tools" zegt wat de kaart IS; de tabs zeggen welke je gebruikt.
+      titel={t('Indexatie-tools')}
       bijschrift={
         soort === 'huur'
           ? t('Geïndexeerde huur = basishuur × nieuwe index / aanvangsindex (Belgische formule).')

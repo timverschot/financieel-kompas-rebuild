@@ -164,4 +164,37 @@ describe('splitsLabel', () => {
     const regels = [...container.querySelectorAll('text tspan')].map((el) => el.textContent)
     expect(regels).toEqual(['Woning en vaste', 'lasten'])
   })
+
+  // Ronde 32 — "de bewegende donutdelen zijn niet expressief genoeg."
+  it('laat de gekozen schijf naar voren komen en de rest terugtreden', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <Donut
+        items={[
+          { naam: 'Wonen', bedrag: 7500, kleur: '#111' },
+          { naam: 'Voeding', bedrag: 2500, kleur: '#222' },
+        ]}
+        interactief
+        toonLegende={false}
+      />,
+    )
+    const schijven = [...container.querySelectorAll('path.donut-schijf')]
+    // In rust: niets verschoven, niets gedimd.
+    expect(schijven.every((s) => s.getAttribute('opacity') === '1')).toBe(true)
+
+    await user.hover(schijven[0])
+    // De gekozen schijf schuift weg van het midden én wordt groter.
+    const verschuiving = schijven[0].getAttribute('transform') ?? ''
+    expect(verschuiving).toContain('translate(')
+    expect(verschuiving).toContain('scale(1.06)')
+    // En de andere treedt terug.
+    expect(schijven[1].getAttribute('opacity')).toBe('0.42')
+  })
+
+  it('dimt niets wanneer de donut niet interactief is', () => {
+    const { container } = render(
+      <Donut items={[{ naam: 'Wonen', bedrag: 7500, kleur: '#111' }, { naam: 'Voeding', bedrag: 2500, kleur: '#222' }]} />,
+    )
+    expect([...container.querySelectorAll('path.donut-schijf')].every((s) => s.getAttribute('opacity') === '1')).toBe(true)
+  })
 })

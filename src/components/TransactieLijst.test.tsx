@@ -29,11 +29,12 @@ function toon(transacties: Transactie[]) {
   return { onBewerk, onVerwijder }
 }
 
-// Zoek, richting, rekening, sortering en de maandschakelaar staan sinds ronde 24
-// altijd open. Categorie en het datumbereik zitten achter 'Meer filters'; deze
-// helper doet wat de gebruiker dan doet.
+// Ronde 32: ALLES wat je kan zoeken of filteren zit achter één knop "Zoeken en
+// filteren". Alleen de maandschakelaar en de chips van wat aanstaat blijven
+// zichtbaar. Deze helper doet dus wat de gebruiker doet vóór hij een filterveld
+// kan aanraken.
 async function klapFiltersOpen(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('button', { name: /^Meer filters/ }))
+  await user.click(screen.getByRole('button', { name: /Zoeken en filteren/ }))
 }
 
 // De meta-regel (datum · categorie · rekening, of de uitsplitsing) van een rij.
@@ -56,6 +57,7 @@ describe('TransactieLijst', () => {
       tx({ id: '2', omschrijving: 'Delhaize' }),
     ])
     expect(screen.getByText('Colruyt')).toBeInTheDocument()
+    await klapFiltersOpen(user)
     await user.type(screen.getByLabelText('Zoek in transacties'), 'delh')
     expect(screen.queryByText('Colruyt')).not.toBeInTheDocument()
     expect(screen.getByText('Delhaize')).toBeInTheDocument()
@@ -67,7 +69,7 @@ describe('TransactieLijst', () => {
       tx({ id: '1', omschrijving: 'Loon', bedrag: 200000 }),
       tx({ id: '2', omschrijving: 'Winkel', bedrag: -3000 }),
     ])
-    // De richting staat nu meteen in de balk: geen klik om ze te vinden.
+    await klapFiltersOpen(user)
     await user.selectOptions(screen.getByLabelText('Richting'), 'in')
     expect(screen.getByText('Loon')).toBeInTheDocument()
     expect(screen.queryByText('Winkel')).not.toBeInTheDocument()
@@ -213,23 +215,30 @@ describe('TransactieLijst — de meta-regel', () => {
   })
 })
 
-describe('TransactieLijst — de open filterbalk', () => {
-  it('zet zoeken, richting, rekening en sorteren meteen op het scherm', () => {
+// Ronde 32: de filterbalk is een LADE geworden. Ze nam permanent twee regels in
+// boven de lijst, ook als je niets zocht — dat is de ruimte die deze ronde
+// teruggeeft. Wat zichtbaar BLIJFT is even belangrijk als wat verdwijnt: de maand
+// en de chips van elk actief filter.
+describe('TransactieLijst — de filterlade', () => {
+  it('houdt in rust álle velden dicht, achter één knop', () => {
     toon([tx({ id: '1' })])
-    // Voorheen zaten deze drie achter een knop "Filters": twee klikken vóór je
-    // zag wat je kon.
+    expect(screen.getByRole('button', { name: /Zoeken en filteren/ })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Zoek in transacties')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Richting')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Rekening')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Sorteer op')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Van')).not.toBeInTheDocument()
+  })
+
+  it('zet alle velden in diezelfde ene lade, en klapt weer dicht', async () => {
+    const user = userEvent.setup()
+    toon([tx({ id: '1' })])
+
+    await klapFiltersOpen(user)
     expect(screen.getByLabelText('Zoek in transacties')).toBeInTheDocument()
     expect(screen.getByLabelText('Richting')).toBeInTheDocument()
     expect(screen.getByLabelText('Rekening')).toBeInTheDocument()
     expect(screen.getByLabelText('Sorteer op')).toBeInTheDocument()
-  })
-
-  it('houdt categorie en datumbereik achter "Meer filters"', async () => {
-    const user = userEvent.setup()
-    toon([tx({ id: '1' })])
-    expect(screen.queryByLabelText('Van')).not.toBeInTheDocument()
-
-    await klapFiltersOpen(user)
     expect(screen.getByLabelText('Hoofdcategorie')).toBeInTheDocument()
     expect(screen.getByLabelText('Van')).toBeInTheDocument()
 
@@ -237,20 +246,43 @@ describe('TransactieLijst — de open filterbalk', () => {
     expect(screen.queryByLabelText('Van')).not.toBeInTheDocument()
   })
 
-  it('toont elk actief filter als chip, ook de altijd zichtbare', async () => {
+  it('laat de maandschakelaar buiten de lade staan', () => {
+    // Welke maand je bekijkt is geen filter dat je opzoekt, het is waar je bent.
+    toon([tx({ id: '1' })])
+    expect(screen.getByRole('button', { name: 'Vorige maand' })).toBeInTheDocument()
+    expect(screen.getByText('Alle maanden')).toBeInTheDocument()
+  })
+
+  it('toont elk actief filter als chip, ook als de lade weer dicht is', async () => {
     const user = userEvent.setup()
     toon([tx({ id: '1', omschrijving: 'Loon', bedrag: 200000 })])
 
+    await klapFiltersOpen(user)
     await user.selectOptions(screen.getByLabelText('Richting'), 'in')
     await user.selectOptions(screen.getByLabelText('Rekening'), 'r1')
+    await klapFiltersOpen(user)
 
     expect(screen.getByRole('button', { name: 'Wis filter Inkomsten' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Wis filter Betaal' })).toBeInTheDocument()
   })
 
+  it('zet ook de zoekterm als chip, want het veld is niet meer te zien', async () => {
+    const user = userEvent.setup()
+    toon([tx({ id: '1', omschrijving: 'Colruyt' })])
+
+    await klapFiltersOpen(user)
+    await user.type(screen.getByLabelText('Zoek in transacties'), 'colr')
+    await klapFiltersOpen(user)
+
+    // Zonder deze chip zou je een gefilterde lijst zien zonder dat ergens staat
+    // waarop ze gefilterd is.
+    expect(screen.getByRole('button', { name: 'Wis filter Zoek: colr' })).toBeInTheDocument()
+  })
+
   it('wist met de × van een chip enkel dat ene filter', async () => {
     const user = userEvent.setup()
     toon([tx({ id: '1', omschrijving: 'Loon', bedrag: 200000 })])
+    await klapFiltersOpen(user)
     await user.selectOptions(screen.getByLabelText('Richting'), 'in')
     await user.selectOptions(screen.getByLabelText('Rekening'), 'r1')
 
@@ -260,19 +292,18 @@ describe('TransactieLijst — de open filterbalk', () => {
     expect(screen.getByRole('button', { name: 'Wis filter Betaal' })).toBeInTheDocument()
   })
 
-  it('telt op de knop alleen de filters die eronder verstopt zitten', async () => {
+  it('telt op de knop hoeveel filters er verstopt aanstaan', async () => {
     const user = userEvent.setup()
     toon([tx({ id: '1' })])
-    // Richting staat zichtbaar in de balk, dus die hoort niet in de teller.
-    await user.selectOptions(screen.getByLabelText('Richting'), 'in')
-    expect(screen.getByRole('button', { name: 'Meer filters' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Zoeken en filteren$/ })).toBeInTheDocument()
 
     await klapFiltersOpen(user)
+    await user.selectOptions(screen.getByLabelText('Richting'), 'in')
     await user.selectOptions(screen.getByLabelText('Hoofdcategorie'), 'ov-voeding')
-    expect(screen.getByRole('button', { name: 'Meer filters · 1' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Zoeken en filteren · 2/ })).toBeInTheDocument()
   })
 
-  it('staat al open wanneer er bij het laden een verborgen filter actief is', () => {
+  it('staat al open wanneer er bij het laden een filter actief is', () => {
     render(
       <TransactieLijst
         transacties={[tx({ id: '1' })]}
@@ -284,14 +315,15 @@ describe('TransactieLijst — de open filterbalk', () => {
       />,
     )
     expect(screen.getByLabelText('Van')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Meer filters · 1' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Zoeken en filteren · 1/ })).toBeInTheDocument()
   })
 
-  it('aantalActieveFilters telt enkel wat achter de knop zit', () => {
+  it('aantalActieveFilters telt alles wat achter de knop zit, behalve de maand', () => {
     expect(aantalActieveFilters({})).toBe(0)
-    expect(aantalActieveFilters({ zoek: 'colruyt' })).toBe(0)
-    // Zoek, richting, rekening en maand staan zichtbaar in de balk.
-    expect(aantalActieveFilters({ richting: 'uit', rekeningId: 'r1', maand: '2026-07' })).toBe(0)
+    // De maand blijft zichtbaar buiten de lade, dus die telt niet mee.
+    expect(aantalActieveFilters({ maand: '2026-07' })).toBe(0)
+    expect(aantalActieveFilters({ zoek: 'colruyt' })).toBe(1)
+    expect(aantalActieveFilters({ richting: 'uit', rekeningId: 'r1', maand: '2026-07' })).toBe(2)
     expect(aantalActieveFilters({ hoofdId: 'ov-voeding', catId: 'cat-x', van: '2026-01-01', tot: '2026-02-01' })).toBe(4)
   })
 })
@@ -354,7 +386,6 @@ describe('TransactieLijst — het venster van zes maanden', () => {
 
 function toonUitgebreid(transacties: Transactie[], over: Partial<React.ComponentProps<typeof TransactieLijst>> = {}) {
   const onVerwijderMeerdere = vi.fn()
-  const onCategoriseerMeerdere = vi.fn()
   render(
     <TransactieLijst
       transacties={transacties}
@@ -363,19 +394,21 @@ function toonUitgebreid(transacties: Transactie[], over: Partial<React.Component
       onBewerk={vi.fn()}
       onVerwijder={vi.fn()}
       onVerwijderMeerdere={onVerwijderMeerdere}
-      onCategoriseerMeerdere={onCategoriseerMeerdere}
       {...over}
     />,
   )
-  return { onVerwijderMeerdere, onCategoriseerMeerdere }
+  return { onVerwijderMeerdere }
 }
 
 // De woorden "Inkomsten" en "Uitgaven" staan ook in de richting-keuzelijst, dus
 // zoeken we bewust binnen het kengetallenblok.
+//
+// Ronde 32: dat blok bestaat nu uit dezelfde `.kengetal`-tegels als op Overzicht,
+// in plaats van uit kale `.stat`-blokjes zonder opmaak.
 function kengetal(label: string): string {
   const blok = document.querySelector('[data-kengetallen]') as HTMLElement
-  const stat = within(blok).getByText(label).closest('.stat') as HTMLElement
-  return stat?.textContent ?? ''
+  const tegel = within(blok).getByText(label).closest('.kengetal') as HTMLElement
+  return tegel?.textContent ?? ''
 }
 
 describe('TransactieLijst — kengetallen', () => {
@@ -395,6 +428,7 @@ describe('TransactieLijst — kengetallen', () => {
       tx({ id: '1', omschrijving: 'Loon', bedrag: 200000 }),
       tx({ id: '2', omschrijving: 'Winkel', bedrag: -3000 }),
     ])
+    await klapFiltersOpen(user)
     await user.selectOptions(screen.getByLabelText('Richting'), 'uit')
     expect(kengetal('Inkomsten')).toMatch(/0,00/)
     expect(kengetal('Uitgaven')).toMatch(/30,00/)
@@ -455,6 +489,7 @@ describe('TransactieLijst — sorteren', () => {
       tx({ id: 'b', omschrijving: 'Groot', bedrag: -90000 }),
       tx({ id: 'c', omschrijving: 'Midden', bedrag: 2000 }),
     ])
+    await klapFiltersOpen(user)
     await user.selectOptions(screen.getByLabelText('Sorteer op'), 'bedrag-af')
     const titels = screen.getAllByText(/Klein|Groot|Midden/).map((el) => el.textContent)
     expect(titels).toEqual(['Groot', 'Midden', 'Klein'])
@@ -463,6 +498,7 @@ describe('TransactieLijst — sorteren', () => {
   it('sorteert op handelaar van A naar Z', async () => {
     const user = userEvent.setup()
     toon([tx({ id: 'a', omschrijving: 'Zeeman' }), tx({ id: 'b', omschrijving: 'Aldi' })])
+    await klapFiltersOpen(user)
     await user.selectOptions(screen.getByLabelText('Sorteer op'), 'omschrijving-op')
     const titels = screen.getAllByText(/Zeeman|Aldi/).map((el) => el.textContent)
     expect(titels).toEqual(['Aldi', 'Zeeman'])
@@ -502,22 +538,21 @@ describe('TransactieLijst — meerdere rijen tegelijk', () => {
     expect(screen.queryByText('2 geselecteerd')).not.toBeInTheDocument()
   })
 
-  it('laat een gesplitst kassaticket buiten de bulk-categorisering en zegt dat', async () => {
+  // Ronde 32: de balk boven de lijst bood óók aan om de hele selectie een
+  // categorie te geven. Dat kan al met het potloodje naast elke rij, en het maakte
+  // de balk zo breed dat er een uitleg over gesplitste kassatickets bij moest. De
+  // vinkjes zijn er nu alleen nog om te verwijderen.
+  it('biedt bij een selectie enkel verwijderen aan, geen categoriewijziging', async () => {
     const user = userEvent.setup()
-    const { onCategoriseerMeerdere } = toonUitgebreid([
+    toonUitgebreid([
       tx({ id: 'gewoon', omschrijving: 'Gewoon' }),
       tx({ id: 'ticket', omschrijving: 'Ticket', regels: [{ bedrag: -500 }, { bedrag: -500 }] }),
     ])
 
     await user.click(screen.getByLabelText('Alles selecteren'))
-    // Nooit stil overslaan: de gebruiker leest waarom.
-    expect(
-      screen.getByText('1 gesplitst(e) kassaticket(s) krijgen geen categorie: die hebben er een per regel.'),
-    ).toBeInTheDocument()
-
-    await user.selectOptions(screen.getByLabelText('Categorie voor de selectie'), 'ov-voeding')
-    await user.click(screen.getByRole('button', { name: 'Categorie toekennen' }))
-    expect(onCategoriseerMeerdere).toHaveBeenCalledWith(['gewoon'], 'ov-voeding')
+    expect(screen.getByRole('button', { name: 'Verwijderen' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Categorie voor de selectie')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Categorie toekennen' })).toBeNull()
   })
 })
 

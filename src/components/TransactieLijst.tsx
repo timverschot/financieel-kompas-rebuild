@@ -15,8 +15,7 @@ import {
   type Sorteerveld,
   type Sortering,
 } from '../utils/transactieSorteer'
-import { Bedrag, Kaart, Leeg, Stat } from '../ui/basis'
-import { CategorieSelect } from './CategorieSelect'
+import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { useT, type Vertaler } from '../i18n'
 import { huidigeMaand, maandJaarLabel, vandaag } from '../utils/datum'
 
@@ -32,11 +31,19 @@ const TEKEN_GESPLITST = '🛒'
 // altijd een klein restbedrag.
 const MAX_GROEPEN_IN_META = 2
 
-// Hoeveel van de INKLAPBARE filters staan er aan? Zoek, richting, rekening en
-// maand tellen bewust niet mee: die staan sinds ronde 24 altijd zichtbaar in de
-// balk, dus de gebruiker ziet ze zelf al staan. Zuivere functie, los testbaar.
+// Hoeveel van de INKLAPBARE filters staan er aan?
+//
+// Ronde 32: de zoekbalk en de drie keuzelijsten ernaast namen permanent twee
+// regels in, ook wanneer je niets zocht — precies de melding die binnenkwam. Ze
+// zitten nu mee achter de knop "Zoeken en filteren", en dus telt hun toestand
+// ook mee in dit getal: de knop moet kunnen zeggen hoeveel er verborgen aanstaat.
+//
+// De MAAND telt nog altijd niet mee: die schakelaar blijft altijd zichtbaar, dus
+// je ziet zelf al welke maand je bekijkt. Zuivere functie, los testbaar.
 export function aantalActieveFilters(filter: TxFilter): number {
-  return [filter.hoofdId, filter.catId, filter.van, filter.tot].filter(Boolean).length
+  return [filter.zoek, filter.richting, filter.rekeningId, filter.hoofdId, filter.catId, filter.van, filter.tot].filter(
+    Boolean,
+  ).length
 }
 
 // De weergavenaam van een sorteerkolom. De opgeslagen sleutel blijft
@@ -103,7 +110,6 @@ export function TransactieLijst({
   onBewerk,
   onVerwijder,
   onVerwijderMeerdere,
-  onCategoriseerMeerdere,
   beginFilter,
 }: {
   transacties: Transactie[]
@@ -113,10 +119,16 @@ export function TransactieLijst({
   gedeeldeKosten?: GedeeldeKost[]
   onBewerk: (tx: Transactie) => void
   onVerwijder: (id: string) => void
-  /** Meerdere rijen tegelijk verwijderen, met één keer ongedaan maken. */
+  /**
+   * Meerdere rijen tegelijk verwijderen, met één keer ongedaan maken.
+   *
+   * Ronde 32: dit is het ENIGE wat je met een selectie doet. Er zat ook een
+   * keuzelijst "Categorie voor de selectie" bij, maar een categorie wijzig je al
+   * met het potloodje naast elke rij — twee wegen naar hetzelfde, waarvan die
+   * hierboven de lijst permanent een balk breder maakte. De vinkjes blijven dus,
+   * alleen om te verwijderen.
+   */
   onVerwijderMeerdere?: (ids: string[]) => void
-  /** Meerdere rijen tegelijk een categorie geven. */
-  onCategoriseerMeerdere?: (ids: string[], categorieId: string) => void
   // Optioneel: filters die al aanstaan bij het laden. Het filterpaneel klapt dan
   // meteen open, zodat de chips niet uit het niets lijken te komen.
   beginFilter?: TxFilter
@@ -130,7 +142,6 @@ export function TransactieLijst({
   // elke filter- of sorteerwijziging, en dan zou je andere rijen bewerken dan je
   // aangeduid hebt.
   const [selectie, setSelectie] = useState<Set<string>>(new Set())
-  const [bulkCategorie, setBulkCategorie] = useState('')
   const [bevestigWissen, setBevestigWissen] = useState(false)
 
   // De mid-categorieën van de gekozen hoofdcategorie (voor de tweede keuzelijst).
@@ -195,7 +206,6 @@ export function TransactieLijst({
 
   function maakSelectieLeeg() {
     setSelectie(new Set())
-    setBulkCategorie('')
     setBevestigWissen(false)
   }
 
@@ -208,8 +218,7 @@ export function TransactieLijst({
   // Selectievakjes en bulkacties verschijnen alleen wanneer de app er iets mee
   // kan; zonder deze props gedraagt de lijst zich exact zoals voorheen.
   const kanBulkWissen = Boolean(onVerwijderMeerdere)
-  const kanBulkCategorie = Boolean(onCategoriseerMeerdere)
-  const kanSelecteren = kanBulkWissen || kanBulkCategorie
+  const kanSelecteren = kanBulkWissen
 
   function sorteer(veld: Sorteerveld) {
     setSortering((huidig) => volgendeSortering(huidig, veld))
@@ -217,6 +226,16 @@ export function TransactieLijst({
 
   // De actieve filters als chips, elk met zijn eigen wisser.
   const chips: FilterChip[] = []
+  // De zoekterm staat sinds ronde 32 óók als chip: het zoekveld zit nu achter een
+  // knop, dus zonder deze chip zou je een lijst zien die stilletjes op iets
+  // gefilterd is zonder dat er ergens staat waarop.
+  if (filter.zoek) {
+    chips.push({
+      sleutel: 'zoek',
+      label: t('Zoek: {term}', { term: filter.zoek }),
+      wis: () => zet({ zoek: undefined }),
+    })
+  }
   if (filter.richting) {
     chips.push({
       sleutel: 'richting',
@@ -267,11 +286,6 @@ export function TransactieLijst({
   // er een selectie openstaat, dan mag een actie nooit rijen raken die je niet meer
   // ziet. Daarom is dit de lijst waarop de knoppen werken.
   const geselecteerd = zichtbaar.filter((tx) => selectie.has(tx.id))
-  // Een gesplitst kassaticket heeft een categorie PER REGEL. Er in bulk één
-  // categorie op zetten zou die uitsplitsing stil overschrijven, dus zulke rijen
-  // blijven buiten de bulk-categorisering — en we zeggen het erbij.
-  const bulkKandidaten = geselecteerd.filter((tx) => !(tx.regels && tx.regels.length > 0))
-  const overgeslagen = geselecteerd.length - bulkKandidaten.length
   const allesAan = zichtbaar.length > 0 && geselecteerd.length === zichtbaar.length
 
   function schakelAlles() {
@@ -290,72 +304,35 @@ export function TransactieLijst({
     <section className="stapel">
       {/* Drie kengetallen over precies de rijen hieronder. Ze stonden alleen op
           Overzicht, dus wie op deze pagina naar één maand of één categorie keek,
-          moest zelf optellen. */}
-      <Kaart>
-        <div className="stat-rij" data-kengetallen>
-          <Stat label={t('Inkomsten')}>{formatEuro(cijfers.inkomsten)}</Stat>
-          <Stat label={t('Uitgaven')}>{formatEuro(cijfers.uitgaven)}</Stat>
-          <Stat label={t('Saldo')}>{formatEuro(cijfers.saldo)}</Stat>
+          moest zelf optellen.
+
+          Ronde 32: dit waren drie kale labels met een cijfer eronder, zonder enige
+          opmaak — de melding was "daar is helemaal geen opmaak voorzien". Het zijn
+          nu exact dezelfde tegels als op Overzicht, uit dezelfde CSS-klassen. Eén
+          soort kengetal in de hele app in plaats van twee. */}
+      <div className="tegelrij tegelrij-drie" data-kengetallen>
+        <div className="kengetal">
+          <span className="label-caps">{t('Inkomsten')}</span>
+          <span className="bedrag-groot" style={{ color: 'var(--positive-ink)' }}>{formatEuro(cijfers.inkomsten)}</span>
         </div>
-      </Kaart>
+        <div className="kengetal">
+          <span className="label-caps">{t('Uitgaven')}</span>
+          <span className="bedrag-groot" style={{ color: 'var(--negative-ink)' }}>{formatEuro(cijfers.uitgaven)}</span>
+        </div>
+        <div className="kengetal">
+          <span className="label-caps">{t('Saldo')}</span>
+          <span className="bedrag-groot">{formatEuro(cijfers.saldo)}</span>
+        </div>
+      </div>
 
       <Kaart>
-        {/* De filterbalk staat open, op één regel. Voorheen zat alles achter een
-            knop "Filters" en zat de maand er niet eens in, dus je moest twee keer
-            klikken vóór je zag wat je kon. */}
-        <div className="veldrij">
-          <div className="veldgroep" style={{ flex: '2 1 200px' }}>
-            <input
-              aria-label={t('Zoek in transacties')}
-              placeholder={t('Zoek op omschrijving…')}
-              value={filter.zoek ?? ''}
-              onChange={(e) => zet({ zoek: e.target.value })}
-            />
-          </div>
-          <div className="veldgroep">
-            <select
-              aria-label={t('Richting')}
-              value={filter.richting ?? ''}
-              onChange={(e) => zet({ richting: (e.target.value || undefined) as TxFilter['richting'] })}
-            >
-              <option value="">{t('Alles')}</option>
-              <option value="in">{t('Inkomsten')}</option>
-              <option value="uit">{t('Uitgaven')}</option>
-            </select>
-          </div>
-          <div className="veldgroep">
-            <select
-              aria-label={t('Rekening')}
-              value={filter.rekeningId ?? ''}
-              onChange={(e) => zet({ rekeningId: e.target.value || undefined })}
-            >
-              <option value="">{t('Alle rekeningen')}</option>
-              {rekeningen.map((r) => (
-                <option key={r.id} value={r.id}>{rekeningLabel(r)}</option>
-              ))}
-            </select>
-          </div>
-          <div className="veldgroep">
-            <select
-              aria-label={t('Sorteer op')}
-              value={`${sortering.veld}-${sortering.oplopend ? 'op' : 'af'}`}
-              onChange={(e) => {
-                const [veld, richting] = e.target.value.split('-')
-                setSortering({ veld: veld as Sorteerveld, oplopend: richting === 'op' })
-              }}
-            >
-              {SORTEERVELDEN.map((veld) => (
-                <optgroup key={veld} label={sorteerNaam(t, veld)}>
-                  <option value={`${veld}-af`}>{sorteerNaam(t, veld)} ↓</option>
-                  <option value={`${veld}-op`}>{sorteerNaam(t, veld)} ↑</option>
-                </optgroup>
-              ))}
-            </select>
-          </div>
-        </div>
+        {/* De maandschakelaar én de filterknop op ÉÉN regel (ronde 32). Ze stonden
+            onder elkaar, en nu de zoekbalk weg is zou deze kaart anders uit twee
+            bijna lege regels bestaan. Wat er nog aanstaat volgt als chips: die
+            breken vanzelf af naar een volgende regel wanneer het er veel zijn.
 
-        {/* De maandschakelaar. Kies je een maand, dan wordt dat gewoon een filter:
-            zo blijven de kengetallen, de lijst en de chips altijd hetzelfde zeggen. */}
+            Kies je een maand, dan wordt dat gewoon een filter: zo blijven de
+            kengetallen, de lijst en de chips altijd hetzelfde zeggen. */}
         <div className="knoprij" style={{ alignItems: 'center' }}>
           <button
             type="button"
@@ -381,20 +358,32 @@ export function TransactieLijst({
               {t('Alle maanden')}
             </button>
           )}
-        </div>
 
-        {/* Wat er nu aanstaat, plus de resterende filters achter één knop. */}
-        <div className="knoprij">
+          {/* Alles wat je kan zoeken en filteren zit achter ÉÉN knop (ronde 32).
+              Voorheen stond de zoekbalk met drie keuzelijsten permanent open en zat
+              er dáárnaast nog een knop "Meer filters" — twee regels formulier die je
+              in verreweg de meeste gevallen niet gebruikte, boven de lijst die je
+              wél wou zien.
+
+              Wat altijd zichtbaar blijft: de maand, en de chips van wat er aanstaat.
+              Zo weet je zonder de lade te openen nog steeds precies waar je naar
+              kijkt, en kan je elk filter met één tik weer weghalen. */}
           <button
             type="button"
             className="knop knop-secundair knop-klein"
+            style={{ marginLeft: 'auto' }}
             aria-expanded={filtersOpen}
             aria-controls="transactie-filters"
             onClick={() => setFiltersOpen((open) => !open)}
           >
-            {aantalFilters > 0 ? t('Meer filters · {n}', { n: aantalFilters }) : t('Meer filters')}
+            <span aria-hidden>🔍</span>{' '}
+            {aantalFilters > 0 ? t('Zoeken en filteren · {n}', { n: aantalFilters }) : t('Zoeken en filteren')}
           </button>
+        </div>
 
+        {/* Wat er nu aanstaat. Elke chip haalt met één tik haar eigen filter weg. */}
+        {(chips.length > 0 || actief) && (
+        <div className="knoprij">
           {chips.map((c) => (
             <button
               key={c.sleutel}
@@ -413,9 +402,65 @@ export function TransactieLijst({
             </button>
           )}
         </div>
+        )}
 
         {filtersOpen && (
           <div id="transactie-filters" className="stapel">
+            <div className="veldrij">
+              <div className="veldgroep" style={{ flex: '2 1 200px' }}>
+                <span className="label-caps">{t('Zoeken')}</span>
+                <input
+                  aria-label={t('Zoek in transacties')}
+                  placeholder={t('Zoek op omschrijving…')}
+                  value={filter.zoek ?? ''}
+                  onChange={(e) => zet({ zoek: e.target.value })}
+                />
+              </div>
+              <div className="veldgroep">
+                <span className="label-caps">{t('Richting')}</span>
+                <select
+                  aria-label={t('Richting')}
+                  value={filter.richting ?? ''}
+                  onChange={(e) => zet({ richting: (e.target.value || undefined) as TxFilter['richting'] })}
+                >
+                  <option value="">{t('Alles')}</option>
+                  <option value="in">{t('Inkomsten')}</option>
+                  <option value="uit">{t('Uitgaven')}</option>
+                </select>
+              </div>
+              <div className="veldgroep">
+                <span className="label-caps">{t('Rekening')}</span>
+                <select
+                  aria-label={t('Rekening')}
+                  value={filter.rekeningId ?? ''}
+                  onChange={(e) => zet({ rekeningId: e.target.value || undefined })}
+                >
+                  <option value="">{t('Alle rekeningen')}</option>
+                  {rekeningen.map((r) => (
+                    <option key={r.id} value={r.id}>{rekeningLabel(r)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="veldgroep">
+                <span className="label-caps">{t('Sorteer op')}</span>
+                <select
+                  aria-label={t('Sorteer op')}
+                  value={`${sortering.veld}-${sortering.oplopend ? 'op' : 'af'}`}
+                  onChange={(e) => {
+                    const [veld, richting] = e.target.value.split('-')
+                    setSortering({ veld: veld as Sorteerveld, oplopend: richting === 'op' })
+                  }}
+                >
+                  {SORTEERVELDEN.map((veld) => (
+                    <optgroup key={veld} label={sorteerNaam(t, veld)}>
+                      <option value={`${veld}-af`}>{sorteerNaam(t, veld)} ↓</option>
+                      <option value={`${veld}-op`}>{sorteerNaam(t, veld)} ↑</option>
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div className="veldrij">
               <label className="veldgroep">
                 <span className="label-caps">{t('Hoofdcategorie')}</span>
@@ -509,33 +554,9 @@ export function TransactieLijst({
 
         {/* Wat je met de aangevinkte rijen kan doen. Verschijnt pas zodra er iets
             aangevinkt is, zodat de balk niet permanent ruimte inneemt. */}
-        {geselecteerd.length > 0 && (kanBulkCategorie || kanBulkWissen) && (
+        {geselecteerd.length > 0 && kanBulkWissen && (
           <div className="knoprij" data-bulkbalk style={{ alignItems: 'center' }}>
             <strong>{t('{n} geselecteerd', { n: geselecteerd.length })}</strong>
-
-            {kanBulkCategorie && (
-              <>
-                <CategorieSelect
-                  id="bulk-categorie"
-                  ariaLabel={t('Categorie voor de selectie')}
-                  waarde={bulkCategorie}
-                  onKies={setBulkCategorie}
-                  categorieen={categorieen}
-                  metGeenKeuze
-                />
-                <button
-                  type="button"
-                  className="knop knop-secundair knop-klein"
-                  disabled={!bulkCategorie || bulkKandidaten.length === 0}
-                  onClick={() => {
-                    onCategoriseerMeerdere?.(bulkKandidaten.map((tx) => tx.id), bulkCategorie)
-                    maakSelectieLeeg()
-                  }}
-                >
-                  {t('Categorie toekennen')}
-                </button>
-              </>
-            )}
 
             {kanBulkWissen &&
               (bevestigWissen ? (
@@ -567,15 +588,6 @@ export function TransactieLijst({
             <button type="button" className="knop knop-ghost knop-klein" onClick={maakSelectieLeeg}>
               {t('Selectie wissen')}
             </button>
-
-            {/* Nooit stil overslaan: zeg welke rijen buiten de bulk-actie vallen. */}
-            {kanBulkCategorie && overgeslagen > 0 && (
-              <span className="rij-meta" style={{ flexBasis: '100%' }}>
-                {t('{n} gesplitst(e) kassaticket(s) krijgen geen categorie: die hebben er een per regel.', {
-                  n: overgeslagen,
-                })}
-              </span>
-            )}
           </div>
         )}
 

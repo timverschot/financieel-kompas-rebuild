@@ -920,19 +920,6 @@ export function App() {
     })
   }
 
-  // Meerdere transacties in één keer dezelfde categorie geven. Gesplitste
-  // kassatickets komen hier niet binnen: de lijst houdt ze er al buiten, omdat zij
-  // een categorie per regel hebben en die niet stil overschreven mag worden.
-  async function categoriseerMeerdere(ids: string[], categorieId: string) {
-    if (ids.length === 0 || !categorieId) return
-    const oude = (transacties ?? []).filter((t) => ids.includes(t.id))
-    for (const o of oude) await bewaarTransactie({ ...o, categorieId })
-    await herlaad()
-    toonUndo(t('{n} transactie(s) gewijzigd', { n: oude.length }), async () => {
-      for (const o of oude) await bewaarTransactie(o)
-    })
-  }
-
   async function verbindEnSynchroniseer() {
     setBezig(true)
     setStatusTekst(null)
@@ -1226,20 +1213,6 @@ export function App() {
                   )}
                 </div>
 
-                {/* Je laatste boekingen. Stonden alleen in de zijkolom, dus op een
-                    telefoon zag je ze op de startpagina helemaal niet. */}
-                <RecenteTransacties
-                  transacties={transacties}
-                  categorieen={categorieen}
-                  onAlle={() => setPagina('transacties')}
-                />
-
-                <Kaart
-                  titel={t('Inkomsten en uitgaven per maand')}
-                  bijschrift={t('De laatste zes maanden, met je gemiddelde als lijn.')}
-                >
-                  <MaandGrafiek data={maandPaar} lopendeMaand={huidigeMaand()} />
-                </Kaart>
               </div>
 
               {/* Enkel op desktop: de ruimte rechts vullen met dingen waarvoor je
@@ -1253,6 +1226,29 @@ export function App() {
                   onGaNaarBudget={() => setPagina('budget')}
                 />
               )}
+            </div>
+
+            {/* Ronde 32: deze twee blokken stonden IN de linkerkolom van het
+                raster hierboven. Op een breed scherm waren ze daardoor maar twee
+                derde van de pagina breed, met een leeg vak rechts ernaast — terwijl
+                het allebei brede dingen zijn: een lijst met datum, categorie en
+                bedrag, en een grafiek van zes maanden. Ze staan nu ONDER het
+                raster en nemen dus de volle breedte. */}
+            <div className="stapel" data-volle-breedte>
+              {/* Je laatste boekingen. Stonden alleen in de zijkolom, dus op een
+                  telefoon zag je ze op de startpagina helemaal niet. */}
+              <RecenteTransacties
+                transacties={transacties}
+                categorieen={categorieen}
+                onAlle={() => setPagina('transacties')}
+              />
+
+              <Kaart
+                titel={t('Inkomsten en uitgaven per maand')}
+                bijschrift={t('De laatste zes maanden, met je gemiddelde als lijn.')}
+              >
+                <MaandGrafiek data={maandPaar} lopendeMaand={huidigeMaand()} />
+              </Kaart>
             </div>
           </ErrorBoundary>
         </>
@@ -1276,7 +1272,6 @@ export function App() {
               onBewerk={setBewerkTransactie}
               onVerwijder={verwijder}
               onVerwijderMeerdere={verwijderMeerdere}
-              onCategoriseerMeerdere={categoriseerMeerdere}
             />
           </ErrorBoundary>
         </>
@@ -1775,7 +1770,13 @@ export function App() {
             )}
           </header>
           <div style={{ padding: '1.5rem 1.5rem 3rem' }}>
-            <div className="inhoud-breed">{paginaInhoud}</div>
+            {/* De `key` is wat de overgang laat werken: bij elke tabwissel is dit
+                voor React een NIEUW vlak, dus begint de animatie opnieuw. Zonder
+                key zou React de inhoud hergebruiken en zou je de eerste keer een
+                beweging zien en daarna nooit meer. */}
+            <div className="inhoud-breed pagina-in" key={pagina}>
+              {paginaInhoud}
+            </div>
           </div>
         </div>
         {undoBalk}
@@ -1790,14 +1791,26 @@ export function App() {
     <CategorieVolgordeProvider volgorde={hoofdVolgorde}>
       <main style={{ ...container, paddingBottom: '5.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-          <Merkteken grootte={30} />
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--tekst-xl)', letterSpacing: '-0.03em' }}>Kompal</span>
+          {/* Het merk brengt je terug naar Overzicht — dezelfde afspraak als het
+              logo op zowat elke website. Een echte knop, geen aanklikbare div, zodat
+              de tab-toets en schermlezers er ook bij kunnen. */}
+          <button
+            type="button"
+            className="merkknop"
+            aria-label={t('Naar Overzicht')}
+            onClick={() => setPagina('overzicht')}
+          >
+            <Merkteken grootte={30} />
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--tekst-xl)', letterSpacing: '-0.03em' }}>Kompal</span>
+          </button>
           {/* Hetzelfde belletje als op desktop. Het stond hier vroeger niet, dus op
               een telefoon zag je nooit dat een budget bijna op was. */}
           <div style={{ flex: 1 }} />
           <Meldingenbel meldingen={meldingen} onGaNaar={gaNaarMelding} onBoekVasteLast={boekVasteLastPerId} />
         </div>
-        {paginaInhoud}
+        <div className="pagina-in" key={pagina}>
+          {paginaInhoud}
+        </div>
       </main>
       {undoBalk}
       {boekingLagen}

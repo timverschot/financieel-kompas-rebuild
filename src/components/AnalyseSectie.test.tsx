@@ -76,6 +76,24 @@ describe('AnalyseSectie — verdeling en ranglijst', () => {
     expect(await screen.findByRole('button', { name: /Terug/ })).toBeInTheDocument()
   })
 
+  // Ronde 32: de terugknop stond náást de paginatitel, dus helemaal bovenaan. Nu
+  // staat ze op dezelfde rij als de periodekaartjes — de knoppen die je op deze
+  // pagina toch al gebruikt.
+  it('zet de terugknop bij de periodekaartjes en niet bij de paginatitel', async () => {
+    const user = userEvent.setup()
+    toon([boodschappen, tanken])
+    await user.click(screen.getByRole('button', { name: 'Toon details van Voeding' }))
+
+    const terug = await screen.findByRole('button', { name: /Terug/ })
+    const rij = terug.closest('.knoprij') as HTMLElement
+    expect(rij).not.toBeNull()
+    // Dezelfde rij bevat de periodekeuzes.
+    expect(within(rij).getByRole('button', { name: 'Deze maand' })).toBeInTheDocument()
+    // En ze staat NIET meer in de kop van de pagina.
+    expect(terug.closest('h1')).toBeNull()
+    expect(document.querySelector('.paginakop')?.parentElement?.contains(terug)).toBe(false)
+  })
+
   it('toont één kaart met een lege toestand wanneer er niets is', () => {
     toon([])
     expect(screen.getByText('Geen uitgaven in deze periode')).toBeInTheDocument()

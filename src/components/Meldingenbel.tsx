@@ -78,28 +78,35 @@ export function Meldingenbel({
 
   return (
     <div style={{ position: 'relative' }}>
+      {/* Ronde 32: de bel is groter en spreekt.
+          Ze was een grijze 34×34-icoonknop met een stipje van 8 px in de hoek —
+          precies zoals de knopjes ‹ › ✎ elders in de app, dus niets onderscheidde
+          "er is nieuws" van "hier kan je bladeren". Nu:
+            - een grotere knop met een groter belletje;
+            - géén stipje maar een echt TELLERTJE, zodat je ziet hoeveel er is;
+            - amber van rand en kleur zodra er iets staat, rood als het dringend is;
+            - een zachte klop van twee seconden om de aandacht te trekken. Die stopt
+              vanzelf (drie keer) en blijft dus niet eeuwig bewegen. */}
       <button
-        className="knop knop-icoon"
-        style={{ position: 'relative' }}
+        className={aantal > 0 ? 'knop knop-icoon bel bel-actief' : 'knop knop-icoon bel'}
         aria-label={aantal > 0 ? t('Meldingen ({n})', { n: aantal }) : t('Meldingen')}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
-        <span aria-hidden>🔔</span>
+        <span aria-hidden className={aantal > 0 && !open ? 'bel-teken bel-klop' : 'bel-teken'}>
+          🔔
+        </span>
         {aantal > 0 && (
           <span
             aria-hidden
+            className="bel-teller"
             style={{
-              position: 'absolute',
-              top: 4,
-              right: 4,
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
               // Rood zodra er iets dringend is, anders de gewone amberen stip.
               background: meldingen.some((m) => m.dringend) ? 'var(--negative)' : 'var(--accent-dot)',
             }}
-          />
+          >
+            {aantal > 9 ? '9+' : aantal}
+          </span>
         )}
       </button>
 

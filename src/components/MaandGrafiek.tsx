@@ -1,6 +1,6 @@
 import { formatEuro } from '../utils/format'
 import { gemiddeldeVolleMaanden, type MaandPaar } from '../utils/maandverloop'
-import { maandKort } from '../utils/datum'
+import { maandKort, maandVoluit } from '../utils/datum'
 import { Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 
@@ -55,10 +55,15 @@ export function MaandGrafiek({ data, lopendeMaand }: { data: MaandPaar[]; lopend
           />
         )}
 
-        {data.map((d) => {
+        {data.map((d, i) => {
           const loopt = d.maand === lopendeMaand
           const inHoog = Math.round((d.inkomsten / max) * 100)
           const uitHoog = Math.round((d.uitgaven / max) * 100)
+          // Elke maand begint een tikje later dan de vorige, zodat de grafiek zich
+          // van links naar rechts opbouwt in plaats van in één klap te staan. De
+          // vertraging hoort hier en niet in de CSS: alleen deze component weet
+          // hoeveel maanden er zijn.
+          const vertraging = `${i * 60}ms`
           const label = `${maandKort(d.maand)}: ${t('in')} ${formatEuro(d.inkomsten)}, ${t('uit')} ${formatEuro(d.uitgaven)}${loopt ? ` (${t('loopt nog')})` : ''}`
           return (
             <div
@@ -69,6 +74,7 @@ export function MaandGrafiek({ data, lopendeMaand }: { data: MaandPaar[]; lopend
               aria-label={label}
             >
               <span
+                className="staaf-in"
                 style={{
                   flex: 1,
                   minWidth: 0,
@@ -77,9 +83,11 @@ export function MaandGrafiek({ data, lopendeMaand }: { data: MaandPaar[]; lopend
                   borderRadius: '6px 6px 0 0',
                   background: 'var(--positive)',
                   opacity: loopt ? 0.55 : 1,
+                  animationDelay: vertraging,
                 }}
               />
               <span
+                className="staaf-in"
                 style={{
                   flex: 1,
                   minWidth: 0,
@@ -88,6 +96,7 @@ export function MaandGrafiek({ data, lopendeMaand }: { data: MaandPaar[]; lopend
                   borderRadius: '6px 6px 0 0',
                   background: 'var(--negative)',
                   opacity: loopt ? 0.55 : 1,
+                  animationDelay: vertraging,
                 }}
               />
             </div>
@@ -98,7 +107,11 @@ export function MaandGrafiek({ data, lopendeMaand }: { data: MaandPaar[]; lopend
       <div style={{ display: 'flex', gap: 8, paddingTop: 8, borderTop: '1px solid var(--divider)' }}>
         {data.map((d) => (
           <div key={d.maand} className="rij-meta" style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
-            {maandKort(d.maand)}
+            {/* Op een breed scherm de maand voluit ("juli"), op een telefoon de
+                afkorting ("jul"). Er staat er altijd precies één in beeld; de
+                andere is met CSS verborgen. */}
+            <span className="alleen-smal">{maandKort(d.maand)}</span>
+            <span className="alleen-breed">{maandVoluit(d.maand)}</span>
             {d.maand === lopendeMaand && <span aria-hidden> *</span>}
           </div>
         ))}

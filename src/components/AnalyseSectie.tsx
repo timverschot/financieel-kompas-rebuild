@@ -289,16 +289,11 @@ export function AnalyseSectie({
 
   return (
     <section className="stapel">
-      <PaginaKop
-        titel={drill ? drill.naam : t('Analyse')}
-        actie={
-          drill ? (
-            <button className="knop knop-secundair knop-klein" onClick={() => setDrill(null)}>
-              ‹ {t('Terug')}
-            </button>
-          ) : undefined
-        }
-      />
+      {/* Ronde 32: de knop "‹ Terug" stond hier, náást de paginatitel, dus hoog
+          boven de rest — je moest telkens helemaal naar boven om terug te gaan.
+          Ze staat nu rechts op de rij met de periodekaartjes, op ooghoogte met de
+          knoppen die je op deze pagina toch al gebruikt. */}
+      <PaginaKop titel={drill ? drill.naam : t('Analyse')} />
 
       {/* Richting: uitgaven of inkomsten */}
       <div className="knoprij" style={{ gap: 8 }}>
@@ -323,12 +318,24 @@ export function AnalyseSectie({
       </div>
 
       {/* Periode */}
-      <div className="knoprij" style={{ gap: 8 }}>
+      <div className="knoprij" style={{ gap: 8, alignItems: 'center' }}>
         {perioden.map(([k, label]) => (
           <button key={k} className={keuze === k ? 'chip chip-actief' : 'chip'} onClick={() => setKeuze(k)}>
             {label}
           </button>
         ))}
+        {/* `marginLeft: auto` duwt de knop naar de rechterkant van dezelfde rij.
+            Op een smal scherm breekt de rij af en komt ze gewoon op de volgende
+            regel te staan — nog steeds vlak bij de knoppen, nooit buiten beeld. */}
+        {drill && (
+          <button
+            className="knop knop-secundair knop-klein"
+            style={{ marginLeft: 'auto' }}
+            onClick={() => setDrill(null)}
+          >
+            ‹ {t('Terug')}
+          </button>
+        )}
         {keuze === 'aangepast' && (
           <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <input type="date" aria-label={t('Periode van')} value={van} onChange={(e) => setVan(e.target.value)} style={{ fontSize: 'var(--tekst-s)', padding: '8px 10px' }} />

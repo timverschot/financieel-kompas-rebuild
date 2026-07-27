@@ -67,13 +67,21 @@ export function Zijbalk({
     <aside style={paneel} aria-label={t('Hoofdnavigatie')}>
       {/* De kop begint bewust op 1,3rem van links, zodat het merkteken optisch
           uitlijnt met de icoontjes in de navigatie eronder. */}
-      <div
+      {/* Ronde 32: het merk is een knop naar Overzicht geworden. Dat is wat een
+          logo linksboven overal doet, en het was hier de enige plek waar erop
+          klikken niets deed. Het uiterlijk verandert niet — zie `.merkknop`. */}
+      <button
+        type="button"
+        className="merkknop"
+        aria-label={t('Naar Overzicht')}
+        onClick={() => onKies('overzicht')}
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 12,
           padding: '1.7rem 1rem 1.15rem 1.3rem',
           borderBottom: hairline,
+          width: '100%',
         }}
       >
         <Merkteken grootte={38} />
@@ -93,7 +101,7 @@ export function Zijbalk({
           </strong>
           <span style={{ fontSize: '0.7rem', color: 'var(--sidebar-muted)' }}>{t('je financieel kompas')}</span>
         </span>
-      </div>
+      </button>
 
       <nav style={{ flex: 1, overflowY: 'auto', padding: '0.6rem 0.5rem' }}>
         {PAGINAS.map((p) => {

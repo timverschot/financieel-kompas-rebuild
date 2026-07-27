@@ -47,6 +47,30 @@ describe('MaandGrafiek', () => {
     expect(screen.getByText('Uitgaven')).toBeInTheDocument()
   })
 
+  // Ronde 32
+  it('zet de maand zowel kort als voluit klaar, en laat CSS kiezen', () => {
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-07" />)
+    // Op een breed scherm is er ruimte zat voor "juli"; op een telefoon niet.
+    // Allebei staan ze in de DOM; welke je ziet, bepaalt de mediaquery.
+    // Bewust juni en niet mei: in het Nederlands is "mei" al even lang als zijn
+    // afkorting, dus daar zou de test niets bewijzen.
+    const kort = [...document.querySelectorAll('.alleen-smal')].map((e) => e.textContent)
+    const lang = [...document.querySelectorAll('.alleen-breed')].map((e) => e.textContent)
+    expect(kort[1]).toBe('jun')
+    expect(lang[1]).toBe('juni')
+  })
+
+  it('laat elke staaf van nul naar zijn waarde groeien', () => {
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-07" />)
+    const staven = [...document.querySelectorAll('.staaf-in')] as HTMLElement[]
+    // Twee staven per maand (inkomsten + uitgaven).
+    expect(staven.length).toBe(reeks.length * 2)
+    // De maanden beginnen na elkaar, zodat de grafiek zich van links naar rechts
+    // opbouwt in plaats van in één klap te staan.
+    expect(staven[0].style.animationDelay).toBe('0ms')
+    expect(staven[2].style.animationDelay).toBe('60ms')
+  })
+
   it('toont niets bij een lege reeks', () => {
     const { container } = render(<MaandGrafiek data={[]} lopendeMaand="2026-07" />)
     expect(container.firstChild).toBeNull()

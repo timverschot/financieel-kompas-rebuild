@@ -88,12 +88,20 @@ describe('App op een breed scherm', () => {
     render(<App />)
     await screen.findByText('Recente transacties')
 
-    // De eerste 'Alle'-knop hoort bij de kaart met recente transacties.
-    await user.click(screen.getAllByRole('button', { name: 'Alle' })[0])
-    // De pagina is nu puur overzicht: de zoekbalk van de lijst hoort er te staan,
-    // en het invoerformulier niet meer (dat zit in de popup).
-    await waitFor(() => expect(screen.getByLabelText('Zoek in transacties')).toBeInTheDocument())
+    // De 'Alle'-knop ván de kaart met recente transacties. Bewust niet "de eerste
+    // Alle-knop op de pagina": sinds ronde 32 staat die kaart onder het raster,
+    // dus komt de zijkolom (die ook een 'Alle' heeft) er in de DOM vóór.
+    const kop = screen.getByText('Recente transacties').closest('.kaart') as HTMLElement
+    await user.click(within(kop).getByRole('button', { name: 'Alle' }))
+    // De pagina is nu puur overzicht: de knop die zoeken en filteren opent hoort
+    // er te staan, en het invoerformulier niet meer (dat zit in de popup).
+    //
+    // Ronde 32: het zoekVELD zit achter die knop. Vandaar dat de test nu op de knop
+    // zoekt en pas daarna op het veld — precies de weg die de gebruiker aflegt.
+    await waitFor(() => expect(screen.getByRole('button', { name: /Zoeken en filteren/ })).toBeInTheDocument())
     expect(screen.queryByLabelText('Handelaar / winkel')).toBeNull()
+    await user.click(screen.getByRole('button', { name: /Zoeken en filteren/ }))
+    expect(screen.getByLabelText('Zoek in transacties')).toBeInTheDocument()
   })
 
   it('opent de invoerpopup vanuit de bovenbalk, zonder de pagina te verlaten', async () => {
@@ -115,5 +123,49 @@ describe('App op een breed scherm', () => {
 
     zetSchermbreedte(390)
     await waitFor(() => expect(screen.getByRole('button', { name: 'Meer' })).toBeInTheDocument())
+  })
+
+  // --- Ronde 32 ---
+
+  it('brengt je met het merkteken linksboven terug naar Overzicht', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.click(screen.getByRole('button', { name: 'Instellingen' }))
+    await screen.findByText('Taal')
+    // Het logo linksboven doet op zowat elke website hetzelfde; hier deed het niets.
+    await user.click(screen.getByRole('button', { name: 'Naar Overzicht' }))
+    expect(await screen.findByText('Saldo')).toBeInTheDocument()
+  })
+
+  it('zet de recente transacties en de maandgrafiek over de volle breedte', async () => {
+    render(<App />)
+    await screen.findByText('Recente transacties')
+
+    // Ze stonden in de LINKERkolom van het hoofdraster, dus naast de zijkolom en
+    // maar twee derde breed — met een leeg vak rechts ernaast. Nu staan ze buiten
+    // dat raster.
+    const volle = document.querySelector('[data-volle-breedte]') as HTMLElement
+    expect(volle).not.toBeNull()
+    expect(volle.closest('.raster-hoofd')).toBeNull()
+    expect(within(volle).getByText('Recente transacties')).toBeInTheDocument()
+    expect(within(volle).getByText('Inkomsten en uitgaven per maand')).toBeInTheDocument()
+  })
+
+  it('laat de pagina bij elke tabwissel opnieuw in beeld komen', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    // De `key` op dit vlak is wat de overgang laat werken: zonder key hergebruikt
+    // React hetzelfde element en speelt de animatie maar één keer, bij het laden.
+    const vlak = () => document.querySelector('.pagina-in') as HTMLElement
+    const eerste = vlak()
+    expect(eerste).not.toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Instellingen' }))
+    await screen.findByText('Taal')
+    expect(vlak()).not.toBe(eerste)
   })
 })

@@ -99,9 +99,16 @@
   /* De amberglans: de warme cirkel die de saldotegel zijn eigen gezicht geeft.
      Sinds ronde 20 is dit een designLIJN in plaats van een eenmalig effect, dus
      staat de kleur hier als token. In het lichte thema moet ze dichter zijn: op
-     crème verdwijnt dezelfde waarde die op bijna-zwart wél leest. */
-  --glans: rgba(201, 118, 26, 0.1);
-  --glans-sterk: rgba(201, 118, 26, 0.2);
+     crème verdwijnt dezelfde waarde die op bijna-zwart wél leest.
+
+     Ronde 32: de waarden gingen omhoog. Op een echt scherm was de gloed amper
+     te zien — precies de melding die binnenkwam ("de ambergloed is nog niet
+     voldoende zichtbaar"). Ze is nu ongeveer anderhalf keer zo dicht, en
+     `--glans-rand` is nieuw: een zweem amber in de kaartrand, zodat een kaart
+     ook aan haar omtrek bij de familie hoort. */
+  --glans: rgba(201, 118, 26, 0.17);
+  --glans-sterk: rgba(201, 118, 26, 0.34);
+  --glans-rand: rgba(201, 118, 26, 0.16);
 
   /* Zijpaneel (desktop): een donkere, warm-bruine chrome naast de crème pagina.
      Zie components/Zijbalk.tsx. In donkere modus krijgt het paneel eigen,
@@ -155,8 +162,9 @@
   --focus-ring-sterk: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-dot);
   /* In het donker mag de glans losser en helderder: er is meer ruimte tussen de
      achtergrond en het amber. */
-  --glans: rgba(240, 166, 60, 0.14);
-  --glans-sterk: rgba(240, 166, 60, 0.24);
+  --glans: rgba(240, 166, 60, 0.22);
+  --glans-sterk: rgba(240, 166, 60, 0.4);
+  --glans-rand: rgba(240, 166, 60, 0.22);
 
   /* Zijpaneel in donkere modus: net tussen de paginakleur (#0e1116) en de
      kaartkleur (#171c23), zodat de balk herkenbaar blijft zonder eruit te
@@ -185,6 +193,34 @@ html {
      niets aan de hand is. */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+}
+
+/* De amberwas over de hele pagina (ronde 32).
+
+   De gloed zat tot nu toe alleen ín twee tegels. Daardoor was het een detail van
+   de startpagina in plaats van de sfeer van de app. Deze laag ligt VAST achter
+   alles: twee heel zachte, grote amberen velden — één rechtsboven, één linksonder
+   — die traag heen en weer schuiven. Ze vangt geen muis (`pointer-events: none`)
+   en staat achter de inhoud, dus ze kan niets in de weg zitten. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(760px 440px at 82% -6%, var(--glans), transparent 70%),
+    radial-gradient(560px 360px at 4% 104%, var(--glans), transparent 72%);
+  animation: was-drift 26s ease-in-out infinite alternate;
+}
+
+@keyframes was-drift {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(-3%, 2.5%);
+  }
 }
 
 body {
@@ -257,7 +293,17 @@ h4 {
    --------------------------------------------------------------------------- */
 
 .kaart {
-  background: var(--surface);
+  /* Ronde 32: elke kaart draagt nu zelf een vleugje amber in haar rechterbovenhoek.
+     Waarom als ACHTERGROND en niet als `.glans`-pseudo-element: `.glans` heeft
+     `overflow: hidden` nodig om de cirkel af te snijden, en dat zou in elke kaart
+     de uitklaplijsten (categoriezoeker, keuzelijsten) afkappen. Een radiale
+     verloopachtergrond wordt vanzelf door de rand van de kaart begrensd en raakt
+     de inhoud niet aan.
+
+     Zo is de amberlijn niet langer iets van twee tegels op de startpagina, maar
+     van élk vlak in de app — de melding die binnenkwam. */
+  background-color: var(--surface);
+  background-image: radial-gradient(circle 190px at calc(100% + 24px) -24px, var(--glans), transparent 70%);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   padding: 20px;
@@ -461,13 +507,19 @@ h4 {
 .glans::after {
   content: '';
   position: absolute;
-  right: -40px;
-  top: -40px;
-  width: 150px;
-  height: 150px;
+  right: -50px;
+  top: -50px;
+  width: 190px;
+  height: 190px;
   border-radius: 50%;
   background: radial-gradient(circle, var(--glans), transparent 70%);
   pointer-events: none;
+  /* Ronde 32: de gloed staat niet meer stil. Ze schuift heel traag heen en weer,
+     zodat het vlak leeft zonder dat er iets te lezen valt dat beweegt. Achttien
+     seconden per heenweg is bewust traag: je merkt het als sfeer, niet als
+     animatie. Wie beweging uitzet (zie onderaan dit bestand) krijgt gewoon de
+     stilstaande gloed. */
+  animation: glans-drift 18s ease-in-out infinite alternate;
 }
 
 /* Een tweede, kleinere gloed linksonder geeft de hoofdtegel diepte. */
@@ -478,13 +530,25 @@ h4 {
 .glans-sterk::before {
   content: '';
   position: absolute;
-  left: -30px;
-  bottom: -50px;
-  width: 130px;
-  height: 130px;
+  left: -40px;
+  bottom: -60px;
+  width: 170px;
+  height: 170px;
   border-radius: 50%;
   background: radial-gradient(circle, var(--glans), transparent 70%);
   pointer-events: none;
+  /* Tegengesteld aan de bovenste gloed: de twee ademen naar elkaar toe en van
+     elkaar weg in plaats van samen dezelfde kant op te schuiven. */
+  animation: glans-drift 22s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes glans-drift {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(-26px, 20px) scale(1.14);
+  }
 }
 
 /* De hoofdtegel: één hoofdcijfer per scherm.
@@ -575,6 +639,33 @@ a:focus-visible {
   transform: translateY(-1px);
   border-color: var(--border-strong);
   box-shadow: var(--shadow);
+}
+
+/* Het merk linksboven is een knop naar Overzicht (ronde 32). Ze mag er niet als
+   een knop uitzien — het is en blijft het logo — dus geen rand, geen vlak, alleen
+   een cursor, een focusring en een lichte oplichting als je erover gaat. */
+.merkknop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: opacity var(--overgang);
+}
+
+.merkknop:hover {
+  opacity: 0.78;
+}
+
+.merkknop:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring-sterk);
 }
 
 .chip {
@@ -677,6 +768,86 @@ a:focus-visible {
   color: var(--accent);
 }
 
+/* ---------------------------------------------------------------------------
+   Het meldingenbelletje (ronde 32) — zie components/Meldingenbel.tsx
+
+   De bel zag er precies uit als de knopjes ‹ › ✎: 34 px, grijze rand, grijze
+   letterkleur. Ze viel dus niet op, en dat was juist haar taak. Ze is nu groter,
+   ze kleurt amber zodra er iets staat, en het stipje is een tellertje geworden.
+   --------------------------------------------------------------------------- */
+.bel {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+}
+
+.bel-teken {
+  display: inline-block;
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* Zodra er iets te melden is, wordt de knop zelf amber. Zo zie je aan de KLEUR
+   dat er nieuws is, ook zonder het tellertje te lezen. */
+.bel-actief {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.bel-teller {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--surface);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+}
+
+/* Een korte klop bij het verschijnen: drie keer, dan stil. Een belletje dat
+   eeuwig blijft bewegen wordt behang; drie keer merk je op. */
+.bel-klop {
+  animation: bel-klop 900ms ease-in-out 3;
+}
+
+@keyframes bel-klop {
+  0%,
+  60%,
+  100% {
+    transform: rotate(0deg);
+  }
+  10% {
+    transform: rotate(-14deg);
+  }
+  20% {
+    transform: rotate(12deg);
+  }
+  30% {
+    transform: rotate(-8deg);
+  }
+  40% {
+    transform: rotate(6deg);
+  }
+  50% {
+    transform: rotate(-3deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bel-klop {
+    animation: none;
+  }
+}
+
 /* Kale icoonknop zonder rand, voor acties in een lijstrij. */
 .knop-kaal {
   width: 30px;
@@ -756,7 +927,10 @@ a:focus-visible {
    hele tekening komt bij het verschijnen even rustig in beeld. Beide bewegingen
    zijn klein en kort — het is een grafiek, geen animatiefilm. */
 .donut-schijf {
-  transition: transform var(--overgang);
+  /* Iets trager dan de gewone overgang (140 ms): de schijf schuift én groeit, en
+     dat mag je zien gebeuren. De opacity zit erbij omdat de ANDERE schijven
+     wegdimmen zodra je er één kiest. */
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease;
 }
 
 /* De tekst in het gat vangt geen muis: ze staat er om gelezen te worden, niet om
@@ -766,18 +940,23 @@ a:focus-visible {
   pointer-events: none;
 }
 
+/* De donut ROLT open bij het verschijnen: ze begint een kwartslag gedraaid en
+   kleiner, en draait in 560 ms naar haar plek. Voorheen werd ze alleen even
+   groter; dat las als "het plaatje laadt", niet als "de cijfers worden
+   opgebouwd". Het draaipunt is het midden van het tekenvlak. */
 .donut-interactief {
-  animation: donut-in 380ms ease-out both;
+  transform-origin: 50% 50%;
+  animation: donut-in 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes donut-in {
   from {
     opacity: 0;
-    transform: scale(0.94);
+    transform: rotate(-90deg) scale(0.82);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: rotate(0deg) scale(1);
   }
 }
 
@@ -972,6 +1151,25 @@ a:hover {
   margin: 0 auto;
 }
 
+/* Twee schrijfwijzen van hetzelfde label, waarvan er altijd precies één te zien
+   is. Gebruikt voor de maandnamen onder de grafiek: op een telefoon "jul", op een
+   breed scherm "juli" — daar is ruimte zat en las de afkorting nodeloos krap.
+   Bewust in CSS en niet met een breedtemeting in JavaScript: zo staat er ook bij
+   het allereerste beeld al de juiste versie, zonder tussenstap. */
+.alleen-breed {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .alleen-breed {
+    display: inline;
+  }
+
+  .alleen-smal {
+    display: none;
+  }
+}
+
 /* Rij met kengetallen (saldo, inkomsten, uitgaven, netto).
 
    Sinds ronde 31 staan alle vier de cijfers op ELK schermformaat. Op een telefoon
@@ -986,6 +1184,25 @@ a:hover {
 
 .tegelrij > .saldotegel {
   grid-column: 1 / -1;
+}
+
+/* Ronde 32: de vier tegels lezen als één rij.
+
+   Wat er mis was: het saldocijfer stond in 34 px en de drie andere in 22 of 28 px,
+   en alle vier stonden ze links uitgelijnd in een tegel die veel breder was dan het
+   cijfer. Vier verschillende beginpunten en twee lettergroottes op één rij — dat
+   leest als vier losse dingen in plaats van als één overzicht.
+
+   Nu: label en bedrag staan gecentreerd in hun tegel, en alle vier de cijfers
+   hebben dezelfde grootte. Het saldo blijft het hoofdcijfer, maar via zijn warme
+   vlak en de sterkere gloed — niet via een groter lettertype. */
+.tegelrij > * {
+  align-items: center;
+  text-align: center;
+}
+
+.tegelrij > .saldotegel .bedrag-groot {
+  font-size: var(--tekst-xl);
 }
 
 /* Netto is de uitkomst van de twee cijfers erboven (inkomsten min uitgaven), dus
@@ -1062,8 +1279,15 @@ a:hover {
     grid-column: auto;
   }
 
-  .tegelrij > .kengetal .bedrag-groot {
+  .tegelrij > .kengetal .bedrag-groot,
+  .tegelrij > .saldotegel .bedrag-groot {
     font-size: var(--tekst-2xl);
+  }
+
+  /* Drie tegels op een rij (de kop van de pagina Transacties): op een breed scherm
+     naast elkaar in plaats van in het vierkolomsraster met een gat rechts. */
+  .tegelrij-drie {
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .raster-hoofd {
@@ -1128,13 +1352,16 @@ a:hover {
 .kengetal::after {
   content: '';
   position: absolute;
-  right: -46px;
-  top: -46px;
-  width: 96px;
-  height: 96px;
+  /* Ronde 32: groter en zachter uitlopend. Kleiner en dichter werd het een
+     zichtbare vlek in de hoek in plaats van een gloed die naar buiten wegvalt. */
+  right: -70px;
+  top: -80px;
+  width: 200px;
+  height: 200px;
   border-radius: 50%;
-  background: radial-gradient(circle, var(--glans), transparent 70%);
+  background: radial-gradient(circle, var(--glans), transparent 68%);
   pointer-events: none;
+  animation: glans-drift 20s ease-in-out infinite alternate;
 }
 
 /* ---------------------------------------------------------------------------
@@ -1341,12 +1568,125 @@ a:hover {
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Beweging (ronde 32)
+
+   De melding was: "het algemeen beeld blijft nog steeds een beetje plat." Dat
+   klopte letterlijk — de app had één soort beweging: een kleurwissel van 140 ms
+   als je met de muis over iets ging. Verder stond alles stil, ook op het moment
+   waarop een scherm het meest vertelt: wanneer het verschijnt.
+
+   Er zijn nu drie soorten beweging, en niet meer:
+     1. een pagina die in beeld komt (inhoud 8 px omhoog + invloeien);
+     2. blokken die kort NA elkaar verschijnen in plaats van allemaal tegelijk;
+     3. cijfers die zich opbouwen: staven groeien van nul, de donut rolt open.
+
+   Alle drie zijn kort (180–520 ms) en gebeuren één keer, bij het verschijnen. Ze
+   herhalen nooit en ze bewegen nooit terwijl je leest. De enige uitzondering is
+   de amberwas, die zó traag schuift dat je ze als sfeer leest.
+   --------------------------------------------------------------------------- */
+
+/* 1. De pagina zelf. In App.tsx krijgt dit vlak een `key` per pagina, zodat de
+      animatie ook echt opnieuw begint wanneer je van tabblad wisselt. */
+.pagina-in {
+  animation: pagina-in 180ms ease-out both;
+}
+
+@keyframes pagina-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 2. De blokken op de pagina, kort na elkaar. Alleen de eerste zes: daarna zou
+      het wachten worden in plaats van meebewegen, en wie ver scrollt heeft de
+      animatie toch al niet gezien. */
+.pagina-in > .stapel > * {
+  animation: blok-in 240ms ease-out both;
+}
+
+.pagina-in > .stapel > *:nth-child(1) { animation-delay: 30ms; }
+.pagina-in > .stapel > *:nth-child(2) { animation-delay: 75ms; }
+.pagina-in > .stapel > *:nth-child(3) { animation-delay: 120ms; }
+.pagina-in > .stapel > *:nth-child(4) { animation-delay: 165ms; }
+.pagina-in > .stapel > *:nth-child(5) { animation-delay: 210ms; }
+.pagina-in > .stapel > *:nth-child(n + 6) { animation-delay: 250ms; }
+
+@keyframes blok-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 3a. Staven groeien van nul, van onderaf. `transform` en niet `height`: een
+       hoogte animeren laat de browser de hele pagina opnieuw indelen, een
+       transform niet. De vertraging per staaf staat in de component, want die
+       weet als enige hoeveel maanden er zijn. */
+.staaf-in {
+  transform-origin: bottom;
+  animation: staaf-op 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes staaf-op {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+/* 3b. Een voortgangsbalk loopt van links naar zijn waarde. */
+.balk-vulling {
+  transform-origin: left;
+  animation: balk-vul 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes balk-vul {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
 /* Respecteer de systeeminstelling "beperk beweging": dan blijft alles staan waar
    het staat. De kleurwissels blijven wel, want die dragen informatie. */
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+  }
+
+  /* De doorlopende animaties zetten we ECHT uit in plaats van ze op 0,01 ms te
+     zetten. Een oneindige animatie met een looptijd van bijna nul blijft namelijk
+     doortellen — de browser hertekent dan honderden keren per seconde zonder dat
+     er iets verandert. `animation: none` stopt ze gewoon. */
+  body::before,
+  .glans::after,
+  .glans-sterk::before,
+  .kengetal::after {
+    animation: none;
+  }
+
+  .pagina-in,
+  .pagina-in > .stapel > *,
+  .staaf-in,
+  .balk-vulling {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 
   .klikbaar:hover,

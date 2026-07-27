@@ -12,8 +12,18 @@ const MIDDEN = GROOTTE / 2
 const BUITEN = 84
 const BINNEN = 58
 
-// Hoever een gekozen schijf naar buiten schuift, in tekeneenheden.
-const UITSCHUIF = 5
+// Hoever een gekozen schijf naar buiten schuift, in tekeneenheden. Ronde 32:
+// van 5 naar 9. Met 5 was de beweging er wel, maar zag je ze nauwelijks — de
+// melding was letterlijk "de bewegende donutdelen zijn niet expressief genoeg".
+const UITSCHUIF = 9
+
+// Hoeveel de gekozen schijf groeit. Ze schuift niet alleen weg van het midden,
+// ze wordt ook een tikje groter, zodat ze duidelijk vóór de rest komt te liggen.
+const VERGROTING = 1.06
+
+// Hoe zichtbaar de NIET-gekozen schijven blijven. Niet wegblenden tot bijna niets:
+// je moet nog kunnen zien hoe groot het gekozen stuk is ten opzichte van de rest.
+const GEDIMD = 0.42
 
 // Een punt op een cirkel; hoek 0 = bovenaan, met de klok mee.
 function punt(straal: number, fractie: number): [number, number] {
@@ -31,14 +41,25 @@ function segmentPad(start: number, eind: number): string {
 }
 
 /**
- * Hoeveel een schijf verschuift wanneer je haar kiest: naar buiten, weg van het
- * midden, langs de lijn die door het hart van de schijf loopt.
+ * Hoe een schijf beweegt wanneer je haar kiest: naar buiten, weg van het midden,
+ * langs de lijn die door het hart van de schijf loopt — én een beetje groter.
+ *
+ * De volgorde van de drie stappen is niet vrij. SVG rekent transformaties van
+ * links naar rechts af, en `scale` vergroot altijd vanaf het NULPUNT van de
+ * tekening (linksboven), niet vanaf het midden. Daarom eerst naar het midden
+ * schuiven, dan schalen, dan terug — anders vliegt de schijf naar rechtsonder
+ * in plaats van te groeien waar ze ligt.
  */
 function uitschuif(start: number, eind: number): string {
   const hoek = ((start + eind) / 2) * 2 * Math.PI
   const dx = Math.sin(hoek) * UITSCHUIF
   const dy = -Math.cos(hoek) * UITSCHUIF
-  return `translate(${dx.toFixed(2)} ${dy.toFixed(2)})`
+  return [
+    `translate(${dx.toFixed(2)} ${dy.toFixed(2)})`,
+    `translate(${MIDDEN} ${MIDDEN})`,
+    `scale(${VERGROTING})`,
+    `translate(${-MIDDEN} ${-MIDDEN})`,
+  ].join(' ')
 }
 
 // Kleurstipje in de legende. De kleur zelf komt altijd uit het segment (zelfde
@@ -160,6 +181,10 @@ export function Donut({
               strokeWidth={1.5}
               className="donut-schijf"
               transform={gekozen === i ? uitschuif(seg.start, seg.eind) : undefined}
+              // De rest dimt weg zodra je er één kiest. Dat is wat het aanwijzen
+              // expressief maakt: niet alleen de gekozen schijf komt naar voren,
+              // de anderen stappen ook een beetje terug.
+              opacity={gekozen !== null && gekozen !== i ? GEDIMD : 1}
               onMouseEnter={interactief ? () => setGekozen(i) : undefined}
               // Op een telefoon bestaat 'hangen' niet: daar is één tik de manier om
               // te kiezen. Nog eens tikken zet de donut terug op het totaal.

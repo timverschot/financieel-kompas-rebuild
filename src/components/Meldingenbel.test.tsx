@@ -105,4 +105,27 @@ describe('Meldingenbel — een vaste last meteen inboeken', () => {
     await user.click(screen.getByRole('button', { name: 'Meldingen (1)' }))
     expect(screen.queryByRole('button', { name: 'Boek in' })).not.toBeInTheDocument()
   })
+
+  // Ronde 32 — "het alarmbelicoontje moet duidelijker zijn. Nu is het te klein en
+  // te onopvallend." Het stipje van 8 px is een tellertje geworden en de knop
+  // kleurt amber zodra er iets staat.
+  it('zet het aantal als tellertje op de bel', () => {
+    render(<Meldingenbel meldingen={[budgetMelding, garantieMelding]} onGaNaar={vi.fn()} />)
+    const knop = screen.getByRole('button', { name: 'Meldingen (2)' })
+    expect(knop.querySelector('.bel-teller')?.textContent).toBe('2')
+    expect(knop.className).toContain('bel-actief')
+  })
+
+  it('kapt het tellertje af op 9+', () => {
+    const veel = Array.from({ length: 12 }, (_, i) => ({ ...budgetMelding, id: `b${i}` }))
+    render(<Meldingenbel meldingen={veel} onGaNaar={vi.fn()} />)
+    expect(document.querySelector('.bel-teller')?.textContent).toBe('9+')
+  })
+
+  it('blijft rustig wanneer er niets te melden is', () => {
+    render(<Meldingenbel meldingen={[]} onGaNaar={vi.fn()} />)
+    const knop = screen.getByRole('button', { name: 'Meldingen' })
+    expect(knop.querySelector('.bel-teller')).toBeNull()
+    expect(knop.className).not.toContain('bel-actief')
+  })
 })

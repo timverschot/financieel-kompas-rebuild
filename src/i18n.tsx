@@ -580,6 +580,14 @@ const en: Record<string, string> = {
   // Ronde 30 — de hoofdcategorieën zitten achter één knop, en hun volgorde is
   // instelbaar op de Categorieën-pagina.
   'Selecteer hoofdcategorie': 'Select a main category',
+  // Ronde 32 — beweging, de opgeruimde Transacties-pagina en de kleine punten.
+  'Indexatie-tools': 'Indexation tools',
+  'Naar Overzicht': 'To Overview',
+  'Zoek: {term}': 'Search: {term}',
+  'Zoeken': 'Search',
+  'Zoeken en filteren': 'Search and filter',
+  'Zoeken en filteren · {n}': 'Search and filter · {n}',
+
   // Ronde 31 — het herwerkte Overzicht en de Analyse-pagina.
   '* Deze maand loopt nog, dus die staaf is nog niet volledig.':
     '* This month is still running, so that bar is not complete yet.',
@@ -1712,6 +1720,14 @@ const fr: Record<string, string> = {
     'Si vous ne sélectionnez personne, cette dépense compte pour la famille.',
   // Ronde 30
   'Selecteer hoofdcategorie': 'Choisir une catégorie principale',
+  // Ronde 32
+  'Indexatie-tools': 'Outils d’indexation',
+  'Naar Overzicht': 'Vers l’aperçu',
+  'Zoek: {term}': 'Recherche : {term}',
+  'Zoeken': 'Rechercher',
+  'Zoeken en filteren': 'Rechercher et filtrer',
+  'Zoeken en filteren · {n}': 'Rechercher et filtrer · {n}',
+
   // Ronde 31
   '* Deze maand loopt nog, dus die staaf is nog niet volledig.':
     '* Ce mois est en cours, cette barre n’est donc pas complète.',

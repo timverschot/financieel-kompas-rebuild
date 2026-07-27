@@ -938,4 +938,18 @@ describe('App — het Overzicht', () => {
     expect(screen.getByText('Inkomsten en uitgaven per maand')).toBeInTheDocument()
     expect(screen.getByText('* Deze maand loopt nog, dus die staaf is nog niet volledig.')).toBeInTheDocument()
   })
+
+  // Ronde 32
+  it('brengt je met het merkteken bovenaan terug naar Overzicht', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.click(screen.getByRole('button', { name: 'Meer' }))
+    await user.click(screen.getByRole('button', { name: 'Instellingen' }))
+    await screen.findByText('Taal')
+
+    await user.click(screen.getByRole('button', { name: 'Naar Overzicht' }))
+    expect(await screen.findByText('Saldo')).toBeInTheDocument()
+  })
 })
