@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
 import { zoekItems } from '../data/categorieen/zoek'
@@ -30,7 +30,9 @@ const suggestieLijst: CSSProperties = {
 
 function suggestieKnop(gemarkeerd: boolean): CSSProperties {
   return {
-    display: 'block',
+    // Bewust GEEN `display` hier: een <div> is al een blok, en in
+    // `@media (pointer: coarse)` maakt index.css er een flexrij van zodat de tekst
+    // in het vak van 44 px gecentreerd staat. Een inline waarde zou dat overrulen.
     width: '100%',
     textAlign: 'left',
     fontFamily: 'inherit',
@@ -105,6 +107,7 @@ export function ItemZoeker({
   // De naam waarvoor het "nieuwe subcategorie"-paneeltje openstaat (null = dicht).
   const [nieuweNaam, setNieuweNaam] = useState<string | null>(null)
   const hoogRef = useRef(0)
+  const lijstId = useId()
   function zetHoog(n: number) {
     hoogRef.current = n
     setHoog(n)
@@ -166,6 +169,13 @@ export function ItemZoeker({
       <input
         aria-label={t('Item zoeken')}
         ref={registerInput}
+        // Zie CategorieKiezer: zonder deze koppelingen hoort wie de app laat
+        // voorlezen niet wat er onder de markering staat.
+        role="combobox"
+        aria-expanded={aantalRegels > 0 && nieuweNaam === null}
+        aria-autocomplete="list"
+        aria-controls={aantalRegels > 0 && nieuweNaam === null ? lijstId : undefined}
+        aria-activedescendant={aantalRegels > 0 && nieuweNaam === null ? `${lijstId}-${gemarkeerd}` : undefined}
         style={{ display: 'block', width: '100%' }}
         autoComplete="off"
         placeholder={t('Zoek een product (vanaf 2 letters)…')}
@@ -187,31 +197,37 @@ export function ItemZoeker({
         />
       )}
       {aantalRegels > 0 && nieuweNaam === null && (
-        <ul role="listbox" style={suggestieLijst}>
+        <ul role="listbox" id={lijstId} style={suggestieLijst}>
           {resultaten.map((it, i) => (
-            <li key={it.id} role="option" aria-selected={i === gemarkeerd}>
-              <button
-                type="button"
+            <li key={it.id}>
+              <div
+                role="option"
+                id={`${lijstId}-${i}`}
+                aria-selected={i === gemarkeerd}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => kies(it)}
                 onMouseEnter={() => zetHoog(i)}
+                className="kiezer-voorstel"
                 style={suggestieKnop(i === gemarkeerd)}
               >
                 {it.naam} <span style={{ color: 'var(--text-subtle)' }}>· {it.hoofdNaam}</span>
-              </button>
+              </div>
             </li>
           ))}
           {toonToevoegen && (
-            <li role="option" aria-selected={gemarkeerd === resultaten.length}>
-              <button
-                type="button"
+            <li>
+              <div
+                role="option"
+                id={`${lijstId}-${resultaten.length}`}
+                aria-selected={gemarkeerd === resultaten.length}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={startToevoegen}
                 onMouseEnter={() => zetHoog(resultaten.length)}
+                className="kiezer-voorstel"
                 style={suggestieKnop(gemarkeerd === resultaten.length)}
               >
                 {t('+ “{naam}” toevoegen aan …', { naam: term })}
-              </button>
+              </div>
             </li>
           )}
         </ul>

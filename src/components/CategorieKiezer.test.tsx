@@ -23,7 +23,7 @@ describe('CategorieKiezer', () => {
     render(<CategorieKiezer waarde={undefined} onKies={onKies} gebruikerCategorieen={[]} />)
 
     await user.type(screen.getByLabelText('Zoek categorie of item'), 'brood')
-    await user.click(await screen.findByRole('button', { name: /Brood \(wit\)/ }))
+    await user.click(await screen.findByRole('option', { name: /Brood \(wit\)/ }))
     expect(onKies).toHaveBeenCalledWith('i-brood--wit-9238')
   })
 
@@ -57,7 +57,7 @@ describe('CategorieKiezer', () => {
     render(<CategorieKiezer waarde={undefined} onKies={onKies} gebruikerCategorieen={[]} />)
 
     await user.type(screen.getByLabelText('Zoek categorie of item'), 'broodwaren')
-    await user.click(await screen.findByRole('button', { name: /^Broodwaren · .*hele categorie/ }))
+    await user.click(await screen.findByRole('option', { name: /^Broodwaren · .*hele categorie/ }))
     expect(onKies).toHaveBeenCalledWith('cat-broodwaren')
   })
 
@@ -165,7 +165,7 @@ describe('CategorieKiezer', () => {
     )
 
     await user.type(screen.getByLabelText('Zoek categorie of item'), 'Kefir')
-    await user.click(await screen.findByRole('button', { name: /Kefir.*toevoegen/ }))
+    await user.click(await screen.findByRole('option', { name: /Kefir.*toevoegen/ }))
 
     await user.selectOptions(screen.getByLabelText('Onder welke categorie'), 'cat-zuivel-en-kaas')
     await user.click(screen.getByRole('button', { name: 'Subcategorie toevoegen' }))

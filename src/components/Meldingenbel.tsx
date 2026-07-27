@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { useT } from '../i18n'
 import type { Melding, MeldingPagina } from '../utils/meldingen'
 import type { DossierSoort } from '../utils/dossiersoort'
@@ -70,6 +70,21 @@ export function Meldingenbel({
   const [open, setOpen] = useState(false)
   const aantal = meldingen.length
 
+  // Escape sluit het paneel. Overal elders in de app doet die toets dat al (de
+  // popups, de 'Meer'-lade); hier deed hij niets, en dan moet je met de muis of je
+  // vinger precies naast het paneel mikken om ervan af te raken.
+  useEffect(() => {
+    if (!open) return
+    function opToets(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setOpen(false)
+      }
+    }
+    document.addEventListener('keydown', opToets)
+    return () => document.removeEventListener('keydown', opToets)
+  }, [open])
+
   function kies(pagina: MeldingPagina, subtab?: DossierSoort) {
     setOpen(false)
     onGaNaar(pagina, subtab)
@@ -96,6 +111,7 @@ export function Meldingenbel({
         className={aantal > 0 ? 'knop knop-icoon bel bel-actief' : 'knop knop-icoon bel'}
         aria-label={aantal > 0 ? t('Meldingen ({n})', { n: aantal }) : t('Meldingen')}
         aria-expanded={open}
+        aria-haspopup="dialog"
         onClick={() => setOpen((o) => !o)}
       >
         <span aria-hidden className={aantal > 0 && !open ? 'bel-teken bel-klop' : 'bel-teken'}>

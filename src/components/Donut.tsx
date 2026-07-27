@@ -144,11 +144,11 @@ export function Donut({
 
   // Voor hulpsoftware: één zin met alles erin. Hangen en tikken bestaan daar niet,
   // dus de volledige inhoud hoort in het toegankelijke label te staan.
-  const beschrijving = segmenten.map((seg, i) => `${seg.naam} ${percentages[i]}% ${formatEuro(seg.bedrag)}`).join('; ')
+  const beschrijving = segmenten.map((seg, i) => `${t(seg.naam)} ${percentages[i]}% ${formatEuro(seg.bedrag)}`).join('; ')
 
   // Wat er boven het bedrag staat: de naam van de gekozen schijf (afgebroken zodat
   // ze in het gat past) of het woord 'uitgaven'/'inkomsten' als er niets gekozen is.
-  const naamRegels = actief ? splitsLabel(actief.naam) : [t(middenLabel)]
+  const naamRegels = actief ? splitsLabel(t(actief.naam)) : [t(middenLabel)]
 
   // De maat waarop het tekenvlak (ring + marge) op het scherm komt. `grootte`
   // blijft betekenen "zo groot moet de ring zijn"; de marge komt daar bovenop,
@@ -265,7 +265,7 @@ export function Donut({
               <span style={{ ...stip, background: seg.kleur }} />
               <span className="rij-midden">
                 <span className="rij-titel" style={afkap}>
-                  {seg.naam}
+                  {t(seg.naam)}
                 </span>
                 <span className="rij-meta">{percentages[i]}%</span>
               </span>

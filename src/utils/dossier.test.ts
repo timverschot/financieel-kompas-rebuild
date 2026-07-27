@@ -151,3 +151,35 @@ describe('saldoVerrekeningDossier', () => {
     expect(saldoVerrekeningDossier(dossier, kosten)).toBe(saldoVerrekening(50, kosten))
   })
 })
+
+// Ronde 35: het afrekeningsoverzicht rondde JOUW AANDEEL af en leidde het aandeel
+// van de partner daaruit af, terwijl deze kern het SALDO apart afrondde. Bij een
+// bedrag dat exact op een halve cent uitkomt, gaven die twee een verschil van één
+// cent — en dan zei hetzelfde document tegelijk twee dingen.
+describe('afronding sluit aan bij het overzicht', () => {
+  it('saldo = betaald door jou − jouw afgeronde aandeel, ook op een halve cent', () => {
+    // € 123,45 bij 50/50 geeft exact 6172,5 cent. Precies het randgeval.
+    const kosten: GedeeldeKost[] = [
+      { id: 'k1', dossierId: 'd1', omschrijving: 'Tandarts', bedrag: 12345, betaaldDoor: 'jij', datum: '2026-07-01' },
+    ]
+    const dossier: Dossier = { id: 'd1', naam: 'Co-ouderschap', aandeelJij: 50 }
+
+    const jouwAandeel = Math.round(12345 * 0.5) // 6173 — zo rekent het overzicht
+    const partnerAandeel = 12345 - jouwAandeel // 6172
+    const saldo = saldoVerrekeningDossier(dossier, kosten)
+
+    // Wat de partner verschuldigd is, MOET zijn aandeel zijn. Vóór ronde 35 stond
+    // hier 6173 tegenover een aandeel van 6172.
+    expect(saldo).toBe(partnerAandeel)
+    expect(jouwAandeel + partnerAandeel).toBe(12345)
+  })
+
+  it('doet hetzelfde wanneer de partner betaald heeft', () => {
+    const kosten: GedeeldeKost[] = [
+      { id: 'k1', dossierId: 'd1', omschrijving: 'Tandarts', bedrag: 12345, betaaldDoor: 'partner', datum: '2026-07-01' },
+    ]
+    const dossier: Dossier = { id: 'd1', naam: 'Co-ouderschap', aandeelJij: 50 }
+    // Jij bent nu jouw eigen aandeel verschuldigd, dus negatief.
+    expect(saldoVerrekeningDossier(dossier, kosten)).toBe(-Math.round(12345 * 0.5))
+  })
+})

@@ -94,8 +94,136 @@ function isMogelijkeBoeking(t: Transactie, p: TerugkerendePost, maand: string): 
   if (t.rekeningId !== p.rekeningId) return false
   if (t.bedrag !== p.bedrag) return false
   if (t.regels && t.regels.length > 0) return false
-  if (p.categorieId && t.categorieId !== p.categorieId) return false
+  // De categorie moet aan BEIDE kanten hetzelfde zijn — ook wanneer ze aan beide
+  // kanten ontbreekt.
+  //
+  // Vroeger stond hier `if (p.categorieId && t.categorieId !== p.categorieId)`.
+  // Had de post geen categorie, dan viel die voorwaarde helemaal weg en volstond
+  // "zelfde maand, zelfde rekening, zelfde bedrag". Te weinig: koop je in dezelfde
+  // maand sportkledij van exact hetzelfde bedrag als je jaarlijkse clubbijdrage,
+  // dan dekte die aankoop de bijdrage af en hoorde je nooit meer dat ze nog
+  // betaald moest worden — stil, en precies de kant op die de regel hierboven
+  // verbiedt.
+  //
+  // Met deze vergelijking blijft een post zónder categorie gewoon herkenbaar aan
+  // een boeking zónder categorie (het normale geval), maar dekt een boeking mét
+  // categorie hem niet meer af.
+  if ((t.categorieId ?? null) !== (p.categorieId ?? null)) return false
   return true
+}
+
+/**
+ * Welke vaste posten gelden als GEBOEKT in deze maand?
+ *
+ * Twee manieren, in deze volgorde:
+ *  1. de zekere herkenning op het vaste id dat "Boek in" gebruikt;
+ *  2. de voorzichtige herkenning van een handmatig ingetikte boeking.
+ *
+ * Elke transactie kan hoogstens één post afdekken, zodat twee posten van hetzelfde
+ * bedrag niet allebei op dezelfde boeking leunen.
+ *
+ * Waarom dit apart staat (ronde 35): de Plan-pagina bepaalde dit ZELF, en dan
+ * alleen met manier 1. Tikte je je huur met de hand in, dan zei het belletje
+ * "geboekt" terwijl de Plan-pagina er "Boek in" naast zette — één klik en je huur
+ * stond er twee keer. Beide schermen halen het antwoord nu uit deze ene functie.
+ */
+export function geboekteVasteLasten(
+  transacties: Transactie[],
+  posten: TerugkerendePost[],
+  maand: string,
+): Set<string> {
+  return new Set(geboekteVasteLastenMet(transacties, posten, maand).keys())
+}
+
+/**
+ * Staat er in deze maand al een boeking die déze vaste last afdekt? Zo ja, welke?
+ *
+ * Dit is de vraag die "Boek in" stelt vóór hij iets aanmaakt, en ze is bewust
+ * strenger dan de vraag die de Plan-pagina stelt. Het verschil zit in wat er op het
+ * spel staat: een post die ten onrechte als "nog te boeken" in de lijst blijft
+ * staan, is een ergernis die je zelf ziet en kan rechtzetten. Een post die
+ * dubbel geboekt wordt, is een bedrag dat stil van je overzicht af wijkt.
+ *
+ * Waarom niet gewoon de toewijzing van `geboekteVasteLastenMet` gebruiken: die
+ * geeft elke boeking aan de EERSTE post die past. Heb je Netflix en Spotify allebei
+ * op € 9,99 staan en tik je de Netflix-betaling zelf in, dan kan die betaling aan
+ * Spotify toegewezen worden — en dan meent "Boek in" dat Netflix nog moet en maakt
+ * hem bij. Je maand telt dan € 19,98 terwijl er € 9,99 van je rekening ging, en de
+ * app meldt daarna dat alles keurig geboekt is.
+ *
+ * Deze functie kijkt daarom niet naar de toewijzing maar naar de feiten: alleen een
+ * boeking die met een vast id aan een ándere post vasthangt, telt als "van iemand
+ * anders". Al de rest wordt gewoon met deze post vergeleken.
+ */
+export function boekingDieDezePostAfdekt(
+  transacties: Transactie[],
+  posten: TerugkerendePost[],
+  post: TerugkerendePost,
+  maand: string,
+): Transactie | undefined {
+  const eigenVastId = vasteLastTransactieId(post.id, maand)
+  const eigen = transacties.find((t) => t.id === eigenVastId)
+  if (eigen) return eigen
+  // De vaste id's van de ándere posten: die boekingen horen aantoonbaar bij hen.
+  // Bewust ALLE posten, ook die deze maand niet vervallen: hun oude boeking hoort
+  // ook dan bij hen, en zou anders een post van hetzelfde bedrag kunnen blokkeren.
+  const vanIemandAnders = new Set(
+    posten.filter((p) => p.id !== post.id).map((p) => vasteLastTransactieId(p.id, maand)),
+  )
+  return transacties.find((t) => !vanIemandAnders.has(t.id) && lijktOpDezeBetaling(t, post, maand))
+}
+
+/**
+ * Ruimer dan `isMogelijkeBoeking`: zelfde maand, zelfde rekening, zelfde bedrag,
+ * geen gesplitst ticket — en de categorie doet er NIET toe.
+ *
+ * Precies dat verschil is de reden dat dit vangnet bestaat. `isMogelijkeBoeking` is
+ * streng over de categorie, en terecht: zij bepaalt of een post uit de lijst "nog
+ * te boeken" verdwijnt, en daar is het veiliger om er één te veel te tonen. Maar
+ * hier gaat het om de omgekeerde vraag — mogen we er een tweede bijmaken? — en dan
+ * is elke twijfel een reden om het níét te doen.
+ *
+ * Zonder dit onderscheid glipte het gevaarlijkste geval er gewoon doorheen: je huur
+ * van € 900 staat als post zónder categorie, je tikt de betaling zelf in mét
+ * categorie "Wonen", en dan zag geen van beide functies een verband. De app zei
+ * "nog niet ingeboekt", je klikte "Boek in", en je maand telde € 1.800 uitgaven
+ * terwijl er € 900 van je rekening ging.
+ */
+function lijktOpDezeBetaling(t: Transactie, p: TerugkerendePost, maand: string): boolean {
+  if (!t.datum.startsWith(maand)) return false
+  if (t.rekeningId !== p.rekeningId) return false
+  if (t.bedrag !== p.bedrag) return false
+  if (t.regels && t.regels.length > 0) return false
+  return true
+}
+
+/** Dezelfde toewijzing als `geboekteVasteLasten`, maar mét de boeking erbij. */
+export function geboekteVasteLastenMet(
+  transacties: Transactie[],
+  posten: TerugkerendePost[],
+  maand: string,
+): Map<string, Transactie> {
+  const perId = new Map<string, Transactie>()
+  for (const t of transacties) perId.set(t.id, t)
+  const gebruikt = new Set<string>() // transactie-id's die al een vaste last afdekken
+  const geboekt = new Map<string, Transactie>() // post-id → de boeking die hem afdekt
+
+  for (const p of posten) {
+    const t = perId.get(vasteLastTransactieId(p.id, maand))
+    if (t) {
+      gebruikt.add(t.id)
+      geboekt.set(p.id, t)
+    }
+  }
+  for (const p of posten) {
+    if (geboekt.has(p.id)) continue
+    const treffer = transacties.find((t) => !gebruikt.has(t.id) && isMogelijkeBoeking(t, p, maand))
+    if (treffer) {
+      gebruikt.add(treffer.id)
+      geboekt.set(p.id, treffer)
+    }
+  }
+  return geboekt
 }
 
 export function maandVooruitblik(
@@ -111,29 +239,8 @@ export function maandVooruitblik(
   const posten = alleposten.filter((p) => valtInMaand(p, maand))
   const geboekt = telInUit(transacties, (d) => d.startsWith(maand))
 
-  // Ronde 1: de zekere herkenning op id ("Boek in"). Die krijgt voorrang, zodat
-  // zo'n transactie niet eerst door een andere post opgesnoept wordt.
-  const perId = new Map<string, Transactie>()
-  for (const t of transacties) perId.set(t.id, t)
-  const gebruikt = new Set<string>() // transactie-id's die al een vaste last afdekken
-  const geboekteposten = new Set<string>() // post-id's die als geboekt gelden
-  for (const p of posten) {
-    const t = perId.get(vasteLastTransactieId(p.id, maand))
-    if (t) {
-      gebruikt.add(t.id)
-      geboekteposten.add(p.id)
-    }
-  }
-
-  // Ronde 2: de voorzichtige herkenning van handmatig ingetikte vaste lasten.
-  for (const p of posten) {
-    if (geboekteposten.has(p.id)) continue
-    const treffer = transacties.find((t) => !gebruikt.has(t.id) && isMogelijkeBoeking(t, p, maand))
-    if (treffer) {
-      gebruikt.add(treffer.id)
-      geboekteposten.add(p.id)
-    }
-  }
+  // Welke posten al geboekt zijn — dezelfde bepaling als op de Plan-pagina.
+  const geboekteposten = geboekteVasteLasten(transacties, posten, maand)
 
   // Is de dag van de maand al voorbij? Dan is een niet-geboekte post niet "nog te
   // komen" maar achterstallig. Voor een maand in het verleden is alles voorbij,

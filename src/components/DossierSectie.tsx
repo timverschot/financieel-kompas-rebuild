@@ -14,6 +14,7 @@ import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { GezinsledenKiezer } from './GezinslidKiezer'
 import { useT } from '../i18n'
 import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
+import { Bonknop } from '../ui/Bonknop'
 
 // De onderdelen van een dossier die je kan wegklikken.
 //
@@ -415,9 +416,7 @@ export function DossierSectie({
                     <span className="rij-acties">
                       <Bedrag centen={k.bedrag} />
                       {k.bonnetje && (
-                        <a href={k.bonnetje} target="_blank" rel="noreferrer">
-                          {t('bon')}
-                        </a>
+                        <Bonknop bestand={k.bonnetje} naam={k.omschrijving} label={t('bon')} />
                       )}
                       <button className="knop knop-kaal" aria-label={t('Bewerk kost {naam}', { naam: k.omschrijving })} onClick={() => setBewerkKost(k)}>
                         ✎

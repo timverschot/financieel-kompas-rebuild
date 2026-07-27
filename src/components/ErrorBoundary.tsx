@@ -1,5 +1,42 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { meldFout } from '../sentry'
+import { useT } from '../i18n'
+
+/**
+ * Het schermpje dat je ziet wanneer een onderdeel vastloopt.
+ *
+ * Bewust een APARTE component (ronde 35). De ErrorBoundary zelf moet een
+ * class-component zijn — alleen die kan een crash opvangen — en in een class kan
+ * je de vertaalhaak `useT()` niet gebruiken. Daardoor stond deze tekst als enige
+ * in de hele app hardgecodeerd in het Nederlands, terwijl hij op 33 plaatsen
+ * gebruikt wordt: een Franstalige gebruiker kreeg bij een crash Nederlands.
+ */
+function Foutscherm({ naam, onHerstel }: { naam?: string; onHerstel: () => void }) {
+  const { t } = useT()
+  return (
+    <div
+      role="alert"
+      className="kaart kaart-compact"
+      style={{
+        background: 'var(--negative-soft)',
+        borderColor: 'var(--negative)',
+        color: 'var(--text)',
+        alignItems: 'flex-start',
+      }}
+    >
+      <p style={{ margin: 0 }}>
+        {naam
+          ? t('Er ging iets mis in {naam}, maar je gegevens zijn veilig. De rest van de app blijft gewoon werken.', {
+              naam,
+            })
+          : t('Er ging iets mis, maar je gegevens zijn veilig. De rest van de app blijft gewoon werken.')}
+      </p>
+      <button type="button" className="knop knop-secundair knop-klein" onClick={onHerstel}>
+        {t('Probeer opnieuw')}
+      </button>
+    </div>
+  )
+}
 
 type Props = {
   children: ReactNode
@@ -31,25 +68,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div
-          className="kaart kaart-compact"
-          style={{
-            background: 'var(--negative-soft)',
-            borderColor: 'var(--negative)',
-            color: 'var(--text)',
-            alignItems: 'flex-start',
-          }}
-        >
-          <p style={{ margin: 0 }}>
-            Er ging iets mis{this.props.naam ? ` in ${this.props.naam}` : ''}, maar je gegevens zijn
-            veilig. De rest van de app blijft gewoon werken.
-          </p>
-          <button type="button" className="knop knop-secundair knop-klein" onClick={this.herstel}>
-            Probeer opnieuw
-          </button>
-        </div>
-      )
+      return <Foutscherm naam={this.props.naam} onHerstel={this.herstel} />
     }
     return this.props.children
   }

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { rekeningSaldo, spaardoelPlan, spaardoelTempo, spaardoelVoortgang } from './spaardoel'
 import type { Overboeking, Rekening, Spaardoel, Transactie } from '../data/schema'
+import { vandaag } from './datum'
 
 const rekeningen: Rekening[] = [{ id: 'spaar', naam: 'Spaarrekening', beginsaldo: 100000 }]
 const transacties: Transactie[] = [
@@ -162,5 +163,40 @@ describe('spaardoelPlan', () => {
       opSchema: null,
       datumVerstreken: false,
     })
+  })
+})
+
+// Ronde 35: een spaardoel telde een storting mee die je alvast voor volgende maand
+// had ingeboekt, terwijl de Rekeningen-pagina die nog niet toonde. Twee schermen,
+// één rekening, twee bedragen.
+describe('rekeningSaldo kijkt tot vandaag', () => {
+  const rekening = { id: 'sp', naam: 'Spaar', beginsaldo: 500000 }
+
+  it('telt een boeking met een datum in de toekomst niet mee', () => {
+    // Bewust een jaar vooruit en niet "+30 dagen, dan naar de 1e".
+    //
+    // Die oude berekening ging op zeven dagen per jaar mis: begin je op de 1e van
+    // een maand van 31 dagen, dan valt +30 dagen nóg in dezelfde maand, en werd
+    // "later" gewoon vandaag. Dan telde de storting wél mee en ging de build rood
+    // zonder dat er iets veranderd was. Een jaar erbij kan dat nooit.
+    const straks = new Date()
+    straks.setFullYear(straks.getFullYear() + 1)
+    const later =
+      straks.getFullYear() +
+      '-' +
+      String(straks.getMonth() + 1).padStart(2, '0') +
+      '-' +
+      String(straks.getDate()).padStart(2, '0')
+    const toekomst = { id: 't', datum: later, omschrijving: 'Storting', bedrag: 50000, rekeningId: 'sp' }
+    expect(later > vandaag()).toBe(true)
+    expect(rekeningSaldo('sp', [rekening], [toekomst])).toBe(500000)
+  })
+
+  it('telt een boeking van vandaag of eerder wél mee', () => {
+    const gisteren = new Date()
+    gisteren.setDate(gisteren.getDate() - 1)
+    const eerder = gisteren.getFullYear() + '-' + String(gisteren.getMonth() + 1).padStart(2, '0') + '-' + String(gisteren.getDate()).padStart(2, '0')
+    const gedaan = { id: 't', datum: eerder, omschrijving: 'Storting', bedrag: 50000, rekeningId: 'sp' }
+    expect(rekeningSaldo('sp', [rekening], [gedaan])).toBe(550000)
   })
 })

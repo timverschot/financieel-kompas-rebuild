@@ -42,7 +42,7 @@ import {
   type Transactie,
   type Verrekening,
 } from './schema'
-import { pasGebeurtenisToe } from './sync/lokaal'
+import { pasGebeurtenisToe, pasGebeurtenissenToe } from './sync/lokaal'
 
 // De repository is de enige weg naar de database. Alle schrijfacties worden
 // eerst gevalideerd en lopen daarna via het append-only logboek.
@@ -199,6 +199,49 @@ export async function verwijderTransactie(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'transactie.verwijderd', payload: { id } })
 }
 
+/**
+ * Een transactie verwijderen SAMEN MET wat eraan hangt: de gedeelde kost die eruit
+ * ontstaan is, en de bon die eraan bewaard werd.
+ *
+ * Waarom in één keer (ronde 35): dit gebeurde als drie losse schrijfacties. Faalde
+ * de tweede, dan was de transactie weg maar bleef de gedeelde kost als weesrecord
+ * in het dossier staan — en telde ze mee in de volgende afrekening met de andere
+ * ouder. Ofwel gaat nu alles door, ofwel niets.
+ */
+export async function verwijderTransactieMetAanhang(
+  id: string,
+  aanhang: { gedeeldeKostId?: string; documentId?: string } = {},
+): Promise<void> {
+  const gebeurtenissen: Parameters<typeof pasGebeurtenissenToe>[0] = [{ type: 'transactie.verwijderd', payload: { id } }]
+  if (aanhang.gedeeldeKostId) {
+    gebeurtenissen.push({ type: 'gedeeldekost.verwijderd', payload: { id: aanhang.gedeeldeKostId } })
+  }
+  if (aanhang.documentId) {
+    gebeurtenissen.push({ type: 'dossierdocument.verwijderd', payload: { id: aanhang.documentId } })
+  }
+  await pasGebeurtenissenToe(gebeurtenissen)
+}
+
+/**
+ * Meerdere transacties verwijderen mét wat eraan hangt, als ÉÉN ondeelbare stap.
+ *
+ * Dezelfde reden als hierboven, maar het risico is groter: bij twaalf rijen zijn er
+ * meer schrijfacties die halverwege kunnen afbreken, en dan blijven er gedeelde
+ * kosten als weesrecord in een dossier meetellen.
+ */
+export async function verwijderTransactiesMetAanhang(
+  ids: string[],
+  aanhang: { gedeeldeKostIds?: string[]; documentIds?: string[] } = {},
+): Promise<void> {
+  if (ids.length === 0) return
+  const gebeurtenissen: Parameters<typeof pasGebeurtenissenToe>[0] = [
+    ...ids.map((id) => ({ type: 'transactie.verwijderd', payload: { id } }) as const),
+    ...(aanhang.gedeeldeKostIds ?? []).map((id) => ({ type: 'gedeeldekost.verwijderd', payload: { id } }) as const),
+    ...(aanhang.documentIds ?? []).map((id) => ({ type: 'dossierdocument.verwijderd', payload: { id } }) as const),
+  ]
+  await pasGebeurtenissenToe(gebeurtenissen)
+}
+
 export async function verwijderRekening(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'rekening.verwijderd', payload: { id } })
 }
@@ -217,6 +260,39 @@ export async function verwijderGedeeldeKost(id: string): Promise<void> {
 
 export async function verwijderDossier(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'dossier.verwijderd', payload: { id } })
+}
+
+/**
+ * Een dossier verwijderen SAMEN MET alles wat eraan hangt, als één ondeelbare stap.
+ *
+ * Waarom (ronde 35): dit gebeurde als vijf losse reeksen schrijfacties na elkaar —
+ * het dossier, dan de kosten, dan de afrekeningen, dan de kindrekeningposten, dan
+ * de kindrekeningen. Bij een dossier met dertig kosten zijn dat ruim dertig
+ * momenten waarop het kan afbreken (opslag vol, tabblad gesloten, browser die de
+ * schrijfactie weigert). Brak het halverwege af, dan was het dossier zelf al weg,
+ * maar bleven de kosten als onzichtbare weesrecords in de database staan — én
+ * werden ze mee gesynchroniseerd naar je andere toestellen. Dat is precies het
+ * soort stille fout dat later een verkeerde afrekening met de andere ouder
+ * oplevert. Nu gaat alles door, of niets.
+ */
+export async function verwijderDossierMetAanhang(
+  id: string,
+  aanhang: {
+    gedeeldeKostIds?: string[]
+    verrekeningIds?: string[]
+    kindrekeningIds?: string[]
+    kindrekeningpostIds?: string[]
+  } = {},
+): Promise<void> {
+  await pasGebeurtenissenToe([
+    { type: 'dossier.verwijderd', payload: { id } },
+    ...(aanhang.gedeeldeKostIds ?? []).map((k) => ({ type: 'gedeeldekost.verwijderd', payload: { id: k } }) as const),
+    ...(aanhang.verrekeningIds ?? []).map((v) => ({ type: 'verrekening.verwijderd', payload: { id: v } }) as const),
+    ...(aanhang.kindrekeningpostIds ?? []).map(
+      (p) => ({ type: 'kindrekeningpost.verwijderd', payload: { id: p } }) as const,
+    ),
+    ...(aanhang.kindrekeningIds ?? []).map((k) => ({ type: 'kindrekening.verwijderd', payload: { id: k } }) as const),
+  ])
 }
 
 // --- Lezen ---

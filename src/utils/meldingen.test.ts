@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { Budget, Garantie, TerugkerendePost, Transactie } from '../data/schema'
 import { bouwMeldingen, STANDAARD_BUDGETDREMPEL } from './meldingen'
+import { budgetKleur } from './budget'
 
 const naamVanCategorie = (id: string) => (id === 'ov-voeding' ? 'Voeding' : id)
 
@@ -172,5 +173,46 @@ describe('bouwMeldingen — volgorde', () => {
 
   it('gebruikt 85% als standaarddrempel', () => {
     expect(STANDAARD_BUDGETDREMPEL).toBe(85)
+  })
+})
+
+// Ronde 35: het belletje en de gekleurde balk op de Budgetpagina moeten over exact
+// hetzelfde feit hetzelfde zeggen. Ze rekenden allebei anders — het belletje op een
+// afgerond percentage, de balk op centen — en dus waren er randen waar het ene
+// scherm waarschuwde en het andere niet.
+describe('budgetmelding en budgetkleur zeggen hetzelfde', () => {
+  function melding(verbruiktCenten: number, budgetCenten: number, drempel = 70) {
+    return bouwMeldingen({
+      transacties: [
+        { id: 't', datum: '2026-07-05', omschrijving: 'x', bedrag: -verbruiktCenten, rekeningId: 'r', categorieId: 'c' },
+      ],
+      budgetten: [{ id: 'b', categorieId: 'c', bedrag: budgetCenten }],
+      garanties: [],
+      terugkerendePosten: [],
+      maand: '2026-07',
+      vandaagISO: '2026-07-15',
+      naamVanCategorie: () => 'Boodschappen',
+      drempel,
+    })
+  }
+
+  it('meldt een overschrijding van een halve procent als overschreden, net als de balk', () => {
+    // € 100,40 van € 100. Afgerond is dat 100 %, dus vroeger heette dit "bijna op"
+    // terwijl de balk al rood stond.
+    const m = melding(10040, 10000)
+    expect(m[0].soort).toBe('budget-over')
+    expect(m[0].dringend).toBe(true)
+    expect(budgetKleur(10040, 10000, 70)).toBe('var(--negative)')
+  })
+
+  it('waarschuwt niet vóór de drempel echt bereikt is', () => {
+    // € 69,50 van € 100 bij drempel 70 %: afgerond 70 %, maar in centen nog niet.
+    expect(melding(6950, 10000)).toHaveLength(0)
+    expect(budgetKleur(6950, 10000, 70)).toBe('var(--positive)')
+  })
+
+  it('waarschuwt wél zodra de drempel in centen gehaald is', () => {
+    expect(melding(7000, 10000)[0].soort).toBe('budget-bijna')
+    expect(budgetKleur(7000, 10000, 70)).toBe('var(--warn)')
   })
 })

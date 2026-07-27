@@ -77,3 +77,21 @@ export function uitgavenInMaand(transacties: Transactie[], categorieId: string, 
   }
   return Math.max(0, som)
 }
+
+/**
+ * De kleur van een budgetbalk: groen, amber of terracotta.
+ *
+ * Waarom dit een eigen functie is (ronde 35): de grens stond hard op 80 % op twee
+ * plaatsen in de code, terwijl je in Instellingen een drempel tussen 70 en 100 %
+ * kan kiezen. De meldingen gebruikten die keuze wél. Zette je hem op 95 %, dan
+ * kleurde je balk toch al oranje bij 80 % — de app zei dus iets anders dan wat je
+ * had ingesteld.
+ *
+ * `drempel` is een percentage (70–100), net zoals het in de instellingen staat.
+ */
+export function budgetKleur(uitgegeven: number, bedrag: number, drempel: number): string {
+  if (bedrag <= 0) return 'var(--positive)'
+  if (uitgegeven > bedrag) return 'var(--negative)'
+  if (uitgegeven >= (bedrag * drempel) / 100) return 'var(--warn)'
+  return 'var(--positive)'
+}

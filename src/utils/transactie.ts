@@ -14,10 +14,83 @@ export function categorieBedragen(t: Transactie): CategorieBedrag[] {
     const lijnen = t.regels.map((r) => ({ categorieId: r.categorieId, bedrag: r.bedrag }))
     // Dekt de itemisatie niet het volledige totaal, dan telt het restbedrag mee
     // als 'zonder categorie', zodat de som van de regels altijd het totaal is.
+    //
+    // Maar ALLEEN wanneer die rest dezelfde kant op wijst als de transactie zelf.
+    // Verdelen de regels MEER dan het totaal (een typfout: een ticket van € 50 met
+    // regels van € 40 en € 20), dan draait de rest van teken om, en dan zou hier
+    // een INKOMST verschijnen die nooit bestaan heeft — met als gevolg te hoge
+    // bruto-uitgaven, te hoge bruto-inkomsten, een schijf "Zonder categorie" in de
+    // inkomstendonut en een verkeerde spaarquote. Het maandsaldo klopte toevallig
+    // wel, dus je zag er niets van.
+    //
+    // Het formulier laat zo'n ticket sinds ronde 35 niet meer opslaan. Deze
+    // controle is het vangnet voor wat er al in de database staat: dan zijn de
+    // REGELS wat de gebruiker per categorie heeft ingetikt, en is het totaal het
+    // getal dat niet klopt. Een verzonnen tegenboeking maakt dat alleen erger.
     const som = lijnen.reduce((s, r) => s + r.bedrag, 0)
     const rest = t.bedrag - som
-    if (rest !== 0) lijnen.push({ categorieId: undefined, bedrag: rest })
-    return lijnen
+    // `t.bedrag === 0` telt hier NIET als "zelfde richting" (ronde 35). Stond het
+    // totaal op nul met regels van −€ 40 en −€ 20, dan kwam er een verzonnen
+    // inkomst van € 60 "Zonder categorie" bij: het maandsaldo klopte, maar je bruto
+    // inkomsten én je bruto uitgaven waren allebei € 60 te hoog, en er stond een
+    // schijf in de inkomstendonut die nooit bestaan heeft. Precies wat de rest van
+    // deze functie juist wegneemt.
+    const zelfdeRichting = rest === 0 || Math.sign(rest) === Math.sign(t.bedrag)
+    if (rest !== 0 && zelfdeRichting) {
+      lijnen.push({ categorieId: undefined, bedrag: rest })
+      return lijnen
+    }
+    if (rest === 0) return lijnen
+
+    // Hier klopt het ticket écht niet: de regels verdelen méér dan het totaal.
+    //
+    // Eerst lieten we de rest gewoon vallen. Dat maakte de spookinkomst weg, maar
+    // brak iets anders: de regels telden dan op tot € 60 terwijl er € 50 van de
+    // rekening ging. Je maandoverzicht zei −€ 60,00, je rekeningsaldo −€ 50,00, en
+    // een budget van € 55 stond onterecht in het rood. Twee cijfers over hetzelfde
+    // die niet meer op elkaar aansloten — precies wat we nergens willen.
+    //
+    // Wat het wél moet doen: het bedrag dat écht van de rekening ging is heilig,
+    // en de verdeling die de gebruiker intikte is zijn bedoeling. Dus houden we
+    // het totaal vast en verdelen we het náár verhouding over dezelfde regels. Een
+    // ticket van € 50 met regels van € 40 en € 20 wordt € 33,33 en € 16,67: de
+    // verhouding klopt, het totaal klopt, en er verschijnt geen categorie die de
+    // gebruiker nooit gekozen heeft.
+    //
+    // Het formulier laat zo'n ticket sinds ronde 35 niet meer opslaan; dit is het
+    // vangnet voor wat er al in de database staat of van een ander toestel
+    // binnenkomt.
+    if (som === 0) return [{ categorieId: undefined, bedrag: t.bedrag }]
+    // `+ 0` haalt de min weg van een uitkomst als `-0`: die formatteert namelijk
+    // als "€ -0,00", en dat is geen bedrag dat iemand hoort te zien.
+    const geschaald = lijnen.map((r) => ({ ...r, bedrag: Math.round((r.bedrag * t.bedrag) / som) + 0 }))
+    // Afronden per regel laat hooguit een paar centen over. Die leggen we op de
+    // grootste regel, zodat de som exact het transactiebedrag is.
+    //
+    // Wel met één voorwaarde: die regel mag er niet van omslaan van teken. Bij heel
+    // scheve gegevens (bedrag −3 cent verdeeld over vijf regels van −1 cent) werd
+    // een regel anders +1 cent — een verzonnen inkomst van één cent, precies het
+    // soort spookregel dat deze hele functie wegneemt. Lukt het bij de grootste
+    // niet, dan schuiven we door naar de volgende die het wél kan hebben.
+    let restNaSchalen = t.bedrag - geschaald.reduce((s, r) => s + r.bedrag, 0)
+    if (restNaSchalen !== 0) {
+      const volgorde = geschaald
+        .map((_, i) => i)
+        .sort((a, b) => Math.abs(geschaald[b].bedrag) - Math.abs(geschaald[a].bedrag))
+      for (const i of volgorde) {
+        if (restNaSchalen === 0) break
+        const nieuw = geschaald[i].bedrag + restNaSchalen
+        // Toegestaan zolang het teken niet omslaat (nul mag: dat is geen richting).
+        if (geschaald[i].bedrag !== 0 && nieuw !== 0 && Math.sign(nieuw) !== Math.sign(geschaald[i].bedrag)) continue
+        geschaald[i] = { ...geschaald[i], bedrag: nieuw + 0 }
+        restNaSchalen = 0
+      }
+      // Kan geen enkele regel de rest dragen zonder om te slaan, dan is het ticket
+      // zo scheef dat een aparte restregel het eerlijkst is: dan zie je tenminste
+      // dát er iets niet klopt in plaats van een stil verschoven bedrag.
+      if (restNaSchalen !== 0) geschaald.push({ categorieId: undefined, bedrag: restNaSchalen })
+    }
+    return geschaald
   }
   return [{ categorieId: t.categorieId, bedrag: t.bedrag }]
 }

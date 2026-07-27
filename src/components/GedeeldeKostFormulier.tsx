@@ -8,6 +8,7 @@ import { GezinsledenKiezer } from './GezinslidKiezer'
 import { verkleinAfbeelding } from '../utils/afbeelding'
 import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
+import { Bonknop } from '../ui/Bonknop'
 
 // De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
 // en het leegmaken na het opslaan niet uit elkaar kunnen lopen.
@@ -112,6 +113,13 @@ export function GedeeldeKostFormulier({
       // Behoud de koppeling aan een afrekening en de afgerekend-status bij bewerken.
       ...(bewerken?.verrekeningId ? { verrekeningId: bewerken.verrekeningId } : {}),
       ...(bewerken?.afgerekend ? { afgerekend: true } : {}),
+      // En de koppeling aan de transactie waaruit deze kost ontstaan is. Die viel
+      // hier weg, met een dubbeltelling tot gevolg: de app zoekt de kost bij een
+      // transactie via dit veld, dus na een bewerking vond ze hem niet meer. Vinkte
+      // je het dossier dan opnieuw aan, dan kwam er een TWEEDE kost bij en stond
+      // dezelfde rekening twee keer in de afrekening — ook in de pdf die naar de
+      // andere ouder gaat.
+      ...(bewerken?.transactieId ? { transactieId: bewerken.transactieId } : {}),
     })
     // Bij een NIEUWE kost blijft 'bewerken' null, dus de useEffect hierboven draait
     // niet. Daarom hier leegmaken, anders blijft alles ingevuld staan en boek je met
@@ -191,7 +199,7 @@ export function GedeeldeKostFormulier({
             {bonnetje.startsWith('data:image') && (
               <img src={bonnetje} alt={t('Bon/factuur')} style={{ maxHeight: 60, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }} />
             )}
-            <a href={bonnetje} target="_blank" rel="noreferrer">{t('bekijken')}</a>
+            <Bonknop bestand={bonnetje} naam={omschrijving || t('Bon')} />
             <button type="button" className="knop knop-ghost knop-klein knop-gevaar" onClick={() => setBonnetje('')}>
               {t('verwijderen')}
             </button>

@@ -32,21 +32,30 @@ export function effectiefAandeel(dossier: Dossier, kost: GedeeldeKost): number {
 // per kost bepaald wordt door 'aandeelVan'. Bedragen in centen; er wordt pas op
 // het einde afgerond, zodat tussentijdse deel-centen de uitkomst niet laten
 // afdrijven. Positief = partner is jou verschuldigd, negatief = jij de partner.
+//
+// De uitkomst is altijd: WAT JIJ BETAALDE min WAT JIJ MOEST DRAGEN. Dat is precies
+// wat er per kost gebeurt, alleen in één keer geteld:
+//   betaalde jij de kost, dan komt het deel van de partner erbij;
+//   betaalde de partner, dan gaat jouw deel eraf.
+//
+// Waarom dat expliciet zo geschreven staat (ronde 35): er werd op TWEE plaatsen
+// apart afgerond. Deze functie rondde het eindsaldo af, en het afrekeningsoverzicht
+// rondde JOUW AANDEEL af en leidde het aandeel van de partner daaruit af. Bij een
+// bedrag dat exact op een halve cent uitkomt, geven die twee een verschil van één
+// cent — en dan zei hetzelfde document tegelijk "aandeel partner € 61,72" en
+// "partner is jou € 61,73 verschuldigd". Eén cent, maar het staat in het stuk dat
+// je naar de andere ouder stuurt.
+//
+// Door hier van hetzelfde AFGERONDE aandeel uit te gaan, sluit elke weergave op
+// elkaar aan: totaal = jouw aandeel + aandeel partner, en saldo = betaald − aandeel.
 function netto(kosten: GedeeldeKost[], aandeelVan: (k: GedeeldeKost) => number): number {
-  let som = 0
+  let betaaldDoorJou = 0
+  let jouwExact = 0
   for (const k of kosten) {
-    const jouwAandeel = k.bedrag * (aandeelVan(k) / 100)
-    const partnerAandeel = k.bedrag - jouwAandeel
-    if (k.betaaldDoor === 'jij') {
-      // Jij betaalde alles, maar hoefde maar jouw aandeel te dragen -> partner
-      // is jou zijn deel verschuldigd.
-      som += partnerAandeel
-    } else {
-      // Partner betaalde alles -> jij bent jouw aandeel verschuldigd.
-      som -= jouwAandeel
-    }
+    if (k.betaaldDoor === 'jij') betaaldDoorJou += k.bedrag
+    jouwExact += k.bedrag * (aandeelVan(k) / 100)
   }
-  return Math.round(som)
+  return betaaldDoorJou - Math.round(jouwExact)
 }
 
 // Verrekening met één vast percentage voor alle kosten (de eenvoudige variant).

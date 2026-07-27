@@ -67,13 +67,21 @@
   --positive: #2e7a56;
   --positive-soft: #ddede3;
   --positive-ink: #226244;
-  --negative: #b44a2a;
+  /* Ronde 35: van #b44a2a naar #a03f21. Het oude rood haalde 4,17:1 op een grijs
+     vlak — net onder de norm voor gewone tekst, en negatieve bedragen staan
+     overal. Dit rood leest even duidelijk als rood en haalt 5,1:1. */
+  --negative: #a03f21;
   --negative-soft: #f7ded4;
   --negative-ink: #9c3e20;
   --info: #4a6e9b;
   --info-soft: #e4e9f2;
   --info-ink: #35547a;
   --warn: #b8860b;
+  /* Hetzelfde okergeel, maar donker genoeg om als TEKST te lezen (ronde 35).
+     `--warn` is gekozen als kleur van een balk of een vlakje; als letterkleur
+     haalt hij maar 2,6-3,2:1 en dat is te weinig. Precies de plek waar het het
+     meest telde stond erin: "(nog € 10,00)" onder een gesplitst kassaticket. */
+  --warn-tekst: #7a5a07;
   --warn-soft: #fff8ee;
 
   --font-body: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
@@ -96,10 +104,31 @@
   --shadow-knop: 0 6px 16px rgba(201, 118, 26, 0.25);
   --shadow-zwevend: 0 12px 26px rgba(201, 118, 26, 0.35);
   --shadow-sheet: 0 24px 60px rgba(80, 64, 44, 0.14);
-  --focus-ring: 0 0 0 3px rgba(201, 118, 26, 0.12);
+  /* De zachte ring op een invoerveld. Ronde 35: van 12 % naar een echte,
+     zichtbare amber. Op 12 % kwam hij op #f9ecdc uit — 1,14:1 tegen de kaart
+     eronder, oftewel onzichtbaar. De randkleur wisselt ook al mee, maar die haalde
+     op zichzelf maar 2,40:1. */
+  --focus-ring: 0 0 0 3px rgba(167, 94, 16, 0.45);
+  /* De KLEUR van de focusring staat apart (ronde 35).
+     Hij stond op `--accent` (#c9761a), en dat haalt de norm niet: tegen de crème
+     pagina 2,78:1, tegen een grijs vlak 2,71:1 en tegen een actieve amberen tegel
+     2,73:1 — overal onder de 3:1 die een focusaanduiding hoort te halen. Wie met
+     een toetsenbord door de app ging, zag in de lichte modus vaak niet waar hij
+     stond.
+
+     Deze donkere amber haalt de norm tegen ÉLK vlak waar hij op kan komen — en
+     dat zijn er meer dan je denkt: de crème pagina (6,0:1), een kaart (7,3:1), een
+     grijs vlak (5,9:1), een actieve amberen tegel (5,9:1), de amberen bovenbalk
+     (3,9:1) en zelfs de amberen vulling van de centrale ➕ (3,6:1). Die laatste
+     twee waren de reden om nóg een stap donkerder te gaan: een ring rond een knop
+     ín de gekleurde kop haalde anders 2,6 tot 2,9.
+
+     In het donker was er niets mis (9,2:1), dus daar blijft alles zoals het was. */
+  --focus-rand: #7a4a0c;
   /* Een duidelijk zichtbare ring voor toetsenbordgebruik, sterker dan de zachte
-     ring op een invoerveld. */
-  --focus-ring-sterk: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+     ring op een invoerveld. De lichte binnenring zet hem los van een gekleurde
+     knop; de donkere buitenring is wat je tegen de pagina ziet. */
+  --focus-ring-sterk: 0 0 0 2px var(--surface), 0 0 0 4px var(--focus-rand);
 
   /* ---------------------------------------------------------------------
      Typografische schaal. Vóór ronde 20 stonden er tien losse, hardgecodeerde
@@ -200,14 +229,16 @@
   --info-soft: #1e2a3b;
   --info-ink: #6e93c4;
   --warn: #e8b948;
+  --warn-tekst: #e8b948;
   --warn-soft: #262e39;
 
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
   --shadow-knop: 0 8px 22px rgba(240, 166, 60, 0.22);
   --shadow-zwevend: 0 12px 30px rgba(240, 166, 60, 0.3);
   --shadow-sheet: 0 24px 60px rgba(0, 0, 0, 0.5);
-  --focus-ring: 0 0 0 3px rgba(240, 166, 60, 0.14);
-  --focus-ring-sterk: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-dot);
+  --focus-ring: 0 0 0 3px rgba(240, 166, 60, 0.45);
+  --focus-rand: #f0a63c;
+  --focus-ring-sterk: 0 0 0 2px var(--bg), 0 0 0 4px var(--focus-rand);
   /* In het donker mag de glans losser en helderder: er is meer ruimte tussen de
      achtergrond en het amber. */
   --glans: rgba(240, 166, 60, 0.22);
@@ -777,10 +808,16 @@ a:focus-visible {
 /* Het merk linksboven is een knop naar Overzicht (ronde 32). Ze mag er niet als
    een knop uitzien — het is en blijft het logo — dus geen rand, geen vlak, alleen
    een cursor, een focusring en een lichte oplichting als je erover gaat. */
+/* De merkknop met het logo brengt je terug naar Overzicht.
+   `min-height: 44px` omdat hij anders 30 px hoog is — hij bestaat alleen uit een
+   logo van 30 px en een woord, zonder padding. Op een telefoon was dit het enige
+   element in de hele app dat nog onder de 44 px zat. Het uiterlijk verandert niet:
+   de inhoud staat gecentreerd en het gebied eromheen reageert gewoon mee. */
 .merkknop {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: 44px;
   padding: 0;
   border: none;
   background: none;
@@ -884,6 +921,44 @@ a:focus-visible {
 
 .knop-ghost.knop-klein {
   padding: 8px 6px;
+}
+
+/* Een kleine knop die tóch met een duim te raken moet zijn.
+
+   `knop-klein` is 8 px padding rond ~13 px tekst — samen zo'n 33 px hoog. Dat
+   leest netjes op een pc, maar op een telefoon is het te klein: de norm is 44 px.
+   Deze klasse laat het uiterlijk ongemoeid (de tekst blijft even groot en de
+   randen blijven staan) en vergroot alleen het gebied dat op een tik reageert. */
+.knop-raakvlak {
+  min-height: 44px;
+}
+
+/* En op een TOESTEL DAT JE MET JE VINGER BEDIENT geldt dat voor élke kleine knop
+   (ronde 35).
+
+   `knop-klein` is ongeveer 36 px hoog, een chip 32 px en een voorstelregel in de
+   zoeklijstjes 33-35 px. Op een pc is dat prima — een muisaanwijzer is één pixel
+   groot. Op een telefoon niet: de norm is 44 px, en het gaat hier om knoppen die
+   je bij élke boeking gebruikt (de voorstellen bij het typen van een categorie)
+   en om knoppen die iets weggooien ("verwijderen" bij een bon, "wissen" bij een
+   categorie), waar een misser echt vervelend is.
+
+   De regel geldt alleen bij `pointer: coarse` — een vinger dus. Op een pc
+   verandert er niets, en het uiterlijk verandert nergens: alleen het gebied dat op
+   een tik reageert wordt hoger. */
+@media (pointer: coarse) {
+  .knop-klein,
+  .chip,
+  .kiezer-voorstel {
+    min-height: 44px;
+  }
+
+  /* Een voorstelregel is een blok met tekst, geen knop die zijn inhoud zelf
+     centreert. Zonder deze regel plakt de tekst in een vak van 44 px bovenaan. */
+  .kiezer-voorstel {
+    display: flex;
+    align-items: center;
+  }
 }
 
 /* Vierkante icoonknop (‹ › ✎ ×).
@@ -1042,6 +1117,22 @@ a:focus-visible {
   box-shadow: none;
 }
 
+/* …maar de focusring blijft (ronde 35).
+   De regel hierboven staat later in dit bestand dan `.knop:focus-visible` en heeft
+   dezelfde specificiteit, dus ze won — en dan had uitgerekend de opslaanknop géén
+   zichtbare focus. Die knop is bewust bereikbaar gehouden met `aria-disabled` in
+   plaats van `disabled`, juist zodat je hem met een toetsenbord kan vinden en kan
+   horen waarom hij nog niet werkt. Zonder ring kon je dat niet zien. */
+.knop:disabled:focus-visible,
+.knop[aria-disabled='true']:focus-visible {
+  box-shadow: var(--focus-ring-sterk);
+  /* De doorzichtigheid gaat op focus van 0,55 naar 0,7. Reden: `opacity` vervaagt
+     álles aan een element, dus óók de focusring — die kwam er op 0,55 uit als een
+     bleke #b59975 en haalde nog maar 2,6:1. Op 0,7 is het 3,6:1 en blijft de knop
+     zichtbaar zwakker dan een knop die wél werkt. Gemeten, niet geschat. */
+  opacity: 0.7;
+}
+
 /* Rij met knoppen onder een formulier. */
 .knoprij {
   display: flex;
@@ -1107,7 +1198,7 @@ a:focus-visible {
    opgebouwd". Het draaipunt is het midden van het tekenvlak. */
 .donut-interactief {
   transform-origin: 50% 50%;
-  animation: donut-in 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: donut-in 560ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 @keyframes donut-in {
@@ -1421,8 +1512,25 @@ textarea:focus-visible {
 button:focus-visible,
 a:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-rand);
   outline-offset: 2px;
+}
+
+/* De centrale ➕ in de onderbalk is amber gevuld. Een amberen streepje eromheen
+   valt daar weg, dus krijgt hij de tweekleurige ring: lichte binnenring tegen de
+   vulling, donkere buitenring tegen de pagina. */
+/* De zwevende ➕ in de onderbalk. De schaduw staat HIER en niet meer als inline
+   stijl in de component: een inline `box-shadow` wint namelijk van elke regel uit
+   dit bestand, dus de focusring werd overschreven en de knop had er in de praktijk
+   géén — terwijl de regel hem wel al zonder outline zette. Gemeten verschil tussen
+   gefocust en niet-gefocust was 4 van de 255. */
+.knop-zweef {
+  box-shadow: var(--shadow-zwevend);
+}
+
+.knop-zweef:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring-sterk), var(--shadow-zwevend);
 }
 
 /* ---------------------------------------------------------------------------
@@ -1452,6 +1560,15 @@ a:focus-visible,
   padding: 18px 4px;
   text-align: center;
   font-size: var(--tekst-sm);
+  color: var(--text-subtle);
+}
+
+/* Een korte toelichting onder een veld of een voorbeeldvlak: leesbaar, maar
+   duidelijk ondergeschikt aan de inhoud erboven. */
+.hulptekst {
+  margin: 0;
+  font-size: var(--tekst-sm);
+  line-height: 1.4;
   color: var(--text-subtle);
 }
 
@@ -1736,8 +1853,14 @@ a {
    zichtbare teken dat er iets achter zit; hij wordt sterker zodra je erover gaat
    of erop landt met de tab-toets. De focus-variant staat buiten de mediaquery —
    zie de opmerking bij de focusring hierboven. */
+/* De ring naar BINNEN tekenen. `.lijst` heeft `overflow: hidden` (voor de
+   afgeronde hoeken) en is precies even breed als de rijen, dus een ring buiten de
+   rand werd links, rechts en bovenaan weggeknipt — gemeten: alleen de boven- en
+   onderlijn bleef staan. Met een negatieve verschuiving valt hij binnen de rij en
+   zie je hem helemaal. */
 .analyse-rij:focus-visible {
   background: var(--surface-2);
+  outline-offset: -3px;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -1942,9 +2065,28 @@ a {
    --------------------------------------------------------------------------- */
 
 /* 1. De pagina zelf. In App.tsx krijgt dit vlak een `key` per pagina, zodat de
-      animatie ook echt opnieuw begint wanneer je van tabblad wisselt. */
+      animatie ook echt opnieuw begint wanneer je van tabblad wisselt.
+
+   LET OP — `backwards` en niet `both` (ronde 35, gemeten in een echte browser).
+   Met `both` houdt de browser ná afloop het laatste beeld van de animatie vast.
+   Ook al staat er in dat beeld `transform: none`, de browser bewaart daar de
+   rekenvorm van: `matrix(1, 0, 0, 1, 0, 0)`. En een element met een transform —
+   ook al verplaatst die niets — wordt het referentiekader voor alles wat
+   eronder `position: fixed` is.
+
+   Het gevolg was ernstig en volstrekt onzichtbaar in de code: élke popup die
+   ín een pagina getekend wordt (elke bon, elke factuur, elk garantiebewijs in
+   de Dossiers-module) ging niet meer over het hele scherm staan, maar hing aan
+   de pagina. Gemeten op een iPhone-profiel: de popup stond op y = −105, dus de
+   titelbalk mét de sluitknop viel bóven het scherm en het donkere vlak dekte de
+   pagina niet meer af. Een tik ernaast belandde op de pagina eronder en sloot
+   niets. Je kon je eigen documenten dus openen maar niet meer wegklikken.
+
+   `backwards` vult alleen de tijd VÓÓR de animatie (dat voorkomt de flits) en
+   laat daarna de gewone stijl gelden — dus geen transform meer. De animatie
+   ziet er exact hetzelfde uit. */
 .pagina-in {
-  animation: pagina-in 180ms ease-out both;
+  animation: pagina-in 180ms ease-out backwards;
 }
 
 @keyframes pagina-in {
@@ -1962,7 +2104,7 @@ a {
       het wachten worden in plaats van meebewegen, en wie ver scrollt heeft de
       animatie toch al niet gezien. */
 .pagina-in > .stapel > * {
-  animation: blok-in 240ms ease-out both;
+  animation: blok-in 240ms ease-out backwards;
 }
 
 .pagina-in > .stapel > *:nth-child(1) { animation-delay: 30ms; }
@@ -1989,7 +2131,7 @@ a {
        weet als enige hoeveel maanden er zijn. */
 .staaf-in {
   transform-origin: bottom;
-  animation: staaf-op 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: staaf-op 520ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 @keyframes staaf-op {
@@ -2004,7 +2146,7 @@ a {
 /* 3b. Een voortgangsbalk loopt van links naar zijn waarde. */
 .balk-vulling {
   transform-origin: left;
-  animation: balk-vul 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: balk-vul 620ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 @keyframes balk-vul {
@@ -2319,4 +2461,23 @@ a {
   font-size: var(--tekst-xs);
   font-variant-numeric: tabular-nums;
   opacity: 0.75;
+}
+
+/* Een statusmelding in de mobiele kop (ronde 35). Ze stond alleen in de
+   desktopbovenbalk, dus op een telefoon gebeurde er bij een fout letterlijk niets
+   zichtbaars — je dacht dat je te zacht getikt had. */
+.statusregel {
+  margin: 0 0 14px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--tekst-s);
+}
+
+/* Een mislukking krijgt de waarschuwkleur; goed nieuws blijft neutraal en
+   verdwijnt na acht seconden vanzelf. Vroeger stond ook "Gesynchroniseerd: 2
+   verstuurd" in een oranje kader, en bleef ze de hele dag staan. */
+.statusregel-fout {
+  border-color: var(--negative);
+  background: var(--negative-soft);
 }

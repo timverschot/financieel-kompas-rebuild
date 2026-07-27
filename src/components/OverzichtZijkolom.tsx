@@ -1,7 +1,8 @@
 import type { Budget, Transactie } from '../data/schema'
-import { uitgavenInMaand } from '../utils/budget'
+import { budgetKleur, uitgavenInMaand } from '../utils/budget'
 import { Balk, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
+import { useInstellingen } from '../instellingen'
 
 // De zijkolom van het Overzicht op brede schermen: hoe je budgetten ervoor staan.
 //
@@ -26,6 +27,8 @@ export function OverzichtZijkolom({
   onGaNaarBudget: () => void
 }) {
   const { t } = useT()
+  // Dezelfde drempel als het belletje gebruikt; die staat in Instellingen.
+  const { budgetDrempel } = useInstellingen()
 
   // De budgetten die het dichtst bij hun grens zitten, want dat is wat je wil zien.
   const budgetStand = budgetten
@@ -50,8 +53,9 @@ export function OverzichtZijkolom({
         {budgetStand.length === 0 && <Leeg>{t('Nog geen budgetten ingesteld.')}</Leeg>}
         {budgetStand.map(({ budget, uitgegeven, fractie }) => {
           const naam = categorieNaam(budget.categorieId) ?? '—'
-          const kleur =
-            uitgegeven > budget.bedrag ? 'var(--negative)' : fractie >= 0.8 ? 'var(--warn)' : 'var(--positive)'
+          // Dezelfde kern als op de Budget-pagina, en dezelfde drempel als de
+          // meldingen: die staat in Instellingen en hoorde hier ook te gelden.
+          const kleur = budgetKleur(uitgegeven, budget.bedrag, budgetDrempel)
           return (
             <div key={budget.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>

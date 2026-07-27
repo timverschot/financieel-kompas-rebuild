@@ -1,6 +1,17 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from './db'
-import { bewaarTransactie, laadTransacties } from './repository'
+import {
+  bewaarDossier,
+  bewaarDossierDocument,
+  bewaarGedeeldeKost,
+  bewaarOrdening,
+  bewaarTransactie,
+  laadDossierDocumenten,
+  laadDossiers,
+  laadGedeeldeKosten,
+  laadOrdeningen,
+  laadTransacties,
+} from './repository'
 import { exporteerBackup, importeerBackup } from './backup'
 
 beforeEach(async () => {
@@ -64,5 +75,63 @@ describe('backup', () => {
 
   it('weigert een JSON zonder back-up-gegevens', async () => {
     await expect(importeerBackup('{"iets":1}')).rejects.toThrow()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 35 — de back-up moet ALLE tabellen dragen, niet alleen transacties.
+//
+// De bestaande tests keken uitsluitend naar transacties. Daardoor was er geen
+// enkel vangnet voor een tabel die bij het herstellen vergeten wordt: je haalt je
+// back-up binnen, alles lijkt te kloppen, en pas weken later merk je dat je eigen
+// volgorde van de hoofdcategorieën of je documentkluis leeg is.
+// ---------------------------------------------------------------------------
+
+describe('backup draagt ook de andere tabellen', () => {
+  it('herstelt de eigen volgorde van de hoofdcategorieën', async () => {
+    await db.ordeningen.clear()
+    await bewaarOrdening({ id: 'hoofdcategorieen', ids: ['ov-wonen', 'ov-voeding', 'ov-vervoer'] })
+    const json = await exporteerBackup()
+
+    await db.ordeningen.clear()
+    await db.events.clear()
+    expect((await laadOrdeningen()).geldig).toHaveLength(0)
+
+    await importeerBackup(json)
+    const ord = (await laadOrdeningen()).geldig
+    expect(ord).toHaveLength(1)
+    expect(ord[0].ids).toEqual(['ov-wonen', 'ov-voeding', 'ov-vervoer'])
+  })
+
+  it('herstelt een dossier met zijn gedeelde kosten en een bewaard document', async () => {
+    await db.dossiers.clear()
+    await db.gedeeldeKosten.clear()
+    await db.dossierdocumenten.clear()
+    await bewaarDossier({ id: 'd1', naam: 'Co-ouderschap', aandeelJij: 60 })
+    await bewaarGedeeldeKost({
+      id: 'k1',
+      dossierId: 'd1',
+      omschrijving: 'Schoolrekening',
+      bedrag: 12000,
+      datum: '2026-07-01',
+      betaaldDoor: 'jij',
+      kostenType: 'gewoon',
+    })
+    await bewaarDossierDocument({
+      id: 'doc1',
+      dossierId: 'd1',
+      naam: 'Ouderschapsovereenkomst',
+      soort: 'overeenkomst',
+      bestand: 'data:application/pdf;base64,AA==',
+      toegevoegdOp: '2026-07-01',
+    })
+    const json = await exporteerBackup()
+
+    await Promise.all([db.dossiers.clear(), db.gedeeldeKosten.clear(), db.dossierdocumenten.clear(), db.events.clear()])
+    await importeerBackup(json)
+
+    expect((await laadDossiers()).geldig.map((d) => d.aandeelJij)).toEqual([60])
+    expect((await laadGedeeldeKosten()).geldig.map((k) => k.bedrag)).toEqual([12000])
+    expect((await laadDossierDocumenten()).geldig.map((d) => d.naam)).toEqual(['Ouderschapsovereenkomst'])
   })
 })

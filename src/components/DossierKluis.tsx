@@ -9,6 +9,7 @@ import { documentenVan, veldVanSoort, type KluisEigenaar } from '../utils/kluis'
 import { Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 import type { Vertaler } from '../i18n'
+import { Bonknop } from '../ui/Bonknop'
 
 // Boven deze grens weigeren we het bestand: een data-URL van meer dan ~4 MB maakt
 // de lokale database én de back-up onnodig zwaar. Beter meteen zeggen dat de scan
@@ -199,12 +200,13 @@ export function Documentkluis({
                 </span>
               </div>
               <span className="rij-acties">
-                <a href={d.bestand} target="_blank" rel="noreferrer" style={{ fontSize: 'var(--tekst-s)' }}>
-                  {t('Openen')}
-                </a>
-                <a href={d.bestand} download={d.bestandsnaam || d.naam} style={{ fontSize: 'var(--tekst-s)' }}>
-                  {t('Bewaren')}
-                </a>
+                {/* Eén knop in plaats van twee links. Navigeren naar een
+                    data-URL wordt door Safari geweigerd, dus deden "Openen" en
+                    "Bewaren" op een iPhone allebei niets. De popup toont het
+                    document in de app zelf en bewaart via een blob-URL. */}
+                {/* Bewust "Bekijken" en niet "Openen": het document gaat niet naar
+                    buiten open, het verschijnt in een venster ín de app. */}
+                <Bonknop bestand={d.bestand} naam={d.bestandsnaam || d.naam} label={t('Bekijken')} />
                 {bevestigId === d.id ? (
                   <>
                     <button

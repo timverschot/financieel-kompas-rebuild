@@ -4,6 +4,7 @@ import { TerugkerendePostFormulier, frequentieNaam } from './TerugkerendePostFor
 import { formatEuro } from '../utils/format'
 import { vandaag } from '../utils/datum'
 import { frequentieVan, maandbedrag, opzijPerMaand, valtInMaand, volgendeVervaldag } from '../utils/vastelast'
+import { geboekteVasteLasten, vasteLastTransactieId } from '../utils/vooruitblik'
 import { Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 
@@ -52,6 +53,22 @@ export function TerugkerendeSectie({
   // Elke sectie toont enkel haar eigen soort.
   const eigen = posten.filter((p) => (soort === 'inkomst' ? p.bedrag > 0 : p.bedrag < 0))
   const isInkomst = soort === 'inkomst'
+  // Welke posten deze maand al geboekt zijn. Bewust uit de gedeelde kern, want dit
+  // moet exact hetzelfde antwoord geven als het belletje en de Vooruitblik.
+  // LET OP het filter: `maandVooruitblik` kijkt alleen naar posten die déze maand
+  // vervallen. Zonder datzelfde filter kan een post die nu niet aan de beurt is
+  // (bv. een jaarlijkse verzekering van hetzelfde bedrag) de boeking van de huur
+  // opsnoepen — en dan zegt deze lijst "nog te boeken" terwijl het belletje zwijgt.
+  const geboekteIds = geboekteVasteLasten(
+    transacties,
+    eigen.filter((p) => valtInMaand(p, maand)),
+    maand,
+  )
+  // Welke posten zijn geboekt via de knop "Boek in"? Alleen dié kan de app weer
+  // uitboeken, want alleen dan bestaat het vaste transactie-id.
+  const metVastId = new Set(
+    eigen.filter((p) => transacties.some((tx) => tx.id === vasteLastTransactieId(p.id, maand))).map((p) => p.id),
+  )
 
   async function opslaan(p: TerugkerendePost) {
     await onOpslaan(p)
@@ -77,7 +94,11 @@ export function TerugkerendeSectie({
       {eigen.length > 0 && (
         <ul className="lijst">
           {eigen.map((p) => {
-            const geboekt = transacties.some((tx) => tx.id === `tk-${p.id}-${maand}`)
+            // Uit dezelfde kern als het belletje en de Vooruitblik. Deze lijst
+            // keek vroeger alleen naar het vaste id van "Boek in", waardoor een
+            // handmatig ingetikte huur hier als "nog niet geboekt" stond terwijl de
+            // rest van de app hem al herkende — één klik en je huur stond dubbel.
+            const geboekt = geboekteIds.has(p.id)
             const dezeMaand = valtInMaand(p, maand)
             const periodiek = frequentieVan(p) !== 'maand'
             const volgende = periodiek ? volgendeVervaldag(p, vandaag()) : null
@@ -111,7 +132,12 @@ export function TerugkerendeSectie({
                     // "Geboekt ✓" was een doodlopend punt: inboeken maakt een echte
                     // transactie, en die kon je alleen op de Transacties-pagina weer
                     // wissen. Nu kan het hier, waar je geklikt hebt.
-                    onOngedaan ? (
+                    // ...maar alleen wanneer de app die transactie ook kán wissen.
+                    // "Uitboeken" zoekt het vaste id van "Boek in"; heb je de vaste
+                    // last zélf ingetikt, dan bestaat dat id niet en deed de knop
+                    // letterlijk niets — geen melding, geen effect, twee keer
+                    // klikken. Dan tonen we alleen het vinkje.
+                    onOngedaan && metVastId.has(p.id) ? (
                       <>
                         <span className="badge badge-ok">{t('Geboekt ✓')}</span>
                         {/* Bewust NIET 'Ongedaan maken': die knop staat op dat

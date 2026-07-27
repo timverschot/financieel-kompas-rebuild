@@ -525,7 +525,7 @@ const en: Record<string, string> = {
   'Doel wijzigen': 'Update goal',
   'Doel toevoegen': 'Add goal',
   // Vaste lasten
-  'Vaste lasten': 'Recurring expenses',
+  'Vaste lasten': 'Fixed costs',
   'Inboeken voor {maand}': 'Book for {maand}',
   '{bedrag} · dag {dag}': '{bedrag} · day {dag}',
   'Geboekt ✓': 'Booked ✓',
@@ -580,6 +580,48 @@ const en: Record<string, string> = {
   // Ronde 30 — de hoofdcategorieën zitten achter één knop, en hun volgorde is
   // instelbaar op de Categorieën-pagina.
   'Selecteer hoofdcategorie': 'Select a main category',
+  // Ronde 35 — correctheid, zichtbare mislukkingen en documenten die openen.
+  '({bedrag} te veel)': '({bedrag} too much)',
+  '{naam} lijkt al geboekt op {datum} ({bedrag}). Er is niets bijgemaakt — controleer je transacties.':
+    '{naam} appears to be recorded already on {datum} ({bedrag}). Nothing was added — please check your transactions.',
+  'Melding sluiten': 'Dismiss message',
+  'Meer pagina’s': 'More pages',
+  'stuks': 'pieces',
+  'goedkoopste': 'cheapest',
+  'De opslag van dit toestel zit vol. Verwijder een paar bonnetjes of foto’s en probeer opnieuw.':
+    'This device’s storage is full. Delete a few receipts or photos and try again.',
+  'Opslaan is niet gelukt. Je invoer staat er nog.': 'Saving failed. Your entry is still here.',
+  'Toon alle maanden — wis het maandfilter': 'Show all months — clear the month filter',
+  'Er ging iets mis, maar je gegevens zijn veilig. De rest van de app blijft gewoon werken.':
+    'Something went wrong, but your data is safe. The rest of the app keeps working.',
+  'Er ging iets mis in {naam}, maar je gegevens zijn veilig. De rest van de app blijft gewoon werken.':
+    'Something went wrong in {naam}, but your data is safe. The rest of the app keeps working.',
+  'Probeer opnieuw': 'Try again',
+  'Zonder categorie': 'Uncategorised',
+  'Onbekend': 'Unknown',
+  'Bewaard document': 'Saved document',
+  'Bewaren lukte niet. Je kan het bestand hierboven wel gewoon bekijken.':
+    'Saving failed. You can still simply view the file above.',
+  'Blijft het vak leeg? Bewaar het bestand hieronder en open het met je eigen pdf-lezer.':
+    'Is the panel blank? Save the file below and open it with your own PDF reader.',
+  'Deze afbeelding kan niet getoond worden. Ze is mogelijk beschadigd bij het bewaren.':
+    'This image cannot be displayed. It may have been damaged while being saved.',
+  'Foto van bon of factuur: {naam}': 'Photo of receipt or invoice: {naam}',
+  'Pdf-bestand: {naam}': 'PDF file: {naam}',
+  'Bewaren mislukte: {fout}. Je invoer staat er nog — probeer het opnieuw.':
+    'Saving failed: {fout}. Your entry is still here — please try again.',
+  'Bewaren op dit toestel': 'Save to this device',
+  'Bewaren…': 'Saving…',
+  'Bon of factuur': 'Receipt or invoice',
+  'Contract of bewijs': 'Contract or proof',
+  'De gegevens konden niet geopend worden': 'Your data could not be opened',
+  'De regels verdelen meer dan het totaalbedrag. Pas een regel of het totaal aan.':
+    'The lines add up to more than the total. Adjust a line or the total.',
+  'Je gegevens zijn niet weg — de app kan de opslag van deze browser alleen niet openen. Dat gebeurt in een privévenster, wanneer de opslag vol zit, of wanneer deze pagina nog een oudere versie van de app is.':
+    'Your data is not lost — the app simply cannot open this browser\u2019s storage. That happens in a private window, when storage is full, or when this page is still running an older version of the app.',
+  'Opnieuw proberen': 'Try again',
+  'Technische melding: {fout}': 'Technical message: {fout}',
+
   // Ronde 32 — beweging, de opgeruimde Transacties-pagina en de kleine punten.
   'Indexatie-tools': 'Indexation tools',
   'Naar Overzicht': 'To Overview',
@@ -890,6 +932,7 @@ const en: Record<string, string> = {
   'Bon': 'Receipt',
   'Vonnis': 'Court order',
   'Ander': 'Other',
+  'Bekijken': 'View',
   'Openen': 'Open',
   'Bewaren': 'Save to device',
   'Ja, verwijder': 'Yes, delete',
@@ -1542,8 +1585,8 @@ const fr: Record<string, string> = {
   'buitengewone kosten': 'frais extraordinaires',
   'saldo': 'solde',
   'jouw deel': 'votre part',
-  'bon toegevoegd': 'ticket joint',
-  'geen bon': 'pas de ticket',
+  'bon toegevoegd': 'reçu joint',
+  'geen bon': 'pas de reçu',
   'standaardverdeling van het dossier': 'répartition par défaut du dossier',
   'eigen percentage op de kost': 'pourcentage propre sur le frais',
   'afwijkende verdeling': 'répartition différente',
@@ -1720,6 +1763,49 @@ const fr: Record<string, string> = {
     'Si vous ne sélectionnez personne, cette dépense compte pour la famille.',
   // Ronde 30
   'Selecteer hoofdcategorie': 'Choisir une catégorie principale',
+  // Ronde 35
+  '({bedrag} te veel)': '({bedrag} de trop)',
+  '{naam} lijkt al geboekt op {datum} ({bedrag}). Er is niets bijgemaakt — controleer je transacties.':
+    '{naam} semble déjà enregistré le {datum} ({bedrag}). Rien n’a été ajouté — vérifiez vos transactions.',
+  'Melding sluiten': 'Fermer le message',
+  'Meer pagina’s': 'Plus de pages',
+  'stuks': 'pièces',
+  'goedkoopste': 'le moins cher',
+  'De opslag van dit toestel zit vol. Verwijder een paar bonnetjes of foto’s en probeer opnieuw.':
+    'Le stockage de cet appareil est plein. Supprimez quelques reçus ou photos et réessayez.',
+  'Opslaan is niet gelukt. Je invoer staat er nog.':
+    'L’enregistrement a échoué. Votre saisie est toujours là.',
+  'Toon alle maanden — wis het maandfilter': 'Afficher tous les mois — effacer le filtre de mois',
+  'Er ging iets mis, maar je gegevens zijn veilig. De rest van de app blijft gewoon werken.':
+    'Une erreur est survenue, mais vos données sont en sécurité. Le reste de l’application continue de fonctionner.',
+  'Er ging iets mis in {naam}, maar je gegevens zijn veilig. De rest van de app blijft gewoon werken.':
+    'Une erreur est survenue dans {naam}, mais vos données sont en sécurité. Le reste de l’application continue de fonctionner.',
+  'Probeer opnieuw': 'Réessayer',
+  'Zonder categorie': 'Sans catégorie',
+  'Onbekend': 'Inconnu',
+  'Bewaard document': 'Document enregistré',
+  'Bewaren lukte niet. Je kan het bestand hierboven wel gewoon bekijken.':
+    'L\u2019enregistrement a échoué. Vous pouvez toujours consulter le fichier ci-dessus.',
+  'Blijft het vak leeg? Bewaar het bestand hieronder en open het met je eigen pdf-lezer.':
+    'Le cadre reste vide ? Enregistrez le fichier ci-dessous et ouvrez-le avec votre lecteur PDF.',
+  'Deze afbeelding kan niet getoond worden. Ze is mogelijk beschadigd bij het bewaren.':
+    'Cette image ne peut pas être affichée. Elle a peut-être été endommagée lors de l\u2019enregistrement.',
+  'Foto van bon of factuur: {naam}': 'Photo du reçu ou de la facture : {naam}',
+  'Pdf-bestand: {naam}': 'Fichier PDF : {naam}',
+  'Bewaren mislukte: {fout}. Je invoer staat er nog — probeer het opnieuw.':
+    'L\u2019enregistrement a échoué : {fout}. Votre saisie est toujours là — réessayez.',
+  'Bewaren op dit toestel': 'Enregistrer sur cet appareil',
+  'Bewaren…': 'Enregistrement…',
+  'Bon of factuur': 'Reçu ou facture',
+  'Contract of bewijs': 'Contrat ou justificatif',
+  'De gegevens konden niet geopend worden': 'Impossible d\u2019ouvrir vos données',
+  'De regels verdelen meer dan het totaalbedrag. Pas een regel of het totaal aan.':
+    'Les lignes dépassent le montant total. Ajustez une ligne ou le total.',
+  'Je gegevens zijn niet weg — de app kan de opslag van deze browser alleen niet openen. Dat gebeurt in een privévenster, wanneer de opslag vol zit, of wanneer deze pagina nog een oudere versie van de app is.':
+    'Vos données ne sont pas perdues — l\u2019application ne parvient simplement pas à ouvrir le stockage de ce navigateur. Cela arrive en navigation privée, lorsque le stockage est plein, ou lorsque cette page utilise encore une version plus ancienne de l\u2019application.',
+  'Opnieuw proberen': 'Réessayer',
+  'Technische melding: {fout}': 'Message technique : {fout}',
+
   // Ronde 32
   'Indexatie-tools': 'Outils d’indexation',
   'Naar Overzicht': 'Vers l’aperçu',
@@ -1798,7 +1884,7 @@ const fr: Record<string, string> = {
   // PDF, samenvatting & bonnetje (Ronde 2 · Brok D)
   'Bon/factuur (optioneel)': 'Reçu/facture (optionnel)',
   'Bon/factuur': 'Reçu/facture',
-  'bekijken': 'voir',
+  'bekijken': 'consulter',
   'verwijderen': 'supprimer',
   'bezig…': 'en cours…',
   'Kopieer': 'Copier',
@@ -2027,9 +2113,10 @@ const fr: Record<string, string> = {
   'Nieuw document': 'Nouveau document',
   'Overeenkomst': 'Convention',
   'Attest': 'Attestation',
-  'Bon': 'Ticket',
+  'Bon': 'Reçu',
   'Vonnis': 'Jugement',
   'Ander': 'Autre',
+  'Bekijken': 'Consulter',
   'Openen': 'Ouvrir',
   'Bewaren': 'Enregistrer',
   'Ja, verwijder': 'Oui, supprimer',

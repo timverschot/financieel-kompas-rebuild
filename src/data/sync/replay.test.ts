@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { pasToe } from './replay'
+import { STAAT_NAMEN, herbouwStaat } from './lokaal'
+import { bewaarTransactie } from '../repository'
+import { db } from '../db'
 import type { Logregel } from './events'
 
 function regel(over: Partial<Logregel> & { gebeurtenis: Logregel['gebeurtenis'] }): Logregel {
@@ -62,5 +65,68 @@ describe('pasToe (samenvoegen / last-writer-wins)', () => {
     const oud = regel({ tijdstip: 1, gebeurtenis: { type: 'transactie.bewaard', payload: tx('t1', 'Oud', 1) } })
     const nieuw = regel({ tijdstip: 2, gebeurtenis: { type: 'transactie.bewaard', payload: tx('t1', 'Nieuw', 2) } })
     expect(pasToe([oud, nieuw]).transacties.get('t1')?.omschrijving).toBe('Nieuw')
+  })
+})
+
+// Ronde 35: `herbouwStaat` leegde en herschreef élke tabel met twee handgeschreven
+// regels, en één van de twintig was vergeten — `ordeningen`, de volgorde van je
+// hoofdcategorieën. Die kwam daardoor nooit op een tweede toestel en overleefde
+// geen herstel van een back-up. Deze twee tests bewaken dat het niet opnieuw
+// gebeurt, ook niet bij een eenentwintigste recordsoort.
+describe('herbouwStaat dekt élke tabel', () => {
+  it('kent voor elke sleutel van de staat een echte tabel met dezelfde naam', () => {
+    const staat = pasToe([])
+    for (const naam of STAAT_NAMEN) {
+      expect(Object.keys(staat)).toContain(naam)
+      expect(db[naam]).toBeDefined()
+    }
+  })
+
+  it('vergeet geen enkele sleutel van de staat', () => {
+    const staat = pasToe([])
+    const vergeten = Object.keys(staat).filter((k) => !(STAAT_NAMEN as readonly string[]).includes(k))
+    expect(vergeten).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 35 — herbouwStaat mag niets kwijtraken wat er ondertussen bij komt.
+//
+// De herbouw draait na élke synchronisatie die iets ophaalt, en de stille
+// synchronisatie loopt elke 45 seconden. Dat is dus precies terwijl je zit te
+// typen. Las de herbouw het logboek buiten zijn eigen transactie, dan verdween
+// alles wat je in dat venster bewaarde weer uit beeld.
+// ---------------------------------------------------------------------------
+
+describe('herbouwStaat en gelijktijdig bewaren', () => {
+  it('raakt een boeking die er tijdens de herbouw bij komt niet kwijt', async () => {
+    await db.events.clear()
+    await db.transacties.clear()
+    await db.meta.clear()
+
+    await bewaarTransactie({ id: 't1', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 240000, rekeningId: 'r1' })
+
+    // Allebei tegelijk starten, zoals in de app: de sync herbouwt, jij bewaart.
+    await Promise.all([
+      herbouwStaat(),
+      bewaarTransactie({ id: 't2', datum: '2026-07-02', omschrijving: 'Colruyt', bedrag: -4200, rekeningId: 'r1' }),
+    ])
+
+    const ids = (await db.transacties.toArray()).map((t) => t.id).sort()
+    expect(ids).toEqual(['t1', 't2'])
+  })
+
+  it('laat een wijziging tijdens de herbouw niet terugspringen', async () => {
+    await db.events.clear()
+    await db.transacties.clear()
+    await db.meta.clear()
+
+    await bewaarTransactie({ id: 't1', datum: '2026-07-01', omschrijving: 'Garage', bedrag: -4000, rekeningId: 'r1' })
+    await Promise.all([
+      herbouwStaat(),
+      bewaarTransactie({ id: 't1', datum: '2026-07-01', omschrijving: 'Garage', bedrag: -8000, rekeningId: 'r1' }),
+    ])
+
+    expect((await db.transacties.get('t1'))?.bedrag).toBe(-8000)
   })
 })

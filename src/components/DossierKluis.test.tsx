@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { Documentkluis } from './DossierKluis'
@@ -144,10 +144,22 @@ describe('Documentkluis', () => {
     expect(onVerwijderen).toHaveBeenCalledWith('w1')
   })
 
-  it('toont een openen- en een bewaarlink per document', () => {
+  // Ronde 35: dit waren twee links naar een data-URL. Safari WEIGERT navigatie
+  // daarheen, dus op een iPhone deden ze allebei niets — zonder enige melding. Het
+  // is nu één knop die het document in de app zelf toont.
+  it('opent een document in de app in plaats van ernaartoe te navigeren', async () => {
+    const user = userEvent.setup()
     toon([doc({ id: 'l1', naam: 'Overeenkomst', bestandsnaam: 'overeenkomst.pdf' })])
-    expect(screen.getByRole('link', { name: 'Openen' })).toHaveAttribute('href', 'data:application/pdf;base64,AAAA')
-    expect(screen.getByRole('link', { name: 'Bewaren' })).toHaveAttribute('download', 'overeenkomst.pdf')
+
+    expect(screen.queryByRole('link', { name: 'Bekijken' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Bekijken' }))
+
+    const popup = await screen.findByRole('dialog')
+    expect(within(popup).getByTitle('Pdf-bestand: overeenkomst.pdf')).toHaveAttribute(
+      'src',
+      'data:application/pdf;base64,AAAA',
+    )
+    expect(within(popup).getByRole('button', { name: 'Bewaren op dit toestel' })).toBeInTheDocument()
   })
 
   it('hangt een nieuw document aan de juiste eigenaar', async () => {

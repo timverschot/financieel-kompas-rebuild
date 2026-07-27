@@ -138,7 +138,7 @@ describe('TransactieFormulier', () => {
     await user.click(screen.getByLabelText(/Kassaticket splitsen/))
 
     await user.type(screen.getAllByLabelText('Item zoeken')[0], 'Kefir')
-    await user.click(await screen.findByRole('button', { name: /Kefir.*toevoegen/ }))
+    await user.click(await screen.findByRole('option', { name: /Kefir.*toevoegen/ }))
     await user.selectOptions(screen.getByLabelText('Onder welke categorie'), 'cat-zuivel-en-kaas')
     await user.click(screen.getByRole('button', { name: 'Subcategorie toevoegen' }))
 
@@ -289,7 +289,7 @@ describe('TransactieFormulier — optionele velden', () => {
     // Er staat een voorbeeld in plaats van een bestandskiezer, dus zoeken we op het
     // label zelf en op de kijk-link.
     expect(screen.getByText('Bon/factuur (optioneel)')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'bekijken' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'bekijken' })).toBeInTheDocument()
   })
 })
 
@@ -428,7 +428,7 @@ describe('TransactieFormulier — bon of factuur', () => {
     await user.click(screen.getByRole('button', { name: 'Meer opties' }))
     await user.upload(screen.getByLabelText('Bon/factuur (optioneel)'), pdf('factuur.pdf'))
 
-    expect(await screen.findByRole('link', { name: 'bekijken' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'bekijken' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
 
     const transactie = onOpslaan.mock.calls[0][0] as Transactie
@@ -452,7 +452,7 @@ describe('TransactieFormulier — bon of factuur', () => {
     expect(
       await screen.findByText('Dit bestand is te groot (max. 4 MB). Kies een kleinere scan of foto.'),
     ).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'bekijken' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'bekijken' })).not.toBeInTheDocument()
   })
 
   it('schrijft een ongewijzigde bon niet opnieuw weg', async () => {
@@ -491,6 +491,370 @@ describe('TransactieFormulier — bon of factuur', () => {
         toegevoegdOp: '2026-07-01',
       },
     })
+
+    await user.click(screen.getByRole('button', { name: 'verwijderen' }))
+    await user.click(screen.getByRole('button', { name: 'Wijzigen' }))
+    await waitFor(() => expect(onBon).toHaveBeenCalledWith(null))
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 35 — wat er gebeurt als het NIET vlot loopt.
+//
+// Drie situaties die tot nu toe alleen in de code beschreven stonden en nergens
+// werden bewaakt: te veel verdelen, twee keer tikken, en een bewaring die
+// mislukt. Precies de gevallen waarin een gebruiker zijn invoer kan kwijtraken.
+// ---------------------------------------------------------------------------
+
+describe('TransactieFormulier — te veel verdeeld', () => {
+  async function verdeelTeveel(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Colruyt')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '50')
+    await user.click(screen.getByLabelText(/Kassaticket splitsen/))
+    await user.type(screen.getAllByLabelText('Item zoeken')[0], 'Brood')
+    await user.type(screen.getAllByLabelText('Deelbedrag')[0], '40')
+    await user.click(screen.getByRole('button', { name: '+ Regel toevoegen' }))
+    await user.type(screen.getAllByLabelText('Item zoeken')[1], 'Zeep')
+    await user.type(screen.getAllByLabelText('Deelbedrag')[1], '20')
+  }
+
+  it('weigert op te slaan en zegt waarom', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = renderForm()
+    await verdeelTeveel(user)
+
+    expect(
+      screen.getByText('De regels verdelen meer dan het totaalbedrag. Pas een regel of het totaal aan.'),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+    // Zonder deze grendel werd het verschil een tegenboeking met omgekeerd teken:
+    // € 60 uitgaven én € 10 inkomsten uit één ticket van € 50.
+    expect(onOpslaan).not.toHaveBeenCalled()
+  })
+
+  it('zegt "te veel" in plaats van een bedrag met een minteken', async () => {
+    const user = userEvent.setup()
+    renderForm()
+    await verdeelTeveel(user)
+
+    // "(nog −€ 10,00)" was dubbel ontkennend en las niemand goed.
+    expect(screen.getByText(/te veel/)).toBeInTheDocument()
+    expect(screen.queryByText(/nog −/)).toBeNull()
+    expect(screen.queryByText(/nog -/)).toBeNull()
+  })
+
+  it('slaat wel op zodra de regels binnen het totaal passen', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = renderForm()
+    await verdeelTeveel(user)
+    // Van 20 naar 5: samen 45 van de 50, de rest wordt "zonder categorie".
+    await user.clear(screen.getAllByLabelText('Deelbedrag')[1])
+    await user.type(screen.getAllByLabelText('Deelbedrag')[1], '5')
+
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+    expect(onOpslaan).toHaveBeenCalled()
+  })
+})
+
+describe('TransactieFormulier — twee keer tikken', () => {
+  it('boekt maar één keer wanneer je snel twee keer op Toevoegen tikt', async () => {
+    const user = userEvent.setup()
+    // Een trage bewaring nabootsen: op een telefoon duurt schrijven + herladen
+    // merkbaar lang, en juist dan tikt iemand een tweede keer.
+    let laatLos: () => void = () => {}
+    const onOpslaan = vi.fn(() => new Promise<void>((r) => { laatLos = r }))
+    render(
+      <TransactieFormulier onOpslaan={onOpslaan} rekeningen={rekeningen} categorieen={[]} handelaars={[]} />,
+    )
+
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Colruyt')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '12,50')
+
+    const knop = screen.getByRole('button', { name: /Toevoegen|Bewaren/ })
+    await user.click(knop)
+    await user.click(screen.getByRole('button', { name: /Toevoegen|Bewaren/ }))
+    expect(onOpslaan).toHaveBeenCalledTimes(1)
+
+    laatLos()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Toevoegen' })).toBeInTheDocument())
+  })
+
+  it('zegt tijdens het bewaren dat hij bezig is', async () => {
+    const user = userEvent.setup()
+    let laatLos: () => void = () => {}
+    const onOpslaan = vi.fn(() => new Promise<void>((r) => { laatLos = r }))
+    render(
+      <TransactieFormulier onOpslaan={onOpslaan} rekeningen={rekeningen} categorieen={[]} handelaars={[]} />,
+    )
+
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Colruyt')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '12,50')
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+
+    const bezig = screen.getByRole('button', { name: 'Bewaren…' })
+    expect(bezig).toHaveAttribute('aria-busy', 'true')
+
+    laatLos()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Toevoegen' })).toBeInTheDocument())
+  })
+})
+
+describe('TransactieFormulier — een mislukte bewaring', () => {
+  it('houdt je invoer vast en zegt wat er misging', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = vi.fn(() => Promise.reject(new Error('QuotaExceededError: opslag vol')))
+    render(
+      <TransactieFormulier onOpslaan={onOpslaan} rekeningen={rekeningen} categorieen={[]} handelaars={[]} />,
+    )
+
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Colruyt')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '12,50')
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+
+    // Eerst de uitleg in gewone taal, dan pas de technische melding eronder.
+    await waitFor(() =>
+      expect(
+        screen.getByText('De opslag van dit toestel zit vol. Verwijder een paar bonnetjes of foto’s en probeer opnieuw.'),
+      ).toBeInTheDocument(),
+    )
+    expect(screen.getByText(/QuotaExceededError/)).toBeInTheDocument()
+
+    // En het belangrijkste: het formulier staat er nog, ingevuld.
+    expect(screen.getByLabelText('Handelaar / winkel')).toHaveValue('Colruyt')
+    expect(screen.getByRole('button', { name: 'Toevoegen' })).toBeInTheDocument()
+  })
+
+  it('laat je gewoon opnieuw proberen', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('mislukt'))
+      .mockResolvedValueOnce(undefined)
+    render(
+      <TransactieFormulier onOpslaan={onOpslaan} rekeningen={rekeningen} categorieen={[]} handelaars={[]} />,
+    )
+
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Colruyt')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '12,50')
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+    await waitFor(() => expect(screen.getByText('Opslaan is niet gelukt. Je invoer staat er nog.')).toBeInTheDocument())
+
+    // De grendel moet weer los zijn, anders kan je na één mislukking nooit meer
+    // opslaan zonder de popup te sluiten — en dan ben je je invoer alsnog kwijt.
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+    expect(onOpslaan).toHaveBeenCalledTimes(2)
+    await waitFor(() => expect(screen.getByLabelText('Handelaar / winkel')).toHaveValue(''))
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 35 — een achtergrondsync mag je invoer nooit aanraken.
+//
+// De app haalt elke 45 seconden stil nieuwe gegevens op en maakt daarbij alle
+// lijsten opnieuw aan: dezelfde inhoud, maar als nieuwe voorwerpen. Keek het
+// formulier daarnaar, dan vulde het zichzelf middenin het typen opnieuw in — en
+// bij het bewerken bewaarde "Wijzigen" daarna stil de OUDE waarde.
+// ---------------------------------------------------------------------------
+
+describe('TransactieFormulier — een herlaadbeurt tijdens het invullen', () => {
+  const bewerken: Transactie = {
+    id: 't1',
+    datum: '2026-07-01',
+    omschrijving: 'Garage',
+    bedrag: -9000,
+    rekeningId: 'r1',
+  }
+
+  it('laat wat je getypt hebt staan wanneer de app opnieuw laadt', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <TransactieFormulier onOpslaan={vi.fn()} rekeningen={rekeningen} categorieen={[]} handelaars={[]} />,
+    )
+
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Colruyt')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '42,30')
+
+    // Precies wat `herlaad()` doet: dezelfde inhoud, verse arrays.
+    rerender(
+      <TransactieFormulier onOpslaan={vi.fn()} rekeningen={[...rekeningen]} categorieen={[]} handelaars={[]} />,
+    )
+
+    expect(screen.getByLabelText('Handelaar / winkel')).toHaveValue('Colruyt')
+    expect(screen.getByLabelText('Bedrag (€)')).toHaveValue('42,30')
+  })
+
+  it('laat een gewijzigd bedrag niet terugspringen naar de opgeslagen waarde', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = vi.fn()
+    const { rerender } = render(
+      <TransactieFormulier
+        onOpslaan={onOpslaan}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        handelaars={[]}
+        bewerken={bewerken}
+      />,
+    )
+
+    await user.clear(screen.getByLabelText('Bedrag (€)'))
+    await user.type(screen.getByLabelText('Bedrag (€)'), '95')
+
+    rerender(
+      <TransactieFormulier
+        onOpslaan={onOpslaan}
+        rekeningen={[...rekeningen]}
+        categorieen={[]}
+        handelaars={[]}
+        bewerken={{ ...bewerken }}
+      />,
+    )
+
+    // Sprong dit terug naar 90,00, dan bewaarde "Wijzigen" stil het oude bedrag.
+    expect(screen.getByLabelText('Bedrag (€)')).toHaveValue('95')
+    await user.click(screen.getByRole('button', { name: 'Wijzigen' }))
+    expect(onOpslaan).toHaveBeenCalledWith(expect.objectContaining({ bedrag: -9500 }))
+  })
+
+  it('houdt je dossierkeuze vast wanneer de bon onderweg bewaard wordt', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = vi.fn()
+    const { rerender } = render(
+      <TransactieFormulier
+        onOpslaan={onOpslaan}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        handelaars={[]}
+        dossiers={dossiers}
+        onDossierKost={vi.fn()}
+        onBon={vi.fn()}
+        bewerken={bewerken}
+        bon={null}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Meer opties' }))
+    await user.selectOptions(screen.getByLabelText('Delen in een dossier (optioneel)'), 'dos-1')
+
+    // Tijdens het bewaren verschijnt het bondocument: een NIEUW id, terwijl je in
+    // hetzelfde formulier staat. Zou het formulier daarop reageren, dan stond je
+    // dossierkeuze daarna weer op "Niet delen" — en na een mislukking verdween de
+    // gedeelde kost stilzwijgend.
+    rerender(
+      <TransactieFormulier
+        onOpslaan={onOpslaan}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        handelaars={[]}
+        dossiers={dossiers}
+        onDossierKost={vi.fn()}
+        onBon={vi.fn()}
+        bewerken={bewerken}
+        bon={{
+          id: 'doc-nieuw',
+          transactieId: 't1',
+          naam: 'Bon',
+          soort: 'bon',
+          bestand: 'data:image/jpeg;base64,AA==',
+          toegevoegdOp: '2026-07-01',
+        }}
+      />,
+    )
+
+    expect(screen.getByLabelText('Delen in een dossier (optioneel)')).toHaveValue('dos-1')
+  })
+
+  it('vult het formulier wél opnieuw wanneer je een ándere transactie opent', () => {
+    const { rerender } = render(
+      <TransactieFormulier
+        onOpslaan={vi.fn()}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        handelaars={[]}
+        bewerken={bewerken}
+      />,
+    )
+    expect(screen.getByLabelText('Handelaar / winkel')).toHaveValue('Garage')
+
+    rerender(
+      <TransactieFormulier
+        onOpslaan={vi.fn()}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        handelaars={[]}
+        bewerken={{ ...bewerken, id: 't2', omschrijving: 'Colruyt', bedrag: -1250 }}
+      />,
+    )
+    expect(screen.getByLabelText('Handelaar / winkel')).toHaveValue('Colruyt')
+    expect(screen.getByLabelText('Bedrag (€)')).toHaveValue('12,50')
+  })
+})
+
+// Ronde 35: twee toestellen. Hangt er bij het openen geen bon aan de transactie en
+// komt er tijdens het invullen een binnen via de synchronisatie, dan mag het
+// opslaan die net ontvangen bon niet wissen.
+describe('TransactieFormulier — een bon die onderweg binnenkomt', () => {
+  const bewerken: Transactie = {
+    id: 't1',
+    datum: '2026-07-01',
+    omschrijving: 'Garage',
+    bedrag: -9000,
+    rekeningId: 'r1',
+  }
+  const binnengekomen = {
+    id: 'doc-van-b',
+    transactieId: 't1',
+    naam: 'Factuur',
+    soort: 'bon' as const,
+    bestand: 'data:image/jpeg;base64,AA==',
+    toegevoegdOp: '2026-07-01',
+  }
+
+  it('wist een bon niet die je zelf nooit weggehaald hebt', async () => {
+    const user = userEvent.setup()
+    const onBon = vi.fn()
+    const { rerender } = render(
+      <TransactieFormulier
+        onOpslaan={vi.fn()}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        handelaars={[]}
+        bewerken={bewerken}
+        bon={null}
+        onBon={onBon}
+      />,
+    )
+
+    rerender(
+      <TransactieFormulier
+        onOpslaan={vi.fn()}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        handelaars={[]}
+        bewerken={bewerken}
+        bon={binnengekomen}
+        onBon={onBon}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Wijzigen' }))
+    await waitFor(() => expect(onBon).not.toHaveBeenCalled())
+  })
+
+  it('wist de bon wél wanneer je hem zelf verwijdert', async () => {
+    const user = userEvent.setup()
+    const onBon = vi.fn()
+    render(
+      <TransactieFormulier
+        onOpslaan={vi.fn()}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        handelaars={[]}
+        bewerken={bewerken}
+        bon={binnengekomen}
+        onBon={onBon}
+      />,
+    )
 
     await user.click(screen.getByRole('button', { name: 'verwijderen' }))
     await user.click(screen.getByRole('button', { name: 'Wijzigen' }))

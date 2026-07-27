@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { db } from '../db'
 import { bewaarTransactie, laadTransacties } from '../repository'
 import { GeheugenBackend, type SyncBackend } from './backend'
@@ -97,5 +97,84 @@ describe('synchroniseer', () => {
     expect(res.gepusht).toBe(1)
     expect(verstuurd[0]).toHaveLength(1)
     expect(verstuurd[1]).toHaveLength(2)
+  })
+})
+
+// Ronde 35: het schema controleert of een logregel deugt, maar knipt ook alles weg
+// wat het niet kent. Werd de GEPARSTE regel bewaard, dan bewaarde een toestel met
+// een oudere app-versie de regels van een nieuwere versie zonder de velden die het
+// niet begrijpt — en schreef het die verminkte versie terug naar de back-up.
+describe('synchroniseer bewaart een logregel ongeschonden', () => {
+  it('houdt velden die deze versie van de app nog niet kent', async () => {
+    const vanElders = {
+      id: 'r-nieuw',
+      toestelId: 'ander-toestel',
+      volgnummer: 1,
+      tijdstip: 1,
+      gebeurtenis: { type: 'rekening.bewaard', payload: { id: 'r1', naam: 'Zicht', beginsaldo: 0 } },
+      // Een veld uit een toekomstige versie van de app.
+      hlcL: 1,
+      hlcC: 0,
+      veldVanMorgen: 'moet blijven staan',
+    } as unknown as Logregel
+
+    await synchroniseer({
+      async stuur() {},
+      async haalOp() {
+        return [vanElders]
+      },
+      async wisAlles() {},
+    })
+
+    const bewaard = await db.events.get('r-nieuw')
+    expect(bewaard).toBeDefined()
+    expect((bewaard as unknown as { veldVanMorgen?: string }).veldVanMorgen).toBe('moet blijven staan')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 35 — binnenhalen en toepassen horen bij elkaar.
+//
+// Waren het twee losse stappen en mislukte het toepassen, dan stonden de regels
+// van je andere toestel wél in het logboek maar nergens in je lijsten — en dat
+// herstelde zich nooit meer, want de volgende ronde ziet ze als "al bekend".
+// ---------------------------------------------------------------------------
+
+describe('een mislukte verwerking laat niets half achter', () => {
+  it('haalt de regels opnieuw op wanneer het toepassen de eerste keer misging', async () => {
+    await db.events.clear()
+    await db.transacties.clear()
+    await db.meta.clear()
+
+    const regel = {
+      id: 'ev-van-b',
+      toestelId: 'B',
+      volgnummer: 1,
+      tijdstip: 1000,
+      hlcL: 1000,
+      hlcC: 0,
+      gebeurtenis: {
+        type: 'transactie.bewaard' as const,
+        payload: { id: 't-van-b', datum: '2026-07-02', omschrijving: 'Colruyt', bedrag: -4200, rekeningId: 'r1' },
+      },
+    }
+    const backend = new GeheugenBackend()
+    await backend.stuur('B', [regel])
+
+    // Eerste poging: het toepassen loopt stuk.
+    const stuk = vi.spyOn(db.transacties, 'bulkPut').mockImplementation(() => {
+      throw new Error('opslag vol')
+    })
+    await expect(synchroniseer(backend)).rejects.toThrow()
+    stuk.mockRestore()
+
+    // Het logboek mag die regel dan óók niet houden — anders wordt ze nooit meer
+    // opgehaald en blijft de boeking van het andere toestel voorgoed onzichtbaar.
+    expect(await db.events.get('ev-van-b')).toBeUndefined()
+
+    // Tweede poging: nu lukt het gewoon.
+    const r = await synchroniseer(backend)
+    expect(r.opgehaald).toBe(1)
+    expect((await db.transacties.get('t-van-b'))?.bedrag).toBe(-4200)
   })
 })

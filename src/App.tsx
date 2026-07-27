@@ -43,7 +43,7 @@ import {
   bewaarTerugkerendePost,
   bewaarTransactie,
   bewaarVerrekening,
-  verwijderDossier,
+  verwijderDossierMetAanhang,
   verwijderSpaardoel,
   verwijderSubcategorie,
   laadBudgetten,
@@ -81,10 +81,13 @@ import {
   verwijderRekening,
   verwijderTerugkerendePost,
   verwijderTransactie,
+  verwijderTransactieMetAanhang,
+  verwijderTransactiesMetAanhang,
   verwijderVerrekening,
 } from './data/repository'
 import { exporteerBackup, importeerBackup } from './data/backup'
 import { vraagBlijvendeOpslag } from './data/opslag'
+import { openDatabase } from './data/db'
 import { synchroniseer } from './data/sync/sync'
 import { DriveBackend } from './data/sync/drive/driveBackend'
 import { vraagToken, heeftOoitVerbonden, meldAf } from './data/sync/drive/auth'
@@ -135,12 +138,12 @@ import { inkomstenPerCategorie, maandInkomsten, maandUitgaven, uitgavenPerCatego
 import { inkomstenUitgavenPerMaand } from './utils/maandverloop'
 import { labelVanCategorie } from './data/categorieen/resolve'
 import { stelCategorieboomIn } from './data/categorieen/zoek'
-import { uitgavenInMaand } from './utils/budget'
+import { budgetKleur, uitgavenInMaand } from './utils/budget'
 import { bouwHandelaarIndex } from './utils/categorieVoorstel'
 import { bonVanTransactie } from './utils/kluis'
 import { formatEuro } from './utils/format'
 import { bouwMeldingen } from './utils/meldingen'
-import { maandVooruitblik, vasteLastTransactieId } from './utils/vooruitblik'
+import { boekingDieDezePostAfdekt, maandVooruitblik, vasteLastTransactieId } from './utils/vooruitblik'
 import { useInstellingen } from './instellingen'
 import { huidigeMaand, maandJaarLabel, vandaag } from './utils/datum'
 import { saldoVanRekening, totaalSaldoVan } from './utils/saldo'
@@ -200,6 +203,45 @@ export function App() {
   const [streepjescodes, setStreepjescodes] = useState<Streepjescode[]>([])
   const [ordeningen, setOrdeningen] = useState<Ordening[]>([])
   const [ongeldig, setOngeldig] = useState(0)
+  // Ging de database helemaal niet open? Dan is 'Laden…' geen eerlijk antwoord.
+  const [startFout, setStartFout] = useState<string | null>(null)
+  // Of de statusmelding een fout is. `role="status"` is beleefd — een schermlezer
+  // mag hem overslaan — en dat is precies verkeerd voor een mislukking na iets wat
+  // de gebruiker net zelf deed. Vandaar een expliciete soort in plaats van uit de
+  // tekst raden (dat laatste deed de zijbalk, met een regex op Nederlandse woorden;
+  // in het Engels en Frans klopte dat dus nooit).
+  const [statusIsFout, setStatusIsFout] = useState(false)
+  const statusTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  /**
+   * Toon een melding bovenaan (mobiel) en in de bovenbalk (desktop).
+   *
+   * Goed nieuws verdwijnt vanzelf na acht seconden. Zonder dat bleef
+   * "Automatisch gesynchroniseerd: 0 verstuurd" op een telefoon de hele dag boven
+   * élke pagina staan. Een FOUT blijft staan tot je hem wegklikt — die heb je
+   * misschien net gemist omdat je aan het typen was.
+   */
+  function meld(tekst: string | null, soort: 'ok' | 'fout' = 'ok') {
+    if (statusTimer.current) clearTimeout(statusTimer.current)
+    setStatusTekst(tekst)
+    setStatusIsFout(soort === 'fout')
+    if (tekst !== null && soort === 'ok') {
+      statusTimer.current = setTimeout(() => {
+        setStatusTekst(null)
+        // Ook de foutvlag terug op nul. Bleef die op `true` staan, dan kreeg de
+        // eerstvolgende geslaagde melding het rode kader van de vorige fout.
+        setStatusIsFout(false)
+      }, 8000)
+    }
+  }
+
+  // De lopende meldingstimer opruimen wanneer de app verdwijnt.
+  useEffect(
+    () => () => {
+      if (statusTimer.current) clearTimeout(statusTimer.current)
+    },
+    [],
+  )
   const [verbonden, setVerbonden] = useState(false)
   const [bezig, setBezig] = useState(false)
   const [statusTekst, setStatusTekst] = useState<string | null>(null)
@@ -255,7 +297,16 @@ export function App() {
       laadDossierDocumenten(),
     ])
     setTransacties(tx.geldig)
-    setOngeldig(tx.ongeldig)
+    // ALLE overgeslagen records tellen, niet alleen die van transacties. Bleven de
+    // negentien andere tellers ongebruikt, dan verdwenen bijvoorbeeld drie gedeelde
+    // kosten uit een afrekening zonder dat er ergens iets stond — en dan stuur je
+    // een bedrag van € 610 door waar € 940 hoorde te staan.
+    setOngeldig(
+      [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs].reduce(
+        (som, r) => som + r.ongeldig,
+        0,
+      ),
+    )
     setRekeningen(rk.geldig)
     setCategorieen(cat.geldig)
     setBudgetten(bud.geldig)
@@ -302,6 +353,9 @@ export function App() {
   useEffect(() => {
     let actief = true
     async function laad() {
+      // Eerst de database zelf, mét wachttijd. Zonder deze regel blijft een
+      // geblokkeerde opslag eeuwig op "Laden…" staan; zie openDatabase().
+      await openDatabase()
       const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs] = await Promise.all([
         laadTransacties(),
         laadRekeningen(),
@@ -326,7 +380,6 @@ export function App() {
       ])
       if (!actief) return
       setTransacties(tx.geldig)
-      setOngeldig(tx.ongeldig)
       setRekeningen(rk.geldig)
       setCategorieen(cat.geldig)
       setBudgetten(bud.geldig)
@@ -346,8 +399,25 @@ export function App() {
       setStreepjescodes(sc.geldig)
       setOrdeningen(ord.geldig)
       setDossierdocumenten(docs.geldig)
+      // Ook bij het OPSTARTEN alle tellers optellen, niet alleen die van
+      // transacties. Deze regel stond alleen in `herlaad`, dus wie de app opende en
+      // niets wijzigde, zag nooit dat er records overgeslagen waren.
+      setOngeldig(
+        [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs].reduce(
+          (som, r) => som + r.ongeldig,
+          0,
+        ),
+      )
     }
-    void laad()
+    // Gaat de database niet open (privémodus, quota, of een oudere versie van de
+    // app die een nieuwere database niet mag openen), dan bleef `transacties` op
+    // null staan en toonde de app voor eeuwig "Laden…" — zonder uitleg, zonder
+    // uitweg. De gebruiker concludeert dan dat alles weg is, terwijl zijn gegevens
+    // er gewoon staan. Nu zegt de app wat er aan de hand is.
+    void laad().catch((e) => {
+      if (!actief) return
+      setStartFout(e instanceof Error ? e.message : String(e))
+    })
     return () => {
       actief = false
     }
@@ -372,7 +442,7 @@ export function App() {
         setVerbonden(true)
         const r = await synchroniseer(backendRef.current)
         await herlaad()
-        if (actief) setStatusTekst(t('Automatisch gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald.', { gepusht: r.gepusht, opgehaald: r.opgehaald }))
+        if (actief) meld(t('Automatisch gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald.', { gepusht: r.gepusht, opgehaald: r.opgehaald }))
       } catch {
         // Stil laten mislukken: geen storende melding bij het opstarten.
       }
@@ -454,10 +524,18 @@ export function App() {
     }
   }
 
+  // Let op: deze functie sluit het bewerkvenster NIET.
+  //
+  // Ze deed dat vroeger wel, en dat was fout. Het formulier bewaart na de
+  // transactie nog twee dingen die eraan hangen: de bon en de dossierkoppeling.
+  // Sloot het venster al bij stap één, dan was het formulier weg vóór stap twee
+  // en drie klaar waren. Mislukte daar iets, dan verscheen de melding "je invoer
+  // staat er nog" in een venster dat er niet meer was: je bon was stil verdwenen
+  // en je zag alleen een gesloten popup. Het formulier zegt nu zélf wanneer
+  // alles gelukt is (`onOpgeslagen`), en pas dán gaat het venster dicht.
   async function slaTransactieOp(t: Transactie) {
     await bewaarTransactie(t)
     await herlaad()
-    setBewerkTransactie(null)
   }
 
   // De gedeelde kost die aan een transactie hangt. Het formulier geeft ze mee na
@@ -514,8 +592,9 @@ export function App() {
       (transacties ?? []).filter((tx) => tx.rekeningId === id).length +
       overboekingen.filter((o) => o.vanRekeningId === id || o.naarRekeningId === id).length
     if (aantal > 0) {
-      setStatusTekst(
+      meld(
         t('Deze rekening heeft nog {n} boeking(en). Archiveer ze in plaats van ze te verwijderen.', { n: aantal }),
+        'fout',
       )
       return
     }
@@ -627,11 +706,15 @@ export function App() {
     const oudeKindrekeningposten = kindrekeningposten.filter((p) =>
       oudeKindrekeningen.some((k) => k.id === p.kindrekeningId),
     )
-    await verwijderDossier(id)
-    for (const k of oudeKosten) await verwijderGedeeldeKost(k.id)
-    for (const v of oudeVerrekeningen) await verwijderVerrekening(v.id)
-    for (const p of oudeKindrekeningposten) await verwijderKindrekeningpost(p.id)
-    for (const k of oudeKindrekeningen) await verwijderKindrekening(k.id)
+    // In één ondeelbare stap: ofwel verdwijnt alles, ofwel niets. Zie de uitleg
+    // bij verwijderDossierMetAanhang — losse stappen lieten bij een onderbreking
+    // onzichtbare weeskosten achter die wél meesynchroniseerden.
+    await verwijderDossierMetAanhang(id, {
+      gedeeldeKostIds: oudeKosten.map((k) => k.id),
+      verrekeningIds: oudeVerrekeningen.map((v) => v.id),
+      kindrekeningIds: oudeKindrekeningen.map((k) => k.id),
+      kindrekeningpostIds: oudeKindrekeningposten.map((p) => p.id),
+    })
     await herlaad()
     if (oud) {
       toonUndo(t('Dossier verwijderd'), async () => {
@@ -698,18 +781,59 @@ export function App() {
 
   // Vanuit het meldingenpaneel komt alleen een id binnen; de post zelf zoeken we
   // hier op. Zo hoeft de bel niets van vaste lasten te weten.
+  /** Inboeken vanuit het meldingenpaneel. Altijd in de HUIDIGE maand: de bel gaat
+   *  over nu, niet over de maand die je toevallig aan het bekijken bent. */
   async function boekVasteLastPerId(postId: string) {
     const post = terugkerendePosten.find((p) => p.id === postId)
-    if (post) await boekTerugkerend(post)
+    if (post) await boekTerugkerend(post, huidigeMaand())
   }
 
-  async function boekTerugkerend(post: TerugkerendePost) {
+  /**
+   * Een vaste last inboeken in een BEPAALDE maand.
+   *
+   * De maand is sinds ronde 35 een expliciete parameter in plaats van de maand die
+   * de pagina toevallig toont. Vanaf de Plan-pagina is dat de maand die je daar
+   * gekozen hebt (dat klopt: daar blader je bewust). Vanaf het belletje is het
+   * altijd de huidige maand — dat paneel meldt wat er NU nog moet gebeuren, en
+   * bladerde je op het Overzicht naar maart, dan boekte het stilletjes in maart.
+   */
+  async function boekTerugkerend(post: TerugkerendePost, doelMaand: string) {
+    // Vangnet tegen dubbel boeken. De app herkent een handmatig ingetikte vaste
+    // last alleen wanneer de categorie aan beide kanten gelijk is (zie
+    // utils/vooruitblik.ts). Staat je post zonder categorie en heb je de betaling
+    // mét categorie ingetikt, dan zegt de app "nog niet geboekt" terwijl het geld
+    // al vertrokken is — en dan zou één klik op "Boek in" hem een tweede keer
+    // aanmaken. We kijken daarom nog eens zelf: bestaat er in die maand al een
+    // boeking van exact hetzelfde bedrag op dezelfde rekening, dan boeken we niet
+    // en zeggen we waarom.
+    //
+    // We gebruiken hiervoor dezelfde toewijzing als de rest van de app, en géén
+    // eigen "zelfde bedrag op dezelfde rekening"-zoekactie. Die laatste blokkeerde
+    // namelijk je tweede abonnement van € 9,99 zodra het eerste geboekt was.
+    //
+    // Belangrijk: ÁLLE posten van deze maand gaan mee, niet alleen deze ene. Juist
+    // dat maakt het verschil — de toewijzing zorgt dat één boeking hoogstens één
+    // post afdekt, en dus dat de boeking van Netflix niet als "Spotify staat er al"
+    // gelezen wordt. Geef je alleen deze post mee, dan valt die bescherming weg.
+    const gelijkaardig = boekingDieDezePostAfdekt(transacties ?? [], terugkerendePosten, post, doelMaand)
+    if (gelijkaardig) {
+      meld(
+        t('{naam} lijkt al geboekt op {datum} ({bedrag}). Er is niets bijgemaakt — controleer je transacties.', {
+          naam: post.omschrijving,
+          datum: gelijkaardig.datum,
+          bedrag: formatEuro(Math.abs(gelijkaardig.bedrag)),
+        }),
+        'fout',
+      )
+      return
+    }
+
     const dag = String(post.dag).padStart(2, '0')
     // Bewust 'tx' en niet 't': 't' is in dit bestand de vertaalfunctie, en die
     // hebben we hieronder nodig voor de ongedaan-maken-melding.
     const tx: Transactie = {
-      id: `tk-${post.id}-${maand}`,
-      datum: `${maand}-${dag}`,
+      id: `tk-${post.id}-${doelMaand}`,
+      datum: `${doelMaand}-${dag}`,
       omschrijving: post.omschrijving,
       bedrag: post.bedrag,
       rekeningId: post.rekeningId,
@@ -887,9 +1011,12 @@ export function App() {
     // als bij het verwijderen van een dossier.
     const oudeKost = gedeeldeKosten.find((k) => k.transactieId === id)
     const oudeBon = bonVanTransactie(dossierdocumenten, id)
-    await verwijderTransactie(id)
-    if (oudeKost) await verwijderGedeeldeKost(oudeKost.id)
-    if (oudeBon) await verwijderDossierDocument(oudeBon.id)
+    // In ÉÉN keer, niet in drie stappen: faalde stap twee, dan was de transactie
+    // weg maar bleef de gedeelde kost in het dossier meetellen.
+    await verwijderTransactieMetAanhang(id, {
+      gedeeldeKostId: oudeKost?.id,
+      documentId: oudeBon?.id,
+    })
     await herlaad()
     if (oud) {
       toonUndo(t('Transactie verwijderd'), async () => {
@@ -909,9 +1036,12 @@ export function App() {
     const oude = (transacties ?? []).filter((t) => ids.includes(t.id))
     const oudeKosten = gedeeldeKosten.filter((k) => k.transactieId && ids.includes(k.transactieId))
     const oudeBonnen = ids.map((id) => bonVanTransactie(dossierdocumenten, id)).filter(Boolean) as DossierDocument[]
-    for (const id of ids) await verwijderTransactie(id)
-    for (const k of oudeKosten) await verwijderGedeeldeKost(k.id)
-    for (const d of oudeBonnen) await verwijderDossierDocument(d.id)
+    // In ÉÉN ondeelbare stap. Brak deze reeks halverwege af, dan waren de
+    // transacties weg maar bleven er gedeelde kosten in een dossier meetellen.
+    await verwijderTransactiesMetAanhang(ids, {
+      gedeeldeKostIds: oudeKosten.map((k) => k.id),
+      documentIds: oudeBonnen.map((d) => d.id),
+    })
     await herlaad()
     toonUndo(t('{n} transactie(s) verwijderd', { n: ids.length }), async () => {
       for (const o of oude) await bewaarTransactie(o)
@@ -922,16 +1052,16 @@ export function App() {
 
   async function verbindEnSynchroniseer() {
     setBezig(true)
-    setStatusTekst(null)
+    meld(null)
     try {
       await vraagToken(true) // opent zo nodig het Google-aanmeldvenster
       setVerbonden(true)
       if (!backendRef.current) backendRef.current = new DriveBackend()
       const r = await synchroniseer(backendRef.current)
       await herlaad()
-      setStatusTekst(t('Gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald.', { gepusht: r.gepusht, opgehaald: r.opgehaald }))
+      meld(t('Gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald.', { gepusht: r.gepusht, opgehaald: r.opgehaald }))
     } catch (e) {
-      setStatusTekst(t('Verbinden mislukte: {fout}', { fout: e instanceof Error ? e.message : t('onbekende fout') }))
+      meld(t('Verbinden mislukte: {fout}', { fout: e instanceof Error ? e.message : t('onbekende fout') }), 'fout')
     } finally {
       setBezig(false)
     }
@@ -943,9 +1073,9 @@ export function App() {
     try {
       const r = await synchroniseer(backendRef.current)
       await herlaad()
-      setStatusTekst(t('Gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald.', { gepusht: r.gepusht, opgehaald: r.opgehaald }))
+      meld(t('Gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald.', { gepusht: r.gepusht, opgehaald: r.opgehaald }))
     } catch (e) {
-      setStatusTekst(t('Synchroniseren mislukte: {fout}', { fout: e instanceof Error ? e.message : t('onbekende fout') }))
+      meld(t('Synchroniseren mislukte: {fout}', { fout: e instanceof Error ? e.message : t('onbekende fout') }), 'fout')
     } finally {
       setBezig(false)
     }
@@ -958,7 +1088,7 @@ export function App() {
     meldAf()
     backendRef.current = null
     setVerbonden(false)
-    setStatusTekst(t('Verbinding met Google Drive verbroken. Je gegevens blijven op dit toestel staan.'))
+    meld(t('Verbinding met Google Drive verbroken. Je gegevens blijven op dit toestel staan.'))
   }
 
   // "Begin opnieuw": alles wissen, inclusief de logbestanden in de Drive-back-up
@@ -973,10 +1103,16 @@ export function App() {
   // Alles wat het belletje moet melden. De logica zit in utils/meldingen.ts, zodat
   // ze zuiver testbaar is EN op elk schermformaat identiek — het belletje stond
   // voorheen alleen in de desktopweergave, met de drempel hard op 85% in de code.
+  // LET OP: `huidigeMaand()`, niet de maand die je bovenaan hebt aangeklikt.
+  // Dat was een echte fout: bladerde je op het Overzicht naar maart, dan gingen
+  // álle meldingen ineens over maart — en de knop "Boek in" in het meldingenpaneel
+  // maakte dan ook een transactie mét een datum in maart, zonder dat er ergens
+  // stond dat dat gebeurde. Meldingen gaan over NU; de maandschakelaar gaat over
+  // wat je bekijkt. Dat zijn twee verschillende dingen.
   const meldingen = bouwMeldingen({
     budgetten,
     transacties: transacties ?? [],
-    maand,
+    maand: huidigeMaand(),
     garanties,
     terugkerendePosten,
     vandaagISO: vandaag(),
@@ -987,6 +1123,29 @@ export function App() {
   // Eén vooruitblik voor de Plan-pagina: zowel de verwachte als de al geboekte
   // inkomsten komen hieruit, zodat beide cijfers gegarandeerd bij elkaar horen.
   const planBlik = maandVooruitblik(transacties ?? [], terugkerendePosten, maand)
+
+  if (startFout !== null) {
+    return (
+      <main style={container}>
+        <h1 className="paginakop">Kompal</h1>
+        <Kaart titel={t('De gegevens konden niet geopend worden')}>
+          <p style={{ margin: 0 }}>
+            {t(
+              'Je gegevens zijn niet weg — de app kan de opslag van deze browser alleen niet openen. Dat gebeurt in een privévenster, wanneer de opslag vol zit, of wanneer deze pagina nog een oudere versie van de app is.',
+            )}
+          </p>
+          <p className="rij-meta" style={{ margin: 0 }}>
+            {t('Technische melding: {fout}', { fout: startFout })}
+          </p>
+          <div className="knoprij">
+            <button className="knop knop-primair" onClick={() => window.location.reload()}>
+              {t('Opnieuw proberen')}
+            </button>
+          </div>
+        </Kaart>
+      </main>
+    )
+  }
 
   if (transacties === null) {
     return (
@@ -1090,6 +1249,10 @@ export function App() {
             onDossierKost={transactieDossierKost}
             bon={bonVanTransactie(dossierdocumenten, bewerkTransactie.id)}
             onBon={transactieBon}
+            // Pas sluiten wanneer de transactie én de bon én de dossierkoppeling
+            // alle drie bewaard zijn. Mislukt er onderweg iets, dan blijft het
+            // venster staan met de reden erbij.
+            onOpgeslagen={() => setBewerkTransactie(null)}
           />
         )}
       </Dialoog>
@@ -1327,7 +1490,7 @@ export function App() {
               maandLabel={maandJaarLabel(maand)}
               onOpslaan={voegTerugkerendToe}
               onVerwijderen={verwijderTerugkerend}
-              onBoek={boekTerugkerend}
+              onBoek={(post) => boekTerugkerend(post, maand)}
               onOngedaan={maakInboekenOngedaan}
             />
           </ErrorBoundary>
@@ -1346,7 +1509,9 @@ export function App() {
                     const naam = categorieNaam(b.categorieId) ?? '—'
                     const uitgegeven = uitgavenInMaand(transacties, b.categorieId, maand)
                     const fractie = Math.min(uitgegeven / b.bedrag, 1)
-                    const kleur = uitgegeven > b.bedrag ? 'var(--negative)' : uitgegeven >= b.bedrag * 0.8 ? 'var(--warn)' : 'var(--positive)'
+                    // De drempel die de gebruiker zelf koos, niet een vast getal:
+                    // stond die op 95 %, dan kleurde de balk toch al oranje bij 80 %.
+                    const kleur = budgetKleur(uitgegeven, b.bedrag, budgetDrempel)
                     return (
                       <li key={b.id} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
@@ -1384,7 +1549,7 @@ export function App() {
               maandLabel={maandJaarLabel(maand)}
               onOpslaan={voegTerugkerendToe}
               onVerwijderen={verwijderTerugkerend}
-              onBoek={boekTerugkerend}
+              onBoek={(post) => boekTerugkerend(post, maand)}
               onOngedaan={maakInboekenOngedaan}
             />
           </ErrorBoundary>
@@ -1758,7 +1923,30 @@ export function App() {
             }}
           >
             <div style={{ flex: 1 }} />
-            {statusTekst && <span style={{ fontSize: 'var(--tekst-s)', color: 'var(--text-muted)' }}>{statusTekst}</span>}
+            {statusTekst && (
+              <>
+                <span
+                  role={statusIsFout ? 'alert' : 'status'}
+                  style={{ fontSize: 'var(--tekst-s)', color: statusIsFout ? 'var(--negative-ink)' : 'var(--text-muted)' }}
+                >
+                  {statusTekst}
+                </span>
+                {/* Een fout blijft bewust staan tot je hem wegklikt. Hier ontbrak
+                    dat kruisje nog — alleen de mobiele regel had er een — dus op
+                    een pc bleef een foutmelding staan tot er toevallig een nieuwe
+                    melding overheen kwam. */}
+                {statusIsFout && (
+                  <button
+                    type="button"
+                    className="knop knop-kaal"
+                    aria-label={t('Melding sluiten')}
+                    onClick={() => meld(null)}
+                  >
+                    ×
+                  </button>
+                )}
+              </>
+            )}
             <button className="knop knop-primair knop-klein" onClick={nieuweTransactie}>
               + {t('Nieuwe transactie')}
             </button>
@@ -1816,6 +2004,30 @@ export function App() {
           <div style={{ flex: 1 }} />
           <Meldingenbel meldingen={meldingen} onGaNaar={gaNaarMelding} onBoekVasteLast={boekVasteLastPerId} />
         </div>
+
+        {/* Ronde 35: op een telefoon was dit nergens te zien. Probeerde je een
+            rekening te verwijderen die nog boekingen had, dan gebeurde er letterlijk
+            niets zichtbaars — de melding ging naar de desktopbovenbalk, die hier
+            niet bestaat. `role="status"` zorgt dat een schermlezer ze ook hoort. */}
+        {statusTekst && (
+          <div
+            className={statusIsFout ? 'kaart kaart-compact statusregel statusregel-fout' : 'kaart kaart-compact statusregel'}
+            role={statusIsFout ? 'alert' : 'status'}
+          >
+            <span style={{ flex: 1, minWidth: 0 }}>{statusTekst}</span>
+            {statusIsFout && (
+              <button
+                type="button"
+                className="knop knop-kaal"
+                aria-label={t('Melding sluiten')}
+                onClick={() => meld(null)}
+              >
+                ×
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="pagina-in" key={pagina}>
           {paginaInhoud}
         </div>

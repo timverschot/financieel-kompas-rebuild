@@ -60,7 +60,14 @@ export async function importeerBackup(json: string): Promise<ImportResultaat> {
       overgeslagen++
       continue
     }
-    nieuw.push(check.data)
+    // BEWUST de ruwe regel, niet `check.data`. Het schema controleert of de regel
+    // deugt, maar knipt ook alles weg wat het niet kent. Zet je een back-up van een
+    // nieuwere app-versie terug op een toestel met een oudere versie, dan verliest
+    // elke regel daar de velden die die versie niet begrijpt — en omdat het hier om
+    // je EIGEN logregels gaat, schrijft dat toestel de verminkte versie bij de
+    // eerstvolgende synchronisatie gewoon terug naar Drive. Dan zijn de velden
+    // overal weg. Zie dezelfde overweging in sync/sync.ts.
+    nieuw.push(ruw as Logregel)
   }
 
   if (nieuw.length > 0) {

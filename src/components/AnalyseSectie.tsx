@@ -406,7 +406,7 @@ export function AnalyseSectie({
                             <span style={{ ...stip, background: g.kleur ?? OVERIGE_KLEUR }} />
                             <span className="rij-midden">
                               <span className="rij-titel" style={afkap}>
-                                {g.naam}
+                                {t(g.naam)}
                               </span>
                             </span>
                             {/* Aandeel en bedrag als twee kolommen, niet als één
@@ -513,7 +513,7 @@ export function AnalyseSectie({
                           <span style={{ ...stip, background: p.kleur }} />
                           <span className="rij-midden">
                             <span className="rij-titel" style={afkap}>
-                              {p.naam}
+                              {t(p.naam)}
                             </span>
                           </span>
                           <span className="rij-pct">{drillSubPercentages[i]}%</span>

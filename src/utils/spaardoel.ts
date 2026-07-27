@@ -1,5 +1,6 @@
 import type { Overboeking, Rekening, Spaardoel, Transactie } from '../data/schema'
 import { saldoOpDatum } from './saldo'
+import { vandaag } from './datum'
 import { datumVoorDoel, maandbedragVoorDoel } from './rekenhulp'
 
 // Het huidige saldo van een rekening. Gebruikt bewust dezelfde rekenkern als de
@@ -14,7 +15,11 @@ export function rekeningSaldo(
   overboekingen: Overboeking[] = [],
 ): number {
   const begin = rekeningen.find((r) => r.id === rekeningId)?.beginsaldo ?? 0
-  return saldoOpDatum(rekeningId, begin, transacties, overboekingen)
+  // Tot VANDAAG, net als de Rekeningen-pagina en het rekeningdetail. Zonder die
+  // grens telde een storting die je alvast voor volgende maand inboekte al mee in
+  // je spaardoel, terwijl het rekeningsaldo ernaast hem nog niet toonde: twee
+  // schermen, één rekening, twee bedragen.
+  return saldoOpDatum(rekeningId, begin, transacties, overboekingen, vandaag())
 }
 
 export type SpaardoelVoortgang = { huidig: number; doel: number; resterend: number; fractie: number }

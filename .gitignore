@@ -4,3 +4,16 @@ dist-ssr
 *.local
 .DS_Store
 _to_delete/
+
+# Bestanden die een gereedschap zélf aanmaakt en die nooit in de repo horen.
+#
+# Waarom dit erin staat (ronde 35): een losse `tsc`-oproep zonder `--noEmit` had
+# hier een `vite.config.js` en `vite.config.d.ts` achtergelaten. Dat is niet
+# onschuldig: Vite kiest zijn instellingen in de volgorde `.js`, `.mjs`, en pás
+# daarna `.ts`. Was die `.js` meegecommit, dan draaide zowel het bouwen als het
+# testen vanaf dan op die bevroren kopie, en had elke latere wijziging in
+# `vite.config.ts` géén effect meer — zonder één foutmelding. `tsbuildinfo` doet
+# iets vergelijkbaars: daarmee slaat de typecontrole gewijzigde bestanden over.
+vite.config.js
+vite.config.d.ts
+*.tsbuildinfo

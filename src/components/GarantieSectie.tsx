@@ -8,6 +8,7 @@ import { useT } from '../i18n'
 import { Documentkluis } from './DossierKluis'
 import type { Vertaler } from '../i18n'
 import { vandaag } from '../utils/datum'
+import { Bonknop } from '../ui/Bonknop'
 
 
 // De statusbadge (klasse + tekst) voor een garantie: vervallen, bijna vervallen
@@ -122,9 +123,7 @@ export function GarantieSectie({
 
                 {g.bonnetje && (
                   <div>
-                    <a href={g.bonnetje} target="_blank" rel="noreferrer" style={{ fontSize: 'var(--tekst-s)' }}>
-                      {t('bon/factuur')}
-                    </a>
+                    <Bonknop bestand={g.bonnetje} naam={g.product} label={t('bon/factuur')} />
                   </div>
                 )}
 

@@ -10,6 +10,7 @@ import { useT } from '../i18n'
 import { Documentkluis } from './DossierKluis'
 import type { Vertaler } from '../i18n'
 import { vandaag } from '../utils/datum'
+import { Bonknop } from '../ui/Bonknop'
 
 
 // Klein formulier om een aflossing toe te voegen aan één lening.
@@ -55,7 +56,7 @@ function AflossingToevoegen({
       </div>
       {teVeel && (
         <div className="knoprij" style={{ alignItems: 'baseline' }}>
-          <span className="rij-meta" style={{ color: 'var(--warn)' }}>
+          <span className="rij-meta" style={{ color: 'var(--warn-tekst)' }}>
             {t('Dit is meer dan er nog openstaat ({open}).', { open: formatEuro(openstaand) })}
           </span>
           <button type="button" className="knop knop-ghost knop-klein" onClick={() => setBedrag(centenNaarInvoer(openstaand))}>
@@ -208,9 +209,7 @@ export function LeningSectie({
 
                 {l.bonnetje && (
                   <div>
-                    <a href={l.bonnetje} target="_blank" rel="noreferrer" style={{ fontSize: 'var(--tekst-s)' }}>
-                      {t('contract/bewijs')}
-                    </a>
+                    <Bonknop bestand={l.bonnetje} naam={l.tegenpartij} label={t('contract/bewijs')} />
                   </div>
                 )}
 

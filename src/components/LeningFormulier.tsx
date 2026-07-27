@@ -8,6 +8,7 @@ import { heeftKiesbareLeden } from '../utils/persoon'
 import { verkleinAfbeelding } from '../utils/afbeelding'
 import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
+import { Bonknop } from '../ui/Bonknop'
 
 function getal(waarde: string): number {
   return Number.parseFloat(waarde.replace(',', '.'))
@@ -220,9 +221,7 @@ export function LeningFormulier({
             {bonnetje.startsWith('data:image') && (
               <img src={bonnetje} alt={t('Contract/bewijs')} style={{ maxHeight: 60, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }} />
             )}
-            <a href={bonnetje} target="_blank" rel="noreferrer">
-              {t('bekijken')}
-            </a>
+            <Bonknop bestand={bonnetje} naam={t('Contract of bewijs')} />
             <button type="button" className="knop knop-ghost knop-klein knop-gevaar" onClick={() => setBonnetje('')}>
               {t('verwijderen')}
             </button>

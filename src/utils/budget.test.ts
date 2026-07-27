@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { niveauVanBudget, regelHoortBijBudget, uitgavenInMaand } from './budget'
+import { budgetKleur, niveauVanBudget, regelHoortBijBudget, uitgavenInMaand } from './budget'
 import { PLATTE_ITEMS } from '../data/categorieen/zoek'
 import type { Transactie } from '../data/schema'
 
@@ -149,5 +149,28 @@ describe('uitgavenInMaand op de middenlaag en op items', () => {
       ],
     }
     expect(uitgavenInMaand([ticket], 'cat-broodwaren', '2026-07')).toBe(800)
+  })
+})
+
+// Ronde 35: de grens stond hard op 80 % in de code, terwijl je in Instellingen een
+// drempel tussen 70 en 100 % kan kiezen. De meldingen gebruikten die keuze wél, de
+// kleuren niet — zette je hem op 95 %, dan kleurde de balk toch al oranje bij 80 %.
+describe('budgetKleur volgt de ingestelde drempel', () => {
+  it('kleurt pas amber vanaf de drempel die je zelf koos', () => {
+    // Budget van € 100, verbruikt € 85.
+    expect(budgetKleur(8500, 10000, 80)).toBe('var(--warn)')
+    expect(budgetKleur(8500, 10000, 95)).toBe('var(--positive)')
+    expect(budgetKleur(9500, 10000, 95)).toBe('var(--warn)')
+  })
+
+  it('kleurt rood zodra je erover gaat, ongeacht de drempel', () => {
+    expect(budgetKleur(10001, 10000, 70)).toBe('var(--negative)')
+    expect(budgetKleur(10001, 10000, 100)).toBe('var(--negative)')
+    // Exact op het budget is nog niet erover.
+    expect(budgetKleur(10000, 10000, 100)).toBe('var(--warn)')
+  })
+
+  it('blijft rustig bij een budget van nul', () => {
+    expect(budgetKleur(500, 0, 80)).toBe('var(--positive)')
   })
 })

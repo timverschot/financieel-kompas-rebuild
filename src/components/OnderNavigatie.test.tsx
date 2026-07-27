@@ -32,8 +32,14 @@ async function scrollNaar(y: number) {
 // rood. Vandaar: de klok staat standaard STIL, en alleen de tests die echt tijd
 // nodig hebben zetten hem zelf vooruit.
 //
-// `userEvent` heeft wél een lopende klok nodig, dus die tests draaien op de
+// `userEvent` heeft wél een lopende klok nodig, dus die twee tests draaien op de
 // echte tijd — ze meten daar toch niets aan.
+//
+// Ronde 35: ÉLKE scroll-test zet de nepklok nu zelf aan. Drie ervan deden dat nog
+// niet, en die keken naar de balk terwijl de timer van 260 ms op de echte klok
+// liep. Op een trage of drukke machine kon die timer tussen twee regels door
+// vuren — dan was de balk al teruggekomen en ging de build rood zonder dat er
+// iets veranderd was. Precies de valkuil die hierboven beschreven staat.
 beforeEach(() => {
   Object.defineProperty(window, 'scrollY', { value: 0, configurable: true, writable: true })
 })
@@ -58,6 +64,7 @@ describe('OnderNavigatie — wegschuiven en terugkomen', () => {
   })
 
   it('schuift weg wanneer je naar beneden scrolt', async () => {
+    vi.useFakeTimers()
     toon()
     await scrollNaar(200)
     await scrollNaar(400)
@@ -76,6 +83,7 @@ describe('OnderNavigatie — wegschuiven en terugkomen', () => {
   })
 
   it('komt ook terug wanneer je weer omhoog scrolt', async () => {
+    vi.useFakeTimers()
     toon()
     await scrollNaar(600)
     expect(weggeschoven()).toBe(true)
@@ -102,6 +110,7 @@ describe('OnderNavigatie — wegschuiven en terugkomen', () => {
   })
 
   it('staat altijd bovenaan de pagina, ook als je daar naar beneden scrolt', async () => {
+    vi.useFakeTimers()
     toon()
     await scrollNaar(400)
     expect(weggeschoven()).toBe(true)

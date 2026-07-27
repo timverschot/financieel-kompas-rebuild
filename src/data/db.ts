@@ -431,3 +431,61 @@ export class FinancieelKompasDB extends Dexie {
 }
 
 export const db = new FinancieelKompasDB()
+
+/**
+ * Zorgt dat de database open is — en geeft binnen redelijke tijd een leesbare
+ * fout in plaats van eeuwig te blijven hangen.
+ *
+ * Waarom dit bestaat (ronde 35). De app toont sinds kort een uitlegscherm wanneer
+ * de opslag niet opengaat. Maar precies het geval dat dat scherm bij naam noemt —
+ * "deze pagina draait nog een oudere versie van de app" — kwam er nooit in
+ * terecht. In dat geval houdt een ander tabblad de database nog op de vorige
+ * versie open, en dan doet IndexedDB iets eigenaardigs: de aanvraag lukt niet,
+ * maar mislukt ook niet. Ze blíjft gewoon wachten. Het gevolg voor de gebruiker
+ * was het ergst denkbare: "Laden…", eindeloos, zonder één woord uitleg.
+ *
+ * Twee vangnetten dus:
+ *  - `blocked` vuurt zodra een ander tabblad de weg verspert. Dat is exact bekend,
+ *    dus daar zeggen we meteen wat je moet doen: de andere tabbladen sluiten.
+ *  - Een wachttijd van tien seconden vangt al de rest (een trage schijf op een
+ *    ouder toestel, een browser die de opslag stilzwijgend weigert). Tien seconden
+ *    is lang genoeg om een gewone start niet te storen — bij het meten opende de
+ *    database met alle gegevens erin ruim binnen één seconde.
+ */
+export function openDatabase(wachttijdMs = 10000): Promise<void> {
+  return new Promise<void>((klaar, mislukt) => {
+    let afgehandeld = false
+    const af = (fn: () => void) => {
+      if (afgehandeld) return
+      afgehandeld = true
+      clearTimeout(teller)
+      fn()
+    }
+
+    const teller = setTimeout(() => {
+      af(() =>
+        mislukt(
+          new Error(
+            'De opslag reageert niet. Staat de app nog in een ander tabblad open? Sluit die tabbladen en probeer opnieuw.',
+          ),
+        ),
+      )
+    }, wachttijdMs)
+
+    // Dexie roept dit aan wanneer een ander tabblad de oude versie vasthoudt.
+    db.on('blocked', () => {
+      af(() =>
+        mislukt(
+          new Error(
+            'De app staat nog open in een ander tabblad met een oudere versie. Sluit die tabbladen en laad deze pagina opnieuw.',
+          ),
+        ),
+      )
+    })
+
+    db.open().then(
+      () => af(klaar),
+      (e: unknown) => af(() => mislukt(e instanceof Error ? e : new Error(String(e)))),
+    )
+  })
+}

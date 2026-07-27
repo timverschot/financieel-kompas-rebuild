@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
 import type { Categorie } from '../data/schema'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
@@ -35,7 +35,9 @@ const suggestieLijst: CSSProperties = {
 
 function suggestieKnop(gemarkeerd: boolean): CSSProperties {
   return {
-    display: 'block',
+    // Bewust GEEN `display` hier: een <div> is al een blok, en in
+    // `@media (pointer: coarse)` maakt index.css er een flexrij van zodat de tekst
+    // in het vak van 44 px gecentreerd staat. Een inline waarde zou dat overrulen.
     width: '100%',
     textAlign: 'left',
     fontFamily: 'inherit',
@@ -292,6 +294,9 @@ export function CategorieKiezer({
   // Ref naast state: de toetsaanslag-handler moet de ACTUELE markering lezen,
   // niet een verouderde waarde uit een oude render (bekende valkuil uit v1).
   const hoogRef = useRef(0)
+  // Eén vast id-voorvoegsel voor de voorstellenlijst en haar regels, zodat het
+  // invoerveld ernaar kan verwijzen (aria-controls / aria-activedescendant).
+  const lijstId = useId()
   function zetHoog(n: number) {
     hoogRef.current = n
     setHoog(n)
@@ -398,6 +403,12 @@ export function CategorieKiezer({
         role="combobox"
         aria-expanded={open && aantalRegels > 0}
         aria-autocomplete="list"
+        // Zonder deze twee koppelingen is de zoeker voor wie de app laat voorlezen
+        // stil: de focus blijft in het veld staan, dus pijltje-omlaag verplaatst
+        // alleen een markering die niemand hoort. `aria-controls` wijst naar de
+        // lijst, `aria-activedescendant` naar de regel die nu gemarkeerd is.
+        aria-controls={open && aantalRegels > 0 ? lijstId : undefined}
+        aria-activedescendant={open && aantalRegels > 0 ? `${lijstId}-${gemarkeerd}` : undefined}
         style={{ display: 'block', width: '100%' }}
         value={zoek}
         placeholder={t('Typ om te zoeken (vanaf 2 letters)…')}
@@ -417,33 +428,43 @@ export function CategorieKiezer({
         voorkeurId={voorkeurId}
       />
       {open && aantalRegels > 0 && nieuweNaam === null && (
-        <ul role="listbox" style={{ ...suggestieLijst, top: '100%' }}>
+        // De regels zijn `div`-jes met `role="option"` en géén knoppen meer. Een
+        // keuzeregel mag namelijk niets bevatten waar je apart op kan klikken;
+        // browsers en voorleessoftware maken daar onvoorspelbare dingen van. Ze
+        // blijven met de muis, de vinger én de pijltjes precies even bruikbaar.
+        <ul role="listbox" id={lijstId} style={{ ...suggestieLijst, top: '100%' }}>
           {zichtbaar.map((s, i) => (
-            <li key={s.id} role="option" aria-selected={i === gemarkeerd}>
-              <button
-                type="button"
+            <li key={s.id}>
+              <div
+                role="option"
+                id={`${lijstId}-${i}`}
+                aria-selected={i === gemarkeerd}
                 // Voorkom dat het invoerveld de focus verliest vóór de klik telt.
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => kies(s.id)}
                 onMouseEnter={() => zetHoog(i)}
+                className="kiezer-voorstel"
                 style={suggestieKnop(i === gemarkeerd)}
               >
                 {s.titel}
                 {s.sub && <span style={{ color: 'var(--text-subtle)' }}> · {s.sub}</span>}
-              </button>
+              </div>
             </li>
           ))}
           {toonToevoegen && (
-            <li role="option" aria-selected={gemarkeerd === zichtbaar.length}>
-              <button
-                type="button"
+            <li>
+              <div
+                role="option"
+                id={`${lijstId}-${zichtbaar.length}`}
+                aria-selected={gemarkeerd === zichtbaar.length}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={startToevoegen}
                 onMouseEnter={() => zetHoog(zichtbaar.length)}
+                className="kiezer-voorstel"
                 style={suggestieKnop(gemarkeerd === zichtbaar.length)}
               >
                 {t('+ “{naam}” toevoegen aan …', { naam: getypt })}
-              </button>
+              </div>
             </li>
           )}
         </ul>

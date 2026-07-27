@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import type { TerugkerendePost, Transactie, TransactieRegel } from '../data/schema'
-import { spaarquote, maandVooruitblik, vasteLastTransactieId } from './vooruitblik'
+import {
+  boekingDieDezePostAfdekt,
+  geboekteVasteLasten,
+  geboekteVasteLastenMet,
+  spaarquote,
+  maandVooruitblik,
+  vasteLastTransactieId,
+} from './vooruitblik'
 
 function tx(id: string, datum: string, bedrag: number, regels?: TransactieRegel[]): Transactie {
   return { id, datum, omschrijving: '', bedrag, rekeningId: 'r', ...(regels ? { regels } : {}) }
@@ -177,5 +184,235 @@ describe('vooruitblik — achterstallige vaste lasten', () => {
     const p = [post('p', -10000, 28)]
     expect(maandVooruitblik([], p, '2026-07', '2026-08-01').aantalAchterstallig).toBe(1)
     expect(maandVooruitblik([], p, '2026-09', '2026-08-01').aantalKomend).toBe(1)
+  })
+})
+
+// Ronde 35. Twee dingen die stil misgingen rond de herkenning van een handmatig
+// ingetikte vaste last.
+describe('vooruitblik — strengere herkenning en één gedeelde bepaling', () => {
+  it('laat een boeting MET categorie een post ZONDER categorie niet afdekken', () => {
+    // Het scenario: een jaarlijkse clubbijdrage van € 120 zonder categorie, en in
+    // dezelfde maand sportkledij van exact € 120 op dezelfde rekening. Vroeger
+    // dekte die aankoop de bijdrage af en hoorde je nooit meer dat ze nog betaald
+    // moest worden.
+    const bijdrage = post('club', -12000, 1)
+    const kledij: Transactie = {
+      id: 'kledij',
+      datum: '2026-07-02',
+      omschrijving: 'Decathlon',
+      bedrag: -12000,
+      rekeningId: 'r',
+      categorieId: 'c-vrije-tijd',
+    }
+    expect(maandVooruitblik([kledij], [bijdrage], '2026-07', EERSTE_JULI).aantalKomend).toBe(1)
+  })
+
+  it('herkent een boeking zonder categorie nog wel bij een post zonder categorie', () => {
+    const bijdrage = post('club', -12000, 1)
+    const betaald: Transactie = { id: 'b', datum: '2026-07-02', omschrijving: 'Club', bedrag: -12000, rekeningId: 'r' }
+    expect(maandVooruitblik([betaald], [bijdrage], '2026-07', EERSTE_JULI).aantalKomend).toBe(0)
+  })
+
+  it('geboekteVasteLasten geeft hetzelfde antwoord als de vooruitblik', () => {
+    // De Plan-pagina en het belletje moeten het altijd eens zijn. Waren ze dat
+    // niet, dan zei de ene "geboekt" en zette de andere er "Boek in" naast — één
+    // klik en je huur stond twee keer in je maand.
+    const huurPost = post('huur', -90000, 1, { categorieId: 'c-wonen' })
+    const handmatig: Transactie = {
+      id: 'eigen',
+      datum: '2026-07-02',
+      omschrijving: 'Huur juli',
+      bedrag: -90000,
+      rekeningId: 'r',
+      categorieId: 'c-wonen',
+    }
+    const ids = geboekteVasteLasten([handmatig], [huurPost], '2026-07')
+    expect(ids.has('huur')).toBe(true)
+    expect(maandVooruitblik([handmatig], [huurPost], '2026-07', EERSTE_JULI).aantalKomend).toBe(0)
+  })
+
+  it('laat één boeking hoogstens één post afdekken', () => {
+    const a = post('a', -2000)
+    const b = post('b', -2000)
+    const eenmalig: Transactie = { id: 'e', datum: '2026-07-02', omschrijving: 'Abo', bedrag: -2000, rekeningId: 'r' }
+    expect(geboekteVasteLasten([eenmalig], [a, b], '2026-07').size).toBe(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 35 — de controle die "Boek in" gebruikt vóór hij iets aanmaakt.
+//
+// Die deed eerst een eigen, veel ruwere zoekactie: "staat er in deze maand een
+// boeking van hetzelfde bedrag op dezelfde rekening?". Dat blokkeerde je tweede
+// abonnement van € 9,99 zodra het eerste geboekt was — en dan was dat tweede
+// abonnement die maand met geen enkele knop meer in te boeken.
+// ---------------------------------------------------------------------------
+
+describe('geboekteVasteLastenMet — welke boeking dekt welke post af', () => {
+  it('wijst de boeking aan die de post afdekt', () => {
+    const huur = post('huur', -95000)
+    const geboekt: Transactie = {
+      id: vasteLastTransactieId('huur', '2026-07'),
+      datum: '2026-07-01',
+      omschrijving: 'huur',
+      bedrag: -95000,
+      rekeningId: 'r',
+    }
+    const kaart = geboekteVasteLastenMet([geboekt], [huur], '2026-07')
+    expect(kaart.get('huur')?.id).toBe(geboekt.id)
+  })
+
+  it('blokkeert het tweede abonnement van hetzelfde bedrag NIET', () => {
+    // Netflix en Spotify staan allebei op € 9,99, op dezelfde rekening.
+    const netflix = post('netflix', -999)
+    const spotify = post('spotify', -999)
+    const netflixGeboekt: Transactie = {
+      id: vasteLastTransactieId('netflix', '2026-07'),
+      datum: '2026-07-01',
+      omschrijving: 'netflix',
+      bedrag: -999,
+      rekeningId: 'r',
+    }
+
+    // Netflix is geboekt, Spotify niet. Zou Spotify hier wél als geboekt gelden,
+    // dan weigerde "Boek in" hem met een melding die niet klopt, en stond hij die
+    // maand vast — met geen enkele knop nog in te boeken.
+    const kaart = geboekteVasteLastenMet([netflixGeboekt], [netflix, spotify], '2026-07')
+    expect(kaart.has('netflix')).toBe(true)
+    expect(kaart.has('spotify')).toBe(false)
+  })
+
+  it('herkent wél een handmatig ingetikte boeking van dezelfde post', () => {
+    const huur = post('huur', -95000)
+    const handmatig: Transactie = {
+      id: 'zelf-getikt',
+      datum: '2026-07-04',
+      omschrijving: 'Huur juli',
+      bedrag: -95000,
+      rekeningId: 'r',
+    }
+    expect(geboekteVasteLastenMet([handmatig], [huur], '2026-07').get('huur')?.id).toBe('zelf-getikt')
+  })
+
+  it('geeft precies dezelfde posten terug als geboekteVasteLasten', () => {
+    const a = post('a', -2000)
+    const b = post('b', -2000)
+    const eenmalig: Transactie = { id: 'e', datum: '2026-07-02', omschrijving: 'Abo', bedrag: -2000, rekeningId: 'r' }
+    expect([...geboekteVasteLastenMet([eenmalig], [a, b], '2026-07').keys()]).toEqual([
+      ...geboekteVasteLasten([eenmalig], [a, b], '2026-07'),
+    ])
+  })
+})
+
+
+// ---------------------------------------------------------------------------
+// Ronde 35 — de controle die "Boek in" zélf doet vóór hij iets aanmaakt.
+//
+// Die is bewust strenger dan de toewijzing hierboven. Een post die ten onrechte
+// blijft staan is een ergernis; een post die dubbel geboekt wordt is een bedrag dat
+// stil van je overzicht af wijkt.
+// ---------------------------------------------------------------------------
+
+describe('boekingDieDezePostAfdekt', () => {
+  const netflix = post('netflix', -999)
+  const spotify = post('spotify', -999)
+
+  it('ziet de eigen boeking van de knop "Boek in"', () => {
+    const geboekt: Transactie = {
+      id: vasteLastTransactieId('netflix', '2026-07'),
+      datum: '2026-07-01',
+      omschrijving: 'netflix',
+      bedrag: -999,
+      rekeningId: 'r',
+    }
+    expect(boekingDieDezePostAfdekt([geboekt], [netflix, spotify], netflix, '2026-07')?.id).toBe(geboekt.id)
+  })
+
+  it('houdt de boeking van een ánder abonnement van hetzelfde bedrag erbuiten', () => {
+    // Netflix is via de knop geboekt. Spotify staat op hetzelfde bedrag en moet
+    // gewoon nog te boeken zijn — anders zit hij die maand vast.
+    const geboekt: Transactie = {
+      id: vasteLastTransactieId('netflix', '2026-07'),
+      datum: '2026-07-01',
+      omschrijving: 'netflix',
+      bedrag: -999,
+      rekeningId: 'r',
+    }
+    expect(boekingDieDezePostAfdekt([geboekt], [netflix, spotify], spotify, '2026-07')).toBeUndefined()
+  })
+
+  it('blokkeert wél op een handmatig ingetikte betaling van hetzelfde bedrag', () => {
+    // Dit is het geval dat de toewijzing NIET afdekt: die geeft de boeking aan de
+    // eerste post die past, en dan zou "Boek in" voor de andere post gewoon een
+    // tweede transactie bijmaken — € 19,98 in je maand terwijl er € 9,99 wegging.
+    const zelfGetikt: Transactie = {
+      id: 'zelf',
+      datum: '2026-07-03',
+      omschrijving: 'Netflix',
+      bedrag: -999,
+      rekeningId: 'r',
+    }
+    expect(boekingDieDezePostAfdekt([zelfGetikt], [spotify, netflix], netflix, '2026-07')?.id).toBe('zelf')
+    expect(boekingDieDezePostAfdekt([zelfGetikt], [spotify, netflix], spotify, '2026-07')?.id).toBe('zelf')
+  })
+
+  it('geeft niets terug wanneer er echt nog niets staat', () => {
+    expect(boekingDieDezePostAfdekt([], [netflix], netflix, '2026-07')).toBeUndefined()
+  })
+
+  // Dit is het geval waarvóór dit vangnet geschreven is, en precies het geval dat
+  // de strenge herkenning NIET ziet: de post staat zonder categorie, jij tikt de
+  // betaling in mét categorie. Zou de app hier niets zien, dan maakte één klik op
+  // "Boek in" een tweede boeking van € 900 — € 1.800 in je maand terwijl er € 900
+  // van je rekening ging, zonder één signaal.
+  const huurZonderCategorie = post('huur', -90000)
+  const huurMetCategorie = post('huur2', -90000, 1, { categorieId: 'ov-wonen' })
+
+  it('ziet de betaling ook wanneer de categorieën verschillen', () => {
+    const zelfGetikt: Transactie = {
+      id: 'zelf',
+      datum: '2026-07-04',
+      omschrijving: 'Huur juli',
+      bedrag: -90000,
+      rekeningId: 'r',
+      categorieId: 'ov-wonen',
+    }
+    // post zonder categorie, betaling mét
+    expect(boekingDieDezePostAfdekt([zelfGetikt], [huurZonderCategorie], huurZonderCategorie, '2026-07')?.id).toBe(
+      'zelf',
+    )
+    // post mét categorie, betaling zonder
+    const zonder: Transactie = { ...zelfGetikt, categorieId: undefined }
+    expect(boekingDieDezePostAfdekt([zonder], [huurMetCategorie], huurMetCategorie, '2026-07')?.id).toBe('zelf')
+    // allebei een categorie, maar verschillende
+    const andere: Transactie = { ...zelfGetikt, categorieId: 'ov-vervoer' }
+    expect(boekingDieDezePostAfdekt([andere], [huurMetCategorie], huurMetCategorie, '2026-07')?.id).toBe('zelf')
+  })
+
+  it('kijkt niet naar een gesplitst kassaticket van hetzelfde bedrag', () => {
+    // Een winkelbezoek met item-regels is per definitie geen vaste last; dat mag je
+    // huur niet blokkeren.
+    const ticket: Transactie = {
+      id: 'ticket',
+      datum: '2026-07-04',
+      omschrijving: 'Colruyt',
+      bedrag: -90000,
+      rekeningId: 'r',
+      regels: [{ bedrag: -50000 }, { bedrag: -40000 }],
+    }
+    expect(boekingDieDezePostAfdekt([ticket], [huurZonderCategorie], huurZonderCategorie, '2026-07')).toBeUndefined()
+  })
+
+  it('kijkt niet naar een andere rekening of een andere maand', () => {
+    const anders: Transactie = {
+      id: 'x',
+      datum: '2026-07-04',
+      omschrijving: 'Huur',
+      bedrag: -90000,
+      rekeningId: 'r2',
+    }
+    expect(boekingDieDezePostAfdekt([anders], [huurZonderCategorie], huurZonderCategorie, '2026-07')).toBeUndefined()
+    const vorigeMaand: Transactie = { ...anders, id: 'y', rekeningId: 'r', datum: '2026-06-04' }
+    expect(boekingDieDezePostAfdekt([vorigeMaand], [huurZonderCategorie], huurZonderCategorie, '2026-07')).toBeUndefined()
   })
 })

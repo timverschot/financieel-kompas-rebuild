@@ -87,7 +87,13 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
     const verbruikt = uitgavenInMaand(invoer.transacties, b.categorieId, invoer.maand)
     const percent = Math.round((verbruikt / b.bedrag) * 100)
     const naam = invoer.naamVanCategorie(b.categorieId)
-    if (percent > 100) {
+    // Vergelijken op CENTEN, niet op het afgeronde percentage.
+    //
+    // Met `percent > 100` gold € 100,40 van een budget van € 100 als 100 % en dus
+    // als "bijna op", terwijl de balk op de budgetpagina al rood kleurde (die
+    // vergelijkt wél op centen). Twee schermen die iets anders zeggen over exact
+    // hetzelfde feit. Het percentage blijft gewoon in de tekst staan.
+    if (verbruikt > b.bedrag) {
       uit.push({
         id: `budget-over-${b.id}`,
         soort: 'budget-over',
@@ -96,7 +102,11 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
         pagina: 'budget',
         dringend: true,
       })
-    } else if (percent >= drempel) {
+      // Ook de drempelgrens op centen. Met het afgeronde percentage waarschuwde het
+      // belletje al bij € 69,50 van een budget van € 100 met drempel 70 % (want
+      // 69,5 rondt af naar 70), terwijl de balk op de Budgetpagina daar nog groen
+      // stond. Nu zeggen ze allebei hetzelfde.
+    } else if (verbruikt >= (b.bedrag * drempel) / 100) {
       uit.push({
         id: `budget-bijna-${b.id}`,
         soort: 'budget-bijna',

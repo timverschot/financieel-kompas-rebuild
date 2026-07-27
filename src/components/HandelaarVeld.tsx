@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
 
 const ZOEK_VANAF = 2
@@ -22,7 +22,9 @@ const suggestieLijst: CSSProperties = {
 
 function suggestieKnop(gemarkeerd: boolean): CSSProperties {
   return {
-    display: 'block',
+    // Bewust GEEN `display` hier: een <div> is al een blok, en in
+    // `@media (pointer: coarse)` maakt index.css er een flexrij van zodat de tekst
+    // in het vak van 44 px gecentreerd staat. Een inline waarde zou dat overrulen.
     width: '100%',
     textAlign: 'left',
     fontFamily: 'inherit',
@@ -54,6 +56,7 @@ export function HandelaarVeld({
   const [open, setOpen] = useState(false)
   const [hoog, setHoog] = useState(0)
   const hoogRef = useRef(0)
+  const lijstId = useId()
   function zetHoog(n: number) {
     hoogRef.current = n
     setHoog(n)
@@ -97,6 +100,12 @@ export function HandelaarVeld({
     <div style={{ position: 'relative' }}>
       <input
         id={id}
+        // Zie CategorieKiezer voor de reden achter deze vier attributen.
+        role="combobox"
+        aria-expanded={suggesties.length > 0}
+        aria-autocomplete="list"
+        aria-controls={suggesties.length > 0 ? lijstId : undefined}
+        aria-activedescendant={suggesties.length > 0 ? `${lijstId}-${gemarkeerd}` : undefined}
         style={{ display: 'block', width: '100%' }}
         autoComplete="off"
         // Merknamen mogen NIET door de autocorrectie van iOS: die maakt van "Q8"
@@ -117,18 +126,21 @@ export function HandelaarVeld({
         onKeyDown={opToets}
       />
       {suggesties.length > 0 && (
-        <ul role="listbox" style={suggestieLijst}>
+        <ul role="listbox" id={lijstId} style={suggestieLijst}>
           {suggesties.map((s, i) => (
-            <li key={s} role="option" aria-selected={i === gemarkeerd}>
-              <button
-                type="button"
+            <li key={s}>
+              <div
+                role="option"
+                id={`${lijstId}-${i}`}
+                aria-selected={i === gemarkeerd}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => kies(s)}
                 onMouseEnter={() => zetHoog(i)}
+                className="kiezer-voorstel"
                 style={suggestieKnop(i === gemarkeerd)}
               >
                 {s}
-              </button>
+              </div>
             </li>
           ))}
         </ul>

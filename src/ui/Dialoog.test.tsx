@@ -1,7 +1,13 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Dialoog } from './Dialoog'
+
+// Het scrollslot staat op `document.body`, en dat overleeft een test. Zonder deze
+// reset lekt de waarde uit de ene test in de verwachting van de volgende.
+beforeEach(() => {
+  document.body.style.overflow = ''
+})
 
 function toon(open = true, onSluiten = vi.fn()) {
   render(
@@ -49,14 +55,22 @@ describe('Dialoog', () => {
     expect(screen.getByLabelText('Handelaar')).toHaveFocus()
   })
 
-  it('valt terug op een knop als er geen veld is', () => {
+  it('begint bij de inhoud als er geen veld is, en niet op de eerste knop', () => {
+    // Ronde 35. Vroeger landde de focus hier op "Ja". Dat leek behulpzaam, maar in
+    // de popup die een bewaarde bon toont is de eerste knop "Bewaren op dit
+    // toestel": één druk op Enter startte dan meteen een download, en de
+    // beschrijving van de foto werd nooit voorgelezen. Nu begint de focus bij wat
+    // er te zien is; één keer Tab brengt je naar de eerste knop.
     render(
       <Dialoog titel="X" open onSluiten={vi.fn()}>
         <button type="button">Ja</button>
         <button type="button">Nee</button>
       </Dialoog>,
     )
-    expect(screen.getByRole('button', { name: 'Ja' })).toHaveFocus()
+    const vak = document.querySelector('.dialoog-inhoud') as HTMLElement
+    expect(vak).toHaveFocus()
+    // En het vak zelf staat niet in de tab-volgorde: het is enkel een startpunt.
+    expect(vak.tabIndex).toBe(-1)
   })
 
   it('sluit met Escape, ook vanuit een invoerveld', async () => {
@@ -116,6 +130,7 @@ describe('Dialoog', () => {
   })
 
   it('blokkeert het scrollen van de pagina eronder, en geeft het terug', () => {
+    document.body.style.overflow = 'scroll'
     const { unmount } = render(
       <Dialoog titel="X" open onSluiten={vi.fn()}>
         <input aria-label="A" />
@@ -123,7 +138,70 @@ describe('Dialoog', () => {
     )
     expect(document.body.style.overflow).toBe('hidden')
     unmount()
-    expect(document.body.style.overflow).not.toBe('hidden')
+    // Terug naar exact wat het WAS, niet zomaar "iets anders dan hidden": stond de
+    // pagina op 'scroll', dan moet ze daar weer op staan.
+    expect(document.body.style.overflow).toBe('scroll')
+  })
+
+  it('hangt aan de pagina zelf, niet in een vak dat kan verschuiven', () => {
+    // Ronde 35, gemeten in een echte browser. Een voorouder met een `transform`
+    // wordt het referentiekader voor alles wat eronder `position: fixed` is. De
+    // pagina's schuiven bij het wisselen van tabblad kort omhoog, en opende je in
+    // die halve seconde een bon, dan stond de popup niet meer op het scherm maar op
+    // de pagina — met de sluitknop bóven de bovenrand.
+    render(
+      <div className="pagina-in" style={{ transform: 'translateY(8px)' }}>
+        <Dialoog titel="Bon" open onSluiten={vi.fn()}>
+          <p>Inhoud</p>
+        </Dialoog>
+      </div>,
+    )
+    const laag = document.querySelector('.dialoog-laag') as HTMLElement
+    expect(laag.parentElement).toBe(document.body)
+    expect(document.querySelector('.pagina-in')?.contains(laag)).toBe(false)
+  })
+
+  it('laat één druk op Escape maar één popup sluiten, ook als ze naast elkaar staan', async () => {
+    const user = userEvent.setup()
+    const eerste = vi.fn()
+    const tweede = vi.fn()
+    render(
+      <>
+        <Dialoog titel="Een" open onSluiten={eerste}>
+          <p>A</p>
+        </Dialoog>
+        <Dialoog titel="Twee" open onSluiten={tweede}>
+          <p>B</p>
+        </Dialoog>
+      </>,
+    )
+    await user.keyboard('{Escape}')
+    // De laatst geopende wint; de andere blijft staan, zodat je nooit per ongeluk
+    // twee vensters tegelijk kwijtraakt.
+    expect(tweede).toHaveBeenCalledTimes(1)
+    expect(eerste).not.toHaveBeenCalled()
+  })
+
+  it('geeft het scrollen ook terug wanneer twee popups tegelijk verdwijnen', () => {
+    document.body.style.overflow = 'auto'
+    // Ronde 35. Dit ging mis en de gevolgen waren blijvend: React ruimt bij het
+    // verwijderen van een boom de BUITENSTE popup eerst op. Die zag de binnenste
+    // nog openstaan en liet het slot dus liggen; de binnenste kende de
+    // oorspronkelijke waarde niet en liet het óók liggen. Daarna scrolde de app
+    // nergens meer, tot je ze afsloot en opnieuw opende. Bereikbaar in de praktijk
+    // wanneer het formulier vastloopt terwijl er een bon openstaat: dan verdwijnen
+    // beide popups in dezelfde stap.
+    const { unmount } = render(
+      <Dialoog titel="Buiten" open onSluiten={vi.fn()}>
+        <input aria-label="A" />
+        <Dialoog titel="Binnen" open onSluiten={vi.fn()}>
+          <input aria-label="B" />
+        </Dialoog>
+      </Dialoog>,
+    )
+    expect(document.body.style.overflow).toBe('hidden')
+    unmount()
+    expect(document.body.style.overflow).toBe('auto')
   })
 
   // --- Ronde 34: het toetsenbord op een telefoon ---
@@ -219,5 +297,53 @@ describe('Dialoog', () => {
     )
     const laag = document.querySelector('.dialoog-laag') as HTMLElement
     expect(laag.style.height).toBe('')
+  })
+})
+
+// Ronde 35: een popup kan in een andere popup zitten (een bon bekijken terwijl je
+// een transactie intikt). Elke popup hing haar Escape-luisteraar aan `document`,
+// dus één druk sloot ze allebei — en je halve boeking was weg.
+describe('Dialoog — een popup in een popup', () => {
+  function Genest({ onBuiten, onBinnen }: { onBuiten: () => void; onBinnen: () => void }) {
+    return (
+      <Dialoog titel="Nieuwe boeking" open onSluiten={onBuiten}>
+        <input aria-label="Bedrag" />
+        <Dialoog titel="Bon" open onSluiten={onBinnen}>
+          <p>foto</p>
+        </Dialoog>
+      </Dialoog>
+    )
+  }
+
+  it('laat Escape alleen de bovenste popup sluiten', async () => {
+    const user = userEvent.setup()
+    const onBuiten = vi.fn()
+    const onBinnen = vi.fn()
+    render(<Genest onBuiten={onBuiten} onBinnen={onBinnen} />)
+
+    await user.keyboard('{Escape}')
+    expect(onBinnen).toHaveBeenCalledTimes(1)
+    expect(onBuiten).not.toHaveBeenCalled()
+  })
+
+  it('houdt het scrollslot vast zolang er nog een popup openstaat', () => {
+    const { rerender } = render(<Genest onBuiten={vi.fn()} onBinnen={vi.fn()} />)
+    expect(document.body.style.overflow).toBe('hidden')
+
+    // De binnenste sluiten: de pagina eronder mag nog steeds niet scrollen.
+    rerender(
+      <Dialoog titel="Nieuwe boeking" open onSluiten={vi.fn()}>
+        <input aria-label="Bedrag" />
+      </Dialoog>,
+    )
+    expect(document.body.style.overflow).toBe('hidden')
+
+    // Pas wanneer de laatste dicht is, gaat het slot eraf.
+    rerender(
+      <Dialoog titel="Nieuwe boeking" open={false} onSluiten={vi.fn()}>
+        <input aria-label="Bedrag" />
+      </Dialoog>,
+    )
+    expect(document.body.style.overflow).toBe('')
   })
 })

@@ -226,6 +226,7 @@ export function OnderNavigatie({
   // tab-toets navigeert zou anders op een knop landen die buiten beeld staat.
   const [focusBinnen, setFocusBinnen] = useState(false)
   const meerKnop = useRef<HTMLButtonElement | null>(null)
+  const lade = useRef<HTMLDivElement | null>(null)
   const meerAan = SECUNDAIR.includes(actief) || meerOpen
   const zichtbaar = useBalkZichtbaar(meerOpen || focusBinnen)
   const kies = (p: Pagina) => {
@@ -245,6 +246,19 @@ export function OnderNavigatie({
     }
     document.addEventListener('keydown', opToets)
     return () => document.removeEventListener('keydown', opToets)
+  }, [meerOpen])
+
+  // De focus mee naar binnen zodra de lade opengaat.
+  //
+  // De lade staat in de pagina vóór de knoppenrij, terwijl de knop 'Meer' de
+  // laatste knop van de balk is. Wie met een toetsenbord werkt, opende de lade en
+  // moest daarna zes keer terugtabben om bij de zeven pagina's te komen — of hij
+  // tabde er meteen voorbij naar buiten. Nu land je op de eerste pagina in de
+  // lade; Escape brengt je terug naar de knop.
+  useEffect(() => {
+    if (!meerOpen) return
+    const eerste = lade.current?.querySelector('button')
+    eerste?.focus()
   }, [meerOpen])
 
   return (
@@ -279,7 +293,7 @@ export function OnderNavigatie({
         }}
       >
         {meerOpen && (
-          <div style={sheet} id="meer-lade" role="group" aria-label={t('Meer pagina\'s')}>
+          <div ref={lade} style={sheet} id="meer-lade" role="group" aria-label={t('Meer pagina\'s')}>
             {SECUNDAIR.map((id) => {
               const p = PAGINAS.find((x) => x.id === id)!
               const aan = id === actief
@@ -324,8 +338,15 @@ export function OnderNavigatie({
 
         {/* Centrale ➕ — nieuwe transactie, altijd één tik weg */}
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {/* De klasse zorgt alleen voor de focusring (ronde 35). Deze knop is
+              amber gevuld, en een amberen ring óm een amberen knop is praktisch
+              onzichtbaar (1,7:1) — uitgerekend op de meest gebruikte knop van de
+              app. `knop-zweef` geeft hem de tweekleurige ring uit index.css: een
+              lichte binnenring tegen de vulling, een donkere buitenring tegen de
+              pagina. */}
           <button
             type="button"
+            className="knop-zweef"
             onClick={onNieuweTransactie}
             aria-label={t('Nieuwe transactie')}
             style={{
@@ -340,7 +361,8 @@ export function OnderNavigatie({
               fontSize: '1.7rem',
               lineHeight: 1,
               cursor: 'pointer',
-              boxShadow: 'var(--shadow-zwevend)',
+              // De schaduw staat in index.css bij `.knop-zweef` — hier als inline
+              // stijl won ze van de focusring, en dan had deze knop er geen.
             }}
           >
             +

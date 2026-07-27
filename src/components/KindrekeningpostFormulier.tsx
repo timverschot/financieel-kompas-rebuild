@@ -8,6 +8,7 @@ import { GezinsledenKiezer } from './GezinslidKiezer'
 import { verkleinAfbeelding } from '../utils/afbeelding'
 import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
+import { Bonknop } from '../ui/Bonknop'
 
 // De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
 // en het leegmaken na het opslaan niet uit elkaar kunnen lopen.
@@ -176,7 +177,7 @@ export function KindrekeningpostFormulier({
                 {bonnetje.startsWith('data:image') && (
                   <img src={bonnetje} alt={t('Bon/factuur')} style={{ maxHeight: 60, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }} />
                 )}
-                <a href={bonnetje} target="_blank" rel="noreferrer">{t('bekijken')}</a>
+                <Bonknop bestand={bonnetje} naam={omschrijving || t('Bon')} />
                 <button type="button" className="knop knop-ghost knop-klein knop-gevaar" onClick={() => setBonnetje('')}>
                   {t('verwijderen')}
                 </button>

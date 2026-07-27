@@ -10,6 +10,7 @@ import { useT } from '../i18n'
 import type { Vertaler } from '../i18n'
 import { vandaag } from '../utils/datum'
 import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
+import { Bonknop } from '../ui/Bonknop'
 
 
 function getal(waarde: string): number {
@@ -254,9 +255,7 @@ export function KindrekeningSectie({
                   {p.soort === 'storting' ? '+' : '−'}{formatEuro(p.bedrag)}
                 </span>
                 {p.bonnetje && (
-                  <a href={p.bonnetje} target="_blank" rel="noreferrer">
-                    {t('bon')}
-                  </a>
+                  <Bonknop bestand={p.bonnetje} naam={p.omschrijving} label={t('bon')} />
                 )}
                 <button className="knop knop-kaal" aria-label={t('Bewerk beweging')} onClick={() => setBewerkPost(p)}>
                   ✎

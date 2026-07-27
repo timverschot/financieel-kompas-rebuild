@@ -27,6 +27,7 @@ import { GezinsledenKiezer } from './GezinslidKiezer'
 import { verkleinAfbeelding } from '../utils/afbeelding'
 import { useT } from '../i18n'
 import { vandaag } from '../utils/datum'
+import { Bonknop } from '../ui/Bonknop'
 
 // De scanner (en de ZXing-bibliotheek) worden pas geladen wanneer je effectief scant.
 const BarcodeScanner = lazy(() => import('./BarcodeScanner'))
@@ -164,6 +165,16 @@ export function TransactieFormulier({
   const [rekeningId, setRekeningId] = useState(() => standaardRekening(rekeningen))
   const [categorieId, setCategorieId] = useState('')
   const [gesplitst, setGesplitst] = useState(false)
+  // Bezig met bewaren? De ref grendelt meteen (state is pas na een hertekening
+  // bijgewerkt, en twee snelle tikken zitten binnen datzelfde beeldje).
+  const [bezig, setBezig] = useState(false)
+  const bezigRef = useRef(false)
+  const [opslaanFout, setOpslaanFout] = useState('')
+  // Het id van de boeking die nu ingevuld wordt. Eén keer bepaald, niet bij elke
+  // poging opnieuw: lukt het bewaren van de transactie wél maar dat van de bon
+  // niet, dan zegt de app "probeer het opnieuw" — en met een nieuw id zou die
+  // tweede poging een TWEEDE boeking maken in plaats van dezelfde te herstellen.
+  const nieuwIdRef = useRef(nieuwId())
   const [kassaRegels, setKassaRegels] = useState<KassaRegel[]>(() => [nieuweKassaRegel()])
   const zoekRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const [scanVoor, setScanVoor] = useState<string | null>(null)
@@ -176,6 +187,10 @@ export function TransactieFormulier({
   const [bonData, setBonData] = useState('')
   const [bonNaam, setBonNaam] = useState('')
   const [bonFout, setBonFout] = useState('')
+  // Heeft de gebruiker de bon in DIT venster zelf weggehaald? Zonder deze vlag zou
+  // een leeg bonveld ook "weghalen" betekenen wanneer het gewoon nooit gevuld was —
+  // en dan wist het opslaan een bon die intussen van een ánder toestel binnenkwam.
+  const bonVerwijderd = useRef(false)
   const [bezigBon, setBezigBon] = useState(false)
   const [dossierId, setDossierId] = useState('')
   const [kostenType, setKostenType] = useState<Kostentype>('gewoon')
@@ -186,7 +201,35 @@ export function TransactieFormulier({
   // afrekening achteraf laten kloppen met iets anders dan wat je verstuurd hebt.
   const kostVastgeklikt = Boolean(gekoppeldeKost?.verrekeningId || gekoppeldeKost?.afgerekend)
 
+  // ---------------------------------------------------------------------------
+  // De twee effecten hieronder vullen het formulier ÉÉN keer, en daarna nooit meer
+  // ongevraagd. Dat is de kern van deze reparatie (ronde 35).
+  //
+  // Wat er misging. Ze keken naar de vóórwerpen zelf: `bewerken`, `categorieen`,
+  // `bon`, `gekoppeldeKost`. De app maakt die bij élke herlaadbeurt opnieuw aan —
+  // met exact dezelfde inhoud, maar als nieuw voorwerp. En herladen gebeurt niet
+  // alleen na een opslag: de stille synchronisatie met Drive loopt elke 45
+  // seconden. Stond je op dat moment te typen, dan liep dit effect opnieuw en
+  // veegde het je invoer weg. Bij het bewerken was het nog erger: het veld sprong
+  // terug naar het opgeslagen bedrag, en "Wijzigen" bewaarde daarna stil de oude
+  // waarde. Je zag niet dat je wijziging verdampt was.
+  //
+  // Nu kijken ze naar de ID's. Die veranderen alleen wanneer je écht een ander
+  // record opent — precies het moment waarop het formulier opnieuw gevuld hoort te
+  // worden. Een achtergrondsync raakt je invoer niet meer aan.
+  // ---------------------------------------------------------------------------
+  const bewerkenRef = useRef(bewerken)
+  bewerkenRef.current = bewerken
+  const categorieenRef = useRef(categorieen)
+  categorieenRef.current = categorieen
+  const bonRef = useRef(bon)
+  bonRef.current = bon
+  const kostRef = useRef(gekoppeldeKost)
+  kostRef.current = gekoppeldeKost
+
   useEffect(() => {
+    const bewerken = bewerkenRef.current
+    const categorieen = categorieenRef.current
     if (bewerken) {
       setOmschrijving(bewerken.omschrijving)
       setEigenSoort(bewerken.bedrag < 0 ? 'uitgave' : 'inkomst')
@@ -220,29 +263,62 @@ export function TransactieFormulier({
       setGesplitst(false)
       setKassaRegels([nieuweKassaRegel()])
     }
-  }, [bewerken, categorieen])
+    // Bewust alleen het ID: zie de uitleg hierboven.
+  }, [bewerken?.id])
 
   // De optionele velden staan in een aparte useEffect omdat ze uit andere bronnen
   // komen (de gekoppelde kost en het bondocument). Bewerk je een transactie waar al
   // iets van dit alles aan hangt, dan klapt het blok meteen open: anders zou je een
   // bon of een dossierkoppeling niet zien en hem bij het bewaren stil verliezen.
   useEffect(() => {
+    const bewerken = bewerkenRef.current
+    const bon = bonRef.current
+    const gekoppeldeKost = kostRef.current
     const heeftBon = Boolean(bon)
     const heeftKost = Boolean(gekoppeldeKost)
     setBonData(bon?.bestand ?? '')
     setBonNaam(bon?.bestandsnaam ?? '')
     setBonFout('')
+    bonVerwijderd.current = false
     setDossierId(gekoppeldeKost?.dossierId ?? '')
     setKostenType(gekoppeldeKost?.kostenType ?? 'gewoon')
     const heeftPersonen = (bewerken?.persoonIds?.length ?? 0) > 0
     setMeerOpen(Boolean(bewerken) && (heeftBon || heeftKost || heeftPersonen))
-  }, [bewerken, bon, gekoppeldeKost])
+    // Bewust ALLEEN de transactie, en niet ook de id's van de bon en de gedeelde
+    // kost (ronde 35).
+    //
+    // Die twee veranderen namelijk MIDDEN in het bewaren: `verzend()` schrijft
+    // eerst de transactie weg, dan de bon, dan de dossierkoppeling. Zodra de bon
+    // bewaard of verwijderd was, kreeg dit effect een nieuw id en liep het opnieuw
+    // — en zette het je dossierkeuze terug op leeg, klapte "Meer opties" dicht en
+    // zette het kostentype terug op 'gewoon'.
+    //
+    // Bij een geslaagde opslag zag je dat niet. Maar mislukte de laatste stap, dan
+    // zei de app "je invoer staat er nog" terwijl je dossierkeuze intussen wég was.
+    // Duwde je dan opnieuw op Wijzigen, zoals de melding vraagt, dan werd de
+    // gedeelde kost helemaal niet meer aangemaakt — het venster sloot netjes en er
+    // stond nergens iets over. In de Dossiers-module, waar die kost later in de
+    // afrekening met de andere ouder meetelt, is dat het slechtst denkbare gedrag.
+    //
+    // Deze waarden horen bij ÉÉN record, dus één keer instellen per record is juist.
+  }, [bewerken?.id])
 
   const teken = soort === 'uitgave' ? -1 : 1
   const bedragCenten = invoerNaarCenten(bedrag)
   const totaalCenten = Number.isFinite(bedragCenten) && bedragCenten > 0 ? bedragCenten : 0
 
-  const verdeeld = kassaRegels.reduce((s, r) => {
+  // De teller telt precies die regels die straks ook écht bewaard worden — dus
+  // met een bedrag én met een omschrijving of een categorie. Zie `verzend()`,
+  // waar exact dezelfde filter staat.
+  //
+  // Dat liep uit elkaar: een regel met alleen een bedrag telde wél mee in de
+  // teller, maar werd niet bewaard. Vulde je op een ticket van € 50 een regel van
+  // € 40 in en tikte je in de lege regel eronder alvast € 20, dan zei de app "de
+  // regels verdelen meer dan het totaalbedrag" en weigerde ze op te slaan — terwijl
+  // wat ze zou bewaren (€ 40 van € 50) perfect paste. Je zat vast op een melding
+  // over iets wat de app zelf niet ging opslaan.
+  const bewaardeRegels = kassaRegels.filter((r) => r.omschrijving.trim() || r.categorieId)
+  const verdeeld = bewaardeRegels.reduce((s, r) => {
     const c = invoerNaarCenten(r.bedrag)
     return Number.isFinite(c) && c > 0 ? s + c : s
   }, 0)
@@ -250,8 +326,17 @@ export function TransactieFormulier({
 
   // Waarom de opslaanknop uit staat, als tekst waar de knop naar kan verwijzen.
   const redenId = useId()
+  // Verdelen de regels van een kassaticket MEER dan het totaal, dan is er iets
+  // fout getikt. Zonder deze voorwaarde werd dat verschil een tegenboeking met een
+  // omgekeerd teken — een uitgave van € 50 met regels van € 40 en € 20 leverde
+  // € 60 uitgaven én € 10 inkomsten op. Zie de uitleg in utils/transactie.ts.
+  const teveelVerdeeld = gesplitst && verdeeld > totaalCenten
   const geldig =
-    omschrijving.trim().length > 0 && Number.isFinite(bedragCenten) && bedragCenten > 0 && rekeningId.length > 0
+    omschrijving.trim().length > 0 &&
+    Number.isFinite(bedragCenten) &&
+    bedragCenten > 0 &&
+    rekeningId.length > 0 &&
+    !teveelVerdeeld
 
   function wijzigRegel(sleutel: string, velden: Partial<KassaRegel>) {
     setKassaRegels((rs) => rs.map((r) => (r.sleutel === sleutel ? { ...r, ...velden } : r)))
@@ -300,7 +385,25 @@ export function TransactieFormulier({
 
   async function verzend(e: FormEvent) {
     e.preventDefault()
-    if (!geldig) return
+    if (!geldig) {
+      // De vlag "blijf open na opslaan" hoort bij DEZE poging. Wisten we haar hier
+      // niet, dan bleef ze aan staan: tikte je per ongeluk op "Opslaan + volgende"
+      // terwijl het formulier nog niet klopte, dan bleef de popup daarna óók open
+      // wanneer je later gewoon op "Toevoegen" duwde. Je zag een leeg formulier,
+      // dacht dat het niet gelukt was, en boekte alles een tweede keer.
+      blijfOpen.current = false
+      return
+    }
+    // Twee keer tikken mag nooit twee boekingen maken. Op een telefoon duurt het
+    // bewaren merkbaar lang (schrijven én alle lijsten opnieuw laden), en zonder
+    // deze grendel draaide een tweede tik de hele functie nog eens — mét een nieuw
+    // id, dus mét een tweede transactie in je overzicht.
+    // Hier wordt `blijfOpen` BEWUST niet gewist: de opslag die al loopt, leest die
+    // vlag straks nog en die hoort bij de knop waarop je het eerst duwde.
+    if (bezigRef.current) return
+    bezigRef.current = true
+    setBezig(true)
+    setOpslaanFout('')
 
     let t: Transactie
     if (gesplitst) {
@@ -313,7 +416,7 @@ export function TransactieFormulier({
           bedrag: teken * centen,
         }))
       t = {
-        id: bewerken ? bewerken.id : nieuwId(),
+        id: bewerken ? bewerken.id : nieuwIdRef.current,
         datum,
         omschrijving: omschrijving.trim(),
         bedrag: teken * bedragCenten,
@@ -324,7 +427,7 @@ export function TransactieFormulier({
       }
     } else {
       t = {
-        id: bewerken ? bewerken.id : nieuwId(),
+        id: bewerken ? bewerken.id : nieuwIdRef.current,
         datum,
         omschrijving: omschrijving.trim(),
         bedrag: teken * bedragCenten,
@@ -335,8 +438,9 @@ export function TransactieFormulier({
       }
     }
 
-    await onOpslaan(t)
-    onthoudRekening(rekeningId)
+    try {
+      await onOpslaan(t)
+      onthoudRekening(rekeningId)
 
     // Onthoud elke gescande regel (barcode -> naam + categorie + Nutri-Score), zodat
     // een volgende scan van hetzelfde product meteen werkt, ook offline.
@@ -353,13 +457,28 @@ export function TransactieFormulier({
       }
     }
 
-    // De bon en de dossierkoppeling worden PAS NA de transactie bewaard: ze wijzen
-    // met een id naar de transactie, en dat id mag niet bestaan in een record dat
-    // naar iets verwijst wat er niet is.
-    await bewaarBon(t.id)
-    await bewaarDossierkoppeling(t)
+      // De bon en de dossierkoppeling worden PAS NA de transactie bewaard: ze
+      // wijzen met een id naar de transactie, en dat id mag niet bestaan in een
+      // record dat naar iets verwijst wat er niet is.
+      await bewaarBon(t.id)
+      await bewaarDossierkoppeling(t)
+    } catch (fout) {
+      // Mislukt het bewaren (opslag vol, privémodus, database geweigerd), dan mag
+      // dat nooit stil gebeuren: je zou denken dat je te zacht getikt hebt en het
+      // opnieuw proberen, of de popup sluiten en je invoer kwijt zijn. Het
+      // formulier blijft staan zoals het is, met de reden erbij.
+      setOpslaanFout(fout instanceof Error ? fout.message : String(fout))
+      bezigRef.current = false
+      setBezig(false)
+      return
+    }
+
+    bezigRef.current = false
+    setBezig(false)
 
     if (!bewerken) {
+      // Klaar voor de volgende boeking (bv. na "Opslaan + volgende").
+      nieuwIdRef.current = nieuwId()
       setOmschrijving('')
       setBedrag('')
       setCategorieId('')
@@ -371,6 +490,7 @@ export function TransactieFormulier({
       setBonData('')
       setBonNaam('')
       setBonFout('')
+      bonVerwijderd.current = false
       setDossierId('')
       setKostenType('gewoon')
       setMeerOpen(false)
@@ -387,7 +507,13 @@ export function TransactieFormulier({
   async function bewaarBon(transactieId: string) {
     if (!onBon) return
     if (!bonData) {
-      if (bon) await onBon(null)
+      // Alleen weghalen wanneer je hem ZELF hebt weggehaald.
+      //
+      // Vroeger stond hier "geen bon in het veld, maar wel een bewaarde bon? dan
+      // weg ermee". Dat gaat mis met twee toestellen: hing er bij het openen geen
+      // bon aan en kwam er tijdens het invullen een binnen via de synchronisatie,
+      // dan wiste het opslaan die net ontvangen bon — zonder één woord.
+      if (bon && bonVerwijderd.current) await onBon(null)
       return
     }
     if (bon && bon.bestand === bonData) return
@@ -591,8 +717,13 @@ export function TransactieFormulier({
             {Math.abs(verschil) < 1 ? (
               <span style={{ color: 'var(--positive)' }}>✓</span>
             ) : (
-              <span className="bedrag" style={{ color: verschil < 0 ? 'var(--negative)' : 'var(--warn)' }}>
-                {t('(nog {bedrag})', { bedrag: formatEuro(verschil) })}
+              // "(nog −€ 10,00)" las niemand goed: een minteken vóór een bedrag na
+              // het woord "nog" is dubbel ontkennend. Verdeel je te veel, dan staat
+              // er nu gewoon wat er aan de hand is.
+              <span className="bedrag" style={{ color: verschil < 0 ? 'var(--negative)' : 'var(--warn-tekst)' }}>
+                {verschil < 0
+                  ? t('({bedrag} te veel)', { bedrag: formatEuro(-verschil) })
+                  : t('(nog {bedrag})', { bedrag: formatEuro(verschil) })}
               </span>
             )}
           </p>
@@ -648,11 +779,12 @@ export function TransactieFormulier({
                         />
                       )}
                       {bonNaam && <span className="rij-meta">{bonNaam}</span>}
-                      <a href={bonData} target="_blank" rel="noreferrer">{t('bekijken')}</a>
+                      <Bonknop bestand={bonData} naam={omschrijving || t('Bon')} />
                       <button
                         type="button"
                         className="knop knop-ghost knop-klein knop-gevaar"
                         onClick={() => {
+                          bonVerwijderd.current = true
                           setBonData('')
                           setBonNaam('')
                         }}
@@ -672,9 +804,17 @@ export function TransactieFormulier({
                       }}
                     />
                   )}
-                  {bezigBon && <span className="rij-meta">{t('bezig…')}</span>}
+                  {/* `role="status"` en `role="alert"`: het verkleinen van een
+                      grote foto duurt merkbaar lang, en "te groot" is de enige
+                      terugkoppeling die je krijgt. Zonder deze rollen gebeurde er
+                      voor wie de app laat voorlezen letterlijk niets. */}
+                  {bezigBon && (
+                    <span role="status" className="rij-meta">
+                      {t('bezig…')}
+                    </span>
+                  )}
                   {bonFout && (
-                    <span className="rij-meta" style={{ color: 'var(--negative)' }}>
+                    <span role="alert" className="rij-meta" style={{ color: 'var(--negative)' }}>
                       {bonFout}
                     </span>
                   )}
@@ -787,16 +927,17 @@ export function TransactieFormulier({
           <button
             type="submit"
             className="knop knop-primair"
-            aria-disabled={!geldig}
+            aria-disabled={!geldig || bezig}
+            aria-busy={bezig}
             aria-describedby={!geldig ? redenId : undefined}
           >
-            {bewerken ? t('Wijzigen') : t('Toevoegen')}
+            {bezig ? t('Bewaren…') : bewerken ? t('Wijzigen') : t('Toevoegen')}
           </button>
           {onOpgeslagen && !bewerken && (
             <button
               type="submit"
               className="knop knop-ghost"
-              aria-disabled={!geldig}
+              aria-disabled={!geldig || bezig}
               aria-describedby={!geldig ? redenId : undefined}
               onClick={() => {
                 blijfOpen.current = true
@@ -815,11 +956,29 @@ export function TransactieFormulier({
         {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt.
             Zonder rekening kan een transactie nergens op geboekt worden, en dat is
             bij een gloednieuwe app het allereerste wat je moet doen. */}
+        {opslaanFout !== '' && (
+          <div role="alert" style={{ margin: 0 }}>
+            {/* Boodschap eerst, techniek eronder. Een Engelse foutcode midden in een
+                Nederlandse zin laat de lezer afhaken vóór hij bij het belangrijkste
+                komt: dat zijn invoer er nog staat. */}
+            <p style={{ margin: 0, color: 'var(--negative-ink)', fontSize: 'var(--tekst-s)', fontWeight: 600 }}>
+              {/opslag|quota|storage/i.test(opslaanFout)
+                ? t('De opslag van dit toestel zit vol. Verwijder een paar bonnetjes of foto’s en probeer opnieuw.')
+                : t('Opslaan is niet gelukt. Je invoer staat er nog.')}
+            </p>
+            <p className="rij-meta" style={{ margin: '2px 0 0' }}>
+              {t('Technische melding: {fout}', { fout: opslaanFout })}
+            </p>
+          </div>
+        )}
+
         {!geldig && (
           <p id={redenId} role="status" className="leeg" style={{ padding: '4px 0 0', textAlign: 'left', margin: 0 }}>
             {rekeningen.length === 0
               ? t('Maak eerst een rekening aan — een transactie moet ergens op geboekt worden.')
-              : t('Geef een handelaar en een bedrag om op te slaan.')}
+              : teveelVerdeeld
+                ? t('De regels verdelen meer dan het totaalbedrag. Pas een regel of het totaal aan.')
+                : t('Geef een handelaar en een bedrag om op te slaan.')}
           </p>
         )}
       </div>
