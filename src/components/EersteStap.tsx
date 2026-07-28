@@ -14,11 +14,15 @@ export function EersteStap({ onNaarRekeningen }: { onNaarRekeningen: () => void 
       bijschrift={t('De app is nog helemaal leeg — alles wat er straks in staat, is van jou.')}
     >
       <p className="rij-meta" style={{ margin: 0 }}>
-        {t('Begin met een rekening: je betaalrekening, je spaarrekening, of gewoon je portemonnee. Daarna kan je transacties ingeven.')}
+        {/* Noem het scherm bij de naam die er ook echt op staat ("Je situatie"), niet
+            bij zijn werktitel. En beloof alleen wat het altijd waarmaakt: "hoelang je
+            toekomt" heeft een spaarrekening of cash nodig, en die heeft niet
+            iedereen. */}
+        {t('Loop "Je situatie" door: je rekeningen, je vaste kosten en je abonnementen. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is — nog vóór je één boeking ingeeft.')}
       </p>
       <div className="knoprij">
         <button type="button" className="knop knop-primair" onClick={onNaarRekeningen}>
-          {t('Maak je eerste rekening aan')}
+          {t('Breng je situatie in kaart')}
         </button>
       </div>
       <p className="rij-meta" style={{ margin: 0 }}>

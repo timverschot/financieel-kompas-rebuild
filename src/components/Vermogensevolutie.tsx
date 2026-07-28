@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import type { Overboeking, Rekening, Transactie, Waardering } from '../data/schema'
 import { vermogensEvolutie, laatsteMaanden } from '../utils/vermogen'
 import { formatEuro } from '../utils/format'
-import { Kaart } from '../ui/basis'
+import { Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 import { maandKort } from '../utils/datum'
 
@@ -44,7 +44,16 @@ export function Vermogensevolutie({
     [rekeningen, transacties, overboekingen, waarderingen, maanden],
   )
 
-  if (rekeningen.length === 0 || data.length === 0) return null
+  // Zonder rekeningen verdween deze kaart vroeger spoorloos tussen de twee
+  // kaarten eromheen. Nu blijft ze staan en zegt ze wat je moet doen — anders weet
+  // een nieuwe gebruiker niet dat de app dit kan.
+  if (rekeningen.length === 0 || data.length === 0) {
+    return (
+      <Kaart titel={t('Vermogensevolutie')}>
+        <Leeg>{t('Zodra je een rekening hebt toegevoegd, zie je hier hoe je bezit evolueert.')}</Leeg>
+      </Kaart>
+    )
+  }
 
   const reeksen = [
     { id: '__totaal', naam: t('Totaal'), kleur: 'var(--accent-strong)', dik: true, waarden: data.map((p) => p.totaal) },

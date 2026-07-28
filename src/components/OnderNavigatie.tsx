@@ -6,6 +6,7 @@ import { useT } from '../i18n'
 // wordt vertaald. Sinds de layout-herwerking (V1-logica) is elk onderdeel een
 // aparte pagina i.p.v. één lange 'Meer'-scroll.
 export type Pagina =
+  | 'opstelling'
   | 'overzicht'
   | 'transacties'
   | 'rekeningen'
@@ -21,6 +22,7 @@ export type Pagina =
 // Alle pagina's met icoon + label, in de volgorde van het desktop-zijpaneel.
 export const PAGINAS: { id: Pagina; icoon: string; label: string }[] = [
   { id: 'overzicht', icoon: '🏠', label: 'Overzicht' },
+  { id: 'opstelling', icoon: '🧭', label: 'Je situatie' },
   { id: 'transacties', icoon: '💳', label: 'Transacties' },
   { id: 'rekeningen', icoon: '🏦', label: 'Rekeningen' },
   { id: 'spaardoelen', icoon: '💰', label: 'Spaardoelen' },
@@ -40,7 +42,7 @@ export const PAGINAS: { id: Pagina; icoon: string; label: string }[] = [
 // en Transacties, rechts Analyse, en dan Meer. De rest zit onder 'Meer'.
 const PRIMAIR_LINKS: Pagina[] = ['overzicht', 'transacties']
 const PRIMAIR_RECHTS: Pagina[] = ['analyse']
-const SECUNDAIR: Pagina[] = ['rekeningen', 'spaardoelen', 'budget', 'dossiers', 'categorieen', 'rekenhulpen', 'importeren', 'instellingen']
+const SECUNDAIR: Pagina[] = ['opstelling', 'rekeningen', 'spaardoelen', 'budget', 'dossiers', 'categorieen', 'rekenhulpen', 'importeren', 'instellingen']
 
 const balk: CSSProperties = {
   position: 'fixed',

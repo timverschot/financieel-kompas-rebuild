@@ -508,6 +508,48 @@ h4 {
   border-bottom: none;
 }
 
+/* De aanvinklijst van De Opstelling (ronde 39).
+ *
+ * Waarom een eigen klasse en niet gewoon `.rij`: elke regel draagt naast de naam
+ * ook een bedragveld én een knop. Naast elkaar houdt de naamkolom op een telefoon
+ * van 393 px nog zo'n 55 px over, en dan loopt "Hospitalisatieverzekering" dwars
+ * over het invoerveld heen.
+ *
+ * LET OP bij het nameten: `.lijst` heeft `overflow: hidden`, dus die overloop maakt
+ * de PAGINA niet breder. De gebruikelijke controle op `scrollWidth` ziet er dus
+ * niets van. Meet per naam of `scrollWidth <= clientWidth`.
+ *
+ * Op een smal scherm breekt de regel af: naam bovenaan, bedrag en knop eronder.
+ * Vanaf 560 px staan ze weer naast elkaar. */
+.rij-kost {
+  flex-wrap: wrap;
+}
+
+.rij-kost > .rij-midden {
+  flex: 1 1 100%;
+}
+
+.rij-kost > .rij-acties {
+  flex: 1 1 100%;
+  justify-content: flex-end;
+}
+
+.kost-bedrag {
+  flex: 1 1 auto;
+  min-width: 96px;
+  max-width: 160px;
+}
+
+@media (min-width: 560px) {
+  .rij-kost > .rij-midden {
+    flex: 1 1 0;
+  }
+
+  .rij-kost > .rij-acties {
+    flex: 0 0 auto;
+  }
+}
+
 .rij-midden {
   flex: 1;
   min-width: 0;

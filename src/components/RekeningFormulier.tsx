@@ -27,15 +27,22 @@ export function RekeningFormulier({
   onOpslaan,
   onAnnuleer,
   bewerken,
+  beginType,
 }: {
   onOpslaan: (r: Rekening) => Promise<void> | void
   onAnnuleer?: () => void
   bewerken?: Rekening | null
+  // Met welk type het formulier begint. Standaard 'betaal', zoals altijd. Het blok
+  // "Voor later" en het blok "Openstaand" van Je situatie zetten hier het type dat
+  // daar hoort: stond het daar op Betaalrekening, dan belandde de beleggingsrekening
+  // van wie het keuzemenu overslaat stil bij "Je geld", en bleef het blok leeg
+  // zonder één woord uitleg.
+  beginType?: RekeningType
 }) {
   const { t } = useT()
   const [naam, setNaam] = useState(BEGIN.naam)
   const [beginsaldo, setBeginsaldo] = useState(BEGIN.beginsaldo)
-  const [type, setType] = useState<RekeningType>(BEGIN.type)
+  const [type, setType] = useState<RekeningType>(beginType ?? BEGIN.type)
   const [rekeningnummer, setRekeningnummer] = useState(BEGIN.rekeningnummer)
   const [rubriek, setRubriek] = useState(BEGIN.rubriek)
   const [kredietlimiet, setKredietlimiet] = useState(BEGIN.kredietlimiet)
@@ -56,12 +63,12 @@ export function RekeningFormulier({
   const leegmaken = useCallback(() => {
     setNaam(BEGIN.naam)
     setBeginsaldo(BEGIN.beginsaldo)
-    setType(BEGIN.type)
+    setType(beginType ?? BEGIN.type)
     setRekeningnummer(BEGIN.rekeningnummer)
     setRubriek(BEGIN.rubriek)
     setKredietlimiet(BEGIN.kredietlimiet)
     setAfrekendag(BEGIN.afrekendag)
-  }, [])
+  }, [beginType])
 
   useEffect(() => {
     if (bewerken) {

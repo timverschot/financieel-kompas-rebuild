@@ -524,30 +524,37 @@ describe('App', () => {
     expect(await screen.findByText(/Nog geen dossiers/)).toBeInTheDocument()
   })
 
-  it('wijst een lege app de weg naar de eerste rekening', async () => {
-    // Een gloednieuwe app: geen rekening, geen boekingen.
+  it('laat een gloednieuwe app in De Opstelling landen in plaats van op een leeg Overzicht', async () => {
+    // Ronde 39. Vroeger kwam je op een Overzicht met vier keer € 0,00 en één
+    // wegwijzer; nu begin je met het scherm dat je situatie opneemt.
     for (const tabel of db.tables) await tabel.clear()
     const user = userEvent.setup()
     render(<App />)
 
-    expect(await screen.findByText('Welkom bij Kompal')).toBeInTheDocument()
+    expect(await screen.findByText('Je situatie')).toBeInTheDocument()
+    expect(screen.getByText('Dit is je situatie')).toBeInTheDocument()
 
-    // De knop brengt je meteen naar Rekeningen, waar je er een kan aanmaken.
-    await user.click(screen.getByRole('button', { name: 'Maak je eerste rekening aan' }))
-    expect(await screen.findByLabelText('Rekeningnaam')).toBeInTheDocument()
-
-    // En de wegwijzer verdwijnt zodra er een rekening is.
-    await user.type(screen.getByLabelText('Rekeningnaam'), 'Zichtrekening')
+    // Het rekeningformulier staat er meteen in — geen extra tik nodig.
+    await user.type(await screen.findByLabelText('Rekeningnaam'), 'Zichtrekening')
     await user.click(screen.getByRole('button', { name: 'Rekening toevoegen' }))
-    await ga(user, 'Overzicht')
-    await waitFor(() => expect(screen.queryByText('Welkom bij Kompal')).not.toBeInTheDocument())
+
+    // En dan verschijnt de knop naar het overzicht.
+    expect(await screen.findByRole('button', { name: 'Naar je overzicht' })).toBeInTheDocument()
+  })
+
+  it('landt op het Overzicht zodra er al een rekening bestaat', async () => {
+    // De keuze mag alleen bij het OPSTARTEN gemaakt worden. Stond ze in herlaad(),
+    // dan sprong je bij elke bewaaractie terug naar De Opstelling.
+    render(<App />)
+    expect(await screen.findByText('Saldo')).toBeInTheDocument()
+    expect(screen.queryByText('Dit is je situatie')).not.toBeInTheDocument()
   })
 
   it('zegt in de invoerpopup dat je eerst een rekening nodig hebt', async () => {
     for (const tabel of db.tables) await tabel.clear()
     const user = userEvent.setup()
     render(<App />)
-    await screen.findByText('Welkom bij Kompal')
+    await screen.findByText('Dit is je situatie')
 
     // Deze uitleg stond op de Transacties-pagina, waar het formulier woonde. Nu
     // het formulier in de popup zit, moet ze mee verhuizen — anders duw je op de

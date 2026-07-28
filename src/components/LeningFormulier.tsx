@@ -40,6 +40,7 @@ export function LeningFormulier({
   onAnnuleer,
   bewerken,
   gezinsleden = [],
+  secundaireKnop = false,
 }: {
   onOpslaan: (l: Lening) => Promise<void> | void
   onAnnuleer?: () => void
@@ -47,6 +48,11 @@ export function LeningFormulier({
   // Optioneel: zolang deze lijst leeg is, verschijnt het gezinslid-veld niet. Zo
   // blijven bestaande aanroepen ongewijzigd werken.
   gezinsleden?: Kind[]
+  // Staat dit formulier samen met een ánder formulier op één scherm (zoals in het
+  // blok "Openstaand" van Je situatie), dan mag maar één van de twee knoppen
+  // gevuld zijn — designregel 2. Standaard blijft de knop gevuld, zodat alle
+  // bestaande aanroepen er hetzelfde uitzien als voorheen.
+  secundaireKnop?: boolean
 }) {
   const { t } = useT()
   const [richting, setRichting] = useState<LeningRichting>(() => beginwaarden().richting)
@@ -241,7 +247,11 @@ export function LeningFormulier({
         {bezigBon && <span className="rij-meta"> {t('bezig…')}</span>}
       </div>
       <div className="knoprij">
-        <button type="submit" disabled={!geldig} className="knop knop-primair">
+        <button
+          type="submit"
+          disabled={!geldig}
+          className={secundaireKnop ? 'knop knop-secundair' : 'knop knop-primair'}
+        >
           {bewerken ? t('Lening wijzigen') : t('Lening toevoegen')}
         </button>
         {bewerken && onAnnuleer && (

@@ -134,10 +134,20 @@ export function VooruitblikSectie({
             {t('{n} vaste last(en) achterstallig — de dag is voorbij', { n: vb.aantalAchterstallig })}
           </p>
         )}
-        {vb.aantalKomend === 0 && vb.aantalAchterstallig === 0 && (
+        {/* Zonder ÉÉN vaste last stonden beide tellers op nul en meldde de app
+            triomfantelijk dat alles ingeboekt was — terwijl je nog nooit een vaste
+            last had aangemaakt. Dat is drie keer erger dan niets zeggen. */}
+        {terugkerendePosten.length === 0 ? (
           <p className="rij-meta" style={{ margin: 0 }}>
-            {t('Alle vaste lasten voor deze maand zijn al ingeboekt')}
+            {t('Je hebt nog geen vaste lasten ingesteld. Zonder die weet de app niet wat er nog moet komen.')}
           </p>
+        ) : (
+          vb.aantalKomend === 0 &&
+          vb.aantalAchterstallig === 0 && (
+            <p className="rij-meta" style={{ margin: 0 }}>
+              {t('Alle vaste lasten voor deze maand zijn al ingeboekt')}
+            </p>
+          )
         )}
       </div>
     </Kaart>

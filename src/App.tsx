@@ -133,6 +133,7 @@ import { BoekingDialoog } from './components/BoekingDialoog'
 import { Dialoog } from './ui/Dialoog'
 import { Meldingenbel } from './components/Meldingenbel'
 import { BalansRegel } from './components/BalansRegel'
+import { OpstellingSectie } from './components/OpstellingSectie'
 import { VermogenRegel } from './components/VermogenRegel'
 import { BufferRegel } from './components/BufferRegel'
 import { Zijbalk } from './components/Zijbalk'
@@ -264,7 +265,17 @@ export function App() {
   const [gekozenRekeningId, setGekozenRekeningId] = useState<string | null>(null)
   const [bewerkOverboeking, setBewerkOverboeking] = useState<Overboeking | null>(null)
   const [maand, setMaand] = useState(huidigeMaand())
-  const [pagina, setPagina] = useState<Pagina>('overzicht')
+  // Nog onbeslist tot de gegevens geladen zijn. Een nieuwe gebruiker hoort in De
+  // Opstelling te landen in plaats van op een leeg Overzicht, maar bij de eerste
+  // render weet de app nog niet of er rekeningen zijn. We zetten hem daarom in
+  // dezelfde batch als `setTransacties`, en de bestaande wachtpoort ("Laden…")
+  // houdt alles tegen tot dat gebeurd is. Zo is er geen flikkering en geen tweede
+  // laadtoestand nodig.
+  //
+  // LET OP: dit hoort NIET in `herlaad()`. Die draait na élke opslag en na elke
+  // synchronisatie; zou de keuze daar staan, dan sprong je bij elke bewaaractie
+  // terug naar De Opstelling.
+  const [pagina, setPagina] = useState<Pagina | null>(null)
   // Welke lade van de Dossiers-pagina staat open. Leningen en garanties hadden tot
   // ronde 29 een eigen pagina die niets meer was dan twee secties onder elkaar;
   // ze zijn nu subtabs naast de gedeelde kosten.
@@ -391,6 +402,7 @@ export function App() {
       ])
       if (!actief) return
       setTransacties(tx.geldig)
+      setPagina(rk.geldig.length === 0 ? 'opstelling' : 'overzicht')
       setRekeningen(rk.geldig)
       setCategorieen(cat.geldig)
       setBudgetten(bud.geldig)
@@ -1236,7 +1248,7 @@ export function App() {
     )
   }
 
-  if (transacties === null) {
+  if (transacties === null || pagina === null) {
     return (
       <main style={container}>
         <h1 className="paginakop">Kompal</h1>
@@ -1385,6 +1397,30 @@ export function App() {
   const paginaInhoud = (
     <div className="stapel">
 
+      {pagina === 'opstelling' && (
+        <ErrorBoundary naam="Opstelling">
+          <OpstellingSectie
+            rekeningen={rekeningen}
+            transacties={transacties ?? []}
+            overboekingen={overboekingen}
+            waarderingen={waarderingen}
+            terugkerendePosten={terugkerendePosten}
+            leningen={leningen}
+            aflossingen={aflossingen}
+            gezinsleden={kinderen}
+            dossiers={dossiers}
+            onRekening={slaRekeningOp}
+            onLening={leningOpslaan}
+            onVastePost={voegTerugkerendToe}
+            onKindToevoegen={voegKindToe}
+            onKindWijzigen={wijzigKind}
+            onKindVerwijderen={verwijderKindH}
+            onDossier={voegDossierToe}
+            onNaarPagina={setPagina}
+          />
+        </ErrorBoundary>
+      )}
+
       {pagina === 'overzicht' && (
         <>
           {ongeldig > 0 && (
@@ -1400,7 +1436,7 @@ export function App() {
 
           {/* Een gloednieuwe (of net gewiste) app is helemaal leeg. Dan is één
               ding belangrijker dan alle cijfers: weten wat je eerst moet doen. */}
-          {rekeningen.length === 0 && <EersteStap onNaarRekeningen={() => setPagina('rekeningen')} />}
+          {rekeningen.length === 0 && <EersteStap onNaarRekeningen={() => setPagina('opstelling')} />}
 
           {/* Eén blok met alles over deze maand.
               Dit waren drie losse kaarten onder elkaar — de kengetallen, de
@@ -1457,19 +1493,30 @@ export function App() {
                     Onder de grafiek staan enkel de drie grootste, met een knop naar
                     de Analyse-pagina voor het volledige verhaal. */}
                 <div className="raster-twee">
-                  {perCategorie.length > 0 && (
-                    <Kaart titel={t('Uitgaven per categorie')} bijschrift={maandJaarLabel(maand)}>
-                      <Donut items={perCategorie} interactief toonLegende={false} grootte={240} />
-                      <TopDrie posten={perCategorie} onAlles={() => gaNaarAnalyse('uitgave')} />
-                    </Kaart>
-                  )}
+                  {/* De kaart blijft staan, ook zonder cijfers. Verdween ze, dan zag
+                      een nieuwe gebruiker niet eens DÁT er een uitgavengrafiek bestaat
+                      — en dan lijkt de app op dag één simpeler dan ze is. */}
+                  <Kaart titel={t('Uitgaven per categorie')} bijschrift={maandJaarLabel(maand)}>
+                    {perCategorie.length === 0 ? (
+                      <Leeg>{t('Nog niets geboekt deze maand. Voeg een transactie toe, of lees een bankuittreksel in.')}</Leeg>
+                    ) : (
+                      <>
+                        <Donut items={perCategorie} interactief toonLegende={false} grootte={240} />
+                        <TopDrie posten={perCategorie} onAlles={() => gaNaarAnalyse('uitgave')} />
+                      </>
+                    )}
+                  </Kaart>
 
-                  {perInkomsten.length > 0 && (
-                    <Kaart titel={t('Inkomsten per categorie')} bijschrift={maandJaarLabel(maand)}>
-                      <Donut items={perInkomsten} middenLabel="inkomsten" interactief toonLegende={false} grootte={240} />
-                      <TopDrie posten={perInkomsten} onAlles={() => gaNaarAnalyse('inkomst')} />
-                    </Kaart>
-                  )}
+                  <Kaart titel={t('Inkomsten per categorie')} bijschrift={maandJaarLabel(maand)}>
+                    {perInkomsten.length === 0 ? (
+                      <Leeg>{t('Nog geen inkomsten deze maand.')}</Leeg>
+                    ) : (
+                      <>
+                        <Donut items={perInkomsten} middenLabel="inkomsten" interactief toonLegende={false} grootte={240} />
+                        <TopDrie posten={perInkomsten} onAlles={() => gaNaarAnalyse('inkomst')} />
+                      </>
+                    )}
+                  </Kaart>
                 </div>
 
               </div>
@@ -1801,6 +1848,16 @@ export function App() {
               ) : undefined
             }
           >
+            {rekeningen.length === 0 && (
+              <Leeg>
+                <>
+                  {t('Nog geen rekeningen. Vul het formulier in, of begin bij je situatie.')}{' '}
+                  <button type="button" className="knop knop-ghost knop-klein" onClick={() => setPagina('opstelling')}>
+                    {t('Je situatie')}
+                  </button>
+                </>
+              </Leeg>
+            )}
             {rekeningen.length > 0 && (
               <ul className="lijst">
                 {rekeningen.map((r) => {
@@ -1893,6 +1950,9 @@ export function App() {
 
           <div className="kolom-lijst stapel">
           <Kaart>
+            {categorieen.length === 0 && (
+              <Leeg>{t('Je hebt nog geen eigen categorieën. De ingebouwde boom staat hieronder.')}</Leeg>
+            )}
             {categorieen.length > 0 && (
               <ul className="lijst">
                 {/* Enkel je eigen HOOFDcategorieën. De middencategorieën die je
