@@ -89,3 +89,37 @@ describe('vertaaltabellen', () => {
     expect(vertaal('fr', 'Overschot')).toBe('Excédent')
   })
 })
+
+// --- Twee vangnetten die ronde 38 heeft opgeleverd ---------------------------
+//
+// De pariteitstest hierboven controleert alleen dat EN en FR dezelfde SLEUTELS
+// hebben. Twee fouten glipten daar doorheen, en allebei zie je ze pas wanneer een
+// Franstalige gebruiker het scherm opent.
+
+describe('vertalingen — vangnetten', () => {
+  it('houdt in en en fr exact dezelfde plaatshouders als in het Nederlands', () => {
+    // Een ontbrekende of verkeerd gespelde {plaatshouder} blijft letterlijk op het
+    // scherm staan: "Netto vermogen {bedrag}".
+    const plaatshouders = (tekst: string) => (tekst.match(/\{\w+\}/g) ?? []).sort().join(',')
+    const fouten: string[] = []
+    for (const taal of ['en', 'fr'] as const) {
+      for (const sleutel of vertaalSleutels(taal)) {
+        if (plaatshouders(sleutel) !== plaatshouders(vertaal(taal, sleutel))) fouten.push(`${taal}: ${sleutel}`)
+      }
+    }
+    expect(fouten).toEqual([])
+  })
+
+  it('heeft geen lijmwoord als sleutel', () => {
+    // Een sleutel als ' en ' — spatie ervóór én erna — is een voegwoord dat twee
+    // stukken aan elkaar plakt. Zo'n sleutel overleeft geen enkele bewerking die
+    // tekst trimt, en dan staat er ineens een Nederlands woord midden in een
+    // Engelse zin. Bovendien geeft hij de vertaler geen enkele context.
+    //
+    // Achtervoegsels als ' · {bedrag} per maand opzij' mogen wél: die beginnen met
+    // een spatie maar dragen hun eigen betekenis, en trimmen kost daar hooguit een
+    // spatie, geen taal.
+    const lijmwoorden = vertaalSleutels('en').filter((s) => s.startsWith(' ') && s.endsWith(' '))
+    expect(lijmwoorden).toEqual([])
+  })
+})

@@ -1,5 +1,5 @@
 import { useMemo, useState, type CSSProperties } from 'react'
-import type { Categorie, Kind, Overboeking, Rekening, TerugkerendePost, Transactie } from '../data/schema'
+import type { Categorie, Kind, Overboeking, Rekening, TerugkerendePost, Transactie, Waardering } from '../data/schema'
 import { Vermogensevolutie } from './Vermogensevolutie'
 import { TrendsSectie } from './TrendsSectie'
 import { VooruitblikSectie } from './VooruitblikSectie'
@@ -135,6 +135,7 @@ export function AnalyseSectie({
   categorieen,
   rekeningen,
   overboekingen,
+  waarderingen,
   terugkerendePosten,
   gezinsleden = [],
   beginRichting = 'uitgave',
@@ -143,6 +144,7 @@ export function AnalyseSectie({
   categorieen: Categorie[]
   rekeningen: Rekening[]
   overboekingen: Overboeking[]
+  waarderingen: Waardering[]
   terugkerendePosten: TerugkerendePost[]
   // Optioneel: zonder ingestelde gezinsleden blijft het blok 'per gezinslid'
   // gewoon weg — het zou dan alleen maar verwarren.
@@ -467,7 +469,12 @@ export function AnalyseSectie({
             periodeLabel={periodeLabel}
           />
 
-          <Vermogensevolutie rekeningen={rekeningen} transacties={transacties} overboekingen={overboekingen} />
+          <Vermogensevolutie
+            rekeningen={rekeningen}
+            transacties={transacties}
+            overboekingen={overboekingen}
+            waarderingen={waarderingen}
+          />
 
           <VooruitblikSectie transacties={transacties} terugkerendePosten={terugkerendePosten} periode={periode} periodeLabel={periodeLabel} />
         </>

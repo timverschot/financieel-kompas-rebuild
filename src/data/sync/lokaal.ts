@@ -60,6 +60,7 @@ export const STAAT_NAMEN = [
   'streepjescodes',
   'dossierdocumenten',
   'ordeningen',
+  'waarderingen',
 ] as const satisfies readonly (keyof Staat)[]
 
 // Elke sleutel van Staat moet in STAAT_NAMEN staan. Vergeet je er één, dan is dit
@@ -197,6 +198,12 @@ async function pasStaatToe(regel: Logregel): Promise<void> {
       break
     case 'ordening.verwijderd':
       await db.ordeningen.delete(g.payload.id)
+      break
+    case 'waardering.bewaard':
+      await db.waarderingen.put(g.payload)
+      break
+    case 'waardering.verwijderd':
+      await db.waarderingen.delete(g.payload.id)
       break
     case 'dossierdocument.bewaard':
       await db.dossierdocumenten.put(g.payload)

@@ -5,6 +5,8 @@ import {
   bewaarDossierDocument,
   bewaarGedeeldeKost,
   bewaarOrdening,
+  bewaarWaardering,
+  laadWaarderingen,
   bewaarTransactie,
   laadDossierDocumenten,
   laadDossiers,
@@ -133,5 +135,23 @@ describe('backup draagt ook de andere tabellen', () => {
     expect((await laadDossiers()).geldig.map((d) => d.aandeelJij)).toEqual([60])
     expect((await laadGedeeldeKosten()).geldig.map((k) => k.bedrag)).toEqual([12000])
     expect((await laadDossierDocumenten()).geldig.map((d) => d.naam)).toEqual(['Ouderschapsovereenkomst'])
+  })
+
+  it('herstelt een waardering', async () => {
+    // Ronde 38: dezelfde valkuil als bij de ordeningen. Een tabel die bij het
+    // herstellen vergeten wordt, merk je pas weken later — en dan staat je
+    // beleggingsrekening ineens weer op haar beginsaldo van jaren geleden.
+    await db.waarderingen.clear()
+    await bewaarWaardering({ id: 'w1', rekeningId: 'r1', datum: '2026-07-15', saldo: -123456, notitie: 'Visa' })
+    const json = await exporteerBackup()
+
+    await db.waarderingen.clear()
+    await db.events.clear()
+    expect((await laadWaarderingen()).geldig).toHaveLength(0)
+
+    await importeerBackup(json)
+    const wrd = (await laadWaarderingen()).geldig
+    expect(wrd).toHaveLength(1)
+    expect(wrd[0].saldo).toBe(-123456)
   })
 })

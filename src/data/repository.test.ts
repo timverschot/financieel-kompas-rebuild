@@ -20,6 +20,9 @@ import {
   verwijderTransactieMetAanhang,
   bewaarGarantie,
   laadGaranties,
+  bewaarWaardering,
+  laadWaarderingen,
+  verwijderWaardering,
 } from './repository'
 import type { Transactie } from './schema'
 
@@ -35,6 +38,7 @@ beforeEach(async () => {
   await db.kindrekeningposten.clear()
   await db.dossierdocumenten.clear()
   await db.garanties.clear()
+  await db.waarderingen.clear()
 })
 
 const t1: Transactie = { id: 't1', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 2400, rekeningId: 'r1' }
@@ -238,5 +242,34 @@ describe('een afgebroken reeks laat niets half achter', () => {
     // logboek en denkt een ander toestel bij het synchroniseren dat het een regel
     // gemist heeft.
     expect((await db.meta.get('volgnummer'))?.waarde).toBe(volgVoor)
+  })
+})
+
+describe('waarderingen (ronde 38)', () => {
+  const w = { id: 'w1', rekeningId: 'r1', datum: '2026-07-15', saldo: -123_456, notitie: 'Visa' }
+
+  it('bewaart en leest een waardering, inclusief een negatieve stand', async () => {
+    await bewaarWaardering(w)
+    const uit = await laadWaarderingen()
+    expect(uit.geldig).toEqual([w])
+    expect(uit.ongeldig).toBe(0)
+  })
+
+  it('verwijdert een waardering', async () => {
+    await bewaarWaardering(w)
+    await verwijderWaardering('w1')
+    expect((await laadWaarderingen()).geldig).toEqual([])
+  })
+
+  it('weigert een ongeldige waardering vóór ze in het logboek belandt', async () => {
+    await expect(bewaarWaardering({ ...w, datum: '15/07/2026' })).rejects.toThrow()
+    expect(await db.events.count()).toBe(0)
+  })
+
+  it('telt een corrupt record als overgeslagen in plaats van de app te laten vallen', async () => {
+    await db.waarderingen.put({ id: 'stuk' } as never)
+    const uit = await laadWaarderingen()
+    expect(uit.geldig).toEqual([])
+    expect(uit.ongeldig).toBe(1)
   })
 })

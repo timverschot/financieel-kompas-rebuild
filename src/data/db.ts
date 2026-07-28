@@ -20,6 +20,7 @@ import type {
   TerugkerendePost,
   Transactie,
   Verrekening,
+  Waardering,
 } from './schema'
 import type { Logregel, MetaRegel } from './sync/events'
 import { nieuwId } from './sync/id'
@@ -50,6 +51,7 @@ export class FinancieelKompasDB extends Dexie {
   streepjescodes!: Table<Streepjescode, string>
   dossierdocumenten!: Table<DossierDocument, string>
   ordeningen!: Table<Ordening, string>
+  waarderingen!: Table<Waardering, string>
 
   constructor() {
     super('financieel-kompas')
@@ -426,6 +428,36 @@ export class FinancieelKompasDB extends Dexie {
       streepjescodes: 'id',
       dossierdocumenten: 'id, dossierId',
       ordeningen: 'id',
+    })
+
+    // Versie 19 - waarderingen: "op deze dag stond er dit op deze rekening"
+    // (zie WaarderingSchema). Alleen een nieuwe tabel: geen bestaande gegevens
+    // worden aangeraakt, dus er valt niets om te zetten. Heeft een rekening geen
+    // enkele waardering, dan blijft haar saldo exact zoals het altijd was.
+    this.version(19).stores({
+      rekeningen: 'id, naam',
+      transacties: 'id, rekeningId, datum, categorieId',
+      events: 'id, toestelId, volgnummer',
+      meta: 'sleutel',
+      categorieen: 'id, naam',
+      budgetten: 'id, categorieId',
+      dossiers: 'id, naam',
+      gedeeldeKosten: 'id, dossierId, verrekeningId',
+      verrekeningen: 'id, dossierId',
+      terugkerendePosten: 'id',
+      spaardoelen: 'id, naam',
+      subcategorieen: 'id, categorieId',
+      overboekingen: 'id, datum',
+      kinderen: 'id, naam',
+      kindrekeningen: 'id, dossierId',
+      kindrekeningposten: 'id, kindrekeningId',
+      leningen: 'id, richting',
+      aflossingen: 'id, leningId',
+      garanties: 'id, aankoopdatum',
+      streepjescodes: 'id',
+      dossierdocumenten: 'id, dossierId',
+      ordeningen: 'id',
+      waarderingen: 'id, rekeningId',
     })
   }
 }

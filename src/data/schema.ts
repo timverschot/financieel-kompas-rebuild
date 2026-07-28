@@ -11,7 +11,7 @@ import { z } from 'zod'
 
 // De types rekening. De sleutels ('betaal', ...) zijn taal-onafhankelijk en
 // worden pas bij weergave vertaald; de opgeslagen waarde blijft altijd de sleutel.
-export const REKENING_TYPES = ['betaal', 'spaar', 'termijn', 'effecten', 'cash'] as const
+export const REKENING_TYPES = ['betaal', 'spaar', 'termijn', 'effecten', 'cash', 'krediet'] as const
 export type RekeningType = (typeof REKENING_TYPES)[number]
 
 export const RekeningSchema = z.object({
@@ -24,6 +24,21 @@ export const RekeningSchema = z.object({
   rekeningnummer: z.string().optional(), // IBAN of ander rekeningnummer
   rubriek: z.string().optional(), // vrije rubriek-/groepsnaam
   gearchiveerd: z.boolean().optional(), // afgesloten/oud: verborgen in keuzelijsten
+  // De twee velden hieronder horen bij het type 'krediet' (ronde 38).
+  //
+  // Waarom een eigen type en niet gewoon een betaalrekening met een negatief
+  // saldo: dat rekende toevallig juist, maar de kaart stond dan met de badge
+  // "Betaalrekening" tussen je echte rekeningen, en de app kon niet weten dat een
+  // negatief saldo hier een SCHULD met een vervaldag is in plaats van een
+  // vergissing. Met een eigen type kunnen we dat wél zeggen.
+  //
+  // 'kredietlimiet' is de toegestane opname als POSITIEF getal in centen, ook al
+  // staat het saldo negatief. Zo blijft "hoeveel kan ik nog opnemen" een gewone
+  // aftrekking in plaats van een tekenpuzzel.
+  kredietlimiet: z.number().int().positive().optional(),
+  // De dag van de maand waarop de kaart afgerekend wordt (1-28, dezelfde grens als
+  // bij een terugkerende post, zodat elke maand gedekt is).
+  afrekendag: z.number().int().min(1).max(28).optional(),
 })
 export type Rekening = z.infer<typeof RekeningSchema>
 
@@ -247,6 +262,16 @@ export const TerugkerendePostSchema = z.object({
   // een niet-maandelijkse post, dan valt ze terug op de maand waarin je haar
   // aanmaakt (het formulier vult dat in).
   startMaand: z.string().regex(/^\d{4}-\d{2}$/, 'maand moet JJJJ-MM zijn').optional(),
+  // De maand waarin de post STOPT ('JJJJ-MM'), bijvoorbeeld omdat je het
+  // abonnement opzegt of de lening afloopt. Vanaf DEZE maand telt hij niet meer
+  // mee — de laatste betaling is dus de maand ervóór.
+  //
+  // Waarom dit veld er is (ronde 38): tot nu toe was opzeggen hetzelfde als
+  // verwijderen, en dan verdween de post ook uit je historiek terwijl je hem vorig
+  // jaar wél betaalde. Nu blijft het record bestaan en verandert alleen de
+  // toekomst. Ontbreekt het veld, dan loopt de post gewoon door — precies zoals
+  // elke bestaande post, dus geen migratie.
+  eindMaand: z.string().regex(/^\d{4}-\d{2}$/, 'maand moet JJJJ-MM zijn').optional(),
   // Wil je het bedrag maandelijks opzijzetten in plaats van het in één keer te
   // dragen? Puur informatief: de app houdt geen echte pot bij, ze rekent uit
   // hoeveel je per maand opzij moet leggen en toont dat in je plan.
@@ -296,6 +321,35 @@ export const OverboekingSchema = z.object({
   omschrijving: z.string().optional(),
 })
 export type Overboeking = z.infer<typeof OverboekingSchema>
+
+// Een WAARDERING: "op deze dag stond er dit op deze rekening" (ronde 38).
+//
+// Waarvoor. Een effectenrekening, een termijnrekening of een pensioenspaarplan
+// verandert van waarde zonder dat er een boeking gebeurt. Tot nu toe kon je die
+// waarde alleen actueel houden door het BEGINsaldo aan te passen — waarmee je met
+// terugwerkende kracht je hele geschiedenis verschoof — of door een verzonnen
+// transactie te boeken, die dan als inkomst in je maandoverzicht belandde.
+//
+// Wat ze IS: een nieuw vertrekpunt. Vanaf haar datum vertrekt het saldo van deze
+// rekening van 'saldo'; alles wat vóór die dag geboekt is, telt niet meer mee (het
+// zit al in dat bedrag verwerkt). Boekingen ná die dag tellen er gewoon bij op.
+//
+// Wat ze NIET is: geen inkomst, geen uitgave, geen overboeking. Ze verschijnt dus
+// nooit in een maandoverzicht, een budget, een donut of een grafiek van inkomsten
+// en uitgaven — net zomin als een overboeking dat doet. Ze verandert alleen wat er
+// op je rekening staat.
+//
+// 'saldo' mag negatief zijn (een kredietrekening staat negatief), dus bewust géén
+// .positive() — anders dan bij een overboeking, waar het bedrag een hoeveelheid is
+// en geen stand.
+export const WaarderingSchema = z.object({
+  id: z.string().min(1),
+  rekeningId: z.string().min(1),
+  datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  saldo: z.number().int(), // de STAND op die dag, in centen
+  notitie: z.string().optional(),
+})
+export type Waardering = z.infer<typeof WaarderingSchema>
 
 // Een kindrekening: een gezamenlijke pot bij een dossier waar beide ouders
 // periodiek op storten en waaruit gedeelde kosten rechtstreeks betaald worden.
@@ -373,6 +427,15 @@ export const AflossingSchema = z.object({
   datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
   bedrag: z.number().int().positive(), // in centen
   omschrijving: z.string().optional(),
+  // De boeking waarmee deze aflossing betaald is (ronde 38). Optioneel, want een
+  // aflossing kan ook van een rekening komen die je niet in de app hebt.
+  //
+  // Waarom dit bestaat: een maandaflossing werd tot nu toe twee keer ingegeven —
+  // één keer als transactie op je rekening, één keer als aflossing op de lening —
+  // zonder dat iets die twee met elkaar vergeleek. Nu kan de app zeggen "hier
+  // staat al een boeking van hetzelfde bedrag op dezelfde dag; is dit dezelfde?"
+  // Hetzelfde patroon als `Garantie.transactieId` en `GedeeldeKost.transactieId`.
+  transactieId: z.string().min(1).optional(),
 })
 export type Aflossing = z.infer<typeof AflossingSchema>
 

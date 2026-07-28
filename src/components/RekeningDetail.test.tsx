@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { RekeningDetail } from './RekeningDetail'
-import type { Overboeking, Rekening, Transactie } from '../data/schema'
+import type { Overboeking, Rekening, Transactie, Waardering } from '../data/schema'
 import { formatEuro } from '../utils/format'
 import { vandaag } from '../utils/datum'
 
@@ -34,15 +34,21 @@ function toon(opties: {
   rekening?: Rekening
   transacties?: Transactie[]
   overboekingen?: Overboeking[]
+  waarderingen?: Waardering[]
+  onWaardering?: (w: Waardering) => void
 } = {}) {
   const onBewerk = vi.fn()
   const onArchiveer = vi.fn()
   const onVerwijder = vi.fn()
+  const onWaardering = opties.onWaardering ?? vi.fn()
   const resultaat = render(
     <RekeningDetail
       rekening={opties.rekening ?? rekening}
       transacties={opties.transacties ?? []}
       overboekingen={opties.overboekingen ?? []}
+      waarderingen={opties.waarderingen ?? []}
+      onWaardering={onWaardering}
+      onWaarderingVerwijderen={vi.fn()}
       categorieen={[]}
       rekeningNaam={(id) => namen[id]}
       onBewerk={onBewerk}
@@ -212,8 +218,59 @@ describe('RekeningDetail', () => {
         onBewerk={vi.fn()}
         onArchiveer={vi.fn()}
         onVerwijder={vi.fn()}
+        waarderingen={[]}
+        onWaardering={vi.fn()}
+        onWaarderingVerwijderen={vi.fn()}
       />,
     )
     expect(screen.getByText('Spaarrekening · Reserve · BE68 5390 0754 7034')).toBeInTheDocument()
+  })
+})
+
+describe('RekeningDetail — waarde bijwerken (ronde 38)', () => {
+  it('legt een waardering vast met datum, bedrag en notitie', async () => {
+    const gebruiker = userEvent.setup()
+    const onWaardering = vi.fn()
+    toon({ onWaardering })
+
+    await gebruiker.click(screen.getByText('Waarde bijwerken'))
+    await gebruiker.clear(screen.getByLabelText('Op welke dag?'))
+    await gebruiker.type(screen.getByLabelText('Op welke dag?'), '2026-07-15')
+    await gebruiker.type(screen.getByLabelText('Werkelijke waarde (€)'), '1234,56')
+    await gebruiker.type(screen.getByLabelText('Notitie'), 'jaaroverzicht')
+    await gebruiker.click(screen.getByRole('button', { name: 'Waarde vastleggen' }))
+
+    expect(onWaardering).toHaveBeenCalledWith(
+      expect.objectContaining({ rekeningId: 'r1', datum: '2026-07-15', saldo: 123456, notitie: 'jaaroverzicht' }),
+    )
+  })
+
+  it('houdt de knop uit zolang er geen bedrag staat, en zegt waarom', async () => {
+    const gebruiker = userEvent.setup()
+    toon()
+    await gebruiker.click(screen.getByText('Waarde bijwerken'))
+
+    // Bewust aria-disabled en niet disabled: een echt uitgeschakelde knop krijgt
+    // geen focus, dus wie met een toetsenbord werkt zou nooit horen waaróm hij niet
+    // werkt. Zie de regel in index.css en TransactieFormulier.
+    const knop = screen.getByRole('button', { name: 'Waarde vastleggen' })
+    expect(knop).toHaveAttribute('aria-disabled', 'true')
+    expect(knop).not.toBeDisabled()
+    expect(knop).toHaveAttribute('aria-describedby')
+    expect(screen.getByText('Vul een datum en een bedrag in.')).toBeInTheDocument()
+  })
+
+  it('toont het saldo dat uit de waardering volgt in plaats van uit het beginsaldo', () => {
+    // De rekening heeft beginsaldo 100000; de waardering zet hem op 5000.
+    const { container } = toon({ waarderingen: [{ id: 'w1', rekeningId: 'r1', datum: '2026-01-01', saldo: 5000 }] })
+    expect(grootSaldo(container)).toBe(formatEuro(5000))
+  })
+
+  it('somt eerder vastgelegde waarderingen op', async () => {
+    const gebruiker = userEvent.setup()
+    toon({ waarderingen: [{ id: 'w1', rekeningId: 'r1', datum: '2026-01-01', saldo: 5000, notitie: 'start' }] })
+    await gebruiker.click(screen.getByText('Waarde bijwerken'))
+    expect(screen.getByText('Eerder vastgelegd')).toBeInTheDocument()
+    expect(screen.getByText('start')).toBeInTheDocument()
   })
 })

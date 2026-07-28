@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { Overboeking, Rekening, Transactie } from '../data/schema'
+import type { Overboeking, Rekening, Transactie, Waardering } from '../data/schema'
 import { vermogensEvolutie, laatsteMaanden } from '../utils/vermogen'
 import { formatEuro } from '../utils/format'
 import { Kaart } from '../ui/basis'
@@ -26,10 +26,12 @@ export function Vermogensevolutie({
   rekeningen,
   transacties,
   overboekingen,
+  waarderingen,
 }: {
   rekeningen: Rekening[]
   transacties: Transactie[]
   overboekingen: Overboeking[]
+  waarderingen: Waardering[]
 }) {
   const { t } = useT()
   const [verborgen, setVerborgen] = useState<Set<string>>(new Set())
@@ -38,8 +40,8 @@ export function Vermogensevolutie({
   const huidige = nu.getFullYear() + '-' + String(nu.getMonth() + 1).padStart(2, '0')
   const maanden = useMemo(() => laatsteMaanden(huidige, 12), [huidige])
   const data = useMemo(
-    () => vermogensEvolutie(rekeningen, transacties, overboekingen, maanden),
-    [rekeningen, transacties, overboekingen, maanden],
+    () => vermogensEvolutie(rekeningen, transacties, overboekingen, waarderingen, maanden),
+    [rekeningen, transacties, overboekingen, waarderingen, maanden],
   )
 
   if (rekeningen.length === 0 || data.length === 0) return null
@@ -73,7 +75,7 @@ export function Vermogensevolutie({
   const verschil = laatsteTotaal - eersteTotaal
 
   return (
-    <Kaart titel={t('Vermogensevolutie')} bijschrift={t('Je totale vermogen over de laatste 12 maanden')}>
+    <Kaart titel={t('Vermogensevolutie')} bijschrift={t('Wat er op je rekeningen staat, over de laatste 12 maanden')}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
         <span className="bedrag-groot">{formatEuro(laatsteTotaal)}</span>
         <span className="rij-meta" style={{ color: verschil >= 0 ? 'var(--positive)' : 'var(--negative)' }}>

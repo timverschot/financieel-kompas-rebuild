@@ -19,6 +19,7 @@ import type {
   TerugkerendePost,
   Transactie,
   Verrekening,
+  Waardering,
 } from '../schema'
 import type { Logregel } from './events'
 import { vergelijkStempel, type Stempel } from './hlc'
@@ -44,6 +45,7 @@ export type Staat = {
   streepjescodes: Map<string, Streepjescode>
   dossierdocumenten: Map<string, DossierDocument>
   ordeningen: Map<string, Ordening>
+  waarderingen: Map<string, Waardering>
 }
 
 // Het HLC-stempel van een logregel, met terugval op 'tijdstip' voor oude regels
@@ -87,6 +89,7 @@ export function pasToe(regels: Logregel[]): Staat {
     streepjescodes: new Map(),
     dossierdocumenten: new Map(),
     ordeningen: new Map(),
+    waarderingen: new Map(),
   }
   for (const r of gesorteerd) {
     const g = r.gebeurtenis
@@ -204,6 +207,12 @@ export function pasToe(regels: Logregel[]): Staat {
         break
       case 'ordening.verwijderd':
         staat.ordeningen.delete(g.payload.id)
+        break
+      case 'waardering.bewaard':
+        staat.waarderingen.set(g.payload.id, g.payload)
+        break
+      case 'waardering.verwijderd':
+        staat.waarderingen.delete(g.payload.id)
         break
       case 'dossierdocument.bewaard':
         staat.dossierdocumenten.set(g.payload.id, g.payload)

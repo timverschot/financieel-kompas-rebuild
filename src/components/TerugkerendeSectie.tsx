@@ -2,8 +2,8 @@ import { useState } from 'react'
 import type { Categorie, Rekening, TerugkerendePost, Transactie } from '../data/schema'
 import { TerugkerendePostFormulier, frequentieNaam } from './TerugkerendePostFormulier'
 import { formatEuro } from '../utils/format'
-import { vandaag } from '../utils/datum'
-import { frequentieVan, maandbedrag, opzijPerMaand, valtInMaand, volgendeVervaldag } from '../utils/vastelast'
+import { dagJaar, maandJaarLabel, vandaag } from '../utils/datum'
+import { frequentieVan, isGestopt, maandbedrag, opzijPerMaand, valtInMaand, verschuifMaand, volgendeVervaldag } from '../utils/vastelast'
 import { geboekteVasteLasten, vasteLastTransactieId } from '../utils/vooruitblik'
 import { Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
@@ -99,10 +99,11 @@ export function TerugkerendeSectie({
             // handmatig ingetikte huur hier als "nog niet geboekt" stond terwijl de
             // rest van de app hem al herkende — één klik en je huur stond dubbel.
             const geboekt = geboekteIds.has(p.id)
+            const gestopt = isGestopt(p, maand)
             const dezeMaand = valtInMaand(p, maand)
             const periodiek = frequentieVan(p) !== 'maand'
-            const volgende = periodiek ? volgendeVervaldag(p, vandaag()) : null
-            const opzij = opzijPerMaand(p)
+            const volgende = periodiek && !gestopt ? volgendeVervaldag(p, vandaag()) : null
+            const opzij = gestopt ? 0 : opzijPerMaand(p)
             return (
               // Bovenaan uitlijnen: bij een niet-maandelijkse post staat er een
               // tweede regel tekst, en met verticaal centreren zweefde de badge
@@ -114,9 +115,16 @@ export function TerugkerendeSectie({
                     {t('{bedrag} · dag {dag}', { bedrag: formatEuro(p.bedrag), dag: p.dag })}
                     {periodiek && <> · {frequentieNaam(t, frequentieVan(p))}</>}
                   </span>
-                  {periodiek && (
+                  {/* Wánneer hij gestopt is, hoort zichtbaar te staan — niet in een
+                      tooltip, want die bestaat niet op een telefoon. */}
+                  {gestopt && p.eindMaand && (
                     <span className="rij-meta">
-                      {volgende && t('volgende keer {datum}', { datum: volgende })}
+                      {t('Gestopt na {maand}', { maand: maandJaarLabel(`${verschuifMaand(p.eindMaand, -1)}-01`) })}
+                    </span>
+                  )}
+                  {periodiek && !gestopt && (
+                    <span className="rij-meta">
+                      {volgende && t('volgende keer {datum}', { datum: dagJaar(volgende) })}
                       {opzij > 0
                         ? t(' · {bedrag} per maand opzij', { bedrag: formatEuro(opzij) })
                         : t(' · {bedrag} per maand omgerekend', { bedrag: formatEuro(-maandbedrag(p)) })}
@@ -124,7 +132,13 @@ export function TerugkerendeSectie({
                   )}
                 </div>
                 <span className="rij-acties">
-                  {!dezeMaand ? (
+                  {gestopt ? (
+                    // Gestopt is iets anders dan "deze maand niet aan de beurt", en
+                    // dat verschil moet je kunnen zien: anders lees je bij een
+                    // opgezegd abonnement elke maand opnieuw "Niet deze maand" en
+                    // snap je niet waarom er niets meer gebeurt.
+                    <span className="badge badge-neutraal">{t('Gestopt')}</span>
+                  ) : !dezeMaand ? (
                     // Niet deze maand aan de beurt: niets te boeken. Zonder dit zou
                     // je een jaarpremie elke maand opnieuw kunnen inboeken.
                     <span className="badge badge-neutraal">{t('Niet deze maand')}</span>

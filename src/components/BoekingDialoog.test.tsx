@@ -23,6 +23,7 @@ function toon(extra: Partial<Parameters<typeof BoekingDialoog>[0]> = {}) {
       categorieen={[]}
       handelaars={[]}
       overboekingen={overboekingen}
+      waarderingen={[]}
       transacties={[]}
       onTransactie={onTransactie}
       onVastePost={onVastePost}

@@ -13,11 +13,12 @@ export const REKENING_TYPE_LABEL: Record<RekeningType, string> = {
   termijn: 'Termijnrekening',
   effecten: 'Effectenrekening',
   cash: 'Cash',
+  krediet: 'Kredietkaart of kredietopening',
 }
 
 // De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
 // en het leegmaken na het opslaan niet uit elkaar kunnen lopen.
-const BEGIN = { naam: '', beginsaldo: '', type: 'betaal' as RekeningType, rekeningnummer: '', rubriek: '' }
+const BEGIN = { naam: '', beginsaldo: '', type: 'betaal' as RekeningType, rekeningnummer: '', rubriek: '', kredietlimiet: '', afrekendag: '' }
 
 // Formulier om een rekening aan te maken of te bewerken: naam, beginsaldo, type,
 // rekeningnummer (IBAN) en een vrije rubriek. Staat in App.tsx al binnen een
@@ -37,7 +38,19 @@ export function RekeningFormulier({
   const [type, setType] = useState<RekeningType>(BEGIN.type)
   const [rekeningnummer, setRekeningnummer] = useState(BEGIN.rekeningnummer)
   const [rubriek, setRubriek] = useState(BEGIN.rubriek)
-  const geldig = naam.trim().length > 0
+  const [kredietlimiet, setKredietlimiet] = useState(BEGIN.kredietlimiet)
+  const [afrekendag, setAfrekendag] = useState(BEGIN.afrekendag)
+  // De twee kredietvelden gelden alleen bij het kredietype. Ze blijven allebei
+  // optioneel: wie zijn limiet niet weet, moet zijn kaart toch kunnen invoeren.
+  const isKrediet = type === 'krediet'
+  // Een ingevuld maar ongeldig kredietveld hoort de opslag tegen te houden. Liet je
+  // het stil vallen, dan verdween een eerder bewaarde afrekendag zonder een woord —
+  // een rekening wordt bij het opslaan volledig vervangen, niet samengevoegd.
+  const limietFout = isKrediet && kredietlimiet.trim() !== '' && !(invoerNaarCenten(kredietlimiet) > 0)
+  const dagFout =
+    isKrediet && afrekendag.trim() !== '' && !(Number.isInteger(Number(afrekendag)) && Number(afrekendag) >= 1 && Number(afrekendag) <= 28)
+  const naamFout = naam.trim().length === 0
+  const geldig = !naamFout && !limietFout && !dagFout
 
   // Zet alle velden terug op hun beginwaarde.
   const leegmaken = useCallback(() => {
@@ -46,6 +59,8 @@ export function RekeningFormulier({
     setType(BEGIN.type)
     setRekeningnummer(BEGIN.rekeningnummer)
     setRubriek(BEGIN.rubriek)
+    setKredietlimiet(BEGIN.kredietlimiet)
+    setAfrekendag(BEGIN.afrekendag)
   }, [])
 
   useEffect(() => {
@@ -55,6 +70,8 @@ export function RekeningFormulier({
       setType(bewerken.type ?? 'betaal')
       setRekeningnummer(bewerken.rekeningnummer ?? '')
       setRubriek(bewerken.rubriek ?? '')
+      setKredietlimiet(bewerken.kredietlimiet === undefined ? '' : centenNaarInvoer(bewerken.kredietlimiet))
+      setAfrekendag(bewerken.afrekendag === undefined ? '' : String(bewerken.afrekendag))
     } else {
       leegmaken()
     }
@@ -66,6 +83,10 @@ export function RekeningFormulier({
     const centen = invoerNaarCenten(beginsaldo)
     const nr = rekeningnummer.trim()
     const rub = rubriek.trim()
+    // Alleen bij een kredietrekening wegschrijven. Wissel je het type terug naar
+    // 'betaal', dan horen limiet en afrekendag niet stilletjes te blijven staan.
+    const limiet = isKrediet ? invoerNaarCenten(kredietlimiet) : NaN
+    const dag = isKrediet ? Number(afrekendag) : NaN
     await onOpslaan({
       id: bewerken ? bewerken.id : nieuwId(),
       naam: naam.trim(),
@@ -74,6 +95,8 @@ export function RekeningFormulier({
       ...(nr ? { rekeningnummer: nr } : {}),
       ...(rub ? { rubriek: rub } : {}),
       ...(bewerken?.gearchiveerd ? { gearchiveerd: true } : {}),
+      ...(Number.isFinite(limiet) && limiet > 0 ? { kredietlimiet: limiet } : {}),
+      ...(Number.isInteger(dag) && dag >= 1 && dag <= 28 ? { afrekendag: dag } : {}),
     })
     // Bij een NIEUWE rekening blijft 'bewerken' null, dus de useEffect hierboven
     // draait niet. Daarom hier leegmaken, anders blijft alles ingevuld staan en
@@ -116,6 +139,49 @@ export function RekeningFormulier({
           />
         </div>
       </div>
+
+      {isKrediet && (
+        <div className="veldrij">
+          <div className="veldgroep">
+            <label className="label-caps" htmlFor="kredietlimiet">
+              {t('Kredietlimiet (€)')}
+            </label>
+            <input
+              id="kredietlimiet"
+              inputMode="decimal"
+              placeholder={t('optioneel')}
+              value={kredietlimiet}
+              onChange={(e) => setKredietlimiet(e.target.value)}
+              aria-describedby="kredietlimiet-uitleg"
+              aria-invalid={limietFout || undefined}
+            />
+            <p className="rij-meta" id="kredietlimiet-uitleg" role={limietFout ? 'alert' : undefined} style={{ margin: 0 }}>
+              {limietFout
+                ? t('Geef een bedrag boven nul, of laat het veld leeg.')
+                : t('Hoeveel je maximaal mag opnemen. Vul dit in als een positief bedrag, ook al staat je saldo negatief.')}
+            </p>
+          </div>
+          <div className="veldgroep">
+            <label className="label-caps" htmlFor="afrekendag">
+              {t('Dag waarop de kaart wordt afgerekend')}
+            </label>
+            <input
+              id="afrekendag"
+              inputMode="numeric"
+              placeholder={t('1-28, optioneel')}
+              value={afrekendag}
+              onChange={(e) => setAfrekendag(e.target.value)}
+              aria-describedby="afrekendag-uitleg"
+              aria-invalid={dagFout || undefined}
+            />
+            <p className="rij-meta" id="afrekendag-uitleg" role={dagFout ? 'alert' : undefined} style={{ margin: 0 }}>
+              {dagFout
+                ? t('Kies een dag tussen 1 en 28, of laat het veld leeg.')
+                : t('De dag van de maand waarop je kaartrekening wordt opgemaakt.')}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="veldrij">
         <div className="veldgroep">

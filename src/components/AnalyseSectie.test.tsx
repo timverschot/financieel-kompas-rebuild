@@ -24,6 +24,7 @@ function toon(transacties: Transactie[]) {
       categorieen={[]}
       rekeningen={rekeningen}
       overboekingen={[]}
+      waarderingen={[]}
       terugkerendePosten={[]}
     />,
   )

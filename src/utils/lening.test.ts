@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { Aflossing, Lening } from '../data/schema'
+import type { Aflossing, Lening, Transactie } from '../data/schema'
 import {
   aflossingenVan,
   totaalAfgelost,
@@ -9,6 +9,7 @@ import {
   isAfbetaald,
   evolutie,
   maandenTotEinde,
+  boekingVoorAflossing,
 } from './lening'
 
 const lening = (extra: Partial<Lening> = {}): Lening => ({
@@ -108,5 +109,56 @@ describe('maandenTotEinde', () => {
 
   it('is negatief wanneer de termijn verstreken is', () => {
     expect(maandenTotEinde('2026-05-01', '2026-07-01')).toBe(-2)
+  })
+})
+
+// --- De brug aflossing ↔ boeking (ronde 38) ----------------------------------
+
+describe('boekingVoorAflossing', () => {
+  const boeking = (id: string, datum: string, bedrag: number): Transactie => ({
+    id,
+    datum,
+    omschrijving: 'Bank',
+    bedrag,
+    rekeningId: 'r1',
+  })
+
+  it('herkent bij een KREDIET een uitgave van hetzelfde bedrag op dezelfde dag', () => {
+    const tx = [boeking('t1', '2026-07-05', -250_00)]
+    expect(boekingVoorAflossing('2026-07-05', 250_00, tx, 'geleend')?.id).toBe('t1')
+  })
+
+  it('herkent bij UITGELEEND geld juist een inkomst', () => {
+    // Krijg je terugbetaald wat je uitleende, dan is dat een inkomst. Tekenblind
+    // vergelijken zou hier het verkeerde antwoord geven.
+    const tx = [boeking('t1', '2026-07-05', 250_00)]
+    expect(boekingVoorAflossing('2026-07-05', 250_00, tx, 'uitgeleend')?.id).toBe('t1')
+  })
+
+  it('wijst een INKOMST niet aan als afbetaling van een krediet', () => {
+    // Het geval dat de verificatieronde vond: op de dag van je aflossing van € 250
+    // staat er ook een terugbetaling van € 250 op je rekening.
+    const tx = [boeking('t1', '2026-07-05', 250_00)]
+    expect(boekingVoorAflossing('2026-07-05', 250_00, tx, 'geleend')).toBeUndefined()
+  })
+
+  it('zwijgt bij een ander bedrag of een andere dag', () => {
+    const tx = [boeking('t1', '2026-07-05', -250_00)]
+    expect(boekingVoorAflossing('2026-07-05', 250_01, tx, 'geleend')).toBeUndefined()
+    expect(boekingVoorAflossing('2026-07-06', 250_00, tx, 'geleend')).toBeUndefined()
+  })
+
+  it('slaat een boeking over die al aan een andere aflossing hangt', () => {
+    // Twee aflossingen van hetzelfde bedrag op dezelfde dag horen niet allebei naar
+    // dezelfde boeking te wijzen.
+    const tx = [boeking('t1', '2026-07-05', -250_00), boeking('t2', '2026-07-05', -250_00)]
+    const al: Aflossing[] = [{ id: 'a1', leningId: 'l1', datum: '2026-07-05', bedrag: 250_00, transactieId: 't1' }]
+    expect(boekingVoorAflossing('2026-07-05', 250_00, tx, 'geleend', al)?.id).toBe('t2')
+  })
+
+  it('geeft niets terug wanneer alle kandidaten al gekoppeld zijn', () => {
+    const tx = [boeking('t1', '2026-07-05', -250_00)]
+    const al: Aflossing[] = [{ id: 'a1', leningId: 'l1', datum: '2026-07-05', bedrag: 250_00, transactieId: 't1' }]
+    expect(boekingVoorAflossing('2026-07-05', 250_00, tx, 'geleend', al)).toBeUndefined()
   })
 })

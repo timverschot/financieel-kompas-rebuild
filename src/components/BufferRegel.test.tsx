@@ -14,6 +14,7 @@ function toon(rekeningen: Rekening[], posten: TerugkerendePost[]) {
       transacties={[]}
       overboekingen={[]}
       terugkerendePosten={posten}
+      waarderingen={[]}
       vandaagISO="2026-07-15"
     />,
   )

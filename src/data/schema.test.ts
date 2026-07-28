@@ -1,11 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import {
+  AflossingSchema,
   BudgetSchema,
   DossierDocumentSchema,
   GedeeldeKostSchema,
   OverboekingSchema,
   RekeningSchema,
+  TerugkerendePostSchema,
   TransactieSchema,
+  WaarderingSchema,
 } from './schema'
 
 const geldig = { id: 't1', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 2400, rekeningId: 'r1' }
@@ -147,5 +150,94 @@ describe('koppelingen aan een transactie (ronde 22)', () => {
     expect(DossierDocumentSchema.safeParse({ ...document, transactieId: 't1' }).success).toBe(true)
     // En een document van vóór deze uitbreiding blijft gewoon geldig.
     expect(DossierDocumentSchema.safeParse({ ...document, dossierId: 'dos-1' }).success).toBe(true)
+  })
+})
+
+// --- Ronde 38: kredietrekening, waardering, einddatum, aflossingsbrug --------
+
+describe('RekeningSchema — kredietrekening', () => {
+  it('aanvaardt het type krediet met limiet en afrekendag', () => {
+    const r = RekeningSchema.safeParse({
+      id: 'k1',
+      naam: 'Visa',
+      beginsaldo: -120_000,
+      type: 'krediet',
+      kredietlimiet: 250_000,
+      afrekendag: 15,
+    })
+    expect(r.success).toBe(true)
+  })
+
+  it('weigert een afrekendag buiten 1-28', () => {
+    const basis = { id: 'k1', naam: 'Visa', beginsaldo: 0, type: 'krediet' as const }
+    expect(RekeningSchema.safeParse({ ...basis, afrekendag: 0 }).success).toBe(false)
+    expect(RekeningSchema.safeParse({ ...basis, afrekendag: 29 }).success).toBe(false)
+    expect(RekeningSchema.safeParse({ ...basis, afrekendag: 28 }).success).toBe(true)
+  })
+
+  it('weigert een limiet van nul of negatief — een limiet is een positief bedrag', () => {
+    const basis = { id: 'k1', naam: 'Visa', beginsaldo: 0, type: 'krediet' as const }
+    expect(RekeningSchema.safeParse({ ...basis, kredietlimiet: 0 }).success).toBe(false)
+    expect(RekeningSchema.safeParse({ ...basis, kredietlimiet: -1 }).success).toBe(false)
+  })
+
+  it('laat een bestaande rekening zonder de nieuwe velden geldig — geen migratie', () => {
+    expect(RekeningSchema.safeParse({ id: 'r1', naam: 'Zicht', beginsaldo: 100 }).success).toBe(true)
+  })
+})
+
+describe('WaarderingSchema', () => {
+  it('aanvaardt een geldige waardering', () => {
+    const r = WaarderingSchema.safeParse({
+      id: 'w1',
+      rekeningId: 'r1',
+      datum: '2026-07-15',
+      saldo: 1_234_56,
+      notitie: 'jaaroverzicht',
+    })
+    expect(r.success).toBe(true)
+  })
+
+  it('aanvaardt een NEGATIEVE stand — een kredietrekening staat negatief', () => {
+    expect(
+      WaarderingSchema.safeParse({ id: 'w1', rekeningId: 'r1', datum: '2026-07-15', saldo: -50_000 }).success,
+    ).toBe(true)
+  })
+
+  it('weigert een verkeerde datumvorm en een niet-geheel bedrag', () => {
+    expect(WaarderingSchema.safeParse({ id: 'w', rekeningId: 'r', datum: '15-07-2026', saldo: 0 }).success).toBe(false)
+    expect(WaarderingSchema.safeParse({ id: 'w', rekeningId: 'r', datum: '2026-07-15', saldo: 1.5 }).success).toBe(false)
+  })
+})
+
+describe('TerugkerendePostSchema — eindMaand', () => {
+  const basis = { id: 'p1', omschrijving: 'Huur', bedrag: -95_000, rekeningId: 'r1', dag: 5 }
+
+  it('aanvaardt een eindmaand in de vorm JJJJ-MM', () => {
+    expect(TerugkerendePostSchema.safeParse({ ...basis, eindMaand: '2026-09' }).success).toBe(true)
+  })
+
+  it('weigert een andere vorm', () => {
+    expect(TerugkerendePostSchema.safeParse({ ...basis, eindMaand: '2026-09-01' }).success).toBe(false)
+  })
+
+  it('blijft geldig zonder eindmaand — geen migratie', () => {
+    expect(TerugkerendePostSchema.safeParse(basis).success).toBe(true)
+  })
+})
+
+describe('AflossingSchema — transactieId', () => {
+  const basis = { id: 'a1', leningId: 'l1', datum: '2026-07-05', bedrag: 250_00 }
+
+  it('aanvaardt een gekoppelde boeking', () => {
+    expect(AflossingSchema.safeParse({ ...basis, transactieId: 't1' }).success).toBe(true)
+  })
+
+  it('blijft geldig zonder koppeling', () => {
+    expect(AflossingSchema.safeParse(basis).success).toBe(true)
+  })
+
+  it('weigert een lege koppeling', () => {
+    expect(AflossingSchema.safeParse({ ...basis, transactieId: '' }).success).toBe(false)
   })
 })

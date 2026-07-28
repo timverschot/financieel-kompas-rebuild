@@ -71,3 +71,46 @@ describe('TerugkerendeSectie — andere termijnen', () => {
     expect(within(lijst()).queryByText(/volgende keer/)).not.toBeInTheDocument()
   })
 })
+
+describe('TerugkerendeSectie — een gestopte post (ronde 38)', () => {
+  const opgezegd: TerugkerendePost = { ...huur, id: 'weg', omschrijving: 'Netflix', eindMaand: '2026-07' }
+
+  it('toont "Gestopt" en niet "Niet deze maand"', () => {
+    // Het verschil moet zichtbaar zijn: anders lees je bij een opgezegd abonnement
+    // elke maand opnieuw "Niet deze maand" en snap je niet waarom er niets gebeurt.
+    toon([opgezegd], '2026-07')
+    const rij = screen.getByText('Netflix').closest('li') as HTMLElement
+    expect(within(rij).getByText('Gestopt')).toBeInTheDocument()
+    expect(within(rij).queryByText('Niet deze maand')).not.toBeInTheDocument()
+  })
+
+  it('biedt geen knop "Boek in" meer aan', () => {
+    toon([opgezegd], '2026-07')
+    const rij = screen.getByText('Netflix').closest('li') as HTMLElement
+    expect(within(rij).queryByRole('button', { name: /Boek in/i })).not.toBeInTheDocument()
+  })
+
+  it('vraagt bij een PERIODIEKE gestopte post niet langer om geld opzij te zetten', () => {
+    // Zonder deze test bleef de regel "€ 200,00 per maand opzij" onbewaakt: de
+    // gestopte testpost hierboven is maandelijks, en dat blok toont zich alleen bij
+    // een periodieke post.
+    const opgezegdePremie: TerugkerendePost = { ...premie, opbouwen: true, eindMaand: '2026-09' }
+    toon([opgezegdePremie], '2026-09')
+    const rij = screen.getByText('Autoverzekering').closest('li') as HTMLElement
+    expect(within(rij).getByText('Gestopt')).toBeInTheDocument()
+    expect(within(rij).queryByText(/per maand opzij/)).not.toBeInTheDocument()
+    expect(within(rij).queryByText(/volgende keer/)).not.toBeInTheDocument()
+  })
+
+  it('zegt wanneer de post gestopt is, zichtbaar en niet in een tooltip', () => {
+    toon([{ ...premie, eindMaand: '2026-09' }], '2026-09')
+    const rij = screen.getByText('Autoverzekering').closest('li') as HTMLElement
+    expect(within(rij).getByText(/Gestopt na/)).toBeInTheDocument()
+  })
+
+  it('toont hem in de maand vóór de eindmaand nog gewoon', () => {
+    toon([opgezegd], '2026-06')
+    const rij = screen.getByText('Netflix').closest('li') as HTMLElement
+    expect(within(rij).queryByText('Gestopt')).not.toBeInTheDocument()
+  })
+})

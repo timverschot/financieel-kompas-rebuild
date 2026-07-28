@@ -1,4 +1,4 @@
-import type { Overboeking, Rekening, Spaardoel, Transactie } from '../data/schema'
+import type { Overboeking, Rekening, Spaardoel, Transactie, Waardering } from '../data/schema'
 import { saldoOpDatum } from './saldo'
 import { vandaag } from './datum'
 import { datumVoorDoel, maandbedragVoorDoel } from './rekenhulp'
@@ -12,14 +12,15 @@ export function rekeningSaldo(
   rekeningId: string,
   rekeningen: Rekening[],
   transacties: Transactie[],
-  overboekingen: Overboeking[] = [],
+  overboekingen: Overboeking[],
+  waarderingen: Waardering[],
 ): number {
   const begin = rekeningen.find((r) => r.id === rekeningId)?.beginsaldo ?? 0
   // Tot VANDAAG, net als de Rekeningen-pagina en het rekeningdetail. Zonder die
   // grens telde een storting die je alvast voor volgende maand inboekte al mee in
   // je spaardoel, terwijl het rekeningsaldo ernaast hem nog niet toonde: twee
   // schermen, één rekening, twee bedragen.
-  return saldoOpDatum(rekeningId, begin, transacties, overboekingen, vandaag())
+  return saldoOpDatum(rekeningId, begin, transacties, overboekingen, waarderingen, vandaag())
 }
 
 export type SpaardoelVoortgang = { huidig: number; doel: number; resterend: number; fractie: number }
@@ -31,10 +32,11 @@ export function spaardoelVoortgang(
   doel: Spaardoel,
   rekeningen: Rekening[],
   transacties: Transactie[],
-  overboekingen: Overboeking[] = [],
+  overboekingen: Overboeking[],
+  waarderingen: Waardering[],
 ): SpaardoelVoortgang {
   const huidig = doel.gekoppeldeRekeningId
-    ? rekeningSaldo(doel.gekoppeldeRekeningId, rekeningen, transacties, overboekingen)
+    ? rekeningSaldo(doel.gekoppeldeRekeningId, rekeningen, transacties, overboekingen, waarderingen)
     : doel.huidigBedrag
   const resterend = Math.max(doel.doelbedrag - huidig, 0)
   const fractie = doel.doelbedrag > 0 ? Math.min(Math.max(huidig / doel.doelbedrag, 0), 1) : 0
@@ -89,7 +91,8 @@ export function spaardoelTempo(
   doel: Spaardoel,
   rekeningen: Rekening[],
   transacties: Transactie[],
-  overboekingen: Overboeking[] = [],
+  overboekingen: Overboeking[],
+  waarderingen: Waardering[],
   vandaagISO: string,
   venster: number = TEMPO_VENSTER_MAANDEN,
 ): SpaardoelTempo {
@@ -108,9 +111,18 @@ export function spaardoelTempo(
     overboekingen.some((o) => raaktRekening(o) && o.datum <= begin)
   if (!heeftGeschiedenis) return { perMaand: null, gemetenMaanden: 0 }
 
+  // Ligt er een waardering IN het meetvenster, dan is het verschil tussen begin en
+  // eind geen spaargedrag maar een koerssprong. Die delen door drie en presenteren
+  // als "je spaart € 1.000 per maand" zou een cijfer opleveren waar de gebruiker op
+  // rekent en dat nergens op slaat. Dan zeggen we liever niets — dezelfde regel als
+  // bij een rekening zonder geschiedenis.
+  if (waarderingen.some((w) => w.rekeningId === rekeningId && w.datum > begin && w.datum <= eind)) {
+    return { perMaand: null, gemetenMaanden: 0 }
+  }
+
   const beginsaldo = rekeningen.find((r) => r.id === rekeningId)?.beginsaldo ?? 0
-  const toen = saldoOpDatum(rekeningId, beginsaldo, transacties, overboekingen, begin)
-  const nu = saldoOpDatum(rekeningId, beginsaldo, transacties, overboekingen, eind)
+  const toen = saldoOpDatum(rekeningId, beginsaldo, transacties, overboekingen, waarderingen, begin)
+  const nu = saldoOpDatum(rekeningId, beginsaldo, transacties, overboekingen, waarderingen, eind)
   return { perMaand: Math.round((nu - toen) / venster), gemetenMaanden: venster }
 }
 

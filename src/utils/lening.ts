@@ -1,4 +1,4 @@
-import type { Aflossing, Lening, LeningRichting } from '../data/schema'
+import type { Aflossing, Lening, LeningRichting, Transactie } from '../data/schema'
 
 // Rekenlaag voor de leningen/kredieten-module. Zuivere functies in gehele centen,
 // zodat ze los en deterministisch getest kunnen worden. De richting ('uitgeleend'
@@ -69,4 +69,38 @@ export function maandenTotEinde(einddatumISO: string, vandaagISO: string): numbe
   const e = jaarMaand(einddatumISO)
   const v = jaarMaand(vandaagISO)
   return (e.j - v.j) * 12 + (e.m - v.m)
+}
+
+/**
+ * Staat er al een boeking die deze aflossing zou kunnen zijn? (ronde 38)
+ *
+ * Waarom dit bestaat: een maandaflossing werd tot nu toe twee keer ingegeven —
+ * één keer als transactie op je rekening en één keer als aflossing op de lening —
+ * en niets vergeleek die twee. Je zag dus twee keer hetzelfde geld vertrekken
+ * zonder dat de app er iets over zei.
+ *
+ * De criteria zijn bewust dezelfde als bij het inlezen van een bankuittreksel
+ * (`markeerDubbels` in utils/bankimport.ts): dezelfde dag en hetzelfde bedrag tot
+ * op de cent. De omschrijving speelt geen rol — bij een bank staat daar zelden
+ * hetzelfde als wat jij intikt.
+ *
+ * Een aflossing is altijd een POSITIEF bedrag, maar de bijbehorende boeking niet:
+ * los je een krediet af, dan is dat een UITGAVE (negatief); krijg je geld terug dat
+ * je had uitgeleend, dan is dat een INKOMST (positief). Daarom bepaalt de richting
+ * van de lening welk teken we zoeken. Zonder dat onderscheid stelde de app een
+ * terugbetaling van bol.com van € 250 voor als "dit is je afbetaling van € 250".
+ *
+ * Het blijft een vermoeden. De app markeert, ze beslist niet — een aflossing kan
+ * best van een rekening komen die je niet in Kompal hebt staan.
+ */
+export function boekingVoorAflossing(
+  datum: string,
+  bedrag: number,
+  transacties: Transactie[],
+  richting: LeningRichting,
+  alGekoppeld: Aflossing[] = [],
+): Transactie | undefined {
+  const bezet = new Set(alGekoppeld.map((a) => a.transactieId).filter((id): id is string => !!id))
+  const gezocht = richting === 'geleend' ? -Math.abs(bedrag) : Math.abs(bedrag)
+  return transacties.find((t) => t.datum === datum && t.bedrag === gezocht && !bezet.has(t.id))
 }

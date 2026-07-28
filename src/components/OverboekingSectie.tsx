@@ -1,4 +1,4 @@
-import type { Overboeking, Rekening, Transactie } from '../data/schema'
+import type { Overboeking, Rekening, Transactie, Waardering } from '../data/schema'
 import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
@@ -17,6 +17,7 @@ export function OverboekingSectie({
   overboekingen,
   rekeningen,
   transacties = [],
+  waarderingen,
   bewerken,
   onOpslaan,
   onVerwijderen,
@@ -28,6 +29,7 @@ export function OverboekingSectie({
   // Nodig om per rekening het saldo van vandaag te tonen in de keuzelijsten, zodat
   // je ziet wat er beschikbaar is vóór je overboekt.
   transacties?: Transactie[]
+  waarderingen: Waardering[]
   bewerken?: Overboeking | null
   onOpslaan: (o: Overboeking) => Promise<void> | void
   onVerwijderen: (id: string) => Promise<void> | void
@@ -83,6 +85,7 @@ export function OverboekingSectie({
             rekeningen={rekeningen}
             overboekingen={overboekingen}
             transacties={transacties}
+            waarderingen={waarderingen}
             bewerken={bewerken}
             onOpslaan={onOpslaan}
             onStopBewerken={onStopBewerken}

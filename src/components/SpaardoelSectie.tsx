@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Kind, Overboeking, Rekening, Spaardoel, Transactie } from '../data/schema'
+import type { Kind, Overboeking, Rekening, Spaardoel, Transactie, Waardering } from '../data/schema'
 import { SpaardoelFormulier } from './SpaardoelFormulier'
 import { spaardoelPlan, spaardoelTempo, TEMPO_VENSTER_MAANDEN } from '../utils/spaardoel'
 import { spaardoelVoortgang, type SpaardoelPlan } from '../utils/spaardoel'
@@ -87,6 +87,7 @@ export function SpaardoelSectie({
   rekeningen,
   transacties,
   overboekingen = [],
+  waarderingen,
   gezinsleden = [],
   onOpslaan,
   onVerwijderen,
@@ -99,6 +100,9 @@ export function SpaardoelSectie({
   // Overboekingen tellen mee in het saldo van een gekoppelde rekening: geld dat je
   // naar je spaarrekening boekt, hoort in je spaardoel te verschijnen.
   overboekingen?: Overboeking[]
+  // Een waardering zet het saldo van een gekoppelde rekening op een vaste stand;
+  // zonder haar zou een belegging in je spaardoel op een verouderd bedrag blijven.
+  waarderingen: Waardering[]
   onOpslaan: (d: Spaardoel) => Promise<void> | void
   onVerwijderen: (id: string) => Promise<void> | void
 }) {
@@ -173,8 +177,8 @@ export function SpaardoelSectie({
         {spaardoelen.length > 0 && (
           <ul className="lijst">
             {spaardoelen.map((d) => {
-              const v = spaardoelVoortgang(d, rekeningen, transacties, overboekingen)
-              const tempo = spaardoelTempo(d, rekeningen, transacties, overboekingen, nu)
+              const v = spaardoelVoortgang(d, rekeningen, transacties, overboekingen, waarderingen)
+              const tempo = spaardoelTempo(d, rekeningen, transacties, overboekingen, waarderingen, nu)
               const plan = spaardoelPlan(d, v, tempo, nu)
               const kleur = d.kleur ?? 'var(--positive)'
               const manueel = !d.gekoppeldeRekeningId

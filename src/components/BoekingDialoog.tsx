@@ -11,6 +11,7 @@ import type {
   Streepjescode,
   TerugkerendePost,
   Transactie,
+  Waardering,
 } from '../data/schema'
 import { Dialoog } from '../ui/Dialoog'
 import { TransactieFormulier } from './TransactieFormulier'
@@ -67,6 +68,7 @@ export function BoekingDialoog({
   gezinsleden = [],
   overboekingen,
   transacties,
+  waarderingen,
   dossiers = [],
   onTransactie,
   onVastePost,
@@ -88,6 +90,7 @@ export function BoekingDialoog({
   gezinsleden?: Kind[]
   overboekingen: Overboeking[]
   transacties: Transactie[]
+  waarderingen: Waardering[]
   /** De dossiers waarin een uitgave meteen gedeeld kan worden. */
   dossiers?: Dossier[]
   onTransactie: (t: Transactie) => Promise<void> | void
@@ -183,6 +186,7 @@ export function BoekingDialoog({
             rekeningen={rekeningen}
             overboekingen={overboekingen}
             transacties={transacties}
+            waarderingen={waarderingen}
             onOpslaan={onOverboeking}
             onOpgeslagen={naOpslaan}
           />

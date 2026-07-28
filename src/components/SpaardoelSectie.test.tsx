@@ -14,7 +14,7 @@ describe('SpaardoelSectie', () => {
     const user = userEvent.setup()
     const onOpslaan = vi.fn()
     render(
-      <SpaardoelSectie spaardoelen={[]} rekeningen={rekeningen} transacties={[]} onOpslaan={onOpslaan} onVerwijderen={vi.fn()} />,
+      <SpaardoelSectie spaardoelen={[]} rekeningen={rekeningen} transacties={[]} waarderingen={[]} onOpslaan={onOpslaan} onVerwijderen={vi.fn()} />,
     )
 
     await user.type(screen.getByLabelText('Doelnaam'), 'Buffer')
@@ -30,7 +30,7 @@ describe('SpaardoelSectie', () => {
   it('toont een voortgangsbalk voor een bestaand doel', () => {
     const doel: Spaardoel = { id: 'd1', naam: 'Buffer', doelbedrag: 300000, huidigBedrag: 150000 }
     render(
-      <SpaardoelSectie spaardoelen={[doel]} rekeningen={rekeningen} transacties={[]} onOpslaan={vi.fn()} onVerwijderen={vi.fn()} />,
+      <SpaardoelSectie spaardoelen={[doel]} rekeningen={rekeningen} transacties={[]} waarderingen={[]} onOpslaan={vi.fn()} onVerwijderen={vi.fn()} />,
     )
     expect(screen.getByRole('progressbar', { name: 'Buffer' })).toBeInTheDocument()
   })
@@ -43,6 +43,7 @@ describe('SpaardoelSectie', () => {
         spaardoelen={[metIcoon, zonder]}
         rekeningen={rekeningen}
         transacties={[]}
+        waarderingen={[]}
         onOpslaan={vi.fn()}
         onVerwijderen={vi.fn()}
       />,
@@ -56,7 +57,7 @@ describe('SpaardoelSectie', () => {
     const user = userEvent.setup()
     const onOpslaan = vi.fn()
     render(
-      <SpaardoelSectie spaardoelen={[]} rekeningen={rekeningen} transacties={[]} onOpslaan={onOpslaan} onVerwijderen={vi.fn()} />,
+      <SpaardoelSectie spaardoelen={[]} rekeningen={rekeningen} transacties={[]} waarderingen={[]} onOpslaan={onOpslaan} onVerwijderen={vi.fn()} />,
     )
 
     await user.type(screen.getByLabelText('Doelnaam'), 'Reis')
@@ -73,7 +74,7 @@ describe('SpaardoelSectie', () => {
     const user = userEvent.setup()
     const doel: Spaardoel = { id: 'd1', naam: 'Buffer', doelbedrag: 300000, huidigBedrag: 150000 }
     render(
-      <SpaardoelSectie spaardoelen={[doel]} rekeningen={rekeningen} transacties={[]} onOpslaan={vi.fn()} onVerwijderen={vi.fn()} />,
+      <SpaardoelSectie spaardoelen={[doel]} rekeningen={rekeningen} transacties={[]} waarderingen={[]} onOpslaan={vi.fn()} onVerwijderen={vi.fn()} />,
     )
 
     // Vooraf staat het formulier klaar voor een NIEUW doel.
@@ -90,7 +91,7 @@ describe('SpaardoelSectie', () => {
     zetSchermbreedte(1440)
     try {
       const { container } = render(
-        <SpaardoelSectie spaardoelen={[]} rekeningen={rekeningen} transacties={[]} onOpslaan={vi.fn()} onVerwijderen={vi.fn()} />,
+        <SpaardoelSectie spaardoelen={[]} rekeningen={rekeningen} transacties={[]} waarderingen={[]} onOpslaan={vi.fn()} onVerwijderen={vi.fn()} />,
       )
       const raster = container.querySelector('.raster-lijst-formulier')
       expect(raster).not.toBeNull()
@@ -112,6 +113,7 @@ describe('SpaardoelSectie — haal ik het?', () => {
         spaardoelen={[doel]}
         rekeningen={spaarRekeningen}
         transacties={transacties}
+        waarderingen={[]}
         overboekingen={overboekingen}
         onOpslaan={vi.fn()}
         onVerwijderen={vi.fn()}

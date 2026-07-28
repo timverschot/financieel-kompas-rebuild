@@ -416,3 +416,19 @@ describe('boekingDieDezePostAfdekt', () => {
     expect(boekingDieDezePostAfdekt([vorigeMaand], [huurZonderCategorie], huurZonderCategorie, '2026-07')).toBeUndefined()
   })
 })
+
+describe('maandVooruitblik — een gestopte post (ronde 38)', () => {
+  it('laat een gestopte post volledig uit de vooruitblik', () => {
+    const gestopt = post('weg', -50_00, 5, { eindMaand: '2026-07' })
+    const blik = maandVooruitblik([], [gestopt], '2026-07', EERSTE_JULI)
+    expect(blik.achterstalligeIds).not.toContain('weg')
+    expect(blik.aantalKomend).toBe(0)
+    expect(blik.aantalAchterstallig).toBe(0)
+    expect(blik.verwachteUitgaven).toBe(0)
+  })
+
+  it('telt hem in de maand vóór de eindmaand nog gewoon mee', () => {
+    const stoptStraks = post('nog', -50_00, 5, { eindMaand: '2026-08' })
+    expect(maandVooruitblik([], [stoptStraks], '2026-07', EERSTE_JULI).verwachteUitgaven).toBe(50_00)
+  })
+})

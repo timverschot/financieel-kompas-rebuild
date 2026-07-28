@@ -130,3 +130,24 @@ describe('herbouwStaat en gelijktijdig bewaren', () => {
     expect((await db.transacties.get('t1'))?.bedrag).toBe(-8000)
   })
 })
+
+describe('pasToe — waarderingen (ronde 38)', () => {
+  const w = { id: 'w1', rekeningId: 'r1', datum: '2026-07-15', saldo: 123456 }
+
+  it('bewaart en verwijdert een waardering', () => {
+    expect(pasToe([regel({ gebeurtenis: { type: 'waardering.bewaard', payload: w } })]).waarderingen.get('w1')).toEqual(w)
+    const weg: Logregel[] = [
+      regel({ tijdstip: 1, gebeurtenis: { type: 'waardering.bewaard', payload: w } }),
+      regel({ tijdstip: 2, gebeurtenis: { type: 'waardering.verwijderd', payload: { id: 'w1' } } }),
+    ]
+    expect(pasToe(weg).waarderingen.has('w1')).toBe(false)
+  })
+
+  it('laat de laatste wijziging winnen', () => {
+    const regels: Logregel[] = [
+      regel({ tijdstip: 1, gebeurtenis: { type: 'waardering.bewaard', payload: { ...w, saldo: 1 } } }),
+      regel({ tijdstip: 2, gebeurtenis: { type: 'waardering.bewaard', payload: { ...w, saldo: 2 } } }),
+    ]
+    expect(pasToe(regels).waarderingen.get('w1')?.saldo).toBe(2)
+  })
+})

@@ -65,3 +65,14 @@ export function dagKort(datumISO: string): string {
   if (!Number.isFinite(jaar) || !Number.isFinite(maand) || !Number.isFinite(dag)) return datumISO
   return new Intl.DateTimeFormat('nl-BE', { day: '2-digit', month: 'short' }).format(new Date(jaar, maand - 1, dag))
 }
+
+// 'JJJJ-MM-DD' als dag + maand + jaar, bv. "4 jul 2026". Voor lijstjes waar het
+// jaar wél uitmaakt: een waardering van een pensioenspaarplan leg je één keer per
+// jaar vast, en dan zijn twee regels "01 jan" niet uit elkaar te houden.
+export function dagJaar(datumISO: string): string {
+  const [jaar, maand, dag] = datumISO.split('-').map(Number)
+  if (!Number.isFinite(jaar) || !Number.isFinite(maand) || !Number.isFinite(dag)) return datumISO
+  return new Intl.DateTimeFormat('nl-BE', { day: 'numeric', month: 'short', year: 'numeric' }).format(
+    new Date(jaar, maand - 1, dag),
+  )
+}

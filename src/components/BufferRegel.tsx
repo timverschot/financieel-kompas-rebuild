@@ -1,4 +1,4 @@
-import type { Overboeking, Rekening, TerugkerendePost, Transactie } from '../data/schema'
+import type { Overboeking, Rekening, TerugkerendePost, Transactie, Waardering } from '../data/schema'
 import { bepaalBuffer } from '../utils/buffer'
 import { formatEuro } from '../utils/format'
 import { useT } from '../i18n'
@@ -14,6 +14,7 @@ export function BufferRegel({
   transacties,
   overboekingen,
   terugkerendePosten,
+  waarderingen,
   vandaagISO,
   kaal = false,
 }: {
@@ -21,12 +22,13 @@ export function BufferRegel({
   transacties: Transactie[]
   overboekingen: Overboeking[]
   terugkerendePosten: TerugkerendePost[]
+  waarderingen: Waardering[]
   vandaagISO: string
   /** Zonder eigen kaartvlak, voor gebruik binnen een groter blok. */
   kaal?: boolean
 }) {
   const { t } = useT()
-  const b = bepaalBuffer(rekeningen, transacties, overboekingen, terugkerendePosten, vandaagISO)
+  const b = bepaalBuffer(rekeningen, transacties, overboekingen, terugkerendePosten, waarderingen, vandaagISO)
   if (!b.bruikbaar || b.maanden === null) return null
 
   // Eén decimaal, naar beneden: liever een halve maand te voorzichtig dan te

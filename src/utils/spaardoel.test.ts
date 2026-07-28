@@ -19,25 +19,25 @@ const doel = (over: Partial<Spaardoel>): Spaardoel => ({
 
 describe('rekeningSaldo', () => {
   it('telt beginsaldo en enkel de eigen transacties op', () => {
-    expect(rekeningSaldo('spaar', rekeningen, transacties)).toBe(150000)
+    expect(rekeningSaldo('spaar', rekeningen, transacties, [], [])).toBe(150000)
   })
 })
 
 describe('spaardoelVoortgang', () => {
   it('gebruikt het manueel bijgehouden bedrag zonder gekoppelde rekening', () => {
-    const v = spaardoelVoortgang(doel({ huidigBedrag: 150000 }), rekeningen, transacties)
+    const v = spaardoelVoortgang(doel({ huidigBedrag: 150000 }), rekeningen, transacties, [], [])
     expect(v.huidig).toBe(150000)
     expect(v.resterend).toBe(150000)
     expect(v.fractie).toBeCloseTo(0.5)
   })
 
   it('leidt het huidige bedrag af uit de gekoppelde rekening', () => {
-    const v = spaardoelVoortgang(doel({ gekoppeldeRekeningId: 'spaar' }), rekeningen, transacties)
+    const v = spaardoelVoortgang(doel({ gekoppeldeRekeningId: 'spaar' }), rekeningen, transacties, [], [])
     expect(v.huidig).toBe(150000)
   })
 
   it('begrenst de fractie op 1 en het resterende op 0 wanneer het doel bereikt is', () => {
-    const v = spaardoelVoortgang(doel({ huidigBedrag: 400000 }), rekeningen, transacties)
+    const v = spaardoelVoortgang(doel({ huidigBedrag: 400000 }), rekeningen, transacties, [], [])
     expect(v.fractie).toBe(1)
     expect(v.resterend).toBe(0)
   })
@@ -53,13 +53,13 @@ describe('spaardoelTempo', () => {
 
   it('meet niets bij een manueel doel zonder gekoppelde rekening', () => {
     const zonder: Spaardoel = { id: 'd2', naam: 'Los', doelbedrag: 100000, huidigBedrag: 0 }
-    expect(spaardoelTempo(zonder, spaarRekeningen, [], [], '2026-07-15')).toEqual({ perMaand: null, gemetenMaanden: 0 })
+    expect(spaardoelTempo(zonder, spaarRekeningen, [], [], [], '2026-07-15')).toEqual({ perMaand: null, gemetenMaanden: 0 })
   })
 
   it('meet niets zolang de rekening nog geen geschiedenis vóór het venster heeft', () => {
     // Enkel een boeking ín het venster: de rekening bestond nog niet lang genoeg.
     const tx: Transactie[] = [{ id: 't1', datum: '2026-05-10', omschrijving: 'storting', bedrag: 30000, rekeningId: 'sp' }]
-    expect(spaardoelTempo(doel, spaarRekeningen, tx, [], '2026-07-15')).toEqual({ perMaand: null, gemetenMaanden: 0 })
+    expect(spaardoelTempo(doel, spaarRekeningen, tx, [], [], '2026-07-15')).toEqual({ perMaand: null, gemetenMaanden: 0 })
   })
 
   it('rekent de gemiddelde groei per maand uit over de laatste drie volle maanden', () => {
@@ -70,7 +70,7 @@ describe('spaardoelTempo', () => {
       { id: 't2', datum: '2026-05-05', omschrijving: 'storting', bedrag: 20000, rekeningId: 'sp' },
       { id: 't3', datum: '2026-06-05', omschrijving: 'storting', bedrag: 20000, rekeningId: 'sp' },
     ]
-    expect(spaardoelTempo(doel, spaarRekeningen, tx, [], '2026-07-15')).toEqual({ perMaand: 20000, gemetenMaanden: 3 })
+    expect(spaardoelTempo(doel, spaarRekeningen, tx, [], [], '2026-07-15')).toEqual({ perMaand: 20000, gemetenMaanden: 3 })
   })
 
   it('telt overboekingen naar de spaarrekening mee', () => {
@@ -80,7 +80,7 @@ describe('spaardoelTempo', () => {
       { id: 'o2', datum: '2026-05-01', vanRekeningId: 'bt', naarRekeningId: 'sp', bedrag: 15000 },
       { id: 'o3', datum: '2026-06-01', vanRekeningId: 'bt', naarRekeningId: 'sp', bedrag: 15000 },
     ]
-    expect(spaardoelTempo(doel, spaarRekeningen, tx, ob, '2026-07-15').perMaand).toBe(15000)
+    expect(spaardoelTempo(doel, spaarRekeningen, tx, ob, [], '2026-07-15').perMaand).toBe(15000)
   })
 
   it('laat de aangebroken maand buiten het gemiddelde', () => {
@@ -90,7 +90,7 @@ describe('spaardoelTempo', () => {
     ]
     // De storting van juli valt buiten het venster (april t/m juni), dus het
     // gemiddelde blijft 0 in plaats van € 1.000 per maand te suggereren.
-    expect(spaardoelTempo(doel, spaarRekeningen, tx, [], '2026-07-15').perMaand).toBe(0)
+    expect(spaardoelTempo(doel, spaarRekeningen, tx, [], [], '2026-07-15').perMaand).toBe(0)
   })
 })
 
@@ -189,7 +189,7 @@ describe('rekeningSaldo kijkt tot vandaag', () => {
       String(straks.getDate()).padStart(2, '0')
     const toekomst = { id: 't', datum: later, omschrijving: 'Storting', bedrag: 50000, rekeningId: 'sp' }
     expect(later > vandaag()).toBe(true)
-    expect(rekeningSaldo('sp', [rekening], [toekomst])).toBe(500000)
+    expect(rekeningSaldo('sp', [rekening], [toekomst], [], [])).toBe(500000)
   })
 
   it('telt een boeking van vandaag of eerder wél mee', () => {
@@ -197,6 +197,50 @@ describe('rekeningSaldo kijkt tot vandaag', () => {
     gisteren.setDate(gisteren.getDate() - 1)
     const eerder = gisteren.getFullYear() + '-' + String(gisteren.getMonth() + 1).padStart(2, '0') + '-' + String(gisteren.getDate()).padStart(2, '0')
     const gedaan = { id: 't', datum: eerder, omschrijving: 'Storting', bedrag: 50000, rekeningId: 'sp' }
-    expect(rekeningSaldo('sp', [rekening], [gedaan])).toBe(550000)
+    expect(rekeningSaldo('sp', [rekening], [gedaan], [], [])).toBe(550000)
+  })
+})
+
+describe('spaardoelVoortgang — waarderingen (ronde 38)', () => {
+  it('gebruikt de waardering van de gekoppelde rekening', () => {
+    // Precies het scenario waarvoor de waardering bedacht is: je spaardoel hangt aan
+    // een beleggingsrekening waarvan de waarde verandert zonder boeking. De
+    // waardering ligt ná de storting, dus die zit er al in verwerkt.
+    const w = [{ id: 'w1', rekeningId: 'spaar', datum: '2026-07-03', saldo: 275000 }]
+    const v = spaardoelVoortgang(doel({ gekoppeldeRekeningId: 'spaar' }), rekeningen, transacties, [], w)
+    expect(v.huidig).toBe(275000)
+  })
+
+  it('telt boekingen van ná de waardering er gewoon bij', () => {
+    // Waardering op 30 juni, storting op 1 juli: 2.500 + 500 = 3.000.
+    const w = [{ id: 'w1', rekeningId: 'spaar', datum: '2026-06-30', saldo: 250000 }]
+    const v = spaardoelVoortgang(doel({ gekoppeldeRekeningId: 'spaar' }), rekeningen, transacties, [], w)
+    expect(v.huidig).toBe(300000)
+  })
+})
+
+describe('spaardoelTempo — een herwaardering is geen spaargedrag', () => {
+  it('zwijgt over het tempo wanneer er een waardering in het meetvenster ligt', () => {
+    // Een koerssprong van € 3.000 delen door drie en presenteren als "je spaart
+    // € 1.000 per maand" zou een cijfer opleveren waar je op rekent en dat nergens
+    // op slaat. Dan zeggen we liever niets.
+    const doelMetRekening = doel({ gekoppeldeRekeningId: 'spaar' })
+    const tx: Transactie[] = [
+      { id: 'oud', datum: '2026-01-01', omschrijving: 'start', bedrag: 10000, rekeningId: 'spaar' },
+    ]
+    const w = [{ id: 'w1', rekeningId: 'spaar', datum: '2026-05-01', saldo: 400000 }]
+    expect(spaardoelTempo(doelMetRekening, rekeningen, tx, [], w, '2026-07-15')).toEqual({
+      perMaand: null,
+      gemetenMaanden: 0,
+    })
+  })
+
+  it('rekent gewoon door wanneer de waardering buiten het venster ligt', () => {
+    const doelMetRekening = doel({ gekoppeldeRekeningId: 'spaar' })
+    const tx: Transactie[] = [
+      { id: 'oud', datum: '2023-01-01', omschrijving: 'start', bedrag: 10000, rekeningId: 'spaar' },
+    ]
+    const w = [{ id: 'w1', rekeningId: 'spaar', datum: '2024-01-01', saldo: 400000 }]
+    expect(spaardoelTempo(doelMetRekening, rekeningen, tx, [], w, '2026-07-15').gemetenMaanden).toBe(3)
   })
 })

@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import type { Aflossing, DossierDocument, Kind, Lening } from '../data/schema'
+import type { Aflossing, DossierDocument, Kind, Lening, LeningRichting, Transactie } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
-import { aflossingenVan, openstaandKapitaal, totaalAfgelost, totaalOpenstaand, voortgang, isAfbetaald, maandenTotEinde } from '../utils/lening'
+import { aflossingenVan, boekingVoorAflossing, openstaandKapitaal, totaalAfgelost, totaalOpenstaand, voortgang, isAfbetaald, maandenTotEinde } from '../utils/lening'
 import { LeningFormulier } from './LeningFormulier'
 import { Kaart, Leeg, Bedrag, Balk, Stat } from '../ui/basis'
 import { useT } from '../i18n'
 import { Documentkluis } from './DossierKluis'
 import type { Vertaler } from '../i18n'
-import { vandaag } from '../utils/datum'
+import { dagKort, vandaag } from '../utils/datum'
 import { Bonknop } from '../ui/Bonknop'
 
 
@@ -23,11 +23,17 @@ import { Bonknop } from '../ui/Bonknop'
 // het bedrag gelijk te zetten aan wat er nog openstaat.
 function AflossingToevoegen({
   leningId,
+  richting,
   openstaand,
+  transacties,
+  aflossingen,
   onOpslaan,
 }: {
   leningId: string
+  richting: LeningRichting
   openstaand: number
+  transacties: Transactie[]
+  aflossingen: Aflossing[]
   onOpslaan: (a: Aflossing) => Promise<void> | void
 }) {
   const { t } = useT()
@@ -37,10 +43,22 @@ function AflossingToevoegen({
   const geldig = Number.isFinite(centen) && centen > 0
   const teVeel = geldig && centen > openstaand
 
-  async function verzend(e: FormEvent) {
+  // Staat er al een boeking van hetzelfde bedrag op dezelfde dag? Dan is dit
+  // waarschijnlijk diezelfde betaling, en hoort ze niet twee keer geteld te worden.
+  // We blokkeren niet — een aflossing kan van een rekening komen die niet in de app
+  // staat — maar we zeggen het, en koppelen op één klik.
+  const vermoedelijk = geldig ? boekingVoorAflossing(datum, centen, transacties, richting, aflossingen) : undefined
+
+  async function verzend(e: FormEvent, koppel = false) {
     e.preventDefault()
     if (!geldig) return
-    await onOpslaan({ id: nieuwId(), leningId, datum, bedrag: centen })
+    await onOpslaan({
+      id: nieuwId(),
+      leningId,
+      datum,
+      bedrag: centen,
+      ...(koppel && vermoedelijk ? { transactieId: vermoedelijk.id } : {}),
+    })
     setBedrag('')
     setDatum(vandaag())
   }
@@ -54,6 +72,20 @@ function AflossingToevoegen({
           {t('Aflossing toevoegen')}
         </button>
       </div>
+      {vermoedelijk && (
+        <div className="knoprij" role="status" style={{ alignItems: 'baseline' }}>
+          <span className="rij-meta" style={{ color: 'var(--warn-tekst)' }}>
+            {t('Er staat al een boeking van {bedrag} op {datum} ({naam}). Is dat dezelfde betaling?', {
+              bedrag: formatEuro(Math.abs(vermoedelijk.bedrag)),
+              datum: dagKort(vermoedelijk.datum),
+              naam: vermoedelijk.omschrijving,
+            })}
+          </span>
+          <button type="button" className="knop knop-ghost knop-klein" onClick={(e) => verzend(e, true)}>
+            {t('Ja, koppelen')}
+          </button>
+        </div>
+      )}
       {teVeel && (
         <div className="knoprij" style={{ alignItems: 'baseline' }}>
           <span className="rij-meta" style={{ color: 'var(--warn-tekst)' }}>
@@ -83,6 +115,7 @@ export function LeningSectie({
   gezinsleden = [],
   leningen,
   aflossingen,
+  transacties = [],
   onOpslaan,
   onVerwijderen,
   onAflossingOpslaan,
@@ -95,6 +128,8 @@ export function LeningSectie({
   gezinsleden?: Kind[]
   leningen: Lening[]
   aflossingen: Aflossing[]
+  // Nodig om te merken dat een aflossing al als boeking in de app staat.
+  transacties?: Transactie[]
   onOpslaan: (l: Lening) => Promise<void> | void
   onVerwijderen: (id: string) => Promise<void> | void
   onAflossingOpslaan: (a: Aflossing) => Promise<void> | void
@@ -225,8 +260,18 @@ export function LeningSectie({
                     {[...eigen].reverse().map((a) => (
                       <li key={a.id} className="rij">
                         <span className="rij-midden rij-meta">
-                          {a.datum}
+                          {dagKort(a.datum)}
                           {a.omschrijving ? ` · ${a.omschrijving}` : ''}
+                          {/* Zichtbaar maken dat deze aflossing aan een boeking hangt: anders
+                              schrijf je de koppeling weg en zie je er nooit meer iets van. */}
+                          {a.transactieId && (
+                            <>
+                              {' '}
+                              <span className="badge badge-info badge-mini" title={t('Gekoppeld aan een boeking')}>
+                                {t('gekoppeld')}
+                              </span>
+                            </>
+                          )}
                         </span>
                         <span className="rij-acties">
                           <Bedrag centen={a.bedrag} />
@@ -239,7 +284,16 @@ export function LeningSectie({
                   </ul>
                 )}
 
-                {!klaar && <AflossingToevoegen leningId={l.id} openstaand={open} onOpslaan={onAflossingOpslaan} />}
+                {!klaar && (
+                  <AflossingToevoegen
+                    leningId={l.id}
+                    richting={l.richting}
+                    openstaand={open}
+                    transacties={transacties}
+                    aflossingen={aflossingen}
+                    onOpslaan={onAflossingOpslaan}
+                  />
+                )}
 
                 {/* De papieren bij deze lening: de overeenkomst en de bewijzen van
                     betaling. Ingeklapt, zodat een lange lijst leesbaar blijft. */}

@@ -14,6 +14,7 @@ import {
   LeningSchema,
   OrdeningSchema,
   OverboekingSchema,
+  WaarderingSchema,
   StreepjescodeSchema,
   RekeningSchema,
   SpaardoelSchema,
@@ -34,6 +35,7 @@ import {
   type Lening,
   type Ordening,
   type Overboeking,
+  type Waardering,
   type Streepjescode,
   type Rekening,
   type Spaardoel,
@@ -430,4 +432,18 @@ export async function bewaarOrdening(o: Ordening): Promise<void> {
 
 export async function laadOrdeningen(): Promise<LeesResultaat<Ordening>> {
   return valideerLijst(await db.ordeningen.toArray(), OrdeningSchema)
+}
+
+// Waarderingen: "op deze dag stond er dit op deze rekening" (ronde 38).
+export async function bewaarWaardering(w: Waardering): Promise<void> {
+  const geldig = WaarderingSchema.parse(w)
+  await pasGebeurtenisToe({ type: 'waardering.bewaard', payload: geldig })
+}
+
+export async function verwijderWaardering(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'waardering.verwijderd', payload: { id } })
+}
+
+export async function laadWaarderingen(): Promise<LeesResultaat<Waardering>> {
+  return valideerLijst(await db.waarderingen.toArray(), WaarderingSchema)
 }

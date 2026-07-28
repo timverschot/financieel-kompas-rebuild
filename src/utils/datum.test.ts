@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { dagKort, huidigeMaand, maandJaarLabel, maandKort, maandVoluit, naarDatumTekst, vandaag } from './datum'
+import { dagKort, huidigeMaand, maandJaarLabel, maandKort, maandVoluit, naarDatumTekst, vandaag, dagJaar } from './datum'
 
 describe('datum', () => {
   it('zet een datum om naar JJJJ-MM-DD met voorloopnullen', () => {
@@ -51,5 +51,18 @@ describe('maandnamen', () => {
     expect(maandKort('geen maand')).toBe('geen maand')
     expect(maandVoluit('x')).toBe('x')
     expect(dagKort('x')).toBe('x')
+  })
+})
+
+describe('dagJaar', () => {
+  it('toont dag, maand én jaar', () => {
+    // Een waardering leg je vaak één keer per jaar vast; zonder jaartal zijn twee
+    // regels "01 jan" niet uit elkaar te houden.
+    expect(dagJaar('2026-01-04')).toContain('2026')
+    expect(dagJaar('2026-01-04')).toContain('4')
+  })
+
+  it('geeft onleesbare invoer ongewijzigd terug in plaats van "Invalid Date"', () => {
+    expect(dagJaar('geen datum')).toBe('geen datum')
   })
 })

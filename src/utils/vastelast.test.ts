@@ -1,15 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { TerugkerendePost } from '../data/schema'
-import {
-  frequentieVan,
-  intervalVan,
-  maandVerschil,
-  maandbedrag,
-  opzijPerMaand,
-  plancijfers,
-  valtInMaand,
-  volgendeVervaldag,
-} from './vastelast'
+import { frequentieVan, intervalVan, maandVerschil, maandbedrag, opzijPerMaand, plancijfers, valtInMaand, volgendeVervaldag, isGestopt, verschuifMaand } from './vastelast'
 
 function post(over: Partial<TerugkerendePost> = {}): TerugkerendePost {
   return { id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 5, ...over }
@@ -172,5 +163,110 @@ describe('plancijfers', () => {
 
   it('rekent een terugkerende inkomst niet mee als last', () => {
     expect(plancijfers([loon], '2026-07').gemiddeldPerMaand).toBe(0)
+  })
+})
+
+// --- Einddatum op een vaste last (ronde 38) ----------------------------------
+
+describe('isGestopt', () => {
+  it('is onwaar zonder eindmaand', () => {
+    expect(isGestopt(post(), '2030-01')).toBe(false)
+  })
+
+  it('is waar vanaf de eindmaand zelf', () => {
+    const p = post({ eindMaand: '2026-09' })
+    expect(isGestopt(p, '2026-08')).toBe(false)
+    expect(isGestopt(p, '2026-09')).toBe(true)
+    expect(isGestopt(p, '2026-10')).toBe(true)
+  })
+})
+
+describe('valtInMaand met een eindmaand', () => {
+  it('sluit een MAANDELIJKSE post uit vanaf de eindmaand', () => {
+    // Dit is de belangrijkste: de eindmaand-controle moet vóór de kortsluiting
+    // voor maandelijkse posten staan, anders werkt ze net niet voor het meest
+    // voorkomende geval (een opgezegde huur, een gestopt abonnement).
+    const huur = post({ eindMaand: '2026-09' })
+    expect(valtInMaand(huur, '2026-08')).toBe(true)
+    expect(valtInMaand(huur, '2026-09')).toBe(false)
+  })
+
+  it('sluit ook een periodieke post uit vanaf de eindmaand', () => {
+    // premie: halfjaarlijks vanaf 2026-08, dus augustus en februari.
+    const gestopt = { ...premie, eindMaand: '2027-01' }
+    expect(valtInMaand(gestopt, '2026-08')).toBe(true)
+    expect(valtInMaand(gestopt, '2027-02')).toBe(false)
+  })
+
+  it('verandert niets aan een post zonder eindmaand', () => {
+    expect(valtInMaand(post(), '2099-12')).toBe(true)
+  })
+})
+
+describe('volgendeVervaldag met een eindmaand', () => {
+  it('geeft null zodra de post gestopt is', () => {
+    expect(volgendeVervaldag(post({ eindMaand: '2026-07' }), '2026-07-01')).toBeNull()
+  })
+
+  it('geeft nog een datum in de laatste lopende maand', () => {
+    expect(volgendeVervaldag(post({ eindMaand: '2026-08' }), '2026-07-01')).toBe('2026-07-05')
+  })
+})
+
+describe('plancijfers met een eindmaand', () => {
+  it('telt een gestopte post nergens meer mee', () => {
+    const gestopt = post({ id: 'weg', bedrag: -50_00, eindMaand: '2026-07' })
+    const cijfers = plancijfers([post({ bedrag: -95000 }), gestopt], '2026-07')
+    expect(cijfers.vastDezeMaand).toBe(95000)
+    // Ook niet in het gemiddelde — dat cijfer staat buiten valtInMaand.
+    expect(cijfers.gemiddeldPerMaand).toBe(95000)
+  })
+
+  it('vraagt niet langer om geld opzij te zetten voor een gestopte post', () => {
+    // Een opbouwende periodieke post landt normaal in de else-tak en levert 'opzij'
+    // op. Gestopt hoort dat nul te zijn.
+    const gestopt = { ...premie, opbouwen: true, eindMaand: '2026-07' }
+    expect(plancijfers([gestopt], '2026-07').opzij).toBe(0)
+  })
+})
+
+describe('verschuifMaand', () => {
+  it('schuift vooruit en achteruit over een jaargrens', () => {
+    expect(verschuifMaand('2026-12', 1)).toBe('2027-01')
+    expect(verschuifMaand('2026-01', -1)).toBe('2025-12')
+    expect(verschuifMaand('2026-07', 0)).toBe('2026-07')
+  })
+})
+
+describe('volgendeVervaldag springt niet over de eindmaand heen', () => {
+  // Het geval dat de verificatieronde vond: een driemaandelijkse post die in
+  // september stopt, gaf in juli nog "volgende keer 5 november" — twee maanden ná
+  // de opzegging.
+  const kwartaal = post({ frequentie: 'kwartaal', startMaand: '2026-03', dag: 5 })
+
+  it('geeft null wanneer de volgende beurt buiten de looptijd valt', () => {
+    expect(volgendeVervaldag({ ...kwartaal, eindMaand: '2026-09' }, '2026-07-01')).toBeNull()
+  })
+
+  it('geeft de datum wel wanneer die nog binnen de looptijd valt', () => {
+    expect(volgendeVervaldag({ ...kwartaal, eindMaand: '2026-10' }, '2026-07-01')).toBe('2026-09-05')
+  })
+
+  it('doet hetzelfde bij een jaarlijkse post', () => {
+    const jaar = post({ frequentie: 'jaar', startMaand: '2026-04', dag: 5 })
+    expect(volgendeVervaldag({ ...jaar, eindMaand: '2027-04' }, '2026-07-01')).toBeNull()
+    expect(volgendeVervaldag({ ...jaar, eindMaand: '2027-05' }, '2026-07-01')).toBe('2027-04-05')
+  })
+
+  it('doet hetzelfde bij een maandelijkse post over een jaargrens', () => {
+    expect(volgendeVervaldag(post({ dag: 5, eindMaand: '2027-01' }), '2026-12-10')).toBeNull()
+    expect(volgendeVervaldag(post({ dag: 5, eindMaand: '2027-02' }), '2026-12-10')).toBe('2027-01-05')
+  })
+
+  it('geeft ook niets voor een contract dat pas ná zijn eindmaand zou beginnen', () => {
+    // Het formulier maakt dit onbereikbaar, maar de rekenkern hoort zich niet op de
+    // vorm van een scherm te verlaten.
+    const raar = post({ frequentie: 'kwartaal', startMaand: '2026-11', eindMaand: '2026-09', dag: 5 })
+    expect(volgendeVervaldag(raar, '2026-07-01')).toBeNull()
   })
 })

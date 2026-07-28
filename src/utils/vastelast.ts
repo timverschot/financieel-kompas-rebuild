@@ -53,14 +53,29 @@ export function maandVerschil(a: string, b: string): number {
 }
 
 /**
+ * Is deze post in deze maand ('JJJJ-MM') al gestopt?
+ *
+ * 'eindMaand' is de maand waarin de post NIET meer geldt; de laatste betaling is
+ * dus de maand ervóór. Zonder eindmaand loopt de post gewoon door.
+ */
+export function isGestopt(post: TerugkerendePost, maand: string): boolean {
+  return post.eindMaand !== undefined && maand >= post.eindMaand
+}
+
+/**
  * Valt deze post in deze maand ('JJJJ-MM')?
  *
  * Een maandelijkse post valt altijd. Een post met een langere termijn valt enkel
  * in de maanden die een veelvoud van het interval na de startmaand liggen, en
  * nooit vóór de startmaand — een contract dat in augustus begint, bestaat in juni
  * nog niet.
+ *
+ * De eindmaand-controle staat bewust VÓÓR de kortsluiting voor maandelijkse
+ * posten. Anders zou een opgezegde huur of een gestopt abonnement — precies de
+ * meest voorkomende gevallen — eeuwig blijven meetellen.
  */
 export function valtInMaand(post: TerugkerendePost, maand: string): boolean {
+  if (isGestopt(post, maand)) return false
   const interval = intervalVan(post)
   if (interval === 1) return true
   // Zonder startmaand kunnen we het ritme niet plaatsen. Dan is elke maand een
@@ -101,6 +116,10 @@ export function opzijPerMaand(post: TerugkerendePost): number {
  * voor de andere frequenties de eerstvolgende maand in het ritme.
  */
 export function volgendeVervaldag(post: TerugkerendePost, vanafISO: string): string | null {
+  // Een gestopte post heeft geen volgende keer meer. Zonder deze regel bleef het
+  // scherm "volgende keer 5 september" tonen bij een abonnement dat in augustus
+  // is opgezegd.
+  if (post.eindMaand !== undefined && vanafISO.slice(0, 7) >= post.eindMaand) return null
   const dag = String(post.dag).padStart(2, '0')
   const vanafMaand = vanafISO.slice(0, 7)
   const vanafDag = Number(vanafISO.slice(8, 10))
@@ -110,12 +129,12 @@ export function volgendeVervaldag(post: TerugkerendePost, vanafISO: string): str
   const beginOffset = post.dag >= vanafDag ? 0 : 1
 
   if (interval === 1 || !post.startMaand) {
-    return `${verschuif(vanafMaand, beginOffset)}-${dag}`
+    return naEinde(post, verschuif(vanafMaand, beginOffset), dag)
   }
 
   // Het contract is nog niet begonnen: de eerste betaling is de eerste vervaldag.
   const sindsStart = maandVerschil(post.startMaand, vanafMaand)
-  if (sindsStart < 0) return `${post.startMaand}-${dag}`
+  if (sindsStart < 0) return naEinde(post, post.startMaand, dag)
 
   // Hoe ver zitten we in de lopende cyclus? Rest 0 = deze maand valt in het ritme.
   const rest = sindsStart % interval
@@ -123,7 +142,24 @@ export function volgendeVervaldag(post: TerugkerendePost, vanafISO: string): str
   // Valt ze deze maand, maar is de dag al voorbij, dan is de volgende pas een
   // volledige cyclus later — niet volgende maand.
   if (kandidaat === vanafMaand && beginOffset === 1) kandidaat = verschuif(vanafMaand, interval)
-  return `${kandidaat}-${dag}`
+  return naEinde(post, kandidaat, dag)
+}
+
+/**
+ * Geeft de vervaldag terug, of null wanneer die maand al voorbij de eindmaand ligt.
+ *
+ * Zonder deze controle sprong een driemaandelijkse post die in september stopt
+ * vrolijk door naar november: de controle bovenaan kijkt of je NU al gestopt bent,
+ * niet of de volgende beurt nog binnen de looptijd valt.
+ */
+function naEinde(post: TerugkerendePost, maand: string, dag: string): string | null {
+  if (post.eindMaand !== undefined && maand >= post.eindMaand) return null
+  return `${maand}-${dag}`
+}
+
+/** Verschuift een maand ('JJJJ-MM') met een aantal maanden. */
+export function verschuifMaand(maand: string, delta: number): string {
+  return verschuif(maand, delta)
 }
 
 /** Verschuift een maand ('JJJJ-MM') met een aantal maanden. */
@@ -162,6 +198,12 @@ export function plancijfers(posten: TerugkerendePost[], maand: string): Plancijf
   let gemiddeldPerMaand = 0
 
   for (const p of posten) {
+    // Een gestopte post telt nergens meer mee — ook niet in het gemiddelde en ook
+    // niet in "opzij". Die twee lopen buiten valtInMaand om: het gemiddelde staat
+    // vóór de controle, en een post die niet in deze maand valt landt automatisch
+    // in de else-tak. Zonder deze regel zou een opgezegd abonnement eeuwig blijven
+    // vragen om er geld voor opzij te zetten.
+    if (isGestopt(p, maand)) continue
     if (p.bedrag < 0) gemiddeldPerMaand += -maandbedrag(p)
     if (valtInMaand(p, maand)) {
       if (p.bedrag < 0) vastDezeMaand += -p.bedrag

@@ -12,7 +12,7 @@ const energie: TerugkerendePost = { id: 'p2', omschrijving: 'Energie', bedrag: -
 const loon: TerugkerendePost = { id: 'p3', omschrijving: 'Loon', bedrag: 240000, rekeningId: 'bt', dag: 25 }
 
 function buffer(rekeningen: Rekening[], posten: TerugkerendePost[], tx: Transactie[] = [], ob: Overboeking[] = []) {
-  return bepaalBuffer(rekeningen, tx, ob, posten, '2026-07-15')
+  return bepaalBuffer(rekeningen, tx, ob, posten, [], '2026-07-15')
 }
 
 describe('bepaalBuffer', () => {
@@ -87,7 +87,7 @@ describe('bepaalBuffer — andere termijnen dan maandelijks', () => {
   }
 
   it('rekent een jaarlijkse kost om naar één maand', () => {
-    const b = bepaalBuffer([spaar], [], [], [jaarpremie], '2026-07-15')
+    const b = bepaalBuffer([spaar], [], [], [jaarpremie], [], '2026-07-15')
     // € 1.200 per jaar = € 100 per maand, dus € 6.000 spaargeld dekt 60 maanden.
     expect(b.vasteLastenPerMaand).toBe(10000)
     expect(b.maanden).toBe(60)
@@ -95,6 +95,33 @@ describe('bepaalBuffer — andere termijnen dan maandelijks', () => {
 
   it('telt een kwartaalkost als een derde per maand', () => {
     const kwartaal: TerugkerendePost = { ...jaarpremie, bedrag: -30000, frequentie: 'kwartaal' }
-    expect(bepaalBuffer([spaar], [], [], [kwartaal], '2026-07-15').vasteLastenPerMaand).toBe(10000)
+    expect(bepaalBuffer([spaar], [], [], [kwartaal], [], '2026-07-15').vasteLastenPerMaand).toBe(10000)
+  })
+})
+
+describe('bepaalBuffer — een gestopte vaste last (ronde 38)', () => {
+  it('telt een opgezegde post niet meer mee in de vaste lasten', () => {
+    // Dit bestand roept `valtInMaand` bewust niet aan, dus de eindmaand-controle
+    // moest hier apart. Zonder haar bleef een opgezegd abonnement je buffercijfer
+    // voor altijd omlaag trekken.
+    const gestopt: TerugkerendePost = { ...energie, id: 'weg', eindMaand: '2026-07' }
+    const met = buffer([spaar, cash], [huur, gestopt])
+    const zonder = buffer([spaar, cash], [huur])
+    expect(met.vasteLastenPerMaand).toBe(zonder.vasteLastenPerMaand)
+  })
+
+  it('telt hem nog wél mee in de maand vóór de eindmaand', () => {
+    const stoptVolgendeMaand: TerugkerendePost = { ...energie, id: 'nog', eindMaand: '2026-08' }
+    const met = buffer([spaar, cash], [huur, stoptVolgendeMaand])
+    const zonder = buffer([spaar, cash], [huur])
+    expect(met.vasteLastenPerMaand).toBeGreaterThan(zonder.vasteLastenPerMaand)
+  })
+
+  it('gebruikt de geldende waardering voor het beschikbare geld', () => {
+    const w = [{ id: 'w1', rekeningId: spaar.id, datum: '2026-07-01', saldo: 111_00 }]
+    const b = bepaalBuffer([spaar, cash], [], [], [huur], w, '2026-07-15')
+    const zonder = bepaalBuffer([spaar, cash], [], [], [huur], [], '2026-07-15')
+    expect(b.beschikbaar).not.toBe(zonder.beschikbaar)
+    expect(b.beschikbaar).toBe(111_00 + cash.beginsaldo)
   })
 })

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { App } from './App'
@@ -31,6 +31,7 @@ beforeEach(async () => {
     db.overboekingen.clear(),
     db.kinderen.clear(),
     db.dossierdocumenten.clear(),
+    db.waarderingen.clear(),
     db.events.clear(),
     db.meta.clear(),
   ])
@@ -269,6 +270,30 @@ describe('App', () => {
     await user.click(await screen.findByRole('button', { name: 'Boek in' }))
 
     expect(await screen.findByText('Geboekt ✓')).toBeInTheDocument()
+  })
+
+  it('biedt geen "Boek in" meer aan zodra een vaste last is opgezegd', async () => {
+    // Ronde 38. Deze test bewaakt wat de gebruiker ziet: bij een opgezegde post
+    // verschijnt "Gestopt" en verdwijnt de knop. De controle in App.boekTerugkerend
+    // is daarnaast een vangnet voor het meldingenpaneel; die is via de UI niet te
+    // bereiken, want bouwMeldingen filtert gestopte posten al weg.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await gaMeer(user, 'Budget')
+    const lasten = kaart('Vaste lasten')
+    await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
+    await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
+    // "Loopt tot en met" de maand vóór deze: de post is dus nu al gestopt.
+    const vorigeMaand = new Date()
+    vorigeMaand.setMonth(vorigeMaand.getMonth() - 1)
+    const maandwaarde = `${vorigeMaand.getFullYear()}-${String(vorigeMaand.getMonth() + 1).padStart(2, '0')}`
+    fireEvent.change(within(lasten).getByLabelText('Loopt tot en met'), { target: { value: maandwaarde } })
+    await user.click(within(lasten).getByRole('button', { name: 'Vaste post toevoegen' }))
+
+    expect(await screen.findByText('Gestopt')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Boek in' })).not.toBeInTheDocument()
   })
 
   it('boekt een vaste last in en maakt dat weer ongedaan', async () => {

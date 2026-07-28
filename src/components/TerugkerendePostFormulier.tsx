@@ -5,8 +5,8 @@ import { FREQUENTIES } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { rekeningLabel } from '../utils/rekening'
 import { invoerNaarCenten, centenNaarInvoer, formatEuro } from '../utils/format'
-import { huidigeMaand } from '../utils/datum'
-import { INTERVAL_MAANDEN } from '../utils/vastelast'
+import { huidigeMaand, maandJaarLabel } from '../utils/datum'
+import { INTERVAL_MAANDEN, verschuifMaand } from '../utils/vastelast'
 import { useT } from '../i18n'
 import type { Vertaler } from '../i18n'
 import { CategorieNiveauKiezer } from './CategorieNiveauKiezer'
@@ -86,6 +86,9 @@ export function TerugkerendePostFormulier({
   // post: begin je in augustus met een halfjaarlijkse premie, dan valt de volgende
   // in februari — niet in januari, want het contract volgt geen kalenderhalfjaar.
   const [startMaand, setStartMaand] = useState(() => huidigeMaand())
+  // Leeg = loopt door. Geldt voor ELKE frequentie, ook maandelijks: een opgezegde
+  // huur of een gestopt abonnement is precies het normale geval.
+  const [eindMaand, setEindMaand] = useState('')
   const [opbouwen, setOpbouwen] = useState(BEGIN.opbouwen)
   // Welke van de twee opslaanknoppen ingedrukt werd. Een klik komt altijd vóór de
   // verzending van het formulier, dus dit staat juist op het moment dat we het lezen.
@@ -100,6 +103,7 @@ export function TerugkerendePostFormulier({
     setDag(BEGIN.dag)
     setFrequentie(BEGIN.frequentie)
     setStartMaand(huidigeMaand())
+    setEindMaand('')
     setOpbouwen(BEGIN.opbouwen)
   }, [])
 
@@ -113,6 +117,7 @@ export function TerugkerendePostFormulier({
       setDag(String(bewerken.dag))
       setFrequentie(bewerken.frequentie ?? 'maand')
       setStartMaand(bewerken.startMaand ?? huidigeMaand())
+      setEindMaand(bewerken.eindMaand ?? '')
       setOpbouwen(bewerken.opbouwen ?? false)
     } else {
       leegmaken()
@@ -122,6 +127,12 @@ export function TerugkerendePostFormulier({
   const bedragCenten = invoerNaarCenten(bedrag)
   const dagGetal = Number.parseInt(dag, 10)
   const periodiek = frequentie !== 'maand'
+  // Een lege eindmaand betekent "loopt door" en is dus geldig. Is ze ingevuld, dan
+  // moet ze een echte maand zijn én ná de eerste betaling liggen — een post die
+  // stopt vóór hij begint bestaat niet. Die kruiscontrole staat hier en niet in het
+  // schema: een strengere zod-regel zou bestaande gegevens ongeldig kunnen maken.
+  const eindeGeldig =
+    eindMaand === '' || (/^\d{4}-\d{2}$/.test(eindMaand) && (!periodiek || eindMaand > startMaand))
   const geldig =
     omschrijving.trim().length > 0 &&
     Number.isFinite(bedragCenten) &&
@@ -130,7 +141,8 @@ export function TerugkerendePostFormulier({
     Number.isInteger(dagGetal) &&
     dagGetal >= 1 &&
     dagGetal <= 28 &&
-    (!periodiek || /^\d{4}-\d{2}$/.test(startMaand))
+    (!periodiek || /^\d{4}-\d{2}$/.test(startMaand)) &&
+    eindeGeldig
 
   // Wat het per maand zou kosten als je ervoor opzijzet. Meteen tonen, want dat is
   // het bedrag waar je in je maandplan rekening mee houdt — niet het volle bedrag.
@@ -151,6 +163,7 @@ export function TerugkerendePostFormulier({
       // Een maandelijkse post laat deze drie velden weg, zodat ze exact hetzelfde
       // record blijft als vóór deze uitbreiding.
       ...(periodiek ? { frequentie, startMaand } : {}),
+      ...(eindeGeldig && eindMaand ? { eindMaand } : {}),
       ...(periodiek && opbouwen ? { opbouwen: true } : {}),
     })
     // Bij een NIEUWE vaste post blijft 'bewerken' null, dus de useEffect hierboven
@@ -223,6 +236,24 @@ export function TerugkerendePostFormulier({
             />
           </div>
         )}
+      </div>
+
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor={`${veldId}-vaste-einde`}>
+          {t('Loopt tot en met')}
+        </label>
+        <input
+          id={`${veldId}-vaste-einde`}
+          type="month"
+          value={eindMaand === '' ? '' : verschuifMaand(eindMaand, -1)}
+          onChange={(e) => setEindMaand(e.target.value === '' ? '' : verschuifMaand(e.target.value, 1))}
+          aria-describedby={`${veldId}-vaste-einde-uitleg`}
+        />
+        <span className="rij-meta" id={`${veldId}-vaste-einde-uitleg`}>
+          {eindMaand === ''
+            ? t('Laat leeg zolang de post doorloopt. Vul hem in wanneer je opzegt — de post blijft dan gewoon in je historiek staan.')
+            : t('De laatste keer is {maand}. Daarna telt deze post niet meer mee.', { maand: maandJaarLabel(`${verschuifMaand(eindMaand, -1)}-01`) })}
+        </span>
       </div>
 
       {periodiek && soort === 'uitgave' && (

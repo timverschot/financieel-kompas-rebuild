@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import type { Overboeking, Rekening, Transactie } from '../data/schema'
-import { saldoOpEinde, vermogensEvolutie, laatsteMaanden } from './vermogen'
+import type { Aflossing, Lening, LeningRichting, Overboeking, Rekening, Transactie } from '../data/schema'
+import { saldoOpEinde, vermogensEvolutie, laatsteMaanden, leningstand, nettoVermogen } from './vermogen'
 
 const rek = (id: string, beginsaldo: number): Rekening => ({ id, naam: id, beginsaldo })
 const tx = (rekeningId: string, datum: string, bedrag: number): Transactie => ({
@@ -24,12 +24,12 @@ describe('vermogen — saldoOpEinde', () => {
 
   it('telt transacties en overboekingen t/m het maandeinde', () => {
     // 10000 + 5000 - 2000 + 3000 (in) - 1000 (uit) = 15000
-    expect(saldoOpEinde('a', 10000, txs, obs, '2026-07')).toBe(15000)
+    expect(saldoOpEinde('a', 10000, txs, obs, [], '2026-07')).toBe(15000)
   })
 
   it('negeert alles ná het maandeinde', () => {
     // Einde juni: nog niets gebeurd → enkel beginsaldo.
-    expect(saldoOpEinde('a', 10000, txs, obs, '2026-06')).toBe(10000)
+    expect(saldoOpEinde('a', 10000, txs, obs, [], '2026-06')).toBe(10000)
   })
 })
 
@@ -37,7 +37,7 @@ describe('vermogen — vermogensEvolutie', () => {
   it('geeft per maand het saldo per rekening en het totaal', () => {
     const rekeningen = [rek('a', 10000), rek('b', 4000)]
     const txs = [tx('a', '2026-07-05', 5000)]
-    const punten = vermogensEvolutie(rekeningen, txs, [], ['2026-06', '2026-07'])
+    const punten = vermogensEvolutie(rekeningen, txs, [], [], ['2026-06', '2026-07'])
     expect(punten[0]).toMatchObject({ maand: '2026-06', totaal: 14000 })
     expect(punten[1].perRekening.a).toBe(15000)
     expect(punten[1].totaal).toBe(19000)
@@ -50,5 +50,74 @@ describe('vermogen — laatsteMaanden', () => {
   })
   it('rolt correct over een jaargrens', () => {
     expect(laatsteMaanden('2026-01', 3)).toEqual(['2025-11', '2025-12', '2026-01'])
+  })
+})
+
+// --- Leningen in het vermogen (ronde 38) -------------------------------------
+
+const len = (id: string, hoofdsom: number, richting: LeningRichting, extra: Partial<Lening> = {}): Lening => ({
+  id,
+  naam: id,
+  hoofdsom,
+  richting,
+  startdatum: '2026-01-01',
+  ...extra,
+})
+const afl = (id: string, leningId: string, bedrag: number): Aflossing => ({
+  id,
+  leningId,
+  datum: '2026-03-01',
+  bedrag,
+})
+
+describe('leningstand', () => {
+  it('scheidt wat je nog krijgt van wat je nog moet betalen', () => {
+    const leningen = [len('a', 100_000, 'uitgeleend'), len('b', 300_000, 'geleend')]
+    expect(leningstand(leningen, [])).toEqual({ teOntvangen: 100_000, teBetalen: 300_000, netto: -200_000 })
+  })
+
+  it('trekt aflossingen af van het openstaand kapitaal', () => {
+    const leningen = [len('b', 300_000, 'geleend')]
+    expect(leningstand(leningen, [afl('x', 'b', 50_000)]).teBetalen).toBe(250_000)
+  })
+
+  it('negeert een manueel afgesloten lening', () => {
+    const leningen = [len('b', 300_000, 'geleend', { afgesloten: true })]
+    expect(leningstand(leningen, [])).toEqual({ teOntvangen: 0, teBetalen: 0, netto: 0 })
+  })
+
+  it('is nul zonder leningen', () => {
+    expect(leningstand([], [])).toEqual({ teOntvangen: 0, teBetalen: 0, netto: 0 })
+  })
+})
+
+describe('nettoVermogen', () => {
+  it('trekt een schuld af van je bezit — ook tot onder nul', () => {
+    // Dit is precies het geval dat de app vóór ronde 38 verzweeg: een mooi
+    // positief saldo naast een krediet van 80.000.
+    expect(nettoVermogen(1_000_000, [len('b', 8_000_000, 'geleend')], [])).toBe(-7_000_000)
+  })
+
+  it('telt uitgeleend geld op bij je bezit', () => {
+    expect(nettoVermogen(1_000_000, [len('a', 250_000, 'uitgeleend')], [])).toBe(1_250_000)
+  })
+
+  it('laat het bezit ongemoeid zonder leningen', () => {
+    expect(nettoVermogen(1_000_000, [], [])).toBe(1_000_000)
+  })
+})
+
+describe('vermogensEvolutie — waarderingen', () => {
+  it('vertrekt vanaf de waardering in plaats van het beginsaldo', () => {
+    // De grafiek is het scherm waar een waardering het zichtbaarst is; als ze hier
+    // niet doorwerkt, ziet de gebruiker een lijn die niet klopt met zijn saldo.
+    const rekeningen = [rek('a', 10000)]
+    const txs = [tx('a', '2026-07-05', 5000)]
+    const w = [{ id: 'w1', rekeningId: 'a', datum: '2026-07-10', saldo: 99000 }]
+    const punten = vermogensEvolutie(rekeningen, txs, [], w, ['2026-06', '2026-07'])
+    // Juni: de waardering bestaat nog niet, dus gewoon het beginsaldo.
+    expect(punten[0].totaal).toBe(10000)
+    // Juli: de waardering geldt, en de transactie van 5 juli zit er al in.
+    expect(punten[1].totaal).toBe(99000)
   })
 })

@@ -216,3 +216,22 @@ describe('budgetmelding en budgetkleur zeggen hetzelfde', () => {
     expect(budgetKleur(7000, 10000, 70)).toBe('var(--warn)')
   })
 })
+
+describe('bouwMeldingen — een gestopte vaste last (ronde 38)', () => {
+  it('zwijgt over een post die is opgezegd', () => {
+    // Het belletje leunt op maandVooruitblik, dus dit is een regressietest: zou
+    // iemand die keten ooit doorknippen, dan biedt de app "Boek in" aan voor een
+    // abonnement dat niet meer bestaat.
+    const gestopt: TerugkerendePost = {
+      id: 'weg',
+      omschrijving: 'Netflix',
+      bedrag: -1399,
+      rekeningId: 'r1',
+      dag: 1,
+      eindMaand: '2026-07',
+    }
+    const meldingen = basis({ terugkerendePosten: [gestopt] })
+    expect(meldingen.some((m) => m.actie?.postId === 'weg')).toBe(false)
+    expect(meldingen.some((m) => JSON.stringify(m.params ?? {}).includes('Netflix'))).toBe(false)
+  })
+})

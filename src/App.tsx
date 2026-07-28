@@ -22,6 +22,7 @@ import type {
   TerugkerendePost,
   Transactie,
   Verrekening,
+  Waardering,
 } from './data/schema'
 import {
   bewaarBudget,
@@ -64,6 +65,9 @@ import {
   laadStreepjescodes,
   laadOrdeningen,
   bewaarOrdening,
+  laadWaarderingen,
+  bewaarWaardering,
+  verwijderWaardering,
   laadSubcategorieen,
   laadTerugkerendePosten,
   laadTransacties,
@@ -129,6 +133,7 @@ import { BoekingDialoog } from './components/BoekingDialoog'
 import { Dialoog } from './ui/Dialoog'
 import { Meldingenbel } from './components/Meldingenbel'
 import { BalansRegel } from './components/BalansRegel'
+import { VermogenRegel } from './components/VermogenRegel'
 import { BufferRegel } from './components/BufferRegel'
 import { Zijbalk } from './components/Zijbalk'
 import { Merkteken } from './components/Merkteken'
@@ -144,6 +149,7 @@ import { bouwHandelaarIndex } from './utils/categorieVoorstel'
 import { bonVanTransactie } from './utils/kluis'
 import { formatEuro } from './utils/format'
 import { bouwMeldingen } from './utils/meldingen'
+import { isGestopt } from './utils/vastelast'
 import { boekingDieDezePostAfdekt, maandVooruitblik, vasteLastTransactieId } from './utils/vooruitblik'
 import { useInstellingen } from './instellingen'
 import { huidigeMaand, maandJaarLabel, vandaag } from './utils/datum'
@@ -203,6 +209,7 @@ export function App() {
   const [dossierdocumenten, setDossierdocumenten] = useState<DossierDocument[]>([])
   const [streepjescodes, setStreepjescodes] = useState<Streepjescode[]>([])
   const [ordeningen, setOrdeningen] = useState<Ordening[]>([])
+  const [waarderingen, setWaarderingen] = useState<Waardering[]>([])
   const [ongeldig, setOngeldig] = useState(0)
   // Ging de database helemaal niet open? Dan is 'Laden…' geen eerlijk antwoord.
   const [startFout, setStartFout] = useState<string | null>(null)
@@ -275,7 +282,7 @@ export function App() {
   const { budgetDrempel } = useInstellingen()
 
   async function herlaad() {
-    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs] = await Promise.all([
+    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd] = await Promise.all([
       laadTransacties(),
       laadRekeningen(),
       laadCategorieen(),
@@ -296,6 +303,7 @@ export function App() {
       laadStreepjescodes(),
       laadOrdeningen(),
       laadDossierDocumenten(),
+      laadWaarderingen(),
     ])
     setTransacties(tx.geldig)
     // ALLE overgeslagen records tellen, niet alleen die van transacties. Bleven de
@@ -303,7 +311,7 @@ export function App() {
     // kosten uit een afrekening zonder dat er ergens iets stond — en dan stuur je
     // een bedrag van € 610 door waar € 940 hoorde te staan.
     setOngeldig(
-      [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs].reduce(
+      [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd].reduce(
         (som, r) => som + r.ongeldig,
         0,
       ),
@@ -327,6 +335,7 @@ export function App() {
     setStreepjescodes(sc.geldig)
     setOrdeningen(ord.geldig)
     setDossierdocumenten(docs.geldig)
+    setWaarderingen(wrd.geldig)
   }
 
   // Toon een korte "ongedaan maken"-melding na een verwijdering. Herstellen is
@@ -357,7 +366,7 @@ export function App() {
       // Eerst de database zelf, mét wachttijd. Zonder deze regel blijft een
       // geblokkeerde opslag eeuwig op "Laden…" staan; zie openDatabase().
       await openDatabase()
-      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs] = await Promise.all([
+      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd] = await Promise.all([
         laadTransacties(),
         laadRekeningen(),
         laadCategorieen(),
@@ -378,6 +387,7 @@ export function App() {
         laadStreepjescodes(),
         laadOrdeningen(),
         laadDossierDocumenten(),
+        laadWaarderingen(),
       ])
       if (!actief) return
       setTransacties(tx.geldig)
@@ -400,11 +410,12 @@ export function App() {
       setStreepjescodes(sc.geldig)
       setOrdeningen(ord.geldig)
       setDossierdocumenten(docs.geldig)
+      setWaarderingen(wrd.geldig)
       // Ook bij het OPSTARTEN alle tellers optellen, niet alleen die van
       // transacties. Deze regel stond alleen in `herlaad`, dus wie de app opende en
       // niets wijzigde, zag nooit dat er records overgeslagen waren.
       setOngeldig(
-        [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs].reduce(
+        [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd].reduce(
           (som, r) => som + r.ongeldig,
           0,
         ),
@@ -609,9 +620,12 @@ export function App() {
     // verspringt en de transacties tonen geen rekeningnaam meer. Daarom weigeren we
     // dat en stellen we archiveren voor — dan blijft alles kloppen en verdwijnt de
     // rekening enkel uit de keuzelijsten.
+    // Waarderingen tellen sinds ronde 38 mee: laat je ze achter, dan blijven het
+    // weesrecords die voor eeuwig meereizen in het append-only logboek.
     const aantal =
       (transacties ?? []).filter((tx) => tx.rekeningId === id).length +
-      overboekingen.filter((o) => o.vanRekeningId === id || o.naarRekeningId === id).length
+      overboekingen.filter((o) => o.vanRekeningId === id || o.naarRekeningId === id).length +
+      waarderingen.filter((w) => w.rekeningId === id).length
     if (aantal > 0) {
       meld(
         t('Deze rekening heeft nog {n} boeking(en). Archiveer ze in plaats van ze te verwijderen.', { n: aantal }),
@@ -641,6 +655,18 @@ export function App() {
     await verwijderOverboeking(id)
     await herlaad()
     if (oud) toonUndo(t('Overboeking verwijderd'), () => bewaarOverboeking(oud))
+  }
+
+  async function voegWaarderingToe(w: Waardering) {
+    await bewaarWaardering(w)
+    await herlaad()
+  }
+
+  async function verwijderWaarderingH(id: string) {
+    const oud = waarderingen.find((w) => w.id === id)
+    await verwijderWaardering(id)
+    await herlaad()
+    if (oud) toonUndo(t('Waardering verwijderd'), () => bewaarWaardering(oud))
   }
 
   async function voegKindToe(naam: string, rol?: Gezinsrol) {
@@ -819,6 +845,20 @@ export function App() {
    * bladerde je op het Overzicht naar maart, dan boekte het stilletjes in maart.
    */
   async function boekTerugkerend(post: TerugkerendePost, doelMaand: string) {
+    // Een gestopte post mag niet meer geboekt worden (ronde 38). Deze controle
+    // staat hier apart en niet alleen in `valtInMaand`: "Boek in" wordt ook vanuit
+    // het meldingenpaneel aangeroepen, en een melding die nog van vóór de opzegging
+    // in beeld stond, zou anders alsnog een boeking aanmaken.
+    if (isGestopt(post, doelMaand)) {
+      meld(
+        t('{naam} loopt niet meer vanaf {maand}. Er is niets geboekt.', {
+          naam: post.omschrijving,
+          maand: maandJaarLabel(`${post.eindMaand ?? doelMaand}-01`),
+        }),
+        'fout',
+      )
+      return
+    }
     // Vangnet tegen dubbel boeken. De app herkent een handmatig ingetikte vaste
     // last alleen wanneer de categorie aan beide kanten gelijk is (zie
     // utils/vooruitblik.ts). Staat je post zonder categorie en heb je de betaling
@@ -1209,7 +1249,7 @@ export function App() {
   // Het totale saldo t.e.m. vandaag. De datumgrens is belangrijk: een transactie
   // die je met een datum in de toekomst inboekt (bv. een vaste last die je alvast
   // voor volgende maand inboekt) hoort nog niet in je huidige saldo te zitten.
-  const totaalSaldo = totaalSaldoVan(rekeningen, transacties, overboekingen, vandaag())
+  const totaalSaldo = totaalSaldoVan(rekeningen, transacties, overboekingen, waarderingen, vandaag())
 
   const inkomsten = maandInkomsten(transacties, maand)
   const uitgaven = maandUitgaven(transacties, maand)
@@ -1264,6 +1304,7 @@ export function App() {
         onNieuweSubcategorie={voegSubcategorieToe}
         gezinsleden={kinderen}
         overboekingen={overboekingen}
+        waarderingen={waarderingen}
         transacties={transacties}
         dossiers={dossiers}
         onTransactie={slaTransactieOp}
@@ -1390,15 +1431,18 @@ export function App() {
               </div>
             </div>
 
-            {/* Benoemt wat het netto-cijfer betekent (overschot, tekort of balans)
+            {/* Benoemen wat het netto-cijfer betekent, wat je na aftrek van je
+                schulden waard bent,
                 en hoelang je toekomt zonder inkomen. Allebei kaal: ze horen bij de
                 cijfers hierboven en niet in een eigen kaartje. */}
             <BalansRegel inkomsten={inkomsten} uitgaven={uitgaven} kaal />
+            <VermogenRegel bezit={totaalSaldo} leningen={leningen} aflossingen={aflossingen} kaal />
             <BufferRegel
               rekeningen={rekeningen}
               transacties={transacties}
               overboekingen={overboekingen}
               terugkerendePosten={terugkerendePosten}
+              waarderingen={waarderingen}
               vandaagISO={vandaag()}
               kaal
             />
@@ -1507,7 +1551,8 @@ export function App() {
         <ErrorBoundary naam="Analyse">
           <AnalyseSectie
             beginRichting={analyseRichting}
-            gezinsleden={kinderen} transacties={transacties} categorieen={categorieen} rekeningen={rekeningen} overboekingen={overboekingen} terugkerendePosten={terugkerendePosten} />
+            gezinsleden={kinderen} transacties={transacties} categorieen={categorieen} rekeningen={rekeningen} overboekingen={overboekingen}
+              waarderingen={waarderingen} terugkerendePosten={terugkerendePosten} />
         </ErrorBoundary>
       )}
 
@@ -1680,6 +1725,7 @@ export function App() {
                   gezinsleden={kinderen}
                   leningen={leningen}
                   aflossingen={aflossingen}
+                transacties={transacties ?? []}
                   onOpslaan={leningOpslaan}
                   onVerwijderen={leningVerwijderen}
                   onAflossingOpslaan={aflossingOpslaan}
@@ -1727,11 +1773,14 @@ export function App() {
                 rekening={gekozenRekening}
                 transacties={transacties}
                 overboekingen={overboekingen}
+                waarderingen={waarderingen}
                 categorieen={categorieen}
                 rekeningNaam={(id) => rekeningen.find((r) => r.id === id)?.naam}
                 onBewerk={setBewerkRekening}
                 onArchiveer={archiveerRekening}
                 onVerwijder={verwijderRek}
+                onWaardering={voegWaarderingToe}
+                onWaarderingVerwijderen={verwijderWaarderingH}
               />
             )}
           </div>
@@ -1757,7 +1806,7 @@ export function App() {
                 {rekeningen.map((r) => {
                   const meta = [t(REKENING_TYPE_LABEL[r.type ?? 'betaal']), r.rubriek, r.rekeningnummer].filter(Boolean).join(' · ')
                   // Het saldo van vandaag: beginsaldo + transacties + overboekingen.
-                  const saldoNu = saldoVanRekening(r, transacties, overboekingen, vandaag())
+                  const saldoNu = saldoVanRekening(r, transacties, overboekingen, waarderingen, vandaag())
                   const gekozen = r.id === gekozenRekeningId
                   return (
                     <li
@@ -1803,6 +1852,7 @@ export function App() {
               overboekingen={overboekingen}
               rekeningen={actieveRekeningen}
               transacties={transacties}
+              waarderingen={waarderingen}
               bewerken={bewerkOverboeking}
               onOpslaan={voegOverboekingToe}
               onVerwijderen={verwijderOverboekingH}
@@ -1823,6 +1873,7 @@ export function App() {
               rekeningen={rekeningen}
               transacties={transacties}
               overboekingen={overboekingen}
+              waarderingen={waarderingen}
               onOpslaan={voegSpaardoelToe}
               onVerwijderen={verwijderSpaardoelH}
             />

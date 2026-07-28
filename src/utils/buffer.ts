@@ -1,6 +1,6 @@
-import type { Overboeking, Rekening, RekeningType, TerugkerendePost, Transactie } from '../data/schema'
+import type { Overboeking, Rekening, RekeningType, TerugkerendePost, Transactie, Waardering } from '../data/schema'
 import { saldoVanRekening } from './saldo'
-import { maandbedrag } from './vastelast'
+import { isGestopt, maandbedrag } from './vastelast'
 
 // "Hoelang kom ik toe als er even niets binnenkomt?"
 //
@@ -45,12 +45,13 @@ export function bepaalBuffer(
   transacties: Transactie[],
   overboekingen: Overboeking[],
   terugkerendePosten: TerugkerendePost[],
+  waarderingen: Waardering[],
   vandaagISO: string,
 ): Buffer {
   // Gearchiveerde rekeningen blijven erbuiten: dat zijn afgesloten rekeningen.
   const bufferRekeningen = rekeningen.filter((r) => !r.gearchiveerd && r.type !== undefined && BUFFERTYPES.includes(r.type))
   const beschikbaar = bufferRekeningen.reduce(
-    (som, r) => som + saldoVanRekening(r, transacties, overboekingen, vandaagISO),
+    (som, r) => som + saldoVanRekening(r, transacties, overboekingen, waarderingen, vandaagISO),
     0,
   )
 
@@ -62,8 +63,15 @@ export function bepaalBuffer(
   // vijf maanden naar één zakken zodra je die verzekering invoert — en dat is niet
   // waar. Sloeg je haar over, dan zou de buffer te rooskleurig zijn. De omrekening
   // staat in utils/vastelast.ts.
+  //
+  // Een post die gestopt is telt niet meer mee (ronde 38). Dit bestand roept
+  // `valtInMaand` bewust niet aan — het wil juist het OMGEREKENDE maandbedrag, ook
+  // in maanden waarin de post niet vervalt — dus de eindmaand-controle staat hier
+  // apart. Zonder haar bleef een opgezegd abonnement je buffercijfer voor altijd
+  // omlaag trekken.
+  const dezeMaand = vandaagISO.slice(0, 7)
   const vasteLastenPerMaand = terugkerendePosten.reduce(
-    (som, p) => (p.bedrag < 0 ? som + -maandbedrag(p) : som),
+    (som, p) => (p.bedrag < 0 && !isGestopt(p, dezeMaand) ? som + -maandbedrag(p) : som),
     0,
   )
 
