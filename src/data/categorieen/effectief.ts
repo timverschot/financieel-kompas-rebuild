@@ -46,6 +46,17 @@ export function bouwEffectieveBoom(
     }
   }
 
+  // Alles wat de gebruiker zelf toevoegt, komt alfabetisch te staan (ronde 36).
+  //
+  // Waarom: de volgorde waarin deze records uit de database komen, is de volgorde
+  // van hun interne id — willekeurig dus. Voeg je een categorie toe, dan verscheen
+  // ze op een onvoorspelbare plek onderaan de lijst, en de volgende keer weer
+  // ergens anders. De INGEBOUWDE volgorde blijft ongemoeid: die is met opzet
+  // gegroepeerd (brood bij brood, zuivel bij zuivel) en alfabetiseren zou dat
+  // stukslaan. Alleen jouw eigen takken sorteren dus onderling.
+  const opNaam = <T extends { id: string; naam: string }>(lijst: T[]): T[] =>
+    lijst.slice().sort((a, b) => a.naam.localeCompare(b.naam, 'nl') || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+
   const eigenHoofd = eigenCategorieen.filter((c) => !c.ouderId)
   const eigenMid = eigenCategorieen.filter((c) => c.ouderId)
   const midPerOuder = new Map<string, Categorie[]>()
@@ -54,6 +65,8 @@ export function bouwEffectieveBoom(
     lijst.push(m)
     midPerOuder.set(m.ouderId as string, lijst)
   }
+  for (const [ouder, lijst] of midPerOuder) midPerOuder.set(ouder, opNaam(lijst))
+  for (const [cat, lijst] of toevoegingenPerCat) toevoegingenPerCat.set(cat, opNaam(lijst))
 
   const eigenTak = (c: Categorie): EffectieveCategorie => ({
     id: c.id,

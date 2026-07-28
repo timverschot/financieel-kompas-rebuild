@@ -3,6 +3,7 @@ import type {
   Categorie,
   Dossier,
   DossierDocument,
+  Garantie,
   GedeeldeKost,
   Kind,
   Overboeking,
@@ -72,6 +73,7 @@ export function BoekingDialoog({
   onOverboeking,
   onDossierKost,
   onBon,
+  onGarantie,
 }: {
   open: boolean
   onSluiten: () => void
@@ -95,6 +97,8 @@ export function BoekingDialoog({
   onDossierKost?: (kost: GedeeldeKost | null) => Promise<void> | void
   /** De bon/factuur die bij de zonet geboekte transactie hoort (of null). */
   onBon?: (document: DossierDocument | null) => Promise<void> | void
+  /** Het garantiebewijs dat bij de zonet geboekte aankoop hoort (of null). */
+  onGarantie?: (garantie: Garantie | null) => Promise<void> | void
 }) {
   const { t } = useT()
   const [soort, setSoort] = useState<Boekingsoort>(beginSoort)
@@ -152,6 +156,7 @@ export function BoekingDialoog({
           dossiers={dossiers}
           onDossierKost={onDossierKost}
           onBon={onBon}
+          onGarantie={onGarantie}
         />
       )}
 

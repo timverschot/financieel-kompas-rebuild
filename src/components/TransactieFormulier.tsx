@@ -4,6 +4,7 @@ import type {
   Categorie,
   Dossier,
   DossierDocument,
+  Garantie,
   GedeeldeKost,
   Kind,
   Kostentype,
@@ -83,6 +84,15 @@ function nieuweKassaRegel(): KassaRegel {
 // Invoerformulier voor een transactie. 'Handelaar' is de winkel; het bedrag is het
 // totaal. Met 'Kassaticket splitsen' verdeel je dat totaal over item-regels; het
 // niet-verdeelde restbedrag telt als 'Zonder categorie'.
+// Leest het aantal garantiemaanden. Geeft null bij onzin, zodat de opslaanknop uit
+// kan blijven met een regel eronder die zegt wat er mankeert — in plaats van er
+// stil 24 van te maken.
+function leesMaanden(waarde: string): number | null {
+  const getal = Number.parseInt(waarde.trim(), 10)
+  if (!Number.isFinite(getal) || getal <= 0 || getal > 600) return null
+  return getal
+}
+
 export function TransactieFormulier({
   onOpslaan,
   onAnnuleer,
@@ -102,6 +112,8 @@ export function TransactieFormulier({
   onDossierKost,
   bon = null,
   onBon,
+  gekoppeldeGarantie = null,
+  onGarantie,
 }: {
   onOpslaan: (t: Transactie) => Promise<void> | void
   onAnnuleer?: () => void
@@ -153,6 +165,14 @@ export function TransactieFormulier({
    * wanneer de bon weggehaald is. Zonder deze prop verschijnt het bonveld niet.
    */
   onBon?: (document: DossierDocument | null) => Promise<void> | void
+  /** Het garantiebewijs dat al aan deze (te bewerken) transactie hangt, of null. */
+  gekoppeldeGarantie?: Garantie | null
+  /**
+   * Wordt na een gelukte opslag aangeroepen met het garantiebewijs dat bij deze
+   * transactie hoort, of met `null` wanneer het vinkje weer uit gaat. Zonder deze
+   * prop verschijnt het garantieveld niet.
+   */
+  onGarantie?: (garantie: Garantie | null) => Promise<void> | void
 }) {
   const { t } = useT()
   const [omschrijving, setOmschrijving] = useState('')
@@ -175,6 +195,16 @@ export function TransactieFormulier({
   // niet, dan zegt de app "probeer het opnieuw" — en met een nieuw id zou die
   // tweede poging een TWEEDE boeking maken in plaats van dezelfde te herstellen.
   const nieuwIdRef = useRef(nieuwId())
+  // Om precies dezelfde reden krijgen de drie AANHANGSELS ook elk één vast id
+  // (ronde 36). Ze werden tot nu toe pas bij het verzenden aangemaakt, en dat is
+  // niet hetzelfde: `verzend()` bewaart na de transactie nog de bon, de
+  // dossierkoppeling en het garantiebewijs. Brak dat op de derde stap af, dan zei
+  // de app "je invoer staat er nog" — en maakte de tweede klik, die diezelfde
+  // melding vraagt, een TWEEDE gedeelde kost in het dossier. Die telt dubbel mee
+  // in de afrekening die naar de andere ouder gaat.
+  const nieuwBonIdRef = useRef(nieuwId())
+  const nieuwKostIdRef = useRef(nieuwId())
+  const nieuwGarantieIdRef = useRef(nieuwId())
   const [kassaRegels, setKassaRegels] = useState<KassaRegel[]>(() => [nieuweKassaRegel()])
   const zoekRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const [scanVoor, setScanVoor] = useState<string | null>(null)
@@ -194,6 +224,13 @@ export function TransactieFormulier({
   const [bezigBon, setBezigBon] = useState(false)
   const [dossierId, setDossierId] = useState('')
   const [kostenType, setKostenType] = useState<Kostentype>('gewoon')
+  // Een garantiebewijs bij deze aankoop. Standaard 24 maanden: dat is de wettelijke
+  // minimumgarantie op een nieuw product voor een consument in België.
+  const [garantieAan, setGarantieAan] = useState(false)
+  const [garantieMaanden, setGarantieMaanden] = useState('24')
+  // Zelfde vlag als `bonVerwijderd` hierboven, en om dezelfde reden. Zie
+  // `bewaarGarantiekoppeling`.
+  const garantieVerwijderd = useRef(false)
 
   // Een kost die al in een afrekening zit, raken we niet meer aan: het bedrag
   // ervan staat in een afrekening die je misschien al doorgestuurd hebt. Ze stil
@@ -226,6 +263,8 @@ export function TransactieFormulier({
   bonRef.current = bon
   const kostRef = useRef(gekoppeldeKost)
   kostRef.current = gekoppeldeKost
+  const garantieRef = useRef(gekoppeldeGarantie)
+  garantieRef.current = gekoppeldeGarantie
 
   useEffect(() => {
     const bewerken = bewerkenRef.current
@@ -274,16 +313,21 @@ export function TransactieFormulier({
     const bewerken = bewerkenRef.current
     const bon = bonRef.current
     const gekoppeldeKost = kostRef.current
+    const garantie = garantieRef.current
     const heeftBon = Boolean(bon)
     const heeftKost = Boolean(gekoppeldeKost)
+    const heeftGarantie = Boolean(garantie)
     setBonData(bon?.bestand ?? '')
     setBonNaam(bon?.bestandsnaam ?? '')
     setBonFout('')
     bonVerwijderd.current = false
     setDossierId(gekoppeldeKost?.dossierId ?? '')
     setKostenType(gekoppeldeKost?.kostenType ?? 'gewoon')
+    setGarantieAan(heeftGarantie)
+    setGarantieMaanden(garantie ? String(garantie.garantieMaanden) : '24')
+    garantieVerwijderd.current = false
     const heeftPersonen = (bewerken?.persoonIds?.length ?? 0) > 0
-    setMeerOpen(Boolean(bewerken) && (heeftBon || heeftKost || heeftPersonen))
+    setMeerOpen(Boolean(bewerken) && (heeftBon || heeftKost || heeftGarantie || heeftPersonen))
     // Bewust ALLEEN de transactie, en niet ook de id's van de bon en de gedeelde
     // kost (ronde 35).
     //
@@ -331,12 +375,16 @@ export function TransactieFormulier({
   // omgekeerd teken — een uitgave van € 50 met regels van € 40 en € 20 leverde
   // € 60 uitgaven én € 10 inkomsten op. Zie de uitleg in utils/transactie.ts.
   const teveelVerdeeld = gesplitst && verdeeld > totaalCenten
+  // Een garantiebewijs met een onmogelijke duur bewaren we niet stil met 24: dan
+  // staat er straks een vervaldatum die je nooit bedoeld hebt.
+  const garantieMaandenGeldig = !garantieAan || leesMaanden(garantieMaanden) !== null
   const geldig =
     omschrijving.trim().length > 0 &&
     Number.isFinite(bedragCenten) &&
     bedragCenten > 0 &&
     rekeningId.length > 0 &&
-    !teveelVerdeeld
+    !teveelVerdeeld &&
+    garantieMaandenGeldig
 
   function wijzigRegel(sleutel: string, velden: Partial<KassaRegel>) {
     setKassaRegels((rs) => rs.map((r) => (r.sleutel === sleutel ? { ...r, ...velden } : r)))
@@ -462,6 +510,7 @@ export function TransactieFormulier({
       // record dat naar iets verwijst wat er niet is.
       await bewaarBon(t.id)
       await bewaarDossierkoppeling(t)
+      await bewaarGarantiekoppeling(t)
     } catch (fout) {
       // Mislukt het bewaren (opslag vol, privémodus, database geweigerd), dan mag
       // dat nooit stil gebeuren: je zou denken dat je te zacht getikt hebt en het
@@ -479,6 +528,9 @@ export function TransactieFormulier({
     if (!bewerken) {
       // Klaar voor de volgende boeking (bv. na "Opslaan + volgende").
       nieuwIdRef.current = nieuwId()
+      nieuwBonIdRef.current = nieuwId()
+      nieuwKostIdRef.current = nieuwId()
+      nieuwGarantieIdRef.current = nieuwId()
       setOmschrijving('')
       setBedrag('')
       setCategorieId('')
@@ -493,6 +545,9 @@ export function TransactieFormulier({
       bonVerwijderd.current = false
       setDossierId('')
       setKostenType('gewoon')
+      setGarantieAan(false)
+      setGarantieMaanden('24')
+      garantieVerwijderd.current = false
       setMeerOpen(false)
     }
 
@@ -518,7 +573,7 @@ export function TransactieFormulier({
     }
     if (bon && bon.bestand === bonData) return
     await onBon({
-      id: bon ? bon.id : nieuwId(),
+      id: bon ? bon.id : nieuwBonIdRef.current,
       transactieId,
       naam: omschrijving.trim() || t('Bon/factuur'),
       soort: 'bon',
@@ -537,7 +592,7 @@ export function TransactieFormulier({
       return
     }
     await onDossierKost({
-      id: gekoppeldeKost ? gekoppeldeKost.id : nieuwId(),
+      id: gekoppeldeKost ? gekoppeldeKost.id : nieuwKostIdRef.current,
       dossierId: gekozen,
       transactieId: tx.id,
       omschrijving: tx.omschrijving,
@@ -554,6 +609,69 @@ export function TransactieFormulier({
     })
   }
 
+  // Maakt of verwijdert het garantiebewijs dat bij deze aankoop hoort.
+  //
+  // Bij een NIEUW bewijs vullen we product, datum en prijs uit de boeking: dat is
+  // precies waarom de brug bestaat — je hoeft niets over te tikken. Bij een BESTAAND
+  // bewijs raken we alleen het aantal maanden aan. Reden: dat bewijs kan ondertussen
+  // op de Garanties-pagina bijgewerkt zijn (een preciezere productnaam, de winkel,
+  // een notitie), en dat mag een correctie aan de omschrijving van je boeking niet
+  // stil overschrijven.
+  async function bewaarGarantiekoppeling(tx: Transactie) {
+    if (!onGarantie) return
+    const geldigeMaanden = leesMaanden(garantieMaanden) ?? 24
+
+    // Een uitgave die je omboekt naar een inkomst: dan hoort er geen
+    // garantiebewijs meer bij deze boeking. Maar het bewijs zelf gooien we NIET
+    // weg — het kan op de Garanties-pagina aangevuld zijn met de winkel, een
+    // notitie en een foto, en die verlies je hier onherroepelijk. Alleen de
+    // verwijzing naar deze boeking gaat eraf.
+    if (!garantieKanGekozenWorden) {
+      if (gekoppeldeGarantie) {
+        const zonderKoppeling = { ...gekoppeldeGarantie }
+        delete zonderKoppeling.transactieId
+        await onGarantie(zonderKoppeling)
+      }
+      return
+    }
+
+    if (!garantieAan) {
+      // Alleen weghalen wanneer je het vinkje ZELF hebt uitgezet.
+      //
+      // Zonder deze vlag betekent een leeg vinkje ook "weghalen" wanneer het
+      // gewoon nooit aangevinkt was — en dan wist het opslaan een garantiebewijs
+      // dat intussen van een ánder toestel binnenkwam. Exact hetzelfde gat als bij
+      // de bon, waar `bonVerwijderd` het in ronde 35 al dichtte.
+      if (gekoppeldeGarantie && garantieVerwijderd.current) await onGarantie(null)
+      return
+    }
+
+    if (gekoppeldeGarantie) {
+      // Alleen het aantal maanden. Product, winkel, notitie en foto kunnen op de
+      // Garanties-pagina verfijnd zijn, en een correctie aan de omschrijving van
+      // je boeking mag dat niet stil overschrijven. Is er niets veranderd, dan
+      // schrijven we ook niets weg: het logboek is append-only, dus dat zou bij
+      // elke bewerking dezelfde regel nog eens toevoegen.
+      if (
+        gekoppeldeGarantie.garantieMaanden === geldigeMaanden &&
+        gekoppeldeGarantie.transactieId === tx.id
+      ) {
+        return
+      }
+      await onGarantie({ ...gekoppeldeGarantie, garantieMaanden: geldigeMaanden, transactieId: tx.id })
+      return
+    }
+
+    await onGarantie({
+      id: nieuwGarantieIdRef.current,
+      product: tx.omschrijving,
+      aankoopdatum: tx.datum,
+      garantieMaanden: geldigeMaanden,
+      prijs: Math.abs(tx.bedrag),
+      transactieId: tx.id,
+    })
+  }
+
   // Het voorstel wordt enkel getoond zolang je zelf nog niets gekozen hebt, en
   // nooit bij een gesplitst kassaticket (daar heeft elke regel zijn eigen categorie).
   const voorsteldId = !gesplitst && !categorieId && handelaarIndex ? voorstelCategorie(omschrijving, handelaarIndex) : null
@@ -566,10 +684,20 @@ export function TransactieFormulier({
   const toonDossierBlok = Boolean(onDossierKost) && (dossierKanGekozenWorden || Boolean(gekoppeldeKost))
   // Het blok "Meer opties" verschijnt alleen als er ook echt iets in staat.
   const heeftGezinsleden = gezinsleden.some((g) => !g.gearchiveerd || persoonIds.includes(g.id))
-  const toonMeer = heeftGezinsleden || Boolean(onBon) || toonDossierBlok
+  // Een inkomst koop je niet, dus dan verschijnt de garantiekeuze niet. Hangt er al
+  // een bewijs aan en zet je de boeking om naar een inkomst, dan zeggen we dat
+  // liever dan de koppeling stil weg te gooien.
+  const garantieKanGekozenWorden = Boolean(onGarantie) && soort === 'uitgave'
+  const toonGarantieBlok = Boolean(onGarantie) && (garantieKanGekozenWorden || Boolean(gekoppeldeGarantie))
+  const toonMeer = heeftGezinsleden || Boolean(onBon) || toonDossierBlok || toonGarantieBlok
   // Hoeveel van de optionele velden ingevuld zijn. Zonder dit getal is een
   // dichtgeklapt blok een blinde vlek: je ziet niet dat er een bon aan hangt.
-  const aantalIngevuld = [persoonIds.length > 0, Boolean(bonData), Boolean(dossierId)].filter(Boolean).length
+  const aantalIngevuld = [
+    persoonIds.length > 0,
+    Boolean(bonData),
+    Boolean(dossierId),
+    garantieAan && garantieKanGekozenWorden,
+  ].filter(Boolean).length
 
   async function kiesBon(bestand: File) {
     setBezigBon(true)
@@ -869,6 +997,62 @@ export function TransactieFormulier({
                     </>
                   )}
                 </>
+              )}
+
+              {/* Een garantiebewijs bij deze aankoop (ronde 36).
+                  Tot nu toe liep de brug maar één kant op: op de Garanties-pagina kon
+                  je een boeking kiezen, en die koppeling werd wel bewaard maar nergens
+                  getoond. Het moment waarop je aan garantie dénkt, is echter het moment
+                  waarop je de aankoop inboekt. */}
+              {toonGarantieBlok && (
+                <div className="veldgroep">
+                  {!garantieKanGekozenWorden ? (
+                    <p className="leeg" style={{ padding: 0, textAlign: 'left' }}>
+                      {t('Een inkomst heeft geen garantiebewijs. Bewaar je dit zo, dan blijft het bewijs bestaan bij je garanties, maar hangt het niet meer aan deze boeking.')}
+                    </p>
+                  ) : (
+                    <>
+                      {/* Alleen de korte zin staat in het label: een schermlezer leest
+                          de volledige naam van een vinkje in één adem voor, en de
+                          uitleg erbij maakt daar een alinea van. Die uitleg hangt er
+                          via `aria-describedby` naast. */}
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <input
+                          type="checkbox"
+                          checked={garantieAan}
+                          aria-describedby="tx-garantie-uitleg"
+                          onChange={(e) => {
+                            setGarantieAan(e.target.checked)
+                            if (!e.target.checked) garantieVerwijderd.current = true
+                          }}
+                        />
+                        <span className="rij-meta">{t('Garantiebewijs bijhouden')}</span>
+                      </label>
+                      <span className="rij-meta" id="tx-garantie-uitleg">
+                        {t('Kompal maakt er een garantiebewijs bij met deze boeking als aankoopbewijs, en verwittigt je voor de garantie afloopt.')}
+                      </span>
+                      {garantieAan && (
+                        <div className="veldgroep">
+                          <label className="label-caps" htmlFor="tx-garantie">{t('Garantie (maanden)')}</label>
+                          <input
+                            id="tx-garantie"
+                            inputMode="numeric"
+                            style={{ width: 96 }}
+                            value={garantieMaanden}
+                            onChange={(e) => setGarantieMaanden(e.target.value)}
+                          />
+                          <span className="rij-meta">
+                            {!garantieMaandenGeldig
+                              ? t('Vul een aantal maanden in, bijvoorbeeld 24.')
+                              : gekoppeldeGarantie
+                                ? t('Dit bewijs bestaat al; je past hier alleen de garantieduur aan.')
+                                : t('Wettelijk minimum op een nieuw product: 24 maanden.')}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               )}
             </div>
           )}

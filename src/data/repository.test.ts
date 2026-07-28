@@ -18,6 +18,8 @@ import {
   verwijderDossierMetAanhang,
   verwijderTransactie,
   verwijderTransactieMetAanhang,
+  bewaarGarantie,
+  laadGaranties,
 } from './repository'
 import type { Transactie } from './schema'
 
@@ -32,6 +34,7 @@ beforeEach(async () => {
   await db.kindrekeningen.clear()
   await db.kindrekeningposten.clear()
   await db.dossierdocumenten.clear()
+  await db.garanties.clear()
 })
 
 const t1: Transactie = { id: 't1', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 2400, rekeningId: 'r1' }
@@ -99,11 +102,23 @@ describe('verwijderen met aanhang', () => {
       toegevoegdOp: '2026-07-01',
     })
 
-    await verwijderTransactieMetAanhang('t1', { gedeeldeKostId: 'k1', documentId: 'doc1' })
+    // Ronde 36: het garantiebewijs dat je vanuit deze boeking maakte, gaat mee.
+    // Bleef het staan, dan had je een garantiebewijs zonder aankoopbewijs — want
+    // de bon van die boeking verdwijnt hier wél.
+    await bewaarGarantie({
+      id: 'g1',
+      product: 'Laptop',
+      aankoopdatum: '2026-07-01',
+      garantieMaanden: 24,
+      transactieId: 't1',
+    })
+
+    await verwijderTransactieMetAanhang('t1', { gedeeldeKostId: 'k1', documentId: 'doc1', garantieId: 'g1' })
 
     expect((await laadTransacties()).geldig).toHaveLength(0)
     expect((await laadGedeeldeKosten()).geldig).toHaveLength(0)
     expect((await laadDossierDocumenten()).geldig).toHaveLength(0)
+    expect((await laadGaranties()).geldig).toHaveLength(0)
   })
 
   it('haalt een dossier samen met kosten, afrekeningen en kindrekeningen weg', async () => {

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { TransactieFormulier } from './TransactieFormulier'
 import { bouwHandelaarIndex } from '../utils/categorieVoorstel'
-import type { Dossier, Transactie } from '../data/schema'
+import type { Dossier, Garantie, Transactie } from '../data/schema'
 
 const rekeningen = [{ id: 'r1', naam: 'Betaalrekening', beginsaldo: 0 }]
 
@@ -106,7 +106,7 @@ describe('TransactieFormulier', () => {
 
     await user.type(screen.getAllByLabelText('Item zoeken')[0], 'diversen')
     // Ronde 30: de hoofdcategorieën zitten achter één knop. Eerst openen.
-    await user.click(screen.getAllByRole('button', { name: 'Selecteer hoofdcategorie' })[0])
+    await user.click(screen.getAllByRole('button', { name: 'Selecteer hoofdcategorie (optioneel)' })[0])
     await user.click(screen.getAllByRole('button', { name: /Huishouden en Verzorging/ })[0])
     await user.type(screen.getAllByLabelText('Deelbedrag')[0], '12')
 
@@ -861,3 +861,255 @@ describe('TransactieFormulier — een bon die onderweg binnenkomt', () => {
     await waitFor(() => expect(onBon).toHaveBeenCalledWith(null))
   })
 })
+
+// --- Ronde 36: vanuit een boeking meteen een garantiebewijs ---
+//
+// De brug bestond maar in één richting: op de Garanties-pagina kon je een boeking
+// aanduiden. Maar het moment waarop je aan garantie dénkt, is het moment waarop je
+// de aankoop inboekt.
+describe('TransactieFormulier — garantiebewijs bij een aankoop', () => {
+  function renderMetGarantie(gekoppeldeGarantie: Garantie | null = null, bewerken: Transactie | null = null) {
+    const onOpslaan = vi.fn()
+    const onGarantie = vi.fn()
+    render(
+      <TransactieFormulier
+        onOpslaan={onOpslaan}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        handelaars={[]}
+        bewerken={bewerken}
+        gekoppeldeGarantie={gekoppeldeGarantie}
+        onGarantie={onGarantie}
+      />,
+    )
+    return { onOpslaan, onGarantie }
+  }
+
+  it('maakt een garantiebewijs met de gegevens van de boeking', async () => {
+    const user = userEvent.setup()
+    const { onGarantie } = renderMetGarantie()
+
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Media Markt')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '899')
+    await user.click(screen.getByRole('button', { name: /Meer opties/ }))
+    await user.click(screen.getByLabelText(/Garantiebewijs bijhouden/))
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+
+    await waitFor(() =>
+      expect(onGarantie).toHaveBeenCalledWith(
+        expect.objectContaining({ product: 'Media Markt', prijs: 89900, garantieMaanden: 24 }),
+      ),
+    )
+  })
+
+  it('neemt een andere garantieduur over', async () => {
+    const user = userEvent.setup()
+    const { onGarantie } = renderMetGarantie()
+
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Fietsenwinkel')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '1200')
+    await user.click(screen.getByRole('button', { name: /Meer opties/ }))
+    await user.click(screen.getByLabelText(/Garantiebewijs bijhouden/))
+    const maanden = screen.getByLabelText('Garantie (maanden)')
+    await user.clear(maanden)
+    await user.type(maanden, '60')
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+
+    await waitFor(() => expect(onGarantie).toHaveBeenCalledWith(expect.objectContaining({ garantieMaanden: 60 })))
+  })
+
+  it('maakt er geen wanneer het vinkje uit blijft', async () => {
+    const user = userEvent.setup()
+    const { onGarantie } = renderMetGarantie()
+
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Bakker')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '5')
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+
+    await waitFor(() => expect(onGarantie).not.toHaveBeenCalled())
+  })
+
+  it('raakt bij een bestaand bewijs alleen de garantieduur aan', async () => {
+    const user = userEvent.setup()
+    const tx: Transactie = { id: 't1', datum: '2026-01-01', omschrijving: 'Media Markt', bedrag: -89900, rekeningId: 'r1' }
+    const g: Garantie = {
+      id: 'g1',
+      product: 'Laptop Dell XPS',
+      aankoopdatum: '2026-01-01',
+      garantieMaanden: 24,
+      winkel: 'Media Markt',
+      transactieId: 't1',
+    }
+    const { onGarantie } = renderMetGarantie(g, tx)
+
+    // "Meer opties" staat al open omdat er iets aan hangt.
+    const maanden = await screen.findByLabelText('Garantie (maanden)')
+    await user.clear(maanden)
+    await user.type(maanden, '36')
+    await user.click(screen.getByRole('button', { name: 'Wijzigen' }))
+
+    await waitFor(() =>
+      expect(onGarantie).toHaveBeenCalledWith(
+        // De productnaam die je op de Garanties-pagina verfijnde, blijft staan.
+        expect.objectContaining({ id: 'g1', product: 'Laptop Dell XPS', winkel: 'Media Markt', garantieMaanden: 36 }),
+      ),
+    )
+  })
+
+  it('haalt het bewijs weg wanneer je het vinkje uitzet', async () => {
+    const user = userEvent.setup()
+    const tx: Transactie = { id: 't1', datum: '2026-01-01', omschrijving: 'Media Markt', bedrag: -89900, rekeningId: 'r1' }
+    const g: Garantie = { id: 'g1', product: 'Laptop', aankoopdatum: '2026-01-01', garantieMaanden: 24, transactieId: 't1' }
+    const { onGarantie } = renderMetGarantie(g, tx)
+
+    await user.click(await screen.findByLabelText(/Garantiebewijs bijhouden/))
+    await user.click(screen.getByRole('button', { name: 'Wijzigen' }))
+
+    await waitFor(() => expect(onGarantie).toHaveBeenCalledWith(null))
+  })
+})
+
+// --- Ronde 36, na de verificatieronde: drie gaten die stil gegevens kostten ---
+describe('TransactieFormulier — garantiebewijs, de scherpe randen', () => {
+  const tx: Transactie = { id: 't1', datum: '2026-01-01', omschrijving: 'Media Markt', bedrag: -89900, rekeningId: 'r1' }
+  const garantie: Garantie = {
+    id: 'g1',
+    product: 'Laptop',
+    aankoopdatum: '2026-01-01',
+    garantieMaanden: 24,
+    winkel: 'Media Markt',
+    transactieId: 't1',
+  }
+
+  it('wist geen garantiebewijs dat tijdens het bewerken via de synchronisatie binnenkomt', async () => {
+    const user = userEvent.setup()
+    const onGarantie = vi.fn()
+    const props = {
+      onOpslaan: vi.fn(),
+      rekeningen,
+      categorieen: [],
+      handelaars: [],
+      bewerken: tx,
+      onGarantie,
+    }
+    const { rerender } = render(<TransactieFormulier {...props} gekoppeldeGarantie={null} />)
+
+    // Zo ziet een stille sync eruit: hetzelfde record, maar er hangt nu een
+    // garantiebewijs aan dat dit venster nooit gezien heeft. Het vuleffect draait
+    // terecht niet opnieuw, dus het vinkje staat nog uit.
+    rerender(<TransactieFormulier {...props} gekoppeldeGarantie={garantie} />)
+    await user.click(screen.getByRole('button', { name: 'Wijzigen' }))
+
+    await waitFor(() => expect(props.onOpslaan).toHaveBeenCalled())
+    expect(onGarantie).not.toHaveBeenCalledWith(null)
+  })
+
+  it('houdt het bewijs in leven wanneer je de uitgave omboekt naar een inkomst', async () => {
+    const user = userEvent.setup()
+    const onGarantie = vi.fn()
+    render(
+      <TransactieFormulier
+        onOpslaan={vi.fn()}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        handelaars={[]}
+        bewerken={tx}
+        gekoppeldeGarantie={garantie}
+        onGarantie={onGarantie}
+      />,
+    )
+
+    await user.click(screen.getByLabelText('Inkomst'))
+    await user.click(screen.getByRole('button', { name: 'Wijzigen' }))
+
+    // Alleen de verwijzing gaat eraf; winkel en product blijven staan.
+    await waitFor(() =>
+      expect(onGarantie).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'g1', product: 'Laptop', winkel: 'Media Markt' }),
+      ),
+    )
+    expect(onGarantie.mock.calls[0][0]).not.toHaveProperty('transactieId')
+  })
+
+  it('schrijft niets weg wanneer er aan het bewijs niets verandert', async () => {
+    const user = userEvent.setup()
+    const onGarantie = vi.fn()
+    render(
+      <TransactieFormulier
+        onOpslaan={vi.fn()}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        handelaars={[]}
+        bewerken={tx}
+        gekoppeldeGarantie={garantie}
+        onGarantie={onGarantie}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Wijzigen' }))
+    // Het logboek is append-only: dezelfde regel opnieuw wegschrijven laat hem
+    // bij elke bewerking aangroeien.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Wijzigen' })).toBeEnabled())
+    expect(onGarantie).not.toHaveBeenCalled()
+  })
+
+  it('houdt de knop uit bij een onmogelijke garantieduur', async () => {
+    const user = userEvent.setup()
+    render(
+      <TransactieFormulier
+        onOpslaan={vi.fn()}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        handelaars={[]}
+        onGarantie={vi.fn()}
+      />,
+    )
+
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Media Markt')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '899')
+    await user.click(screen.getByRole('button', { name: /Meer opties/ }))
+    await user.click(screen.getByLabelText(/Garantiebewijs bijhouden/))
+    const maanden = screen.getByLabelText('Garantie (maanden)')
+    await user.clear(maanden)
+
+    // De app gebruikt bewust `aria-disabled` en niet `disabled`, zodat de knop
+    // bereikbaar blijft en de reden voorgelezen kan worden.
+    expect(screen.getByRole('button', { name: 'Toevoegen' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText('Vul een aantal maanden in, bijvoorbeeld 24.')).toBeInTheDocument()
+  })
+
+  it('maakt bij een tweede poging geen TWEEDE gedeelde kost', async () => {
+    const user = userEvent.setup()
+    const dossiers: Dossier[] = [{ id: 'd1', naam: 'Kinderen', aandeelJij: 50 }]
+    const onDossierKost = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('opslag vol'))
+      .mockResolvedValue(undefined)
+
+    render(
+      <TransactieFormulier
+        onOpslaan={vi.fn()}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        handelaars={[]}
+        dossiers={dossiers}
+        onDossierKost={onDossierKost}
+      />,
+    )
+
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Colruyt')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '30')
+    await user.click(screen.getByRole('button', { name: /Meer opties/ }))
+    await user.selectOptions(screen.getByLabelText('Delen in een dossier (optioneel)'), 'd1')
+
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+    await screen.findByText(/opslag vol/)
+    // De melding zegt "je invoer staat er nog" — dus dat is precies wat je doet.
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+
+    await waitFor(() => expect(onDossierKost).toHaveBeenCalledTimes(2))
+    // Zelfde id, dus één kost in het dossier en geen dubbeltelling in de afrekening.
+    expect(onDossierKost.mock.calls[0][0].id).toBe(onDossierKost.mock.calls[1][0].id)
+  })
+})
+

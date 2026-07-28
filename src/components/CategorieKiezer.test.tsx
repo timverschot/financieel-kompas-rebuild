@@ -12,7 +12,7 @@ describe('CategorieKiezer', () => {
 
     await user.click(screen.getByLabelText('Zoek categorie of item'))
     // Ronde 30: de hoofdcategorieën zitten achter één knop. Openen, dan kiezen.
-    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie' }))
+    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie (optioneel)' }))
     await user.click(screen.getByRole('button', { name: /Voeding/ }))
     expect(onKies).toHaveBeenCalledWith('ov-voeding')
   })
@@ -88,7 +88,7 @@ describe('CategorieKiezer', () => {
 
     await user.type(screen.getByLabelText('Zoek categorie of item'), 'brood')
     // De knop blijft bereikbaar terwijl de voorstellen getoond worden.
-    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie' }))
+    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie (optioneel)' }))
     await user.click(screen.getByRole('button', { name: /Huishouden en Verzorging/ }))
     expect(onKies).toHaveBeenCalledWith('ov-huishouden-en-verzorging')
   })
@@ -102,7 +102,7 @@ describe('CategorieKiezer', () => {
     expect(screen.queryByRole('group', { name: 'Hoofdcategorieën' })).toBeNull()
     expect(screen.queryByRole('button', { name: /Huisdieren/ })).toBeNull()
 
-    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie' }))
+    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie (optioneel)' }))
     const groep = screen.getByRole('group', { name: 'Hoofdcategorieën' })
     expect(groep.querySelectorAll('button')).toHaveLength(14)
     // Ook de staart van de lijst staat er nu bij; die zat vroeger achter "Nog 6 …".
@@ -114,7 +114,7 @@ describe('CategorieKiezer', () => {
     const onKies = vi.fn()
     render(<CategorieKiezer waarde={undefined} onKies={onKies} gebruikerCategorieen={[]} />)
 
-    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie' }))
+    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie (optioneel)' }))
     await user.click(screen.getByRole('button', { name: /Huisdieren/ }))
     expect(onKies).toHaveBeenCalledWith('ov-huisdieren')
     expect(screen.queryByRole('group', { name: 'Hoofdcategorieën' })).toBeNull()
@@ -130,7 +130,7 @@ describe('CategorieKiezer', () => {
     render(
       <CategorieKiezer waarde={undefined} onKies={() => {}} gebruikerCategorieen={[]} voorkeurId="ov-inkomsten" />,
     )
-    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie' }))
+    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie (optioneel)' }))
     const groep = screen.getByRole('group', { name: 'Hoofdcategorieën' })
     expect(groep.querySelectorAll('button')[0].textContent).toContain('Inkomsten')
   })
@@ -143,7 +143,7 @@ describe('CategorieKiezer', () => {
         <CategorieKiezer waarde={undefined} onKies={() => {}} gebruikerCategorieen={[]} />
       </CategorieVolgordeProvider>,
     )
-    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie' }))
+    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie (optioneel)' }))
     const knoppen = [...screen.getByRole('group', { name: 'Hoofdcategorieën' }).querySelectorAll('button')]
     expect(knoppen[0].textContent).toContain('Huisdieren')
     expect(knoppen[1].textContent).toContain('Drank')

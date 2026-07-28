@@ -95,3 +95,36 @@ describe('CategorieBoom — volgorde van de hoofdcategorieën', () => {
     expect(namen()[1]).toBe('Voeding')
   })
 })
+
+// Ronde 36: de knop om iets toe te voegen stond onderaan de lijst. Bij "Voeding",
+// met zesentwintig categorieën en meer dan tachtig items in sommige daarvan,
+// betekende dat: eerst helemaal langs alles scrollen om te kunnen toevoegen.
+describe('CategorieBoom — toevoegen staat bovenaan', () => {
+  // De volgorde waarin de knoppen in de DOM staan, is de volgorde waarin je ze
+  // ziet én waarin een schermlezer ze voorleest.
+  function staatVoor(a: HTMLElement, b: HTMLElement): boolean {
+    return (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+  }
+
+  it('zet "+ categorie" boven de eerste categorie van een hoofdcategorie', async () => {
+    const user = userEvent.setup()
+    renderBoom({ onCategorieToevoegen: vi.fn() })
+    await user.click(screen.getByRole('button', { name: /Voeding/ }))
+
+    const toevoegen = await screen.findByRole('button', { name: 'Voeg categorie toe aan Voeding' })
+    const eerste = screen.getAllByRole('button', { name: /Broodwaren/ })[0]
+    expect(staatVoor(toevoegen, eerste)).toBe(true)
+  })
+
+  it('zet "+ subcategorie" boven het eerste item van een categorie', async () => {
+    const user = userEvent.setup()
+    renderBoom()
+    await user.click(screen.getByRole('button', { name: /Voeding/ }))
+    await user.click(await screen.findByRole('button', { name: /Zuivel en Kaas/ }))
+
+    const toevoegen = screen.getByRole('button', { name: 'Voeg subcategorie toe aan Zuivel en Kaas' })
+    const eersteItem = screen.getByText('Eieren')
+    expect(staatVoor(toevoegen, eersteItem)).toBe(true)
+  })
+})
+

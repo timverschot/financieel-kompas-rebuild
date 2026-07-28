@@ -193,6 +193,50 @@ export function CategorieBoom({
 
               {hOpen && (
                 <ul className="lijst" style={subLijst}>
+                  {/* Toevoegen op het MIDDENniveau. Dit ontbrak volledig: onder een
+                      eigen hoofdcategorie kon je niets hangen, dus bleef ze een losse
+                      naam terwijl de ingebouwde categorieën drie lagen hadden.
+
+                      Sinds ronde 36 staat deze regel BOVENAAN in plaats van onderaan:
+                      "Voeding" heeft zesentwintig categorieën, en de knop om er een bij
+                      te maken lag daar helemaal onder — je moest er eerst langs scrollen
+                      om te vinden wat je zocht. */}
+                  {onCategorieToevoegen && (
+                    <li className="rij" style={{ ...bladRij, paddingTop: 6, paddingBottom: 6 }}>
+                      {nieuweCatOnder === h.id ? (
+                        <>
+                          <input
+                            aria-label={t('Nieuwe categorie in {naam}', { naam: h.naam })}
+                            style={{ flex: 1, minWidth: 0 }}
+                            value={nieuweCatTekst}
+                            onChange={(e) => setNieuweCatTekst(e.target.value)}
+                            placeholder={t('Naam categorie')}
+                          />
+                          <span className="rij-acties">
+                            <button type="button" className="knop knop-secundair knop-klein" onClick={() => bewaarNieuweCategorie(h.id)}>
+                              {t('Toevoegen')}
+                            </button>
+                            <button type="button" className="knop knop-kaal" onClick={() => setNieuweCatOnder(null)}>
+                              ×
+                            </button>
+                          </span>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          className="knop knop-ghost knop-klein"
+                          aria-label={t('Voeg categorie toe aan {naam}', { naam: h.naam })}
+                          onClick={() => {
+                            setNieuweCatOnder(h.id)
+                            setNieuweCatTekst('')
+                          }}
+                        >
+                          {t('+ categorie')}
+                        </button>
+                      )}
+                    </li>
+                  )}
+
                   {h.categorieen.map((c) => {
                     const cOpen = openCat.has(c.id)
                     return (
@@ -217,6 +261,54 @@ export function CategorieBoom({
                         </button>
                         {cOpen && (
                           <ul className="lijst" style={subLijst}>
+                            <li className="rij" style={{ ...bladRij, paddingTop: 6, paddingBottom: 6 }}>
+                              {toevoegCatId === c.id ? (
+                                <>
+                                  <input
+                                    aria-label={t('Nieuwe subcategorie in {naam}', { naam: c.naam })}
+                                    style={{ flex: 1, minWidth: 0 }}
+                                    value={toevoegTekst}
+                                    onChange={(e) => setToevoegTekst(e.target.value)}
+                                    placeholder={t('Naam subcategorie')}
+                                  />
+                                  <span className="rij-acties">
+                                    <button type="button" className="knop knop-secundair knop-klein" onClick={() => bewaarToevoeging(c.id)}>
+                                      {t('Toevoegen')}
+                                    </button>
+                                    <button type="button" className="knop knop-kaal" onClick={() => setToevoegCatId(null)}>
+                                      ×
+                                    </button>
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="knop knop-ghost knop-klein"
+                                    aria-label={t('Voeg subcategorie toe aan {naam}', { naam: c.naam })}
+                                    onClick={() => {
+                                      setToevoegCatId(c.id)
+                                      setToevoegTekst('')
+                                    }}
+                                  >
+                                    {t('+ subcategorie')}
+                                  </button>
+                                  {/* Een eigen middencategorie mag je weer weghalen;
+                                      een ingebouwde niet — die is de referentie. */}
+                                  {c.eigen && onCategorieVerwijderen && (
+                                    <button
+                                      type="button"
+                                      className="knop knop-ghost knop-klein knop-gevaar"
+                                      aria-label={t('Verwijder categorie {naam}', { naam: c.naam })}
+                                      onClick={() => onCategorieVerwijderen(c.id)}
+                                    >
+                                      {t('Verwijderen')}
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                            </li>
+
                             {c.items.map((it) => (
                               <li key={it.id} className="rij" style={bladRij}>
                                 {bewerkId === it.id ? (
@@ -272,97 +364,31 @@ export function CategorieBoom({
                               </li>
                             ))}
 
-                            <li className="rij" style={{ ...bladRij, paddingTop: 6, paddingBottom: 6 }}>
-                              {toevoegCatId === c.id ? (
-                                <>
-                                  <input
-                                    aria-label={t('Nieuwe subcategorie in {naam}', { naam: c.naam })}
-                                    style={{ flex: 1, minWidth: 0 }}
-                                    value={toevoegTekst}
-                                    onChange={(e) => setToevoegTekst(e.target.value)}
-                                    placeholder={t('Naam subcategorie')}
-                                  />
-                                  <span className="rij-acties">
-                                    <button type="button" className="knop knop-secundair knop-klein" onClick={() => bewaarToevoeging(c.id)}>
-                                      {t('Toevoegen')}
-                                    </button>
-                                    <button type="button" className="knop knop-kaal" onClick={() => setToevoegCatId(null)}>
-                                      ×
-                                    </button>
-                                  </span>
-                                </>
-                              ) : (
-                                <>
-                                  <button
-                                    type="button"
-                                    className="knop knop-ghost knop-klein"
-                                    aria-label={t('Voeg subcategorie toe aan {naam}', { naam: c.naam })}
-                                    onClick={() => {
-                                      setToevoegCatId(c.id)
-                                      setToevoegTekst('')
-                                    }}
-                                  >
-                                    {t('+ subcategorie')}
-                                  </button>
-                                  {/* Een eigen middencategorie mag je weer weghalen;
-                                      een ingebouwde niet — die is de referentie. */}
-                                  {c.eigen && onCategorieVerwijderen && (
-                                    <button
-                                      type="button"
-                                      className="knop knop-ghost knop-klein knop-gevaar"
-                                      aria-label={t('Verwijder categorie {naam}', { naam: c.naam })}
-                                      onClick={() => onCategorieVerwijderen(c.id)}
-                                    >
-                                      {t('Verwijderen')}
-                                    </button>
-                                  )}
-                                </>
-                              )}
-                            </li>
+                            {/* Een eigen middencategorie mag je weer weghalen; een
+                                ingebouwde niet — die is de referentie. Deze knop staat
+                                bewust ONDERAAN: hij zat op dezelfde regel als
+                                "+ subcategorie", en die verhuisde in ronde 36 naar boven.
+                                Een onherroepelijke actie hoort niet het eerste te zijn
+                                wat je ziet, en al zeker niet pal naast de knop die je
+                                het vaakst gebruikt. */}
+                            {c.eigen && onCategorieVerwijderen && (
+                              <li className="rij" style={{ ...bladRij, paddingTop: 6, paddingBottom: 6 }}>
+                                <button
+                                  type="button"
+                                  className="knop knop-ghost knop-klein knop-gevaar"
+                                  aria-label={t('Verwijder categorie {naam}', { naam: c.naam })}
+                                  onClick={() => onCategorieVerwijderen(c.id)}
+                                >
+                                  {t('Verwijderen')}
+                                </button>
+                              </li>
+                            )}
                           </ul>
                         )}
                       </li>
                     )
                   })}
 
-                  {/* Toevoegen op het MIDDENniveau. Dit ontbrak volledig: onder een
-                      eigen hoofdcategorie kon je niets hangen, dus bleef ze een losse
-                      naam terwijl de ingebouwde categorieën drie lagen hadden. */}
-                  {onCategorieToevoegen && (
-                    <li className="rij" style={{ ...bladRij, paddingTop: 6, paddingBottom: 6 }}>
-                      {nieuweCatOnder === h.id ? (
-                        <>
-                          <input
-                            aria-label={t('Nieuwe categorie in {naam}', { naam: h.naam })}
-                            style={{ flex: 1, minWidth: 0 }}
-                            value={nieuweCatTekst}
-                            onChange={(e) => setNieuweCatTekst(e.target.value)}
-                            placeholder={t('Naam categorie')}
-                          />
-                          <span className="rij-acties">
-                            <button type="button" className="knop knop-secundair knop-klein" onClick={() => bewaarNieuweCategorie(h.id)}>
-                              {t('Toevoegen')}
-                            </button>
-                            <button type="button" className="knop knop-kaal" onClick={() => setNieuweCatOnder(null)}>
-                              ×
-                            </button>
-                          </span>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          className="knop knop-ghost knop-klein"
-                          aria-label={t('Voeg categorie toe aan {naam}', { naam: h.naam })}
-                          onClick={() => {
-                            setNieuweCatOnder(h.id)
-                            setNieuweCatTekst('')
-                          }}
-                        >
-                          {t('+ categorie')}
-                        </button>
-                      )}
-                    </li>
-                  )}
                 </ul>
               )}
             </li>

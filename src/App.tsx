@@ -113,7 +113,6 @@ import { AnalyseSectie } from './components/AnalyseSectie'
 import { SpaardoelSectie } from './components/SpaardoelSectie'
 import { CategorieBoom } from './components/CategorieBoom'
 import { OverzichtZijkolom } from './components/OverzichtZijkolom'
-import { SubcategorieSnelFormulier } from './components/SubcategorieSnelFormulier'
 import { Donut } from './components/Donut'
 import { MaandGrafiek } from './components/MaandGrafiek'
 import { RecenteTransacties } from './components/RecenteTransacties'
@@ -568,6 +567,26 @@ export function App() {
     await herlaad()
   }
 
+  // En idem voor het garantiebewijs bij een aankoop (ronde 36). Kruist de brug in
+  // de andere richting: tot nu toe kon je alleen vanuit een garantiebewijs een
+  // boeking aanduiden.
+  async function transactieGarantie(garantie: Garantie | null) {
+    if (garantie) {
+      await bewaarGarantie(garantie)
+      await herlaad()
+      return
+    }
+    const bestaand = bewerkTransactie
+      ? garanties.find((g) => g.transactieId === bewerkTransactie.id)
+      : undefined
+    if (!bestaand) return
+    await verwijderGarantie(bestaand.id)
+    await herlaad()
+    // Mét ongedaan maken, net als op de Garanties-pagina zelf: een vinkje uitzetten
+    // wist hier een volledig record, inclusief de winkel, de notitie en de foto.
+    toonUndo(t('Garantie verwijderd'), () => bewaarGarantie(bestaand))
+  }
+
   async function slaRekeningOp(r: Rekening) {
     setGekozenRekeningId(r.id)
     await bewaarRekening(r)
@@ -1011,11 +1030,13 @@ export function App() {
     // als bij het verwijderen van een dossier.
     const oudeKost = gedeeldeKosten.find((k) => k.transactieId === id)
     const oudeBon = bonVanTransactie(dossierdocumenten, id)
+    const oudeGarantie = garanties.find((g) => g.transactieId === id)
     // In ÉÉN keer, niet in drie stappen: faalde stap twee, dan was de transactie
     // weg maar bleef de gedeelde kost in het dossier meetellen.
     await verwijderTransactieMetAanhang(id, {
       gedeeldeKostId: oudeKost?.id,
       documentId: oudeBon?.id,
+      garantieId: oudeGarantie?.id,
     })
     await herlaad()
     if (oud) {
@@ -1023,6 +1044,7 @@ export function App() {
         await bewaarTransactie(oud)
         if (oudeKost) await bewaarGedeeldeKost(oudeKost)
         if (oudeBon) await bewaarDossierDocument(oudeBon)
+        if (oudeGarantie) await bewaarGarantie(oudeGarantie)
       })
     }
   }
@@ -1036,17 +1058,20 @@ export function App() {
     const oude = (transacties ?? []).filter((t) => ids.includes(t.id))
     const oudeKosten = gedeeldeKosten.filter((k) => k.transactieId && ids.includes(k.transactieId))
     const oudeBonnen = ids.map((id) => bonVanTransactie(dossierdocumenten, id)).filter(Boolean) as DossierDocument[]
+    const oudeGaranties = garanties.filter((g) => g.transactieId && ids.includes(g.transactieId))
     // In ÉÉN ondeelbare stap. Brak deze reeks halverwege af, dan waren de
     // transacties weg maar bleven er gedeelde kosten in een dossier meetellen.
     await verwijderTransactiesMetAanhang(ids, {
       gedeeldeKostIds: oudeKosten.map((k) => k.id),
       documentIds: oudeBonnen.map((d) => d.id),
+      garantieIds: oudeGaranties.map((g) => g.id),
     })
     await herlaad()
     toonUndo(t('{n} transactie(s) verwijderd', { n: ids.length }), async () => {
       for (const o of oude) await bewaarTransactie(o)
       for (const k of oudeKosten) await bewaarGedeeldeKost(k)
       for (const d of oudeBonnen) await bewaarDossierDocument(d)
+      for (const g of oudeGaranties) await bewaarGarantie(g)
     })
   }
 
@@ -1222,6 +1247,7 @@ export function App() {
         onOverboeking={voegOverboekingToe}
         onDossierKost={transactieDossierKost}
         onBon={transactieBon}
+        onGarantie={transactieGarantie}
       />
 
       {/* Bewerken krijgt dezelfde popup-vorm als toevoegen. Anders zou je een
@@ -1249,6 +1275,8 @@ export function App() {
             onDossierKost={transactieDossierKost}
             bon={bonVanTransactie(dossierdocumenten, bewerkTransactie.id)}
             onBon={transactieBon}
+            gekoppeldeGarantie={garanties.find((g) => g.transactieId === bewerkTransactie.id) ?? null}
+            onGarantie={transactieGarantie}
             // Pas sluiten wanneer de transactie én de bon én de dossierkoppeling
             // alle drie bewaard zijn. Mislukt er onderweg iets, dan blijft het
             // venster staan met de reden erbij.
@@ -1432,6 +1460,7 @@ export function App() {
               categorieen={categorieen}
               rekeningen={rekeningen}
               gedeeldeKosten={gedeeldeKosten}
+              garanties={garanties}
               onBewerk={setBewerkTransactie}
               onVerwijder={verwijder}
               onVerwijderMeerdere={verwijderMeerdere}
@@ -1774,10 +1803,6 @@ export function App() {
           <div className="kolom-formulier stapel">
             <Kaart titel={bewerkCategorie ? t('Categorie bewerken') : t('Nieuwe categorie')}>
               <CategorieFormulier onOpslaan={slaCategorieOp} onAnnuleer={() => setBewerkCategorie(null)} bewerken={bewerkCategorie} />
-            </Kaart>
-
-            <Kaart titel={t('Subcategorie toevoegen')} bijschrift={t('Zet een eigen item onder een bestaande categorie, zonder de boom te doorlopen.')}>
-              <SubcategorieSnelFormulier onToevoegen={voegSubcategorieToe} />
             </Kaart>
           </div>
 

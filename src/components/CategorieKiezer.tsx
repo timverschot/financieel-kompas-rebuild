@@ -112,7 +112,10 @@ export function HoofdcategorieChips({
   const actief = chips.find((c) => c.id === actiefId)
   const knopTekst = actief
     ? t('Hoofdcategorie: {naam}', { naam: actief.label })
-    : t('Selecteer hoofdcategorie')
+    : // "(optioneel)" staat er bewust bij: zonder dat woord leest deze knop als een
+      // verplichte eerste stap, en dan blijft iemand hem invullen terwijl je gewoon
+      // meteen op naam kan zoeken. De hoofdcategorie is enkel een filter.
+      t('Selecteer hoofdcategorie (optioneel)')
 
   return (
     <div className="hoofdkiezer">

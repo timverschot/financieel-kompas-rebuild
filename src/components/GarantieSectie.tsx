@@ -7,8 +7,9 @@ import { Kaart, Leeg, Balk } from '../ui/basis'
 import { useT } from '../i18n'
 import { Documentkluis } from './DossierKluis'
 import type { Vertaler } from '../i18n'
-import { vandaag } from '../utils/datum'
+import { vandaag, dagKort } from '../utils/datum'
 import { Bonknop } from '../ui/Bonknop'
+import { bonVanTransactie } from '../utils/kluis'
 
 
 // De statusbadge (klasse + tekst) voor een garantie: vervallen, bijna vervallen
@@ -118,6 +119,31 @@ export function GarantieSectie({
                   {' · '}
                   {t('vervalt {datum}', { datum: s.vervaldatum })}
                 </span>
+
+                {/* De boeking waaruit deze aankoop komt (ronde 36).
+                    Het veld `transactieId` bestond al en werd netjes bewaard, maar
+                    stond nergens op het scherm — je kon dus niet zien of een
+                    garantiebewijs aan een betaling hing, laat staan aan welke. En
+                    de bon van die boeking tonen we hier gewoon mee: dat is precies
+                    het bewijsstuk dat je nodig hebt als het toestel stukgaat.
+                    Bewust een verwijzing en geen kopie: één foto, altijd actueel. */}
+                {(() => {
+                  const tx = g.transactieId ? transacties.find((x) => x.id === g.transactieId) : undefined
+                  if (!tx) return null
+                  const txBon = bonVanTransactie(documenten, tx.id)
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <span className="rij-meta">
+                        {t('Uit je boeking van {datum}: {oms}', { datum: dagKort(tx.datum), oms: tx.omschrijving })}
+                        {' · '}
+                        <span className="bedrag" style={{ fontSize: 'inherit' }}>
+                          {formatEuro(Math.abs(tx.bedrag))}
+                        </span>
+                      </span>
+                      {txBon && <Bonknop bestand={txBon.bestand} naam={tx.omschrijving} label={t('bon van de boeking')} />}
+                    </div>
+                  )
+                })()}
 
                 {g.notitie && <span className="rij-meta">{g.notitie}</span>}
 

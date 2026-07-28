@@ -187,3 +187,29 @@ op 390 px én op 1440 px.
 - Geen zichtbare tekst, `aria-label` of veldlabel wijzigen: de tests en de
   vertalingen hangen eraan.
 - Geen schaduw op gewone kaarten.
+
+## Toevoegen staat bovenaan (ronde 36)
+
+In een lange lijst waar je zowel bladert als iets bijmaakt, staat de knop om iets
+toe te voegen **bovenaan**, niet onderaan. Anders moet je eerst langs alles
+scrollen wat je níét zocht. Zo staan `+ categorie` en `+ subcategorie` in
+`components/CategorieBoom.tsx`.
+
+Twee regels horen daarbij:
+
+- **Zeg wat er gebeurd is.** Verschijnt de nieuwe regel niet vlak bij de knop,
+  toon dan op de plaats van de knop één regel `rij-meta` met `role="status"`
+  ("… toegevoegd, onderaan de lijst."). Zonder die regel duw je op Toevoegen,
+  sluit het veld, en zie je niets.
+- **Een onherroepelijke actie blijft onderaan.** "Verwijderen" hoort niet het
+  eerste te zijn wat je ziet, en al zeker niet pal naast de knop die je het
+  vaakst gebruikt.
+
+## Instellingen die je vaak nodig hebt, staan open
+
+Een rij `chip`-schakelaars die bepaalt wat er op een pagina staat (zoals de
+onderdelen van een dossier) zit **niet** achter een knop. Wat je niet ziet, ga je
+niet gebruiken. Zet er een vraag boven als `label-caps` met een `id`, en verwijs
+er vanuit `role="group"` naar met `aria-labelledby` — niet met een `aria-label`,
+want dan staat dezelfde tekst twee keer.
+

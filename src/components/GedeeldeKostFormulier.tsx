@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Categorie, GedeeldeKost, Kind } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
@@ -9,6 +9,7 @@ import { verkleinAfbeelding } from '../utils/afbeelding'
 import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
 import { Bonknop } from '../ui/Bonknop'
+import { voorstelKostensoort, KOSTENSOORT_BRON } from '../utils/kostensoort'
 
 // De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
 // en het leegmaken na het opslaan niet uit elkaar kunnen lopen.
@@ -59,6 +60,14 @@ export function GedeeldeKostFormulier({
   const [aandeelOverride, setAandeelOverride] = useState(() => beginwaarden().aandeelOverride)
   const [bonnetje, setBonnetje] = useState(() => beginwaarden().bonnetje)
   const [bezigBon, setBezigBon] = useState(false)
+  // Heeft de gebruiker de soort kost zélf gekozen? Zolang dat niet zo is, mag het
+  // voorstel van de KB-lijst het veld invullen. Zodra hij hem zelf zet, blijft die
+  // keuze staan — ook als hij daarna nog van categorie wisselt.
+  const [typeZelfGekozen, setTypeZelfGekozen] = useState(false)
+  // De knop "Voorstel volgen" verdwijnt zodra je erop klikt (de tekst wisselt van
+  // vorm). Zonder deze ref valt de focus dan terug op <body>, en staat wie met een
+  // toetsenbord of schermlezer werkt plots bovenaan de pagina.
+  const typeSelectRef = useRef<HTMLSelectElement | null>(null)
 
   // Zet alle velden terug op hun beginwaarde.
   const leegmaken = useCallback(() => {
@@ -72,6 +81,7 @@ export function GedeeldeKostFormulier({
     setKostenType(b.kostenType)
     setAandeelOverride(b.aandeelOverride)
     setBonnetje(b.bonnetje)
+    setTypeZelfGekozen(false)
   }, [])
 
   useEffect(() => {
@@ -85,10 +95,28 @@ export function GedeeldeKostFormulier({
       setKostenType(bewerken.kostenType ?? 'gewoon')
       setAandeelOverride(typeof bewerken.aandeelJijOverride === 'number' ? String(bewerken.aandeelJijOverride) : '')
       setBonnetje(bewerken.bonnetje ?? '')
+      // Een bestaande kost die al een soort draagt, is een keuze die iemand ooit
+      // gemaakt heeft. Die overschrijven we niet met een voorstel. Staat het veld
+      // er niet op (een kost van vóór dit veld), dan mag het voorstel wel helpen.
+      setTypeZelfGekozen(bewerken.kostenType !== undefined)
     } else {
       leegmaken()
     }
   }, [bewerken, leegmaken])
+
+  // Het voorstel volgens de indicatieve lijst van het KB van 22 april 2019. Puur
+  // afgeleid van het gekozen categorie-id, dus geen effect nodig om het te tonen.
+  const voorstel = voorstelKostensoort(categorieId || undefined)
+
+  // Vult het veld in zolang de gebruiker er zelf niet aan gekomen is. De afhankelijkheid
+  // is bewust alleen het ID (een string) en niet een object uit een herladen lijst:
+  // dat laatste is precies de valstrik waardoor een formulier zichzelf bij elke
+  // achtergrondsynchronisatie opnieuw invulde.
+  useEffect(() => {
+    if (typeZelfGekozen) return
+    const v = voorstelKostensoort(categorieId || undefined)
+    if (v) setKostenType(v.kostenType)
+  }, [categorieId, typeZelfGekozen])
 
   const bedragCenten = invoerNaarCenten(bedrag)
   const geldig = omschrijving.trim().length > 0 && Number.isFinite(bedragCenten) && bedragCenten > 0
@@ -148,20 +176,68 @@ export function GedeeldeKostFormulier({
         <label className="label-caps" htmlFor="kostbedrag">{t('Kostbedrag (€)')}</label>
         <input id="kostbedrag" inputMode="decimal" placeholder="0,00" value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
       </div>
+      {/* De categorie staat bewust vóór de soort kost: uit de categorie volgt het
+          voorstel, dus in die volgorde lezen de twee velden als oorzaak en gevolg. */}
+      <CategorieKiezer
+        waarde={categorieId || undefined}
+        onKies={(id) => setCategorieId(id ?? '')}
+        gebruikerCategorieen={categorieen}
+        onNieuweSubcategorie={onNieuweSubcategorie}
+      />
       <div className="veldgroep">
         <label className="label-caps" htmlFor="kosttype">{t('Soort kost')}</label>
-        <select id="kosttype" value={kostenType} onChange={(e) => setKostenType(e.target.value as 'gewoon' | 'buitengewoon')}>
+        <select
+          id="kosttype"
+          ref={typeSelectRef}
+          value={kostenType}
+          onChange={(e) => {
+            setKostenType(e.target.value as 'gewoon' | 'buitengewoon')
+            setTypeZelfGekozen(true)
+          }}
+        >
           <option value="gewoon">{t('Gewone kost')}</option>
           <option value="buitengewoon">{t('Buitengewone kost')}</option>
         </select>
-      </div>
-      <div className="veldgroep">
-        <CategorieKiezer
-          waarde={categorieId || undefined}
-          onKies={(id) => setCategorieId(id ?? '')}
-          gebruikerCategorieen={categorieen}
-          onNieuweSubcategorie={onNieuweSubcategorie}
-        />
+        {/* Het voorstel volgens de indicatieve lijst. Nooit dwingend: het staat er
+            als toelichting, met de bron erbij, en één knop om het alsnog te volgen. */}
+        {voorstel && (
+          // `role="status"` omdat het veld hierboven vanzelf van waarde verandert
+          // zodra je een categorie kiest — en dat bepaalt hoe het geld verdeeld
+          // wordt. Ziend zie je het gebeuren; zonder deze rol hoorde je niets.
+          <p className="rij-meta" role="status" style={{ margin: '4px 0 0' }}>
+            {voorstel.kostenType === kostenType ? (
+              voorstel.kostenType === 'buitengewoon' ? (
+                <>
+                  {t('Voorstel: buitengewone kost — {reden}. Je kan dit zelf aanpassen.', {
+                    reden: t(voorstel.reden),
+                  })}
+                </>
+              ) : (
+                <>{t('Deze categorie staat niet op de indicatieve lijst, dus stellen we een gewone kost voor. Je kan dit zelf aanpassen.')}</>
+              )
+            ) : (
+              <>
+                {t('Je koos zelf {soort}; het voorstel was {voorstel}.', {
+                  soort: t(kostenType === 'buitengewoon' ? 'Buitengewone kost' : 'Gewone kost'),
+                  voorstel: t(voorstel.kostenType === 'buitengewoon' ? 'Buitengewone kost' : 'Gewone kost'),
+                })}{' '}
+                <button
+                  type="button"
+                  className="knop knop-ghost knop-klein"
+                  onClick={() => {
+                    setKostenType(voorstel.kostenType)
+                    setTypeZelfGekozen(false)
+                    typeSelectRef.current?.focus()
+                  }}
+                >
+                  {t('Voorstel volgen')}
+                </button>
+              </>
+            )}
+            <br />
+            {t(KOSTENSOORT_BRON)}
+          </p>
+        )}
       </div>
       {/* Aan wie hangt deze kost? Dezelfde kiezer als in het transactieformulier, zodat
           "voor wie is dit?" overal hetzelfde werkt. De kiezer verbergt zichzelf als er

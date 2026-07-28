@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Categorie, GedeeldeKost, Rekening, Transactie } from '../data/schema'
+import type { Categorie, Garantie, GedeeldeKost, Rekening, Transactie } from '../data/schema'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
 import { labelVanCategorie, padVanCategorie } from '../data/categorieen/resolve'
 import { filterTransacties, heeftActiefFilter, grensDatumMaandenTerug, type TxFilter } from '../utils/transactieFilter'
@@ -107,6 +107,7 @@ export function TransactieLijst({
   categorieen,
   rekeningen,
   gedeeldeKosten = [],
+  garanties = [],
   onBewerk,
   onVerwijder,
   onVerwijderMeerdere,
@@ -117,6 +118,8 @@ export function TransactieLijst({
   rekeningen: Rekening[]
   /** Om te tonen dat een boeking in een dossier gedeeld wordt (ronde 22). */
   gedeeldeKosten?: GedeeldeKost[]
+  /** Om te tonen dat er een garantiebewijs aan een boeking hangt (ronde 36). */
+  garanties?: Garantie[]
   onBewerk: (tx: Transactie) => void
   onVerwijder: (id: string) => void
   /**
@@ -298,6 +301,12 @@ export function TransactieLijst({
   const gedeeldeTxIds = useMemo(
     () => new Set(gedeeldeKosten.map((k) => k.transactieId).filter(Boolean) as string[]),
     [gedeeldeKosten],
+  )
+
+  // Idem voor de boekingen waaraan een garantiebewijs hangt.
+  const garantieTxIds = useMemo(
+    () => new Set(garanties.map((g) => g.transactieId).filter(Boolean) as string[]),
+    [garanties],
   )
 
   return (
@@ -643,6 +652,7 @@ export function TransactieLijst({
                 rekeningNaam={rekeningNaam}
                 categoriePad={categoriePad}
                 gedeeld={gedeeldeTxIds.has(tx.id)}
+                metGarantie={garantieTxIds.has(tx.id)}
                 selecteerbaar={kanSelecteren}
                 aangevinkt={selectie.has(tx.id)}
                 onSchakel={schakelRij}
@@ -714,6 +724,7 @@ function TransactieRij({
   rekeningNaam,
   categoriePad,
   gedeeld,
+  metGarantie,
   selecteerbaar,
   aangevinkt,
   onSchakel,
@@ -727,6 +738,8 @@ function TransactieRij({
   categoriePad: (id?: string) => string | undefined
   /** Hangt er een gedeelde kost aan deze transactie? (ronde 22) */
   gedeeld: boolean
+  /** Hangt er een garantiebewijs aan deze transactie? (ronde 36) */
+  metGarantie: boolean
   selecteerbaar: boolean
   aangevinkt: boolean
   onSchakel: (id: string) => void
@@ -774,6 +787,13 @@ function TransactieRij({
           {gedeeld && (
             <span className="badge badge-info badge-mini" title={t('Gedeeld in een dossier')}>
               {t('gedeeld')}
+            </span>
+          )}
+          {/* Hetzelfde verhaal voor een garantiebewijs (ronde 36): de koppeling
+              bestond al, maar er was geen enkele plaats waar je ze zag. */}
+          {metGarantie && (
+            <span className="badge badge-info badge-mini" title={t('Er hangt een garantiebewijs aan deze boeking')}>
+              {t('garantie')}
             </span>
           )}
         </span>

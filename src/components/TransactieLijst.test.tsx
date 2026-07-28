@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { TransactieLijst, aantalActieveFilters, uitsplitsingTekst } from './TransactieLijst'
-import type { Transactie } from '../data/schema'
+import type { Garantie, Transactie } from '../data/schema'
 import { vandaag } from '../utils/datum'
 
 const rekeningen = [
@@ -592,3 +592,40 @@ describe('TransactieLijst — wat een rij toont', () => {
     expect(screen.queryByText('gedeeld')).not.toBeInTheDocument()
   })
 })
+
+// Ronde 36: net als de badge "gedeeld" voor een dossier, is er nu een badge
+// "garantie". Zonder die badge moest je elke boeking openen om te weten of er een
+// garantiebewijs aan hing.
+describe('TransactieLijst — badge voor een garantiebewijs', () => {
+  const garantie: Garantie = {
+    id: 'g1',
+    product: 'Laptop',
+    aankoopdatum: recent,
+    garantieMaanden: 24,
+    transactieId: 't1',
+  }
+
+  function toonMetGaranties(transacties: Transactie[], garanties: Garantie[]) {
+    render(
+      <TransactieLijst
+        transacties={transacties}
+        categorieen={[]}
+        rekeningen={rekeningen}
+        garanties={garanties}
+        onBewerk={vi.fn()}
+        onVerwijder={vi.fn()}
+      />,
+    )
+  }
+
+  it('toont de badge bij de boeking waaraan een garantiebewijs hangt', () => {
+    toonMetGaranties([tx({ id: 't1', omschrijving: 'Media Markt' })], [garantie])
+    expect(screen.getByText('garantie')).toBeInTheDocument()
+  })
+
+  it('toont niets bij een boeking zonder garantiebewijs', () => {
+    toonMetGaranties([tx({ id: 't2', omschrijving: 'Bakker' })], [garantie])
+    expect(screen.queryByText('garantie')).toBeNull()
+  })
+})
+

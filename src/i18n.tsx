@@ -285,9 +285,6 @@ const en: Record<string, string> = {
   // een dossier je toont.
   'Soort dossier': 'Type of case',
   'Facturen & garantiebewijzen': 'Invoices & warranties',
-  'Onderdelen': 'Sections',
-  'Onderdelen ({n} verborgen)': 'Sections ({n} hidden)',
-  'Welke onderdelen toon je in dit dossier?': 'Which sections do you show in this case?',
   'Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren.':
     'What you switch off only disappears from view — nothing is lost.',
   'Gedeelde kosten': 'Shared expenses',
@@ -579,7 +576,7 @@ const en: Record<string, string> = {
     'If you select no one, this counts as an expense for the family.',
   // Ronde 30 — de hoofdcategorieën zitten achter één knop, en hun volgorde is
   // instelbaar op de Categorieën-pagina.
-  'Selecteer hoofdcategorie': 'Select a main category',
+  'Selecteer hoofdcategorie (optioneel)': 'Select a main category (optional)',
   // Ronde 35 — correctheid, zichtbare mislukkingen en documenten die openen.
   '({bedrag} te veel)': '({bedrag} too much)',
   '{naam} lijkt al geboekt op {datum} ({bedrag}). Er is niets bijgemaakt — controleer je transacties.':
@@ -1202,6 +1199,39 @@ const en: Record<string, string> = {
   'Niets gevonden voor deze zoekterm.': 'Nothing found for this search.',
   'Je kan een budget ook op een subcategorie of op één product zetten — typ dan de naam.':
     'You can also set a budget on a subcategory or on a single product — just type its name.',
+  // Ronde 36 — gewone versus buitengewone kosten, de onderdelen van een dossier,
+  // en de brug tussen een boeking en een garantiebewijs.
+  'Voorstel: buitengewone kost — {reden}. Je kan dit zelf aanpassen.':
+    'Suggestion: extraordinary expense — {reden}. You can change this yourself.',
+  'Deze categorie staat niet op de indicatieve lijst, dus stellen we een gewone kost voor. Je kan dit zelf aanpassen.':
+    'This category is not on the indicative list, so we suggest an ordinary expense. You can change this yourself.',
+  'Je koos zelf {soort}; het voorstel was {voorstel}.':
+    'You chose {soort} yourself; the suggestion was {voorstel}.',
+  'Voorstel volgen': 'Use the suggestion',
+  'Indicatieve lijst uit het KB van 22 april 2019':
+    'Indicative list from the Belgian Royal Decree of 22 April 2019',
+  'Medische en paramedische kosten': 'Medical and paramedical costs',
+  'Kosten van de schoolse opleiding': 'Costs of schooling',
+  'Kosten voor ontwikkeling en ontplooiing': 'Costs for development and personal growth',
+  'Staat niet in de indicatieve lijst van buitengewone kosten':
+    'Not on the indicative list of extraordinary costs',
+  'Verrekeningen': 'Settlements',
+  'Wat toon je in dit dossier?': 'What do you show for this case?',
+  'Garantiebewijs bijhouden': 'Keep a proof of warranty',
+  'Kompal maakt er een garantiebewijs bij met deze boeking als aankoopbewijs, en verwittigt je voor de garantie afloopt.':
+    'Kompal creates a proof of warranty with this entry as the proof of purchase, and warns you before the warranty runs out.',
+  'Garantie (maanden)': 'Warranty (months)',
+  'Wettelijk minimum op een nieuw product: 24 maanden.': 'Legal minimum on a new product: 24 months.',
+  'Dit bewijs bestaat al; je past hier alleen de garantieduur aan.':
+    'This proof already exists; here you only change the warranty period.',
+  'Een inkomst heeft geen garantiebewijs. Bewaar je dit zo, dan blijft het bewijs bestaan bij je garanties, maar hangt het niet meer aan deze boeking.':
+    'Income has no proof of warranty. If you save it like this, the proof stays with your warranties but is no longer linked to this entry.',
+  'Vul een aantal maanden in, bijvoorbeeld 24.': 'Enter a number of months, for example 24.',
+  '{naam} toegevoegd, onderaan de lijst.': '{naam} added, at the bottom of the list.',
+  'garantie': 'warranty',
+  'Er hangt een garantiebewijs aan deze boeking': 'A proof of warranty is attached to this entry',
+  'Uit je boeking van {datum}: {oms}': 'From your entry of {datum}: {oms}',
+  'bon van de boeking': 'receipt from the entry',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -1468,9 +1498,6 @@ const fr: Record<string, string> = {
   // Ronde 29 — les sous-onglets de la page Dossiers.
   'Soort dossier': 'Type de dossier',
   'Facturen & garantiebewijzen': 'Factures & garanties',
-  'Onderdelen': 'Sections',
-  'Onderdelen ({n} verborgen)': 'Sections ({n} masquée(s))',
-  'Welke onderdelen toon je in dit dossier?': 'Quelles sections affichez-vous dans ce dossier ?',
   'Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren.':
     'Ce que vous désactivez disparaît seulement de l’écran — rien n’est perdu.',
   'Wat wil je bijhouden?': 'Que voulez-vous suivre ?',
@@ -1762,7 +1789,7 @@ const fr: Record<string, string> = {
   'Duid je niemand aan, dan telt dit als een uitgave voor het gezin.':
     'Si vous ne sélectionnez personne, cette dépense compte pour la famille.',
   // Ronde 30
-  'Selecteer hoofdcategorie': 'Choisir une catégorie principale',
+  'Selecteer hoofdcategorie (optioneel)': 'Choisir une catégorie principale (facultatif)',
   // Ronde 35
   '({bedrag} te veel)': '({bedrag} de trop)',
   '{naam} lijkt al geboekt op {datum} ({bedrag}). Er is niets bijgemaakt — controleer je transacties.':
@@ -2387,6 +2414,38 @@ const fr: Record<string, string> = {
   'Niets gevonden voor deze zoekterm.': 'Rien trouvé pour cette recherche.',
   'Je kan een budget ook op een subcategorie of op één product zetten — typ dan de naam.':
     "Vous pouvez aussi définir un budget sur une sous-catégorie ou sur un seul produit — tapez alors son nom.",
+  // Ronde 36
+  'Voorstel: buitengewone kost — {reden}. Je kan dit zelf aanpassen.':
+    'Suggestion : frais extraordinaires — {reden}. Vous pouvez le modifier vous-même.',
+  'Deze categorie staat niet op de indicatieve lijst, dus stellen we een gewone kost voor. Je kan dit zelf aanpassen.':
+    'Cette catégorie ne figure pas sur la liste indicative ; nous suggérons donc des frais ordinaires. Vous pouvez le modifier vous-même.',
+  'Je koos zelf {soort}; het voorstel was {voorstel}.':
+    'Vous avez choisi {soort} ; la suggestion était {voorstel}.',
+  'Voorstel volgen': 'Suivre la suggestion',
+  'Indicatieve lijst uit het KB van 22 april 2019':
+    'Liste indicative de l’AR du 22 avril 2019',
+  'Medische en paramedische kosten': 'Frais médicaux et paramédicaux',
+  'Kosten van de schoolse opleiding': 'Frais de scolarité',
+  'Kosten voor ontwikkeling en ontplooiing': 'Frais de développement et d’épanouissement',
+  'Staat niet in de indicatieve lijst van buitengewone kosten':
+    'Ne figure pas sur la liste indicative des frais extraordinaires',
+  'Verrekeningen': 'Décomptes',
+  'Wat toon je in dit dossier?': 'Qu’affichez-vous dans ce dossier ?',
+  'Garantiebewijs bijhouden': 'Conserver une preuve de garantie',
+  'Kompal maakt er een garantiebewijs bij met deze boeking als aankoopbewijs, en verwittigt je voor de garantie afloopt.':
+    'Kompal crée une preuve de garantie avec cette écriture comme preuve d’achat, et vous prévient avant la fin de la garantie.',
+  'Garantie (maanden)': 'Garantie (mois)',
+  'Wettelijk minimum op een nieuw product: 24 maanden.': 'Minimum légal sur un produit neuf : 24 mois.',
+  'Dit bewijs bestaat al; je past hier alleen de garantieduur aan.':
+    'Cette preuve existe déjà ; vous ne modifiez ici que la durée de garantie.',
+  'Een inkomst heeft geen garantiebewijs. Bewaar je dit zo, dan blijft het bewijs bestaan bij je garanties, maar hangt het niet meer aan deze boeking.':
+    'Une recette n’a pas de preuve de garantie. Si vous enregistrez ainsi, la preuve reste dans vos garanties mais n’est plus liée à cette écriture.',
+  'Vul een aantal maanden in, bijvoorbeeld 24.': 'Indiquez un nombre de mois, par exemple 24.',
+  '{naam} toegevoegd, onderaan de lijst.': '{naam} ajouté, en bas de la liste.',
+  'garantie': 'garantie',
+  'Er hangt een garantiebewijs aan deze boeking': 'Une preuve de garantie est liée à cette écriture',
+  'Uit je boeking van {datum}: {oms}': 'De votre écriture du {datum} : {oms}',
+  'bon van de boeking': 'justificatif de l’écriture',
 
 
 }

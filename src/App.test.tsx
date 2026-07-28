@@ -717,6 +717,8 @@ describe('App — Dossiers met subtabs', () => {
 })
 
 // Ronde 29 — niet elk dossier gebruikt alle onderdelen.
+// Ronde 36 — de knop "Onderdelen" is weg: de vakjes staan meteen open, en
+// "Verrekeningen" kwam erbij.
 //
 // Let op bij het schrijven van deze tests: een kaarttitel en de chip om die kaart
 // aan of uit te zetten dragen dezelfde tekst. Zoek dus altijd op de KOP.
@@ -733,10 +735,10 @@ describe('App — onderdelen van een dossier aan- en uitzetten', () => {
     await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
     await zetAandeel(user, '50')
     await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
-    await screen.findByText('Verdeling per categorie')
+    await screen.findByRole('heading', { name: 'Verdeling per categorie' })
   }
 
-  it('toont standaard alles', async () => {
+  it('toont standaard alles, zonder dat je eerst iets moet openklappen', async () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Saldo')
@@ -747,8 +749,14 @@ describe('App — onderdelen van een dossier aan- en uitzetten', () => {
     expect(kaartkop('Verdeling per kostensoort')).toBeInTheDocument()
     expect(kaartkop('Kindrekening (gezamenlijke pot)')).toBeInTheDocument()
     expect(kaartkop('Documentkluis')).toBeInTheDocument()
-    // Zolang er niets verborgen is, staat er geen aantal bij.
-    expect(screen.getByRole('button', { name: 'Onderdelen' })).toBeInTheDocument()
+    expect(kaartkop('Nieuwe afrekening')).toBeInTheDocument()
+
+    // De vakjes zelf staan meteen open: er is geen knop "Onderdelen" meer om
+    // eerst te vinden.
+    expect(screen.queryByRole('button', { name: /^Onderdelen/ })).toBeNull()
+    const groep = screen.getByRole('group', { name: 'Wat toon je in dit dossier?' })
+    expect(groep).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Verrekeningen' })).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('verbergt een onderdeel en onthoudt dat, zonder iets weg te gooien', async () => {
@@ -757,11 +765,9 @@ describe('App — onderdelen van een dossier aan- en uitzetten', () => {
     await screen.findByText('Saldo')
     await maakDossier(user)
 
-    await user.click(screen.getByRole('button', { name: 'Onderdelen' }))
     await user.click(screen.getByRole('button', { name: 'Kindrekening (gezamenlijke pot)' }))
 
     await waitFor(() => expect(geenKaartkop('Kindrekening (gezamenlijke pot)')).toBe(true))
-    expect(await screen.findByRole('button', { name: 'Onderdelen (1 verborgen)' })).toBeInTheDocument()
     // De rest blijft staan: je zet één kaart uit, geen halve pagina.
     expect(kaartkop('Verdeling per categorie')).toBeInTheDocument()
 
@@ -770,13 +776,27 @@ describe('App — onderdelen van een dossier aan- en uitzetten', () => {
     expect(alle[0].verborgenOnderdelen).toEqual(['gezamenlijke-pot'])
   })
 
+  it('zet het verrekenen uit, inclusief de kaart om er een te maken', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await maakDossier(user)
+
+    await user.click(screen.getByRole('button', { name: 'Verrekeningen' }))
+
+    await waitFor(() => expect(geenKaartkop('Nieuwe afrekening')).toBe(true))
+    // De open kosten blijven wél staan: daar bestaat een dossier voor.
+    expect(kaartkop('Verdeling per categorie')).toBeInTheDocument()
+    const alle = await db.dossiers.toArray()
+    expect(alle[0].verborgenOnderdelen).toEqual(['verrekeningen'])
+  })
+
   it('zet een verborgen onderdeel weer aan', async () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Saldo')
     await maakDossier(user)
 
-    await user.click(screen.getByRole('button', { name: 'Onderdelen' }))
     await user.click(screen.getByRole('button', { name: 'Documentkluis' }))
     await waitFor(() => expect(geenKaartkop('Documentkluis')).toBe(true))
 
@@ -844,7 +864,7 @@ describe('App — volgorde van de hoofdcategorieën', () => {
     await waitFor(() => expect(hoofdnamen()[0]).toBe('Drank'))
 
     await openBoeking(user, 'Uitgave')
-    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie' }))
+    await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie (optioneel)' }))
     const groep = screen.getByRole('group', { name: 'Hoofdcategorieën' })
     const knoppen = [...groep.querySelectorAll('button')]
     expect(knoppen[0].textContent).toContain('Drank')

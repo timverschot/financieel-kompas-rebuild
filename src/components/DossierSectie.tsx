@@ -23,13 +23,17 @@ import { Bonknop } from '../ui/Bonknop'
 // gezamenlijke pot en bewaart de papieren elders. Die kaarten scrollen dan eeuwig
 // mee zonder ooit iets te doen.
 //
-// Wat er BEWUST niet in staat: de lijst met open kosten en het afrekenen zelf. Dat
-// is waar een dossier voor bestaat — verberg je die, dan blijft er een lege pagina
-// over. De keuze zit op het dossier (`Dossier.verborgenOnderdelen`), dus ze klopt
-// ook op je gsm.
+// Wat er BEWUST niet in staat: de lijst met open kosten. Dat is waar een dossier
+// voor bestaat — verberg je die, dan blijft er een lege pagina over. De keuze zit
+// op het dossier (`Dossier.verborgenOnderdelen`), dus ze klopt ook op je gsm.
+//
+// 'verrekeningen' kwam er in ronde 36 bij: wie zijn kosten gewoon bijhoudt en pas
+// op het einde van het jaar afrekent, scrolt anders elke keer voorbij twee kaarten
+// die hij nooit gebruikt.
 export const DOSSIER_ONDERDELEN = [
   { id: 'verdeling-categorie', label: 'Verdeling per categorie' },
   { id: 'verdeling-kostensoort', label: 'Verdeling per kostensoort' },
+  { id: 'verrekeningen', label: 'Verrekeningen' },
   { id: 'gezamenlijke-pot', label: 'Kindrekening (gezamenlijke pot)' },
   { id: 'documentkluis', label: 'Documentkluis' },
 ] as const
@@ -118,9 +122,6 @@ export function DossierSectie({
   const [typeGewoon, setTypeGewoon] = useState('')
   const [typeBuitengewoon, setTypeBuitengewoon] = useState('')
   const [gekopieerd, setGekopieerd] = useState('')
-  // Staat het rijtje "welke onderdelen toon je?" open? Bewust per sessie en niet
-  // bewaard: het is een instelknopje, geen scherm waar je in werkt.
-  const [onderdelenOpen, setOnderdelenOpen] = useState(false)
 
   const dossier = dossiers.find((d) => d.id === geselecteerd) ?? (dossiers[0] ?? null)
   const dossierId = dossier?.id ?? ''
@@ -242,8 +243,6 @@ export function DossierSectie({
     await onGenereer(dossier, filter)
   }
 
-  const aantalVerborgen = DOSSIER_ONDERDELEN.filter((o) => !toont(o.id)).length
-
   return (
     <>
       {/* Geen eigen paginakop meer: deze sectie is sinds ronde 29 één subtab van de
@@ -276,43 +275,37 @@ export function DossierSectie({
           </div>
         )}
 
-        {/* Welke onderdelen zijn van toepassing op dít dossier? Ingeklapt achter één
-            regel, in dezelfde vorm als "Meer opties" in het invoerformulier, zodat
-            een instelling nooit belangrijker oogt dan het werk eronder. */}
+        {/* Welke onderdelen zijn van toepassing op dít dossier?
+            Tot ronde 35 zat dit achter een knop "Onderdelen". Dat woord zei niets,
+            en wat je niet ziet ga je ook niet gebruiken: je bleef dus scrollen langs
+            kaarten die je nooit nodig had. De vakjes staan nu gewoon open, met een
+            vraag als titel in plaats van een zelfstandig naamwoord. */}
         {dossier && (
           <div className="veldgroep">
-            <button
-              type="button"
-              className="knop knop-ghost knop-klein"
-              style={{ alignSelf: 'flex-start' }}
-              aria-expanded={onderdelenOpen}
-              onClick={() => setOnderdelenOpen((o) => !o)}
+            <span className="label-caps" id="dossier-onderdelen-kop">{t('Wat toon je in dit dossier?')}</span>
+            <div
+              className="chiprooster"
+              role="group"
+              aria-labelledby="dossier-onderdelen-kop"
             >
-              {aantalVerborgen > 0 ? t('Onderdelen ({n} verborgen)', { n: aantalVerborgen }) : t('Onderdelen')}
-            </button>
-            {onderdelenOpen && (
-              <>
-                <div className="chiprooster" role="group" aria-label={t('Welke onderdelen toon je in dit dossier?')}>
-                  {DOSSIER_ONDERDELEN.map((o) => {
-                    const aan = toont(o.id)
-                    return (
-                      <button
-                        key={o.id}
-                        type="button"
-                        aria-pressed={aan}
-                        className={aan ? 'chip chip-actief' : 'chip'}
-                        onClick={() => zetOnderdeel(o.id, !aan)}
-                      >
-                        {t(o.label)}
-                      </button>
-                    )
-                  })}
-                </div>
-                <p className="rij-meta" style={{ margin: 0 }}>
-                  {t('Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren.')}
-                </p>
-              </>
-            )}
+              {DOSSIER_ONDERDELEN.map((o) => {
+                const aan = toont(o.id)
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    aria-pressed={aan}
+                    className={aan ? 'chip chip-actief' : 'chip'}
+                    onClick={() => zetOnderdeel(o.id, !aan)}
+                  >
+                    {t(o.label)}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="rij-meta" style={{ margin: 0 }}>
+              {t('Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren.')}
+            </p>
           </div>
         )}
 
@@ -450,7 +443,10 @@ export function DossierSectie({
             />
           </Kaart>
 
-          {/* Nieuwe afrekening genereren */}
+          {/* Verrekenen: een nieuwe afrekening maken en de gemaakte afrekeningen.
+              Samen één onderdeel — wie zijn kosten alleen bijhoudt en pas veel later
+              afrekent, zet ze in één keer uit. */}
+          {toont('verrekeningen') && (
           <Kaart
             titel={t('Nieuwe afrekening')}
             bijschrift={t('Kies een periode en (optioneel) kinderen. Dit blokkeert niets — je kan meerdere afrekeningen maken.')}
@@ -499,9 +495,10 @@ export function DossierSectie({
               </button>
             </div>
           </Kaart>
+          )}
 
           {/* Afrekeningen */}
-          {afrekeningen.length > 0 && (
+          {toont('verrekeningen') && afrekeningen.length > 0 && (
             <Kaart titel={t('Afrekeningen')}>
               <ul className="lijst">
                 {afrekeningen.map((v) => {

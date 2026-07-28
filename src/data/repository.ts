@@ -201,7 +201,8 @@ export async function verwijderTransactie(id: string): Promise<void> {
 
 /**
  * Een transactie verwijderen SAMEN MET wat eraan hangt: de gedeelde kost die eruit
- * ontstaan is, en de bon die eraan bewaard werd.
+ * ontstaan is, de bon die eraan bewaard werd, en (sinds ronde 36) het
+ * garantiebewijs dat je vanuit deze boeking gemaakt hebt.
  *
  * Waarom in één keer (ronde 35): dit gebeurde als drie losse schrijfacties. Faalde
  * de tweede, dan was de transactie weg maar bleef de gedeelde kost als weesrecord
@@ -210,7 +211,7 @@ export async function verwijderTransactie(id: string): Promise<void> {
  */
 export async function verwijderTransactieMetAanhang(
   id: string,
-  aanhang: { gedeeldeKostId?: string; documentId?: string } = {},
+  aanhang: { gedeeldeKostId?: string; documentId?: string; garantieId?: string } = {},
 ): Promise<void> {
   const gebeurtenissen: Parameters<typeof pasGebeurtenissenToe>[0] = [{ type: 'transactie.verwijderd', payload: { id } }]
   if (aanhang.gedeeldeKostId) {
@@ -218,6 +219,12 @@ export async function verwijderTransactieMetAanhang(
   }
   if (aanhang.documentId) {
     gebeurtenissen.push({ type: 'dossierdocument.verwijderd', payload: { id: aanhang.documentId } })
+  }
+  // Het garantiebewijs gaat mee. Anders bleef het achter met een verwijzing naar
+  // een boeking die niet meer bestaat, terwijl de bon van die boeking — het
+  // aankoopbewijs dat de app beloofde — wél verdween.
+  if (aanhang.garantieId) {
+    gebeurtenissen.push({ type: 'garantie.verwijderd', payload: { id: aanhang.garantieId } })
   }
   await pasGebeurtenissenToe(gebeurtenissen)
 }
@@ -231,13 +238,14 @@ export async function verwijderTransactieMetAanhang(
  */
 export async function verwijderTransactiesMetAanhang(
   ids: string[],
-  aanhang: { gedeeldeKostIds?: string[]; documentIds?: string[] } = {},
+  aanhang: { gedeeldeKostIds?: string[]; documentIds?: string[]; garantieIds?: string[] } = {},
 ): Promise<void> {
   if (ids.length === 0) return
   const gebeurtenissen: Parameters<typeof pasGebeurtenissenToe>[0] = [
     ...ids.map((id) => ({ type: 'transactie.verwijderd', payload: { id } }) as const),
     ...(aanhang.gedeeldeKostIds ?? []).map((id) => ({ type: 'gedeeldekost.verwijderd', payload: { id } }) as const),
     ...(aanhang.documentIds ?? []).map((id) => ({ type: 'dossierdocument.verwijderd', payload: { id } }) as const),
+    ...(aanhang.garantieIds ?? []).map((id) => ({ type: 'garantie.verwijderd', payload: { id } }) as const),
   ]
   await pasGebeurtenissenToe(gebeurtenissen)
 }

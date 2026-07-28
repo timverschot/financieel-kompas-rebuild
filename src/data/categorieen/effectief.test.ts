@@ -68,3 +68,39 @@ describe('bouwEffectieveBoom met eigen categorieën', () => {
     expect(zonder.every((h) => !h.eigen)).toBe(true)
   })
 })
+
+// --- Ronde 36: wat je zelf toevoegt, staat alfabetisch ---
+//
+// De volgorde waarin deze records uit de database komen, is die van hun interne id
+// en dus willekeurig. Een categorie die je net aanmaakte, belandde daardoor op een
+// onvoorspelbare plek. De INGEBOUWDE volgorde blijft ongemoeid: die is gegroepeerd
+// bedoeld, niet alfabetisch.
+describe('bouwEffectieveBoom — eigen toevoegingen alfabetisch', () => {
+  it('zet eigen middencategorieën alfabetisch onder hun hoofdcategorie', () => {
+    const boom = bouwEffectieveBoom(
+      [],
+      [
+        { id: 'm3', naam: 'Zuurdesem', ouderId: 'ov-voeding' },
+        { id: 'm1', naam: 'Ambachtelijk', ouderId: 'ov-voeding' },
+        { id: 'm2', naam: 'Meeneemmaaltijd', ouderId: 'ov-voeding' },
+      ],
+    )
+    const voeding = boom.find((h) => h.id === 'ov-voeding')!
+    const eigen = voeding.categorieen.filter((c) => c.eigen).map((c) => c.naam)
+    expect(eigen).toEqual(['Ambachtelijk', 'Meeneemmaaltijd', 'Zuurdesem'])
+    // De ingebouwde staan nog altijd vooraan én in hun eigen volgorde.
+    expect(voeding.categorieen[0].id).toBe('cat-broodwaren')
+  })
+
+  it('zet eigen subcategorieën alfabetisch achter de ingebouwde items', () => {
+    const items = itemsVan('Voeding', 'Zuivel en Kaas', [
+      { id: 'x3', naam: 'Skyr', categorieId: 'cat-zuivel-en-kaas' },
+      { id: 'x1', naam: 'Ayran', categorieId: 'cat-zuivel-en-kaas' },
+      { id: 'x2', naam: 'Kefir', categorieId: 'cat-zuivel-en-kaas' },
+    ])
+    expect(items.filter((i) => i.eigen).map((i) => i.naam)).toEqual(['Ayran', 'Kefir', 'Skyr'])
+    // En ze staan nog steeds ACHTER de ingebouwde items van die categorie.
+    expect(items[0].eigen).toBe(false)
+  })
+})
+
