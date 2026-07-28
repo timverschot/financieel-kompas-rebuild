@@ -1232,6 +1232,71 @@ const en: Record<string, string> = {
   'Er hangt een garantiebewijs aan deze boeking': 'A proof of warranty is attached to this entry',
   'Uit je boeking van {datum}: {oms}': 'From your entry of {datum}: {oms}',
   'bon van de boeking': 'receipt from the entry',
+  // Ronde 37 — een bankuittreksel inlezen (CSV).
+  'Inlezen': 'Import',
+  'Bankuittreksel inlezen': 'Import a bank statement',
+  'Kies het CSV-bestand dat je bij je bank downloadt. Het blijft op dit toestel — er wordt niets verstuurd.':
+    'Choose the CSV file you download from your bank. It stays on this device — nothing is sent anywhere.',
+  'Maak eerst een rekening aan; een boeking moet ergens op staan.':
+    'Create an account first; an entry has to belong somewhere.',
+  'Bestand': 'File',
+  'Op welke rekening?': 'On which account?',
+  'Dit bestand bevat geen regels.': 'This file contains no rows.',
+  'Dit bestand bevat alleen kolomnamen en geen boekingen.':
+    'This file only contains column names and no entries.',
+  'Kloppen de kolommen?': 'Are the columns right?',
+  'Dit formaat kennen we van de vorige keer — de kolommen staan al goed.':
+    'We know this format from last time — the columns are already set.',
+  'Kompal heeft geraden. Klopt er iets niet, zet het dan hier recht; de volgende keer onthoudt ze het.':
+    'Kompal guessed. If something is wrong, correct it here; next time it will remember.',
+  '{naam} · {n} regels': '{naam} · {n} rows',
+  'Kolom {n}': 'Column {n}',
+  '(leeg)': '(empty)',
+  'Wat staat er in de kolom {naam}?': 'What is in the column {naam}?',
+  'Duid aan welke kolom de datum bevat.': 'Select which column contains the date.',
+  'Duid aan welke kolom het bedrag bevat.': 'Select which column contains the amount.',
+  'niet gebruiken': 'do not use',
+  'Tegenpartij': 'Counterparty',
+  'Mededeling': 'Message',
+  'Bedrag af (debet)': 'Amount out (debit)',
+  'Bedrag bij (credit)': 'Amount in (credit)',
+  'Nakijken en inlezen': 'Review and import',
+  'Met deze kolommen valt er geen enkele boeking te lezen.':
+    'With these columns not a single entry can be read.',
+  '{gekozen} van {totaal} geselecteerd': '{gekozen} of {totaal} selected',
+  'Neem {oms} van {datum} mee': 'Include {oms} of {datum}',
+  'Deze boeking staat er waarschijnlijk al': 'This entry is probably already there',
+  'lijkt al geboekt': 'looks already recorded',
+  'Lees {n} boeking(en) in': 'Import {n} entr(y/ies)',
+  'Ze komen op {rekening} te staan. Categorieën worden voorgesteld op basis van wat je eerder boekte bij dezelfde winkel.':
+    'They will be placed on {rekening}. Categories are suggested from what you recorded before at the same shop.',
+  '{n} boeking(en) ingelezen': '{n} entr(y/ies) imported',
+  '{n} boeking(en) ingelezen.': '{n} entr(y/ies) imported.',
+  '{n}× geen datum gevonden': '{n}× no date found',
+  '{n}× geen bedrag gevonden': '{n}× no amount found',
+  '{n} regels overgeslagen: {redenen}.': '{n} rows skipped: {redenen}.',
+  'Dit lijkt geen CSV-bestand. Kies bij je bank de export als CSV — een pdf of een Excel-bestand kan Kompal niet lezen.':
+    'This does not look like a CSV file. At your bank, choose the CSV export — Kompal cannot read a PDF or an Excel file.',
+  '{n} regel(s) bovenaan overgeslagen (geen boekingen)': '{n} row(s) at the top skipped (not entries)',
+  'Vink aan wat je wil overnemen. Wat al geboekt lijkt, staat standaard uit.':
+    'Tick what you want to take over. Anything that looks already recorded is off by default.',
+  '{n} boekingen van {van} t/m {tot}, samen {saldo}': '{n} entries from {van} to {tot}, {saldo} in total',
+  'Alles aan': 'All on',
+  'Alles uit': 'All off',
+  'Zet de {n} vermoedelijke dubbels uit': 'Turn off the {n} likely duplicates',
+  'Vink minstens één boeking aan.': 'Tick at least one entry.',
+  'Het inlezen is niet gelukt. Je selectie staat er nog, dus je kan het opnieuw proberen.':
+    'The import did not succeed. Your selection is still here, so you can try again.',
+  'Toon {n} regels meer ({rest} nog niet getoond)': 'Show {n} more rows ({rest} not shown yet)',
+  'de eerste {n} zijn zichtbaar, maar alles wat aanstaat wordt ingelezen':
+    'the first {n} are visible, but everything that is on will be imported',
+  'Uittreksel inlezen': 'Import a statement',
+  'Boeking zonder omschrijving': 'Entry without a description',
+  'Waar vind ik dat bestand bij mijn bank?': 'Where do I find that file at my bank?',
+  'In je bankapp of op de website van je bank zoek je bij je rekeninguittreksels naar "exporteren" of "downloaden". Kies daar het formaat CSV (soms staat er "CSV/Excel"). Kompal kan geen pdf lezen — dat is een afdruk, geen bestand met cijfers erin.':
+    'In your banking app or on your bank\u2019s website, look for "export" or "download" near your statements. Choose the CSV format there (sometimes labelled "CSV/Excel"). Kompal cannot read a PDF — that is a printout, not a file with figures in it.',
+  'Categorie voor de {n} regels zonder voorstel (optioneel)':
+    'Category for the {n} rows without a suggestion (optional)',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -2446,6 +2511,72 @@ const fr: Record<string, string> = {
   'Er hangt een garantiebewijs aan deze boeking': 'Une preuve de garantie est liée à cette écriture',
   'Uit je boeking van {datum}: {oms}': 'De votre écriture du {datum} : {oms}',
   'bon van de boeking': 'justificatif de l’écriture',
+  // Ronde 37
+  'Inlezen': 'Importer',
+  'Bankuittreksel inlezen': 'Importer un extrait bancaire',
+  'Kies het CSV-bestand dat je bij je bank downloadt. Het blijft op dit toestel — er wordt niets verstuurd.':
+    'Choisissez le fichier CSV que vous téléchargez chez votre banque. Il reste sur cet appareil — rien n’est envoyé.',
+  'Maak eerst een rekening aan; een boeking moet ergens op staan.':
+    'Créez d’abord un compte ; une écriture doit bien se rattacher à quelque chose.',
+  'Bestand': 'Fichier',
+  'Op welke rekening?': 'Sur quel compte ?',
+  'Dit bestand bevat geen regels.': 'Ce fichier ne contient aucune ligne.',
+  'Dit bestand bevat alleen kolomnamen en geen boekingen.':
+    'Ce fichier ne contient que des noms de colonnes et aucune écriture.',
+  'Kloppen de kolommen?': 'Les colonnes sont-elles correctes ?',
+  'Dit formaat kennen we van de vorige keer — de kolommen staan al goed.':
+    'Nous connaissons ce format depuis la dernière fois — les colonnes sont déjà réglées.',
+  'Kompal heeft geraden. Klopt er iets niet, zet het dan hier recht; de volgende keer onthoudt ze het.':
+    'Kompal a deviné. Si quelque chose ne va pas, corrigez-le ici ; la prochaine fois, il s’en souviendra.',
+  '{naam} · {n} regels': '{naam} · {n} lignes',
+  'Kolom {n}': 'Colonne {n}',
+  '(leeg)': '(vide)',
+  'Wat staat er in de kolom {naam}?': 'Que contient la colonne {naam} ?',
+  'Duid aan welke kolom de datum bevat.': 'Indiquez quelle colonne contient la date.',
+  'Duid aan welke kolom het bedrag bevat.': 'Indiquez quelle colonne contient le montant.',
+  'niet gebruiken': 'ne pas utiliser',
+  'Tegenpartij': 'Contrepartie',
+  'Mededeling': 'Communication',
+  'Bedrag af (debet)': 'Montant débit',
+  'Bedrag bij (credit)': 'Montant crédit',
+  'Nakijken en inlezen': 'Vérifier et importer',
+  'Met deze kolommen valt er geen enkele boeking te lezen.':
+    'Avec ces colonnes, aucune écriture ne peut être lue.',
+  '{gekozen} van {totaal} geselecteerd': '{gekozen} sur {totaal} sélectionnés',
+  'Neem {oms} van {datum} mee': 'Inclure {oms} du {datum}',
+  'Deze boeking staat er waarschijnlijk al': 'Cette écriture existe probablement déjà',
+  'lijkt al geboekt': 'semble déjà enregistré',
+  'Lees {n} boeking(en) in': 'Importer {n} écriture(s)',
+  'Ze komen op {rekening} te staan. Categorieën worden voorgesteld op basis van wat je eerder boekte bij dezelfde winkel.':
+    'Elles seront placées sur {rekening}. Les catégories sont suggérées à partir de vos écritures précédentes chez le même commerçant.',
+  '{n} boeking(en) ingelezen': '{n} écriture(s) importée(s)',
+  '{n} boeking(en) ingelezen.': '{n} écriture(s) importée(s).',
+  '{n}× geen datum gevonden': '{n}× aucune date trouvée',
+  '{n}× geen bedrag gevonden': '{n}× aucun montant trouvé',
+  '{n} regels overgeslagen: {redenen}.': '{n} lignes ignorées : {redenen}.',
+  'Dit lijkt geen CSV-bestand. Kies bij je bank de export als CSV — een pdf of een Excel-bestand kan Kompal niet lezen.':
+    'Cela ne ressemble pas à un fichier CSV. Choisissez l’export CSV chez votre banque — Kompal ne peut pas lire un PDF ni un fichier Excel.',
+  '{n} regel(s) bovenaan overgeslagen (geen boekingen)': '{n} ligne(s) en haut ignorée(s) (pas des écritures)',
+  'Vink aan wat je wil overnemen. Wat al geboekt lijkt, staat standaard uit.':
+    'Cochez ce que vous voulez reprendre. Ce qui semble déjà enregistré est décoché par défaut.',
+  '{n} boekingen van {van} t/m {tot}, samen {saldo}': '{n} écritures du {van} au {tot}, {saldo} au total',
+  'Alles aan': 'Tout cocher',
+  'Alles uit': 'Tout décocher',
+  'Zet de {n} vermoedelijke dubbels uit': 'Décocher les {n} doublons probables',
+  'Vink minstens één boeking aan.': 'Cochez au moins une écriture.',
+  'Het inlezen is niet gelukt. Je selectie staat er nog, dus je kan het opnieuw proberen.':
+    'L’importation a échoué. Votre sélection est toujours là, vous pouvez réessayer.',
+  'Toon {n} regels meer ({rest} nog niet getoond)': 'Afficher {n} lignes de plus ({rest} pas encore affichées)',
+  'de eerste {n} zijn zichtbaar, maar alles wat aanstaat wordt ingelezen':
+    'les {n} premières sont visibles, mais tout ce qui est coché sera importé',
+  'Uittreksel inlezen': 'Importer un extrait',
+  'Boeking zonder omschrijving': 'Écriture sans description',
+  'Waar vind ik dat bestand bij mijn bank?': 'Où trouver ce fichier chez ma banque ?',
+  'In je bankapp of op de website van je bank zoek je bij je rekeninguittreksels naar "exporteren" of "downloaden". Kies daar het formaat CSV (soms staat er "CSV/Excel"). Kompal kan geen pdf lezen — dat is een afdruk, geen bestand met cijfers erin.':
+    'Dans votre application bancaire ou sur le site de votre banque, cherchez « exporter » ou « télécharger » près de vos extraits. Choisissez-y le format CSV (parfois « CSV/Excel »). Kompal ne peut pas lire un PDF — c\u2019est une impression, pas un fichier avec des chiffres.',
+  'Categorie voor de {n} regels zonder voorstel (optioneel)':
+    'Catégorie pour les {n} lignes sans suggestion (facultatif)',
+
 
 
 }

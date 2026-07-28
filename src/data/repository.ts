@@ -53,6 +53,24 @@ export async function bewaarTransactie(tx: Transactie): Promise<void> {
   await pasGebeurtenisToe({ type: 'transactie.bewaard', payload: geldig })
 }
 
+/**
+ * Veel transacties in ÉÉN ondeelbare stap (ronde 37, voor het inlezen van een
+ * bankuittreksel).
+ *
+ * Waarom niet gewoon `bewaarTransactie` in een lus: dat zijn evenveel losse
+ * schrijfacties naar het logboek. Bij tweehonderd regels duurt dat merkbaar lang,
+ * en breekt het halverwege af (de opslag zit vol, je sluit het tabblad), dan staat
+ * de helft van je uittreksel in de app en weet je niet welke helft. Nu gaat alles
+ * door, of niets — en één keer ongedaan maken haalt precies dezelfde reeks weg.
+ */
+export async function bewaarTransacties(transacties: Transactie[]): Promise<void> {
+  if (transacties.length === 0) return
+  const gebeurtenissen = transacties.map(
+    (t) => ({ type: 'transactie.bewaard', payload: TransactieSchema.parse(t) }) as const,
+  )
+  await pasGebeurtenissenToe(gebeurtenissen)
+}
+
 export async function bewaarRekening(rekening: Rekening): Promise<void> {
   const geldig = RekeningSchema.parse(rekening)
   await pasGebeurtenisToe({ type: 'rekening.bewaard', payload: geldig })

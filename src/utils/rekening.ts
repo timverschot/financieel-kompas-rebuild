@@ -28,3 +28,31 @@ export function rekeningLabel(r: Rekening): string {
   const staart = nummerStaart(r.rekeningnummer)
   return [r.naam, r.rubriek, staart ? `…${staart}` : null].filter(Boolean).join(' · ')
 }
+
+// --- De laatst gebruikte rekening ------------------------------------------
+//
+// Stond tot ronde 37 als eigen hulpje in `TransactieFormulier`. Het importscherm
+// heeft precies hetzelfde nodig — welke rekening bied ik als eerste aan? — en twee
+// keer dezelfde localStorage-sleutel in twee bestanden is precies hoe die twee op
+// termijn uit elkaar gaan lopen.
+const LAATSTE_REKENING_SLEUTEL = 'fk_laatste_rekening'
+
+/** De rekening die je het laatst gebruikte, of anders de eerste in de lijst. */
+export function standaardRekening(rekeningen: Rekening[]): string {
+  try {
+    const opgeslagen = localStorage.getItem(LAATSTE_REKENING_SLEUTEL)
+    if (opgeslagen && rekeningen.some((r) => r.id === opgeslagen)) return opgeslagen
+  } catch {
+    // localStorage niet beschikbaar: stil terugvallen.
+  }
+  return rekeningen[0]?.id ?? ''
+}
+
+export function onthoudRekening(id: string): void {
+  try {
+    localStorage.setItem(LAATSTE_REKENING_SLEUTEL, id)
+  } catch {
+    // stil negeren
+  }
+}
+

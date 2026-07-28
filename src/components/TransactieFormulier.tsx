@@ -14,7 +14,7 @@ import type {
   TransactieRegel,
 } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
-import { rekeningLabel } from '../utils/rekening'
+import { rekeningLabel, standaardRekening, onthoudRekening } from '../utils/rekening'
 import { invoerNaarCenten, centenNaarInvoer, formatEuro } from '../utils/format'
 import { labelVanCategorie } from '../data/categorieen/resolve'
 import { zoekProduct } from '../utils/openFoodFacts'
@@ -53,26 +53,6 @@ function invoertijdstip(bewerken?: Transactie | null): { ingevoerdOp?: string } 
 const MAX_BON = 4_000_000
 
 
-// Onthoud de laatst gebruikte rekening als standaard (ook na een herlaad).
-const LAATSTE_REKENING_SLEUTEL = 'fk_laatste_rekening'
-
-function standaardRekening(rekeningen: Rekening[]): string {
-  try {
-    const opgeslagen = localStorage.getItem(LAATSTE_REKENING_SLEUTEL)
-    if (opgeslagen && rekeningen.some((r) => r.id === opgeslagen)) return opgeslagen
-  } catch {
-    // localStorage niet beschikbaar: stil terugvallen.
-  }
-  return rekeningen[0]?.id ?? ''
-}
-
-function onthoudRekening(id: string): void {
-  try {
-    localStorage.setItem(LAATSTE_REKENING_SLEUTEL, id)
-  } catch {
-    // stil negeren
-  }
-}
 
 // Eén kassaticketregel (lokale invoer). 'code'/'nutriScore' zijn optioneel en
 // worden ingevuld bij het scannen van een streepjescode.

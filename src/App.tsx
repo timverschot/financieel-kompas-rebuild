@@ -31,6 +31,7 @@ import {
   bewaarAflossing,
   bewaarDossierDocument,
   bewaarGarantie,
+  bewaarTransacties,
   bewaarKind,
   bewaarKindrekening,
   bewaarKindrekeningpost,
@@ -93,6 +94,7 @@ import { DriveBackend } from './data/sync/drive/driveBackend'
 import { vraagToken, heeftOoitVerbonden, meldAf } from './data/sync/drive/auth'
 import { TransactieFormulier } from './components/TransactieFormulier'
 import { TransactieLijst } from './components/TransactieLijst'
+import { ImportSectie } from './components/ImportSectie'
 import { RekeningFormulier, REKENING_TYPE_LABEL } from './components/RekeningFormulier'
 import { RekeningDetail } from './components/RekeningDetail'
 import { CategorieFormulier } from './components/CategorieFormulier'
@@ -1075,6 +1077,28 @@ export function App() {
     })
   }
 
+  // Een ingelezen bankuittreksel wegschrijven. In ÉÉN ondeelbare stap, en met één
+  // keer ongedaan maken voor de hele reeks: lees je per ongeluk de verkeerde maand
+  // of de verkeerde rekening in, dan wil je dat met één tik terug kunnen draaien en
+  // niet tweehonderd rijen één voor één moeten aanvinken en wissen.
+  async function leesUittrekselIn(nieuwe: Transactie[]) {
+    if (nieuwe.length === 0) return
+    await bewaarTransacties(nieuwe)
+    // Alles hierna is afwerking. Struikelt het herladen, dan is de import zélf wel
+    // degelijk gelukt — het zou dus verkeerd zijn om de fout door te geven aan het
+    // importscherm: dat zegt dan "niet gelukt", en de gebruiker leest opnieuw in.
+    // Dan pas heeft hij echt dubbels.
+    try {
+      await herlaad()
+    } catch {
+      // stil: de gegevens staan er, alleen het scherm loopt achter.
+    }
+    toonUndo(t('{n} boeking(en) ingelezen', { n: nieuwe.length }), async () => {
+      await verwijderTransactiesMetAanhang(nieuwe.map((n) => n.id))
+      await herlaad()
+    })
+  }
+
   async function verbindEnSynchroniseer() {
     setBezig(true)
     meld(null)
@@ -1447,7 +1471,17 @@ export function App() {
 
       {pagina === 'transacties' && (
         <>
-          <PaginaKop titel={paginaTitel} />
+          {/* De weg naar het importscherm hoort HIER te beginnen: dit is de pagina
+              waar je staat wanneer je denkt "moet ik dit nu allemaal intikken?".
+              In de 'Meer'-lade zoeken doet niemand. */}
+          <PaginaKop
+            titel={paginaTitel}
+            actie={
+              <button type="button" className="knop knop-secundair knop-klein" onClick={() => setPagina('importeren')}>
+                {t('Uittreksel inlezen')}
+              </button>
+            }
+          />
 
           {/* Deze pagina is nu puur overzicht. Het invoerformulier stond hier in een
               kolom naast de lijst en nam op een telefoon het hele eerste beeld in,
@@ -1884,6 +1918,21 @@ export function App() {
         <ErrorBoundary naam="Rekenhulpen">
           <RekenhulpenSectie />
         </ErrorBoundary>
+      )}
+
+      {pagina === 'importeren' && (
+        <>
+          <PaginaKop titel={paginaTitel} />
+          <ErrorBoundary naam="Inlezen">
+            <ImportSectie
+              rekeningen={actieveRekeningen}
+              transacties={transacties}
+              categorieen={categorieen}
+              handelaarIndex={handelaarIndex}
+              onImporteer={leesUittrekselIn}
+            />
+          </ErrorBoundary>
+        </>
       )}
 
     </div>
