@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { Categorie, Kind, Overboeking, Rekening, TerugkerendePost, Transactie, Waardering } from '../data/schema'
 import { Vermogensevolutie } from './Vermogensevolutie'
 import { TrendsSectie } from './TrendsSectie'
@@ -23,9 +23,11 @@ import { afgerondePercentages } from '../utils/donut'
 import { formatEuro } from '../utils/format'
 import { Kaart, PaginaKop, Leeg, Bedrag, Stat, Balk } from '../ui/basis'
 import { useT } from '../i18n'
-import { naarDatumTekst } from '../utils/datum'
-import { isOmgekeerdBereik } from '../utils/transactieFilter'
+import { naarDatumTekst, huidigeMaand, maandJaarLabel } from '../utils/datum'
+import { verschuifMaand } from '../utils/maandverloop'
+import { isOmgekeerdBereik, filterVoorCategorie, type TxFilter } from '../utils/transactieFilter'
 import { kleurVoor, OVERIGE_KLEUR } from '../ui/palet'
+import { itemPerId } from '../data/categorieen/zoek'
 import { dagKort } from '../utils/datum'
 
 // De kleuren komen uit het gedeelde palet (src/ui/palet.ts) — dezelfde twaalf die
@@ -57,10 +59,6 @@ const rijKnop: CSSProperties = {
   cursor: 'pointer',
   color: 'var(--text)',
   font: 'inherit',
-}
-
-function maandStr(d: Date): string {
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
 }
 
 // Hoe groot de donut op deze pagina getekend wordt. Stond op 190 px in een kolom
@@ -139,6 +137,11 @@ export function AnalyseSectie({
   terugkerendePosten,
   gezinsleden = [],
   beginRichting = 'uitgave',
+  ankerMaand,
+  maandNav,
+  onGaNaarTransacties,
+  onBewerkTransactie,
+  onBoekVasteLast,
 }: {
   transacties: Transactie[]
   categorieen: Categorie[]
@@ -156,6 +159,28 @@ export function AnalyseSectie({
    * is enkel de BEGINstand.
    */
   beginRichting?: Richting
+  /**
+   * De maand waar deze pagina op ankert ('JJJJ-MM'), uit de maandschakelaar.
+   *
+   * Ronde 40: "Deze maand" rekende hier vanuit `new Date()` en kende de
+   * maandschakelaar niet. Bladerde je bovenaan naar maart, dan bleef de Analyse
+   * over juli praten — zonder dat ergens te zeggen. Standaard blijft het de
+   * echte huidige maand, zodat een aanroeper zonder deze prop zich exact
+   * gedraagt zoals vroeger.
+   */
+  ankerMaand?: string
+  /**
+   * De maandschakelaar van de app, om rechts in de paginakop te zetten. Hij komt
+   * van buiten omdat hij daar ook woont (App houdt de maand bij); deze pagina
+   * hoort er geen tweede te maken.
+   */
+  maandNav?: ReactNode
+  /** Doorklikken naar de Transacties-pagina met een filter (ronde 40). */
+  onGaNaarTransacties?: (filter: TxFilter) => void
+  /** Een boeking openen vanaf de drilldown (ronde 40). */
+  onBewerkTransactie?: (tx: Transactie) => void
+  /** Een vaste last inboeken vanaf de vooruitblik (ronde 40). */
+  onBoekVasteLast?: (postId: string, maand: string) => void
 }) {
   const { t } = useT()
   const [richting, setRichting] = useState<Richting>(beginRichting)
@@ -172,40 +197,36 @@ export function AnalyseSectie({
 
   // Periode omzetten naar een van/tot-bereik. Los gehouden van de rekenkern zodat
   // die zuiver testbaar blijft.
+  const anker = ankerMaand ?? huidigeMaand()
+
   const periode: Periode = useMemo(() => {
-    const nu = new Date()
-    if (keuze === 'maand') {
-      const m = maandStr(nu)
-      return { van: `${m}-01`, tot: `${m}-31` }
-    }
+    if (keuze === 'maand') return { van: `${anker}-01`, tot: `${anker}-31` }
     if (keuze === 'vorige') {
-      const v = new Date(nu.getFullYear(), nu.getMonth() - 1, 1)
-      const m = maandStr(v)
+      const m = verschuifMaand(anker, -1)
       return { van: `${m}-01`, tot: `${m}-31` }
     }
     if (keuze === 'jaar') {
-      const j = nu.getFullYear()
+      const j = anker.slice(0, 4)
       return { van: `${j}-01-01`, tot: `${j}-12-31` }
     }
     if (keuze === 'aangepast') return { van: van || undefined, tot: tot || undefined }
     return {}
-  }, [keuze, van, tot])
+  }, [keuze, van, tot, anker])
 
   // De vorige, vergelijkbare periode (voor stijgers/dalers). 'Alles' en een
   // onvolledig aangepast bereik hebben geen zinvolle vorige periode.
   const vorige: Periode | null = useMemo(() => {
-    const nu = new Date()
     const iso = naarDatumTekst
     if (keuze === 'maand') {
-      const m = maandStr(new Date(nu.getFullYear(), nu.getMonth() - 1, 1))
+      const m = verschuifMaand(anker, -1)
       return { van: `${m}-01`, tot: `${m}-31` }
     }
     if (keuze === 'vorige') {
-      const m = maandStr(new Date(nu.getFullYear(), nu.getMonth() - 2, 1))
+      const m = verschuifMaand(anker, -2)
       return { van: `${m}-01`, tot: `${m}-31` }
     }
     if (keuze === 'jaar') {
-      const j = nu.getFullYear() - 1
+      const j = Number(anker.slice(0, 4)) - 1
       return { van: `${j}-01-01`, tot: `${j}-12-31` }
     }
     if (keuze === 'aangepast') {
@@ -218,7 +239,7 @@ export function AnalyseSectie({
       return { van: iso(prevVan), tot: iso(prevTot) }
     }
     return null // alles
-  }, [keuze, van, tot])
+  }, [keuze, van, tot, anker])
 
   // Bij een omgekeerd bereik rekenen we bewust niets uit: lege kaarten met nullen
   // zouden suggereren dat er écht niets is.
@@ -278,16 +299,68 @@ export function AnalyseSectie({
   const ovPercentages = afgerondePercentages(byOv.map((g) => g.bedrag))
   const drillSubPercentages = afgerondePercentages(drillSub.map((p) => p.bedrag))
 
+  // De namen van de periodekaartjes. Sta je op de huidige maand, dan blijven het
+  // de vertrouwde woorden; blader je terug, dan noemen ze de maand of het jaar
+  // waar je écht naar kijkt. Een kaartje "Deze maand" dat maart toont, is precies
+  // het soort stille onwaarheid dat deze ronde wegwerkt.
+  const opNu = anker === huidigeMaand()
   const perioden: [typeof keuze, string][] = [
-    ['maand', t('Deze maand')],
-    ['vorige', t('Vorige maand')],
-    ['jaar', t('Dit jaar')],
+    ['maand', opNu ? t('Deze maand') : maandJaarLabel(`${anker}-01`)],
+    ['vorige', opNu ? t('Vorige maand') : maandJaarLabel(`${verschuifMaand(anker, -1)}-01`)],
+    ['jaar', opNu ? t('Dit jaar') : anker.slice(0, 4)],
     ['alles', t('Alles')],
     ['aangepast', t('Aangepast')],
   ]
   const leegTekst = richting === 'uitgave' ? t('Geen uitgaven in deze periode') : t('Geen inkomsten in deze periode')
-  const donutInvoer = byOv.map((g) => ({ naam: g.naam, bedrag: g.bedrag, kleur: g.kleur }))
+  const donutInvoer = byOv.map((g) => ({ naam: g.naam, bedrag: g.bedrag, kleur: g.kleur, sleutel: g.sleutel }))
   const periodeLabel = perioden.find(([k]) => k === keuze)?.[1] ?? ''
+
+  /**
+   * Elk doorklik-filter erft de gekozen periode: klik je op € 340 bij Voeding,
+   * dan hoort de lijst exact die € 340 te tonen en niet je hele historiek.
+   *
+   * Bij een MAANDperiode geven we `maand` mee en geen van/tot-paar. Twee redenen:
+   * de maandschakelaar bovenaan de transactielijst werkt dan gewoon, en `tot`
+   * zou anders `2026-02-31` worden — een datum die niet bestaat en die een echt
+   * datumveld leeg laat terwijl het filter wél actief is.
+   */
+  const filterPeriode: TxFilter =
+    keuze === 'maand'
+      ? { maand: anker }
+      : keuze === 'vorige'
+        ? { maand: verschuifMaand(anker, -1) }
+        : { ...(periode.van ? { van: periode.van } : {}), ...(periode.tot ? { tot: periode.tot } : {}) }
+
+  const metPeriode = (filter: TxFilter): TxFilter => ({ ...filter, ...filterPeriode })
+  const metRichting = (filter: TxFilter): TxFilter =>
+    metPeriode({ ...filter, richting: richting === 'uitgave' ? 'uit' : 'in' })
+
+  const naarCategorie = (sleutel: string) => {
+    // 'Zonder categorie' heeft geen id om op te filteren; dan is er niets om
+    // heen te gaan en tonen we de knop ook niet.
+    if (!onGaNaarTransacties || !sleutel) return
+    onGaNaarTransacties(metRichting(filterVoorCategorie(sleutel)))
+  }
+
+  /**
+   * Doorklikken vanaf een rij in de drilldown "Per subcategorie".
+   *
+   * Die rijen worden per EXACT opgeslagen id geteld (zie `drillPerItem`): een
+   * boeking die rechtstreeks op "Voeding" staat krijgt haar eigen rij naast de
+   * items eronder. `filterVoorCategorie` doet het omgekeerde — een hoofd- of
+   * middencategorie vangt daar juist alles eronder. Klikte je op de rij "Voeding
+   * € 3,00", dan toonde de lijst dus ook alle broodboekingen en stond er ineens
+   * € 8,00 boven.
+   *
+   * Daarom bieden we hier alleen een doorklik aan wanneer de rij een ITEM is: dan
+   * is het filter exact hetzelfde als de telling. Dezelfde afweging als bij twee
+   * id's met dezelfde naam: liever geen doorklik dan een die een ander bedrag
+   * toont.
+   */
+  const naarItem = (sleutel: string) => {
+    if (!onGaNaarTransacties) return
+    onGaNaarTransacties(metRichting({ catId: sleutel }))
+  }
 
   return (
     <section className="stapel">
@@ -295,7 +368,7 @@ export function AnalyseSectie({
           boven de rest — je moest telkens helemaal naar boven om terug te gaan.
           Ze staat nu rechts op de rij met de periodekaartjes, op ooghoogte met de
           knoppen die je op deze pagina toch al gebruikt. */}
-      <PaginaKop titel={drill ? drill.naam : t('Analyse')} />
+      <PaginaKop titel={drill ? drill.naam : t('Analyse')} actie={maandNav} />
 
       {/* Richting: uitgaven of inkomsten */}
       <div className="knoprij" style={{ gap: 8 }}>
@@ -368,6 +441,11 @@ export function AnalyseSectie({
               periode={periode}
               vorigePeriode={vorige}
               perMaand={keuze === 'maand' || keuze === 'vorige'}
+              onKies={
+                onGaNaarTransacties
+                  ? (sleutel) => onGaNaarTransacties(metPeriode({ domein: sleutel, richting: 'uit' }))
+                  : undefined
+              }
             />
           )}
 
@@ -392,13 +470,26 @@ export function AnalyseSectie({
               bijschrift={t('Per hoofdcategorie — klik een rij open voor de details erachter.')}
             >
               <div className="donut-naast">
-                <Donut items={donutInvoer} toonLegende={false} grootte={DONUT_GROOTTE} middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'} />
+                <Donut
+                  items={donutInvoer}
+                  toonLegende={false}
+                  grootte={DONUT_GROOTTE}
+                  interactief
+                  middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'}
+                  // Een schijf aanklikken doet hetzelfde als de rij ernaast
+                  // aanklikken: inzoomen. Twee wegen naar dezelfde plek, geen
+                  // tweede betekenis.
+                  onKies={(seg) => {
+                    if (seg.sleutel !== undefined) setDrill({ sleutel: seg.sleutel, naam: seg.naam })
+                  }}
+                />
                 <ul className="lijst">
                   {byOv.map((g, i) => {
                     const fractie = totaal > 0 ? g.bedrag / totaal : 0
                     return (
                       <li key={g.sleutel}>
                         <button
+                          type="button"
                           className="analyse-rij"
                           aria-label={t('Toon details van {naam}', { naam: g.naam })}
                           onClick={() => setDrill({ sleutel: g.sleutel, naam: g.naam })}
@@ -467,6 +558,8 @@ export function AnalyseSectie({
             huidige={periode}
             vorige={vorige}
             periodeLabel={periodeLabel}
+            ankerMaand={anker}
+            onKies={onGaNaarTransacties ? (sleutel) => naarCategorie(sleutel) : undefined}
           />
 
           <Vermogensevolutie
@@ -474,9 +567,17 @@ export function AnalyseSectie({
             transacties={transacties}
             overboekingen={overboekingen}
             waarderingen={waarderingen}
+            ankerMaand={anker}
           />
 
-          <VooruitblikSectie transacties={transacties} terugkerendePosten={terugkerendePosten} periode={periode} periodeLabel={periodeLabel} />
+          <VooruitblikSectie
+            transacties={transacties}
+            terugkerendePosten={terugkerendePosten}
+            periode={periode}
+            periodeLabel={periodeLabel}
+            maand={anker}
+            onBoekVasteLast={onBoekVasteLast}
+          />
         </>
       )}
 
@@ -499,6 +600,16 @@ export function AnalyseSectie({
                 )}
               </span>
             </div>
+            {/* De weg van dit cijfer naar de lijst waar je het kan bewerken.
+                Zonder deze knop eindigde de drilldown blind: je zag de boekingen
+                wel staan, maar kon er niets mee. */}
+            {onGaNaarTransacties && drill.sleutel !== '' && (
+              <div className="knoprij">
+                <button type="button" className="knop knop-ghost knop-klein" onClick={() => naarCategorie(drill.sleutel)}>
+                  {t('Bekijk in Transacties ›')}
+                </button>
+              </div>
+            )}
           </Kaart>
 
           {drillSub.length > 0 && (
@@ -507,7 +618,7 @@ export function AnalyseSectie({
                   rechts op een breed scherm, aandeel als eigen kolom. */}
               <div className="donut-naast">
                 <Donut
-                  items={drillSub.map((p) => ({ naam: p.naam, bedrag: p.bedrag, kleur: p.kleur }))}
+                  items={drillSub.map((p) => ({ naam: p.naam, bedrag: p.bedrag, kleur: p.kleur, sleutel: p.sleutel }))}
                   toonLegende={false}
                   middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'}
                 />
@@ -516,16 +627,39 @@ export function AnalyseSectie({
                     const fractie = drillTotaal > 0 ? p.bedrag / drillTotaal : 0
                     return (
                       <li key={`${i}-${p.naam}`} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <span style={{ ...stip, background: p.kleur }} />
-                          <span className="rij-midden">
-                            <span className="rij-titel" style={afkap}>
-                              {t(p.naam)}
-                            </span>
-                          </span>
-                          <span className="rij-pct">{drillSubPercentages[i]}%</span>
-                          <Bedrag centen={p.bedrag} />
-                        </span>
+                        {(() => {
+                          // Alleen een ITEM: zie de uitleg bij `naarItem`. Voor een
+                          // rij die een hoofd- of middencategorie is, zou het filter
+                          // een groter bedrag tonen dan de rij zelf.
+                          const kanDoor = Boolean(onGaNaarTransacties && p.sleutel && itemPerId(p.sleutel))
+                          const inhoud = (
+                            <>
+                              <span style={{ ...stip, background: p.kleur }} />
+                              <span className="rij-midden">
+                                <span className="rij-titel" style={afkap}>
+                                  {t(p.naam)}
+                                </span>
+                              </span>
+                              <span className="rij-pct">{drillSubPercentages[i]}%</span>
+                              <Bedrag centen={p.bedrag} />
+                            </>
+                          )
+                          return kanDoor ? (
+                            <button
+                              type="button"
+                              className="rij-knop"
+                              aria-label={t('Bekijk de boekingen van {naam} — {bedrag}', {
+                                naam: t(p.naam),
+                                bedrag: formatEuro(p.bedrag),
+                              })}
+                              onClick={() => naarItem(p.sleutel as string)}
+                            >
+                              {inhoud}
+                            </button>
+                          ) : (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>{inhoud}</span>
+                          )
+                        })()}
                         <Balk label={p.naam} fractie={fractie} kleur={p.kleur} />
                       </li>
                     )
@@ -540,25 +674,50 @@ export function AnalyseSectie({
               <Leeg>{leegTekst}</Leeg>
             ) : (
               <ul className="lijst">
-                {drillTxs.map((d, i) => (
-                  <li key={d.transactie.id || i} className="rij">
-                    <span className="rij-meta" style={{ width: 52, flexShrink: 0 }}>
-                      {dagKort(d.transactie.datum)}
-                    </span>
-                    <span className="rij-midden">
-                      <span className="rij-titel" style={afkap}>
-                        {d.transactie.omschrijving || t('Zonder omschrijving')}
-                        {d.transactie.regels && d.transactie.regels.length > 0 && (
-                          <span className="rij-meta"> · {t('Kassaticket gesplitst')}</span>
-                        )}
+                {drillTxs.map((d, i) => {
+                  const inhoud = (
+                    <>
+                      <span className="rij-meta" style={{ width: 52, flexShrink: 0 }}>
+                        {dagKort(d.transactie.datum)}
                       </span>
-                    </span>
-                    <span className={richting === 'uitgave' ? 'bedrag bedrag-negatief' : 'bedrag bedrag-positief'}>
-                      {richting === 'uitgave' ? '−' : '+'}
-                      {formatEuro(d.bedrag)}
-                    </span>
-                  </li>
-                ))}
+                      <span className="rij-midden">
+                        <span className="rij-titel" style={afkap}>
+                          {d.transactie.omschrijving || t('Zonder omschrijving')}
+                          {d.transactie.regels && d.transactie.regels.length > 0 && (
+                            <span className="rij-meta"> · {t('Kassaticket gesplitst')}</span>
+                          )}
+                        </span>
+                      </span>
+                      <span className={richting === 'uitgave' ? 'bedrag bedrag-negatief' : 'bedrag bedrag-positief'}>
+                        {richting === 'uitgave' ? '−' : '+'}
+                        {formatEuro(d.bedrag)}
+                      </span>
+                    </>
+                  )
+                  return (
+                    <li key={d.transactie.id || i} className="rij">
+                      {/* Hier eindigde het spoor: je zag de boeking die het bedrag
+                          verklaart, maar kon ze niet openen om bijvoorbeeld de
+                          ontbrekende categorie recht te zetten. */}
+                      {onBewerkTransactie ? (
+                        <button
+                          type="button"
+                          className="rij-knop"
+                          aria-label={t('Bewerk {oms} — {datum}, {bedrag}', {
+                            oms: d.transactie.omschrijving || t('Zonder omschrijving'),
+                            datum: dagKort(d.transactie.datum),
+                            bedrag: formatEuro(d.bedrag),
+                          })}
+                          onClick={() => onBewerkTransactie(d.transactie)}
+                        >
+                          {inhoud}
+                        </button>
+                      ) : (
+                        inhoud
+                      )}
+                    </li>
+                  )
+                })}
               </ul>
             )}
           </Kaart>

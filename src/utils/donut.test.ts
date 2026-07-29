@@ -70,3 +70,30 @@ describe('afgerondePercentages', () => {
     expect(afgerondePercentages([250])).toEqual([100])
   })
 })
+
+// --- Ronde 40 -----------------------------------------------------------------
+
+describe('donutSegmenten — de sleutel reist mee', () => {
+  it('geeft de sleutel van de invoer door aan het segment', () => {
+    const segmenten = donutSegmenten([
+      { naam: 'Voeding', bedrag: 300, kleur: '#111', sleutel: 'ov-voeding' },
+      { naam: 'Wonen', bedrag: 200, kleur: '#222', sleutel: 'ov-woning-en-vaste-lasten' },
+    ])
+    expect(segmenten.map((s) => s.sleutel)).toEqual(['ov-voeding', 'ov-woning-en-vaste-lasten'])
+  })
+
+  it('laat de sleutel WEG wanneer de invoer er geen heeft', () => {
+    // De uitsplitsing per winkel groepeert op naam en heeft geen id. Een lege
+    // string zou daar een filter suggereren dat niet bestaat, dus het veld hoort
+    // helemaal niet in het segment te staan.
+    const segmenten = donutSegmenten([{ naam: 'Colruyt', bedrag: 100, kleur: null }])
+    expect('sleutel' in segmenten[0]).toBe(false)
+  })
+
+  it('houdt een lege sleutel als lege sleutel, niet als "geen sleutel"', () => {
+    // 'Zonder categorie' heeft groepeersleutel ''. De aanroeper beslist of daar
+    // doorgeklikt mag worden; de rekenkern verzint niets.
+    const segmenten = donutSegmenten([{ naam: 'Zonder categorie', bedrag: 100, kleur: null, sleutel: '' }])
+    expect(segmenten[0].sleutel).toBe('')
+  })
+})

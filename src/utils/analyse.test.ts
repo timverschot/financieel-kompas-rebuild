@@ -115,8 +115,8 @@ describe('analyse — drill', () => {
 
     const perSub = drillPerItem(drill, [])
     expect(perSub).toEqual([
-      { naam: 'Voeding', bedrag: 300 },
-      { naam: 'Brood (wit)', bedrag: 500 },
+      { naam: 'Voeding', bedrag: 300, sleutel: VOEDING },
+      { naam: 'Brood (wit)', bedrag: 500, sleutel: BROOD },
     ].sort((a, b) => b.bedrag - a.bedrag))
   })
 })

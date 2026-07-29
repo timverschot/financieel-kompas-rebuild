@@ -1,0 +1,132 @@
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, it, expect, vi } from 'vitest'
+import { VooruitblikSectie } from './VooruitblikSectie'
+import type { TerugkerendePost, Transactie } from '../data/schema'
+import { huidigeMaand, verschuifMaandVoorTest } from '../test/maandhulp'
+
+// Ronde 40 gaf deze kaart twee dingen die ze niet had:
+//
+//  1. de regel "n vaste lasten nog in te boeken deze maand" liep dood — je las dat
+//     er drie openstonden en moest zelf naar de Plan-pagina om uit te zoeken wélke;
+//  2. de kaart rekende altijd met de HUIDIGE maand, ook wanneer de rest van de
+//     pagina naar een andere maand bladerde.
+//
+// Waarom deze tests met de VOLGENDE en de VORIGE maand werken in plaats van met
+// een vaste maand: of een post "nog te komen" of "achterstallig" is, hangt af van
+// de dag van vandaag. Het schema laat hoogstens dag 28 toe, dus op de 29e, 30e en
+// 31e bestaat "nog te komen" in de huidige maand niet meer. In een maand die nog
+// moet komen is alles per definitie komend, in een maand die voorbij is alles
+// achterstallig — en dan zegt de test elke dag van het jaar hetzelfde.
+
+const dezeMaand = huidigeMaand()
+const volgendeMaand = verschuifMaandVoorTest(dezeMaand, 1)
+const vorigeMaand = verschuifMaandVoorTest(dezeMaand, -1)
+
+function post(over: Partial<TerugkerendePost> & { id: string; dag: number; bedrag: number }): TerugkerendePost {
+  return { omschrijving: over.id, rekeningId: 'r1', ...over }
+}
+
+const inkomst: Transactie = {
+  id: 'loon',
+  datum: `${dezeMaand}-01`,
+  omschrijving: 'Loon',
+  bedrag: 200000,
+  rekeningId: 'r1',
+}
+
+const huur = post({ id: 'Huur', dag: 5, bedrag: -90000 })
+
+function toon(props: Partial<Parameters<typeof VooruitblikSectie>[0]> = {}) {
+  const onBoekVasteLast = vi.fn()
+  render(
+    <VooruitblikSectie
+      transacties={[inkomst]}
+      terugkerendePosten={[huur]}
+      periode={{ van: `${volgendeMaand}-01`, tot: `${volgendeMaand}-31` }}
+      periodeLabel="Volgende maand"
+      maand={volgendeMaand}
+      onBoekVasteLast={onBoekVasteLast}
+      {...props}
+    />,
+  )
+  return { onBoekVasteLast }
+}
+
+describe('VooruitblikSectie — een vaste last meteen inboeken', () => {
+  const telregel = () => screen.getByRole('button', { name: /nog in te boeken in/ })
+
+  it('maakt van de telregel een knop die de posten eronder toont', async () => {
+    const user = userEvent.setup()
+    toon()
+    expect(telregel()).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Huur')).toBeNull()
+    await user.click(telregel())
+    expect(telregel()).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Huur')).toBeInTheDocument()
+  })
+
+  it('klapt de lijst met een tweede klik weer dicht', async () => {
+    const user = userEvent.setup()
+    toon()
+    await user.click(telregel())
+    await user.click(telregel())
+    expect(screen.queryByText('Huur')).toBeNull()
+  })
+
+  it('boekt de post in voor de maand die deze kaart toont', async () => {
+    const user = userEvent.setup()
+    const { onBoekVasteLast } = toon()
+    await user.click(telregel())
+    await user.click(screen.getByRole('button', { name: 'Boek Huur in' }))
+    expect(onBoekVasteLast).toHaveBeenCalledWith('Huur', volgendeMaand)
+  })
+
+  it('boekt ook een achterstallige post in de maand van de kaart', async () => {
+    // Dit is het verschil met het meldingenbelletje: dat gaat over nu, deze kaart
+    // over de maand die je aan het bekijken bent.
+    const user = userEvent.setup()
+    const { onBoekVasteLast } = toon({
+      maand: vorigeMaand,
+      periode: { van: `${vorigeMaand}-01`, tot: `${vorigeMaand}-31` },
+    })
+    await user.click(screen.getByRole('button', { name: /achterstallig/ }))
+    await user.click(screen.getByRole('button', { name: 'Boek Huur in' }))
+    expect(onBoekVasteLast).toHaveBeenCalledWith('Huur', vorigeMaand)
+  })
+
+  it('blijft een gewone regel zonder knop wanneer de app niet kan inboeken', () => {
+    toon({ onBoekVasteLast: undefined })
+    expect(screen.queryByRole('button', { name: /nog in te boeken/ })).toBeNull()
+    const metas = [...document.querySelectorAll('.rij-meta')].map((el) => el.textContent ?? '')
+    expect(metas.some((m) => m.includes('nog in te boeken in'))).toBe(true)
+  })
+
+  it('noemt de maand van de kaart in de kop, niet altijd de huidige', () => {
+    toon({ maand: vorigeMaand, periode: { van: `${vorigeMaand}-01`, tot: `${vorigeMaand}-31` } })
+    const koppen = [...document.querySelectorAll('.kaart-bijschrift')].map((el) => el.textContent ?? '')
+    expect(koppen.some((k) => k.startsWith('Vooruitblik —'))).toBe(true)
+    // De maandnaam van vandaag mag er dan NIET meer staan.
+    const maandVanNu = new Intl.DateTimeFormat('nl-BE', { month: 'long' }).format(new Date())
+    expect(koppen.some((k) => k === `Vooruitblik — ${maandVanNu}`)).toBe(false)
+  })
+
+  it('zegt nog steeds wanneer er helemaal geen vaste lasten zijn', () => {
+    toon({ terugkerendePosten: [] })
+    expect(
+      screen.getByText('Je hebt nog geen vaste lasten ingesteld. Zonder die weet de app niet wat er nog moet komen.'),
+    ).toBeInTheDocument()
+  })
+
+  it('toont elke openstaande post met haar dag en haar bedrag', async () => {
+    const user = userEvent.setup()
+    toon({ terugkerendePosten: [huur, post({ id: 'Netflix', dag: 12, bedrag: -1399 })] })
+    await user.click(telregel())
+    expect(screen.getByText('Huur')).toBeInTheDocument()
+    expect(screen.getByText('Netflix')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Boek Huur in' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Boek Netflix in' })).toBeInTheDocument()
+    const metas = [...document.querySelectorAll('.rij-meta')].map((el) => el.textContent ?? '')
+    expect(metas).toContain('dag 12')
+  })
+})

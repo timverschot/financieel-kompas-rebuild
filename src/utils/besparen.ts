@@ -67,6 +67,15 @@ export const BESPARINGSDOMEINEN: Besparingsdomein[] = [
   },
 ]
 
+/**
+ * De (Nederlandse) naam van een besparingsdomein, of null bij een onbekende
+ * sleutel. Gebruikt door het domeinfilter in de transactielijst, zodat daar geen
+ * tweede lijst met namen ontstaat die uit de pas kan lopen.
+ */
+export function naamVanBesparingsdomein(sleutel: string): string | null {
+  return BESPARINGSDOMEINEN.find((d) => d.sleutel === sleutel)?.naam ?? null
+}
+
 // Zoekt bij welk domein een opgeslagen categorie-id hoort, of null.
 // Een id kan drie dingen zijn: een hoofdcategorie (ov-*), een ingebouwd item
 // (dan kennen we via itemPerId zowel zijn mid- als zijn hoofdcategorie), of een

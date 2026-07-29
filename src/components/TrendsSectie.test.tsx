@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, it, expect, vi } from 'vitest'
 import { TrendsSectie } from './TrendsSectie'
 import type { Transactie } from '../data/schema'
 import { formatEuro } from '../utils/format'
@@ -82,5 +83,52 @@ describe('TrendsSectie', () => {
   it('geeft elk lijntje een leesbare naam mee', () => {
     toon()
     expect(screen.getByRole('img', { name: /Verloop van Voeding over/ })).toBeInTheDocument()
+  })
+})
+
+// --- Ronde 40 -----------------------------------------------------------------
+
+describe('TrendsSectie — de klok en het doorklikken', () => {
+  it('laat het lijntje eindigen op de maand die je meegeeft, niet op vandaag', () => {
+    // Zonder ankerMaand rekende deze kaart vanuit new Date(): bladerde je bovenaan
+    // naar maart, dan bleef het lijntje over de laatste zes maanden vanaf vandaag
+    // gaan, zonder dat ergens te zeggen.
+    render(
+      <TrendsSectie
+        transacties={transacties}
+        categorieen={[]}
+        richting="uitgave"
+        huidige={{ van: '2026-03-01', tot: '2026-03-31' }}
+        vorige={null}
+        periodeLabel="maart 2026"
+        ankerMaand="2026-03"
+      />,
+    )
+    const bijschrift = document.querySelector('.kaart-bijschrift')?.textContent ?? ''
+    expect(bijschrift).toContain('okt')
+    expect(bijschrift).toContain('mrt')
+  })
+
+  it('maakt elke rij aanklikbaar zodra de app kan doorklikken', async () => {
+    const user = userEvent.setup()
+    const onKies = vi.fn()
+    render(
+      <TrendsSectie
+        transacties={transacties}
+        categorieen={[]}
+        richting="uitgave"
+        huidige={{ van: `${dezeMaand}-01`, tot: `${dezeMaand}-31` }}
+        vorige={null}
+        periodeLabel="Deze maand"
+        onKies={onKies}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: /^Bekijk de boekingen van Voeding —/ }))
+    expect(onKies).toHaveBeenCalledWith('ov-voeding', 'Voeding')
+  })
+
+  it('maakt geen knoppen wanneer de app niets kan doen met een klik', () => {
+    toon()
+    expect(screen.queryByRole('button', { name: /Bekijk de boekingen/ })).toBeNull()
   })
 })

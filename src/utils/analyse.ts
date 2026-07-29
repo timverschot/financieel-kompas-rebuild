@@ -10,7 +10,11 @@ export type Periode = { van?: string; tot?: string } // JJJJ-MM-DD, inclusief; l
 export type Richting = 'uitgave' | 'inkomst'
 
 export type AnalyseGroep = { sleutel: string; naam: string; bedrag: number; kleur: string | null }
-export type AnalysePost = { naam: string; bedrag: number }
+// `sleutel` is optioneel omdat niet elke uitsplitsing er een heeft: per winkel
+// wordt op de omschrijving gegroepeerd, en daar bestaat geen id voor. Staat ze er
+// wél (drilldown per subcategorie), dan kan je vanaf die rij doorklikken naar de
+// onderliggende boekingen.
+export type AnalysePost = { naam: string; bedrag: number; sleutel?: string }
 export type DrillTransactie = { transactie: Transactie; bedrag: number; lijnen: { categorieId?: string; bedrag: number }[] }
 
 export function inPeriode(datum: string, p: Periode): boolean {
@@ -110,14 +114,26 @@ export function drillTransacties(
 
 // Verdeling per subcategorie binnen een ingezoomde hoofdcategorie.
 export function drillPerItem(drill: DrillTransactie[], categorieen: Categorie[]): AnalysePost[] {
-  const m = new Map<string, number>()
+  // Naast het bedrag houden we het categorie-id bij, zodat een rij door kan
+  // klikken naar haar boekingen. Twee verschillende id's kunnen dezelfde naam
+  // dragen (een eigen categorie "Brood" naast het ingebouwde item); in dat geval
+  // laten we de sleutel bewust weg — liever geen doorklik dan een die de helft
+  // van het bedrag toont.
+  const m = new Map<string, { bedrag: number; sleutel?: string; gemengd: boolean }>()
   for (const d of drill) {
     for (const l of d.lijnen) {
       const naam = labelVanCategorie(l.categorieId, categorieen) ?? 'Zonder categorie'
-      m.set(naam, (m.get(naam) ?? 0) + l.bedrag)
+      const bestaand = m.get(naam)
+      if (!bestaand) m.set(naam, { bedrag: l.bedrag, sleutel: l.categorieId, gemengd: false })
+      else {
+        bestaand.bedrag += l.bedrag
+        if (bestaand.sleutel !== l.categorieId) bestaand.gemengd = true
+      }
     }
   }
-  return [...m.entries()].map(([naam, bedrag]) => ({ naam, bedrag })).sort((a, b) => b.bedrag - a.bedrag)
+  return [...m.entries()]
+    .map(([naam, v]) => ({ naam, bedrag: v.bedrag, ...(v.gemengd || !v.sleutel ? {} : { sleutel: v.sleutel }) }))
+    .sort((a, b) => b.bedrag - a.bedrag)
 }
 
 export function totaalVan(posten: { bedrag: number }[]): number {

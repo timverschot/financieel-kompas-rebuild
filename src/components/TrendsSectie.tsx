@@ -54,6 +54,8 @@ export function TrendsSectie({
   huidige,
   vorige,
   periodeLabel,
+  ankerMaand,
+  onKies,
 }: {
   transacties: Transactie[]
   categorieen: Categorie[]
@@ -62,11 +64,20 @@ export function TrendsSectie({
   vorige: Periode | null
   /** De naam van de gekozen periode, voor het bijschrift ("Deze maand"). */
   periodeLabel: string
+  /**
+   * De laatste maand van het lijntje ('JJJJ-MM'). Ronde 40: dit was `new Date()`,
+   * waardoor het lijntje bleef praten over de laatste zes maanden vanaf vandaag,
+   * ook wanneer je bovenaan naar maart bladerde. Standaard blijft het de huidige
+   * maand, zodat een aanroeper die niets meegeeft zich gedraagt zoals vroeger.
+   */
+  ankerMaand?: string
+  /** Doorklikken naar de boekingen van één hoofdcategorie (ronde 40). */
+  onKies?: (sleutel: string, naam: string) => void
 }) {
   const { t } = useT()
 
   const nu = new Date()
-  const huidigeMaand = nu.getFullYear() + '-' + String(nu.getMonth() + 1).padStart(2, '0')
+  const huidigeMaand = ankerMaand ?? nu.getFullYear() + '-' + String(nu.getMonth() + 1).padStart(2, '0')
   const maanden = useMemo(() => laatsteMaanden(huidigeMaand, MAANDEN), [huidigeMaand])
   const reeksen = useMemo(
     () => maandreeksPerHoofd(transacties, categorieen, maanden, richting).slice(0, AANTAL),
@@ -109,8 +120,8 @@ export function TrendsSectie({
           {reeksen.map((r) => {
             const m = deltaPer.get(r.sleutel)
             const laatste = r.waarden[r.waarden.length - 1]
-            return (
-              <li key={r.sleutel} className="rij">
+            const inhoud = (
+              <>
                 <span aria-hidden style={{ ...stip, background: r.kleur ?? 'var(--text-subtle)' }} />
                 <span className="rij-midden">
                   <span className="rij-titel" style={afkap}>
@@ -128,6 +139,31 @@ export function TrendsSectie({
                   {m && m.delta !== 0 ? `${m.delta > 0 ? '▲' : '▼'} ${formatEuro(Math.abs(m.delta))}` : vorige ? '=' : ''}
                 </span>
                 <Bedrag centen={laatste} />
+              </>
+            )
+            return (
+              <li key={r.sleutel} className="rij">
+                {onKies ? (
+                  <button
+                    type="button"
+                    className="rij-knop"
+                    // Zowel het bedrag als de PERIODE in het label. Het bedrag
+                    // omdat de inhoud van een knop niet apart voorgelezen wordt;
+                    // de periode omdat het cijfer op de rij over de laatste maand
+                    // van het lijntje gaat, terwijl de doorklik de gekozen periode
+                    // toont. Zonder dat erbij te zeggen spreken de twee elkaar tegen.
+                    aria-label={t('Bekijk de boekingen van {naam} — {bedrag}, {periode}', {
+                      naam: r.naam,
+                      bedrag: formatEuro(laatste),
+                      periode: periodeLabel.toLowerCase(),
+                    })}
+                    onClick={() => onKies(r.sleutel, r.naam)}
+                  >
+                    {inhoud}
+                  </button>
+                ) : (
+                  inhoud
+                )}
               </li>
             )
           })}

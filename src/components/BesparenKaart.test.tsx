@@ -1,9 +1,10 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import type { Transactie } from '../data/schema'
 import type { Periode } from '../utils/analyse'
 import { BesparenKaart } from './BesparenKaart'
+import { formatEuro } from '../utils/format'
 
 const ITEM_BROOD = 'i-brood--wit-9238'
 const CAT_ENERGIE = 'cat-energie-en-nutsvoorzieningen'
@@ -89,5 +90,44 @@ describe('BesparenKaart', () => {
     expect(screen.getByText('Nog geen uitgaven in deze vier domeinen.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Toon details' }))
     expect(screen.getByText(/Zodra je boodschappen, energie, telecom of verzekeringen boekt/)).toBeInTheDocument()
+  })
+})
+
+// --- Ronde 40: doorklikken naar de boekingen van een domein --------------------
+
+describe('BesparenKaart — doorklikken', () => {
+  function toonMetKies(transacties: Transactie[]) {
+    const onKies = vi.fn()
+    render(
+      <BesparenKaart transacties={transacties} periode={JULI} vorigePeriode={JUNI} perMaand onKies={onKies} />,
+    )
+    return { onKies }
+  }
+
+  it('maakt de bovenste regel van een domein aanklikbaar', async () => {
+    const user = userEvent.setup()
+    const { onKies } = toonMetKies([tx('2026-07-03', -12000, CAT_ENERGIE)])
+    await user.click(screen.getByRole('button', { name: 'Toon details' }))
+    await user.click(await screen.findByRole('button', { name: /^Bekijk de boekingen van Energie —/ }))
+    // De sleutel is het DOMEIN, niet een categorie: een domein bundelt meerdere
+    // categorieën, en met één hoofdId zou de lijst minder tonen dan het bedrag.
+    expect(onKies).toHaveBeenCalledWith('energie', 'Energie')
+  })
+
+  it('blijft zonder de prop een gewone regel', async () => {
+    const user = userEvent.setup()
+    toon([tx('2026-07-03', -12000, CAT_ENERGIE)])
+    await user.click(screen.getByRole('button', { name: 'Toon details' }))
+    expect(screen.queryByRole('button', { name: /Bekijk de boekingen/ })).toBeNull()
+  })
+
+  it('zet het bedrag ín het label, want de inhoud van een knop wordt niet apart voorgelezen', async () => {
+    const user = userEvent.setup()
+    toonMetKies([tx('2026-07-05', -6000, ITEM_BROOD)])
+    await user.click(screen.getByRole('button', { name: 'Toon details' }))
+    // formatEuro zet een VASTE spatie tussen teken en getal, dus we bouwen de
+    // verwachting met dezelfde functie in plaats van ze over te typen.
+    const knop = await screen.findByRole('button', { name: /^Bekijk de boekingen van Boodschappen —/ })
+    expect(knop.getAttribute('aria-label')).toContain(formatEuro(6000))
   })
 })

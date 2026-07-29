@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { App } from './App'
 import { db } from './data/db'
-import { bewaarCategorie, bewaarRekening, bewaarTransactie } from './data/repository'
+import { bewaarBudget, bewaarCategorie, bewaarRekening, bewaarTransactie } from './data/repository'
 import { herstelSchermbreedte, zetSchermbreedte } from './test/schermbreedte'
 
 // De desktopweergave (zijpaneel + brede rasters) werd tot nu toe nooit getest:
@@ -167,5 +167,38 @@ describe('App op een breed scherm', () => {
     await user.click(screen.getByRole('button', { name: 'Instellingen' }))
     await screen.findByText('Taal')
     expect(vlak()).not.toBe(eerste)
+  })
+})
+
+// --- Ronde 40: de budgetrijen in de desktopzijkolom -----------------------------
+//
+// Deze kolom bestaat alleen vanaf 1024 px, en op een breed scherm is het de EERSTE
+// plek waar je een budgetcijfer ziet. De rijen liepen dood: de knop "Alle" bracht je
+// naar de Budget-pagina waar je dezelfde rij dan opnieuw moest zoeken.
+
+describe('App (desktop) — doorklikken vanaf de budgetstatus in de zijkolom', () => {
+  it('brengt je van een budgetrij in de zijkolom naar precies die boekingen', async () => {
+    const user = userEvent.setup()
+    await bewaarBudget({ id: 'b1', categorieId: 'cat-voeding', bedrag: 40000 })
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    const zijkolom = screen.getByText('Budgetstatus').closest('section.kaart') as HTMLElement
+    await user.click(within(zijkolom).getByRole('button', { name: /^Bekijk de boekingen van Voeding —/ }))
+
+    expect(await screen.findByText('Boodschappen')).toBeInTheDocument()
+    expect(screen.queryByText('Huur')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Wis filter Voeding' })).toBeInTheDocument()
+  })
+
+  it('laat de knop "Alle" gewoon naar de Budget-pagina gaan', async () => {
+    const user = userEvent.setup()
+    await bewaarBudget({ id: 'b1', categorieId: 'cat-voeding', bedrag: 40000 })
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    const zijkolom = screen.getByText('Budgetstatus').closest('section.kaart') as HTMLElement
+    await user.click(within(zijkolom).getByRole('button', { name: 'Alle' }))
+    expect(await screen.findByRole('heading', { name: 'Budget instellen' })).toBeInTheDocument()
   })
 })

@@ -52,11 +52,18 @@ export function BesparenKaart({
    * erover in plaats van een getal te verzinnen.
    */
   perMaand,
+  onKies,
 }: {
   transacties: Transactie[]
   periode: Periode
   vorigePeriode: Periode | null
   perMaand: boolean
+  /**
+   * Doorklikken naar de boekingen achter één domein (ronde 40). Een domein
+   * bundelt meerdere categorieën, dus het filter erachter is een domeinfilter en
+   * geen categoriefilter — anders zou de lijst minder tonen dan het bedrag.
+   */
+  onKies?: (sleutel: string, naam: string) => void
 }) {
   const { t } = useT()
   const [open, setOpen] = useState(false)
@@ -93,7 +100,24 @@ export function BesparenKaart({
                 className="rij"
                 style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6, ...(i === domeinen.length - 1 ? { borderBottom: 'none' } : {}) }}
               >
-                <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {/* De bovenste regel is een knop zodra doorklikken kan. Een echte
+                    <button> en geen span met role: alleen zo werkt het toetsenbord
+                    en krijgt de rij een focusring. */}
+                {(() => {
+                  const Wikkel = onKies ? 'button' : 'span'
+                  const knopEigenschappen = onKies
+                    ? {
+                        type: 'button' as const,
+                        className: 'rij-knop',
+                        'aria-label': t('Bekijk de boekingen van {naam} — {bedrag}', {
+                          naam: t(d.naam),
+                          bedrag: formatEuro(d.bedrag),
+                        }),
+                        onClick: () => onKies(d.sleutel, t(d.naam)),
+                      }
+                    : { style: { display: 'flex', alignItems: 'center', gap: 12 } }
+                  return (
+                    <Wikkel {...knopEigenschappen}>
                   <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, flexShrink: 0, background: d.kleur }} />
                   <span className="rij-midden">
                     <span className="rij-titel">{t(d.naam)}</span>
@@ -110,7 +134,9 @@ export function BesparenKaart({
                     </span>
                   )}
                   <Bedrag centen={d.bedrag} />
-                </span>
+                    </Wikkel>
+                  )
+                })()}
 
                 <span className="rij-meta">
                   {perJaar !== null

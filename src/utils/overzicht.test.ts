@@ -36,15 +36,15 @@ describe('maandoverzicht', () => {
   it('splitst uitgaven per categorie uit, gesorteerd van groot naar klein', () => {
     const resultaat = uitgavenPerCategorie(lijst, categorieen, '2026-07')
     expect(resultaat).toEqual([
-      { naam: 'Voeding', bedrag: 300, kleur: null },
-      { naam: 'Wonen', bedrag: 200, kleur: null },
-      { naam: 'Zonder categorie', bedrag: 100, kleur: null },
+      { sleutel: 'c1', naam: 'Voeding', bedrag: 300, kleur: null },
+      { sleutel: 'c2', naam: 'Wonen', bedrag: 200, kleur: null },
+      { sleutel: '', naam: 'Zonder categorie', bedrag: 100, kleur: null },
     ])
   })
 
   it('telt de inkomsten per categorie', () => {
     expect(inkomstenPerCategorie(lijst, categorieen, '2026-07')).toEqual([
-      { naam: 'Zonder categorie', bedrag: 2000, kleur: null },
+      { sleutel: '', naam: 'Zonder categorie', bedrag: 2000, kleur: null },
     ])
   })
 
@@ -61,8 +61,8 @@ describe('maandoverzicht', () => {
       ],
     }
     expect(uitgavenPerCategorie([gesplitst], categorieen, '2026-07')).toEqual([
-      { naam: 'Voeding', bedrag: 300, kleur: null },
-      { naam: 'Wonen', bedrag: 200, kleur: null },
+      { sleutel: 'c1', naam: 'Voeding', bedrag: 300, kleur: null },
+      { sleutel: 'c2', naam: 'Wonen', bedrag: 200, kleur: null },
     ])
   })
 })

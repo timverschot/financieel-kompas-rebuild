@@ -155,6 +155,18 @@ export function stelCategorieboomIn(aanpassingen: Subcategorie[], eigenCategorie
   midRegister = new Map(mids.map((m) => [m.id, m]))
   CONTEXT_PER_CAT = context
 
+  // 1b. De hoofdlaag, zodat één functie op alle drie de niveaus kan zoeken.
+  huidigeHoofden = [
+    ...HOOFD_BASIS,
+    ...eigenHoofd.map((h) => ({
+      id: h.id,
+      naam: h.naam,
+      kleur: h.kleur ?? EIGEN_KLEUR,
+      icoon: h.icoon ?? '',
+      eigen: true,
+    })),
+  ]
+
   // 2. De items, nu de middenlaag compleet is.
   huidigeItems = bouwEffectieveItems(aanpassingen, context)
   perIdRegister = new Map(huidigeItems.map((i) => [i.id, i]))
@@ -244,6 +256,58 @@ export function alleMidCategorieen(): MidCategorie[] {
 export function midPerId(id: string): MidCategorie | undefined {
   return midRegister.get(id)
 }
+
+/** Eén hoofdcategorie, ingebouwd of eigen. */
+export type HoofdCategorie = { id: string; naam: string; kleur: string; icoon: string; eigen: boolean }
+
+const HOOFD_BASIS: HoofdCategorie[] = INGEBOUWDE_CATEGORIEEN.map((h) => ({
+  id: h.id,
+  naam: h.naam,
+  kleur: h.kleur,
+  icoon: h.icoon,
+  eigen: false,
+}))
+
+let huidigeHoofden: HoofdCategorie[] = HOOFD_BASIS
+
+/** Alle hoofdcategorieën die nu gelden, ingebouwd én eigen. */
+export function alleHoofdcategorieenUitBoom(): HoofdCategorie[] {
+  return huidigeHoofden
+}
+
+/**
+ * Zoekt HOOFDcategorieën op naam.
+ *
+ * Waarom dit hier hoort en niet in een component: `CategorieKiezer` en
+ * `CategorieNiveauKiezer` losten dit tot ronde 40 elk apart op, met een eigen
+ * `INGEBOUWDE_CATEGORIEEN.filter(...)` en een eigen lijstje eigen categorieën.
+ * Twee kopieën van dezelfde regel is al één te veel; het zoekveld in de
+ * categorieboom zou de derde geworden zijn. Dezelfde scoring als `zoekItems`, dus
+ * "Voeding" komt vóór "Persoonlijke verzorging" wanneer je "voed" typt.
+ */
+export function zoekHoofdcategorieen(term: string, limiet = 25): HoofdCategorie[] {
+  const t = term.trim().toLowerCase()
+  if (!t) return []
+  const gescoord: { hoofd: HoofdCategorie; score: number }[] = []
+  for (const hoofd of huidigeHoofden) {
+    const naam = hoofd.naam.toLowerCase()
+    let score = -1
+    if (naam === t) score = 0
+    else if (naam.startsWith(t)) score = 1
+    else if (naam.includes(t)) score = 2
+    if (score >= 0) gescoord.push({ hoofd, score })
+  }
+  gescoord.sort((a, b) => a.score - b.score || a.hoofd.naam.localeCompare(b.hoofd.naam, 'nl'))
+  return gescoord.slice(0, limiet).map((g) => g.hoofd)
+}
+
+/**
+ * Vanaf hoeveel letters er gezocht wordt.
+ *
+ * Eén gedeelde drempel voor de hele app. Ze stond tot ronde 40 vier keer los in
+ * evenveel componenten; alle vier op 2, maar niets hield ze bij elkaar.
+ */
+export const ZOEK_VANAF = 2
 
 /** Zoekt middencategorieën op naam, op dezelfde manier als `zoekItems`. */
 export function zoekMidCategorieen(term: string, limiet = 25): MidCategorie[] {

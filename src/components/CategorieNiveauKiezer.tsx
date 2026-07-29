@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { Categorie } from '../data/schema'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
-import { zoekItems, zoekMidCategorieen } from '../data/categorieen/zoek'
+import { zoekItems, zoekMidCategorieen, zoekHoofdcategorieen, ZOEK_VANAF } from '../data/categorieen/zoek'
 import { padVanCategorie } from '../data/categorieen/resolve'
 import { useT } from '../i18n'
 
@@ -20,7 +20,6 @@ import { useT } from '../i18n'
 // schuivende chiprij die in ronde 28 hertekend wordt. Deze kiezer blijft klein en
 // doet één ding: een niveau kiezen.
 
-const ZOEK_VANAF = 2
 const MAX_SUGGESTIES = 20
 
 type Keuze = { id: string; naam: string; pad: string }
@@ -57,11 +56,13 @@ export function CategorieNiveauKiezer({
       return uit
     }
 
-    for (const h of INGEBOUWDE_CATEGORIEEN) {
-      if (h.naam.toLowerCase().includes(term)) uit.push({ id: h.id, naam: h.naam, pad: h.naam })
-    }
-    for (const c of eigenHoofd) {
-      if (c.naam.toLowerCase().includes(term)) uit.push({ id: c.id, naam: c.naam, pad: c.naam })
+    // Ronde 40: dit was een handgeschreven `includes` over de ingebouwde lijst
+    // plus nog eens over de eigen categorieën. Dat staat nu als één functie in
+    // zoek.ts, zodat deze kiezer en het beheerscherm dezelfde treffers geven.
+    // (`CategorieKiezer` houdt bewust een eigen regel: daar staan de ingebouwde
+    // hoofdcategorieën al als chips, dus die horen niet in de suggesties.)
+    for (const h of zoekHoofdcategorieen(term, MAX_SUGGESTIES)) {
+      uit.push({ id: h.id, naam: h.naam, pad: h.naam })
     }
     for (const m of zoekMidCategorieen(term, MAX_SUGGESTIES)) {
       uit.push({ id: m.id, naam: m.naam, pad: `${m.hoofdNaam} › ${m.naam}` })

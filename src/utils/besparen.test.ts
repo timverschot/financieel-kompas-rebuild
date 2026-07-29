@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Transactie } from '../data/schema'
-import { BESPARINGSDOMEINEN, domeinVanCategorie, uitgavenPerBesparingsdomein, vergelijkBesparingsdomeinen } from './besparen'
+import { BESPARINGSDOMEINEN, domeinVanCategorie, uitgavenPerBesparingsdomein, vergelijkBesparingsdomeinen, naamVanBesparingsdomein } from './besparen'
 
 // Echte id's uit de ingebouwde boom (data/categorieen/ingebouwd.ts). Ze staan
 // hier bewust letterlijk: zou er ooit een id verdwijnen, dan faalt deze test —
@@ -138,5 +138,24 @@ describe('vergelijkBesparingsdomeinen', () => {
   it('houdt de vaste volgorde van de vier domeinen aan', () => {
     const uit = vergelijkBesparingsdomeinen([], juli, juni)
     expect(uit.map((d) => d.sleutel)).toEqual(['boodschappen', 'energie', 'telecom', 'verzekeringen'])
+  })
+})
+
+// --- Ronde 40: het domeinfilter in de transactielijst heeft een naam nodig -----
+
+describe('naamVanBesparingsdomein', () => {
+  it('geeft de naam van een bestaand domein', () => {
+    expect(naamVanBesparingsdomein('boodschappen')).toBe('Boodschappen')
+    expect(naamVanBesparingsdomein('energie')).toBe('Energie')
+  })
+
+  it('geeft null bij een onbekende sleutel, zodat de aanroeper zelf kan terugvallen', () => {
+    expect(naamVanBesparingsdomein('bestaat-niet')).toBeNull()
+  })
+
+  it('haalt de naam uit dezelfde tabel als de rekenkern', () => {
+    // Eén bron: zo kan de chip in de transactielijst niet uit de pas lopen met het
+    // bedrag op de kaart "Waar loopt het op?".
+    for (const d of BESPARINGSDOMEINEN) expect(naamVanBesparingsdomein(d.sleutel)).toBe(d.naam)
   })
 })

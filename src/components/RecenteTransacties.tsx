@@ -3,6 +3,7 @@ import { groepenVanTransactie, isGesplitstOverCategorieen } from '../utils/trans
 import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { dagKort } from '../utils/datum'
+import { formatEuro } from '../utils/format'
 import { useT } from '../i18n'
 
 // Je laatste boekingen, op het Overzicht.
@@ -41,10 +42,20 @@ export function RecenteTransacties({
   transacties,
   categorieen,
   onAlle,
+  onBewerk,
 }: {
   transacties: Transactie[]
   categorieen: Categorie[]
   onAlle: () => void
+  /**
+   * Een rij aanklikken opent die boeking (ronde 40).
+   *
+   * Zonder dit was dit lijstje een doodloper: je zag "Colruyt € 43,20" staan,
+   * merkte dat er een categorie ontbrak, en moest dan via Transacties zelf
+   * teruggaan zoeken. Optioneel gehouden zodat de kaart ook zonder bewerken kan
+   * blijven bestaan.
+   */
+  onBewerk?: (tx: Transactie) => void
 }) {
   const { t } = useT()
   const recent = gesorteerdNieuwsteEerst(transacties).slice(0, AANTAL)
@@ -62,16 +73,42 @@ export function RecenteTransacties({
         <Leeg>{t('Nog geen transacties.')}</Leeg>
       ) : (
         <ul className="lijst">
-          {recent.map((tx) => (
-            <li key={tx.id} className="rij" style={{ gap: 10 }}>
-              <TekenVoor tx={tx} categorieen={categorieen} />
-              <span className="rij-midden">
-                <span className="rij-titel">{tx.omschrijving}</span>
-                <span className="rij-meta">{dagKort(tx.datum)}</span>
-              </span>
-              <Bedrag centen={tx.bedrag} richting="auto" />
-            </li>
-          ))}
+          {recent.map((tx) => {
+            const inhoud = (
+              <>
+                <TekenVoor tx={tx} categorieen={categorieen} />
+                <span className="rij-midden">
+                  <span className="rij-titel">{tx.omschrijving}</span>
+                  <span className="rij-meta">{dagKort(tx.datum)}</span>
+                </span>
+                <Bedrag centen={tx.bedrag} richting="auto" />
+              </>
+            )
+            return (
+              <li key={tx.id} className="rij" style={{ gap: 10 }}>
+                {onBewerk ? (
+                  <button
+                    type="button"
+                    className="rij-knop"
+                    // Datum en bedrag horen ÍN het label. Een <button> biedt zijn
+                    // inhoud niet apart aan hulpsoftware aan, dus zonder deze
+                    // toevoeging werd een schermlezer stil een lijst zonder
+                    // bedragen voorgelezen.
+                    aria-label={t('Bewerk {oms} — {datum}, {bedrag}', {
+                      oms: tx.omschrijving,
+                      datum: dagKort(tx.datum),
+                      bedrag: formatEuro(tx.bedrag),
+                    })}
+                    onClick={() => onBewerk(tx)}
+                  >
+                    {inhoud}
+                  </button>
+                ) : (
+                  inhoud
+                )}
+              </li>
+            )
+          })}
         </ul>
       )}
     </Kaart>

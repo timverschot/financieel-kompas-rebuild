@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { bouwEffectieveBoom } from '../data/categorieen/effectief'
 import type { Categorie, Subcategorie } from '../data/schema'
@@ -6,6 +6,16 @@ import { Kaart } from '../ui/basis'
 import { opVolgorde } from '../utils/categorieVolgorde'
 import { useHoofdvolgorde } from '../categorievolgorde'
 import { useT } from '../i18n'
+import { zoekHoofdcategorieen, zoekItems, zoekMidCategorieen, ZOEK_VANAF } from '../data/categorieen/zoek'
+
+/**
+ * Hoeveel treffers we hoogstens uit de zoekindex halen.
+ *
+ * Ruim genomen: dit is geen suggestielijstje van acht regels maar een filter over
+ * de hele boom. Kapte het af op de standaard 25, dan zou "kaas" een deel van de
+ * kaassoorten stil weglaten.
+ */
+const MAX_TREFFERS = 2000
 
 // De uitklapregel van een tak is één kale knop over de volle breedte: zo blijft de
 // hele regel aanklikbaar, met het driehoekje links als open/dicht-teken. De maten
@@ -88,9 +98,11 @@ export function CategorieBoom({
   onVerplaats?: (id: string, richting: -1 | 1) => void
 }) {
   const { t } = useT()
+  const zoekVeldId = useId()
   // Dezelfde volgorde als overal elders; ze wordt hieronder ook ingesteld.
   const volgorde = useHoofdvolgorde()
-  const boom = opVolgorde(bouwEffectieveBoom(aanpassingen, eigenCategorieen), volgorde)
+  const volledigeBoom = opVolgorde(bouwEffectieveBoom(aanpassingen, eigenCategorieen), volgorde)
+  const [zoek, setZoek] = useState('')
   const [openHoofd, setOpenHoofd] = useState<Set<string>>(new Set())
   const [openCat, setOpenCat] = useState<Set<string>>(new Set())
   const [bewerkId, setBewerkId] = useState<string | null>(null)
@@ -100,6 +112,98 @@ export function CategorieBoom({
   // Voor welke hoofdcategorie staat het veld "nieuwe categorie" open?
   const [nieuweCatOnder, setNieuweCatOnder] = useState<string | null>(null)
   const [nieuweCatTekst, setNieuweCatTekst] = useState('')
+
+  /**
+   * Zoeken in de boom (ronde 40).
+   *
+   * Waarom dit er moest komen: dit scherm toont ruim duizend subcategorieën in
+   * drie lagen, allemaal dichtgeklapt en zonder één zoekveld — terwijl drie andere
+   * schermen er wél een hebben en de zoekindex al bestond. Iets terugvinden was
+   * hier letterlijk veertien takken openklikken.
+   *
+   * Twee bronnen samen, en dat is bewust:
+   *  - de gedeelde zoekindex (`zoekHoofdcategorieen`/`zoekMidCategorieen`/
+   *    `zoekItems`) levert de SYNONIEMEN mee, zodat "pampers" je bij "Luiers"
+   *    brengt;
+   *  - de namen in de boom zelf, zodat wat je op dit scherm net hebt toegevoegd
+   *    gegarandeerd vindbaar is, ook al is de index nog niet bijgewerkt.
+   *
+   * En we filteren op ID'S in de echte boom in plaats van de zoekresultaten los te
+   * renderen. Anders zouden de bewerkknoppen naast iets staan wat ze niet kunnen
+   * wegschrijven.
+   */
+  const term = zoek.trim().toLowerCase()
+  const zoekend = term.length >= ZOEK_VANAF
+
+  const raakt = (naam: string) => naam.toLowerCase().includes(term)
+
+  const gevondenHoofd = new Set<string>()
+  const gevondenMid = new Set<string>()
+  const gevondenItem = new Set<string>()
+  if (zoekend) {
+    for (const h of zoekHoofdcategorieen(term, MAX_TREFFERS)) gevondenHoofd.add(h.id)
+    for (const m of zoekMidCategorieen(term, MAX_TREFFERS)) gevondenMid.add(m.id)
+    for (const i of zoekItems(term, MAX_TREFFERS)) gevondenItem.add(i.id)
+  }
+
+  /**
+   * Wat er tijdens het zoeken open hoort te staan.
+   *
+   * Belangrijke nuance: raakt alleen de NAAM van een hoofdcategorie, dan blijft die
+   * tak dicht. Twaalf van de veertien ingebouwde hoofdnamen bevatten "en"
+   * ("Huishouden en Verzorging", "Woning en vaste lasten", …), dus bij het tweede
+   * letterteken van "energie" zouden er in één keer bijna vijfhonderd itemrijen
+   * met bewerkknoppen gerenderd worden. Dat hapert merkbaar op een telefoon, en het
+   * is ook niet wat je vroeg: je zocht "energie", niet "alles onder Huishouden".
+   */
+  const zoekOpenHoofd = new Set<string>()
+  const zoekOpenCat = new Set<string>()
+  let aantalTreffers = 0
+
+  const boom = !zoekend
+    ? volledigeBoom
+    : volledigeBoom
+        .map((h) => {
+          const hoofdRaakt = gevondenHoofd.has(h.id) || raakt(h.naam)
+          if (hoofdRaakt) aantalTreffers++
+          let dieper = 0
+          const gefilterd = h.categorieen
+            .map((c) => {
+              const midRaakt = gevondenMid.has(c.id) || raakt(c.naam)
+              if (midRaakt) {
+                aantalTreffers++
+                dieper++
+                return c
+              }
+              const items = c.items.filter((it) => gevondenItem.has(it.id) || raakt(it.naam))
+              if (items.length === 0) return null
+              aantalTreffers += items.length
+              dieper++
+              zoekOpenCat.add(c.id)
+              return { ...c, items }
+            })
+            .filter((c): c is (typeof h.categorieen)[number] => c !== null)
+          if (dieper > 0) zoekOpenHoofd.add(h.id)
+          if (!hoofdRaakt && dieper === 0) return null
+          // Zijn er DIEPERE treffers, dan laten we alleen die staan — ook wanneer de
+          // hoofdnaam óók raakt. Anders klapte "Huishouden en Verzorging" bij de term
+          // "en" open met al zijn twintig categorieën terwijl er drie treffers waren,
+          // en moest je zelf zoeken waar ze zaten. Raakt enkel de hoofdnaam, dan
+          // blijft de volledige (dichte) tak staan om in te bladeren.
+          return dieper > 0 ? { ...h, categorieen: gefilterd } : h
+        })
+        .filter((h): h is (typeof volledigeBoom)[number] => h !== null)
+
+  /**
+   * Open of dicht.
+   *
+   * Tijdens het zoeken is de zoekstand het VERTREKPUNT en blijft de knop gewoon
+   * werken: `openHoofd` telt dan als "andersom dan de zoekstand". Zonder die
+   * omkering zou de tak zeggen dat hij open is (`aria-expanded="true"`), zich niet
+   * laten sluiten, en zichtbaar niets doen als je erop duwt.
+   */
+  const isOpenHoofd = (id: string) => (zoekend ? zoekOpenHoofd.has(id) !== openHoofd.has(id) : openHoofd.has(id))
+  const isOpenCat = (id: string) => (zoekend ? zoekOpenCat.has(id) !== openCat.has(id) : openCat.has(id))
 
   function wissel(set: Set<string>, zet: (s: Set<string>) => void, id: string) {
     const nieuw = new Set(set)
@@ -129,9 +233,54 @@ export function CategorieBoom({
       titel={t('Alle categorieën')}
       bijschrift={t('Vouw open om te bekijken. Je kan op elk niveau iets toevoegen.')}
     >
+      {/* Het zoekveld staat bovenaan, net als "+ categorie" en "+ subcategorie":
+          in een lange lijst hoort wat je het vaakst nodig hebt vóór de lijst. */}
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor={zoekVeldId}>
+          {t('Zoeken')}
+        </label>
+        <input
+          id={zoekVeldId}
+          type="search"
+          value={zoek}
+          onChange={(e) => {
+            setZoek(e.target.value)
+            // Wat je met de hand had open- of dichtgeklapt, gaat mee op de schop.
+            // Zonder dit vecht de handmatige stand met de zoekstand: had je Voeding
+            // al open staan en typ je dan "eieren", dan hief de ene de andere op en
+            // stond de énige tak met de treffer dicht.
+            setOpenHoofd(new Set())
+            setOpenCat(new Set())
+          }}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          enterKeyHint="search"
+          placeholder={t('Zoek een categorie of subcategorie (vanaf {n} letters)…', { n: ZOEK_VANAF })}
+        />
+        {/* `role="status"` omdat de lijst eronder vanzelf verandert: wie niet ziet
+            dat er gefilterd is, denkt dat zijn categorieën verdwenen zijn.
+            De regel staat ALTIJD in de DOM en is leeg zolang je niet zoekt — een
+            live region die samen met haar tekst verschijnt, wordt door NVDA en
+            VoiceOver geregeld overgeslagen. */}
+        <p className="rij-meta" style={{ margin: 0 }} role="status">
+          {!zoekend
+            ? ''
+            : boom.length === 0
+              ? t('Niets gevonden voor “{term}”', { term: zoek.trim() })
+              : t('{n} treffer(s) in {m} hoofdcategorie(ën)', { n: aantalTreffers, m: boom.length })}
+        </p>
+      </div>
+
       <ul className="lijst">
-        {boom.map((h, hIndex) => {
-          const hOpen = openHoofd.has(h.id)
+        {boom.map((h) => {
+          // De pijltjes verplaatsen de hoofdcategorie in de VOLLEDIGE lijst, dus
+          // hun plaats komt daar ook vandaan. Zou de index uit de gefilterde lijst
+          // komen, dan zou tijdens het zoeken elke tak "de eerste" lijken en het
+          // pijltje omhoog stil uitgeschakeld staan.
+          const hIndex = volledigeBoom.findIndex((x) => x.id === h.id)
+          const hOpen = isOpenHoofd(h.id)
           const aantalItems = h.categorieen.reduce((s, c) => s + c.items.length, 0)
           return (
             <li key={h.id} style={{ borderBottom: '1px solid var(--rij-lijn)', padding: '2px 0' }}>
@@ -182,7 +331,7 @@ export function CategorieBoom({
                     type="button"
                     className="knop knop-kaal"
                     aria-label={t('Zet {naam} lager', { naam: h.naam })}
-                    disabled={hIndex === boom.length - 1}
+                    disabled={hIndex === volledigeBoom.length - 1}
                     onClick={() => onVerplaats(h.id, 1)}
                   >
                     ▼
@@ -238,7 +387,7 @@ export function CategorieBoom({
                   )}
 
                   {h.categorieen.map((c) => {
-                    const cOpen = openCat.has(c.id)
+                    const cOpen = isOpenCat(c.id)
                     return (
                       <li key={c.id}>
                         <button

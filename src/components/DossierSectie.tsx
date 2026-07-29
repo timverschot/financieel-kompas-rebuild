@@ -7,14 +7,27 @@ import { Documentkluis } from './DossierKluis'
 import { CategorieKiezer } from './CategorieKiezer'
 import { saldoVerrekeningDossier } from '../utils/dossier'
 import { isOpenKost, kostenVoorAfrekening, type AfrekeningFilter } from '../utils/afrekening'
-import { verrekenTekst, afrekeningSamenvatting } from '../utils/afrekeningTekst'
+import {
+  verrekenTekst,
+  afrekeningSamenvatting,
+  periodeTekst,
+  kinderenTekst,
+  groepLabel,
+  verdeelsleutelTekst,
+  saldoLegende,
+  totaalRegels,
+  regelMeta,
+} from '../utils/afrekeningTekst'
+import { bouwAfrekeningOverzicht, type AfrekeningGroep } from '../utils/afrekeningOverzicht'
 import { exporteerAfrekeningPDF } from '../utils/afrekeningPdf'
 import { labelVanCategorie } from '../data/categorieen/resolve'
 import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { GezinsledenKiezer } from './GezinslidKiezer'
-import { useT } from '../i18n'
+import { useT, type Vertaler } from '../i18n'
 import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 import { Bonknop } from '../ui/Bonknop'
+import { formatEuro } from '../utils/format'
+import { dagJaar } from '../utils/datum'
 
 // De onderdelen van een dossier die je kan wegklikken.
 //
@@ -34,6 +47,10 @@ export const DOSSIER_ONDERDELEN = [
   { id: 'verdeling-categorie', label: 'Verdeling per categorie' },
   { id: 'verdeling-kostensoort', label: 'Verdeling per kostensoort' },
   { id: 'verrekeningen', label: 'Verrekeningen' },
+  // Ronde 40: een eigen sleutel, bewust NIET aan 'verrekeningen' gehangen. Die
+  // vlag dekt al twee kaarten; er een derde bij zetten zou betekenen dat wie de
+  // opbouw niet wil zien ook de knop kwijtraakt om een afrekening te maken.
+  { id: 'afrekening-detail', label: 'Opbouw van een afrekening' },
   { id: 'gezamenlijke-pot', label: 'Kindrekening (gezamenlijke pot)' },
   { id: 'documentkluis', label: 'Documentkluis' },
 ] as const
@@ -78,6 +95,7 @@ export function DossierSectie({
   onDocumentOpslaan,
   onDocumentVerwijderen,
   onNieuweSubcategorie,
+  beginDossierId,
 }: {
   dossiers: Dossier[]
   kosten: GedeeldeKost[]
@@ -107,9 +125,16 @@ export function DossierSectie({
    * wél kon. Dezelfde handeling hoorde overal hetzelfde te werken.
    */
   onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
+  /**
+   * Welk dossier meteen open moet staan (ronde 40). Klik je in de transactielijst
+   * op de badge "gedeeld", dan hoor je in dát dossier te landen en niet in het
+   * eerste uit de lijst. Alleen de BEGINstand: wissel je daarna zelf, dan blijft
+   * jouw keuze staan.
+   */
+  beginDossierId?: string | null
 }) {
   const { t } = useT()
-  const [geselecteerd, setGeselecteerd] = useState('')
+  const [geselecteerd, setGeselecteerd] = useState(beginDossierId ?? '')
   const [bewerkKost, setBewerkKost] = useState<GedeeldeKost | null>(null)
   const [splitCat, setSplitCat] = useState('')
   const [splitPct, setSplitPct] = useState('')
@@ -122,6 +147,9 @@ export function DossierSectie({
   const [typeGewoon, setTypeGewoon] = useState('')
   const [typeBuitengewoon, setTypeBuitengewoon] = useState('')
   const [gekopieerd, setGekopieerd] = useState('')
+  // Van welke afrekening staat de opbouw open (ronde 40). Eén tegelijk: het is een
+  // lang blok, en twee ervan naast elkaar lees je toch niet.
+  const [opbouwVan, setOpbouwVan] = useState('')
 
   const dossier = dossiers.find((d) => d.id === geselecteerd) ?? (dossiers[0] ?? null)
   const dossierId = dossier?.id ?? ''
@@ -512,7 +540,11 @@ export function DossierSectie({
                           {v.datum} · {periode} · {wie}
                         </span>
                       </span>
-                      <span className="rij-acties">
+                      {/* Vijf knoppen in één rij passen niet op een telefoon, en
+                          `.lijst` heeft `overflow: hidden` — dan verdwijnt de
+                          ×-knop gewoon in plaats van de pagina breder te maken.
+                          Daarom mag deze rij hier afbreken. */}
+                      <span className="rij-acties" style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         <label className="rij-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           <input type="checkbox" checked={!!v.overgemaakt} onChange={(e) => onMarkeerOvergemaakt(v, e.target.checked)} /> {t('Overgemaakt')}
                         </label>
@@ -522,10 +554,34 @@ export function DossierSectie({
                         <button type="button" className="knop knop-ghost knop-klein" onClick={() => exportPdf(v)}>
                           PDF
                         </button>
+                        {/* Ronde 40: de rekenkern achter een afrekening werd tot nu
+                            toe alleen door de PDF en de tekstkopie gebruikt. Op het
+                            scherm zag je enkel het bedrag — precies het cijfer waar
+                            je met de andere ouder over praat, zonder de opbouw. */}
+                        {toont('afrekening-detail') && (
+                          <button
+                            type="button"
+                            className="knop knop-ghost knop-klein"
+                            aria-expanded={opbouwVan === v.id}
+                            onClick={() => setOpbouwVan(opbouwVan === v.id ? '' : v.id)}
+                          >
+                            {opbouwVan === v.id ? t('Verberg opbouw') : t('Toon opbouw')}
+                          </button>
+                        )}
                         <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder afrekening {datum}', { datum: v.datum })} onClick={() => onVerwijderAfrekening(v.id)}>
                           ×
                         </button>
                       </span>
+                      {toont('afrekening-detail') && opbouwVan === v.id && (
+                        <AfrekeningOpbouw
+                          t={t}
+                          dossier={dossier}
+                          afrekening={v}
+                          kosten={kosten}
+                          kinderen={kinderen}
+                          categorieen={categorieen}
+                        />
+                      )}
                     </li>
                   )
                 })}
@@ -562,5 +618,152 @@ export function DossierSectie({
         </div>
       )}
     </>
+  )
+}
+
+/**
+ * De opbouw van één afrekening, op het scherm (ronde 40).
+ *
+ * `utils/afrekeningOverzicht.ts` rekent al uit hoe elk bedrag tot stand komt —
+ * per kind, per categorie, per kostensoort, en per kost met de gebruikte
+ * verdeelsleutel erbij. Tot deze ronde werd die rekenkern alleen door de
+ * PDF-export en de tekstkopie aangeroepen: op het scherm stond enkel het bedrag
+ * en één metaregel. Wie met de andere ouder over dat bedrag praat, moest dus
+ * eerst een PDF maken om te kunnen uitleggen waar het vandaan komt.
+ *
+ * De woorden komen uit dezelfde helpers als de PDF en de tekstkopie
+ * (`afrekeningTekst.ts`). Dat is geen luiheid maar een eis: het scherm en het
+ * bewijsstuk moeten letterlijk hetzelfde zeggen.
+ */
+function AfrekeningOpbouw({
+  t,
+  dossier,
+  afrekening,
+  kosten,
+  kinderen,
+  categorieen,
+}: {
+  t: Vertaler
+  dossier: Dossier
+  afrekening: Verrekening
+  kosten: GedeeldeKost[]
+  kinderen: Kind[]
+  categorieen: Categorie[]
+}) {
+  const o = bouwAfrekeningOverzicht(dossier, afrekening, kosten, kinderen, categorieen)
+
+  // Eén uitsplitsing. Vier kolommen zoals in de PDF: totaal, jij, partner, saldo.
+  // Op een telefoon stapelen ze onder de naam in plaats van uit de kaart te lopen.
+  const Uitsplitsing = ({ titel, groepen }: { titel: string; groepen: AfrekeningGroep[] }) =>
+    groepen.length === 0 ? null : (
+      <div className="veldgroep">
+        <span className="label-caps">{titel}</span>
+        <ul className="lijst">
+          {groepen.map((g) => (
+            <li key={g.sleutel} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 4 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span className="rij-midden">
+                  <span className="rij-titel">{groepLabel(t, g)}</span>
+                </span>
+                <Bedrag centen={g.totaal} />
+              </span>
+              <span className="rij-meta">
+                {t('jij {jij} / partner {partner}', {
+                  jij: formatEuro(g.jouwAandeel),
+                  partner: formatEuro(g.partnerAandeel),
+                })}{' '}
+                · {t('saldo')} {formatEuro(g.netto)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+
+  return (
+    <div style={{ width: '100%', paddingTop: 12 }}>
+      {/* `backgroundColor` en niet `background`: de shorthand wist de
+          background-image van `.kaart`, en daarmee de ambergloed die ronde 32
+          app-breed maakte. En geen `stapel` erbij — die zet de tussenruimte terug
+          op 16 px en draait de compacte maatvoering ongedaan. */}
+      <Kaart compact style={{ backgroundColor: 'var(--surface-2)', gap: 12 }}>
+        <div className="veldgroep">
+          <span className="label-caps">{t('Verdeelsleutel')}</span>
+          {o.verdeelsleutels.length === 0 ? (
+            <Leeg>{t('Geen kosten in deze afrekening.')}</Leeg>
+          ) : (
+            <ul className="lijst">
+              {o.verdeelsleutels.map((s, i) => (
+                <li key={`${s.percentageJij}-${s.herkomst}-${s.bron}-${i}`} className="rij">
+                  <span className="rij-midden">
+                    <span className="rij-meta">{verdeelsleutelTekst(t, s)}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <span className="rij-meta">
+            {t('Periode')}: {periodeTekst(t, o)} · {t('Kinderen')}: {kinderenTekst(t, o)}
+          </span>
+        </div>
+
+        <div className="veldgroep">
+          <span className="label-caps">{t('Totalen')}</span>
+          <ul className="lijst">
+            {totaalRegels(t, o).map((r) => (
+              <li key={r.label} className="rij">
+                <span className="rij-midden rij-titel">{r.label}</span>
+                <span className="bedrag">{r.waarde}</span>
+              </li>
+            ))}
+          </ul>
+          <span className="rij-titel">{verrekenTekst(t, o.netto)}</span>
+          {/* Dezelfde waarschuwing als in de PDF: is de verdeling van het dossier
+              sinds het genereren gewijzigd, dan klopt het bewaarde bedrag niet meer
+              met wat je hier ziet. Dat hoort er te staan, niet stil weggerekend. */}
+          {o.wijktAf && (
+            <span className="rij-meta" style={{ color: 'var(--warn-tekst)' }}>
+              {t('Let op: bij het genereren stond hier {bedrag}; de verdeling van het dossier is sindsdien gewijzigd.', {
+                bedrag: formatEuro(o.bewaardNetto),
+              })}
+            </span>
+          )}
+          <span className="rij-meta">{saldoLegende(t)}</span>
+        </div>
+
+        <Uitsplitsing titel={t('Per kind')} groepen={o.perKind} />
+        <Uitsplitsing titel={t('Per categorie')} groepen={o.perCategorie} />
+        <Uitsplitsing titel={t('Per kostensoort')} groepen={o.perKostensoort} />
+
+        <div className="veldgroep">
+          <span className="label-caps">{t('Detail')}</span>
+          {o.regels.length === 0 ? (
+            <Leeg>{t('Geen kosten in deze afrekening.')}</Leeg>
+          ) : (
+            <ul className="lijst">
+              {o.regels.map((r) => {
+                const meta = regelMeta(t, r)
+                return (
+                  <li key={r.kostId} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 4 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <span className="rij-midden">
+                        <span className="rij-titel">{r.omschrijving || t('Zonder omschrijving')}</span>
+                        <span className="rij-meta">{dagJaar(r.datum)}</span>
+                      </span>
+                      <Bedrag centen={r.bedrag} />
+                    </span>
+                    {meta.map((regel, i) => (
+                      <span key={i} className="rij-meta">
+                        {regel}
+                      </span>
+                    ))}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      </Kaart>
+    </div>
   )
 }

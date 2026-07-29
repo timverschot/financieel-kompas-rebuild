@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import type { Transactie } from '../data/schema'
-import { filterTransacties, heeftActiefFilter, grensDatumMaandenTerug, isOmgekeerdBereik } from './transactieFilter'
+import {
+  filterTransacties,
+  heeftActiefFilter,
+  grensDatumMaandenTerug,
+  isOmgekeerdBereik,
+  filterVoorCategorie,
+} from './transactieFilter'
 
 const tx = (extra: Partial<Transactie> & { id: string }): Transactie => ({
   datum: '2026-06-01',
@@ -102,5 +108,78 @@ describe('grensDatumMaandenTerug', () => {
 
   it('werkt over de jaargrens', () => {
     expect(grensDatumMaandenTerug('2026-02-10', 6)).toBe('2025-09-01')
+  })
+})
+
+// --- Ronde 40: doorklikken van een cijfer naar zijn boekingen ---------------
+//
+// Ingebouwde ids (gecontroleerd in ingebouwd.ts): 'ov-voeding' is een
+// HOOFDcategorie, 'cat-zuivel-en-kaas' een MIDDENcategorie, en
+// 'i-brood--wit-9238' een ITEM dat onder Voeding valt.
+
+describe('filterVoorCategorie', () => {
+  it('maakt van een hoofdcategorie een hoofdId-filter (alles eronder telt mee)', () => {
+    expect(filterVoorCategorie('ov-voeding')).toEqual({ hoofdId: 'ov-voeding' })
+  })
+
+  it('maakt van een middencategorie een catId-filter', () => {
+    expect(filterVoorCategorie('cat-zuivel-en-kaas')).toEqual({ catId: 'cat-zuivel-en-kaas' })
+  })
+
+  it('maakt van een item ook een catId-filter, zodat enkel dát item overblijft', () => {
+    expect(filterVoorCategorie('i-brood--wit-9238')).toEqual({ catId: 'i-brood--wit-9238' })
+  })
+
+  it('behandelt een eigen categorie van de gebruiker als een hoofdcategorie', () => {
+    // Een eigen categorie staat niet in de item- of middenindex, dus valt ze in de
+    // hoofd-tak. Dat klopt: alles wat erop getagd staat, hoort erbij.
+    expect(filterVoorCategorie('eigen-1')).toEqual({ hoofdId: 'eigen-1' })
+  })
+
+  it('geeft samen met filterTransacties precies de boekingen van dat niveau', () => {
+    const brood = tx({ id: 'brood', categorieId: 'i-brood--wit-9238' })
+    const kaas = tx({ id: 'kaas', categorieId: 'cat-zuivel-en-kaas' })
+    const drank = tx({ id: 'drank', categorieId: 'ov-drank' })
+    const alles = [brood, kaas, drank]
+
+    // Voeding vangt zowel het item als de middencategorie eronder.
+    expect(filterTransacties(alles, filterVoorCategorie('ov-voeding')).map((t) => t.id)).toEqual(['brood', 'kaas'])
+    // Het item vangt alleen zichzelf.
+    expect(filterTransacties(alles, filterVoorCategorie('i-brood--wit-9238')).map((t) => t.id)).toEqual(['brood'])
+  })
+})
+
+describe('filterTransacties — besparingsdomein', () => {
+  // Boodschappen bundelt DRIE hoofdcategorieën (voeding, drank, huishouden). Juist
+  // daarom is het een eigen filter: met één hoofdId zou de lijst minder tonen dan
+  // het bedrag waarop je klikte.
+  const voeding = tx({ id: 'v', categorieId: 'i-brood--wit-9238' })
+  const drank = tx({ id: 'd', categorieId: 'ov-drank' })
+  const wonen = tx({ id: 'w', categorieId: 'ov-woning-en-vaste-lasten' })
+
+  it('vangt alle categorieën van het domein, niet één', () => {
+    expect(filterTransacties([voeding, drank, wonen], { domein: 'boodschappen' }).map((t) => t.id)).toEqual(['v', 'd'])
+  })
+
+  it('laat wat buiten het domein valt weg', () => {
+    expect(filterTransacties([wonen], { domein: 'boodschappen' })).toEqual([])
+  })
+
+  it('vangt ook een gesplitst kassaticket waarvan één regel in het domein valt', () => {
+    const ticket = tx({
+      id: 'ticket',
+      omschrijving: 'Colruyt',
+      bedrag: -6000,
+      categorieId: 'ov-woning-en-vaste-lasten',
+      regels: [
+        { categorieId: 'ov-woning-en-vaste-lasten', bedrag: -4000 },
+        { categorieId: 'i-brood--wit-9238', bedrag: -2000 },
+      ],
+    })
+    expect(filterTransacties([ticket], { domein: 'boodschappen' }).map((t) => t.id)).toEqual(['ticket'])
+  })
+
+  it('telt mee als actief filter, zodat het historiek-venster wijkt', () => {
+    expect(heeftActiefFilter({ domein: 'energie' })).toBe(true)
   })
 })

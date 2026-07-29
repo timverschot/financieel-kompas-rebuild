@@ -18,6 +18,9 @@ const PAD_R = 6
 const PAD_T = 10
 const PAD_B = 18
 
+/** Hoeveel maanden de lijn beslaat. Eén getal, ook in de bijschriften gebruikt. */
+const MAANDEN = 12
+
 
 
 // Vermogensevolutie: een lijn van je totale vermogen over de laatste 12 maanden,
@@ -27,18 +30,25 @@ export function Vermogensevolutie({
   transacties,
   overboekingen,
   waarderingen,
+  ankerMaand,
 }: {
   rekeningen: Rekening[]
   transacties: Transactie[]
   overboekingen: Overboeking[]
   waarderingen: Waardering[]
+  /**
+   * De laatste maand van de grafiek ('JJJJ-MM'). Ronde 40: dit was `new Date()`,
+   * zodat de lijn altijd op vandaag eindigde — ook wanneer je bovenaan naar een
+   * andere maand bladerde. Standaard blijft het de huidige maand.
+   */
+  ankerMaand?: string
 }) {
   const { t } = useT()
   const [verborgen, setVerborgen] = useState<Set<string>>(new Set())
 
   const nu = new Date()
-  const huidige = nu.getFullYear() + '-' + String(nu.getMonth() + 1).padStart(2, '0')
-  const maanden = useMemo(() => laatsteMaanden(huidige, 12), [huidige])
+  const huidige = ankerMaand ?? nu.getFullYear() + '-' + String(nu.getMonth() + 1).padStart(2, '0')
+  const maanden = useMemo(() => laatsteMaanden(huidige, MAANDEN), [huidige])
   const data = useMemo(
     () => vermogensEvolutie(rekeningen, transacties, overboekingen, waarderingen, maanden),
     [rekeningen, transacties, overboekingen, waarderingen, maanden],
@@ -84,11 +94,20 @@ export function Vermogensevolutie({
   const verschil = laatsteTotaal - eersteTotaal
 
   return (
-    <Kaart titel={t('Vermogensevolutie')} bijschrift={t('Wat er op je rekeningen staat, over de laatste 12 maanden')}>
+    <Kaart
+      titel={t('Vermogensevolutie')}
+      // Het tijdvak staat er letterlijk bij. "De laatste 12 maanden" klopte niet
+      // meer zodra de grafiek de maandschakelaar volgt, en een grafiek die niet
+      // zegt waarover ze gaat is erger dan geen grafiek.
+      bijschrift={t('Wat er op je rekeningen staat, van {van} tot {tot}', {
+        van: maandKort(maanden[0]),
+        tot: maandKort(maanden[maanden.length - 1]),
+      })}
+    >
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
         <span className="bedrag-groot">{formatEuro(laatsteTotaal)}</span>
         <span className="rij-meta" style={{ color: verschil >= 0 ? 'var(--positive)' : 'var(--negative)' }}>
-          {verschil >= 0 ? '▲' : '▼'} {formatEuro(Math.abs(verschil))} {t('over 12 maanden')}
+          {verschil >= 0 ? '▲' : '▼'} {formatEuro(Math.abs(verschil))} {t('over {n} maanden', { n: MAANDEN })}
         </span>
       </div>
 

@@ -2,14 +2,13 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
 import type { Categorie } from '../data/schema'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
-import { zoekItems, zoekMidCategorieen } from '../data/categorieen/zoek'
+import { zoekItems, zoekMidCategorieen, ZOEK_VANAF } from '../data/categorieen/zoek'
 import { groepVanCategorie, labelVanCategorie, type EigenCategorie } from '../data/categorieen/resolve'
 import { alleHoofdcategorieen, opVolgorde } from '../utils/categorieVolgorde'
 import { useHoofdvolgorde } from '../categorievolgorde'
 import { useT } from '../i18n'
 
 // Vanaf hoeveel letters we in de items/subcategorieën beginnen te zoeken.
-const ZOEK_VANAF = 2
 const MAX_SUGGESTIES = 12
 
 type Suggestie = { id: string; titel: string; sub?: string }

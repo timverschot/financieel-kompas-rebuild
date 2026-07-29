@@ -1,6 +1,10 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { INGEBOUWDE_CATEGORIEEN } from './ingebouwd'
-import { PLATTE_ITEMS, itemPerId, midPerId, zoekItems, zoekMidCategorieen, stelCategorieboomIn, stelSubcategorieenIn } from './zoek'
+import { PLATTE_ITEMS, itemPerId, midPerId, zoekItems, zoekMidCategorieen, stelCategorieboomIn, stelSubcategorieenIn,
+  zoekHoofdcategorieen,
+  alleHoofdcategorieenUitBoom,
+  ZOEK_VANAF,
+} from './zoek'
 
 describe('ingebouwde categorieboom', () => {
   it('heeft 14 hoofdcategorieën', () => {
@@ -115,5 +119,62 @@ describe('de middenlaag', () => {
       { id: 'eig-mid', naam: 'Muziek', ouderId: 'eig-hoofd' },
     ])
     expect(zoekMidCategorieen('muziek').map((m) => m.id)).toContain('eig-mid')
+  })
+})
+
+// --- Ronde 40: één zoekfunctie voor het HOOFDniveau --------------------------
+//
+// `CategorieKiezer` en `CategorieNiveauKiezer` losten dit elk apart op met een
+// eigen `includes` over INGEBOUWDE_CATEGORIEEN plus een tweede lus over de eigen
+// categorieën. Het zoekveld in de categorieboom zou de derde kopie geworden zijn.
+
+describe('zoekHoofdcategorieen', () => {
+  afterEach(() => stelCategorieboomIn([], []))
+
+  it('geeft niets terug bij een lege zoekterm', () => {
+    expect(zoekHoofdcategorieen('')).toEqual([])
+    expect(zoekHoofdcategorieen('   ')).toEqual([])
+  })
+
+  it('vindt een ingebouwde hoofdcategorie op naam, hoofdletterongevoelig', () => {
+    expect(zoekHoofdcategorieen('voeding').map((h) => h.id)).toContain('ov-voeding')
+    expect(zoekHoofdcategorieen('VOEDING').map((h) => h.id)).toContain('ov-voeding')
+  })
+
+  it('zet een exacte of begint-met-treffer vooraan', () => {
+    const namen = zoekHoofdcategorieen('drank').map((h) => h.naam)
+    expect(namen[0]).toBe('Drank')
+  })
+
+  it('vindt ook een eigen hoofdcategorie, zodra de boom is ingesteld', () => {
+    stelCategorieboomIn([], [{ id: 'eigen-hobby', naam: 'Duiken' }])
+    expect(zoekHoofdcategorieen('duik').map((h) => h.id)).toEqual(['eigen-hobby'])
+    expect(zoekHoofdcategorieen('duik')[0].eigen).toBe(true)
+  })
+
+  it('rekent een eigen MIDDENcategorie niet mee op het hoofdniveau', () => {
+    // Die hoort bij zoekMidCategorieen; hier zou ze een niveau voorstellen dat ze
+    // niet is.
+    stelCategorieboomIn([], [{ id: 'mid-x', naam: 'Zwemmen', ouderId: 'ov-voeding' }])
+    expect(zoekHoofdcategorieen('zwem')).toEqual([])
+    expect(zoekMidCategorieen('zwem').map((m) => m.id)).toContain('mid-x')
+  })
+
+  it('respecteert de limiet', () => {
+    expect(zoekHoofdcategorieen('e', 2).length).toBeLessThanOrEqual(2)
+  })
+
+  it('houdt de volledige hoofdlijst bij, ingebouwd plus eigen', () => {
+    const voor = alleHoofdcategorieenUitBoom().length
+    stelCategorieboomIn([], [{ id: 'eigen-hobby', naam: 'Duiken' }])
+    expect(alleHoofdcategorieenUitBoom().length).toBe(voor + 1)
+  })
+})
+
+describe('ZOEK_VANAF', () => {
+  it('is de ene drempel voor de hele app', () => {
+    // Stond vier keer los in evenveel componenten; alle vier op 2, maar niets
+    // hield ze bij elkaar.
+    expect(ZOEK_VANAF).toBe(2)
   })
 })

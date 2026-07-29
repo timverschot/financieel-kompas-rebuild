@@ -751,7 +751,7 @@ export function TransactieFormulier({
           )}
         </>
       ) : (
-        <Kaart compact style={{ background: 'var(--surface-2)' }}>
+        <Kaart compact style={{ backgroundColor: 'var(--surface-2)' }}>
           {kassaRegels.map((r, i) => (
             <div key={r.sleutel} className="rij" style={{ flexWrap: 'wrap', alignItems: 'flex-start', gap: 8 }}>
               <div style={{ flex: '1 1 150px', minWidth: 0 }}>

@@ -432,3 +432,55 @@ describe('maandVooruitblik — een gestopte post (ronde 38)', () => {
     expect(maandVooruitblik([], [stoptStraks], '2026-07', EERSTE_JULI).verwachteUitgaven).toBe(50_00)
   })
 })
+
+// --- Ronde 40 -----------------------------------------------------------------
+//
+// De regel "3 vaste lasten nog in te boeken deze maand" kon nergens heen: er was
+// alleen een aantal, geen lijst met id's. Dit is de spiegel van `achterstalligeIds`.
+
+describe('vooruitblik — komendeIds', () => {
+  const post = (over: Partial<TerugkerendePost> & { id: string; dag: number; bedrag: number }): TerugkerendePost => ({
+    omschrijving: over.id,
+    rekeningId: 'r1',
+    ...over,
+  })
+
+  it('somt de posten op die deze maand nog moeten komen', () => {
+    // Vandaag is de 10e: dag 20 moet nog komen, dag 3 is achterstallig.
+    const vb = maandVooruitblik([], [post({ id: 'later', dag: 20, bedrag: -1000 }), post({ id: 'te-laat', dag: 3, bedrag: -2000 })], '2026-07', '2026-07-10')
+    expect(vb.komendeIds).toEqual(['later'])
+    expect(vb.achterstalligeIds).toEqual(['te-laat'])
+    expect(vb.aantalKomend).toBe(1)
+  })
+
+  it('laat een al geboekte post weg uit beide lijsten', () => {
+    const p = post({ id: 'p1', dag: 20, bedrag: -1000 })
+    const geboekt = {
+      id: vasteLastTransactieId('p1', '2026-07'),
+      datum: '2026-07-20',
+      omschrijving: 'p1',
+      bedrag: -1000,
+      rekeningId: 'r1',
+    }
+    const vb = maandVooruitblik([geboekt], [p], '2026-07', '2026-07-10')
+    expect(vb.komendeIds).toEqual([])
+    expect(vb.achterstalligeIds).toEqual([])
+  })
+
+  it('zet in een maand die al voorbij is alles bij achterstallig en niets bij komend', () => {
+    const vb = maandVooruitblik([], [post({ id: 'p1', dag: 20, bedrag: -1000 })], '2026-05', '2026-07-10')
+    expect(vb.komendeIds).toEqual([])
+    expect(vb.achterstalligeIds).toEqual(['p1'])
+  })
+
+  it('houdt de lijst en de teller gelijk', () => {
+    const posten = [
+      post({ id: 'a', dag: 20, bedrag: -1000 }),
+      post({ id: 'b', dag: 25, bedrag: -1000 }),
+      post({ id: 'c', dag: 2, bedrag: -1000 }),
+    ]
+    const vb = maandVooruitblik([], posten, '2026-07', '2026-07-10')
+    expect(vb.komendeIds.length).toBe(vb.aantalKomend)
+    expect(vb.achterstalligeIds.length).toBe(vb.aantalAchterstallig)
+  })
+})

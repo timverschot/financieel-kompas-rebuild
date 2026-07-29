@@ -809,6 +809,74 @@ h4 {
 a:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring-sterk);
+}
+
+/* ---------------------------------------------------------------------------
+   Klikbare lijstrijen en tekstknoppen (ronde 40)
+   ---------------------------------------------------------------------------
+
+   Ronde 40 maakte veel cijfers doorklikbaar: een recente boeking, een
+   trendrij, een budgetnaam, een besparingsdomein, een rij in de drilldown. Die
+   werden allemaal als een `<button>` zonder knop-look gebouwd — zes keer bijna
+   dezelfde inline stijl. Dat is precies wat DESIGN.md verbiedt, en het kostte
+   ook meteen twee dingen die een klasse wél had meegekregen:
+
+   1. de FOCUSRING. `.lijst` heeft `overflow: hidden`, en de gewone ring uit de
+      regel hierboven is een `box-shadow` — die wordt daar aan de zijkanten
+      weggeknipt. Vandaar een `outline` met een NEGATIEVE offset, zodat de ring
+      binnen de knop valt. Dezelfde oplossing als bij `.analyse-rij`.
+   2. het AANRAAKDOEL. Zonder klasse viel de rij buiten de 44 px-regel voor
+      grove aanwijzers, en een rij van 21 px is op een telefoon niet te raken.
+
+   De rijpadding blijft bewust op `.rij` staan: zou ze naar de knop verhuizen,
+   dan verschuiven alle bestaande rijen mee. */
+.rij-knop {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+  font: inherit;
+}
+
+/* Een knop die als gewone tekst in een rij staat (een budgetnaam, een titel).
+   Bewust GEEN `font: inherit`-shorthand: die zet ook `font-weight` terug, en deze
+   klasse staat samen met `.rij-titel` op hetzelfde element. Met de shorthand werd
+   elke budgetnaam ineens in normale letterdikte getoond terwijl elke andere
+   `.rij-titel` in de app halfvet is. */
+.tekstknop {
+  padding: 0;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* Specificiteit: gelijk aan `.rij button:focus-visible` hierboven, en later in
+   het bestand — dus deze wint. Zonder dat zou de weggeknipte box-shadow blijven. */
+.rij .rij-knop:focus-visible,
+.rij .tekstknop:focus-visible,
+.rij-knop:focus-visible,
+.tekstknop:focus-visible {
+  outline: 3px solid var(--focus-rand);
+  outline-offset: -3px;
+  box-shadow: none;
+}
+
+@media (pointer: coarse) {
+  .rij-knop,
+  .tekstknop {
+    min-height: 44px;
+  }
 }@media (hover: hover) and (pointer: fine) {
   /* ---------------------------------------------------------------------------
    Hover op een aanraakscherm (ronde 34)
@@ -1469,6 +1537,43 @@ a:focus-visible {
   padding: 2px 8px;
 }
 
+/* Een badge die naar iets toe brengt (ronde 40): "gedeeld" opent het dossier,
+   "garantie" opent de garantielade. Ze houdt exact het uiterlijk van een gewone
+   badge — het is geen tweede knopsoort — maar erft wel het gedrag van een echte
+   <button>: focusring, toetsenbord, en een cursor die zegt dat er iets gebeurt.
+
+   Geen `min-height: 44px` onder `pointer: coarse` zoals bij .knop-klein: deze
+   badge staat middenin een tekstregel, en 44 px zou die regel uit elkaar duwen.
+   Het raakvlak is daarom vergroot met een onzichtbare rand rondom (::after),
+   zonder de layout te raken. */
+.badge-knop {
+  position: relative;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: inherit;
+}
+
+/* Links en rechts exact een halve tussenruimte (de gap tussen twee badges in
+   `.rij-titel` is 8 px). Stond dit op −6 px, dan overlapten de raakvlakken van
+   twee badges elkaar met 4 px en opende een tik op de rechterrand van "gedeeld"
+   de garantielade — de knop die later in de DOM staat, ligt bovenop. */
+.badge-knop::after {
+  content: '';
+  position: absolute;
+  inset: -10px -4px;
+}
+
+/* Specificiteit hoger dan `.rij button:focus-visible`, anders is deze regel dode
+   code en blijft de weggeknipte box-shadow staan. De ring valt BINNEN de badge
+   (negatieve offset), want in de tabelweergave op desktop klipt
+   `.tx-lijst .rij-titel` alles wat buiten de titelkolom valt. */
+.rij .badge-knop:focus-visible,
+.badge-knop:focus-visible {
+  outline: 2px solid var(--focus-rand);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
 /* ---------------------------------------------------------------------------
    Formuliervelden
    --------------------------------------------------------------------------- */
@@ -1994,6 +2099,23 @@ a {
   align-items: center;
   gap: 8px;
   line-height: 1.4;
+  /* Zonder dit mag een flex-kind niet smaller worden dan zijn inhoud, en dan
+     wordt de omschrijving door `.lijst` (overflow: hidden) hard afgeknipt in
+     plaats van netjes af te kappen. */
+  min-width: 0;
+}
+
+/* De handelaarsnaam kapt af met een beletselteken; het tekenvlakje en de badges
+   ernaast houden hun maat. */
+.tx-omschrijving {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tx-lijst .rij-titel > .badge {
+  flex-shrink: 0;
 }
 
 /* Het selectievakje neemt de plaats van het icoonvlakje in; het icoon schuift dan

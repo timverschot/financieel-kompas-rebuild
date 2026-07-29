@@ -87,3 +87,21 @@ describe('MaandGrafiek', () => {
     expect(screen.queryByRole('img')).toBeNull()
   })
 })
+
+// --- Ronde 40 -----------------------------------------------------------------
+
+describe('MaandGrafiek — de voetnoot hoort bij het sterretje', () => {
+  const voetnoot = '* Deze maand loopt nog, dus die staaf is nog niet volledig.'
+
+  it('zwijgt over de lopende maand wanneer die niet in beeld staat', () => {
+    // Blader je terug naar een venster van zes afgesloten maanden, dan staat er
+    // nergens een sterretje — en dan hoort de app er ook geen te verklaren.
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-11" />)
+    expect(screen.queryByText(voetnoot)).toBeNull()
+  })
+
+  it('toont de voetnoot wél zodra de lopende maand in het venster valt', () => {
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-06" />)
+    expect(screen.getByText(voetnoot)).toBeInTheDocument()
+  })
+})

@@ -1,6 +1,7 @@
 import type { Transactie } from '../data/schema'
 import { itemPerId, midPerId } from '../data/categorieen/zoek'
 import { categorieBedragen } from './transactie'
+import { domeinVanCategorie } from './besparen'
 
 // Filter- en zoeklaag voor de transactielijst. Zuivere functies zodat ze los
 // getest kunnen worden. De filters zijn allemaal optioneel en werken samen (AND).
@@ -19,6 +20,17 @@ export type TxFilter = {
   // herberekenen. Staat er ook een van/tot bereik aan, dan gelden ze samen (AND),
   // net als alle andere filters.
   maand?: string
+  /**
+   * Eén besparingsdomein ('boodschappen', 'energie', …).
+   *
+   * Waarom dit een eigen filter is en geen hoofdcategorie: een domein bundelt
+   * MEERDERE categorieën (Boodschappen = voeding + drank + huishouden), en
+   * `hoofdId` neemt er maar één. Wie vanaf het blok "Waar loopt het op?"
+   * doorklikt, hoort exact dezelfde verzameling terug te zien als het bedrag
+   * waarop hij klikte — daarom gebruikt dit filter letterlijk dezelfde matcher
+   * (`domeinVanCategorie`) als de rekenkern van dat blok.
+   */
+  domein?: string
 }
 
 // Alle categorie-id's waar een transactie naar verwijst: de hoofd-categorieId en
@@ -47,6 +59,27 @@ function raaktCategorie(tx: Transactie, hoofdId?: string, catId?: string): boole
     const catOk = !catId || id === catId || item?.categorieId === catId
     return hoofdOk && catOk
   })
+}
+
+// Raakt een transactie het gekozen besparingsdomein? Op REGELNIVEAU, net als
+// `uitgavenPerBesparingsdomein`: één regel van een gesplitst kassaticket volstaat.
+function raaktDomein(tx: Transactie, domein: string): boolean {
+  return categorieIdsVan(tx).some((id) => domeinVanCategorie(id) === domein)
+}
+
+/**
+ * Het filter dat hoort bij één opgeslagen categorie-id, op welk niveau ze ook
+ * staat. Spiegelt `regelHoortBijBudget` uit utils/budget.ts: een hoofdcategorie
+ * (of een eigen categorie) vangt alles eronder, een middencategorie enkel haar
+ * eigen items, en een item enkel zichzelf.
+ *
+ * Zonder deze helper zou elke aanroeper zelf moeten raden of een id een
+ * `hoofdId` of een `catId` is — en dan toont de lijst iets anders dan het cijfer
+ * waarop je klikte.
+ */
+export function filterVoorCategorie(categorieId: string): TxFilter {
+  if (midPerId(categorieId) || itemPerId(categorieId)) return { catId: categorieId }
+  return { hoofdId: categorieId }
 }
 
 // Hoort een transactie bij "Inkomsten" of "Uitgaven"? Dat wordt op REGELNIVEAU
@@ -83,6 +116,7 @@ export function filterTransacties(transacties: Transactie[], filter: TxFilter): 
     if (filter.tot && tx.datum > filter.tot) return false
     if (filter.maand && !tx.datum.startsWith(filter.maand)) return false
     if (!raaktCategorie(tx, filter.hoofdId, filter.catId)) return false
+    if (filter.domein && !raaktDomein(tx, filter.domein)) return false
     if (filter.zoek && !raaktZoek(tx, filter.zoek)) return false
     return true
   })
@@ -107,6 +141,7 @@ export function heeftActiefFilter(filter: TxFilter): boolean {
     filter.richting ||
     filter.hoofdId ||
     filter.catId ||
+    filter.domein ||
     filter.rekeningId ||
     filter.van ||
     filter.tot ||

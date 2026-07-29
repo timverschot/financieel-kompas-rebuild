@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { donutSegmenten, afgerondePercentages, splitsLabel, type DonutInvoer } from '../utils/donut'
+import { donutSegmenten, afgerondePercentages, splitsLabel, type DonutInvoer, type DonutSegment } from '../utils/donut'
 import { formatEuro } from '../utils/format'
 import { Bedrag } from '../ui/basis'
 import { useT } from '../i18n'
@@ -93,6 +93,7 @@ export function Donut({
   toonLegende = true,
   grootte = GROOTTE,
   interactief = false,
+  onKies,
 }: {
   items: DonutInvoer[]
   middenLabel?: string
@@ -118,18 +119,61 @@ export function Donut({
    * beide werkt is beter dan twee die elk maar de helft dekken.
    */
   interactief?: boolean
+  /**
+   * Doorklikken vanaf een schijf (ronde 40).
+   *
+   * Zonder deze prop is een donut een doodlopend beeld: je ziet dat Voeding
+   * € 340 was en er is geen enkele weg naar de boekingen erachter.
+   *
+   * Twee handelingen, elk met één betekenis: een schijf AANTIKKEN kiest ze (naam,
+   * bedrag en aandeel komen in het gat te staan), en de knop die daaronder
+   * verschijnt gaat naar de boekingen. Nog eens op dezelfde schijf tikken laat de
+   * keuze weer los.
+   *
+   * Waarom de knop en niet de tweede tik: een `<path>` in een SVG is niet met het
+   * toetsenbord te bereiken en wordt door hulpsoftware niet als knop aangeboden.
+   * Zonder die knop zou het doorklikken alleen voor muis- en aanraakgebruikers
+   * bestaan — en zou er met `onKies` géén weg terug naar het totaal zijn.
+   */
+  onKies?: (segment: DonutSegment) => void
 }) {
   const { t } = useT()
   const [gekozen, setGekozen] = useState<number | null>(null)
-  // Welke schijf je het laatst AANGETIKT hebt (niet: waar je overheen hing).
-  //
-  // Waarom dit een ref moet zijn en geen tweede stukje state: op een aanraakscherm
-  // stuurt de browser bij één tik eerst een 'mouseenter' en dán pas de 'click'. Zou
-  // de klik simpelweg omschakelen op basis van wat er gekozen is, dan zette de
-  // mouseenter de schijf aan en zette de klik ze meteen weer uit — één tik en er
-  // gebeurde zichtbaar niets. Door de tik met de VORIGE tik te vergelijken werkt
-  // aantikken en weer loslaten op beide toestellen hetzelfde.
-  const laatsteTik = useRef<number | null>(null)
+  /**
+   * Welke schijf je het laatst AANGETIKT hebt (niet: waar je overheen hing).
+   *
+   * Waarom dit apart bijgehouden wordt: op een aanraakscherm stuurt de browser bij
+   * één tik eerst een 'mouseenter' en dán pas de 'click'. Zou de klik simpelweg
+   * omschakelen op basis van wat er gekozen is, dan zette de mouseenter de schijf
+   * aan en zette de klik ze meteen weer uit — één tik en er gebeurde zichtbaar
+   * niets. Door de tik met de VORIGE tik te vergelijken werkt aantikken en weer
+   * loslaten op beide toestellen hetzelfde.
+   *
+   * Ronde 40: dit was een `useRef`. Dat kon niet meer, want de knop "Bekijk de
+   * boekingen van …" hangt ervan af. Kwam de tik op een schijf waar je al met de
+   * muis overheen hing, dan was `setGekozen` een no-op, sloeg React de hertekening
+   * over, en bleef de mutatie van de ref onzichtbaar: de knop verscheen nooit.
+   */
+  const [getiktOp, setGetiktOp] = useState<number | null>(null)
+
+  /**
+   * Een keuze is een INDEX, en die betekent niets meer zodra de lijst iets anders
+   * bevat. Wordt ze alleen korter, dan vangen de guards hieronder dat op — maar
+   * blijft ze even lang met ándere categorieën erin, dan zou de keuze stil
+   * meeverhuizen: je tikt "Wonen" aan bij de uitgaven, klikt op Inkomsten, en de
+   * donut opent met een willekeurige inkomstenschijf uitgeschoven plus een knop
+   * "Bekijk de boekingen van …" voor een keuze die je nooit maakte.
+   *
+   * Daarom wist een gewijzigde SAMENSTELLING de keuze. De vingerafdruk is een
+   * string, zodat het effect niet bij elke render opnieuw loopt (`items` is bij
+   * elke render een nieuwe array met dezelfde inhoud — de klassieke valkuil uit
+   * "hang niet aan de vóórwerpen, hang aan de ID's").
+   */
+  const vingerafdruk = items.map((it) => it.sleutel ?? it.naam).join('|')
+  useEffect(() => {
+    setGekozen(null)
+    setGetiktOp(null)
+  }, [vingerafdruk])
   const segmenten = donutSegmenten(items)
   if (segmenten.length === 0) return null
   const totaal = segmenten.reduce((s, seg) => s + seg.bedrag, 0)
@@ -139,8 +183,23 @@ export function Donut({
 
   // Buiten bereik raken kan wanneer de lijst korter wordt terwijl er iets gekozen
   // was (bv. na een maandwissel); dan valt de keuze gewoon terug op het totaal.
-  const actief = interactief && gekozen !== null && gekozen < segmenten.length ? segmenten[gekozen] : null
-  const actiefPct = actief && gekozen !== null ? percentages[gekozen] : null
+  //
+  // BELANGRIJK: overal dezelfde, afgeschermde index gebruiken. Stond de dimming
+  // hieronder nog op de rauwe `gekozen`, dan kon je met een keuze op de zesde
+  // schijf naar een maand met drie schijven bladeren en stonden ALLE schijven
+  // verbleekt zonder gekozen schijf — een donut zonder uitweg.
+  const gekozenGeldig = interactief && gekozen !== null && gekozen < segmenten.length ? gekozen : null
+  const getiktGeldig = getiktOp !== null && getiktOp < segmenten.length ? getiktOp : null
+  const actief = gekozenGeldig !== null ? segmenten[gekozenGeldig] : null
+  const actiefPct = gekozenGeldig !== null ? percentages[gekozenGeldig] : null
+  // Aangetikt (blijvend) of enkel aangewezen (vluchtig)? Alleen bij een tik hoort
+  // de knop eronder te verschijnen; anders springt de pagina op en neer zodra je
+  // met de muis over de grafiek beweegt.
+  const getikt = gekozenGeldig !== null && getiktGeldig === gekozenGeldig
+  // Doorklikken kan alleen wanneer de schijf een sleutel heeft. De uitsplitsing
+  // per winkel groepeert op naam en heeft er geen — daar zou een knop staan die
+  // nergens naartoe gaat.
+  const kanDoor = Boolean(onKies && actief && actief.sleutel !== undefined)
 
   // Voor hulpsoftware: één zin met alles erin. Hangen en tikken bestaan daar niet,
   // dus de volledige inhoud hoort in het toegankelijke label te staan.
@@ -173,7 +232,15 @@ export function Donut({
         onMouseLeave={
           interactief
             ? () => {
-                laatsteTik.current = null
+                // Een keuze die je door AANWIJZEN maakte, laat je los zodra je
+                // weggaat. Een keuze die je AANKLIKTE, blijft staan.
+                //
+                // Dat verschil is er niet voor de sier (ronde 40): de knop
+                // "Bekijk de boekingen van …" staat onder de grafiek, dus je
+                // verlaat de svg om ze te bereiken. Wiste elke muisbeweging de
+                // keuze, dan verdween die knop precies op het moment dat je hem
+                // wou aanklikken.
+                if (getiktGeldig !== null) return
                 setGekozen(null)
               }
             : undefined
@@ -182,6 +249,9 @@ export function Donut({
         style={{ display: 'block', margin: '0 auto', maxWidth: '100%' }}
       >
         {enkel ? (
+          // Eén categorie wordt als volle ring getekend in plaats van als schijf.
+          // Die ring krijgt dezelfde handlers: zonder dat was er bij precies één
+          // categorie geen enkele weg naar de boekingen erachter.
           <circle
             cx={MIDDEN}
             cy={MIDDEN}
@@ -189,6 +259,25 @@ export function Donut({
             fill="none"
             stroke={segmenten[0].kleur}
             strokeWidth={BUITEN - BINNEN}
+            className="donut-schijf"
+            onMouseEnter={
+              interactief
+                ? () => {
+                    if (getiktGeldig !== null) return
+                    setGekozen(0)
+                  }
+                : undefined
+            }
+            onClick={
+              interactief
+                ? () => {
+                    const opnieuw = getiktGeldig === 0
+                    setGetiktOp(opnieuw ? null : 0)
+                    setGekozen(opnieuw ? null : 0)
+                  }
+                : undefined
+            }
+            style={interactief ? { cursor: 'pointer' } : undefined}
           />
         ) : (
           segmenten.map((seg, i) => (
@@ -202,19 +291,35 @@ export function Donut({
               stroke="var(--surface)"
               strokeWidth={1.5}
               className="donut-schijf"
-              transform={gekozen === i ? uitschuif(seg.start, seg.eind) : undefined}
+              transform={gekozenGeldig === i ? uitschuif(seg.start, seg.eind) : undefined}
               // De rest dimt weg zodra je er één kiest. Dat is wat het aanwijzen
               // expressief maakt: niet alleen de gekozen schijf komt naar voren,
               // de anderen stappen ook een beetje terug.
-              opacity={gekozen !== null && gekozen !== i ? GEDIMD : 1}
-              onMouseEnter={interactief ? () => setGekozen(i) : undefined}
+              opacity={gekozenGeldig !== null && gekozenGeldig !== i ? GEDIMD : 1}
+              // Aanwijzen verandert de keuze NIET wanneer je er al een aangetikt
+              // hebt. Anders ging je met de muis van Voeding naar de knop eronder,
+              // passeerde je Wonen, en heette de knop ineens "Bekijk de boekingen
+              // van Wonen".
+              onMouseEnter={
+                interactief
+                  ? () => {
+                      if (getiktGeldig !== null) return
+                      setGekozen(i)
+                    }
+                  : undefined
+              }
               // Op een telefoon bestaat 'hangen' niet: daar is één tik de manier om
               // te kiezen. Nog eens tikken zet de donut terug op het totaal.
               onClick={
                 interactief
                   ? () => {
-                      const opnieuw = laatsteTik.current === i
-                      laatsteTik.current = opnieuw ? null : i
+                      // Nog eens op dezelfde schijf tikken laat de keuze los; de
+                      // donut staat dan weer op het totaal. Doorklikken gebeurt via
+                      // de knop eronder — één handeling, één betekenis. Zou de
+                      // tweede tik doorklikken, dan was er met `onKies` geen weg
+                      // meer terug naar het totaal.
+                      const opnieuw = getiktGeldig === i
+                      setGetiktOp(opnieuw ? null : i)
                       setGekozen(opnieuw ? null : i)
                     }
                   : undefined
@@ -257,6 +362,17 @@ export function Donut({
           </text>
         )}
       </svg>
+
+      {/* De toegankelijke weg naar dezelfde boekingen. Verschijnt pas zodra er
+          een schijf gekozen is, zodat er in rust geen knop staat die nergens
+          heen wijst. */}
+      {kanDoor && getikt && actief && onKies && (
+        <div className="knoprij" style={{ justifyContent: 'center' }}>
+          <button type="button" className="knop knop-ghost knop-klein" onClick={() => onKies(actief)}>
+            {t('Bekijk de boekingen van {naam} ›', { naam: t(actief.naam) })}
+          </button>
+        </div>
+      )}
 
       {toonLegende && (
         <ul className="lijst">

@@ -138,9 +138,15 @@ export function MaandGrafiek({ data, lopendeMaand }: { data: MaandPaar[]; lopend
           </span>
         )}
       </div>
-      <p className="rij-meta" style={{ margin: '4px 0 0' }}>
-        {t('* Deze maand loopt nog, dus die staaf is nog niet volledig.')}
-      </p>
+      {/* De voetnoot hoort bij het sterretje, en dat sterretje staat alleen bij de
+          lopende maand. Ronde 40: hij werd altijd afgedrukt, dus bladerde je terug
+          naar een venster zonder de huidige maand, dan verklaarde de app een
+          sterretje dat nergens stond. */}
+      {data.some((d) => d.maand === lopendeMaand) && (
+        <p className="rij-meta" style={{ margin: '4px 0 0' }}>
+          {t('* Deze maand loopt nog, dus die staaf is nog niet volledig.')}
+        </p>
+      )}
     </div>
   )
 }

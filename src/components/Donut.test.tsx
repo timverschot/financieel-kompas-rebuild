@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { Donut } from './Donut'
 import { splitsLabel } from '../utils/donut'
 import { formatEuro } from '../utils/format'
@@ -223,5 +223,103 @@ describe('splitsLabel', () => {
     // getekend, dus de ring krimpt niet mee met de marge.
     const opScherm = Number(svg.getAttribute('width'))
     expect(Math.round((opScherm * 190) / b)).toBe(200)
+  })
+})
+
+// --- Ronde 40: doorklikken vanaf een schijf -----------------------------------
+//
+// Een donut was een doodlopend beeld: je zag dat Voeding € 3,00 was en er was geen
+// enkele weg naar de boekingen erachter.
+
+describe('Donut — doorklikken', () => {
+  const items = [
+    { naam: 'Voeding', bedrag: 300, kleur: '#111', sleutel: 'ov-voeding' },
+    { naam: 'Wonen', bedrag: 200, kleur: '#222', sleutel: 'ov-woning-en-vaste-lasten' },
+  ]
+
+  it('toont geen knop zolang er geen schijf gekozen is', () => {
+    render(<Donut items={items} interactief onKies={vi.fn()} toonLegende={false} />)
+    expect(screen.queryByRole('button', { name: /Bekijk de boekingen/ })).toBeNull()
+  })
+
+  it('geeft na het kiezen van een schijf een gewone knop naar diezelfde schijf', async () => {
+    // De toegankelijke weg: een <path> in een SVG is niet met het toetsenbord te
+    // bereiken en wordt door hulpsoftware niet als knop aangeboden.
+    const user = userEvent.setup()
+    const onKies = vi.fn()
+    render(<Donut items={items} interactief onKies={onKies} toonLegende={false} />)
+    const schijven = document.querySelectorAll('.donut-schijf')
+    await user.click(schijven[0])
+    const knop = await screen.findByRole('button', { name: /Bekijk de boekingen van Voeding/ })
+    await user.click(knop)
+    expect(onKies).toHaveBeenCalledTimes(1)
+    expect(onKies.mock.calls[0][0].sleutel).toBe('ov-voeding')
+  })
+
+  it('laat de keuze weer los bij een TWEEDE tik, ook met doorklikken aan', async () => {
+    // Doorklikken gebeurt via de knop, niet via de tweede tik. Zou de tweede tik
+    // navigeren, dan was er met `onKies` geen weg meer terug naar het totaal en
+    // bleef de donut permanent met één uitgeschoven schijf staan.
+    const user = userEvent.setup()
+    const onKies = vi.fn()
+    render(<Donut items={items} interactief onKies={onKies} toonLegende={false} />)
+    const schijven = document.querySelectorAll('.donut-schijf')
+    await user.click(schijven[1])
+    expect(await screen.findByRole('button', { name: /Bekijk de boekingen van Wonen/ })).toBeInTheDocument()
+    await user.click(schijven[1])
+    expect(screen.queryByRole('button', { name: /Bekijk de boekingen/ })).toBeNull()
+    expect(onKies).not.toHaveBeenCalled()
+  })
+
+  it('houdt de aangewezen schijf niet vast wanneer er al een aangetikt is', async () => {
+    // Ging je met de muis van Voeding naar de knop eronder en passeerde je Wonen,
+    // dan heette de knop ineens "Bekijk de boekingen van Wonen".
+    const user = userEvent.setup()
+    const onKies = vi.fn()
+    render(<Donut items={items} interactief onKies={onKies} toonLegende={false} />)
+    const schijven = document.querySelectorAll('.donut-schijf')
+    await user.click(schijven[0])
+    await user.hover(schijven[1])
+    expect(screen.getByRole('button', { name: /Bekijk de boekingen van Voeding/ })).toBeInTheDocument()
+  })
+
+  it('maakt ook één enkele categorie doorklikbaar', async () => {
+    // Bij precies één schijf tekent de donut een volle ring in plaats van paden;
+    // zonder handlers daarop was er dan geen enkele weg naar de boekingen.
+    const user = userEvent.setup()
+    const onKies = vi.fn()
+    render(<Donut items={[items[0]]} interactief onKies={onKies} toonLegende={false} />)
+    await user.click(document.querySelector('.donut-schijf') as Element)
+    await user.click(await screen.findByRole('button', { name: /Bekijk de boekingen van Voeding/ }))
+    expect(onKies).toHaveBeenCalledTimes(1)
+  })
+
+  it('toont geen knop bij een schijf die slechts aangewezen is', async () => {
+    // Anders duwt alles onder de grafiek op en neer zodra je er met de muis over
+    // beweegt.
+    const user = userEvent.setup()
+    render(<Donut items={items} interactief onKies={vi.fn()} toonLegende={false} />)
+    await user.hover(document.querySelectorAll('.donut-schijf')[0])
+    expect(screen.queryByRole('button', { name: /Bekijk de boekingen/ })).toBeNull()
+  })
+
+  it('blijft zonder de prop precies doen wat ze vroeger deed: de keuze weer loslaten', async () => {
+    const user = userEvent.setup()
+    render(<Donut items={items} interactief toonLegende={false} />)
+    const schijven = document.querySelectorAll('.donut-schijf')
+    const gatTekst = () => document.querySelector('svg')?.textContent ?? ''
+    await user.click(schijven[0])
+    expect(gatTekst()).toContain(formatEuro(300))
+    await user.click(schijven[0])
+    // Terug naar het totaal (500) in het gat.
+    expect(gatTekst()).toContain(formatEuro(500))
+  })
+
+  it('draagt de sleutel van de invoer mee naar het segment', () => {
+    const onKies = vi.fn()
+    render(<Donut items={[{ naam: 'Winkel X', bedrag: 100, kleur: '#333' }]} interactief onKies={onKies} toonLegende={false} />)
+    // Zonder sleutel (bv. de uitsplitsing per winkel) mag er niets doorklikken:
+    // er bestaat geen id om op te filteren.
+    expect(screen.queryByRole('button', { name: /Bekijk de boekingen/ })).toBeNull()
   })
 })

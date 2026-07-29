@@ -7,6 +7,7 @@ import { groepenVanTransactie, isGesplitstOverCategorieen, type TransactieGroep 
 import { formatEuro } from '../utils/format'
 import { kengetallenVan } from '../utils/overzicht'
 import { rekeningLabel } from '../utils/rekening'
+import { naamVanBesparingsdomein } from '../utils/besparen'
 import {
   SORTEERVELDEN,
   STANDAARD_SORTERING,
@@ -41,9 +42,16 @@ const MAX_GROEPEN_IN_META = 2
 // De MAAND telt nog altijd niet mee: die schakelaar blijft altijd zichtbaar, dus
 // je ziet zelf al welke maand je bekijkt. Zuivere functie, los testbaar.
 export function aantalActieveFilters(filter: TxFilter): number {
-  return [filter.zoek, filter.richting, filter.rekeningId, filter.hoofdId, filter.catId, filter.van, filter.tot].filter(
-    Boolean,
-  ).length
+  return [
+    filter.zoek,
+    filter.richting,
+    filter.rekeningId,
+    filter.hoofdId,
+    filter.catId,
+    filter.domein,
+    filter.van,
+    filter.tot,
+  ].filter(Boolean).length
 }
 
 // De weergavenaam van een sorteerkolom. De opgeslagen sleutel blijft
@@ -112,6 +120,8 @@ export function TransactieLijst({
   onVerwijder,
   onVerwijderMeerdere,
   beginFilter,
+  onGaNaarDossier,
+  onGaNaarGarantie,
 }: {
   transacties: Transactie[]
   categorieen: Categorie[]
@@ -135,6 +145,10 @@ export function TransactieLijst({
   // Optioneel: filters die al aanstaan bij het laden. Het filterpaneel klapt dan
   // meteen open, zodat de chips niet uit het niets lijken te komen.
   beginFilter?: TxFilter
+  /** Doorklikken vanaf de badge "gedeeld" naar het dossier zelf (ronde 40). */
+  onGaNaarDossier?: (dossierId: string) => void
+  /** Doorklikken vanaf de badge "garantie" naar de garantielade (ronde 40). */
+  onGaNaarGarantie?: (garantieId: string) => void
 }) {
   const { t } = useT()
   const [filter, setFilter] = useState<TxFilter>(beginFilter ?? {})
@@ -264,8 +278,18 @@ export function TransactieLijst({
   if (filter.catId) {
     chips.push({
       sleutel: 'sub',
-      label: subOpties.find((c) => c.id === filter.catId)?.naam ?? filter.catId,
+      // Sinds ronde 40 kan `catId` ook een ITEM zijn (doorklikken vanaf een
+      // budget op "Brood (wit)"). Dat staat niet in de keuzelijst, dus valt het
+      // label terug op de gewone categorienaam in plaats van op het kale id.
+      label: subOpties.find((c) => c.id === filter.catId)?.naam ?? categorieNaam(filter.catId) ?? filter.catId,
       wis: () => zet({ catId: undefined }),
+    })
+  }
+  if (filter.domein) {
+    chips.push({
+      sleutel: 'domein',
+      label: t(naamVanBesparingsdomein(filter.domein) ?? filter.domein),
+      wis: () => zet({ domein: undefined }),
     })
   }
   if (filter.van) {
@@ -296,18 +320,28 @@ export function TransactieLijst({
     else setSelectie(new Set(zichtbaar.map((tx) => tx.id)))
   }
 
-  // Welke transacties in een dossier gedeeld worden. Eén set, zodat de lijst niet
-  // voor elke rij opnieuw door alle gedeelde kosten moet lopen.
-  const gedeeldeTxIds = useMemo(
-    () => new Set(gedeeldeKosten.map((k) => k.transactieId).filter(Boolean) as string[]),
-    [gedeeldeKosten],
-  )
+  // Welke transacties in een dossier gedeeld worden, en in WELK dossier. Eén map,
+  // zodat de lijst niet voor elke rij opnieuw door alle gedeelde kosten moet lopen.
+  // Ronde 40: dit was een set van id's. Het dossier erbij houden is wat de badge
+  // van een label in een weg verandert — hij bracht je nergens heen.
+  //
+  // Bij een dubbel wint de EERSTE, niet de laatste. Eén transactie kan in twee
+  // dossiers gedeeld worden (dezelfde schoolrekening in "Kinderen 2025" én
+  // "Kinderen 2026"), en het bewerkvenster gebruikt `.find` — dus ook de eerste.
+  // Zou de badge de laatste nemen, dan brachten de badge en het potloodje je naar
+  // een ánder dossier, en welk dat is hing af van de laadvolgorde uit de database.
+  const dossierPerTx = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const k of gedeeldeKosten) if (k.transactieId && !m.has(k.transactieId)) m.set(k.transactieId, k.dossierId)
+    return m
+  }, [gedeeldeKosten])
 
   // Idem voor de boekingen waaraan een garantiebewijs hangt.
-  const garantieTxIds = useMemo(
-    () => new Set(garanties.map((g) => g.transactieId).filter(Boolean) as string[]),
-    [garanties],
-  )
+  const garantiePerTx = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const g of garanties) if (g.transactieId && !m.has(g.transactieId)) m.set(g.transactieId, g.id)
+    return m
+  }, [garanties])
 
   return (
     <section className="stapel">
@@ -651,8 +685,10 @@ export function TransactieLijst({
                 categorieen={categorieen}
                 rekeningNaam={rekeningNaam}
                 categoriePad={categoriePad}
-                gedeeld={gedeeldeTxIds.has(tx.id)}
-                metGarantie={garantieTxIds.has(tx.id)}
+                dossierId={dossierPerTx.get(tx.id)}
+                garantieId={garantiePerTx.get(tx.id)}
+                onGaNaarDossier={onGaNaarDossier}
+                onGaNaarGarantie={onGaNaarGarantie}
                 selecteerbaar={kanSelecteren}
                 aangevinkt={selectie.has(tx.id)}
                 onSchakel={schakelRij}
@@ -723,8 +759,10 @@ function TransactieRij({
   categorieen,
   rekeningNaam,
   categoriePad,
-  gedeeld,
-  metGarantie,
+  dossierId,
+  garantieId,
+  onGaNaarDossier,
+  onGaNaarGarantie,
   selecteerbaar,
   aangevinkt,
   onSchakel,
@@ -736,10 +774,12 @@ function TransactieRij({
   categorieen: Categorie[]
   rekeningNaam: (id: string) => string | undefined
   categoriePad: (id?: string) => string | undefined
-  /** Hangt er een gedeelde kost aan deze transactie? (ronde 22) */
-  gedeeld: boolean
-  /** Hangt er een garantiebewijs aan deze transactie? (ronde 36) */
-  metGarantie: boolean
+  /** In welk dossier deze transactie gedeeld wordt (ronde 22), of undefined. */
+  dossierId?: string
+  /** Welk garantiebewijs aan deze transactie hangt (ronde 36), of undefined. */
+  garantieId?: string
+  onGaNaarDossier?: (dossierId: string) => void
+  onGaNaarGarantie?: (garantieId: string) => void
   selecteerbaar: boolean
   aangevinkt: boolean
   onSchakel: (id: string) => void
@@ -780,22 +820,59 @@ function TransactieRij({
               {teken}
             </span>
           )}
-          {tx.omschrijving}
+          {/* De omschrijving in een EIGEN span, en niet als kale tekst.
+              Kale tekst in een flexbox wordt een anonieme flex-item: die kan je
+              met CSS niet aanspreken en krimpt nooit onder zijn eigen breedte.
+              Gevolg was dat "Apotheek Van Damme Sint-Niklaas centrum" de badge
+              ernaast uit de titelkolom duwde, waar `overflow: hidden` hem
+              wegknipte — onzichtbaar én onaanklikbaar. */}
+          <span className="tx-omschrijving">{tx.omschrijving}</span>
           {/* De koppeling met een dossier bestaat sinds ronde 22, maar was in de
               lijst nergens te zien: je moest de boeking openen om te weten of ze
               gedeeld werd. */}
-          {gedeeld && (
-            <span className="badge badge-info badge-mini" title={t('Gedeeld in een dossier')}>
-              {t('gedeeld')}
-            </span>
-          )}
+          {/* Ronde 40: de badge is een knop zodra de app kan navigeren. Ze zei
+              tot nu toe alleen DÁT er een dossier achter zat, en liet je zelf
+              zoeken waar. */}
+          {dossierId &&
+            (onGaNaarDossier ? (
+              <button
+                type="button"
+                className="badge badge-info badge-mini badge-knop"
+                title={t('Gedeeld in een dossier')}
+                // De zichtbare tekst ('gedeeld') staat vooraan in het label. Zonder
+                // dat werkt spraakbesturing niet ("klik gedeeld") en hoort iemand
+                // iets anders dan wat er staat (WCAG 2.5.3).
+                aria-label={t('{label} — open het dossier van {oms}', { label: t('gedeeld'), oms: tx.omschrijving })}
+                onClick={() => onGaNaarDossier(dossierId)}
+              >
+                {t('gedeeld')}
+              </button>
+            ) : (
+              <span className="badge badge-info badge-mini" title={t('Gedeeld in een dossier')}>
+                {t('gedeeld')}
+              </span>
+            ))}
           {/* Hetzelfde verhaal voor een garantiebewijs (ronde 36): de koppeling
               bestond al, maar er was geen enkele plaats waar je ze zag. */}
-          {metGarantie && (
-            <span className="badge badge-info badge-mini" title={t('Er hangt een garantiebewijs aan deze boeking')}>
-              {t('garantie')}
-            </span>
-          )}
+          {garantieId &&
+            (onGaNaarGarantie ? (
+              <button
+                type="button"
+                className="badge badge-info badge-mini badge-knop"
+                title={t('Er hangt een garantiebewijs aan deze boeking')}
+                aria-label={t('{label} — open het garantiebewijs van {oms}', {
+                  label: t('garantie'),
+                  oms: tx.omschrijving,
+                })}
+                onClick={() => onGaNaarGarantie(garantieId)}
+              >
+                {t('garantie')}
+              </button>
+            ) : (
+              <span className="badge badge-info badge-mini" title={t('Er hangt een garantiebewijs aan deze boeking')}>
+                {t('garantie')}
+              </span>
+            ))}
         </span>
         {/* Deze drie elementen worden vanaf 1024 px de kolommen datum, categorie
             en rekening (via `display: contents`). Ze moeten dus ALTIJD alle drie

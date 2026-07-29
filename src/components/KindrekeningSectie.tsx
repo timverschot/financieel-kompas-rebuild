@@ -190,7 +190,7 @@ export function KindrekeningSectie({
       </div>
 
       {toonAfspraak && (
-        <Kaart compact style={{ background: 'var(--surface-2)' }}>
+        <Kaart compact style={{ backgroundColor: 'var(--surface-2)' }}>
           <p className="kaart-bijschrift" style={{ margin: 0 }}>
             {t('De afgesproken maandelijkse storting per ouder. Vul een aanvangs- en huidige index in om de bijdrage te indexeren (Belgische formule).')}
           </p>

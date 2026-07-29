@@ -229,7 +229,6 @@ const en: Record<string, string> = {
   'Meer pagina\'s': 'More pages',
   'Notitie': 'Note',
   'Vastgelegd: op {datum} stond er {bedrag}.': 'Recorded: on {datum} the balance was {bedrag}.',
-  'Wat er op je rekeningen staat, over de laatste 12 maanden': 'What your accounts hold, over the last 12 months',
   'gekoppeld': 'linked',
   'nog {bedrag} van je limiet van {limiet} beschikbaar': '{bedrag} of your {limiet} limit still available',
   'sinds de waarde van {datum}: {saldo}': 'since the value of {datum}: {saldo}',
@@ -772,7 +771,6 @@ const en: Record<string, string> = {
     '* This month is still running, so that bar is not complete yet.',
   'Bekijk alle {n} in Analyse ›': 'View all {n} in Analysis ›',
   'Bekijk in Analyse ›': 'View in Analysis ›',
-  'De laatste zes maanden, met je gemiddelde als lijn.': 'The last six months, with your average as a line.',
   'Even veel als de vorige periode. {tip}': 'The same as the previous period. {tip}',
   'Gemiddeld {bedrag} per maand': 'On average {bedrag} per month',
   'Het lijntje loopt over {venster}. Het verschil ernaast vergelijkt {periode} met de vorige even lange periode.':
@@ -1018,7 +1016,6 @@ const en: Record<string, string> = {
   'Zonder omschrijving': 'No description',
   // Vermogensevolutie (Ronde 5 · Brok S)
   'Vermogensevolutie': 'Net worth over time',
-  'over 12 maanden': 'over 12 months',
   // Trends & stijgers/dalers (Ronde 5 · Brok T)
   'Stijgers en dalers': 'Movers',
   't.o.v. de vorige periode': 'vs the previous period',
@@ -1032,14 +1029,11 @@ const en: Record<string, string> = {
   'Nog geen inkomsten in deze periode': 'No income in this period yet',
   '{saldo} van {inkomsten} inkomsten overgehouden': '{saldo} of {inkomsten} income kept',
   'Vooruitblik — {maand}': 'Outlook — {maand}',
-  'verwacht deze maand': 'expected this month',
   'spaarquote': 'savings rate',
   'Al geboekt — inkomsten': 'Booked — income',
   'Al geboekt — uitgaven': 'Booked — expenses',
   'Nog te komen — inkomsten': 'Still to come — income',
   'Nog te komen — uitgaven': 'Still to come — expenses',
-  '{n} vaste last(en) nog in te boeken deze maand': '{n} fixed cost(s) still to book this month',
-  'Alle vaste lasten voor deze maand zijn al ingeboekt': 'All fixed costs for this month are already booked',
   // Weergave / thema (Ronde 5 · Brok O)
   'Weergave': 'Appearance',
   'Kies licht of donker, of laat de app de voorkeur van je toestel volgen.':
@@ -1436,6 +1430,29 @@ const en: Record<string, string> = {
     'In your banking app or on your bank\u2019s website, look for "export" or "download" near your statements. Choose the CSV format there (sometimes labelled "CSV/Excel"). Kompal cannot read a PDF — that is a printout, not a file with figures in it.',
   'Categorie voor de {n} regels zonder voorstel (optioneel)':
     'Category for the {n} rows without a suggestion (optional)',
+  // Ronde 40 — doorklikken, vindbaarheid en de klokken
+  'Bekijk de boekingen van {naam} ›': 'View the entries for {naam} ›',
+  'Bekijk in Transacties ›': 'View in Transactions ›',
+  'Wat er op je rekeningen staat, van {van} tot {tot}': 'What is in your accounts, from {van} to {tot}',
+  'over {n} maanden': 'over {n} months',
+  '{van} t.e.m. {tot}, met je gemiddelde als lijn.': '{van} through {tot}, with your average as a line.',
+  'dag {dag}': 'day {dag}',
+  'Niets gevonden voor “{term}”': 'Nothing found for “{term}”',
+  'Opbouw van een afrekening': 'Breakdown of a settlement',
+  'Toon opbouw': 'Show breakdown',
+  'Verberg opbouw': 'Hide breakdown',
+  'Geen kosten in deze afrekening.': 'No costs in this settlement.',
+  'Bewerk {oms} — {datum}, {bedrag}': 'Edit {oms} — {datum}, {bedrag}',
+  'Bekijk de boekingen van {naam} — {bedrag}': 'View the entries for {naam} — {bedrag}',
+  'Bekijk de boekingen van {naam} — {bedrag}, {periode}': 'View the entries for {naam} — {bedrag}, {periode}',
+  '{label} — open het dossier van {oms}': '{label} — open the case for {oms}',
+  '{label} — open het garantiebewijs van {oms}': '{label} — open the warranty for {oms}',
+  'Boek {naam} in': 'Record {naam}',
+  '{n} treffer(s) in {m} hoofdcategorie(ën)': '{n} match(es) in {m} main category/ies',
+  'Zoek een categorie of subcategorie (vanaf {n} letters)…': 'Search for a category or subcategory (from {n} letters)…',
+  '{n} vaste last(en) nog in te boeken in {maand}': '{n} fixed cost(s) still to record in {maand}',
+  'verwacht in {maand}': 'expected in {maand}',
+  'Alle vaste lasten voor {maand} zijn al ingeboekt': 'All fixed costs for {maand} have already been recorded',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -1648,7 +1665,6 @@ const fr: Record<string, string> = {
   'Meer pagina\'s': 'Plus de pages',
   'Notitie': 'Note',
   'Vastgelegd: op {datum} stond er {bedrag}.': 'Enregistré : le {datum}, le solde était de {bedrag}.',
-  'Wat er op je rekeningen staat, over de laatste 12 maanden': 'Ce que contiennent tes comptes, sur les 12 derniers mois',
   'gekoppeld': 'lié',
   'nog {bedrag} van je limiet van {limiet} beschikbaar': '{bedrag} encore disponibles sur ta limite de {limiet}',
   'sinds de waarde van {datum}: {saldo}': 'depuis la valeur du {datum} : {saldo}',
@@ -2190,7 +2206,6 @@ const fr: Record<string, string> = {
     '* Ce mois est en cours, cette barre n’est donc pas complète.',
   'Bekijk alle {n} in Analyse ›': 'Voir les {n} dans Analyse ›',
   'Bekijk in Analyse ›': 'Voir dans Analyse ›',
-  'De laatste zes maanden, met je gemiddelde als lijn.': 'Les six derniers mois, avec votre moyenne en ligne.',
   'Even veel als de vorige periode. {tip}': 'Autant que la période précédente. {tip}',
   'Gemiddeld {bedrag} per maand': 'En moyenne {bedrag} par mois',
   'Het lijntje loopt over {venster}. Het verschil ernaast vergelijkt {periode} met de vorige even lange periode.':
@@ -2436,7 +2451,6 @@ const fr: Record<string, string> = {
   'Zonder omschrijving': 'Sans description',
   // Vermogensevolutie (Ronde 5 · Brok S)
   'Vermogensevolutie': 'Évolution du patrimoine',
-  'over 12 maanden': 'sur 12 mois',
   // Trends & stijgers/dalers (Ronde 5 · Brok T)
   'Stijgers en dalers': 'Hausses et baisses',
   't.o.v. de vorige periode': 'p.r. à la période précédente',
@@ -2450,14 +2464,11 @@ const fr: Record<string, string> = {
   'Nog geen inkomsten in deze periode': 'Pas encore de revenus sur cette période',
   '{saldo} van {inkomsten} inkomsten overgehouden': '{saldo} conservés sur {inkomsten} de revenus',
   'Vooruitblik — {maand}': 'Aperçu — {maand}',
-  'verwacht deze maand': 'prévu ce mois-ci',
   'spaarquote': 'taux d\'épargne',
   'Al geboekt — inkomsten': 'Déjà comptabilisé — revenus',
   'Al geboekt — uitgaven': 'Déjà comptabilisé — dépenses',
   'Nog te komen — inkomsten': 'À venir — revenus',
   'Nog te komen — uitgaven': 'À venir — dépenses',
-  '{n} vaste last(en) nog in te boeken deze maand': '{n} charge(s) fixe(s) encore à comptabiliser ce mois-ci',
-  'Alle vaste lasten voor deze maand zijn al ingeboekt': 'Toutes les charges fixes de ce mois sont déjà comptabilisées',
   // Weergave / thema (Ronde 5 · Brok O)
   'Weergave': 'Apparence',
   'Kies licht of donker, of laat de app de voorkeur van je toestel volgen.':
@@ -2857,6 +2868,29 @@ const fr: Record<string, string> = {
 
 
 
+  // Ronde 40 — doorklikken, vindbaarheid en de klokken
+  'Bekijk de boekingen van {naam} ›': 'Voir les écritures de {naam} ›',
+  'Bekijk in Transacties ›': 'Voir dans Transactions ›',
+  'Wat er op je rekeningen staat, van {van} tot {tot}': 'Ce qu’il y a sur vos comptes, de {van} à {tot}',
+  'over {n} maanden': 'sur {n} mois',
+  '{van} t.e.m. {tot}, met je gemiddelde als lijn.': 'De {van} à {tot}, avec votre moyenne en ligne.',
+  'dag {dag}': 'jour {dag}',
+  'Niets gevonden voor “{term}”': 'Aucun résultat pour « {term} »',
+  'Opbouw van een afrekening': 'Détail d’un décompte',
+  'Toon opbouw': 'Afficher le détail',
+  'Verberg opbouw': 'Masquer le détail',
+  'Geen kosten in deze afrekening.': 'Aucun frais dans ce décompte.',
+  'Bewerk {oms} — {datum}, {bedrag}': 'Modifier {oms} — {datum}, {bedrag}',
+  'Bekijk de boekingen van {naam} — {bedrag}': 'Voir les écritures de {naam} — {bedrag}',
+  'Bekijk de boekingen van {naam} — {bedrag}, {periode}': 'Voir les écritures de {naam} — {bedrag}, {periode}',
+  '{label} — open het dossier van {oms}': '{label} — ouvrir le dossier de {oms}',
+  '{label} — open het garantiebewijs van {oms}': '{label} — ouvrir la garantie de {oms}',
+  'Boek {naam} in': 'Comptabiliser {naam}',
+  '{n} treffer(s) in {m} hoofdcategorie(ën)': '{n} résultat(s) dans {m} catégorie(s) principale(s)',
+  'Zoek een categorie of subcategorie (vanaf {n} letters)…': 'Rechercher une catégorie ou sous-catégorie (à partir de {n} lettres)…',
+  '{n} vaste last(en) nog in te boeken in {maand}': '{n} charge(s) fixe(s) encore à comptabiliser en {maand}',
+  'verwacht in {maand}': 'prévu en {maand}',
+  'Alle vaste lasten voor {maand} zijn al ingeboekt': 'Toutes les charges fixes de {maand} sont déjà comptabilisées',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 

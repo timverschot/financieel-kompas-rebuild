@@ -53,7 +53,11 @@ export function kengetallenVan(transacties: Transactie[]): Kengetallen {
   return { inkomsten, uitgaven, saldo: inkomsten - uitgaven }
 }
 
-export type CategorieUitgave = { naam: string; bedrag: number; kleur: string | null }
+// `sleutel` is de groepeersleutel van `groepVanCategorie` (de hoofdcategorie, de
+// eigen categorie, of '' voor "Zonder categorie"). Ze staat er sinds ronde 40 bij
+// omdat een donutschijf en een top-drie-regel anders doodlopen: je ziet € 340 bij
+// Voeding en kan nergens heen om te weten wélke boekingen dat zijn.
+export type CategorieUitgave = { sleutel: string; naam: string; bedrag: number; kleur: string | null }
 
 // Uitgaven per (hoofd)categorie in één maand, gesorteerd van groot naar klein.
 // Elke transactie wordt opgerold naar haar groep: een ingebouwd item telt mee
@@ -67,7 +71,7 @@ function groepeerPerCategorie(
   maand: string,
   wilInkomst: boolean,
 ): CategorieUitgave[] {
-  const perGroep = new Map<string, { naam: string; kleur: string | null; bedrag: number }>()
+  const perGroep = new Map<string, { sleutel: string; naam: string; kleur: string | null; bedrag: number }>()
   for (const t of transacties) {
     if (!t.datum.startsWith(maand)) continue
     // Splits de transactie uit in haar deelregels (of één regel als ze niet
@@ -78,13 +82,19 @@ function groepeerPerCategorie(
         const groep = groepVanCategorie(regel.categorieId, categorieen)
         const bestaand = perGroep.get(groep.sleutel)
         if (bestaand) bestaand.bedrag += Math.abs(regel.bedrag)
-        else perGroep.set(groep.sleutel, { naam: groep.naam, kleur: groep.kleur, bedrag: Math.abs(regel.bedrag) })
+        else
+          perGroep.set(groep.sleutel, {
+            sleutel: groep.sleutel,
+            naam: groep.naam,
+            kleur: groep.kleur,
+            bedrag: Math.abs(regel.bedrag),
+          })
       }
     }
   }
 
   return [...perGroep.values()]
-    .map((g) => ({ naam: g.naam, bedrag: g.bedrag, kleur: g.kleur }))
+    .map((g) => ({ sleutel: g.sleutel, naam: g.naam, bedrag: g.bedrag, kleur: g.kleur }))
     .sort((a, b) => b.bedrag - a.bedrag)
 }
 

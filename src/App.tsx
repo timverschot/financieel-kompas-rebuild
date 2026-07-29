@@ -141,7 +141,9 @@ import { Merkteken } from './components/Merkteken'
 import { saldoVerrekeningDossier } from './utils/dossier'
 import { kostenVoorAfrekening, type AfrekeningFilter } from './utils/afrekening'
 import { nieuwId } from './data/sync/id'
-import { inkomstenPerCategorie, maandInkomsten, maandUitgaven, uitgavenPerCategorie } from './utils/overzicht'
+import { inkomstenPerCategorie, maandInkomsten, maandUitgaven, uitgavenPerCategorie, type CategorieUitgave } from './utils/overzicht'
+import type { DonutInvoer } from './utils/donut'
+import { filterVoorCategorie, type TxFilter } from './utils/transactieFilter'
 import { inkomstenUitgavenPerMaand } from './utils/maandverloop'
 import { labelVanCategorie } from './data/categorieen/resolve'
 import { stelCategorieboomIn } from './data/categorieen/zoek'
@@ -164,6 +166,23 @@ const container: CSSProperties = {
   padding: '0 1rem',
 }
 
+
+/**
+ * De donut-invoer voor een categorielijst (ronde 40).
+ *
+ * 'Zonder categorie' heeft als groepeersleutel een LEGE string. Die kan je niet
+ * filteren, dus geven we hem geen sleutel mee — anders zou de donut een knop
+ * "Bekijk de boekingen van Zonder categorie" tekenen die bij het aanklikken
+ * niets doet.
+ */
+function donutItems(posten: CategorieUitgave[]): DonutInvoer[] {
+  return posten.map((p) => ({
+    naam: p.naam,
+    bedrag: p.bedrag,
+    kleur: p.kleur,
+    ...(p.sleutel ? { sleutel: p.sleutel } : {}),
+  }))
+}
 
 function verschuifMaand(maand: string, delta: number): string {
   const [jaar, m] = maand.split('-').map(Number)
@@ -280,10 +299,23 @@ export function App() {
   // ronde 29 een eigen pagina die niets meer was dan twee secties onder elkaar;
   // ze zijn nu subtabs naast de gedeelde kosten.
   const [dossierTab, setDossierTab] = useState<DossierSoort>('coouderschap')
+  // Welk dossier de Dossiers-pagina opent (ronde 40). Klik je in de
+  // transactielijst op de badge "gedeeld", dan hoor je in dát dossier te landen
+  // en niet in het eerste uit de lijst.
+  const [gekozenDossierId, setGekozenDossierId] = useState<string | null>(null)
   // Met welke richting de Analyse-pagina opent. De knop onder een donut op het
   // Overzicht zet die mee: klik je bij "Inkomsten per categorie" op "Bekijk in
   // Analyse", dan hoor je daar niet op de uitgaven te landen.
   const [analyseRichting, setAnalyseRichting] = useState<'uitgave' | 'inkomst'>('uitgave')
+  /**
+   * Met welk filter de Transacties-pagina opent (ronde 40).
+   *
+   * `nr` telt op bij elke doorklik en dient enkel als `key` op de lijst. Zonder
+   * dat nummer neemt de lijst een nieuw beginfilter niet over: ze zet haar filter
+   * één keer op bij het monteren, en klik je van Voeding meteen door naar Wonen,
+   * dan blijf je naar Voeding kijken.
+   */
+  const [txFilter, setTxFilter] = useState<{ filter: TxFilter; nr: number } | null>(null)
   const isDesktop = useIsDesktop()
   const [backupTekst, setBackupTekst] = useState<string | null>(null)
   const [undoInfo, setUndoInfo] = useState<{ boodschap: string; herstel: () => Promise<void> } | null>(null)
@@ -848,6 +880,20 @@ export function App() {
   }
 
   /**
+   * Inboeken vanaf de vooruitblik (ronde 40), in de maand die dat scherm toont.
+   *
+   * Bewust een tweede functie naast `boekVasteLastPerId`: die is van het belletje
+   * en boekt altijd in de HUIDIGE maand, want het belletje gaat over nu. De
+   * vooruitblik volgt sinds deze ronde de maandschakelaar, dus daar hoort de
+   * bekeken maand — anders zou je op de vooruitblik van maart klikken en in juli
+   * boeken.
+   */
+  async function boekVasteLastPerIdInMaand(postId: string, doelMaand: string) {
+    const post = terugkerendePosten.find((p) => p.id === postId)
+    if (post) await boekTerugkerend(post, doelMaand)
+  }
+
+  /**
    * Een vaste last inboeken in een BEPAALDE maand.
    *
    * De maand is sinds ronde 35 een expliciete parameter in plaats van de maand die
@@ -1394,6 +1440,33 @@ export function App() {
     setPagina('analyse')
   }
 
+  /**
+   * Van een cijfer naar de boekingen eronder (ronde 40).
+   *
+   * Vóór deze ronde eindigde bijna elk cijfer blind: je zag € 340 bij Voeding
+   * staan, en de enige weg naar de bijhorende boekingen was zelf naar Transacties
+   * gaan en daar hetzelfde filter met de hand opnieuw instellen.
+   */
+  function gaNaarTransacties(filter: TxFilter) {
+    setTxFilter((vorig) => ({ filter, nr: (vorig?.nr ?? 0) + 1 }))
+    setPagina('transacties')
+  }
+
+  // Gewoon navigeren (onderbalk, zijbalk) wist het doorklik-filter. Anders opent
+  // Transacties de volgende keer opnieuw met het filter van een klik die je een
+  // half uur geleden deed, zonder dat je weet waar het vandaan komt.
+  function kiesPagina(doel: Pagina) {
+    setTxFilter(null)
+    setPagina(doel)
+  }
+
+  // Doorklikken vanaf een cijfer dat over één categorie gaat, op welk niveau ook.
+  // 'Zonder categorie' heeft geen id om op te filteren; daar gebeurt niets.
+  function gaNaarCategorie(sleutel: string, extra: TxFilter = {}) {
+    if (!sleutel) return
+    gaNaarTransacties({ ...filterVoorCategorie(sleutel), ...extra })
+  }
+
   const paginaInhoud = (
     <div className="stapel">
 
@@ -1501,8 +1574,18 @@ export function App() {
                       <Leeg>{t('Nog niets geboekt deze maand. Voeg een transactie toe, of lees een bankuittreksel in.')}</Leeg>
                     ) : (
                       <>
-                        <Donut items={perCategorie} interactief toonLegende={false} grootte={240} />
-                        <TopDrie posten={perCategorie} onAlles={() => gaNaarAnalyse('uitgave')} />
+                        <Donut
+                          items={donutItems(perCategorie)}
+                          interactief
+                          toonLegende={false}
+                          grootte={240}
+                          onKies={(seg) => gaNaarCategorie(seg.sleutel ?? '', { maand, richting: 'uit' })}
+                        />
+                        <TopDrie
+                          posten={perCategorie}
+                          onAlles={() => gaNaarAnalyse('uitgave')}
+                          onKies={(sleutel) => gaNaarCategorie(sleutel, { maand, richting: 'uit' })}
+                        />
                       </>
                     )}
                   </Kaart>
@@ -1512,8 +1595,19 @@ export function App() {
                       <Leeg>{t('Nog geen inkomsten deze maand.')}</Leeg>
                     ) : (
                       <>
-                        <Donut items={perInkomsten} middenLabel="inkomsten" interactief toonLegende={false} grootte={240} />
-                        <TopDrie posten={perInkomsten} onAlles={() => gaNaarAnalyse('inkomst')} />
+                        <Donut
+                          items={donutItems(perInkomsten)}
+                          middenLabel="inkomsten"
+                          interactief
+                          toonLegende={false}
+                          grootte={240}
+                          onKies={(seg) => gaNaarCategorie(seg.sleutel ?? '', { maand, richting: 'in' })}
+                        />
+                        <TopDrie
+                          posten={perInkomsten}
+                          onAlles={() => gaNaarAnalyse('inkomst')}
+                          onKies={(sleutel) => gaNaarCategorie(sleutel, { maand, richting: 'in' })}
+                        />
                       </>
                     )}
                   </Kaart>
@@ -1530,6 +1624,7 @@ export function App() {
                   maand={maandJaarLabel(maand)}
                   categorieNaam={categorieNaam}
                   onGaNaarBudget={() => setPagina('budget')}
+                  onKies={(categorieId) => gaNaarCategorie(categorieId, { maand })}
                 />
               )}
             </div>
@@ -1546,12 +1641,19 @@ export function App() {
               <RecenteTransacties
                 transacties={transacties}
                 categorieen={categorieen}
-                onAlle={() => setPagina('transacties')}
+                onAlle={() => kiesPagina('transacties')}
+                onBewerk={setBewerkTransactie}
               />
 
               <Kaart
                 titel={t('Inkomsten en uitgaven per maand')}
-                bijschrift={t('De laatste zes maanden, met je gemiddelde als lijn.')}
+                // Het tijdvak staat er letterlijk bij. "De laatste zes maanden"
+                // klopte niet meer zodra je bovenaan terugbladerde: de grafiek
+                // schoof wél mee, het bijschrift niet.
+                bijschrift={t('{van} t.e.m. {tot}, met je gemiddelde als lijn.', {
+                  van: maandJaarLabel(`${maandPaar[0]?.maand ?? maand}-01`),
+                  tot: maandJaarLabel(`${maandPaar[maandPaar.length - 1]?.maand ?? maand}-01`),
+                })}
               >
                 <MaandGrafiek data={maandPaar} lopendeMaand={huidigeMaand()} />
               </Kaart>
@@ -1581,26 +1683,49 @@ export function App() {
               dezelfde popup, zodat er één vorm is om een boeking in te vullen. */}
           <ErrorBoundary naam="Transactielijst">
             <TransactieLijst
+              // Elke doorklik krijgt een nieuwe sleutel, zodat de lijst het nieuwe
+              // beginfilter écht overneemt in plaats van bij het eerste te blijven.
+              key={`tx-${txFilter?.nr ?? 0}`}
               transacties={transacties}
               categorieen={categorieen}
               rekeningen={rekeningen}
               gedeeldeKosten={gedeeldeKosten}
               garanties={garanties}
+              beginFilter={txFilter?.filter}
               onBewerk={setBewerkTransactie}
               onVerwijder={verwijder}
               onVerwijderMeerdere={verwijderMeerdere}
+              onGaNaarDossier={(dossierId) => {
+                setDossierTab('coouderschap')
+                setGekozenDossierId(dossierId)
+                setPagina('dossiers')
+              }}
+              onGaNaarGarantie={() => {
+                setDossierTab('garantie')
+                setPagina('dossiers')
+              }}
             />
           </ErrorBoundary>
         </>
       )}
 
       {pagina === 'analyse' && (
-        <ErrorBoundary naam="Analyse">
-          <AnalyseSectie
-            beginRichting={analyseRichting}
-            gezinsleden={kinderen} transacties={transacties} categorieen={categorieen} rekeningen={rekeningen} overboekingen={overboekingen}
-              waarderingen={waarderingen} terugkerendePosten={terugkerendePosten} />
-        </ErrorBoundary>
+        <>
+          <ErrorBoundary naam="Analyse">
+            <AnalyseSectie
+              beginRichting={analyseRichting}
+              ankerMaand={maand}
+              // De maandschakelaar staat sinds ronde 40 ook op deze pagina. De
+              // periodekaartjes ankeren erop; zonder de schakelaar zou de Analyse
+              // de keuze wel volgen maar kon je ze hier niet wijzigen.
+              maandNav={maandNav}
+              onGaNaarTransacties={gaNaarTransacties}
+              onBewerkTransactie={setBewerkTransactie}
+              onBoekVasteLast={boekVasteLastPerIdInMaand}
+              gezinsleden={kinderen} transacties={transacties} categorieen={categorieen} rekeningen={rekeningen} overboekingen={overboekingen}
+                waarderingen={waarderingen} terugkerendePosten={terugkerendePosten} />
+          </ErrorBoundary>
+        </>
       )}
 
       {pagina === 'budget' && (
@@ -1670,7 +1795,20 @@ export function App() {
                     return (
                       <li key={b.id} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-                          <span className="rij-titel">{naam}</span>
+                          {/* De naam is sinds ronde 40 een knop: een budgetregel
+                              zegt "€ 212 van € 300 verbruikt" en daar bleef het
+                              bij — welke boekingen die € 212 vormen zag je nergens. */}
+                          <button
+                            type="button"
+                            className="rij-titel tekstknop"
+                            aria-label={t('Bekijk de boekingen van {naam} — {bedrag}', {
+                              naam,
+                              bedrag: formatEuro(uitgegeven),
+                            })}
+                            onClick={() => gaNaarCategorie(b.categorieId, { maand })}
+                          >
+                            {naam}
+                          </button>
                           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span className="bedrag" style={{ color: 'var(--text-muted)' }}>
                               {formatEuro(uitgegeven)} / {formatEuro(b.bedrag)}
@@ -1730,7 +1868,13 @@ export function App() {
             naam="dossiers"
             label={t('Soort dossier')}
             actief={dossierTab}
-            onKies={setDossierTab}
+            // Zelf van lade wisselen wist het dossier dat via de badge "gedeeld"
+            // gekozen werd. Zonder dat sprong je na een omweg langs de leningen
+            // stil terug naar dát dossier in plaats van naar je eigen keuze.
+            onKies={(soort) => {
+              setGekozenDossierId(null)
+              setDossierTab(soort)
+            }}
             tabs={[
               { id: 'coouderschap', teken: '👨‍👧', label: t('Gedeelde kosten'), telling: dossiers.length },
               { id: 'lening', teken: '📄', label: t('Leningen'), telling: leningen.length },
@@ -1762,6 +1906,7 @@ export function App() {
                   onDocumentOpslaan={dossierDocumentOpslaan}
                   onDocumentVerwijderen={dossierDocumentVerwijderen}
                   onNieuweSubcategorie={voegSubcategorieToe}
+                  beginDossierId={gekozenDossierId}
                 />
               </ErrorBoundary>
             )}
@@ -2092,7 +2237,7 @@ export function App() {
     return (
       <CategorieVolgordeProvider volgorde={hoofdVolgorde}>
       <div style={{ display: 'flex', minHeight: '100vh' }}>
-        <Zijbalk actief={pagina} onKies={setPagina} verbonden={verbonden} bezig={bezig} statusTekst={statusTekst} />
+        <Zijbalk actief={pagina} onKies={kiesPagina} verbonden={verbonden} bezig={bezig} statusTekst={statusTekst} />
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <header
             style={{
@@ -2221,7 +2366,7 @@ export function App() {
       {/* De popup stond buiten elke foutvang: één fout in het invoerformulier
           legde daardoor de HELE app plat in plaats van alleen de popup. */}
       <ErrorBoundary naam="Boeking">{boekingLagen}</ErrorBoundary>
-      <OnderNavigatie actief={pagina} onKies={setPagina} onNieuweTransactie={nieuweTransactie} />
+      <OnderNavigatie actief={pagina} onKies={kiesPagina} onNieuweTransactie={nieuweTransactie} />
     </CategorieVolgordeProvider>
   )
 }

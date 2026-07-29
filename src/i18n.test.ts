@@ -35,6 +35,18 @@ describe('vertaaltabellen', () => {
     expect([...fr].filter((k) => !en.has(k))).toEqual([])
   })
 
+  it('vertaalt de nieuwe teksten van ronde 40', () => {
+    expect(vertaal('en', 'Bekijk in Transacties ›')).toBe('View in Transactions ›')
+    expect(vertaal('fr', 'Toon opbouw')).toBe('Afficher le détail')
+    expect(vertaal('en', 'Boek {naam} in', { naam: 'Rent' })).toBe('Record Rent')
+    expect(vertaal('fr', '{n} treffer(s) in {m} hoofdcategorie(ën)', { n: 3, m: 1 })).toBe(
+      '3 résultat(s) dans 1 catégorie(s) principale(s)',
+    )
+    expect(vertaal('en', '{label} — open het dossier van {oms}', { label: 'shared', oms: 'Colruyt' })).toBe(
+      'shared — open the case for Colruyt',
+    )
+  })
+
   it('vertaalt de nieuwe teksten van ronde 21', () => {
     expect(vertaal('en', 'Vaste last')).toBe('Fixed cost')
     expect(vertaal('fr', 'Sparen')).toBe('Épargner')

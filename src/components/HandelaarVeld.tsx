@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
+import { ZOEK_VANAF } from '../data/categorieen/zoek'
 
-const ZOEK_VANAF = 2
 const MAX = 6
 
 // Het zwevende suggestielijstje: crème vlak met zachte rand en een schaduw,

@@ -629,3 +629,75 @@ describe('TransactieLijst — badge voor een garantiebewijs', () => {
   })
 })
 
+
+// --- Ronde 40: de badges brengen je naar waar het dossier zit ------------------
+//
+// Ze zeiden tot nu toe alleen DÁT er een dossier of een garantiebewijs achter zat,
+// en lieten je zelf zoeken waar.
+
+describe('TransactieLijst — doorklikken vanaf een badge', () => {
+  const kost = {
+    id: 'k1',
+    dossierId: 'dos-1',
+    transactieId: '1',
+    omschrijving: 'Winkel',
+    bedrag: 1000,
+    betaaldDoor: 'jij' as const,
+    datum: recent,
+  }
+  const garantie: Garantie = { id: 'g1', product: 'Laptop', aankoopdatum: recent, garantieMaanden: 24, transactieId: '1' }
+
+  it('opent het juiste dossier vanaf de badge "gedeeld"', async () => {
+    const user = userEvent.setup()
+    const onGaNaarDossier = vi.fn()
+    toonUitgebreid([tx({ id: '1' })], { gedeeldeKosten: [kost], onGaNaarDossier })
+    await user.click(screen.getByRole('button', { name: 'gedeeld — open het dossier van Winkel' }))
+    expect(onGaNaarDossier).toHaveBeenCalledWith('dos-1')
+  })
+
+  it('opent het garantiebewijs vanaf de badge "garantie"', async () => {
+    const user = userEvent.setup()
+    const onGaNaarGarantie = vi.fn()
+    toonUitgebreid([tx({ id: '1' })], { garanties: [garantie], onGaNaarGarantie })
+    await user.click(screen.getByRole('button', { name: 'garantie — open het garantiebewijs van Winkel' }))
+    expect(onGaNaarGarantie).toHaveBeenCalledWith('g1')
+  })
+
+  it('blijft een gewoon label wanneer de app niet kan navigeren', () => {
+    toonUitgebreid([tx({ id: '1' })], { gedeeldeKosten: [kost], garanties: [garantie] })
+    expect(screen.getByText('gedeeld')).toBeInTheDocument()
+    expect(screen.getByText('garantie')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /open het dossier/ })).toBeNull()
+  })
+})
+
+// --- Ronde 40: het domeinfilter -----------------------------------------------
+
+describe('TransactieLijst — filter op besparingsdomein', () => {
+  const voeding = tx({ id: 'v', omschrijving: 'Colruyt', categorieId: 'i-brood--wit-9238', datum: recent })
+  const wonen = tx({ id: 'w', omschrijving: 'Huur', categorieId: 'ov-woning-en-vaste-lasten', datum: recent })
+
+  it('houdt bij een beginfilter alleen de boekingen van het domein over', () => {
+    toonUitgebreid([voeding, wonen], { beginFilter: { domein: 'boodschappen' } })
+    expect(screen.getByText('Colruyt')).toBeInTheDocument()
+    expect(screen.queryByText('Huur')).toBeNull()
+  })
+
+  it('zet het domein als chip, zodat je ziet waarop gefilterd is en het kan wissen', async () => {
+    const user = userEvent.setup()
+    toonUitgebreid([voeding, wonen], { beginFilter: { domein: 'boodschappen' } })
+    const chip = screen.getByRole('button', { name: 'Wis filter Boodschappen' })
+    await user.click(chip)
+    expect(await screen.findByText('Huur')).toBeInTheDocument()
+  })
+
+  it('toont bij een doorklik op een ITEM de naam van dat item in de chip, niet het kale id', () => {
+    toonUitgebreid([voeding], { beginFilter: { catId: 'i-brood--wit-9238' } })
+    expect(screen.getByRole('button', { name: 'Wis filter Brood (wit)' })).toBeInTheDocument()
+  })
+
+  it('klapt de filterlade open bij een doorklik, zodat de chips niet uit het niets komen', () => {
+    toonUitgebreid([voeding, wonen], { beginFilter: { domein: 'boodschappen' } })
+    expect(screen.getByRole('button', { name: /Zoeken en filteren · 1/ })).toBeInTheDocument()
+  })
+})

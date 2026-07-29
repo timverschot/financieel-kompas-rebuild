@@ -65,6 +65,15 @@ export type Vooruitblik = {
    * een maandelijkse handeling en mag geen navigatie naar een andere pagina kosten.
    */
   achterstalligeIds: string[]
+  /**
+   * De id's van de posten die deze maand nog moeten komen (de dag is nog niet
+   * voorbij) en nog niet geboekt zijn.
+   *
+   * Ronde 40: deze lijst bestond niet, alleen het AANTAL. Daardoor kon de regel
+   * "3 vaste lasten nog in te boeken deze maand" nergens heen — je las dat er
+   * drie openstonden en moest zelf naar de Plan-pagina om uit te zoeken welke.
+   */
+  komendeIds: string[]
   verwachteInkomsten: number
   verwachteUitgaven: number
   verwachtSaldo: number
@@ -261,6 +270,7 @@ export function maandVooruitblik(
   let achterstalligeUitgaven = 0
   let aantalAchterstallig = 0
   const achterstalligeIds: string[] = []
+  const komendeIds: string[] = []
   for (const p of posten) {
     if (geboekteposten.has(p.id)) continue
     if (isVoorbij(p.dag)) {
@@ -270,6 +280,7 @@ export function maandVooruitblik(
       else if (p.bedrag < 0) achterstalligeUitgaven += -p.bedrag
     } else {
       aantalKomend++
+      komendeIds.push(p.id)
       if (p.bedrag > 0) komendeInkomsten += p.bedrag
       else if (p.bedrag < 0) komendeUitgaven += -p.bedrag
     }
@@ -290,6 +301,7 @@ export function maandVooruitblik(
     aantalKomend,
     aantalAchterstallig,
     achterstalligeIds,
+    komendeIds,
     verwachteInkomsten,
     verwachteUitgaven,
     verwachtSaldo,

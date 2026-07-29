@@ -1,10 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { TerugkerendePost, Transactie } from '../data/schema'
 import { spaarquote, maandVooruitblik } from '../utils/vooruitblik'
 import type { Periode } from '../utils/analyse'
 import { formatEuro } from '../utils/format'
 import { Kaart, Leeg } from '../ui/basis'
-import { useT } from '../i18n'
+import { useT, type Vertaler } from '../i18n'
 import { huidigeMaand, vandaag, maandVoluit } from '../utils/datum'
 
 function kleurVanSaldo(saldo: number): string {
@@ -27,6 +27,89 @@ function Regel({ label, bedrag, teken }: { label: string; bedrag: number; teken:
   )
 }
 
+
+/**
+ * Eén telregel met de posten eronder, elk met een "Boek in"-knop.
+ *
+ * Zonder de knop was de regel een doodloper — je las dat er drie openstonden en
+ * moest dan zelf naar de Plan-pagina om uit te zoeken wélke.
+ *
+ * BUITEN `VooruitblikSectie` gedeclareerd, en dat is geen stijlkeuze: een functie
+ * die ín een component staat is bij elke render een nieuw componenttype, dus haalt
+ * React de hele subtree weg en bouwt hem opnieuw op. Wie met de tab-toets op de
+ * uitklapknop stond en Enter duwde, verloor daardoor de focus naar `<body>` — bij
+ * precies de knop die deze ronde toegankelijk moest maken.
+ */
+function TeBoeken({
+  t,
+  tekst,
+  posten,
+  maand,
+  open,
+  onWissel,
+  onBoekVasteLast,
+}: {
+  t: Vertaler
+  tekst: string
+  posten: TerugkerendePost[]
+  maand: string
+  open: boolean
+  onWissel: () => void
+  onBoekVasteLast?: (postId: string, maand: string) => void
+}) {
+  if (!onBoekVasteLast || posten.length === 0) {
+    return (
+      <p className="rij-meta" style={{ margin: 0 }}>
+        {tekst}
+      </p>
+    )
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <button
+        type="button"
+        className="knop knop-ghost knop-klein"
+        style={{ alignSelf: 'flex-start' }}
+        aria-expanded={open}
+        onClick={onWissel}
+      >
+        {tekst}{' '}
+        {/* Het driehoekje is puur een dubbeling van `aria-expanded`; het hoort
+            dus niet in de voorgelezen naam van de knop. */}
+        <span aria-hidden>{open ? '▾' : '▸'}</span>
+      </button>
+      {open && (
+        <ul className="lijst">
+          {posten.map((p) => (
+            <li key={p.id} className="rij">
+              <span className="rij-midden">
+                <span className="rij-titel">{p.omschrijving}</span>
+                <span className="rij-meta">{t('dag {dag}', { dag: p.dag })}</span>
+              </span>
+              <span className="bedrag">
+                {p.bedrag >= 0 ? '+' : '−'}
+                {formatEuro(Math.abs(p.bedrag))}
+              </span>
+              <span className="rij-acties">
+                <button
+                  type="button"
+                  className="knop knop-secundair knop-klein"
+                  // Drie keer "Boek in" in dezelfde lijst is voor een schermlezer
+                  // niet te onderscheiden; de naam van de post hoort erbij.
+                  aria-label={t('Boek {naam} in', { naam: p.omschrijving })}
+                  onClick={() => onBoekVasteLast(p.id, maand)}
+                >
+                  {t('Boek in')}
+                </button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 // "Vooruitblik & spaarquote": bovenaan de spaarquote over de gekozen periode
 // (hoeveel % van je inkomsten je overhield), daaronder een vooruitblik voor de
 // huidige maand die je nog niet ingeboekte vaste lasten meerekent.
@@ -35,13 +118,31 @@ export function VooruitblikSectie({
   terugkerendePosten,
   periode,
   periodeLabel,
+  maand: maandProp,
+  onBoekVasteLast,
 }: {
   transacties: Transactie[]
   terugkerendePosten: TerugkerendePost[]
   periode: Periode
   periodeLabel: string
+  /**
+   * Over welke maand de vooruitblik gaat ('JJJJ-MM'). Ronde 40: dit stond hard
+   * op de huidige maand, terwijl de rest van de pagina wél kon terugbladeren.
+   * Standaard blijft het de huidige maand.
+   *
+   * Let op: de DAG blijft altijd vandaag. Welke maand je bekijkt is iets anders
+   * dan welke dag het is — de scheiding tussen "nog te komen" en "achterstallig"
+   * hangt aan die dag.
+   */
+  maand?: string
+  /**
+   * Een vaste last hier meteen inboeken (ronde 40). Krijgt de maand mee die deze
+   * kaart toont, zodat er nooit stil in een andere maand geboekt wordt.
+   */
+  onBoekVasteLast?: (postId: string, maand: string) => void
 }) {
   const { t } = useT()
+  const [openLijst, setOpenLijst] = useState<'komend' | 'achterstallig' | null>(null)
 
   const sq = useMemo(() => spaarquote(transacties, periode), [transacties, periode])
 
@@ -50,7 +151,7 @@ export function VooruitblikSectie({
   // achterstallig zijn.
   const nu = new Date()
   const vandaagISO = vandaag(nu)
-  const maand = huidigeMaand(nu)
+  const maand = maandProp ?? huidigeMaand(nu)
   const maandNaam = maandVoluit(maand)
   const vb = useMemo(
     () => maandVooruitblik(transacties, terugkerendePosten, maand, vandaagISO),
@@ -59,6 +160,10 @@ export function VooruitblikSectie({
 
   // Balkje toont het overgehouden deel van de inkomsten (0–100%); negatief = leeg.
   const vulling = sq.quote === null ? 0 : Math.max(0, Math.min(100, sq.quote))
+
+  const postPerId = new Map(terugkerendePosten.map((p) => [p.id, p]))
+  const postenVan = (ids: string[]): TerugkerendePost[] =>
+    ids.map((id) => postPerId.get(id)).filter((p): p is TerugkerendePost => Boolean(p))
 
   return (
     <Kaart titel={t('Vooruitblik & spaarquote')}>
@@ -101,7 +206,7 @@ export function VooruitblikSectie({
             {formatEuro(Math.abs(vb.verwachtSaldo))}
           </span>
           <span className="rij-meta">
-            {t('verwacht deze maand')}
+            {t('verwacht in {maand}', { maand: maandNaam })}
             {vb.verwachteQuote !== null ? ` · ${procent(vb.verwachteQuote)} ${t('spaarquote')}` : ''}
           </span>
         </div>
@@ -125,14 +230,26 @@ export function VooruitblikSectie({
           )}
         </ul>
         {vb.aantalKomend > 0 && (
-          <p className="rij-meta" style={{ margin: 0 }}>
-            {t('{n} vaste last(en) nog in te boeken deze maand', { n: vb.aantalKomend })}
-          </p>
+          <TeBoeken
+            t={t}
+            tekst={t('{n} vaste last(en) nog in te boeken in {maand}', { n: vb.aantalKomend, maand: maandNaam })}
+            posten={postenVan(vb.komendeIds)}
+            maand={maand}
+            open={openLijst === 'komend'}
+            onWissel={() => setOpenLijst(openLijst === 'komend' ? null : 'komend')}
+            onBoekVasteLast={onBoekVasteLast}
+          />
         )}
         {vb.aantalAchterstallig > 0 && (
-          <p className="rij-meta" style={{ margin: 0 }}>
-            {t('{n} vaste last(en) achterstallig — de dag is voorbij', { n: vb.aantalAchterstallig })}
-          </p>
+          <TeBoeken
+            t={t}
+            tekst={t('{n} vaste last(en) achterstallig — de dag is voorbij', { n: vb.aantalAchterstallig })}
+            posten={postenVan(vb.achterstalligeIds)}
+            maand={maand}
+            open={openLijst === 'achterstallig'}
+            onWissel={() => setOpenLijst(openLijst === 'achterstallig' ? null : 'achterstallig')}
+            onBoekVasteLast={onBoekVasteLast}
+          />
         )}
         {/* Zonder ÉÉN vaste last stonden beide tellers op nul en meldde de app
             triomfantelijk dat alles ingeboekt was — terwijl je nog nooit een vaste
@@ -145,7 +262,7 @@ export function VooruitblikSectie({
           vb.aantalKomend === 0 &&
           vb.aantalAchterstallig === 0 && (
             <p className="rij-meta" style={{ margin: 0 }}>
-              {t('Alle vaste lasten voor deze maand zijn al ingeboekt')}
+              {t('Alle vaste lasten voor {maand} zijn al ingeboekt', { maand: maandNaam })}
             </p>
           )
         )}

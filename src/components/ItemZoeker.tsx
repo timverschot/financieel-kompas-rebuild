@@ -1,14 +1,13 @@
 import { useId, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
-import { zoekItems } from '../data/categorieen/zoek'
+import { zoekItems, ZOEK_VANAF } from '../data/categorieen/zoek'
 import type { PlatItem } from '../data/categorieen/zoek'
 import { groepVanCategorie } from '../data/categorieen/resolve'
 import type { Categorie } from '../data/schema'
 import { HoofdcategorieChips, NieuweSubcategoriePaneel } from './CategorieKiezer'
 import { useT } from '../i18n'
 
-const ZOEK_VANAF = 2
 const MAX = 8
 
 // Het zwevende voorstellenlijstje: crème vlak met zachte rand en een schaduw,

@@ -2,7 +2,20 @@
 // (fracties, cumulatieve hoeken, kleurtoewijzing) deterministisch getest kan
 // worden, apart van het tekenen.
 
-export type DonutInvoer = { naam: string; bedrag: number; kleur: string | null }
+export type DonutInvoer = {
+  naam: string
+  bedrag: number
+  kleur: string | null
+  /**
+   * De groepeersleutel achter deze schijf (meestal een hoofdcategorie-id).
+   *
+   * Optioneel, want niet elke donut heeft er een: de uitsplitsing per winkel
+   * groepeert op naam. Staat ze er wél, dan kan een klik op de schijf naar de
+   * onderliggende transacties leiden — zonder deze sleutel is een donutschijf
+   * een doodlopend beeld.
+   */
+  sleutel?: string
+}
 export type DonutSegment = {
   naam: string
   bedrag: number
@@ -10,6 +23,7 @@ export type DonutSegment = {
   fractie: number
   start: number // cumulatieve fractie waar het segment begint (0..1)
   eind: number // ... en eindigt (0..1)
+  sleutel?: string
 }
 
 // Terugvalkleuren voor groepen zonder eigen kleur (bv. eigen categorieën of
@@ -80,6 +94,7 @@ export function donutSegmenten(items: DonutInvoer[]): DonutSegment[] {
       fractie,
       start,
       eind: cum,
+      ...(it.sleutel === undefined ? {} : { sleutel: it.sleutel }),
     }
   })
 }
