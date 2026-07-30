@@ -333,6 +333,8 @@ export async function verwijderDossierMetAanhang(
     verrekeningIds?: string[]
     kindrekeningIds?: string[]
     kindrekeningpostIds?: string[]
+    onderhoudsbijdrageIds?: string[]
+    onderhoudsbetalingIds?: string[]
   } = {},
 ): Promise<void> {
   await pasGebeurtenissenToe([
@@ -343,6 +345,14 @@ export async function verwijderDossierMetAanhang(
       (p) => ({ type: 'kindrekeningpost.verwijderd', payload: { id: p } }) as const,
     ),
     ...(aanhang.kindrekeningIds ?? []).map((k) => ({ type: 'kindrekening.verwijderd', payload: { id: k } }) as const),
+    // De betalingen vóór de bijdrage: een betaling hangt aan een bijdrage, dus de
+    // omgekeerde volgorde zou halverwege een onderbreking weesbetalingen achterlaten.
+    ...(aanhang.onderhoudsbetalingIds ?? []).map(
+      (b) => ({ type: 'onderhoudsbetaling.verwijderd', payload: { id: b } }) as const,
+    ),
+    ...(aanhang.onderhoudsbijdrageIds ?? []).map(
+      (b) => ({ type: 'onderhoudsbijdrage.verwijderd', payload: { id: b } }) as const,
+    ),
   ])
 }
 

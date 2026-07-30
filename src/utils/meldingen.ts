@@ -1,7 +1,8 @@
-import type { Budget, Garantie, TerugkerendePost, Transactie } from '../data/schema'
+import type { Budget, Dossier, Garantie, Onderhoudsbijdrage, TerugkerendePost, Transactie } from '../data/schema'
 import { uitgavenInMaand } from './budget'
 import { garantieStatus } from './garantie'
 import { maandVooruitblik } from './vooruitblik'
+import { bouwOpbouw, laatsteAanpassing } from './onderhoudsbijdrage'
 import type { DossierSoort } from './dossiersoort'
 
 // De rekenkern achter het belletje in de bovenbalk.
@@ -23,10 +24,19 @@ export const BUDGETDREMPELS = [70, 75, 80, 85, 90, 95, 100]
 /** Een garantie die binnen zoveel dagen verloopt, wordt dringend. */
 const GARANTIE_DRINGEND_DAGEN = 14
 
+/**
+ * Hoe lang een indexatie van een onderhoudsbijdrage in het belletje blijft staan.
+ *
+ * De indexatie gebeurt in België van rechtswege op de verjaardag van de regeling,
+ * maar niemand past zijn overschrijving vanzelf aan. Twee maanden is ruim genoeg om
+ * het op te merken zonder dat de melding een jaar lang blijft hangen.
+ */
+const BIJDRAGE_VENSTER_DAGEN = 62
+
 /** Naar welke pagina een melding je brengt. Beide zijn geldige `Pagina`-waarden. */
 export type MeldingPagina = 'budget' | 'dossiers'
 
-export type MeldingSoort = 'budget-over' | 'budget-bijna' | 'garantie' | 'vastelast'
+export type MeldingSoort = 'budget-over' | 'budget-bijna' | 'garantie' | 'vastelast' | 'bijdrage'
 
 export type Melding = {
   /** Stabiele sleutel voor React, en handig om in een test te herkennen. */
@@ -42,6 +52,11 @@ export type Melding = {
    * staan waar hij stond.
    */
   subtab?: DossierSoort
+  /**
+   * Welk dossier geopend moet worden. Zonder dit belandde je op de dossierpagina
+   * met een ánder dossier open dan het dossier waarover de melding gaat.
+   */
+  dossierId?: string
   /** Dringend = rood; anders amber. */
   dringend: boolean
   /**
@@ -66,6 +81,18 @@ export type MeldingenInvoer = {
   drempel?: number
   /** Zet een categorie-id om in een leesbare naam. */
   naamVanCategorie: (id: string) => string
+  /** De onderhoudsbijdragen; leeg wanneer er geen dossier met een regeling is. */
+  onderhoudsbijdragen?: Onderhoudsbijdrage[]
+  /** Alleen om de naam van het dossier in de melding te kunnen zetten. */
+  dossiers?: Dossier[]
+  /**
+   * Hoe een bedrag in centen op het scherm hoort te staan.
+   *
+   * Meegegeven in plaats van hier `formatEuro` te importeren, omdat deze module
+   * zuiver blijft: ze bouwt sleutels en parameters, ze kiest geen opmaak. Ontbreekt
+   * hij, dan staat er het kale centengetal — zichtbaar fout in plaats van stil fout.
+   */
+  formatBedrag?: (centen: number) => string
 }
 
 // Dringende meldingen eerst, daarna in een vaste volgorde per soort. Zo springt
@@ -73,8 +100,17 @@ export type MeldingenInvoer = {
 const SOORT_ORDE: Record<MeldingSoort, number> = {
   'budget-over': 0,
   'vastelast': 1,
-  'garantie': 2,
-  'budget-bijna': 3,
+  'bijdrage': 2,
+  'garantie': 3,
+  'budget-bijna': 4,
+}
+
+/** Het aantal hele dagen tussen twee datums in 'JJJJ-MM-DD'. */
+function dagenTussen(vanISO: string, totISO: string): number {
+  const van = Date.parse(`${vanISO}T00:00:00Z`)
+  const tot = Date.parse(`${totISO}T00:00:00Z`)
+  if (!Number.isFinite(van) || !Number.isFinite(tot)) return 0
+  return Math.round((tot - van) / 86_400_000)
 }
 
 export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
@@ -159,6 +195,92 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
         actie: { soort: 'boek-vastelast', postId: post.id },
       })
     }
+  }
+
+  // --- Onderhoudsbijdragen die geïndexeerd zijn ---
+  //
+  // De aanpassing gebeurt van rechtswege, maar een doorlopende opdracht bij de bank
+  // past zichzelf niet aan. Zonder deze melding moest je er zelf aan denken én zelf
+  // naar het dossier gaan kijken.
+  for (const bijdrage of invoer.onderhoudsbijdragen ?? []) {
+    if (bijdrage.geindexeerd === false) continue
+    // Een regeling die afgelopen is, indexeert niet meer.
+    if (bijdrage.eindDatum !== undefined && bijdrage.eindDatum < invoer.vandaagISO) continue
+
+    const opbouw = bouwOpbouw(
+      {
+        basisbedrag: bijdrage.basisbedrag,
+        datumRegeling: bijdrage.datumRegeling,
+        geindexeerd: bijdrage.geindexeerd,
+        aanvangsindexHandmatig: bijdrage.aanvangsindexHandmatig,
+        eigenIndexcijfers: bijdrage.eigenIndexcijfers,
+        eindDatum: bijdrage.eindDatum,
+      },
+      invoer.vandaagISO,
+    )
+    const laatsteStap = opbouw.stappen[opbouw.stappen.length - 1]
+    if (!laatsteStap) continue
+    const dagenGeleden = dagenTussen(laatsteStap.datum, invoer.vandaagISO)
+    if (dagenGeleden < 0 || dagenGeleden > BIJDRAGE_VENSTER_DAGEN) continue
+
+    // Een bijdrage waarvan het dossier niet meer bestaat, is een weesrecord: de
+    // melding zou een lege naam tonen en je naar een dossier brengen dat er niet is.
+    const dossier = invoer.dossiers?.find((d) => d.id === bijdrage.dossierId)
+    if (invoer.dossiers !== undefined && dossier === undefined) continue
+    const naam = dossier?.naam ?? ''
+    const gemeen = {
+      pagina: 'dossiers' as const,
+      subtab: 'coouderschap' as const,
+      dossierId: bijdrage.dossierId,
+      dringend: false,
+    }
+
+    // Wachten op een indexcijfer is iets anders dan een aanpassing die er is: in het
+    // eerste geval kan je zélf iets doen (het cijfer bijzetten), in het tweede moet
+    // je je overschrijving aanpassen. Eén melding voor allebei zou het verschil
+    // wegpoetsen.
+    // Een stap is óók 'niet berekend' wanneer alleen de AANVANGSINDEX ontbreekt. Dan
+    // is de maand van deze verjaardag niet het probleem, en zou de melding jaar na
+    // jaar een maand noemen die de app wél kent. Die twee gevallen dus apart.
+    if (opbouw.aanvangsindex === null) {
+      uit.push({
+        id: `bijdrage-aanvang-${bijdrage.id}`,
+        soort: 'bijdrage',
+        sleutel: 'De onderhoudsbijdrage van {dossier} kan niet geïndexeerd worden: de app kent geen aanvangsindex voor {maand}. Vul ze in bij de regeling, zoals ze in de akte staat.',
+        params: { dossier: naam, maand: opbouw.aanvangsmaand },
+        ...gemeen,
+      })
+      continue
+    }
+    if (!laatsteStap.berekend) {
+      uit.push({
+        id: `bijdrage-wacht-${bijdrage.id}`,
+        soort: 'bijdrage',
+        sleutel: 'De onderhoudsbijdrage van {dossier} moest op {datum} geïndexeerd worden, maar het indexcijfer van {maand} is nog niet bekend.',
+        params: { dossier: naam, datum: laatsteStap.datum, maand: laatsteStap.indexmaand },
+        ...gemeen,
+      })
+      continue
+    }
+
+    const vorige = laatsteAanpassing(opbouw, bijdrage.basisbedrag)
+    // Geen verschil met het vorige bedrag betekent geen nieuws.
+    if (vorige === null || vorige.datum !== laatsteStap.datum) continue
+    const ervoor = opbouw.stappen.filter((st) => st.berekend && st.datum < laatsteStap.datum)
+    const oudBedrag = ervoor.length > 0 ? ervoor[ervoor.length - 1].bedrag : bijdrage.basisbedrag
+
+    uit.push({
+      id: `bijdrage-${bijdrage.id}`,
+      soort: 'bijdrage',
+      sleutel: 'De onderhoudsbijdrage van {dossier} is sinds {datum} geïndexeerd: van {oud} naar {nieuw} per maand.',
+      params: {
+        dossier: naam,
+        datum: laatsteStap.datum,
+        oud: (invoer.formatBedrag ?? String)(oudBedrag),
+        nieuw: (invoer.formatBedrag ?? String)(laatsteStap.bedrag),
+      },
+      ...gemeen,
+    })
   }
 
   return uit.sort((a, b) => {

@@ -2,8 +2,8 @@ import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Overboeking, Rekening, Transactie, Waardering } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
-import { rekeningLabel } from '../utils/rekening'
-import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
+import { rekeningLabel, rekeningStandTekst } from '../utils/rekening'
+import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { saldoVanRekening } from '../utils/saldo'
 import { useT } from '../i18n'
 import { vandaag } from '../utils/datum'
@@ -48,7 +48,7 @@ export function OverboekingFormulier({
   const { t } = useT()
   // Naam + saldo van vandaag, zodat de keuzelijsten tonen wat er op elke rekening staat.
   const label = (r: Rekening) =>
-    `${rekeningLabel(r)} — ${formatEuro(saldoVanRekening(r, transacties, overboekingen, waarderingen, vandaag()))}`
+    `${rekeningLabel(r)} — ${rekeningStandTekst(t, r, saldoVanRekening(r, transacties, overboekingen, waarderingen, vandaag()))}`
   const [vanId, setVanId] = useState('')
   const [naarId, setNaarId] = useState('')
   const [bedrag, setBedrag] = useState('')

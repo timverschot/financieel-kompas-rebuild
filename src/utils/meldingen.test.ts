@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import type { Budget, Garantie, TerugkerendePost, Transactie } from '../data/schema'
+import type { Budget, Dossier, Garantie, Onderhoudsbijdrage, TerugkerendePost, Transactie } from '../data/schema'
 import { bouwMeldingen, STANDAARD_BUDGETDREMPEL } from './meldingen'
 import { budgetKleur } from './budget'
+import { formatEuro } from './format'
 
 const naamVanCategorie = (id: string) => (id === 'ov-voeding' ? 'Voeding' : id)
 
@@ -233,5 +234,130 @@ describe('bouwMeldingen — een gestopte vaste last (ronde 38)', () => {
     const meldingen = basis({ terugkerendePosten: [gestopt] })
     expect(meldingen.some((m) => m.actie?.postId === 'weg')).toBe(false)
     expect(meldingen.some((m) => JSON.stringify(m.params ?? {}).includes('Netflix'))).toBe(false)
+  })
+})
+
+describe('bouwMeldingen — de onderhoudsbijdrage', () => {
+  // De regeling van 15 september 2021: de verjaardag van 2025 valt op 15-09-2025.
+  const bijdrage: Onderhoudsbijdrage = {
+    id: 'ob1',
+    dossierId: 'd1',
+    richting: 'jij-ontvangt',
+    basisbedrag: 25000,
+    datumRegeling: '2021-09-15',
+  }
+  const dossiers: Dossier[] = [{ id: 'd1', naam: 'Kinderen', aandeelJij: 60 }]
+  const bel = (extra: Record<string, unknown> = {}, vandaag = '2025-09-20') =>
+    basis({ onderhoudsbijdragen: [bijdrage], dossiers, vandaagISO: vandaag, formatBedrag: formatEuro, ...extra })
+
+  it('meldt een indexatie die net gebeurd is, met het oude en het nieuwe bedrag', () => {
+    // Van rechtswege aangepast, maar een doorlopende opdracht past zichzelf niet aan.
+    const m = bel().filter((x) => x.soort === 'bijdrage')
+    expect(m).toHaveLength(1)
+    expect(m[0].params?.dossier).toBe('Kinderen')
+    expect(m[0].params?.datum).toBe('2025-09-15')
+    expect(m[0].params?.oud).toBe(formatEuro(29479))
+    expect(m[0].params?.nieuw).toBe(formatEuro(30078))
+    expect(m[0].dringend).toBe(false)
+  })
+
+  it('brengt je naar het juiste dossier, niet enkel naar de pagina', () => {
+    const m = bel().find((x) => x.soort === 'bijdrage')
+    expect(m?.pagina).toBe('dossiers')
+    expect(m?.subtab).toBe('coouderschap')
+    expect(m?.dossierId).toBe('d1')
+  })
+
+  it('zwijgt wanneer de aanpassing al maanden geleden is', () => {
+    expect(bel({}, '2026-07-30').filter((x) => x.soort === 'bijdrage')).toHaveLength(0)
+  })
+
+  it('zwijgt wanneer de regeling indexatie uitsluit', () => {
+    const zonder = { ...bijdrage, geindexeerd: false }
+    expect(bel({ onderhoudsbijdragen: [zonder] }).filter((x) => x.soort === 'bijdrage')).toHaveLength(0)
+  })
+
+  it('zwijgt wanneer de regeling al afgelopen is', () => {
+    const gestopt = { ...bijdrage, eindDatum: '2024-12-31' }
+    expect(bel({ onderhoudsbijdragen: [gestopt] }).filter((x) => x.soort === 'bijdrage')).toHaveLength(0)
+  })
+
+  it('zwijgt wanneer er nog geen verjaardag geweest is', () => {
+    const nieuw = { ...bijdrage, datumRegeling: '2025-09-01' }
+    expect(bel({ onderhoudsbijdragen: [nieuw] }, '2025-09-20').filter((x) => x.soort === 'bijdrage')).toHaveLength(0)
+  })
+
+  it('zegt het apart wanneer het indexcijfer van die maand nog ontbreekt', () => {
+    // Dan kan je zélf iets doen — het cijfer bijzetten — in plaats van je
+    // overschrijving aan te passen. Eén melding voor allebei poetst dat verschil weg.
+    const wacht = { ...bijdrage, datumRegeling: '2021-08-10' }
+    const m = bel({ onderhoudsbijdragen: [wacht] }, '2026-08-20').filter((x) => x.soort === 'bijdrage')
+    expect(m).toHaveLength(1)
+    expect(m[0].id).toContain('wacht')
+    expect(m[0].sleutel).toContain('nog niet bekend')
+  })
+
+  it('draait ook zonder bijdragen, zoals voorheen', () => {
+    expect(basis()).toHaveLength(0)
+  })
+})
+
+describe('bouwMeldingen — de onderhoudsbijdrage, de randgevallen', () => {
+  const dossiers: Dossier[] = [{ id: 'd1', naam: 'Kinderen', aandeelJij: 60 }]
+  const maak = (extra: Partial<Onderhoudsbijdrage>): Onderhoudsbijdrage => ({
+    id: 'ob1',
+    dossierId: 'd1',
+    richting: 'jij-ontvangt',
+    basisbedrag: 25000,
+    datumRegeling: '2021-09-15',
+    ...extra,
+  })
+  const bel = (b: Onderhoudsbijdrage, vandaag: string, ds: Dossier[] | undefined = dossiers) =>
+    basis({ onderhoudsbijdragen: [b], dossiers: ds, vandaagISO: vandaag, formatBedrag: formatEuro }).filter(
+      (m) => m.soort === 'bijdrage',
+    )
+
+  it('zwijgt over een bijdrage waarvan het dossier niet meer bestaat', () => {
+    // Anders staat er "De onderhoudsbijdrage van  is …" met een klik die je in een
+    // willekeurig ander dossier laat landen.
+    expect(bel(maak({}), '2025-09-20', [])).toHaveLength(0)
+  })
+
+  it('meldt op de dag van de verjaardag zelf', () => {
+    expect(bel(maak({}), '2025-09-15')).toHaveLength(1)
+  })
+
+  it('houdt het venster op 62 dagen', () => {
+    // 62 dagen na 15 september 2025 is 16 november; 63 dagen is 17 november.
+    expect(bel(maak({}), '2025-11-16')).toHaveLength(1)
+    expect(bel(maak({}), '2025-11-17')).toHaveLength(0)
+  })
+
+  it('noemt bij een ontbrekend cijfer de maand van de INDEX, niet die van de verjaardag', () => {
+    // De verjaardag valt in augustus; het cijfer dat ontbreekt is dat van juli.
+    const m = bel(maak({ datumRegeling: '2021-08-10' }), '2026-08-20')
+    expect(m).toHaveLength(1)
+    expect(m[0].params?.maand).toBe('2026-07')
+    expect(m[0].params?.datum).toBe('2026-08-10')
+  })
+
+  it('zegt het apart wanneer de aanvangsindex zelf onbekend is', () => {
+    // Een vonnis van vóór de reeks. Dan is élke stap onberekend, en zou de melding
+    // jaar na jaar een maand noemen die de app wél kent.
+    const m = bel(maak({ datumRegeling: '2010-05-15' }), '2026-05-20')
+    expect(m).toHaveLength(1)
+    expect(m[0].id).toContain('aanvang')
+    expect(m[0].params?.maand).toBe('2010-04')
+  })
+
+  it('geeft twee bijdragen elk hun eigen melding', () => {
+    const twee = basis({
+      onderhoudsbijdragen: [maak({}), maak({ id: 'ob2', dossierId: 'd2' })],
+      dossiers: [...dossiers, { id: 'd2', naam: 'Tweede', aandeelJij: 50 }],
+      vandaagISO: '2025-09-20',
+      formatBedrag: formatEuro,
+    }).filter((m) => m.soort === 'bijdrage')
+    expect(twee).toHaveLength(2)
+    expect(new Set(twee.map((m) => m.id)).size).toBe(2)
   })
 })

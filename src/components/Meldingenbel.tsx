@@ -59,7 +59,7 @@ export function Meldingenbel({
    * De tweede parameter zegt welke lade op die pagina open moet (de Dossiers-pagina
    * heeft er drie). Ontbreekt ze, dan verandert er niets aan de lade.
    */
-  onGaNaar: (pagina: MeldingPagina, subtab?: DossierSoort) => void
+  onGaNaar: (pagina: MeldingPagina, subtab?: DossierSoort, dossierId?: string) => void
   /**
    * Een vaste last meteen inboeken vanuit het paneel. Zonder deze prop gedraagt de
    * bel zich zoals voorheen: elke melding brengt je enkel naar een pagina.
@@ -85,9 +85,9 @@ export function Meldingenbel({
     return () => document.removeEventListener('keydown', opToets)
   }, [open])
 
-  function kies(pagina: MeldingPagina, subtab?: DossierSoort) {
+  function kies(pagina: MeldingPagina, subtab?: DossierSoort, dossierId?: string) {
     setOpen(false)
-    onGaNaar(pagina, subtab)
+    onGaNaar(pagina, subtab, dossierId)
   }
 
   function boek(postId: string) {
@@ -166,7 +166,7 @@ export function Meldingenbel({
                           knop in een knop bestaat niet in HTML. */}
                       <button
                         type="button"
-                        onClick={() => kies(m.pagina, m.subtab)}
+                        onClick={() => kies(m.pagina, m.subtab, m.dossierId)}
                         style={{ ...meldingKnop, borderBottom: 'none', flex: 1, minWidth: 0 }}
                       >
                         <span

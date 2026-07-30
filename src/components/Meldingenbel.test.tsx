@@ -60,7 +60,9 @@ describe('Meldingenbel', () => {
     await user.click(screen.getByText('Garantie op Koffiezet verloopt binnen 9 dag(en)'))
     // Niet alleen de pagina, ook de lade: anders land je op de gedeelde kosten en
     // mag je zelf gaan zoeken waar die aflopende garantie staat.
-    expect(onGaNaar).toHaveBeenCalledWith('dossiers', 'garantie')
+    // De derde parameter is het dossier dat geopend moet worden; een garantie
+    // hangt niet aan één dossier, dus die blijft leeg.
+    expect(onGaNaar).toHaveBeenCalledWith('dossiers', 'garantie', undefined)
   })
 
   it('sluit het paneel na een keuze', async () => {
@@ -127,5 +129,31 @@ describe('Meldingenbel — een vaste last meteen inboeken', () => {
     const knop = screen.getByRole('button', { name: 'Meldingen' })
     expect(knop.querySelector('.bel-teller')).toBeNull()
     expect(knop.className).not.toContain('bel-actief')
+  })
+})
+
+describe('Meldingenbel — een melding met een dossier', () => {
+  it('geeft het dossier mee, zodat je niet in een ander dossier landt', async () => {
+    const user = userEvent.setup()
+    const onGaNaar = vi.fn()
+    render(
+      <Meldingenbel
+        meldingen={[
+          {
+            id: 'bijdrage-ob1',
+            soort: 'bijdrage',
+            sleutel: 'De bijdrage is geïndexeerd',
+            pagina: 'dossiers',
+            subtab: 'coouderschap',
+            dossierId: 'd7',
+            dringend: false,
+          },
+        ]}
+        onGaNaar={onGaNaar}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: /Meldingen/ }))
+    await user.click(screen.getByText('De bijdrage is geïndexeerd'))
+    expect(onGaNaar).toHaveBeenCalledWith('dossiers', 'coouderschap', 'd7')
   })
 })

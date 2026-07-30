@@ -210,6 +210,35 @@ const en: Record<string, string> = {
   'Luisterboeken': 'Audiobooks',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Note: the transactions up to and including {datum} are already part of the value you recorded then. They still count below, but no longer in the balance at the top.',
   'geldt nu': 'in effect',
+  // De indexatiehulp die haar uitkomst kan bewaren
+  'Vier kleine rekenmachines die live meerekenen. De indexatiehulp kan haar uitkomst ook als lopende regeling in een dossier bewaren.':
+    'Four small calculators that update as you type. The indexation helper can also store its result as an ongoing arrangement in a case.',
+  'Bewaar als onderhoudsbijdrage': 'Save as a maintenance contribution',
+  'Bewaar in dossier': 'Save to case',
+  'In welk dossier': 'In which case',
+  'Het basisbedrag en de aanvangsindex gaan mee. Het nieuwe indexcijfer niet: dat hoort bij één bepaalde maand, en in je dossier zoekt de app dat voortaan zelf op.':
+    'The base amount and the starting index carry over. The new index figure does not: it belongs to one particular month, and in your case the app looks that up itself from now on.',
+  'Bewaard in {dossier}. De app indexeert dit voortaan zelf op de verjaardag van de regeling.':
+    'Saved in {dossier}. From now on the app indexes this itself on the anniversary of the arrangement.',
+  'Bewaren is niet gelukt. Probeer het opnieuw.': 'Saving failed. Please try again.',
+  'Let op: voor {maand} kent de app zelf het cijfer {kent}, terwijl jij {getikt} intikte. Jouw cijfer wordt bewaard als "zoals ze in de akte staat". Komt het uit een ouder basisjaar, dan geven de volgende berekeningen een bedrag dat er juist uitziet en het niet is.':
+    'Note: for {maand} the app itself has the figure {kent}, while you entered {getikt}. Your figure is stored as "as it appears in the deed". If it comes from an older base year, the calculations that follow will give an amount that looks right and is not.',
+  'Wil je dit als lopende regeling bijhouden, maak dan eerst een dossier aan bij Dossiers.':
+    'If you want to track this as an ongoing arrangement, first create a case under Cases.',
+  'Al je dossiers hebben al een onderhoudsbijdrage. Pas ze daar aan in plaats van hier een tweede te maken.':
+    'All your cases already have a maintenance contribution. Change it there instead of creating a second one here.',
+  'Vul de datum van het vonnis of de overeenkomst in: die bepaalt op welke dag er elk jaar geïndexeerd wordt.':
+    'Fill in the date of the court order or agreement: it determines the day of the annual indexation.',
+  // Onderhoudsbijdrage — de melding in het belletje
+  'De onderhoudsbijdrage van {dossier} is sinds {datum} geïndexeerd: van {oud} naar {nieuw} per maand.':
+    'The maintenance contribution for {dossier} has been indexed since {datum}: from {oud} to {nieuw} per month.',
+  'De onderhoudsbijdrage van {dossier} moest op {datum} geïndexeerd worden, maar het indexcijfer van {maand} is nog niet bekend.':
+    'The maintenance contribution for {dossier} was due for indexation on {datum}, but the index figure for {maand} is not known yet.',
+  'De onderhoudsbijdrage van {dossier} kan niet geïndexeerd worden: de app kent geen aanvangsindex voor {maand}. Vul ze in bij de regeling, zoals ze in de akte staat.':
+    'The maintenance contribution for {dossier} cannot be indexed: the app has no starting index for {maand}. Enter it in the arrangement, as it appears in the deed.',
+  '{bedrag} open': '{bedrag} outstanding',
+  '{bedrag} tegoed': '{bedrag} credit',
+  'niets open': 'nothing outstanding',
   // Kredietkaart (ronde 43)
   'Afsluitdag van de kaart': 'Card statement day',
   'De dag waarop je kaartrekening wordt opgemaakt. Vanaf de dag erna loopt de volgende periode.':
@@ -1937,6 +1966,35 @@ const fr: Record<string, string> = {
   'Luisterboeken': 'Livres audio',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Attention : les opérations jusqu’au {datum} inclus sont déjà comprises dans la valeur que tu as enregistrée alors. Elles comptent encore ci-dessous, mais plus dans le solde en haut.',
   'geldt nu': 'en vigueur',
+  // L’aide à l’indexation qui peut enregistrer son résultat
+  'Vier kleine rekenmachines die live meerekenen. De indexatiehulp kan haar uitkomst ook als lopende regeling in een dossier bewaren.':
+    'Quatre petites calculatrices qui se mettent à jour au fil de la saisie. L’aide à l’indexation peut aussi enregistrer son résultat comme accord en cours dans un dossier.',
+  'Bewaar als onderhoudsbijdrage': 'Enregistrer comme contribution alimentaire',
+  'Bewaar in dossier': 'Enregistrer dans le dossier',
+  'In welk dossier': 'Dans quel dossier',
+  'Het basisbedrag en de aanvangsindex gaan mee. Het nieuwe indexcijfer niet: dat hoort bij één bepaalde maand, en in je dossier zoekt de app dat voortaan zelf op.':
+    'Le montant de base et l’indice de départ sont repris. Le nouvel indice non : il correspond à un mois précis, et dans ton dossier l’application le recherche désormais elle-même.',
+  'Bewaard in {dossier}. De app indexeert dit voortaan zelf op de verjaardag van de regeling.':
+    'Enregistré dans {dossier}. L’application indexera désormais elle-même à la date anniversaire de l’accord.',
+  'Bewaren is niet gelukt. Probeer het opnieuw.': 'L’enregistrement a échoué. Réessaie.',
+  'Let op: voor {maand} kent de app zelf het cijfer {kent}, terwijl jij {getikt} intikte. Jouw cijfer wordt bewaard als "zoals ze in de akte staat". Komt het uit een ouder basisjaar, dan geven de volgende berekeningen een bedrag dat er juist uitziet en het niet is.':
+    'Attention : pour {maand}, l’application connaît elle-même l’indice {kent}, alors que tu as encodé {getikt}. Ton chiffre est enregistré comme « tel qu’il figure dans l’acte ». S’il provient d’une année de base plus ancienne, les calculs suivants donneront un montant qui paraît correct sans l’être.',
+  'Wil je dit als lopende regeling bijhouden, maak dan eerst een dossier aan bij Dossiers.':
+    'Si tu veux suivre cela comme un accord en cours, crée d’abord un dossier sous Dossiers.',
+  'Al je dossiers hebben al een onderhoudsbijdrage. Pas ze daar aan in plaats van hier een tweede te maken.':
+    'Tous tes dossiers ont déjà une contribution alimentaire. Modifie-la là plutôt que d’en créer une deuxième ici.',
+  'Vul de datum van het vonnis of de overeenkomst in: die bepaalt op welke dag er elk jaar geïndexeerd wordt.':
+    'Indique la date du jugement ou de la convention : elle détermine le jour de l’indexation annuelle.',
+  // Contribution alimentaire — la notification de la cloche
+  'De onderhoudsbijdrage van {dossier} is sinds {datum} geïndexeerd: van {oud} naar {nieuw} per maand.':
+    'La contribution alimentaire de {dossier} est indexée depuis le {datum} : de {oud} à {nieuw} par mois.',
+  'De onderhoudsbijdrage van {dossier} moest op {datum} geïndexeerd worden, maar het indexcijfer van {maand} is nog niet bekend.':
+    'La contribution alimentaire de {dossier} devait être indexée le {datum}, mais l’indice de {maand} n’est pas encore connu.',
+  'De onderhoudsbijdrage van {dossier} kan niet geïndexeerd worden: de app kent geen aanvangsindex voor {maand}. Vul ze in bij de regeling, zoals ze in de akte staat.':
+    'La contribution alimentaire de {dossier} ne peut pas être indexée : l’application n’a pas d’indice de départ pour {maand}. Encode-le dans l’accord, tel qu’il figure dans l’acte.',
+  '{bedrag} open': '{bedrag} dû',
+  '{bedrag} tegoed': '{bedrag} d’avoir',
+  'niets open': 'rien de dû',
   // Carte de crédit (ronde 43)
   'Afsluitdag van de kaart': 'Jour d’arrêté de la carte',
   'De dag waarop je kaartrekening wordt opgemaakt. Vanaf de dag erna loopt de volgende periode.':

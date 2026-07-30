@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import type { Rekening } from '../data/schema'
-import { nummerStaart, rekeningLabel } from './rekening'
+import { nummerStaart, rekeningLabel, rekeningStandTekst } from './rekening'
+import { formatEuro } from './format'
+import { vertaal } from '../i18n'
 
 const basis: Rekening = { id: 'r1', naam: 'Betaalrekening', beginsaldo: 0 }
 
@@ -43,5 +45,29 @@ describe('rekeningLabel', () => {
   it('toont nooit het volledige rekeningnummer', () => {
     const r: Rekening = { ...basis, rekeningnummer: 'BE68539007547034' }
     expect(rekeningLabel(r)).not.toContain('BE68')
+  })
+})
+
+describe('rekeningStandTekst', () => {
+  const t = (s: string, p?: Record<string, string | number>) => vertaal('nl', s, p)
+  const kaart: Rekening = { id: 'k1', naam: 'Mastercard', type: 'krediet', beginsaldo: 0 }
+
+  it('laat een gewone rekening gewoon haar bedrag houden', () => {
+    const zicht: Rekening = { id: 'r1', naam: 'Zicht', type: 'betaal', beginsaldo: 0 }
+    expect(rekeningStandTekst(t, zicht, -12345)).toBe(formatEuro(-12345))
+    expect(rekeningStandTekst(t, zicht, 12345)).toBe(formatEuro(12345))
+  })
+
+  it('zegt bij een kaart wat er openstaat in plaats van een negatief saldo', () => {
+    // "€ -1.631,00" in een keuzelijst leest als een fout, niet als een schuld.
+    expect(rekeningStandTekst(t, kaart, -163100)).toBe(`${formatEuro(163100)} open`)
+  })
+
+  it('benoemt een tegoed op een kaart als tegoed', () => {
+    expect(rekeningStandTekst(t, kaart, 5000)).toBe(`${formatEuro(5000)} tegoed`)
+  })
+
+  it('zegt bij nul dat er niets openstaat', () => {
+    expect(rekeningStandTekst(t, kaart, 0)).toBe('niets open')
   })
 })

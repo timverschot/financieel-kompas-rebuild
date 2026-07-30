@@ -819,6 +819,14 @@ export function App() {
     const oudeKindrekeningposten = kindrekeningposten.filter((p) =>
       oudeKindrekeningen.some((k) => k.id === p.kindrekeningId),
     )
+    // Sinds ronde 42 hangt er ook een onderhoudsbijdrage aan een dossier. Bleef die
+    // staan, dan verscheen er na het verwijderen een melding in het belletje over een
+    // dossier dat niet meer bestaat — met een lege naam en een klik die nergens
+    // naartoe leidt.
+    const oudeBijdragen = onderhoudsbijdragen.filter((b) => b.dossierId === id)
+    const oudeBetalingen = onderhoudsbetalingen.filter((b) =>
+      oudeBijdragen.some((x) => x.id === b.bijdrageId),
+    )
     // In één ondeelbare stap: ofwel verdwijnt alles, ofwel niets. Zie de uitleg
     // bij verwijderDossierMetAanhang — losse stappen lieten bij een onderbreking
     // onzichtbare weeskosten achter die wél meesynchroniseerden.
@@ -827,6 +835,8 @@ export function App() {
       verrekeningIds: oudeVerrekeningen.map((v) => v.id),
       kindrekeningIds: oudeKindrekeningen.map((k) => k.id),
       kindrekeningpostIds: oudeKindrekeningposten.map((p) => p.id),
+      onderhoudsbijdrageIds: oudeBijdragen.map((b) => b.id),
+      onderhoudsbetalingIds: oudeBetalingen.map((b) => b.id),
     })
     await herlaad()
     if (oud) {
@@ -836,6 +846,8 @@ export function App() {
         for (const v of oudeVerrekeningen) await bewaarVerrekening(v)
         for (const k of oudeKindrekeningen) await bewaarKindrekening(k)
         for (const p of oudeKindrekeningposten) await bewaarKindrekeningpost(p)
+        for (const b of oudeBijdragen) await bewaarOnderhoudsbijdrage(b)
+        for (const b of oudeBetalingen) await bewaarOnderhoudsbetaling(b)
       })
     }
   }
@@ -1322,6 +1334,9 @@ export function App() {
     vandaagISO: vandaag(),
     drempel: budgetDrempel,
     naamVanCategorie: (id) => labelVanCategorie(id, categorieen) ?? t('Geen categorie'),
+    onderhoudsbijdragen,
+    dossiers,
+    formatBedrag: formatEuro,
   })
 
   // Eén vooruitblik voor de Plan-pagina: zowel de verwachte als de al geboekte
@@ -1487,9 +1502,12 @@ export function App() {
   // Een melding brengt je naar een pagina, en bij de Dossiers-pagina ook naar de
   // juiste lade: een aflopende garantie hoort je bij de garanties te zetten, niet
   // bij de gedeelde kosten.
-  function gaNaarMelding(doel: Pagina, subtab?: DossierSoort) {
+  function gaNaarMelding(doel: Pagina, subtab?: DossierSoort, dossierId?: string) {
     setPagina(doel)
     if (subtab) setDossierTab(subtab)
+    // Zonder deze regel belandde je op de dossierpagina met een ánder dossier open
+    // dan het dossier waarover de melding ging.
+    if (dossierId) setGekozenDossierId(dossierId)
   }
 
   function gaNaarAnalyse(richting: 'uitgave' | 'inkomst') {
@@ -2256,7 +2274,11 @@ export function App() {
 
       {pagina === 'rekenhulpen' && (
         <ErrorBoundary naam="Rekenhulpen">
-          <RekenhulpenSectie />
+          <RekenhulpenSectie
+            dossiers={dossiers}
+            onderhoudsbijdragen={onderhoudsbijdragen}
+            onBewaarBijdrage={onderhoudsbijdrageOpslaan}
+          />
         </ErrorBoundary>
       )}
 

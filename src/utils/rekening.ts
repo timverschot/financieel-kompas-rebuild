@@ -1,4 +1,6 @@
 import type { Rekening } from '../data/schema'
+import type { Vertaler } from '../i18n'
+import { formatEuro } from './format'
 
 // Hoe een rekening heet in een keuzelijst.
 //
@@ -27,6 +29,23 @@ export function nummerStaart(nummer: string | undefined): string | null {
 export function rekeningLabel(r: Rekening): string {
   const staart = nummerStaart(r.rekeningnummer)
   return [r.naam, r.rubriek, staart ? `…${staart}` : null].filter(Boolean).join(' · ')
+}
+
+/**
+ * Wat er op een rekening staat, in woorden.
+ *
+ * Bij een gewone rekening is dat gewoon het bedrag. Bij een KREDIETKAART niet: daar
+ * betekent een negatief saldo dat je iets schuldig bent, en dan leest "€ -1.631,00"
+ * in een keuzelijst als een fout in plaats van als een schuld. Het detailscherm zegt
+ * daar al "Nog openstaand € 1.631,00"; deze functie zorgt dat de keuzelijsten
+ * hetzelfde zeggen. Twee schermen die anders spreken over hetzelfde feit is precies
+ * wat een gebruiker zijn vertrouwen kost.
+ */
+export function rekeningStandTekst(t: Vertaler, r: Rekening, saldo: number): string {
+  if (r.type !== 'krediet') return formatEuro(saldo)
+  if (saldo < 0) return t('{bedrag} open', { bedrag: formatEuro(-saldo) })
+  if (saldo > 0) return t('{bedrag} tegoed', { bedrag: formatEuro(saldo) })
+  return t('niets open')
 }
 
 // --- De laatst gebruikte rekening ------------------------------------------

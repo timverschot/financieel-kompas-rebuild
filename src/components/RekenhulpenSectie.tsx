@@ -17,6 +17,7 @@ import { formatEuro, invoerNaarCenten } from '../utils/format'
 import { vandaag } from '../utils/datum'
 import { Kaart, PaginaKop, Stat } from '../ui/basis'
 import { IndexatieCalculator, uitkomstVlak, uitkomstBijregel } from './IndexatieCalculator'
+import type { Dossier, Onderhoudsbijdrage } from '../data/schema'
 import { useT } from '../i18n'
 
 // Pagina "Rekenhulpen": vier kleine rekenmachines die niets bewaren. Ze rekenen
@@ -416,12 +417,30 @@ function PrijsPerEenheidRekenhulp() {
 // De pagina zelf
 // ---------------------------------------------------------------------------
 
-export function RekenhulpenSectie() {
+export function RekenhulpenSectie({
+  dossiers,
+  onderhoudsbijdragen,
+  onBewaarBijdrage,
+}: {
+  /** Alleen voor de indexatiehulp: waarin mag ze een regeling bewaren? */
+  dossiers?: Dossier[]
+  onderhoudsbijdragen?: Onderhoudsbijdrage[]
+  onBewaarBijdrage?: (b: Onderhoudsbijdrage) => Promise<void> | void
+} = {}) {
   const { t } = useT()
   return (
     <div className="stapel">
-      <PaginaKop titel={t('Rekenhulpen')} bijschrift={t('Vier kleine rekenmachines. Ze rekenen live mee en bewaren niets.')} />
-      <IndexatieCalculator />
+      {/* "Bewaren niets" klopt niet meer voor de indexatiehulp: die kan haar
+          uitkomst sinds deze ronde als lopende regeling in een dossier zetten. */}
+      <PaginaKop
+        titel={t('Rekenhulpen')}
+        bijschrift={t('Vier kleine rekenmachines die live meerekenen. De indexatiehulp kan haar uitkomst ook als lopende regeling in een dossier bewaren.')}
+      />
+      <IndexatieCalculator
+        dossiers={dossiers}
+        bestaandeBijdragen={onderhoudsbijdragen}
+        onBewaarBijdrage={onBewaarBijdrage}
+      />
       <LeningRekenhulp />
       <SpaardoelRekenhulp />
       <PrijsPerEenheidRekenhulp />
