@@ -25,6 +25,7 @@ import { nettoVermogen } from '../utils/vermogen'
 import { openstaandKapitaal } from '../utils/lening'
 import { saldoVanRekening, totaalSaldoVan } from '../utils/saldo'
 import { isGestopt, maandbedrag, verschuifMaand, intervalVan } from '../utils/vastelast'
+import { kaartbedragUitOpslag } from '../utils/kredietkaart'
 import { formatEuro, invoerNaarCenten } from '../utils/format'
 import { standaardRekening } from '../utils/rekening'
 import { huidigeMaand, vandaag } from '../utils/datum'
@@ -530,7 +531,7 @@ export function OpstellingSectie({
           <div className="stapel">
             <Kaart
               titel={t('Een kredietkaart of kredietopening?')}
-              bijschrift={t('Kies bij Type "Kredietkaart". Je saldo staat dan negatief, en je limiet zegt hoeveel je nog mag opnemen.')}
+              bijschrift={t('Kies bij Type "Kredietkaart". Vul bij het bedrag in wat er nog openstaat, als een gewoon positief getal, en bij de limiet hoeveel je maximaal mag opnemen.')}
             >
               {kredietRekeningen.length === 0 ? (
                 <Leeg>{t('Nog geen kredietkaart ingegeven.')}</Leeg>
@@ -539,7 +540,8 @@ export function OpstellingSectie({
                   {kredietRekeningen.map((r) => (
                     <li key={r.id} className="rij">
                       <span className="rij-midden rij-titel">{r.naam}</span>
-                      <span className="rij-acties">{formatEuro(saldoNu(r))}</span>
+                      {/* Een kaart toont wat er OPENSTAAT, niet een negatief saldo. */}
+                      <span className="rij-acties">{formatEuro(kaartbedragUitOpslag(saldoNu(r)))}</span>
                     </li>
                   ))}
                 </ul>

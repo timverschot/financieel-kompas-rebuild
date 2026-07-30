@@ -142,7 +142,6 @@ const en: Record<string, string> = {
   'Je betaalrekening, je spaarrekening, je portemonnee. Voeg ze één voor één toe; het formulier blijft staan.': 'Your current account, your savings account, your wallet. Add them one by one; the form stays put.',
   'Nog geen rekeningen. Begin met de rekening waar je loon op komt.': 'No accounts yet. Start with the account your salary lands in.',
   'Een kredietkaart of kredietopening?': 'A credit card or credit line?',
-  'Kies bij Type "Kredietkaart". Je saldo staat dan negatief, en je limiet zegt hoeveel je nog mag opnemen.': 'Pick "Credit card" under Type. Your balance will be negative, and your limit tells you how much you may still draw.',
   'Nog geen kredietkaart ingegeven.': 'No credit card entered yet.',
   'Een lening, hypotheek of autofinanciering?': 'A loan, mortgage or car finance?',
   'Wat je nog moet terugbetalen, gaat af van je vermogen. Wat je hebt uitgeleend, komt erbij.': 'What you still owe comes off your net worth. What you lent out is added to it.',
@@ -211,9 +210,57 @@ const en: Record<string, string> = {
   'Luisterboeken': 'Audiobooks',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Note: the transactions up to and including {datum} are already part of the value you recorded then. They still count below, but no longer in the balance at the top.',
   'geldt nu': 'in effect',
-  ' · wordt afgerekend op dag {dag}': ' · settled on day {dag}',
-  'Dag waarop de kaart wordt afgerekend': 'Day the card is settled',
-  'De dag van de maand waarop je kaartrekening wordt opgemaakt.': 'The day of the month on which your card statement is drawn up.',
+  // Kredietkaart (ronde 43)
+  'Afsluitdag van de kaart': 'Card statement day',
+  'De dag waarop je kaartrekening wordt opgemaakt. Vanaf de dag erna loopt de volgende periode.':
+    'The day your card statement is drawn up. The next period starts the day after.',
+  'Dag waarop het bedrag afgeboekt wordt': 'Day the amount is debited',
+  'De dag waarop de afsluiting effectief van je betaalrekening gaat. Meestal een dag in de maand na de afsluiting.':
+    'The day the statement amount actually leaves your current account. Usually a day in the month after the statement.',
+  'Openstaand bij de start (€)': 'Outstanding at the start (€)',
+  'Wat er op deze kaart nog openstaat wanneer je ze hier invoert. Vul een gewoon positief bedrag in — de app weet dat dit een schuld is. Staat er niets open, vul dan 0 in.':
+    'What is still outstanding on this card when you enter it here. Fill in a plain positive amount — the app knows this is a debt. If nothing is outstanding, enter 0.',
+  'Nog openstaand': 'Still outstanding',
+  'Tegoed op de kaart': 'Credit on the card',
+  'bij de start stond er {saldo} open': '{saldo} was outstanding at the start',
+  'bij de start {saldo} open': '{saldo} outstanding at the start',
+  'Er staat een tegoed op deze kaart, geen schuld. Bedoelde je dat dit bedrag nog openstaat? Pas het dan aan bij Bewerken — vul daar in wat je nog schuldig bent, als positief bedrag.':
+    'This card shows a credit, not a debt. Did you mean that this amount is still outstanding? Change it under Edit — enter what you still owe, as a positive amount.',
+  'De afrekening': 'The statement',
+  'Afgesloten op {datum}: {bedrag}': 'Closed on {datum}: {bedrag}',
+  'Volledig betaald.': 'Paid in full.',
+  'Nog te betalen: {bedrag}. Vul een afboekdag in om te weten wanneer dit van je rekening gaat.':
+    'Still to pay: {bedrag}. Fill in a debit day to know when this leaves your account.',
+  'Nog te betalen: {bedrag}. Dat bedrag ging op {datum} van je betaalrekening — boek het hieronder in.':
+    'Still to pay: {bedrag}. That amount left your current account on {datum} — record it below.',
+  'Nog te betalen: {bedrag}, gaat op {datum} van je betaalrekening.':
+    'Still to pay: {bedrag}, leaves your current account on {datum}.',
+  'Sinds de afsluiting kwam er {bedrag} bij op de kaart. Die periode sluit op {datum}.':
+    'Since the statement, {bedrag} has been added to the card. That period closes on {datum}.',
+  'Sinds de afsluiting ging er {bedrag} van de kaart af. Die periode sluit op {datum}.':
+    'Since the statement, {bedrag} has come off the card. That period closes on {datum}.',
+  'Er staat al een overboeking van {bedrag} klaar. Ze telt mee zodra die dag er is.':
+    'A transfer of {bedrag} is already scheduled. It counts as soon as that day arrives.',
+  'Om de afrekening te boeken heb je nog een andere rekening nodig om ze van af te halen.':
+    'To record the statement you need another account to pay it from.',
+  'bij de start {saldo} tegoed': '{saldo} credit at the start',
+  'bij de start stond er {saldo} tegoed': 'there was {saldo} credit at the start',
+  'Hoeveel je maximaal mag opnemen op deze kaart.': 'How much you may draw on this card at most.',
+  'Hier staat nu een tegoed, geen schuld. Bedoelde je dat dit bedrag nog openstaat? Haal dan het minteken weg.':
+    'This currently shows a credit, not a debt. Did you mean that this amount is still outstanding? Then remove the minus sign.',
+  'Kies bij Type "Kredietkaart". Vul bij het bedrag in wat er nog openstaat, als een gewoon positief getal, en bij de limiet hoeveel je maximaal mag opnemen.':
+    'Pick "Credit card" under Type. For the amount, enter what is still outstanding as a plain positive number, and for the limit how much you may draw at most.',
+  'Vul een afsluitdag in bij Bewerken, dan rekent de app uit wat er afgesloten is en wanneer het van je rekening gaat.':
+    'Fill in a statement day under Edit, and the app works out what has been closed and when it leaves your account.',
+  'Afrekening boeken': 'Record the statement',
+  'Sluit': 'Close',
+  'Van welke rekening': 'From which account',
+  'Boek de overboeking': 'Record the transfer',
+  'Afrekening kredietkaart': 'Credit card statement',
+  'De afrekening is geboekt als overboeking van {datum}.': 'The statement has been recorded as a transfer dated {datum}.',
+  'De afrekening kon niet geboekt worden. Probeer het opnieuw.': 'The statement could not be recorded. Please try again.',
+  'Dit wordt een overboeking, geen uitgave: de aankopen zelf zijn al geboekt op de kaart.':
+    'This becomes a transfer, not an expense: the purchases themselves are already recorded on the card.',
   'De laatste keer is {maand}. Daarna telt deze post niet meer mee.': 'The last time is {maand}. After that this entry no longer counts.',
   'De {n} boeking(en) van vóór en op deze dag tellen daarna niet meer apart mee — ze zitten al in dit bedrag. Ze blijven wel gewoon in je lijst staan.': 'The {n} transaction(s) on and before this day will no longer count separately — they are already part of this amount. They do stay in your list.',
   'Er staat al een boeking van {bedrag} op {datum} ({naam}). Is dat dezelfde betaling?': 'There is already a transaction of {bedrag} on {datum} ({naam}). Is that the same payment?',
@@ -235,7 +282,6 @@ const en: Record<string, string> = {
   // Ronde 38 — kredietrekening, waardering, netto vermogen, einddatum vaste last
   'Kredietkaart of kredietopening': 'Credit card or credit line',
   'Kredietlimiet (€)': 'Credit limit (€)',
-  'Hoeveel je maximaal mag opnemen. Vul dit in als een positief bedrag, ook al staat je saldo negatief.': 'How much you may draw at most. Enter this as a positive amount, even though your balance is negative.',
   '1-28, optioneel': '1-28, optional',
   'Waarde bijwerken': 'Update value',
   'Voor rekeningen die van waarde veranderen zonder boeking, zoals beleggingen of pensioensparen. Je geschiedenis blijft staan; de app rekent vanaf deze dag verder met het bedrag dat je hier invult.': 'For accounts whose value changes without any transaction, such as investments or pension savings. Your history stays intact; from this day on the app continues from the amount you enter here.',
@@ -1538,9 +1584,9 @@ const en: Record<string, string> = {
   'Nog geen onderhoudsbijdrage ingesteld voor dit dossier.':
     'No maintenance contribution set for this case yet.',
   'Onderhoudsbijdrage instellen': 'Set up maintenance contribution',
-  'Het overzicht is gedownload.': 'The overview has been downloaded.',
-  'Het overzicht kon niet gemaakt worden. Probeer het opnieuw.':
-    'The overview could not be created. Please try again.',
+  'De brief is gedownload.': 'The letter has been downloaded.',
+  'De brief kon niet gemaakt worden. Probeer het opnieuw.':
+    'The letter could not be created. Please try again.',
   'Onderhoudsbijdrage verwijderen': 'Delete maintenance contribution',
   'Bijdrage vandaag': 'Contribution today',
   'gelijk aan het bedrag uit de regeling van {datum}':
@@ -1555,7 +1601,7 @@ const en: Record<string, string> = {
   'Toon de opbouw': 'Show the breakdown',
   'Verberg wat er betaald is': 'Hide what has been paid',
   'Toon wat er betaald is': 'Show what has been paid',
-  'Overzicht als PDF': 'Overview as PDF',
+  'Brief met de berekening': 'Letter with the calculation',
   'Sluit de regeling': 'Close the arrangement',
   'Wijzig de regeling': 'Change the arrangement',
   'Hoe dit bedrag tot stand komt': 'How this amount is arrived at',
@@ -1669,6 +1715,35 @@ const en: Record<string, string> = {
   'Loopt tot': 'Runs until',
   'Voor onderhoudsgeld is de aanvangsindex die van de maand vóór de maand waarin het bedrag werd vastgelegd — dezelfde regel als bij huur. Hou je een lopende regeling bij, gebruik dan de onderhoudsbijdrage in je dossier: die zoekt de indexcijfers zelf op.':
     'For maintenance, the starting index is that of the month before the month in which the amount was set — the same rule as for rent. If you are tracking an ongoing arrangement, use the maintenance contribution in your case: it looks the index figures up itself.',
+  // Onderhoudsbijdrage — de begeleidende brief
+  'Betreft: indexatie van de onderhoudsbijdrage voor {namen}':
+    'Subject: indexation of the maintenance contribution for {namen}',
+  'Betreft: indexatie van de onderhoudsbijdrage':
+    'Subject: indexation of the maintenance contribution',
+  'De onderhoudsbijdrage die op {datum} werd vastgelegd, volgt de gezondheidsindex. Die aanpassing gebeurt jaarlijks op de verjaardag van de regeling.':
+    'The maintenance contribution set on {datum} follows the health index. That adjustment takes place annually on the anniversary of the arrangement.',
+  'De laatste aanpassing viel op {datum}. Vanaf die datum bedraagt de bijdrage {bedrag} per maand, tegenover {basis} in de regeling zelf.':
+    'The most recent adjustment fell on {datum}. From that date the contribution is {bedrag} per month, against {basis} in the arrangement itself.',
+  'Volgens deze berekening bedraagt de bijdrage vandaag {bedrag} per maand.':
+    'According to this calculation the contribution today is {bedrag} per month.',
+  'Op het volgende blad staat de volledige berekening: het bedrag uit de regeling, de gebruikte indexcijfers en wat er per verjaardag uit kwam. Zo is elke regel na te rekenen zonder deze app.':
+    'The next page contains the full calculation: the amount from the arrangement, the index figures used, and the result for each anniversary. That way every line can be checked without this app.',
+  'Klopt er iets niet met de gegevens hierboven, laat het dan weten — dan kan de berekening aangepast worden.':
+    'If anything in the details above is incorrect, please say so — then the calculation can be adjusted.',
+  'Betreft: de onderhoudsbijdrage voor {namen}': 'Subject: the maintenance contribution for {namen}',
+  'Betreft: de onderhoudsbijdrage': 'Subject: the maintenance contribution',
+  'De onderhoudsbijdrage die op {datum} werd vastgelegd, wordt volgens de regeling niet geïndexeerd. Het bedrag blijft daarom ongewijzigd.':
+    'According to the arrangement, the maintenance contribution set on {datum} is not indexed. The amount therefore stays unchanged.',
+  'De aanvangsindex van {maand} is in deze app niet bekend, waardoor de indexatie niet berekend kon worden. Hieronder staat daarom nog het bedrag uit de regeling zelf: {basis} per maand.':
+    'The starting index for {maand} is not known in this app, so the indexation could not be calculated. The amount below is therefore still the one from the arrangement itself: {basis} per month.',
+  'Deze regeling liep tot {eind}. Bij het einde ervan bedroeg de bijdrage {bedrag} per maand, tegenover {basis} in de regeling zelf.':
+    'This arrangement ran until {eind}. At its end the contribution was {bedrag} per month, against {basis} in the arrangement itself.',
+  'Voor één of meer verjaardagen was er nog geen indexcijfer bekend. Die aanpassing zit dus nog niet in dit bedrag; op het volgende blad staat om welke maanden het gaat.':
+    'For one or more anniversaries no index figure was known yet. That adjustment is therefore not included in this amount; the next page states which months are involved.',
+  'Op het volgende blad staat waarop dit gebaseerd is: het bedrag uit de regeling en de gegevens die daarbij horen. Zo is alles na te kijken zonder deze app.':
+    'The next page states what this is based on: the amount from the arrangement and the details that go with it. That way everything can be checked without this app.',
+  'Deze brief is opgemaakt met Financieel Kompas. Hij bevat een berekening en geen juridisch standpunt.':
+    'This letter was produced with Financieel Kompas. It contains a calculation, not a legal position.',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -1794,7 +1869,6 @@ const fr: Record<string, string> = {
   'Je betaalrekening, je spaarrekening, je portemonnee. Voeg ze één voor één toe; het formulier blijft staan.': 'Ton compte courant, ton compte d’épargne, ton portefeuille. Ajoute-les un par un ; le formulaire reste en place.',
   'Nog geen rekeningen. Begin met de rekening waar je loon op komt.': 'Pas encore de comptes. Commence par celui où tombe ton salaire.',
   'Een kredietkaart of kredietopening?': 'Une carte de crédit ou une ouverture de crédit ?',
-  'Kies bij Type "Kredietkaart". Je saldo staat dan negatief, en je limiet zegt hoeveel je nog mag opnemen.': 'Choisis « Carte de crédit » sous Type. Ton solde sera négatif, et ta limite indique ce que tu peux encore prélever.',
   'Nog geen kredietkaart ingegeven.': 'Aucune carte de crédit saisie.',
   'Een lening, hypotheek of autofinanciering?': 'Un prêt, un crédit logement ou un financement auto ?',
   'Wat je nog moet terugbetalen, gaat af van je vermogen. Wat je hebt uitgeleend, komt erbij.': 'Ce que tu dois encore se soustrait de ton patrimoine. Ce que tu as prêté s’y ajoute.',
@@ -1863,9 +1937,57 @@ const fr: Record<string, string> = {
   'Luisterboeken': 'Livres audio',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Attention : les opérations jusqu’au {datum} inclus sont déjà comprises dans la valeur que tu as enregistrée alors. Elles comptent encore ci-dessous, mais plus dans le solde en haut.',
   'geldt nu': 'en vigueur',
-  ' · wordt afgerekend op dag {dag}': ' · décompté le jour {dag}',
-  'Dag waarop de kaart wordt afgerekend': 'Jour du décompte de la carte',
-  'De dag van de maand waarop je kaartrekening wordt opgemaakt.': 'Le jour du mois où le relevé de ta carte est établi.',
+  // Carte de crédit (ronde 43)
+  'Afsluitdag van de kaart': 'Jour d’arrêté de la carte',
+  'De dag waarop je kaartrekening wordt opgemaakt. Vanaf de dag erna loopt de volgende periode.':
+    'Le jour où le relevé de ta carte est établi. La période suivante démarre le lendemain.',
+  'Dag waarop het bedrag afgeboekt wordt': 'Jour du débit du montant',
+  'De dag waarop de afsluiting effectief van je betaalrekening gaat. Meestal een dag in de maand na de afsluiting.':
+    'Le jour où le montant du relevé quitte effectivement ton compte courant. En général un jour du mois suivant l’arrêté.',
+  'Openstaand bij de start (€)': 'Encours au départ (€)',
+  'Wat er op deze kaart nog openstaat wanneer je ze hier invoert. Vul een gewoon positief bedrag in — de app weet dat dit een schuld is. Staat er niets open, vul dan 0 in.':
+    'Ce qui reste dû sur cette carte au moment où tu l’encodes. Indique un montant positif tout simple — l’application sait qu’il s’agit d’une dette. Si rien n’est dû, indique 0.',
+  'Nog openstaand': 'Encore dû',
+  'Tegoed op de kaart': 'Avoir sur la carte',
+  'bij de start stond er {saldo} open': '{saldo} restait dû au départ',
+  'bij de start {saldo} open': '{saldo} dû au départ',
+  'Er staat een tegoed op deze kaart, geen schuld. Bedoelde je dat dit bedrag nog openstaat? Pas het dan aan bij Bewerken — vul daar in wat je nog schuldig bent, als positief bedrag.':
+    'Cette carte affiche un avoir, pas une dette. Voulais-tu dire que ce montant reste dû ? Corrige-le via Modifier — indique ce que tu dois encore, en montant positif.',
+  'De afrekening': 'Le décompte',
+  'Afgesloten op {datum}: {bedrag}': 'Arrêté le {datum} : {bedrag}',
+  'Volledig betaald.': 'Entièrement payé.',
+  'Nog te betalen: {bedrag}. Vul een afboekdag in om te weten wanneer dit van je rekening gaat.':
+    'Reste à payer : {bedrag}. Indique un jour de débit pour savoir quand ce montant quittera ton compte.',
+  'Nog te betalen: {bedrag}. Dat bedrag ging op {datum} van je betaalrekening — boek het hieronder in.':
+    'Reste à payer : {bedrag}. Ce montant a quitté ton compte courant le {datum} — encode-le ci-dessous.',
+  'Nog te betalen: {bedrag}, gaat op {datum} van je betaalrekening.':
+    'Reste à payer : {bedrag}, sera débité de ton compte courant le {datum}.',
+  'Sinds de afsluiting kwam er {bedrag} bij op de kaart. Die periode sluit op {datum}.':
+    'Depuis l’arrêté, {bedrag} se sont ajoutés sur la carte. Cette période se clôture le {datum}.',
+  'Sinds de afsluiting ging er {bedrag} van de kaart af. Die periode sluit op {datum}.':
+    'Depuis l’arrêté, {bedrag} ont été retirés de la carte. Cette période se clôture le {datum}.',
+  'Er staat al een overboeking van {bedrag} klaar. Ze telt mee zodra die dag er is.':
+    'Un virement de {bedrag} est déjà encodé. Il comptera dès que ce jour sera arrivé.',
+  'Om de afrekening te boeken heb je nog een andere rekening nodig om ze van af te halen.':
+    'Pour encoder le décompte, il te faut un autre compte depuis lequel le payer.',
+  'bij de start {saldo} tegoed': '{saldo} d’avoir au départ',
+  'bij de start stond er {saldo} tegoed': 'il y avait {saldo} d’avoir au départ',
+  'Hoeveel je maximaal mag opnemen op deze kaart.': 'Le montant maximum que tu peux utiliser sur cette carte.',
+  'Hier staat nu een tegoed, geen schuld. Bedoelde je dat dit bedrag nog openstaat? Haal dan het minteken weg.':
+    'Ceci indique un avoir, pas une dette. Voulais-tu dire que ce montant reste dû ? Retire alors le signe moins.',
+  'Kies bij Type "Kredietkaart". Vul bij het bedrag in wat er nog openstaat, als een gewoon positief getal, en bij de limiet hoeveel je maximaal mag opnemen.':
+    'Choisis « Carte de crédit » sous Type. Pour le montant, indique ce qui reste dû, en nombre positif tout simple, et pour la limite le maximum que tu peux utiliser.',
+  'Vul een afsluitdag in bij Bewerken, dan rekent de app uit wat er afgesloten is en wanneer het van je rekening gaat.':
+    'Indique un jour d’arrêté via Modifier : l’application calcule alors ce qui est arrêté et quand cela quittera ton compte.',
+  'Afrekening boeken': 'Encoder le décompte',
+  'Sluit': 'Fermer',
+  'Van welke rekening': 'Depuis quel compte',
+  'Boek de overboeking': 'Encoder le virement',
+  'Afrekening kredietkaart': 'Décompte carte de crédit',
+  'De afrekening is geboekt als overboeking van {datum}.': 'Le décompte a été encodé comme virement daté du {datum}.',
+  'De afrekening kon niet geboekt worden. Probeer het opnieuw.': 'Le décompte n’a pas pu être encodé. Réessaie.',
+  'Dit wordt een overboeking, geen uitgave: de aankopen zelf zijn al geboekt op de kaart.':
+    'Il s’agit d’un virement, pas d’une dépense : les achats eux-mêmes sont déjà encodés sur la carte.',
   'De laatste keer is {maand}. Daarna telt deze post niet meer mee.': 'La dernière fois est {maand}. Ensuite, ce poste ne compte plus.',
   'De {n} boeking(en) van vóór en op deze dag tellen daarna niet meer apart mee — ze zitten al in dit bedrag. Ze blijven wel gewoon in je lijst staan.': 'Les {n} opération(s) de ce jour et d’avant ne compteront plus séparément — elles sont déjà comprises dans ce montant. Elles restent dans ta liste.',
   'Er staat al een boeking van {bedrag} op {datum} ({naam}). Is dat dezelfde betaling?': 'Il existe déjà une opération de {bedrag} le {datum} ({naam}). Est-ce le même paiement ?',
@@ -1887,7 +2009,6 @@ const fr: Record<string, string> = {
   // Ronde 38
   'Kredietkaart of kredietopening': 'Carte de crédit ou ouverture de crédit',
   'Kredietlimiet (€)': 'Limite de crédit (€)',
-  'Hoeveel je maximaal mag opnemen. Vul dit in als een positief bedrag, ook al staat je saldo negatief.': 'Le montant maximal que tu peux prélever. Indique-le en positif, même si ton solde est négatif.',
   '1-28, optioneel': '1-28, facultatif',
   'Waarde bijwerken': 'Mettre la valeur à jour',
   'Voor rekeningen die van waarde veranderen zonder boeking, zoals beleggingen of pensioensparen. Je geschiedenis blijft staan; de app rekent vanaf deze dag verder met het bedrag dat je hier invult.': 'Pour les comptes dont la valeur change sans opération, comme les placements ou l’épargne-pension. Ton historique reste intact ; à partir de ce jour, l’app poursuit avec le montant que tu indiques ici.',
@@ -3192,9 +3313,9 @@ const fr: Record<string, string> = {
   'Nog geen onderhoudsbijdrage ingesteld voor dit dossier.':
     'Aucune contribution alimentaire définie pour ce dossier.',
   'Onderhoudsbijdrage instellen': 'Définir la contribution alimentaire',
-  'Het overzicht is gedownload.': 'L’aperçu a été téléchargé.',
-  'Het overzicht kon niet gemaakt worden. Probeer het opnieuw.':
-    'L’aperçu n’a pas pu être créé. Veuillez réessayer.',
+  'De brief is gedownload.': 'La lettre a été téléchargée.',
+  'De brief kon niet gemaakt worden. Probeer het opnieuw.':
+    'La lettre n’a pas pu être créée. Veuillez réessayer.',
   'Onderhoudsbijdrage verwijderen': 'Supprimer la contribution alimentaire',
   'Bijdrage vandaag': 'Contribution aujourd’hui',
   'gelijk aan het bedrag uit de regeling van {datum}':
@@ -3209,7 +3330,7 @@ const fr: Record<string, string> = {
   'Toon de opbouw': 'Afficher le détail',
   'Verberg wat er betaald is': 'Masquer ce qui a été payé',
   'Toon wat er betaald is': 'Afficher ce qui a été payé',
-  'Overzicht als PDF': 'Aperçu en PDF',
+  'Brief met de berekening': 'Lettre avec le calcul',
   'Sluit de regeling': 'Fermer l’accord',
   'Wijzig de regeling': 'Modifier l’accord',
   'Hoe dit bedrag tot stand komt': 'Comment ce montant est obtenu',
@@ -3318,6 +3439,34 @@ const fr: Record<string, string> = {
   'Loopt tot': 'Court jusqu’au',
   'Voor onderhoudsgeld is de aanvangsindex die van de maand vóór de maand waarin het bedrag werd vastgelegd — dezelfde regel als bij huur. Hou je een lopende regeling bij, gebruik dan de onderhoudsbijdrage in je dossier: die zoekt de indexcijfers zelf op.':
     'Pour la pension alimentaire, l’indice de départ est celui du mois précédant le mois où le montant a été fixé — la même règle que pour le loyer. Si vous suivez un accord en cours, utilisez la contribution alimentaire de votre dossier : elle recherche elle-même les indices.',
+  // Contribution alimentaire — la lettre d’accompagnement
+  'Betreft: indexatie van de onderhoudsbijdrage voor {namen}':
+    'Objet : indexation de la contribution alimentaire pour {namen}',
+  'Betreft: indexatie van de onderhoudsbijdrage': 'Objet : indexation de la contribution alimentaire',
+  'De onderhoudsbijdrage die op {datum} werd vastgelegd, volgt de gezondheidsindex. Die aanpassing gebeurt jaarlijks op de verjaardag van de regeling.':
+    'La contribution alimentaire fixée le {datum} suit l’indice santé. Cette adaptation a lieu chaque année à la date anniversaire de l’accord.',
+  'De laatste aanpassing viel op {datum}. Vanaf die datum bedraagt de bijdrage {bedrag} per maand, tegenover {basis} in de regeling zelf.':
+    'La dernière adaptation est intervenue le {datum}. À partir de cette date, la contribution s’élève à {bedrag} par mois, contre {basis} dans l’accord même.',
+  'Volgens deze berekening bedraagt de bijdrage vandaag {bedrag} per maand.':
+    'Selon ce calcul, la contribution s’élève aujourd’hui à {bedrag} par mois.',
+  'Op het volgende blad staat de volledige berekening: het bedrag uit de regeling, de gebruikte indexcijfers en wat er per verjaardag uit kwam. Zo is elke regel na te rekenen zonder deze app.':
+    'La page suivante contient le calcul complet : le montant de l’accord, les indices utilisés et le résultat pour chaque date anniversaire. Chaque ligne peut ainsi être vérifiée sans cette application.',
+  'Klopt er iets niet met de gegevens hierboven, laat het dan weten — dan kan de berekening aangepast worden.':
+    'Si une donnée ci-dessus est inexacte, faites-le savoir — le calcul sera adapté.',
+  'Betreft: de onderhoudsbijdrage voor {namen}': 'Objet : la contribution alimentaire pour {namen}',
+  'Betreft: de onderhoudsbijdrage': 'Objet : la contribution alimentaire',
+  'De onderhoudsbijdrage die op {datum} werd vastgelegd, wordt volgens de regeling niet geïndexeerd. Het bedrag blijft daarom ongewijzigd.':
+    'Selon l’accord, la contribution alimentaire fixée le {datum} n’est pas indexée. Le montant reste donc inchangé.',
+  'De aanvangsindex van {maand} is in deze app niet bekend, waardoor de indexatie niet berekend kon worden. Hieronder staat daarom nog het bedrag uit de regeling zelf: {basis} per maand.':
+    'L’indice de départ de {maand} n’est pas connu dans cette application, de sorte que l’indexation n’a pas pu être calculée. Le montant ci-dessous est donc encore celui de l’accord même : {basis} par mois.',
+  'Deze regeling liep tot {eind}. Bij het einde ervan bedroeg de bijdrage {bedrag} per maand, tegenover {basis} in de regeling zelf.':
+    'Cet accord a couru jusqu’au {eind}. À son terme, la contribution s’élevait à {bedrag} par mois, contre {basis} dans l’accord même.',
+  'Voor één of meer verjaardagen was er nog geen indexcijfer bekend. Die aanpassing zit dus nog niet in dit bedrag; op het volgende blad staat om welke maanden het gaat.':
+    'Pour une ou plusieurs dates anniversaires, aucun indice n’était encore connu. Cette adaptation n’est donc pas comprise dans ce montant ; la page suivante indique de quels mois il s’agit.',
+  'Op het volgende blad staat waarop dit gebaseerd is: het bedrag uit de regeling en de gegevens die daarbij horen. Zo is alles na te kijken zonder deze app.':
+    'La page suivante indique sur quoi cela repose : le montant de l’accord et les données qui s’y rapportent. Tout peut ainsi être vérifié sans cette application.',
+  'Deze brief is opgemaakt met Financieel Kompas. Hij bevat een berekening en geen juridisch standpunt.':
+    'Cette lettre a été établie avec Financieel Kompas. Elle contient un calcul et non une position juridique.',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 

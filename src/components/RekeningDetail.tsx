@@ -5,6 +5,8 @@ import { groepenVanTransactie, isGesplitstOverCategorieen } from '../utils/trans
 import { tekenVanTransactie, uitsplitsingTekst, zachteAchtergrond } from './TransactieLijst'
 import { REKENING_TYPE_LABEL } from './RekeningFormulier'
 import { geldendeWaardering, saldoVanRekening } from '../utils/saldo'
+import { kaartStand, kaartbedragUitOpslag, type KaartStand } from '../utils/kredietkaart'
+import { rekeningLabel } from '../utils/rekening'
 import { dagJaar, huidigeMaand, vandaag } from '../utils/datum'
 import { centenNaarInvoer, formatEuro, invoerNaarCenten } from '../utils/format'
 import { Bedrag, Kaart, Leeg, Stat } from '../ui/basis'
@@ -260,6 +262,226 @@ function WaardeBijwerken({
 }
 
 /**
+ * De afrekening van een kredietkaart: wat er afgesloten is, wanneer het van je
+ * betaalrekening gaat, en wat er intussen al weer op de kaart staat.
+ *
+ * Waarom dit een eigen blok is. Een kaart heeft twee klokken die niet gelijk lopen:
+ * de afsluitdag en de dag waarop het bedrag effectief afgeboekt wordt. Daartussen
+ * loopt de nieuwe periode al terwijl de vorige nog betaald moet worden. Met alleen
+ * een saldo kan je dat niet lezen, en dan lijkt je krediet kwijt.
+ *
+ * De knop maakt een OVERBOEKING, geen uitgave. De uitgave is al geboekt bij de
+ * aankoop; de afrekening verschuift enkel geld van je betaalrekening naar de kaart.
+ * Zou ze een uitgave maken, dan stond elke aankoop twee keer in je maandcijfers.
+ */
+function KaartAfrekening({
+  rekening,
+  stand,
+  rekeningen,
+  vandaagISO,
+  onOverboeking,
+}: {
+  rekening: Rekening
+  stand: KaartStand
+  /** Alle rekeningen, om te kunnen kiezen vanwaar de afrekening komt. */
+  rekeningen: Rekening[]
+  vandaagISO: string
+  onOverboeking?: (o: Overboeking) => Promise<void> | void
+}) {
+  const { t } = useT()
+  // Waarvandaan betaal je? Standaard je eerste betaalrekening; anders de eerste
+  // rekening die niet de kaart zelf is.
+  const bronnen = rekeningen.filter((r) => r.id !== rekening.id && !r.gearchiveerd)
+  const standaardBron = bronnen.find((r) => (r.type ?? 'betaal') === 'betaal') ?? bronnen[0]
+  const [vanId, setVanId] = useState(standaardBron?.id ?? '')
+  const [bedrag, setBedrag] = useState(centenNaarInvoer(Math.max(0, stand.nogTeBetalen - stand.geplandeBetaling)))
+  const [datum, setDatum] = useState(stand.afboekdatum ?? vandaagISO)
+  const [open, setOpen] = useState(false)
+  const [bezig, setBezig] = useState(false)
+  const [fout, setFout] = useState('')
+  const [melding, setMelding] = useState('')
+
+  // Wat er nog te BOEKEN valt is niet hetzelfde als wat er nog te betalen is: een
+  // afrekening die je al inboekte met de datum van de afboeking staat in de
+  // toekomst en telt nergens mee. Zonder dit verschil bood de app de knop opnieuw
+  // aan en boekte je hetzelfde bedrag twee keer.
+  const teBoeken = Math.max(0, stand.nogTeBetalen - stand.geplandeBetaling)
+  const centen = invoerNaarCenten(bedrag)
+  const geldig = Number.isFinite(centen) && centen > 0 && vanId !== '' && /^\d{4}-\d{2}-\d{2}$/.test(datum)
+
+  async function boek() {
+    if (bezig || !geldig || !onOverboeking) return
+    setBezig(true)
+    setFout('')
+    setMelding('')
+    try {
+      await onOverboeking({
+        id: nieuwId(),
+        datum,
+        vanRekeningId: vanId,
+        naarRekeningId: rekening.id,
+        bedrag: centen,
+        omschrijving: t('Afrekening kredietkaart'),
+      })
+      setMelding(t('De afrekening is geboekt als overboeking van {datum}.', { datum: dagJaar(datum) }))
+      setOpen(false)
+    } catch {
+      setFout(t('De afrekening kon niet geboekt worden. Probeer het opnieuw.'))
+    } finally {
+      setBezig(false)
+    }
+  }
+
+  return (
+    <div data-afrekening>
+      <span className="label-caps">{t('De afrekening')}</span>
+      {stand.afsluitdatum !== null && (
+        <>
+          <p className="kaart-bijschrift" style={{ margin: '4px 0 0' }}>
+            {t('Afgesloten op {datum}: {bedrag}', {
+              datum: dagJaar(stand.afsluitdatum),
+              bedrag: formatEuro(stand.afgesloten),
+            })}
+          </p>
+          <p className="kaart-bijschrift" style={{ margin: 0 }}>
+            {stand.nogTeBetalen === 0
+              ? t('Volledig betaald.')
+              : stand.afboekdatum === null
+                ? t('Nog te betalen: {bedrag}. Vul een afboekdag in om te weten wanneer dit van je rekening gaat.', {
+                    bedrag: formatEuro(stand.nogTeBetalen),
+                  })
+                : stand.teLaat
+                  ? t('Nog te betalen: {bedrag}. Dat bedrag ging op {datum} van je betaalrekening — boek het hieronder in.', {
+                      bedrag: formatEuro(stand.nogTeBetalen),
+                      datum: dagJaar(stand.afboekdatum),
+                    })
+                  : t('Nog te betalen: {bedrag}, gaat op {datum} van je betaalrekening.', {
+                      bedrag: formatEuro(stand.nogTeBetalen),
+                      datum: dagJaar(stand.afboekdatum),
+                    })}
+          </p>
+          {/* De netto beweging sinds de afsluiting, zodat de drie cijfers van dit
+              blok optellen: nog te betalen plus dit is wat er vandaag openstaat. */}
+          <p className="kaart-bijschrift" style={{ margin: 0 }}>
+            {stand.lopend < 0
+              ? t('Sinds de afsluiting ging er {bedrag} van de kaart af. Die periode sluit op {datum}.', {
+                  bedrag: formatEuro(-stand.lopend),
+                  datum: dagJaar(stand.volgendeAfsluitdatum ?? ''),
+                })
+              : t('Sinds de afsluiting kwam er {bedrag} bij op de kaart. Die periode sluit op {datum}.', {
+                  bedrag: formatEuro(stand.lopend),
+                  datum: dagJaar(stand.volgendeAfsluitdatum ?? ''),
+                })}
+          </p>
+          {/* Een afrekening die je al geboekt hebt met de datum van de afboeking
+              staat in de toekomst en telt dus nog nergens mee. Zonder deze regel
+              bleef de knop staan en boekte je ze een tweede keer. */}
+          {stand.geplandeBetaling > 0 && (
+            <p className="kaart-bijschrift" style={{ margin: 0 }}>
+              {t('Er staat al een overboeking van {bedrag} klaar. Ze telt mee zodra die dag er is.', {
+                bedrag: formatEuro(stand.geplandeBetaling),
+              })}
+            </p>
+          )}
+        </>
+      )}
+      {stand.afsluitdatum === null && (
+        <p className="kaart-bijschrift" style={{ margin: '4px 0 0' }}>
+          {t('Vul een afsluitdag in bij Bewerken, dan rekent de app uit wat er afgesloten is en wanneer het van je rekening gaat.')}
+        </p>
+      )}
+
+      {/* Altijd aanwezig, ook leeg: een gebied dat pas bij een melding verschijnt,
+          wordt door een schermlezer niet voorgelezen. */}
+      <p className="rij-meta" role="status" style={{ margin: melding ? '6px 0 0' : 0 }}>
+        {melding}
+      </p>
+      {fout !== '' && (
+        <p className="foutregel" role="alert">
+          {fout}
+        </p>
+      )}
+
+      {onOverboeking && teBoeken > 0 && bronnen.length === 0 && (
+        <p className="rij-meta" style={{ margin: '8px 0 0' }}>
+          {t('Om de afrekening te boeken heb je nog een andere rekening nodig om ze van af te halen.')}
+        </p>
+      )}
+
+      {onOverboeking && teBoeken > 0 && bronnen.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          <button
+            type="button"
+            className="knop knop-secundair knop-klein"
+            aria-expanded={open}
+            onClick={() => {
+              // Bij het openen de bedragen opnieuw uit de stand halen: er kan
+              // intussen een aankoop of een betaling bij gekomen zijn.
+              if (!open) {
+                setBedrag(centenNaarInvoer(teBoeken))
+                setDatum(stand.afboekdatum ?? vandaagISO)
+              }
+              setOpen((aan) => !aan)
+            }}
+          >
+            {open ? t('Sluit') : t('Afrekening boeken')}
+          </button>
+
+          {open && (
+            <div className="veldrij" style={{ marginTop: 8 }}>
+              <div className="veldgroep">
+                <label className="label-caps" htmlFor="afrekening-van">
+                  {t('Van welke rekening')}
+                </label>
+                <select id="afrekening-van" value={vanId} onChange={(e) => setVanId(e.target.value)}>
+                  {bronnen.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {rekeningLabel(r)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="veldgroep">
+                <label className="label-caps" htmlFor="afrekening-bedrag">
+                  {t('Bedrag (€)')}
+                </label>
+                <input
+                  id="afrekening-bedrag"
+                  inputMode="decimal"
+                  value={bedrag}
+                  onChange={(e) => setBedrag(e.target.value)}
+                />
+              </div>
+              <div className="veldgroep">
+                <label className="label-caps" htmlFor="afrekening-datum">
+                  {t('Datum')}
+                </label>
+                <input
+                  id="afrekening-datum"
+                  type="date"
+                  value={datum}
+                  onChange={(e) => setDatum(e.target.value)}
+                />
+              </div>
+              <div className="veldgroep" style={{ justifyContent: 'flex-end' }}>
+                <button type="button" className="knop knop-klein" aria-disabled={bezig || !geldig} onClick={boek}>
+                  {bezig ? t('Bezig…') : t('Boek de overboeking')}
+                </button>
+              </div>
+            </div>
+          )}
+          {open && (
+            <p className="rij-meta" style={{ margin: '6px 0 0' }}>
+              {t('Dit wordt een overboeking, geen uitgave: de aankopen zelf zijn al geboekt op de kaart.')}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
  * Het detail van één rekening: wat er nu op staat, wat er deze maand op en af
  * ging, de recentste boekingen en overboekingen, en de acties op de rekening zelf.
  *
@@ -281,6 +503,8 @@ export function RekeningDetail({
   onVerwijder,
   onWaardering,
   onWaarderingVerwijderen,
+  rekeningen = [],
+  onOverboeking,
 }: {
   rekening: Rekening
   /** Alle transacties; dit component filtert zelf op deze rekening. */
@@ -296,6 +520,10 @@ export function RekeningDetail({
   onVerwijder: (id: string) => void
   onWaardering: (w: Waardering) => Promise<void> | void
   onWaarderingVerwijderen: (id: string) => Promise<void> | void
+  /** Alle rekeningen — alleen nodig om de afrekening van een kaart te kunnen boeken. */
+  rekeningen?: Rekening[]
+  /** Ontbreekt deze, dan toont de kaart haar afrekening wel maar zonder knop. */
+  onOverboeking?: (o: Overboeking) => Promise<void> | void
 }) {
   const { t } = useT()
 
@@ -322,6 +550,11 @@ export function RekeningDetail({
   // Een boeking met een datum in de toekomst telt bewust nog niet mee.
   const saldoNu = saldoVanRekening(rekening, transacties, overboekingen, waarderingen, dag)
   const geldend = geldendeWaardering(rekening.id, waarderingen, dag)
+
+  // Alles wat een kredietkaart eigen is, in één keer uitgerekend. Bij elk ander
+  // type blijft dit null en verandert er niets aan het scherm.
+  const kaart =
+    rekening.type === 'krediet' ? kaartStand(rekening, transacties, overboekingen, waarderingen, dag) : null
 
   // De maandcijfers. Overboekingen zitten hier bewust NIET in: die verschuiven
   // enkel geld tussen je eigen rekeningen en zijn dus geen inkomst of uitgave.
@@ -354,9 +587,15 @@ export function RekeningDetail({
         actie={rekening.gearchiveerd ? <span className="badge badge-neutraal">{t('gearchiveerd')}</span> : undefined}
       >
         <div>
-          <span className="label-caps">{t('Saldo vandaag')}</span>
+          {/* Bij een kaart is "saldo" het verkeerde woord: wat er staat is een
+              SCHULD. Ze hier positief tonen onder de kop "Openstaand" scheelt de
+              lezer een tekenpuzzel — en maakt meteen zichtbaar wanneer het bedrag
+              per ongeluk als tegoed is ingevoerd. */}
+          <span className="label-caps">
+            {kaart ? (kaart.tegoed > 0 ? t('Tegoed op de kaart') : t('Nog openstaand')) : t('Saldo vandaag')}
+          </span>
           <div>
-            <Bedrag centen={saldoNu} groot />
+            <Bedrag centen={kaart ? kaart.openstaand + kaart.tegoed : saldoNu} groot />
           </div>
           {/* Het vertrekpunt erbij, zodat het verschil met het saldo navolgbaar is.
               Geldt er een waardering, dan is HAAR bedrag het vertrekpunt — het
@@ -367,23 +606,48 @@ export function RekeningDetail({
                   datum: dagJaar(geldend.datum),
                   saldo: formatEuro(geldend.saldo),
                 })
-              : t('startsaldo {saldo}', { saldo: formatEuro(rekening.beginsaldo) })}
+              : kaart
+                ? rekening.beginsaldo > 0
+                  ? t('bij de start stond er {saldo} tegoed', { saldo: formatEuro(rekening.beginsaldo) })
+                  : t('bij de start stond er {saldo} open', {
+                      saldo: formatEuro(kaartbedragUitOpslag(rekening.beginsaldo)),
+                    })
+                : t('startsaldo {saldo}', { saldo: formatEuro(rekening.beginsaldo) })}
           </p>
           {/* Bij een kredietkaart is niet het saldo de vraag, maar hoeveel je nog
               mag opnemen. Zonder deze regel vroegen we een limiet die nergens
               terugkwam. */}
-          {rekening.type === 'krediet' && rekening.kredietlimiet !== undefined && (
+          {kaart && kaart.beschikbaar !== null && rekening.kredietlimiet !== undefined && (
             <p className="kaart-bijschrift" style={{ margin: 0 }}>
               {t('nog {bedrag} van je limiet van {limiet} beschikbaar', {
-                bedrag: formatEuro(Math.max(0, rekening.kredietlimiet + Math.min(0, saldoNu))),
+                bedrag: formatEuro(kaart.beschikbaar),
                 limiet: formatEuro(rekening.kredietlimiet),
               })}
-              {rekening.afrekendag !== undefined
-                ? t(' · wordt afgerekend op dag {dag}', { dag: rekening.afrekendag })
-                : ''}
+            </p>
+          )}
+          {/* Een tegoed op een kaart bestaat, maar het is bijna altijd een verkeerd
+              teken bij het invoeren — en dan telt de kaart als bezit mee in je
+              vermogen. Dat hoort de app te zeggen in plaats van het te laten staan. */}
+          {kaart && kaart.tegoed > 0 && (
+            <p className="rij-meta" style={{ margin: '6px 0 0' }}>
+              {t('Er staat een tegoed op deze kaart, geen schuld. Bedoelde je dat dit bedrag nog openstaat? Pas het dan aan bij Bewerken — vul daar in wat je nog schuldig bent, als positief bedrag.')}
             </p>
           )}
         </div>
+
+        {kaart && (
+          <>
+            <hr className="scheiding" />
+            <KaartAfrekening
+              key={rekening.id}
+              rekening={rekening}
+              stand={kaart}
+              rekeningen={rekeningen}
+              vandaagISO={dag}
+              onOverboeking={onOverboeking}
+            />
+          </>
+        )}
 
         <hr className="scheiding" />
 

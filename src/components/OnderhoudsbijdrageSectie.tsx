@@ -137,9 +137,9 @@ export function OnderhoudsbijdrageSectie({
     setMelding('')
     try {
       await exporteerIndexatiebriefPDF(t, dossier, bijdrage, o, kinderen, vandaagISO)
-      setMelding(t('Het overzicht is gedownload.'))
+      setMelding(t('De brief is gedownload.'))
     } catch {
-      setFout(t('Het overzicht kon niet gemaakt worden. Probeer het opnieuw.'))
+      setFout(t('De brief kon niet gemaakt worden. Probeer het opnieuw.'))
     } finally {
       setBriefBezig(false)
     }
@@ -228,7 +228,7 @@ export function OnderhoudsbijdrageSectie({
           aria-disabled={briefBezig}
           onClick={maakBrief}
         >
-          {briefBezig ? t('Bezig…') : t('Overzicht als PDF')}
+          {briefBezig ? t('Bezig…') : t('Brief met de berekening')}
         </button>
         <button
           type="button"

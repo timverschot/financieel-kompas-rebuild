@@ -8,6 +8,10 @@ import type { BijdrageOpbouw } from './onderhoudsbijdrage'
 import {
   aanvangsindexTekst,
   bijdrageVoorbehoud,
+  briefGestopt,
+  briefKern,
+  briefOnderwerp,
+  briefSlot,
   richtingTekstNeutraal,
   stapUitleg,
 } from './onderhoudsbijdrageTekst'
@@ -48,6 +52,41 @@ export async function exporteerIndexatiebriefPDF(
     .filter(Boolean)
     .join(', ')
 
+  const gegevens = {
+    basisbedrag: bijdrage.basisbedrag,
+    datumRegeling: bijdrage.datumRegeling,
+    geindexeerd: bijdrage.geindexeerd,
+    eindDatum: bijdrage.eindDatum,
+  }
+  // Is de regeling afgelopen, dan is "vandaag" het verkeerde woord — precies zoals
+  // op het scherm. Er is sindsdien niets meer verschuldigd en niets meer geïndexeerd.
+  const gestopt = briefGestopt(gegevens, nuISO)
+
+  // ---- Blad 1: de begeleidende brief ---------------------------------------
+  //
+  // Waarom een brief vóór het overzicht, en niet als tweede bijlage: wie een blad
+  // met alleen cijfers krijgt, moet zelf bedenken wat de bedoeling is. En twee
+  // bestanden meesturen is één handeling meer dan er nodig is — dus zit de brief
+  // in dezelfde PDF, als blad 1.
+  blad.regel(nuISO, { grijs: true })
+  blad.verschuif(6)
+  // Afbrekend en niet als losse regel: bij drie of vier kindnamen liep de
+  // onderwerpregel voorbij de rechtermarge, en jsPDF meldt dat niet — de tekst
+  // verdwijnt gewoon van het blad.
+  blad.alinea(briefOnderwerp(t, kindNamen, bijdrage.geindexeerd), { vet: true })
+  blad.verschuif(4)
+  for (const alinea of briefKern(t, opbouw, gegevens, nuISO)) {
+    blad.alinea(alinea)
+    blad.verschuif(3)
+  }
+  blad.alinea(briefSlot(t))
+  blad.verschuif(6)
+  blad.alinea(
+    t('Deze brief is opgemaakt met Financieel Kompas. Hij bevat een berekening en geen juridisch standpunt.'),
+    { klein: true, grijs: true },
+  )
+  blad.nieuwBlad()
+
   // ---- Kop -----------------------------------------------------------------
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(16)
@@ -65,7 +104,7 @@ export async function exporteerIndexatiebriefPDF(
   }
 
   // ---- De uitkomst, meteen ------------------------------------------------
-  blad.kop(t('De bijdrage vandaag'))
+  blad.kop(gestopt ? t('Bijdrage bij het einde van de regeling') : t('De bijdrage vandaag'))
   blad.besluit(formatEuro(opbouw.huidigBedrag))
   if (bijdrage.geindexeerd === false) {
     blad.alinea(t('De regeling sluit indexatie uit; het bedrag blijft dus ongewijzigd.'))

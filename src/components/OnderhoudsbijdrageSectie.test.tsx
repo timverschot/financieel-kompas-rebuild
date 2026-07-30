@@ -289,7 +289,7 @@ describe('OnderhoudsbijdrageSectie — het overzicht als PDF', () => {
   it('geeft het dossier, de bijdrage en de opbouw mee', async () => {
     const user = userEvent.setup()
     toon()
-    await user.click(screen.getByRole('button', { name: 'Overzicht als PDF' }))
+    await user.click(screen.getByRole('button', { name: 'Brief met de berekening' }))
     expect(brief).toHaveBeenCalledTimes(1)
     const argumenten = brief.mock.calls[0]
     expect(argumenten[1]).toEqual(dossier)
@@ -303,19 +303,19 @@ describe('OnderhoudsbijdrageSectie — het overzicht als PDF', () => {
   it('meldt dat het bestand gedownload is', async () => {
     const user = userEvent.setup()
     toon()
-    await user.click(screen.getByRole('button', { name: 'Overzicht als PDF' }))
+    await user.click(screen.getByRole('button', { name: 'Brief met de berekening' }))
     // Er staan twee status-regels op het scherm (die over ontbrekende indexcijfers
     // is er altijd, ook leeg); zoeken op de tekst is dus preciezer dan op de rol.
     const regels = await screen.findAllByRole('status')
-    expect(regels.map((r) => r.textContent).join(' ')).toContain('Het overzicht is gedownload.')
+    expect(regels.map((r) => r.textContent).join(' ')).toContain('De brief is gedownload.')
   })
 
   it('meldt een mislukking in plaats van niets te doen', async () => {
     brief.mockRejectedValue(new Error('stuk'))
     const user = userEvent.setup()
     toon()
-    await user.click(screen.getByRole('button', { name: 'Overzicht als PDF' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Het overzicht kon niet gemaakt worden.')
+    await user.click(screen.getByRole('button', { name: 'Brief met de berekening' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('De brief kon niet gemaakt worden.')
   })
 })
 

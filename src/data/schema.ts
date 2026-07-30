@@ -36,9 +36,16 @@ export const RekeningSchema = z.object({
   // staat het saldo negatief. Zo blijft "hoeveel kan ik nog opnemen" een gewone
   // aftrekking in plaats van een tekenpuzzel.
   kredietlimiet: z.number().int().positive().optional(),
-  // De dag van de maand waarop de kaart afgerekend wordt (1-28, dezelfde grens als
-  // bij een terugkerende post, zodat elke maand gedekt is).
+  // De dag van de maand waarop de kaartrekening wordt AFGESLOTEN (1-28, dezelfde
+  // grens als bij een terugkerende post, zodat elke maand gedekt is).
   afrekendag: z.number().int().min(1).max(28).optional(),
+  // De dag waarop het afgesloten bedrag effectief van je betaalrekening gaat.
+  //
+  // Dit is een ANDERE dag dan de afsluitdag, en dat verschil is precies waarom dit
+  // veld bestaat. Tussen de afsluiting en de afboeking loopt de volgende periode al,
+  // terwijl het afgesloten bedrag nog niet betaald is en dus nog steeds op je limiet
+  // weegt. Met alleen een afsluitdag kan de app dat tussenstuk niet benoemen.
+  afboekdag: z.number().int().min(1).max(28).optional(),
 })
 export type Rekening = z.infer<typeof RekeningSchema>
 

@@ -2,7 +2,7 @@ import type { Vertaler } from '../i18n'
 import { INDEX_BASISJAAR } from '../data/gezondheidsindex'
 import { formatEuro } from './format'
 import { maandJaarLabel } from './datum'
-import type { BijdrageOpbouw, IndexatieStap } from './onderhoudsbijdrage'
+import { laatsteAanpassing, type BijdrageOpbouw, type IndexatieStap } from './onderhoudsbijdrage'
 
 // De bewoordingen van de onderhoudsbijdrage, op één plek (ronde 42).
 //
@@ -107,6 +107,132 @@ export function bijdrageVoorbehoud(t: Vertaler): string[] {
     t('De indexatie gebeurt in België van rechtswege, jaarlijks op de verjaardag van de regeling — tenzij de akte iets anders bepaalt. Wat er in jouw akte staat, gaat voor op wat hier staat.'),
     t('Dit is geen juridisch advies en geen ingebrekestelling. De app rekent; wat je met het cijfer doet, beslis jij.'),
   ]
+}
+
+/** Wat de brief van de regeling moet weten om niets te beweren dat niet klopt. */
+export type BriefGegevens = {
+  basisbedrag: number
+  datumRegeling: string
+  /** Een akte kan indexatie uitsluiten; dan gaat de brief er niet over. */
+  geindexeerd?: boolean
+  /** De dag waarop de regeling ophoudt, als die er is. */
+  eindDatum?: string
+}
+
+/** Is de regeling op de peildatum al afgelopen? Dezelfde regel als op het scherm. */
+export function briefGestopt(gegevens: BriefGegevens, nuISO: string): boolean {
+  return Boolean(gegevens.eindDatum && gegevens.eindDatum < nuISO)
+}
+
+/**
+ * De onderwerpregel van de begeleidende brief.
+ *
+ * Namen van kinderen mogen erin: die maken meteen duidelijk waarover het gaat en
+ * ze zijn feitelijk. Staan ze er niet, dan blijft het onderwerp neutraal.
+ *
+ * Sluit de akte indexatie uit, dan verdwijnt het woord "indexatie": een onderwerp
+ * dat een indexatie aankondigt bij een akte die er geen kent, leest als een
+ * standpunt over die akte. En dat is precies wat dit blad niet mag zijn.
+ */
+export function briefOnderwerp(t: Vertaler, kindNamen: string, geindexeerd?: boolean): string {
+  if (geindexeerd === false) {
+    return kindNamen
+      ? t('Betreft: de onderhoudsbijdrage voor {namen}', { namen: kindNamen })
+      : t('Betreft: de onderhoudsbijdrage')
+  }
+  return kindNamen
+    ? t('Betreft: indexatie van de onderhoudsbijdrage voor {namen}', { namen: kindNamen })
+    : t('Betreft: indexatie van de onderhoudsbijdrage')
+}
+
+/**
+ * De kern van de brief: wat er verandert en waarom.
+ *
+ * In de derde persoon en zonder verwijt. Er staat "volgens deze berekening bedraagt
+ * de bijdrage" en niet "je betaalt te weinig" — dat laatste is een standpunt, en
+ * zodra het op papier staat gaat het gesprek daarover in plaats van over het cijfer.
+ *
+ * Even belangrijk: de brief mag niets beweren wat de rekenkern niet kan waarmaken.
+ * Vandaar de vier gevallen hieronder. Zonder die scheiding zei blad 1 "de bijdrage
+ * volgt de gezondheidsindex" bij een akte die indexatie uitsluit, "vandaag" bij een
+ * regeling die jaren geleden afliep, en een hard bedrag terwijl de aanvangsindex
+ * ontbrak — steeds precies het omgekeerde van wat blad 2 zei.
+ */
+export function briefKern(
+  t: Vertaler,
+  opbouw: BijdrageOpbouw,
+  gegevens: BriefGegevens,
+  nuISO: string,
+): string[] {
+  const { basisbedrag, datumRegeling, geindexeerd, eindDatum } = gegevens
+  const gestopt = briefGestopt(gegevens, nuISO)
+  const geenIndexatie = geindexeerd === false
+  const alineas: string[] = []
+
+  // 1. Waar het over gaat.
+  alineas.push(
+    geenIndexatie
+      ? t('De onderhoudsbijdrage die op {datum} werd vastgelegd, wordt volgens de regeling niet geïndexeerd. Het bedrag blijft daarom ongewijzigd.', {
+          datum: datumRegeling,
+        })
+      : t('De onderhoudsbijdrage die op {datum} werd vastgelegd, volgt de gezondheidsindex. Die aanpassing gebeurt jaarlijks op de verjaardag van de regeling.', {
+          datum: datumRegeling,
+        }),
+  )
+
+  // 2. Het bedrag — en alleen een bedrag dat ook echt berekend is.
+  const laatste = laatsteAanpassing(opbouw, basisbedrag)
+  if (!geenIndexatie && opbouw.aanvangsindex === null) {
+    alineas.push(
+      t('De aanvangsindex van {maand} is in deze app niet bekend, waardoor de indexatie niet berekend kon worden. Hieronder staat daarom nog het bedrag uit de regeling zelf: {basis} per maand.', {
+        maand: maandJaarLabel(`${opbouw.aanvangsmaand}-01`),
+        basis: formatEuro(basisbedrag),
+      }),
+    )
+  } else if (gestopt) {
+    alineas.push(
+      t('Deze regeling liep tot {eind}. Bij het einde ervan bedroeg de bijdrage {bedrag} per maand, tegenover {basis} in de regeling zelf.', {
+        eind: eindDatum ?? '',
+        bedrag: formatEuro(opbouw.huidigBedrag),
+        basis: formatEuro(basisbedrag),
+      }),
+    )
+  } else if (laatste) {
+    alineas.push(
+      t('De laatste aanpassing viel op {datum}. Vanaf die datum bedraagt de bijdrage {bedrag} per maand, tegenover {basis} in de regeling zelf.', {
+        datum: laatste.datum,
+        bedrag: formatEuro(opbouw.huidigBedrag),
+        basis: formatEuro(basisbedrag),
+      }),
+    )
+  } else {
+    alineas.push(
+      t('Volgens deze berekening bedraagt de bijdrage vandaag {bedrag} per maand.', {
+        bedrag: formatEuro(opbouw.huidigBedrag),
+      }),
+    )
+  }
+
+  // 3. Wat er nog niet in verwerkt zit. Zonder deze zin leest de lezer van blad 1
+  //    een bedrag als eindstand terwijl blad 2 zegt dat er een verjaardag wacht.
+  if (!geenIndexatie && opbouw.aanvangsindex !== null && opbouw.ontbrekendeMaanden.length > 0) {
+    alineas.push(
+      t('Voor één of meer verjaardagen was er nog geen indexcijfer bekend. Die aanpassing zit dus nog niet in dit bedrag; op het volgende blad staat om welke maanden het gaat.'),
+    )
+  }
+
+  // 4. Waarnaar de lezer kijkt.
+  alineas.push(
+    opbouw.stappen.length > 0
+      ? t('Op het volgende blad staat de volledige berekening: het bedrag uit de regeling, de gebruikte indexcijfers en wat er per verjaardag uit kwam. Zo is elke regel na te rekenen zonder deze app.')
+      : t('Op het volgende blad staat waarop dit gebaseerd is: het bedrag uit de regeling en de gegevens die daarbij horen. Zo is alles na te kijken zonder deze app.'),
+  )
+  return alineas
+}
+
+/** De afsluitende zin: een uitnodiging om te kijken, geen eis. */
+export function briefSlot(t: Vertaler): string {
+  return t('Klopt er iets niet met de gegevens hierboven, laat het dan weten — dan kan de berekening aangepast worden.')
 }
 
 /** Wie aan wie betaalt, in woorden. Voor het SCHERM: daar ben jij de lezer. */

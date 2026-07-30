@@ -132,6 +132,7 @@ import { MaandGrafiek } from './components/MaandGrafiek'
 import { RecenteTransacties } from './components/RecenteTransacties'
 import { RapportKaart } from './components/RapportKaart'
 import { downloadTekst } from './utils/download'
+import { kaartbedragUitOpslag } from './utils/kredietkaart'
 import { TopDrie } from './components/TopDrie'
 import { RekenhulpenSectie } from './components/RekenhulpenSectie'
 import { TerugkerendeSectie } from './components/TerugkerendeSectie'
@@ -2046,6 +2047,8 @@ export function App() {
                 onVerwijder={verwijderRek}
                 onWaardering={voegWaarderingToe}
                 onWaarderingVerwijderen={verwijderWaarderingH}
+                rekeningen={rekeningen}
+                onOverboeking={voegOverboekingToe}
               />
             )}
           </div>
@@ -2110,7 +2113,15 @@ export function App() {
                           {r.gearchiveerd && <span className="rij-meta"> · {t('gearchiveerd')}</span>}
                         </span>
                         <span className="rij-meta">
-                          {t('startsaldo {saldo}', { saldo: formatEuro(r.beginsaldo) })}
+                          {/* Bij een kaart is het startbedrag een SCHULD; positief
+                              tonen onder "openstaand" scheelt een tekenpuzzel. */}
+                          {r.type === 'krediet'
+                            ? r.beginsaldo > 0
+                              ? t('bij de start {saldo} tegoed', { saldo: formatEuro(r.beginsaldo) })
+                              : t('bij de start {saldo} open', {
+                                  saldo: formatEuro(kaartbedragUitOpslag(r.beginsaldo)),
+                                })
+                            : t('startsaldo {saldo}', { saldo: formatEuro(r.beginsaldo) })}
                           {meta ? ' · ' + meta : ''}
                         </span>
                       </button>

@@ -66,7 +66,7 @@ export type Blad = {
   /** Eén regel met een label links en een waarde rechts uitgelijnd. */
   labelWaarde: (label: string, waarde: string, vet?: boolean) => void
   /** Gewone tekst, automatisch afgebroken over meerdere regels. */
-  alinea: (tekst: string, opties?: { klein?: boolean; grijs?: boolean; indent?: number }) => void
+  alinea: (tekst: string, opties?: { klein?: boolean; grijs?: boolean; indent?: number; vet?: boolean }) => void
   /** Eén regel tekst zonder afbreken. */
   regel: (tekst: string, opties?: { klein?: boolean; grijs?: boolean; vet?: boolean; indent?: number }) => void
   /** Een vetgedrukte conclusieregel, iets groter. */
@@ -151,8 +151,11 @@ export function maakBlad(doc: Doc): Blad {
     alinea: (tekst, opties = {}) => {
       const indent = opties.indent ?? 0
       const hoogte = opties.klein ? REGEL_KLEIN : REGEL
-      const delen = stukken(tekst, RECHTS - LINKS - indent)
       normaal(opties.klein)
+      // Vet zetten vóór het afbreken: vette letters zijn breder, dus met de gewone
+      // maat gemeten past de laatste regel net niet meer binnen de marge.
+      if (opties.vet) doc.setFont('helvetica', 'bold')
+      const delen = stukken(tekst, RECHTS - LINKS - indent)
       if (opties.grijs) doc.setTextColor(GRIJS)
       for (const deel of delen) {
         ruimte(hoogte)

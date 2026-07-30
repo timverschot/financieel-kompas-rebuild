@@ -36,11 +36,14 @@ function toon(opties: {
   overboekingen?: Overboeking[]
   waarderingen?: Waardering[]
   onWaardering?: (w: Waardering) => void
+  rekeningen?: Rekening[]
+  onOverboeking?: (o: Overboeking) => void
 } = {}) {
   const onBewerk = vi.fn()
   const onArchiveer = vi.fn()
   const onVerwijder = vi.fn()
   const onWaardering = opties.onWaardering ?? vi.fn()
+  const onOverboeking = opties.onOverboeking ?? vi.fn()
   const resultaat = render(
     <RekeningDetail
       rekening={opties.rekening ?? rekening}
@@ -54,9 +57,11 @@ function toon(opties: {
       onBewerk={onBewerk}
       onArchiveer={onArchiveer}
       onVerwijder={onVerwijder}
+      rekeningen={opties.rekeningen}
+      onOverboeking={onOverboeking}
     />,
   )
-  return { ...resultaat, onBewerk, onArchiveer, onVerwijder }
+  return { ...resultaat, onBewerk, onArchiveer, onVerwijder, onOverboeking }
 }
 
 // Het grote saldocijfer bovenaan.
@@ -272,5 +277,176 @@ describe('RekeningDetail — waarde bijwerken (ronde 38)', () => {
     await gebruiker.click(screen.getByText('Waarde bijwerken'))
     expect(screen.getByText('Eerder vastgelegd')).toBeInTheDocument()
     expect(screen.getByText('start')).toBeInTheDocument()
+  })
+})
+
+describe('RekeningDetail — een kredietkaart (ronde 43)', () => {
+  // De datums staan vast, zodat de afsluiting van 26 juli altijd voorbij is en de
+  // afboeking van 5 augustus altijd nog moet komen. 'vandaag' komt uit het systeem,
+  // dus alle boekingen krijgen die dag: de afsluitdag zetten we op 1 en de
+  // afboekdag op 28, waardoor de afsluiting altijd al geweest is.
+  const kaart: Rekening = {
+    id: 'k1',
+    naam: 'Mastercard',
+    type: 'krediet',
+    beginsaldo: -100000,
+    kredietlimiet: 400000,
+    afrekendag: 1,
+    afboekdag: 28,
+  }
+  const betaal: Rekening = { id: 'b1', naam: 'Betaalrekening', beginsaldo: 200000, type: 'betaal' }
+
+  it('noemt het bedrag "openstaand" en toont het positief', () => {
+    // "Saldo € -1.000,00" is een tekenpuzzel; "Openstaand € 1.000,00" niet.
+    const { container } = toon({ rekening: kaart })
+    expect(screen.getByText('Nog openstaand')).toBeInTheDocument()
+    expect(screen.queryByText('Saldo vandaag')).not.toBeInTheDocument()
+    expect(grootSaldo(container)).toBe(formatEuro(100000))
+  })
+
+  it('trekt het openstaande bedrag af van de limiet', () => {
+    // Dit is de melding van Timothy: er stond "nog € 4.000,00 van € 4.000,00".
+    const { container } = toon({ rekening: kaart })
+    // formatEuro gebruikt een vaste spatie na het euroteken; vandaar de helper.
+    expect(container.textContent).toContain(
+      `nog ${formatEuro(300000)} van je limiet van ${formatEuro(400000)} beschikbaar`,
+    )
+  })
+
+  it('waarschuwt wanneer het bedrag als tegoed is ingevoerd', () => {
+    const fout = { ...kaart, beginsaldo: 100000 }
+    const { container } = toon({ rekening: fout })
+    expect(screen.getByText('Tegoed op de kaart')).toBeInTheDocument()
+    expect(container.textContent).toContain('Er staat een tegoed op deze kaart, geen schuld')
+  })
+
+  it('toont de afsluiting, wat er nog te betalen is en de lopende periode', () => {
+    const { container } = toon({ rekening: kaart })
+    const blok = container.querySelector('[data-afrekening]') as HTMLElement
+    expect(blok.textContent).toContain('Afgesloten op')
+    expect(blok.textContent).toContain('Nog te betalen')
+    expect(blok.textContent).toContain('Sinds de afsluiting')
+  })
+
+  it('boekt de afrekening als overboeking naar de kaart, niet als uitgave', async () => {
+    const gebruiker = userEvent.setup()
+    const onOverboeking = vi.fn()
+    toon({ rekening: kaart, rekeningen: [betaal, kaart], onOverboeking })
+
+    await gebruiker.click(screen.getByRole('button', { name: 'Afrekening boeken' }))
+    await gebruiker.click(screen.getByRole('button', { name: 'Boek de overboeking' }))
+
+    expect(onOverboeking).toHaveBeenCalledWith(
+      expect.objectContaining({ vanRekeningId: 'b1', naarRekeningId: 'k1', bedrag: 100000 }),
+    )
+  })
+
+  it('laat de knop weg wanneer er niets meer te betalen valt', () => {
+    const betaald = { ...kaart, beginsaldo: 0 }
+    toon({ rekening: betaald, rekeningen: [betaal, betaald] })
+    expect(screen.queryByRole('button', { name: 'Afrekening boeken' })).not.toBeInTheDocument()
+  })
+
+  it('biedt de kaart zelf niet aan als bron van haar eigen afrekening', async () => {
+    const gebruiker = userEvent.setup()
+    toon({ rekening: kaart, rekeningen: [betaal, kaart] })
+    await gebruiker.click(screen.getByRole('button', { name: 'Afrekening boeken' }))
+    const keuze = screen.getByLabelText('Van welke rekening') as HTMLSelectElement
+    expect([...keuze.options].map((o) => o.value)).toEqual(['b1'])
+  })
+
+  it('laat een gewone rekening ongemoeid', () => {
+    const { container } = toon()
+    expect(screen.getByText('Saldo vandaag')).toBeInTheDocument()
+    expect(container.querySelector('[data-afrekening]')).toBeNull()
+  })
+})
+
+describe('RekeningDetail — de punten uit de review (ronde 43)', () => {
+  // Afsluitdag 1 en afboekdag 28 zorgen dat de afsluiting altijd geweest is; de
+  // afboekdatum ligt dan in dezelfde maand.
+  const kaart: Rekening = {
+    id: 'k1',
+    naam: 'Mastercard',
+    type: 'krediet',
+    beginsaldo: -100000,
+    kredietlimiet: 400000,
+    afrekendag: 1,
+    afboekdag: 28,
+  }
+  const tweede: Rekening = { ...kaart, id: 'k2', naam: 'Visa', beginsaldo: -25000 }
+  const betaal: Rekening = { id: 'b1', naam: 'Betaalrekening', beginsaldo: 500000, type: 'betaal' }
+
+  it('begint met een leeg formulier wanneer je naar een andere kaart gaat', async () => {
+    // Zonder een eigen sleutel per rekening bleef het bedrag van de vorige kaart in
+    // het formulier staan — en boekte je dat bedrag naar de verkeerde kaart.
+    const gebruiker = userEvent.setup()
+    const { rerender } = render(
+      <RekeningDetail
+        rekening={kaart}
+        transacties={[]}
+        overboekingen={[]}
+        waarderingen={[]}
+        onWaardering={vi.fn()}
+        onWaarderingVerwijderen={vi.fn()}
+        categorieen={[]}
+        rekeningNaam={(id) => namen[id]}
+        onBewerk={vi.fn()}
+        onArchiveer={vi.fn()}
+        onVerwijder={vi.fn()}
+        rekeningen={[betaal, kaart, tweede]}
+        onOverboeking={vi.fn()}
+      />,
+    )
+    await gebruiker.click(screen.getByRole('button', { name: 'Afrekening boeken' }))
+    expect(screen.getByLabelText('Bedrag (€)')).toHaveValue('1000,00')
+
+    rerender(
+      <RekeningDetail
+        rekening={tweede}
+        transacties={[]}
+        overboekingen={[]}
+        waarderingen={[]}
+        onWaardering={vi.fn()}
+        onWaarderingVerwijderen={vi.fn()}
+        categorieen={[]}
+        rekeningNaam={(id) => namen[id]}
+        onBewerk={vi.fn()}
+        onArchiveer={vi.fn()}
+        onVerwijder={vi.fn()}
+        rekeningen={[betaal, kaart, tweede]}
+        onOverboeking={vi.fn()}
+      />,
+    )
+    // Het paneel is dicht en het bedrag van de vorige kaart is weg.
+    expect(screen.queryByLabelText('Bedrag (€)')).not.toBeInTheDocument()
+    await gebruiker.click(screen.getByRole('button', { name: 'Afrekening boeken' }))
+    expect(screen.getByLabelText('Bedrag (€)')).toHaveValue('250,00')
+  })
+
+  it('biedt de knop niet nog eens aan wanneer de afrekening al klaarstaat', () => {
+    // Een overboeking met de datum van de afboeking staat in de toekomst en telt
+    // dus nergens mee. Zonder deze controle boekte je ze een tweede keer.
+    const morgen = new Date(Date.parse(vandaagTekst) + 86400000).toISOString().slice(0, 10)
+    const { container } = toon({
+      rekening: kaart,
+      rekeningen: [betaal, kaart],
+      overboekingen: [ob({ id: 'o1', datum: morgen, vanRekeningId: 'b1', naarRekeningId: 'k1', bedrag: 100000 })],
+    })
+    expect(container.textContent).toContain('Er staat al een overboeking van')
+    expect(screen.queryByRole('button', { name: 'Afrekening boeken' })).not.toBeInTheDocument()
+  })
+
+  it('legt uit waarom er niet geboekt kan worden zonder tweede rekening', () => {
+    const { container } = toon({ rekening: kaart, rekeningen: [kaart] })
+    expect(screen.queryByRole('button', { name: 'Afrekening boeken' })).not.toBeInTheDocument()
+    expect(container.textContent).toContain('heb je nog een andere rekening nodig')
+  })
+
+  it('leest een kaart die als tegoed bewaard is als tegoed, ook in het startbedrag', () => {
+    const oud = { ...kaart, beginsaldo: 100000 }
+    const { container } = toon({ rekening: oud })
+    expect(container.textContent).toContain('bij de start stond er')
+    expect(container.textContent).not.toContain('€ -1.000,00')
   })
 })
