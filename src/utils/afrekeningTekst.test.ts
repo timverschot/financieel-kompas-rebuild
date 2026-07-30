@@ -1,5 +1,16 @@
 import { describe, it, expect } from 'vitest'
-import { afrekeningKosten, afrekeningSamenvatting, groepLabel, verdeelsleutelTekst, verrekenTekst } from './afrekeningTekst'
+import {
+  afrekeningKosten,
+  afrekeningSamenvatting,
+  berekeningTekst,
+  groepLabel,
+  sleutelHerkomst,
+  sleutelVanRegel,
+  heeftEenBon,
+  verdeelsleutelTekst,
+  verrekenTekst,
+  voorbehoudRegels,
+} from './afrekeningTekst'
 import { bouwAfrekeningOverzicht } from './afrekeningOverzicht'
 import { saldoVerrekeningDossier } from './dossier'
 import { formatEuro } from './format'
@@ -161,5 +172,123 @@ describe('gedeelde bewoordingen', () => {
   it('noemt bij een eigen percentage op de kost geen categorie of dossier', () => {
     const zin = verdeelsleutelTekst(t, { percentageJij: 80, herkomst: 'kost', bron: '', aantalKosten: 2, totaal: 5000 })
     expect(zin).toBe(`jij 80% / partner 20% — eigen percentage op de kost (2 kost(en), ${formatEuro(5000)})`)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// BEWIJSMAP (ronde 41)
+// ---------------------------------------------------------------------------
+
+const regelVan = (over: Partial<GedeeldeKost> & { id: string }) => {
+  const k = kost(over)
+  const v: Verrekening = { id: 'v1', dossierId: 'd1', datum: '2026-04-01', bedrag: 0, kostIds: [k.id] }
+  const o = bouwAfrekeningOverzicht({ id: 'd1', naam: 'D', aandeelJij: 60 }, v, [k], [])
+  return o.regels[0]
+}
+
+describe('berekeningTekst', () => {
+  it('schrijft bedrag, percentage en beide aandelen uit', () => {
+    const tekst = berekeningTekst(t, regelVan({ id: 'k1', bedrag: 12000 }))
+    expect(tekst).toContain(formatEuro(12000))
+    expect(tekst).toContain('60%')
+    expect(tekst).toContain(formatEuro(7200))
+    expect(tekst).toContain(formatEuro(4800))
+  })
+
+  it('gebruikt een gewone x, geen maalteken', () => {
+    // jsPDF kan × in het standaardlettertype niet tonen: dan krijg je een leeg
+    // vlakje midden in de berekening.
+    expect(berekeningTekst(t, regelVan({ id: 'k1', bedrag: 12000 }))).not.toContain('×')
+    expect(berekeningTekst(t, regelVan({ id: 'k1', bedrag: 12000 }))).toContain(' x ')
+  })
+
+  it('telt de twee aandelen exact op tot het bedrag', () => {
+    // Een bedrag dat niet netjes deelt: 1 cent verschil mag nergens ontstaan.
+    const r = regelVan({ id: 'k1', bedrag: 10001 })
+    expect(r.jouwAandeel + r.partnerAandeel).toBe(10001)
+  })
+})
+
+describe('sleutelVanRegel', () => {
+  it('zet één regel om naar een verdeelsleutel met dezelfde herkomst', () => {
+    const r = regelVan({ id: 'k1', bedrag: 12000 })
+    const s = sleutelVanRegel(r)
+    expect(s.percentageJij).toBe(r.percentageJij)
+    expect(s.herkomst).toBe(r.herkomst)
+    expect(s.aantalKosten).toBe(1)
+  })
+
+  it('geeft via sleutelHerkomst dezelfde uitleg als de samenvatting erboven', () => {
+    const r = regelVan({ id: 'k1', bedrag: 12000 })
+    expect(sleutelHerkomst(t, sleutelVanRegel(r))).toBe('standaardverdeling van het dossier')
+  })
+
+  it('benoemt een eigen percentage op de kost als zodanig', () => {
+    const r = regelVan({ id: 'k1', bedrag: 12000, aandeelJijOverride: 75 })
+    expect(r.percentageJij).toBe(75)
+    expect(sleutelHerkomst(t, sleutelVanRegel(r))).toBe('eigen percentage op de kost')
+  })
+})
+
+describe('voorbehoudRegels', () => {
+  it('zegt dat het geen juridisch advies is', () => {
+    expect(voorbehoudRegels(t).join(' ')).toContain('geen juridisch advies')
+  })
+
+  it('zegt waar de cijfers vandaan komen', () => {
+    expect(voorbehoudRegels(t).join(' ')).toContain('Financieel Kompas')
+  })
+
+  it('waarschuwt over een bon die als PDF is toegevoegd', () => {
+    expect(voorbehoudRegels(t).join(' ')).toContain('PDF-bestand')
+  })
+
+  it('gebruikt geen tekens die de PDF niet kan tonen', () => {
+    // Geen emoji, geen pijltjes: dat wordt in helvetica een leeg vlakje.
+    for (const regel of voorbehoudRegels(t)) {
+      expect(regel).not.toMatch(/[←-⇿\u{1f300}-\u{1faff}]/u)
+    }
+  })
+})
+
+describe('afrekeningSamenvatting — de bon die aan de transactie hangt', () => {
+  // De tekst die je doorstuurt zei "geen bon" bij een kost waarvan de bon in de
+  // documentkluis onder de transactie zit, terwijl de bewijsmap hem wél vond.
+  const viaTransactie = kost({ id: 'kx', bedrag: 6000, transactieId: 'tx1' })
+  const v: Verrekening = { id: 'v1', dossierId: 'd1', datum: '2026-04-01', bedrag: 0, kostIds: ['kx'] }
+  const d = { id: 'd1', naam: 'D', aandeelJij: 60 }
+  const kluis = [
+    {
+      id: 'doc1',
+      transactieId: 'tx1',
+      naam: 'Bon',
+      soort: 'bon' as const,
+      bestand: 'data:image/jpeg;base64,AAAA',
+      toegevoegdOp: '2026-03-05',
+    },
+  ]
+
+  it('zegt "bon toegevoegd" wanneer de kluis de bon heeft', () => {
+    const tekst = afrekeningSamenvatting(t, d, v, [viaTransactie], [], [], new Date(2026, 6, 29), kluis)
+    expect(tekst).toContain('bon toegevoegd')
+    expect(tekst).not.toContain('geen bon')
+    expect(tekst).toContain('waarvan 1 met bon')
+  })
+
+  it('zegt nog steeds "geen bon" wanneer er echt geen is', () => {
+    const tekst = afrekeningSamenvatting(t, d, v, [viaTransactie], [], [], new Date(2026, 6, 29), [])
+    expect(tekst).toContain('geen bon')
+  })
+})
+
+describe('heeftEenBon', () => {
+  it('kijkt op de kost én in de kluis', () => {
+    expect(heeftEenBon(kost({ id: 'a', bonnetje: 'data:image/jpeg;base64,AAAA' }))).toBe(true)
+    expect(heeftEenBon(kost({ id: 'b' }))).toBe(false)
+    expect(
+      heeftEenBon(kost({ id: 'c', transactieId: 'tx1' }), [
+        { id: 'd1', transactieId: 'tx1', naam: 'Bon', soort: 'bon', bestand: 'data:image/jpeg;base64,AAAA', toegevoegdOp: '2026-01-01' },
+      ]),
+    ).toBe(true)
   })
 })

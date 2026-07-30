@@ -5,7 +5,7 @@ import type { DossierDocument, Documentsoort } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { verkleinAfbeelding } from '../utils/afbeelding'
 import { vandaag } from '../utils/datum'
-import { documentenVan, veldVanSoort, type KluisEigenaar } from '../utils/kluis'
+import { documentenVan, soortNaam, veldVanSoort, type KluisEigenaar } from '../utils/kluis'
 import { Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 import type { Vertaler } from '../i18n'
@@ -16,22 +16,8 @@ import { Bonknop } from '../ui/Bonknop'
 // kleiner moet, dan stil een trage app veroorzaken.
 const MAX_BESTAND = 4_000_000
 
-// De weergavenaam van een documentsoort. De opgeslagen sleutel ('overeenkomst',
-// 'attest', …) blijft taal-onafhankelijk; alleen wat je ziet wordt vertaald.
-function soortNaam(t: Vertaler, soort: Documentsoort): string {
-  switch (soort) {
-    case 'overeenkomst':
-      return t('Overeenkomst')
-    case 'attest':
-      return t('Attest')
-    case 'bon':
-      return t('Bon')
-    case 'vonnis':
-      return t('Vonnis')
-    default:
-      return t('Ander')
-  }
-}
+// `soortNaam` staat sinds ronde 41 in utils/kluis.ts: de bewijsmap gebruikt
+// dezelfde namen, en twee kopieën lopen na één wijziging uit elkaar.
 
 // De uitleg en de standaardsoort verschillen per soort kluis: bij een dossier
 // denk je aan de ouderschapsovereenkomst, bij een lening aan de leningovereenkomst,
@@ -193,7 +179,13 @@ export function Documentkluis({
                 />
               )}
               <div className="rij-midden">
-                <span className="rij-titel">{d.naam}</span>
+                {/* `overflowWrap`: `.rij-midden` heeft `min-width: 0`, dus een lange
+                    documentnaam werd op een telefoon stil weggeknipt — zonder
+                    weglatingsteken, dus je zag niet dát er iets ontbrak. Juist bij een
+                    bewijsstuk is de naam wat het document identificeert. */}
+                <span className="rij-titel" style={{ overflowWrap: 'anywhere' }}>
+                  {d.naam}
+                </span>
                 <span className="rij-meta">
                   <span className="badge badge-neutraal">{soortNaam(t, d.soort)}</span> {d.toegevoegdOp}
                   {d.notitie && <> · {d.notitie}</>}

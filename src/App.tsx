@@ -122,6 +122,8 @@ import { OverzichtZijkolom } from './components/OverzichtZijkolom'
 import { Donut } from './components/Donut'
 import { MaandGrafiek } from './components/MaandGrafiek'
 import { RecenteTransacties } from './components/RecenteTransacties'
+import { RapportKaart } from './components/RapportKaart'
+import { downloadTekst } from './utils/download'
 import { TopDrie } from './components/TopDrie'
 import { RekenhulpenSectie } from './components/RekenhulpenSectie'
 import { TerugkerendeSectie } from './components/TerugkerendeSectie'
@@ -550,17 +552,18 @@ export function App() {
   useMemo(() => stelCategorieboomIn(subcategorieen, categorieen), [subcategorieen, categorieen])
 
   async function exporteerNu() {
-    const json = await exporteerBackup()
-    const blob = new Blob([json], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `financieel-kompas-backup-${vandaag()}.json`
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
-    setBackupTekst(t('Back-up gedownload.'))
+    // Ronde 41: dit was een eigen kopie van het download-patroon, en ze gaf het
+    // blob-adres METEEN na de klik vrij. Sommige browsers hebben dat adres nog even
+    // nodig terwijl ze het bestand oppakken, en dan breekt de download halverwege af.
+    // De gedeelde helper wacht tien seconden en gooit een fout dóór in plaats van ze
+    // te slikken.
+    try {
+      const json = await exporteerBackup()
+      downloadTekst(`financieel-kompas-backup-${vandaag()}.json`, json, 'application/json')
+      setBackupTekst(t('Back-up gedownload.'))
+    } catch {
+      setBackupTekst(t('De back-up kon niet gedownload worden. Probeer het opnieuw.'))
+    }
   }
 
   async function herstelUitBestand(bestand: File) {
@@ -1657,6 +1660,17 @@ export function App() {
               >
                 <MaandGrafiek data={maandPaar} lopendeMaand={huidigeMaand()} />
               </Kaart>
+
+              {/* Onderaan, bewust: je exporteert een maand nadat je ze bekeken hebt,
+                  niet ervoor. De kaart volgt de maandschakelaar bovenaan. */}
+              <RapportKaart
+                maand={maand}
+                transacties={transacties}
+                categorieen={categorieen}
+                rekeningen={rekeningen}
+                overboekingen={overboekingen}
+                waarderingen={waarderingen}
+              />
             </div>
           </ErrorBoundary>
         </>

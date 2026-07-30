@@ -3,11 +3,13 @@ import type { Categorie, Garantie, GedeeldeKost, Rekening, Transactie } from '..
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
 import { labelVanCategorie, padVanCategorie } from '../data/categorieen/resolve'
 import { filterTransacties, heeftActiefFilter, grensDatumMaandenTerug, type TxFilter } from '../utils/transactieFilter'
+import { filterDelen, type FilterNamen, type FilterSleutel } from '../utils/filterTekst'
+import { transactieCsvBestand, transactieCsvBestandsnaam } from '../utils/transactieCsv'
+import { downloadTekst } from '../utils/download'
 import { groepenVanTransactie, isGesplitstOverCategorieen, type TransactieGroep } from '../utils/transactie'
 import { formatEuro } from '../utils/format'
 import { kengetallenVan } from '../utils/overzicht'
 import { rekeningLabel } from '../utils/rekening'
-import { naamVanBesparingsdomein } from '../utils/besparen'
 import {
   SORTEERVELDEN,
   STANDAARD_SORTERING,
@@ -226,6 +228,19 @@ export function TransactieLijst({
     setBevestigWissen(false)
   }
 
+  // De CSV-export. Ronde 41.
+  //
+  // Wat er in het bestand komt is precies wat je op het scherm ziet: dezelfde
+  // rijen (`zichtbaar`), dezelfde volgorde, en het filter staat in de
+  // bestandsnaam. Zou de export op `transacties` werken, dan krijg je bij een
+  // lijst op "Voeding in maart" stil je hele historiek in het bestand — en dat
+  // merk je pas nadat je het hebt doorgestuurd.
+  //
+  // Een mislukte download wordt NIET stil geslikt: dan tik je op de knop, gebeurt
+  // er niets, en weet je niet of het aan jou of aan de app ligt.
+  const [exportFout, setExportFout] = useState('')
+  const [exportKlaar, setExportKlaar] = useState('')
+
   const categorieNaam = (id?: string) => labelVanCategorie(id, categorieen)
   // Het volledige pad ("Voeding › Brood (wit)"): in een lijst die je overloopt is
   // "Brood (wit)" zonder zijn hoofdcategorie moeilijk te plaatsen.
@@ -242,68 +257,60 @@ export function TransactieLijst({
   }
 
   // De actieve filters als chips, elk met zijn eigen wisser.
-  const chips: FilterChip[] = []
-  // De zoekterm staat sinds ronde 32 óók als chip: het zoekveld zit nu achter een
-  // knop, dus zonder deze chip zou je een lijst zien die stilletjes op iets
-  // gefilterd is zonder dat er ergens staat waarop.
-  if (filter.zoek) {
-    chips.push({
-      sleutel: 'zoek',
-      label: t('Zoek: {term}', { term: filter.zoek }),
-      wis: () => zet({ zoek: undefined }),
-    })
+  //
+  // Ronde 41: de LABELS stonden hier los uitgeschreven. Sinds de CSV-export en de
+  // PDF hetzelfde filter moeten kunnen benoemen, komen ze uit `filterDelen()` —
+  // anders zegt de chip "Voeding · maart 2026" en het bestand iets anders. De
+  // WISSERS blijven hier: die horen bij dit scherm, niet bij de tekst.
+  const filterNamen: FilterNamen = {
+    // Sinds ronde 40 kan `catId` ook een ITEM zijn (doorklikken vanaf een budget op
+    // "Brood (wit)"). Dat staat niet in de keuzelijst, dus valt het label terug op
+    // de gewone categorienaam in plaats van op het kale id.
+    categorieNaam: (id) => subOpties.find((c) => c.id === id)?.naam ?? categorieNaam(id),
+    rekeningNaam: (id) => rekeningNaam(id),
   }
-  if (filter.richting) {
-    chips.push({
-      sleutel: 'richting',
-      label: filter.richting === 'in' ? t('Inkomsten') : t('Uitgaven'),
-      wis: () => zet({ richting: undefined }),
-    })
+  const wissers: Record<FilterSleutel, () => void> = {
+    zoek: () => zet({ zoek: undefined }),
+    richting: () => zet({ richting: undefined }),
+    rekening: () => zet({ rekeningId: undefined }),
+    // Een subcategorie hoort bij haar hoofdcategorie: die valt mee weg.
+    hoofd: () => zet({ hoofdId: undefined, catId: undefined }),
+    sub: () => zet({ catId: undefined }),
+    domein: () => zet({ domein: undefined }),
+    van: () => zet({ van: undefined }),
+    tot: () => zet({ tot: undefined }),
+    maand: () => zet({ maand: undefined }),
   }
-  if (filter.rekeningId) {
-    chips.push({
-      sleutel: 'rekening',
-      label: rekeningNaam(filter.rekeningId) ?? t('onbekende rekening'),
-      wis: () => zet({ rekeningId: undefined }),
-    })
-  }
-  if (filter.hoofdId) {
-    chips.push({
-      sleutel: 'hoofd',
-      label: categorieNaam(filter.hoofdId) ?? filter.hoofdId,
-      // Een subcategorie hoort bij haar hoofdcategorie: die valt mee weg.
-      wis: () => zet({ hoofdId: undefined, catId: undefined }),
-    })
-  }
-  if (filter.catId) {
-    chips.push({
-      sleutel: 'sub',
-      // Sinds ronde 40 kan `catId` ook een ITEM zijn (doorklikken vanaf een
-      // budget op "Brood (wit)"). Dat staat niet in de keuzelijst, dus valt het
-      // label terug op de gewone categorienaam in plaats van op het kale id.
-      label: subOpties.find((c) => c.id === filter.catId)?.naam ?? categorieNaam(filter.catId) ?? filter.catId,
-      wis: () => zet({ catId: undefined }),
-    })
-  }
-  if (filter.domein) {
-    chips.push({
-      sleutel: 'domein',
-      label: t(naamVanBesparingsdomein(filter.domein) ?? filter.domein),
-      wis: () => zet({ domein: undefined }),
-    })
-  }
-  if (filter.van) {
-    chips.push({ sleutel: 'van', label: t('Van {datum}', { datum: filter.van }), wis: () => zet({ van: undefined }) })
-  }
-  if (filter.tot) {
-    chips.push({ sleutel: 'tot', label: t('Tot {datum}', { datum: filter.tot }), wis: () => zet({ tot: undefined }) })
-  }
-  if (filter.maand) {
-    chips.push({
-      sleutel: 'maand',
-      label: maandJaarLabel(filter.maand),
-      wis: () => zet({ maand: undefined }),
-    })
+  const chips: FilterChip[] = filterDelen(t, filter, filterNamen).map((deel) => ({
+    sleutel: deel.sleutel,
+    label: deel.label,
+    wis: wissers[deel.sleutel],
+  }))
+
+  // Het filter ZOALS HET BESTAND HET ZIET.
+  //
+  // Zonder filter toont de lijst maar zes maanden (het venster hierboven). Noemde de
+  // export dat "alle transacties", dan stuurde je een bestand door dat alles belooft
+  // en je oudere boekingen weglaat — en dat merk je pas als iemand ernaar vraagt.
+  // Door de vensterdatum als `van` mee te geven, benoemt de bestandsnaam precies wat
+  // erin zit, en klopt hij met de rijen die geëxporteerd worden.
+  const exportFilter: TxFilter = venster ? { ...filter, van: grens } : filter
+
+  function exporteerCsv() {
+    try {
+      downloadTekst(
+        transactieCsvBestandsnaam(t, exportFilter, vandaag(), filterNamen),
+        transactieCsvBestand(t, zichtbaar, categorieen, rekeningen),
+        'text/csv;charset=utf-8',
+      )
+      setExportFout('')
+      // Bij een download gebeurt er op het scherm niets. Zonder deze regel weet wie
+      // met een schermlezer werkt niet of het bestand er komt.
+      setExportKlaar(t('{n} rij(en) gedownload als CSV-bestand.', { n: zichtbaar.length }))
+    } catch {
+      setExportKlaar('')
+      setExportFout(t('Het bestand kon niet gedownload worden. Probeer het opnieuw.'))
+    }
   }
 
   // De kengetallen gaan over precies de rijen die je ziet — zie kengetallenVan().
@@ -457,12 +464,18 @@ export function TransactieLijst({
               aria-label={t('Wis filter {naam}', { naam: c.label })}
               onClick={c.wis}
             >
-              {c.label} <span aria-hidden="true">×</span>
+              {/* Het kruisje is een bedieningselement; op papier leest het als een
+                  leesteken achter de filternaam. */}
+              {c.label} <span aria-hidden="true" data-geen-print>
+                ×
+              </span>
             </button>
           ))}
 
           {actief && (
-            <button type="button" className="chip" onClick={wis}>
+            // `data-geen-print`: de chips ernaast zeggen WAAROP je gefilterd hebt en
+            // horen dus op papier; deze knop is een pure actie en zegt daar niets.
+            <button type="button" className="chip" data-geen-print onClick={wis}>
               {t('Wis filters')}
             </button>
           )}
@@ -581,12 +594,33 @@ export function TransactieLijst({
       </Kaart>
 
       <Kaart>
-        <div className="rij" style={{ borderBottom: 'none', padding: 0, gap: 12 }}>
-          <p className="kaart-bijschrift rij-midden" style={{ margin: 0 }}>
+        {/* `flexWrap`: drie items waarvan twee niet mogen afbreken (de knop en
+            "Alles selecteren"). Op 393 px hield de teller daardoor nog een vijftigtal
+            pixels over, en "transactie(s)" is als woord al breder — dan liep die tekst
+            buiten zijn vak, en `.kaart` heeft geen `overflow: hidden`. */}
+        <div className="rij" style={{ borderBottom: 'none', padding: 0, gap: 12, flexWrap: 'wrap' }}>
+          {/* `minWidth: 'max-content'` samen met `flexWrap` hierboven: `.rij-midden`
+              heeft `min-width: 0`, dus zonder deze regel kromp deze tekst tóch tot
+              onder haar eigen breedte en werd "6 transactie(s) getoond" afgekapt in
+              plaats van dat de knop naar de volgende regel ging. In de browser
+              nagemeten op 393 px. */}
+          <p className="kaart-bijschrift rij-midden" style={{ margin: 0, minWidth: 'max-content' }}>
             {actief
               ? t('{n} transactie(s) gevonden', { n: gesorteerd.length })
               : t('{n} transactie(s) getoond', { n: zichtbaar.length })}
           </p>
+          {/* Naast de teller, bewust: daar staat al hoeveel rijen er in het bestand
+              komen, dus hoeft de knop dat niet nog eens uit te leggen. */}
+          {zichtbaar.length > 0 && (
+            <button
+              type="button"
+              className="knop knop-secundair knop-klein"
+              style={{ whiteSpace: 'nowrap' }}
+              onClick={exporteerCsv}
+            >
+              {t('Exporteer CSV')}
+            </button>
+          )}
           {/* Bewust hier en niet in de kolomkop: die kop bestaat pas vanaf 1024 px,
               dus op een telefoon zou "alles selecteren" onbereikbaar zijn. */}
           {kanSelecteren && zichtbaar.length > 0 && (
@@ -602,6 +636,27 @@ export function TransactieLijst({
             </label>
           )}
         </div>
+
+        {/* Wat er in het bestand komt, in klare taal. "CSV" is voor wie er nooit een
+            geopend heeft een lettercombinatie, niet een bestandssoort; en dat de
+            export het filter volgt zag je tot nu toe alleen in de bestandsnaam —
+            ná het downloaden. */}
+        {zichtbaar.length > 0 && (
+          <p className="rij-meta" style={{ margin: 0 }}>
+            {t('De CSV bevat precies deze rijen, in deze volgorde. Je opent hem met Excel of Numbers.')}
+          </p>
+        )}
+        {exportFout !== '' && (
+          <p className="foutregel" role="alert">
+            {exportFout}
+          </p>
+        )}
+        {/* Altijd aanwezig, leeg wanneer er niets te melden is: een `role="status"`
+            die pas mét de melding in het document verschijnt, wordt door sommige
+            schermlezers niet voorgelezen. */}
+        <p className="rij-meta" role="status" style={{ margin: 0 }}>
+          {exportKlaar}
+        </p>
 
         {/* Zeg het bovenaan, waar je het ziet: onderaan een lange lijst valt een
             knop niet op, en dan lijkt het alsof er boekingen weg zijn. */}

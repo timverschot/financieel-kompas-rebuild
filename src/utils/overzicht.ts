@@ -2,26 +2,32 @@ import type { Categorie, Transactie } from '../data/schema'
 import { groepVanCategorie } from '../data/categorieen/resolve'
 import { categorieBedragen } from './transactie'
 
-// Zuivere functies voor het maandoverzicht. 'maand' is in het formaat 'JJJJ-MM'.
-// Los gehouden zodat ze deterministisch getest kunnen worden.
+// Zuivere functies voor het maandoverzicht. Los gehouden zodat ze deterministisch
+// getest kunnen worden.
+//
+// 'periode' is een PREFIX van een datum: 'JJJJ-MM' voor één maand, of 'JJJJ' voor
+// een heel jaar. Alle tellingen hier vergelijken met `datum.startsWith(periode)`,
+// dus beide vormen werken zonder aparte logica. Ronde 41 maakte dat expliciet
+// omdat de jaar-PDF hetzelfde moet kunnen tellen als de maand-PDF; vóór die ronde
+// stond er 'maand' en was het toeval dat een jaar ook werkte.
 
 // Inkomsten en uitgaven tellen op REGELNIVEAU (via categorieBedragen), net zoals
 // de donut per categorie. Zo blijft het maandtotaal altijd gelijk aan de som van
 // de grafiek-segmenten, ook bij een gesplitst ticket met een positieve regel
 // (bv. statiegeld of korting) tussen de uitgaven.
-export function maandInkomsten(transacties: Transactie[], maand: string): number {
+export function maandInkomsten(transacties: Transactie[], periode: string): number {
   let som = 0
   for (const t of transacties) {
-    if (!t.datum.startsWith(maand)) continue
+    if (!t.datum.startsWith(periode)) continue
     for (const regel of categorieBedragen(t)) if (regel.bedrag > 0) som += regel.bedrag
   }
   return som
 }
 
-export function maandUitgaven(transacties: Transactie[], maand: string): number {
+export function maandUitgaven(transacties: Transactie[], periode: string): number {
   let som = 0
   for (const t of transacties) {
-    if (!t.datum.startsWith(maand)) continue
+    if (!t.datum.startsWith(periode)) continue
     for (const regel of categorieBedragen(t)) if (regel.bedrag < 0) som += Math.abs(regel.bedrag)
   }
   return som
@@ -68,12 +74,12 @@ export type CategorieUitgave = { sleutel: string; naam: string; bedrag: number; 
 function groepeerPerCategorie(
   transacties: Transactie[],
   categorieen: Categorie[],
-  maand: string,
+  periode: string,
   wilInkomst: boolean,
 ): CategorieUitgave[] {
   const perGroep = new Map<string, { sleutel: string; naam: string; kleur: string | null; bedrag: number }>()
   for (const t of transacties) {
-    if (!t.datum.startsWith(maand)) continue
+    if (!t.datum.startsWith(periode)) continue
     // Splits de transactie uit in haar deelregels (of één regel als ze niet
     // gesplitst is), zodat elke categorie exact zijn deel krijgt.
     for (const regel of categorieBedragen(t)) {
@@ -98,10 +104,10 @@ function groepeerPerCategorie(
     .sort((a, b) => b.bedrag - a.bedrag)
 }
 
-export function uitgavenPerCategorie(transacties: Transactie[], categorieen: Categorie[], maand: string): CategorieUitgave[] {
-  return groepeerPerCategorie(transacties, categorieen, maand, false)
+export function uitgavenPerCategorie(transacties: Transactie[], categorieen: Categorie[], periode: string): CategorieUitgave[] {
+  return groepeerPerCategorie(transacties, categorieen, periode, false)
 }
 
-export function inkomstenPerCategorie(transacties: Transactie[], categorieen: Categorie[], maand: string): CategorieUitgave[] {
-  return groepeerPerCategorie(transacties, categorieen, maand, true)
+export function inkomstenPerCategorie(transacties: Transactie[], categorieen: Categorie[], periode: string): CategorieUitgave[] {
+  return groepeerPerCategorie(transacties, categorieen, periode, true)
 }

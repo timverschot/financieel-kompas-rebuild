@@ -1,5 +1,19 @@
 import { describe, it, expect } from 'vitest'
-import { dagKort, huidigeMaand, maandJaarLabel, maandKort, maandVoluit, naarDatumTekst, vandaag, dagJaar } from './datum'
+import {
+  dagKort,
+  huidigeMaand,
+  maandJaarLabel,
+  maandKort,
+  maandVoluit,
+  naarDatumTekst,
+  vandaag,
+  dagJaar,
+  periodeSoort,
+  periodeLabel,
+  laatsteDagVanPeriode,
+  jaarVan,
+  maandenVanJaar,
+} from './datum'
 
 describe('datum', () => {
   it('zet een datum om naar JJJJ-MM-DD met voorloopnullen', () => {
@@ -64,5 +78,66 @@ describe('dagJaar', () => {
 
   it('geeft onleesbare invoer ongewijzigd terug in plaats van "Invalid Date"', () => {
     expect(dagJaar('geen datum')).toBe('geen datum')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// PERIODES (ronde 41)
+// ---------------------------------------------------------------------------
+
+describe('periodeSoort', () => {
+  it('herkent een jaar en een maand', () => {
+    expect(periodeSoort('2026')).toBe('jaar')
+    expect(periodeSoort('2026-07')).toBe('maand')
+  })
+})
+
+describe('periodeLabel', () => {
+  it('laat een jaar staan zoals het is', () => {
+    expect(periodeLabel('2026')).toBe('2026')
+  })
+
+  it('schrijft een maand voluit', () => {
+    expect(periodeLabel('2026-07')).toBe('juli 2026')
+  })
+})
+
+describe('laatsteDagVanPeriode', () => {
+  it('geeft 31 december bij een jaar', () => {
+    expect(laatsteDagVanPeriode('2026')).toBe('2026-12-31')
+  })
+
+  it('kent het aantal dagen van elke maand', () => {
+    expect(laatsteDagVanPeriode('2026-01')).toBe('2026-01-31')
+    expect(laatsteDagVanPeriode('2026-04')).toBe('2026-04-30')
+    expect(laatsteDagVanPeriode('2026-12')).toBe('2026-12-31')
+  })
+
+  it('kent schrikkeljaren', () => {
+    // 2028 is een schrikkeljaar, 2026 niet.
+    expect(laatsteDagVanPeriode('2026-02')).toBe('2026-02-28')
+    expect(laatsteDagVanPeriode('2028-02')).toBe('2028-02-29')
+  })
+
+  it('geeft onzin ongewijzigd terug in plaats van een NaN-datum', () => {
+    expect(laatsteDagVanPeriode('geen-datum')).toBe('geen-datum')
+  })
+})
+
+describe('jaarVan', () => {
+  it('pikt het jaar uit een maand of een datum', () => {
+    expect(jaarVan('2026-07')).toBe('2026')
+    expect(jaarVan('2026-07-04')).toBe('2026')
+    expect(jaarVan('2026')).toBe('2026')
+  })
+})
+
+describe('maandenVanJaar', () => {
+  it('geeft twaalf maanden met een nul vooraan waar nodig', () => {
+    const maanden = maandenVanJaar('2026')
+    expect(maanden).toHaveLength(12)
+    expect(maanden[0]).toBe('2026-01')
+    expect(maanden[8]).toBe('2026-09')
+    expect(maanden[11]).toBe('2026-12')
   })
 })

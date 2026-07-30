@@ -74,7 +74,7 @@ export function MaandGrafiek({ data, lopendeMaand }: { data: MaandPaar[]; lopend
               aria-label={label}
             >
               <span
-                className="staaf-in"
+                className="staaf-in print-kleur"
                 style={{
                   flex: 1,
                   minWidth: 0,
@@ -87,7 +87,7 @@ export function MaandGrafiek({ data, lopendeMaand }: { data: MaandPaar[]; lopend
                 }}
               />
               <span
-                className="staaf-in"
+                className="staaf-in print-kleur"
                 style={{
                   flex: 1,
                   minWidth: 0,
@@ -122,11 +122,11 @@ export function MaandGrafiek({ data, lopendeMaand }: { data: MaandPaar[]; lopend
           een plaatje waar je zelf betekenis in moet zoeken. */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', paddingTop: 10 }}>
         <span className="rij-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--positive)' }} />
+          <span className="print-kleur" aria-hidden style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--positive)' }} />
           {t('Inkomsten')}
         </span>
         <span className="rij-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--negative)' }} />
+          <span className="print-kleur" aria-hidden style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--negative)' }} />
           {t('Uitgaven')}
         </span>
         {/* Geen gemiddelde tonen zolang het nul is: dan heb je nog geen volle maand

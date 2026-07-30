@@ -1,4 +1,4 @@
-import type { DossierDocument } from '../data/schema'
+import type { Documentsoort, DossierDocument } from '../data/schema'
 
 // Waaraan een document kan hangen. De sleutels zijn taal-onafhankelijk; ze bepalen
 // alleen welk veld in het document ingevuld wordt.
@@ -53,4 +53,78 @@ export function documentenVan(documenten: DossierDocument[], eigenaar: KluisEige
   return documenten
     .filter((d) => d[veld] === eigenaar.id)
     .sort((a, b) => (a.toegevoegdOp < b.toegevoegdOp ? 1 : a.toegevoegdOp > b.toegevoegdOp ? -1 : 0))
+}
+
+// ---------------------------------------------------------------------------
+// Ronde 41
+// ---------------------------------------------------------------------------
+
+/**
+ * De bon van een gedeelde kost — waar hij ook hangt.
+ *
+ * Dit is niet één plek maar twee, en dat is geen ontwerpfout maar geschiedenis:
+ *
+ *  * `kost.bonnetje` is de bon die je in het formulier voor een gedeelde kost zelf
+ *    toevoegt;
+ *  * hangt de kost aan een TRANSACTIE (je boekte een uitgave en deelde die in een
+ *    dossier), dan zit de bonfoto in de documentkluis onder `transactieId` — het
+ *    formulier voor gedeelde kosten komt daar niet aan.
+ *
+ * Waarom dat telt: de tweede weg is de gewóne weg. Wie een uitgave boekt, de bon
+ * fotografeert en "delen in een dossier" aanvinkt, kreeg in de bewijsmap "geen bon"
+ * te lezen bij een kost waar wél een bon van bestond. Precies het bewijsstuk dat je
+ * wilde meesturen ontbrak dan, zonder één waarschuwing.
+ */
+export function bonnenVanKost(
+  kost: { bonnetje?: string; transactieId?: string },
+  documenten: DossierDocument[] = [],
+): string[] {
+  const uit: string[] = []
+  if (kost.bonnetje) uit.push(kost.bonnetje)
+  if (kost.transactieId) {
+    const uitDeKluis = bonVanTransactie(documenten, kost.transactieId)?.bestand
+    // Beide kunnen bestaan: je boekt een uitgave met een bonfoto (die gaat naar de
+    // kluis onder de transactie) en voegt later op de Dossiers-pagina de factuur toe
+    // aan diezelfde kost (die komt op `bonnetje`). Dan zijn dat twee bewijsstukken en
+    // horen ze er beide in — één ervan stil weglaten is precies wat een bewijsmap
+    // niet mag doen.
+    if (uitDeKluis && uitDeKluis !== kost.bonnetje) uit.push(uitDeKluis)
+  }
+  return uit
+}
+
+/**
+ * De EERSTE bon van een gedeelde kost, voor plekken waar er maar één past.
+ *
+ * Het scherm toont per kost één bonknop; de bewijsmap gebruikt `bonnenVanKost` en
+ * neemt ze allemaal mee.
+ */
+export function bonVanKost(
+  kost: { bonnetje?: string; transactieId?: string },
+  documenten: DossierDocument[] = [],
+): string | undefined {
+  return bonnenVanKost(kost, documenten)[0]
+}
+
+/**
+ * De weergavenaam van een documentsoort. De opgeslagen sleutel ('overeenkomst',
+ * 'attest', …) blijft taal-onafhankelijk; alleen wat je ziet wordt vertaald.
+ *
+ * Stond tot ronde 41 privé in `DossierKluis.tsx`. Ze staat hier omdat de bewijsmap
+ * dezelfde namen moet gebruiken: een vonnis en een willekeurige foto stonden in de
+ * bijlagelijst identiek vermeld, en juist bij een bewijsstuk maakt het uit wát het is.
+ */
+export function soortNaam(t: (s: string) => string, soort: Documentsoort): string {
+  switch (soort) {
+    case 'overeenkomst':
+      return t('Overeenkomst')
+    case 'attest':
+      return t('Attest')
+    case 'bon':
+      return t('Bon')
+    case 'vonnis':
+      return t('Vonnis')
+    default:
+      return t('Ander')
+  }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Dialoog } from './Dialoog'
 import { useT } from '../i18n'
+import { dataUrlNaarBlob, downloadBlob } from '../utils/download'
 
 // Dé manier om een bewaarde bon, factuur of garantiebewijs te bekijken.
 //
@@ -74,21 +75,13 @@ export function Bonknop({
     // Van data-URL naar blob-URL. Een `download` op een data-URL wordt door Safari
     // genegeerd; op een blob-URL werkt hij wel.
     try {
-      const [kop, base64] = bestand.split(',')
-      const soort = kop.match(/data:([^;]+)/)?.[1] ?? 'application/octet-stream'
-      const bytes = atob(base64)
-      const buffer = new Uint8Array(bytes.length)
-      for (let i = 0; i < bytes.length; i++) buffer[i] = bytes.charCodeAt(i)
-      const url = URL.createObjectURL(new Blob([buffer], { type: soort }))
-      const a = document.createElement('a')
-      a.href = url
-      a.download = bestandsnaamMet(naam ?? 'bon', soort)
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
+      // Ronde 41: de omzetting naar een blob en de download zelf staan nu in
+      // utils/download.ts. Dat was hier de derde kopie van hetzelfde patroon, en de
+      // les die hier het duurst geleerd is (het adres pas na tien seconden vrijgeven,
+      // en een fout laten zien in plaats van slikken) staat daar nu voor alle drie.
+      const { blob, soort } = dataUrlNaarBlob(bestand)
+      downloadBlob(bestandsnaamMet(naam ?? 'bon', soort), blob)
       setFout(null)
-      // Pas vrijgeven nadat de browser het bestand heeft opgepakt.
-      setTimeout(() => URL.revokeObjectURL(url), 10000)
     } catch {
       // Vroeger slikte deze vangnetregel de fout stil door. Dan tikte je op
       // "Bewaren", er gebeurde niets, en je wist niet of het aan jou of aan de app

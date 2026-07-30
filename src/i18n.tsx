@@ -1453,6 +1453,84 @@ const en: Record<string, string> = {
   '{n} vaste last(en) nog in te boeken in {maand}': '{n} fixed cost(s) still to record in {maand}',
   'verwacht in {maand}': 'expected in {maand}',
   'Alle vaste lasten voor {maand} zijn al ingeboekt': 'All fixed costs for {maand} have already been recorded',
+  // Ronde 41 — exporteren en de bewijsmap
+  'Exporteer CSV': 'Export CSV',
+  'Toelichting': 'Note',
+  'Ticket': 'Receipt',
+  'inkomst': 'income',
+  'uitgave': 'expense',
+  'alle transacties': 'all transactions',
+  'Het bestand kon niet gedownload worden. Probeer het opnieuw.': 'The file could not be downloaded. Please try again.',
+  'Rapport en print': 'Report and print',
+  'De kengetallen, de uitsplitsing per categorie en de volledige boekingenlijst — cijfers en lijsten, geen grafieken.':
+    'The key figures, the breakdown per category and the full list of entries — figures and lists, no charts.',
+  '{periode} als PDF': '{periode} as PDF',
+  'Heel {jaar} als PDF': 'All of {jaar} as PDF',
+  'Print deze pagina': 'Print this page',
+  'Het rapport kon niet gemaakt worden. Probeer het opnieuw.': 'The report could not be created. Please try again.',
+  'Jaarrapport {periode}': 'Annual report {periode}',
+  'Maandrapport {periode}': 'Monthly report {periode}',
+  '{n} boeking(en) in deze periode': '{n} entry/entries in this period',
+  'Kengetallen': 'Key figures',
+  'Saldo op {datum}': 'Balance on {datum}',
+  'Netto is inkomsten min uitgaven in deze periode. Het saldo is de stand van al je rekeningen samen op {datum}.':
+    'Net is income minus expenses in this period. The balance is the total of all your accounts on {datum}.',
+  'Aandeel': 'Share',
+  'Een kassaticket dat over meerdere categorieën verdeeld is, staat hierboven per categorie apart — het totaal blijft daardoor gelijk aan de kengetallen.':
+    'A receipt split across several categories appears above per category — so the total still matches the key figures.',
+  'Per maand': 'Per month',
+  'Boekingen': 'Entries',
+  'Er staan geen boekingen in deze periode.': 'There are no entries in this period.',
+  'zonder omschrijving': 'without description',
+  'Bewijsmap': 'Evidence file',
+  'Bewijsmap met bonnen van de afrekening van {datum}': 'Evidence file with receipts for the settlement of {datum}',
+  'De bewijsmap kon niet gemaakt worden. Probeer het opnieuw.': 'The evidence file could not be created. Please try again.',
+  'Kopieer stuurt een korte samenvatting door. PDF is diezelfde samenvatting als document. De bewijsmap is het volledige dossier: per kost de berekening en elke bon als bijlage.':
+    'Copy sends a short summary. PDF is that same summary as a document. The evidence file is the complete case: the calculation for every cost and every receipt as an attachment.',
+  'Bewijsmap — {naam}': 'Evidence file — {naam}',
+  'Datum van de afrekening': 'Date of the settlement',
+  '{n} kost(en), {m} bijlage(n)': '{n} cost(s), {m} attachment(s)',
+  'Wat dit document is': 'What this document is',
+  'Dit document is een overzicht van de kosten en berekeningen zoals ze in Financieel Kompas zijn ingevoerd.':
+    'This document is an overview of the costs and calculations as they were entered in Financieel Kompas.',
+  'De bedragen en verdeelsleutels komen uit die invoer. Wie ze invoerde, blijft er verantwoordelijk voor.':
+    'The amounts and allocation keys come from that input. Whoever entered them remains responsible for them.',
+  'Dit is geen juridisch advies en geen uitspraak over wie waar recht op heeft. De app rekent; de afspraak of de rechter beslist.':
+    'This is not legal advice and not a ruling on who is entitled to what. The app calculates; the agreement or the court decides.',
+  'Een bon die als PDF-bestand werd toegevoegd, kan niet als afbeelding in dit document. Die staat als aparte bijlage vermeld en is los op te vragen.':
+    'A receipt added as a PDF file cannot be embedded as an image in this document. It is listed as a separate attachment and can be requested separately.',
+  'Elke kost is verdeeld volgens een van deze afspraken. Achter elke regel staat op hoeveel kosten ze van toepassing was.':
+    'Every cost is split according to one of these agreements. Each line states how many costs it applied to.',
+  'De kosten, chronologisch': 'The costs, in chronological order',
+  'Per kost: het bedrag, de verdeling die erop is toegepast en waarom die gold. Zo is elke rij na te rekenen.':
+    'Per cost: the amount, the split applied to it and why it applied. That makes every line verifiable.',
+  '{bedrag} x {p}% = {jouw} voor jou, {partner} voor partner': '{bedrag} x {p}% = {jouw} for you, {partner} for partner',
+  'zie bijlage {n}': 'see attachment {n}',
+  'Bijlagen': 'Attachments',
+  'Bijlage {n}': 'Attachment {n}',
+  'toegevoegd op {datum}': 'added on {datum}',
+  'Er zijn geen bonnen of documenten toegevoegd aan de kosten van deze afrekening.':
+    'No receipts or documents have been added to the costs in this settlement.',
+  'Deze bon is als PDF-bestand toegevoegd en kan niet als afbeelding worden ingevoegd. Vraag het losse bestand op.':
+    'This receipt was added as a PDF file and cannot be embedded as an image. Request the separate file.',
+  'Deze bon kon niet worden weergegeven. Het bestand is beschadigd of van een onbekend type.':
+    'This receipt could not be displayed. The file is damaged or of an unknown type.',
+  // Ronde 41 — na de review: meldingen en wachttoestanden
+  'De back-up kon niet gedownload worden. Probeer het opnieuw.': 'The backup could not be downloaded. Please try again.',
+  'Het rapport van {periode} is gedownload.': 'The report for {periode} has been downloaded.',
+  '{periode} als PDF — bezig…': '{periode} as PDF — working…',
+  'Heel {jaar} als PDF — bezig…': 'All of {jaar} as PDF — working…',
+  '{n} rij(en) gedownload als CSV-bestand.': '{n} row(s) downloaded as a CSV file.',
+  'De CSV bevat precies deze rijen, in deze volgorde. Je opent hem met Excel of Numbers.':
+    'The CSV contains exactly these rows, in this order. You open it with Excel or Numbers.',
+  'De PDF van {datum} is gedownload.': 'The PDF for {datum} has been downloaded.',
+  'De PDF van {datum} kon niet gemaakt worden. Probeer het opnieuw.':
+    'The PDF for {datum} could not be created. Please try again.',
+  'De bewijsmap van {datum} is gedownload.': 'The evidence file for {datum} has been downloaded.',
+  'De bewijsmap van {datum} kon niet gemaakt worden. Probeer het opnieuw.':
+    'The evidence file for {datum} could not be created. Please try again.',
+  'Bewijsmap van {datum} — bezig…': 'Evidence file for {datum} — working…',
+  '{n} van {totaal}': '{n} of {totaal}',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -2891,6 +2969,84 @@ const fr: Record<string, string> = {
   '{n} vaste last(en) nog in te boeken in {maand}': '{n} charge(s) fixe(s) encore à comptabiliser en {maand}',
   'verwacht in {maand}': 'prévu en {maand}',
   'Alle vaste lasten voor {maand} zijn al ingeboekt': 'Toutes les charges fixes de {maand} sont déjà comptabilisées',
+  // Ronde 41 — exporteren en de bewijsmap
+  'Exporteer CSV': 'Exporter en CSV',
+  'Toelichting': 'Précision',
+  'Ticket': 'Ticket',
+  'inkomst': 'recette',
+  'uitgave': 'dépense',
+  'alle transacties': 'toutes les transactions',
+  'Het bestand kon niet gedownload worden. Probeer het opnieuw.': 'Le fichier n’a pas pu être téléchargé. Veuillez réessayer.',
+  'Rapport en print': 'Rapport et impression',
+  'De kengetallen, de uitsplitsing per categorie en de volledige boekingenlijst — cijfers en lijsten, geen grafieken.':
+    'Les chiffres clés, la répartition par catégorie et la liste complète des écritures — des chiffres et des listes, pas de graphiques.',
+  '{periode} als PDF': '{periode} en PDF',
+  'Heel {jaar} als PDF': 'Toute l’année {jaar} en PDF',
+  'Print deze pagina': 'Imprimer cette page',
+  'Het rapport kon niet gemaakt worden. Probeer het opnieuw.': 'Le rapport n’a pas pu être créé. Veuillez réessayer.',
+  'Jaarrapport {periode}': 'Rapport annuel {periode}',
+  'Maandrapport {periode}': 'Rapport mensuel {periode}',
+  '{n} boeking(en) in deze periode': '{n} écriture(s) dans cette période',
+  'Kengetallen': 'Chiffres clés',
+  'Saldo op {datum}': 'Solde au {datum}',
+  'Netto is inkomsten min uitgaven in deze periode. Het saldo is de stand van al je rekeningen samen op {datum}.':
+    'Le net correspond aux recettes moins les dépenses de cette période. Le solde est l’état de tous vos comptes réunis au {datum}.',
+  'Aandeel': 'Part',
+  'Een kassaticket dat over meerdere categorieën verdeeld is, staat hierboven per categorie apart — het totaal blijft daardoor gelijk aan de kengetallen.':
+    'Un ticket réparti sur plusieurs catégories figure ci-dessus par catégorie — le total reste donc égal aux chiffres clés.',
+  'Per maand': 'Par mois',
+  'Boekingen': 'Écritures',
+  'Er staan geen boekingen in deze periode.': 'Il n’y a aucune écriture dans cette période.',
+  'zonder omschrijving': 'sans description',
+  'Bewijsmap': 'Dossier de preuves',
+  'Bewijsmap met bonnen van de afrekening van {datum}': 'Dossier de preuves avec justificatifs du décompte du {datum}',
+  'De bewijsmap kon niet gemaakt worden. Probeer het opnieuw.': 'Le dossier de preuves n’a pas pu être créé. Veuillez réessayer.',
+  'Kopieer stuurt een korte samenvatting door. PDF is diezelfde samenvatting als document. De bewijsmap is het volledige dossier: per kost de berekening en elke bon als bijlage.':
+    'Copier envoie un bref résumé. Le PDF est ce même résumé sous forme de document. Le dossier de preuves est le dossier complet : le calcul de chaque frais et chaque justificatif en annexe.',
+  'Bewijsmap — {naam}': 'Dossier de preuves — {naam}',
+  'Datum van de afrekening': 'Date du décompte',
+  '{n} kost(en), {m} bijlage(n)': '{n} frais, {m} annexe(s)',
+  'Wat dit document is': 'Ce qu’est ce document',
+  'Dit document is een overzicht van de kosten en berekeningen zoals ze in Financieel Kompas zijn ingevoerd.':
+    'Ce document est un aperçu des frais et des calculs tels qu’ils ont été saisis dans Financieel Kompas.',
+  'De bedragen en verdeelsleutels komen uit die invoer. Wie ze invoerde, blijft er verantwoordelijk voor.':
+    'Les montants et les clés de répartition proviennent de cette saisie. La personne qui les a saisis en reste responsable.',
+  'Dit is geen juridisch advies en geen uitspraak over wie waar recht op heeft. De app rekent; de afspraak of de rechter beslist.':
+    'Ceci n’est pas un avis juridique ni une décision sur les droits de chacun. L’application calcule ; l’accord ou le juge décide.',
+  'Een bon die als PDF-bestand werd toegevoegd, kan niet als afbeelding in dit document. Die staat als aparte bijlage vermeld en is los op te vragen.':
+    'Un justificatif ajouté sous forme de fichier PDF ne peut pas être intégré comme image dans ce document. Il est mentionné en annexe distincte et peut être demandé séparément.',
+  'Elke kost is verdeeld volgens een van deze afspraken. Achter elke regel staat op hoeveel kosten ze van toepassing was.':
+    'Chaque frais est réparti selon l’un de ces accords. Chaque ligne indique à combien de frais il s’est appliqué.',
+  'De kosten, chronologisch': 'Les frais, par ordre chronologique',
+  'Per kost: het bedrag, de verdeling die erop is toegepast en waarom die gold. Zo is elke rij na te rekenen.':
+    'Par frais : le montant, la répartition appliquée et la raison pour laquelle elle s’appliquait. Chaque ligne est ainsi vérifiable.',
+  '{bedrag} x {p}% = {jouw} voor jou, {partner} voor partner': '{bedrag} x {p} % = {jouw} pour vous, {partner} pour le partenaire',
+  'zie bijlage {n}': 'voir annexe {n}',
+  'Bijlagen': 'Annexes',
+  'Bijlage {n}': 'Annexe {n}',
+  'toegevoegd op {datum}': 'ajouté le {datum}',
+  'Er zijn geen bonnen of documenten toegevoegd aan de kosten van deze afrekening.':
+    'Aucun justificatif ni document n’a été ajouté aux frais de ce décompte.',
+  'Deze bon is als PDF-bestand toegevoegd en kan niet als afbeelding worden ingevoegd. Vraag het losse bestand op.':
+    'Ce justificatif a été ajouté sous forme de fichier PDF et ne peut pas être intégré comme image. Demandez le fichier séparé.',
+  'Deze bon kon niet worden weergegeven. Het bestand is beschadigd of van een onbekend type.':
+    'Ce justificatif n’a pas pu être affiché. Le fichier est endommagé ou d’un type inconnu.',
+  // Ronde 41 — na de review: meldingen en wachttoestanden
+  'De back-up kon niet gedownload worden. Probeer het opnieuw.': 'La sauvegarde n’a pas pu être téléchargée. Veuillez réessayer.',
+  'Het rapport van {periode} is gedownload.': 'Le rapport de {periode} a été téléchargé.',
+  '{periode} als PDF — bezig…': '{periode} en PDF — en cours…',
+  'Heel {jaar} als PDF — bezig…': 'Toute l’année {jaar} en PDF — en cours…',
+  '{n} rij(en) gedownload als CSV-bestand.': '{n} ligne(s) téléchargée(s) dans un fichier CSV.',
+  'De CSV bevat precies deze rijen, in deze volgorde. Je opent hem met Excel of Numbers.':
+    'Le CSV contient exactement ces lignes, dans cet ordre. Vous l’ouvrez avec Excel ou Numbers.',
+  'De PDF van {datum} is gedownload.': 'Le PDF du {datum} a été téléchargé.',
+  'De PDF van {datum} kon niet gemaakt worden. Probeer het opnieuw.':
+    'Le PDF du {datum} n’a pas pu être créé. Veuillez réessayer.',
+  'De bewijsmap van {datum} is gedownload.': 'Le dossier de preuves du {datum} a été téléchargé.',
+  'De bewijsmap van {datum} kon niet gemaakt worden. Probeer het opnieuw.':
+    'Le dossier de preuves du {datum} n’a pas pu être créé. Veuillez réessayer.',
+  'Bewijsmap van {datum} — bezig…': 'Dossier de preuves du {datum} — en cours…',
+  '{n} van {totaal}': '{n} sur {totaal}',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 

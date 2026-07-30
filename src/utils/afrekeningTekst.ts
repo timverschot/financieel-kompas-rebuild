@@ -1,7 +1,8 @@
-import type { Categorie, Dossier, GedeeldeKost, Kind, Verrekening } from '../data/schema'
+import type { Categorie, Dossier, DossierDocument, GedeeldeKost, Kind, Verrekening } from '../data/schema'
 import type { Vertaler } from '../i18n'
 import { formatEuro } from './format'
 import { vandaag } from './datum'
+import { bonnenVanKost } from './kluis'
 import {
   bouwAfrekeningOverzicht,
   type AfrekeningGroep,
@@ -13,6 +14,18 @@ import {
 // De momentopname-selectie hoort bij de rekenkern; hier enkel doorgegeven zodat
 // bestaande imports blijven werken.
 export { afrekeningKosten } from './afrekeningOverzicht'
+
+/**
+ * Heeft deze kost een bon — waar hij ook hangt?
+ *
+ * Eén regel, maar hij staat hier zodat de klembordtekst, de afrekening-PDF, de opbouw
+ * op het scherm en de bewijsmap alle vier dezelfde vraag op dezelfde manier stellen.
+ * Deden ze dat niet, dan zei het ene document "geen bon" en het andere "zie bijlage 3"
+ * over precies dezelfde kost.
+ */
+export function heeftEenBon(kost: GedeeldeKost, documenten: DossierDocument[] = []): boolean {
+  return bonnenVanKost(kost, documenten).length > 0
+}
 
 // Nette tekst voor het verrekensaldo. Positief = partner is jou verschuldigd.
 export function verrekenTekst(t: Vertaler, netto: number): string {
@@ -95,7 +108,7 @@ export function totaalRegels(t: Vertaler, o: AfrekeningOverzicht): { label: stri
 // De regels onder een kost: alles wat de rij navolgbaar maakt. Bewust in twee
 // korte stukken in plaats van één lange regel, zodat het ook op een telefoon
 // leesbaar blijft.
-export function regelMeta(t: Vertaler, r: AfrekeningRegel): string[] {
+export function regelMeta(t: Vertaler, r: AfrekeningRegel, bonStatus?: string): string[] {
   const wie = t('betaald door {wie}', { wie: r.betaaldDoorJou ? t('jou') : t('partner') })
   const eerste = [wie, t('jij {p}%', { p: r.percentageJij }), `${t('jouw deel')} ${formatEuro(r.jouwAandeel)}`]
 
@@ -103,7 +116,10 @@ export function regelMeta(t: Vertaler, r: AfrekeningRegel): string[] {
   if (r.kostenType === 'buitengewoon') tweede.push(t('buitengewoon'))
   if (r.kindNamen.length > 0) tweede.push(r.kindNamen.join(', '))
   if (r.heeftCategorie) tweede.push(r.categorieNaam)
-  tweede.push(r.heeftBonnetje ? t('bon toegevoegd') : t('geen bon'))
+  // `bonStatus` laat de bewijsmap "zie bijlage 3" zetten in plaats van "bon
+  // toegevoegd". Waarom niet een extra regel eronder: dan stond er twee keer iets
+  // over dezelfde bon, en bij een kost zonder bon zelfs twee keer "geen bon".
+  tweede.push(bonStatus ?? (r.heeftBonnetje ? t('bon toegevoegd') : t('geen bon')))
 
   return [eerste.join(' · '), tweede.join(' · ')]
 }
@@ -132,8 +148,15 @@ export function afrekeningSamenvatting(
   kinderen: Kind[],
   gebruikerCategorieen: Categorie[] = [],
   nu: Date = new Date(),
+  // De documentkluis, zodat "bon toegevoegd" en "waarvan n met bon" hier hetzelfde
+  // zeggen als in de bewijsmap. Zonder deze lijst las je in de tekst die je
+  // doorstuurde "geen bon" bij een kost waar wél een bon van bestond — namelijk een
+  // die aan de transactie hangt in plaats van aan de gedeelde kost. Zie kluis.ts.
+  documenten: DossierDocument[] = [],
 ): string {
-  const o = bouwAfrekeningOverzicht(dossier, afrekening, kosten, kinderen, gebruikerCategorieen)
+  const o = bouwAfrekeningOverzicht(dossier, afrekening, kosten, kinderen, gebruikerCategorieen, (k) =>
+    heeftEenBon(k, documenten),
+  )
   const r: string[] = []
 
   // Kop
@@ -189,4 +212,66 @@ export function afrekeningSamenvatting(
   r.push('')
   r.push(`${t('Resultaat')}: ${verrekenTekst(t, o.netto)}`)
   return r.join('\n')
+}
+
+// ---------------------------------------------------------------------------
+// BEWIJSMAP (ronde 41)
+//
+// De bewijsmap moet per kost niet alleen het RESULTAAT tonen maar de BEREKENING:
+// welk bedrag, welk percentage, wat er dan uitkomt, en waaróm dat percentage gold.
+// Dat staat hier en niet in de PDF, zodat het scherm, de klembordtekst en het
+// document dezelfde woorden gebruiken — en zodat de formulering te testen valt.
+// ---------------------------------------------------------------------------
+
+/**
+ * De verdeelsleutel van één regel, als los object.
+ *
+ * Waarom deze omweg: `sleutelHerkomst` werkt op een `Verdeelsleutel` (een
+ * samengevatte groep kosten). Eén regel heeft dezelfde velden, alleen niet in die
+ * vorm. Door ze hier om te zetten hoeft de uitleg over hérkomst maar op één plek te
+ * bestaan — anders zou de bewijsmap "afspraak voor categorie Onderwijs" op een
+ * eigen manier gaan formuleren dan de samenvatting erboven.
+ */
+export function sleutelVanRegel(r: AfrekeningRegel): Verdeelsleutel {
+  return {
+    percentageJij: r.percentageJij,
+    herkomst: r.herkomst,
+    bron: r.bron,
+    aantalKosten: 1,
+    totaal: r.bedrag,
+  }
+}
+
+/**
+ * De berekening van één kost, uitgeschreven.
+ *
+ * Bv. "€ 120,00 x 60% = € 72,00 voor jou, € 48,00 voor partner".
+ * Bewust met een gewone 'x' en niet met ×: jsPDF kan dat teken in het
+ * standaardlettertype niet tonen.
+ */
+export function berekeningTekst(t: Vertaler, r: AfrekeningRegel): string {
+  return t('{bedrag} x {p}% = {jouw} voor jou, {partner} voor partner', {
+    bedrag: formatEuro(r.bedrag),
+    p: r.percentageJij,
+    jouw: formatEuro(r.jouwAandeel),
+    partner: formatEuro(r.partnerAandeel),
+  })
+}
+
+/**
+ * De grens die we bewaken, in het document zelf.
+ *
+ * De bewijsmap is bedoeld om aan een advocaat of bemiddelaar te geven. Dan moet er
+ * zwart op wit in staan wat het stuk wél is (de boekingen en berekeningen zoals ze
+ * in de app zijn ingevoerd) en wat het NIET is (juridisch advies, en geen uitspraak
+ * over wie waar recht op heeft). Zonder die regels leest een berekening al snel als
+ * een standpunt.
+ */
+export function voorbehoudRegels(t: Vertaler): string[] {
+  return [
+    t('Dit document is een overzicht van de kosten en berekeningen zoals ze in Financieel Kompas zijn ingevoerd.'),
+    t('De bedragen en verdeelsleutels komen uit die invoer. Wie ze invoerde, blijft er verantwoordelijk voor.'),
+    t('Dit is geen juridisch advies en geen uitspraak over wie waar recht op heeft. De app rekent; de afspraak of de rechter beslist.'),
+    t('Een bon die als PDF-bestand werd toegevoegd, kan niet als afbeelding in dit document. Die staat als aparte bijlage vermeld en is los op te vragen.'),
+  ]
 }

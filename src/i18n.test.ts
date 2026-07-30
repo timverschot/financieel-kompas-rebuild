@@ -35,6 +35,23 @@ describe('vertaaltabellen', () => {
     expect([...fr].filter((k) => !en.has(k))).toEqual([])
   })
 
+  it('vertaalt de nieuwe teksten van ronde 41', () => {
+    expect(vertaal('en', 'Exporteer CSV')).toBe('Export CSV')
+    expect(vertaal('fr', 'Bewijsmap')).toBe('Dossier de preuves')
+    expect(vertaal('en', 'Maandrapport {periode}', { periode: 'March 2026' })).toBe('Monthly report March 2026')
+    expect(vertaal('fr', 'Heel {jaar} als PDF', { jaar: 2026 })).toBe('Toute l’année 2026 en PDF')
+    expect(vertaal('en', 'zie bijlage {n}', { n: 3 })).toBe('see attachment 3')
+    expect(vertaal('en', '{bedrag} x {p}% = {jouw} voor jou, {partner} voor partner', {
+      bedrag: '€ 120,00',
+      p: 60,
+      jouw: '€ 72,00',
+      partner: '€ 48,00',
+    })).toBe('€ 120,00 x 60% = € 72,00 for you, € 48,00 for partner')
+    // De grens die het document zelf moet uitspreken, in alle drie de talen.
+    expect(vertaal('en', 'Dit is geen juridisch advies en geen uitspraak over wie waar recht op heeft. De app rekent; de afspraak of de rechter beslist.')).toContain('not legal advice')
+    expect(vertaal('fr', 'Dit is geen juridisch advies en geen uitspraak over wie waar recht op heeft. De app rekent; de afspraak of de rechter beslist.')).toContain('avis juridique')
+  })
+
   it('vertaalt de nieuwe teksten van ronde 40', () => {
     expect(vertaal('en', 'Bekijk in Transacties ›')).toBe('View in Transactions ›')
     expect(vertaal('fr', 'Toon opbouw')).toBe('Afficher le détail')

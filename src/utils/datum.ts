@@ -76,3 +76,50 @@ export function dagJaar(datumISO: string): string {
     new Date(jaar, maand - 1, dag),
   )
 }
+
+// ---------------------------------------------------------------------------
+// PERIODES (ronde 41)
+//
+// Een export kan over één maand ('2026-07') of over een heel jaar ('2026') gaan.
+// Beide vormen zijn een PREFIX van een datum, dus `datum.startsWith(periode)`
+// werkt voor allebei — daar hoeft niets aan de tellingen te veranderen. Wat
+// ontbrak, was de tekst: `maandJaarLabel('2026')` gaf de kale invoer terug.
+// ---------------------------------------------------------------------------
+
+/** Is dit een jaar ('JJJJ') of een maand ('JJJJ-MM')? */
+export function periodeSoort(periode: string): 'jaar' | 'maand' {
+  return /^\d{4}$/.test(periode) ? 'jaar' : 'maand'
+}
+
+/** 'JJJJ' -> "2026", 'JJJJ-MM' -> "juli 2026". */
+export function periodeLabel(periode: string): string {
+  return periodeSoort(periode) === 'jaar' ? periode : maandJaarLabel(periode)
+}
+
+/** Het jaar van een periode of datum, als 'JJJJ'. */
+export function jaarVan(periodeOfDatum: string): string {
+  return periodeOfDatum.slice(0, 4)
+}
+
+/**
+ * De laatste kalenderdag van een periode, als 'JJJJ-MM-DD'.
+ *
+ * Waarvoor: het saldo in een maandrapport hoort de stand op het EINDE van die
+ * maand te zijn, niet de stand van vandaag. Anders leest een rapport over maart
+ * met het saldo van juli erin, en dan sluit niets op elkaar aan.
+ *
+ * `new Date(jaar, maand, 0)` is de laatste dag van de vorige maand — zo hoeven we
+ * schrikkeljaren niet zelf te kennen.
+ */
+export function laatsteDagVanPeriode(periode: string): string {
+  if (periodeSoort(periode) === 'jaar') return `${periode}-12-31`
+  const [jaar, maand] = periode.split('-').map(Number)
+  if (!Number.isFinite(jaar) || !Number.isFinite(maand)) return periode
+  return naarDatumTekst(new Date(jaar, maand, 0))
+}
+
+
+/** De twaalf maanden van een jaar, als 'JJJJ-MM'. */
+export function maandenVanJaar(jaar: string): string[] {
+  return Array.from({ length: 12 }, (_, i) => `${jaar}-${String(i + 1).padStart(2, '0')}`)
+}

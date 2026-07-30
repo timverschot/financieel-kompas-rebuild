@@ -170,7 +170,14 @@ export function Vermogensevolutie({
                 opacity: uit ? 0.45 : 1,
               }}
             >
-              <span style={{ width: 10, height: 10, borderRadius: 3, background: r.kleur, flexShrink: 0 }} />
+              {/* `print-kleur`: dit vlakje is de enige koppeling tussen een lijn in de
+                  grafiek en de naam van de rekening. De printopmaak maakt achtergronden
+                  doorzichtig; zonder deze klasse printte de legende zonder kleuren en
+                  was er geen manier meer om lijn en rekening bij elkaar te brengen. */}
+              <span
+                className="print-kleur"
+                style={{ width: 10, height: 10, borderRadius: 3, background: r.kleur, flexShrink: 0 }}
+              />
               {r.naam}
             </button>
           )

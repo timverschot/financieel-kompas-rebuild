@@ -378,7 +378,7 @@ export function Donut({
         <ul className="lijst">
           {segmenten.map((seg, i) => (
             <li key={`${i}-${seg.naam}`} className="rij">
-              <span style={{ ...stip, background: seg.kleur }} />
+              <span className="print-kleur" style={{ ...stip, background: seg.kleur }} />
               <span className="rij-midden">
                 <span className="rij-titel" style={afkap}>
                   {t(seg.naam)}

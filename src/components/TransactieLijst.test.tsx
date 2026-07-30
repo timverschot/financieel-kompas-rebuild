@@ -4,6 +4,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { TransactieLijst, aantalActieveFilters, uitsplitsingTekst } from './TransactieLijst'
 import type { Garantie, Transactie } from '../data/schema'
 import { vandaag } from '../utils/datum'
+import { grensDatumMaandenTerug } from '../utils/transactieFilter'
 
 const rekeningen = [
   { id: 'r1', naam: 'Betaal', beginsaldo: 0 },
@@ -699,5 +700,175 @@ describe('TransactieLijst — filter op besparingsdomein', () => {
   it('klapt de filterlade open bij een doorklik, zodat de chips niet uit het niets komen', () => {
     toonUitgebreid([voeding, wonen], { beginFilter: { domein: 'boodschappen' } })
     expect(screen.getByRole('button', { name: /Zoeken en filteren · 1/ })).toBeInTheDocument()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// DE CSV-EXPORT (ronde 41)
+//
+// De belofte van deze knop is smal en hard: wat je op het scherm ziet, zit in het
+// bestand. Niet meer (je hele historiek terwijl de lijst op één maand staat) en
+// niet minder. Deze tests vangen precies dat.
+// ---------------------------------------------------------------------------
+
+describe('TransactieLijst — CSV exporteren', () => {
+  // De download onderschept: we lezen wat er aangeboden wordt, we bewaren niets.
+  function vangDownload() {
+    const gevangen: { naam: string; soort: string }[] = []
+    const echteClick = HTMLAnchorElement.prototype.click
+    const echteMaak = URL.createObjectURL
+    const echteVrij = URL.revokeObjectURL
+    let laatsteBlob: Blob | null = null
+    URL.createObjectURL = ((blob: Blob) => {
+      laatsteBlob = blob
+      return 'blob:nep'
+    }) as unknown as typeof URL.createObjectURL
+    URL.revokeObjectURL = (() => {}) as unknown as typeof URL.revokeObjectURL
+    HTMLAnchorElement.prototype.click = function () {
+      gevangen.push({ naam: (this as HTMLAnchorElement).download, soort: laatsteBlob?.type ?? '' })
+    }
+    const opruimen = () => {
+      HTMLAnchorElement.prototype.click = echteClick
+      URL.createObjectURL = echteMaak
+      URL.revokeObjectURL = echteVrij
+    }
+    // `Blob.text()` bestaat niet in jsdom, dus lezen we hem met een FileReader —
+    // dezelfde weg die de app zelf gebruikt bij het inlezen van een uittreksel.
+    const inhoud = () =>
+      new Promise<string>((klaar, mislukt) => {
+        if (!laatsteBlob) return klaar('')
+        const lezer = new FileReader()
+        lezer.onload = () => klaar(String(lezer.result))
+        lezer.onerror = () => mislukt(lezer.error)
+        lezer.readAsText(laatsteBlob as Blob)
+      })
+    return { gevangen, opruimen, inhoud }
+  }
+
+  it('biedt de knop aan zodra er rijen staan', () => {
+    toon([tx({ id: 't1' })])
+    expect(screen.getByRole('button', { name: 'Exporteer CSV' })).toBeInTheDocument()
+  })
+
+  it('verbergt de knop wanneer er niets te exporteren is', () => {
+    toon([])
+    expect(screen.queryByRole('button', { name: 'Exporteer CSV' })).toBeNull()
+  })
+
+  it('zet de zichtbare rijen in het bestand, in dezelfde volgorde', async () => {
+    const user = userEvent.setup()
+    // Verschillende datums, zodat de standaardsortering (nieuwste eerst) een
+    // vastgelegde volgorde geeft die de test echt kan nagaan.
+    toon([
+      tx({ id: 't1', omschrijving: 'Colruyt', bedrag: -4120, datum: recent }),
+      tx({ id: 't2', omschrijving: 'Delhaize', bedrag: -2500, datum: grensDatumMaandenTerug(recent, 1) }),
+    ])
+    const vangst = vangDownload()
+    try {
+      await user.click(screen.getByRole('button', { name: 'Exporteer CSV' }))
+      const inhoud = await vangst.inhoud()
+      expect(inhoud).toContain('-41,20')
+      // De VOLGORDE, niet alleen de aanwezigheid: draai je de sortering om, dan hoort
+      // deze test rood te worden.
+      expect(inhoud.indexOf('Colruyt')).toBeLessThan(inhoud.indexOf('Delhaize'))
+    } finally {
+      vangst.opruimen()
+    }
+  })
+
+  it('meldt hoeveel rijen er in het bestand zitten', async () => {
+    // Stond hier `transacties.length` in plaats van `zichtbaar.length`, dan meldt de
+    // app een ander aantal dan er in het bestand staat.
+    const user = userEvent.setup()
+    toon([tx({ id: 't1' }), tx({ id: 't2' }), tx({ id: 't3' })])
+    const vangst = vangDownload()
+    try {
+      await user.click(screen.getByRole('button', { name: 'Exporteer CSV' }))
+      expect(await screen.findByRole('status')).toHaveTextContent('3 rij(en) gedownload als CSV-bestand.')
+    } finally {
+      vangst.opruimen()
+    }
+  })
+
+  it('geeft het bestand het juiste type mee, met de tekenset erin', async () => {
+    // Zonder `charset=utf-8` opent Excel op sommige systemen alsnog verkeerd, ook mét
+    // byte-volgordemarkering.
+    const user = userEvent.setup()
+    toon([tx({ id: 't1' })])
+    const vangst = vangDownload()
+    try {
+      await user.click(screen.getByRole('button', { name: 'Exporteer CSV' }))
+      expect(vangst.gevangen[0].soort).toBe('text/csv;charset=utf-8')
+    } finally {
+      vangst.opruimen()
+    }
+  })
+
+  it('volgt het filter: wat weggefilterd is, zit niet in het bestand', async () => {
+    const user = userEvent.setup()
+    toon([
+      tx({ id: 't1', omschrijving: 'Colruyt' }),
+      tx({ id: 't2', omschrijving: 'Delhaize' }),
+    ])
+    await klapFiltersOpen(user)
+    await user.type(screen.getByLabelText(/Zoek/i), 'Colruyt')
+    const vangst = vangDownload()
+    try {
+      await user.click(screen.getByRole('button', { name: 'Exporteer CSV' }))
+      const inhoud = await vangst.inhoud()
+      expect(inhoud).toContain('Colruyt')
+      expect(inhoud).not.toContain('Delhaize')
+    } finally {
+      vangst.opruimen()
+    }
+  })
+
+  it('zet het filter in de bestandsnaam, zodat twee exports niet dezelfde naam krijgen', async () => {
+    const user = userEvent.setup()
+    toon([tx({ id: 't1', omschrijving: 'Colruyt' })])
+    await klapFiltersOpen(user)
+    await user.type(screen.getByLabelText(/Zoek/i), 'Colruyt')
+    const vangst = vangDownload()
+    try {
+      await user.click(screen.getByRole('button', { name: 'Exporteer CSV' }))
+      expect(vangst.gevangen[0].naam).toContain('colruyt')
+      expect(vangst.gevangen[0].naam.endsWith('.csv')).toBe(true)
+    } finally {
+      vangst.opruimen()
+    }
+  })
+
+  it('begint met de kolomkoppen, met puntkomma als scheidingsteken', async () => {
+    const user = userEvent.setup()
+    toon([tx({ id: 't1' })])
+    const vangst = vangDownload()
+    try {
+      await user.click(screen.getByRole('button', { name: 'Exporteer CSV' }))
+      const inhoud = await vangst.inhoud()
+      // De byte-volgordemarkering wordt hier NIET nagegaan: een FileReader haalt ze
+      // er bij het decoderen zelf uit. Dat ze in het bestand staat, bewijst
+      // transactieCsv.test.ts op de kale tekst.
+      expect(inhoud).toContain('Datum;Handelaar / winkel')
+    } finally {
+      vangst.opruimen()
+    }
+  })
+
+  it('zegt het wanneer de download mislukt in plaats van niets te doen', async () => {
+    const user = userEvent.setup()
+    toon([tx({ id: 't1' })])
+    const echteClick = HTMLAnchorElement.prototype.click
+    const echteMaak = URL.createObjectURL
+    URL.createObjectURL = (() => 'blob:nep') as unknown as typeof URL.createObjectURL
+    HTMLAnchorElement.prototype.click = () => {
+      throw new Error('geweigerd')
+    }
+    try {
+      await user.click(screen.getByRole('button', { name: 'Exporteer CSV' }))
+      expect(screen.getByRole('alert')).toHaveTextContent('Het bestand kon niet gedownload worden.')
+    } finally {
+      HTMLAnchorElement.prototype.click = echteClick
+      URL.createObjectURL = echteMaak
+    }
   })
 })

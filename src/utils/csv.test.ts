@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import { splitsCsv, raadScheider, decodeerTekst, zonderRommelregels, lijktOpCsv, meestVoorkomendeBreedte } from './csv'
+import {
+  splitsCsv,
+  raadScheider,
+  decodeerTekst,
+  zonderRommelregels,
+  lijktOpCsv,
+  meestVoorkomendeBreedte,
+  maakCsv,
+  metBom,
+  veiligeCsvTekst,
+} from './csv'
 
 describe('splitsCsv', () => {
   it('splitst gewone rijen', () => {
@@ -155,3 +165,112 @@ describe('lijktOpCsv', () => {
   })
 })
 
+
+// ---------------------------------------------------------------------------
+// SCHRIJVEN (ronde 41)
+// ---------------------------------------------------------------------------
+
+describe('maakCsv', () => {
+  it('zet rijen om met puntkomma en CRLF', () => {
+    expect(maakCsv([['a', 'b'], ['c', 'd']])).toBe('a;b\r\nc;d')
+  })
+
+  it('omhult een veld met het scheidingsteken erin', () => {
+    expect(maakCsv([['COLRUYT; HALLE', '12,50']])).toBe('"COLRUYT; HALLE";12,50')
+  })
+
+  it('verdubbelt een aanhalingsteken in de tekst', () => {
+    expect(maakCsv([['zaak "De Kroon"']])).toBe('"zaak ""De Kroon"""')
+  })
+
+  it('omhult een veld met een regeleinde erin', () => {
+    expect(maakCsv([['twee\nregels']])).toBe('"twee\nregels"')
+  })
+
+  it('laat een gewoon veld onaangeroerd, ook met een komma erin', () => {
+    // De komma is hier het DECIMAALteken en niet het scheidingsteken; die mag dus
+    // kaal blijven staan. Zou hij omhuld worden, dan leest Excel er tekst in.
+    expect(maakCsv([['12,50']])).toBe('12,50')
+  })
+
+  // Dit is de test die de twee helften van dit bestand aan elkaar vastzet: wat de
+  // schrijver eruit stuurt, moet de lezer er weer in krijgen.
+  it('is omkeerbaar: wat maakCsv schrijft, leest splitsCsv terug', () => {
+    const rijen = [
+      ['Datum', 'Handelaar', 'Bedrag'],
+      ['2026-07-04', 'COLRUYT; HALLE', '-41,20'],
+      ['2026-07-05', 'zaak "De Kroon"', '12,50'],
+      ['2026-07-06', 'Café Piano', '-8,00'],
+    ]
+    expect(splitsCsv(maakCsv(rijen), ';')).toEqual(rijen)
+  })
+
+  it('overleeft een rondgang door de tekenset-lezer met markering', () => {
+    const rijen = [['Handelaar'], ['Café Piano']]
+    const bestand = metBom(maakCsv(rijen))
+    // Zo komt het bestand terug binnen: als bytes, met de markering vooraan.
+    const bytes = new TextEncoder().encode(bestand)
+    expect(splitsCsv(decodeerTekst(bytes.buffer as ArrayBuffer), ';')).toEqual(rijen)
+  })
+})
+
+describe('metBom', () => {
+  it('zet precies één markering vooraan', () => {
+    expect(metBom('a;b').charCodeAt(0)).toBe(0xfeff)
+    expect(metBom('a;b').slice(1)).toBe('a;b')
+  })
+})
+
+describe('veiligeCsvTekst', () => {
+  it('zet een aanhalingsteken voor tekst die Excel als formule zou lezen', () => {
+    expect(veiligeCsvTekst('=1+1')).toBe("'=1+1")
+    expect(veiligeCsvTekst('+32 CALL')).toBe("'+32 CALL")
+    expect(veiligeCsvTekst('@handel')).toBe("'@handel")
+  })
+
+  it('laat gewone tekst ongemoeid', () => {
+    expect(veiligeCsvTekst('COLRUYT')).toBe('COLRUYT')
+    expect(veiligeCsvTekst('Café Piano')).toBe('Café Piano')
+  })
+
+  it('raakt een negatief bedrag niet aan', () => {
+    // Anders wordt van "-41,20" tekst in plaats van een getal, en kan je in Excel
+    // je uitgaven niet meer optellen.
+    expect(veiligeCsvTekst('-41,20')).toBe('-41,20')
+  })
+})
+
+describe('maakCsv — de omkeerbaarheid ook in de lastige gevallen', () => {
+  // Deze gevallen liepen vóór ronde 41 stuk: de lezer trimde ELK veld, ook een veld
+  // dat tussen aanhalingstekens stond. Precies bij zo'n veld heeft de schrijver die
+  // aanhalingstekens er net om gezet omdat de inhoud onaangeroerd moet blijven.
+  const lastig: string[][][] = [
+    [['regel1\n']],
+    [[' voorloopspatie']],
+    [['achterloopspatie ']],
+    [['a', 'b\r\n']],
+    [['"omhuld"', ' spaties rondom ']],
+  ]
+
+  for (const rijen of lastig) {
+    it(`leest ${JSON.stringify(rijen)} onveranderd terug`, () => {
+      expect(splitsCsv(maakCsv(rijen), ';')).toEqual(rijen)
+    })
+  }
+
+  it('blijft spaties trimmen bij een veld dat NIET omhuld is', () => {
+    // Dat is voor een bankbestand juist: daar staat vaak een spatie na de puntkomma.
+    expect(splitsCsv('a; b ;c', ';')).toEqual([['a', 'b', 'c']])
+  })
+})
+
+describe('veiligeCsvTekst — de overige gevaarlijke eerste tekens', () => {
+  it('beschermt ook een tab en een regelterugloop vooraan', () => {
+    expect(veiligeCsvTekst('\tkolom')).toBe("'\tkolom")
+    expect(veiligeCsvTekst('\rregel')).toBe("'\rregel")
+  })
+
+  it('laat een tab midden in de tekst ongemoeid', () => {
+    expect(veiligeCsvTekst('a\tb')).toBe('a\tb')
+  })
+})

@@ -236,6 +236,15 @@ export function bouwAfrekeningOverzicht(
   kosten: GedeeldeKost[],
   kinderen: Kind[] = [],
   gebruikerCategorieen: Categorie[] = [],
+  // Of een kost een bon heeft. Standaard: het `bonnetje`-veld op de kost zelf.
+  //
+  // Ronde 41: de bewijsmap geeft hier een strengere versie mee, die ook de
+  // documentkluis kent. Boek je een uitgave, hang je de bon eraan en deel je die in
+  // een dossier, dan zit de bonfoto namelijk in de kluis onder `transactieId` en
+  // NIET op de gedeelde kost. Zonder deze haak zei het document "geen bon" en
+  // "waarvan 0 met bon" bij kosten waar wél een bon van bestond — en dan mist
+  // precies het bewijsstuk dat je wilde meesturen.
+  heeftBon: (kost: GedeeldeKost) => boolean = (kost) => !!kost.bonnetje,
 ): AfrekeningOverzicht {
   const regelKosten = afrekeningKosten(afrekening, kosten)
   const kindNaam = (id: string) => kinderen.find((k) => k.id === id)?.naam ?? id
@@ -350,7 +359,7 @@ export function bouwAfrekeningOverzicht(
       kindNamen: (k.kindIds ?? []).map(kindNaam),
       categorieNaam: groepVanCategorie(k.categorieId, gebruikerCategorieen).naam,
       heeftCategorie: !!k.categorieId,
-      heeftBonnetje: !!k.bonnetje,
+      heeftBonnetje: heeftBon(k),
       jouwAandeel: perKost[i].jouwAandeel,
       partnerAandeel: perKost[i].partnerAandeel,
       netto: perKost[i].netto,
@@ -384,7 +393,7 @@ export function bouwAfrekeningOverzicht(
     ...(afrekening.periodeTot ? { periodeTot: afrekening.periodeTot } : {}),
     kindNamen: (afrekening.kindIds ?? []).map(kindNaam),
     aantalKosten: regelKosten.length,
-    aantalMetBonnetje: regelKosten.filter((k) => !!k.bonnetje).length,
+    aantalMetBonnetje: regelKosten.filter((k) => heeftBon(k)).length,
     totaal,
     betaaldDoorJou,
     betaaldDoorPartner: totaal - betaaldDoorJou,

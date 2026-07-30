@@ -1,4 +1,4 @@
-// Een CSV-bestand inlezen. Zuiver: tekst erin, rijen eruit.
+// CSV in- en uitvoer. Zuiver: tekst erin, rijen eruit — en omgekeerd.
 //
 // Waarom niet gewoon `tekst.split(',')`: een bankuittreksel is precies het geval
 // waar dat stukloopt. Een omschrijving als "COLRUYT, HALLE" bevat het scheidings-
@@ -110,10 +110,21 @@ export function splitsCsv(tekst: string, scheider: Scheider = ';'): string[][] {
   let veld = ''
   let inAanhalingstekens = false
   let ietsGezien = false
+  // Stond dit veld tussen aanhalingstekens? Dan blijft alles wat erin stond staan.
+  //
+  // Ronde 41: hier werd ELK veld getrimd, ook een omhuld veld. Voor een bankbestand
+  // is dat trimmen juist — daar staan spaties na een puntkomma. Maar bij een omhuld
+  // veld heeft de schrijver de aanhalingstekens er net om gezet omdat de inhoud
+  // precies zo bewaard moet blijven; het is ook wat de CSV-afspraak (RFC 4180)
+  // voorschrijft. Zonder dit onderscheid was het bestand dat de app zelf exporteert
+  // niet meer identiek terug te lezen: een omschrijving die op een spatie of een
+  // regeleinde eindigde, kwam korter terug.
+  let wasOmhuld = false
 
   const sluitVeld = () => {
-    rij.push(veld.trim())
+    rij.push(wasOmhuld ? veld : veld.trim())
     veld = ''
+    wasOmhuld = false
   }
   const sluitRij = () => {
     sluitVeld()
@@ -144,6 +155,7 @@ export function splitsCsv(tekst: string, scheider: Scheider = ';'): string[][] {
     if (teken === '"' && !ietsGezien) {
       inAanhalingstekens = true
       ietsGezien = true
+      wasOmhuld = true
       continue
     }
     if (teken === scheider) {
@@ -206,4 +218,72 @@ function alsBuffer(bestand: Blob): Promise<ArrayBuffer> {
     lezer.onerror = () => mislukt(lezer.error ?? new Error('bestand niet leesbaar'))
     lezer.readAsArrayBuffer(bestand)
   })
+}
+
+// ---------------------------------------------------------------------------
+// SCHRIJVEN (ronde 41)
+//
+// Hetzelfde bestand als de lezer, bewust. De regels waar een veld tussen
+// aanhalingstekens moet, zijn precies de regels die `splitsCsv` hierboven leest —
+// staan ze los van elkaar, dan gaan ze op een dag uit elkaar lopen. Nu is de
+// omkeerbaarheid in één test te bewijzen: splitsCsv(maakCsv(rijen)) === rijen.
+// ---------------------------------------------------------------------------
+
+/**
+ * Omhult één veld als dat nodig is.
+ *
+ * Nodig wanneer het veld het scheidingsteken, een aanhalingsteken of een
+ * regeleinde bevat. Een aanhalingsteken in de tekst wordt verdubbeld — dat is de
+ * afspraak uit RFC 4180 en precies wat de lezer hierboven verwacht.
+ */
+export function omhulCsvVeld(veld: string, scheider: Scheider = ';'): string {
+  const moet =
+    veld.includes(scheider) ||
+    veld.includes('"') ||
+    veld.includes('\n') ||
+    veld.includes('\r') ||
+    // Ook bij spaties aan het begin of het einde. De lezer hierboven trimt een veld
+    // dat NIET omhuld is (juist voor een bankbestand met een spatie na de
+    // puntkomma), dus zonder de aanhalingstekens zou die spatie hier verdwijnen — en
+    // dan is het bestand dat de app zelf schrijft niet meer identiek terug te lezen.
+    veld !== veld.trim()
+  return moet ? `"${veld.replace(/"/g, '""')}"` : veld
+}
+
+/**
+ * Zet rijen om naar CSV-tekst.
+ *
+ * Regeleinden zijn CRLF, want dat is wat Excel op Windows verwacht; de lezer
+ * hierboven negeert de `\r` gewoon, dus round-trip blijft kloppen.
+ */
+export function maakCsv(rijen: string[][], scheider: Scheider = ';'): string {
+  return rijen.map((rij) => rij.map((veld) => omhulCsvVeld(veld, scheider)).join(scheider)).join('\r\n')
+}
+
+/**
+ * Zet een byte-volgordemarkering (BOM) voor de tekst.
+ *
+ * Zonder deze drie bytes opent Excel het bestand als Windows-1252 en wordt
+ * "Café Piano" opnieuw tekenbrij — exact de fout die `decodeerTekst` hierboven bij
+ * het INLEZEN moest repareren. De lezer stript een BOM weg (regel 194), dus een
+ * bestand dat de app zelf exporteert kan ze zonder problemen weer inlezen.
+ */
+export function metBom(tekst: string): string {
+  return `\uFEFF${tekst}`
+}
+
+/**
+ * Maakt een tekstveld onschadelijk voor Excel.
+ *
+ * Excel behandelt een cel die met `=`, `+`, `@` of een tab begint als een FORMULE,
+ * ook als ze uit een CSV komt en tussen aanhalingstekens stond. Een handelaarsnaam
+ * als "+32 CALL" of een omschrijving die met "=" begint, geeft dan een foutmelding
+ * in de cel of — erger — voert iets uit. Een enkel aanhalingsteken vooraan zegt
+ * Excel "dit is tekst".
+ *
+ * Bewust NIET voor bedragen: die beginnen bij een uitgave met een minteken, en dat
+ * moet een getal blijven waarmee je kan rekenen.
+ */
+export function veiligeCsvTekst(veld: string): string {
+  return /^[=+@\t\r]/.test(veld) ? `'${veld}` : veld
 }

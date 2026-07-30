@@ -10,6 +10,7 @@ import { isOpenKost, kostenVoorAfrekening, type AfrekeningFilter } from '../util
 import {
   verrekenTekst,
   afrekeningSamenvatting,
+  heeftEenBon,
   periodeTekst,
   kinderenTekst,
   groepLabel,
@@ -20,6 +21,8 @@ import {
 } from '../utils/afrekeningTekst'
 import { bouwAfrekeningOverzicht, type AfrekeningGroep } from '../utils/afrekeningOverzicht'
 import { exporteerAfrekeningPDF } from '../utils/afrekeningPdf'
+import { exporteerBewijsmapPDF } from '../utils/bewijsmapPdf'
+import { bonVanKost } from '../utils/kluis'
 import { labelVanCategorie } from '../data/categorieen/resolve'
 import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { GezinsledenKiezer } from './GezinslidKiezer'
@@ -150,6 +153,9 @@ export function DossierSectie({
   // Van welke afrekening staat de opbouw open (ronde 40). Eén tegelijk: het is een
   // lang blok, en twee ervan naast elkaar lees je toch niet.
   const [opbouwVan, setOpbouwVan] = useState('')
+  const [bewijsmapBezig, setBewijsmapBezig] = useState('')
+  const [bewijsmapFout, setBewijsmapFout] = useState('')
+  const [bewijsmapKlaar, setBewijsmapKlaar] = useState('')
 
   const dossier = dossiers.find((d) => d.id === geselecteerd) ?? (dossiers[0] ?? null)
   const dossierId = dossier?.id ?? ''
@@ -225,7 +231,9 @@ export function DossierSectie({
   async function kopieerSamenvatting(v: Verrekening) {
     if (!dossier) return
     try {
-      await navigator.clipboard.writeText(afrekeningSamenvatting(t, dossier, v, kosten, kinderen, categorieen))
+      await navigator.clipboard.writeText(
+        afrekeningSamenvatting(t, dossier, v, kosten, kinderen, categorieen, new Date(), documenten),
+      )
       setGekopieerd(v.id)
       window.setTimeout(() => setGekopieerd(''), 2000)
     } catch {
@@ -235,7 +243,46 @@ export function DossierSectie({
 
   async function exportPdf(v: Verrekening) {
     if (!dossier) return
-    await exporteerAfrekeningPDF(t, dossier, v, kosten, kinderen, categorieen)
+    // Dezelfde wachttoestand als de bewijsmap: anders kan er tijdens het bouwen van
+    // een bewijsmap een PDF-melding tussendoor komen.
+    if (bewijsmapBezig !== '') return
+    // Ronde 41: deze knop had geen vangnet. Liep de PDF stuk, dan gebeurde er
+    // letterlijk niets — geen bestand, geen melding, alleen iets in de console dat
+    // niemand ziet. Nu de bewijsmap ernaast staat, moeten ze zich hetzelfde gedragen.
+    setBewijsmapFout('')
+    setBewijsmapKlaar('')
+    try {
+      await exporteerAfrekeningPDF(t, dossier, v, kosten, kinderen, categorieen, new Date(), documenten)
+      setBewijsmapKlaar(t('De PDF van {datum} is gedownload.', { datum: v.datum }))
+    } catch {
+      setBewijsmapFout(t('De PDF van {datum} kon niet gemaakt worden. Probeer het opnieuw.', { datum: v.datum }))
+    }
+  }
+
+  // De bewijsmap (ronde 41): hetzelfde dossier, maar volledig — per kost de
+  // berekening en de verdeelsleutel die erop gold, en elke bon als afbeelding op een
+  // eigen bladzijde. Bedoeld om aan een advocaat of bemiddelaar te geven.
+  //
+  // Duurt langer dan de gewone PDF, want er zitten afbeeldingen in. Zonder de
+  // wachttoestand hieronder tik je drie keer omdat er niets lijkt te gebeuren.
+  async function exportBewijsmap(v: Verrekening) {
+    if (!dossier) return
+    // De knop blijft met `aria-disabled` bereikbaar, dus hij kan écht nog aangeklikt
+    // worden. Deze regel is wat een tweede tik tegenhoudt.
+    if (bewijsmapBezig !== '') return
+    setBewijsmapBezig(v.id)
+    setBewijsmapFout('')
+    setBewijsmapKlaar('')
+    try {
+      await exporteerBewijsmapPDF(t, dossier, v, kosten, kinderen, categorieen, documenten)
+      // Bij een download gebeurt er op het scherm niets. Zonder deze regel weet wie
+      // met een schermlezer werkt niet of het bestand er komt.
+      setBewijsmapKlaar(t('De bewijsmap van {datum} is gedownload.', { datum: v.datum }))
+    } catch {
+      setBewijsmapFout(t('De bewijsmap van {datum} kon niet gemaakt worden. Probeer het opnieuw.', { datum: v.datum }))
+    } finally {
+      setBewijsmapBezig('')
+    }
   }
 
   const alleKosten = dossier ? kosten.filter((k) => k.dossierId === dossier.id) : []
@@ -436,8 +483,12 @@ export function DossierSectie({
                     </span>
                     <span className="rij-acties">
                       <Bedrag centen={k.bedrag} />
-                      {k.bonnetje && (
-                        <Bonknop bestand={k.bonnetje} naam={k.omschrijving} label={t('bon')} />
+                      {/* `bonVanKost` en niet `k.bonnetje`: hangt de kost aan een
+                          transactie, dan zit de bonfoto in de documentkluis. Zonder
+                          deze regel zag je hier geen bonknop terwijl de bewijsmap de
+                          bon wél als bijlage meenam. */}
+                      {bonVanKost(k, documenten) && (
+                        <Bonknop bestand={bonVanKost(k, documenten) as string} naam={k.omschrijving} label={t('bon')} />
                       )}
                       <button className="knop knop-kaal" aria-label={t('Bewerk kost {naam}', { naam: k.omschrijving })} onClick={() => setBewerkKost(k)}>
                         ✎
@@ -527,32 +578,70 @@ export function DossierSectie({
 
           {/* Afrekeningen */}
           {toont('verrekeningen') && afrekeningen.length > 0 && (
-            <Kaart titel={t('Afrekeningen')}>
+            <Kaart
+              titel={t('Afrekeningen')}
+              bijschrift={t('Kopieer stuurt een korte samenvatting door. PDF is diezelfde samenvatting als document. De bewijsmap is het volledige dossier: per kost de berekening en elke bon als bijlage.')}
+            >
               <ul className="lijst">
                 {afrekeningen.map((v) => {
                   const periode = v.periodeVan || v.periodeTot ? `${v.periodeVan ?? '…'} – ${v.periodeTot ?? '…'}` : t('alle periodes')
                   const wie = v.kindIds && v.kindIds.length > 0 ? kindNamen(v.kindIds) : t('alle kinderen')
                   return (
-                    <li key={v.id} className="rij" style={{ flexWrap: 'wrap', opacity: v.overgemaakt ? 0.7 : 1 }}>
+                    <li key={v.id} className="rij rij-kost" style={{ opacity: v.overgemaakt ? 0.7 : 1 }}>
                       <span className="rij-midden">
                         <span className="rij-titel">{verrekenTekst(t, v.bedrag)}</span>
                         <span className="rij-meta">
                           {v.datum} · {periode} · {wie}
                         </span>
                       </span>
-                      {/* Vijf knoppen in één rij passen niet op een telefoon, en
-                          `.lijst` heeft `overflow: hidden` — dan verdwijnt de
-                          ×-knop gewoon in plaats van de pagina breder te maken.
-                          Daarom mag deze rij hier afbreken. */}
+                      {/* Zes bedieningen in één rij passen niet op een telefoon, en
+                          `.lijst` heeft `overflow: hidden` — dan verdwijnt een knop
+                          gewoon in plaats van de pagina breder te maken.
+                          `flexWrap` op deze span hielp daar niet tegen: `.rij-acties`
+                          heeft `flex-shrink: 0`, dus de span houdt haar volle breedte
+                          en er valt niets af te breken. `.rij-kost` op de <li> hierboven
+                          is de klasse die daar wél voor bestaat: onder 560 px krijgen
+                          de tekst en de knoppen elk een eigen regel. */}
                       <span className="rij-acties" style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        <label className="rij-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                          <input type="checkbox" checked={!!v.overgemaakt} onChange={(e) => onMarkeerOvergemaakt(v, e.target.checked)} /> {t('Overgemaakt')}
+                        <label className="rij-meta raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          {/* `.tx-vinkje`: zonder die klasse is dit met ~13 px het
+                              kleinste raakvlak van de rij, pal naast knoppen van 44 px. */}
+                          <input
+                            type="checkbox"
+                            className="tx-vinkje"
+                            checked={!!v.overgemaakt}
+                            onChange={(e) => onMarkeerOvergemaakt(v, e.target.checked)}
+                          />{' '}
+                          {t('Overgemaakt')}
                         </label>
                         <button type="button" className="knop knop-ghost knop-klein" onClick={() => kopieerSamenvatting(v)}>
                           {gekopieerd === v.id ? t('Gekopieerd ✓') : t('Kopieer')}
                         </button>
                         <button type="button" className="knop knop-ghost knop-klein" onClick={() => exportPdf(v)}>
                           PDF
+                        </button>
+                        {/* `aria-disabled` en niet `disabled`: dat laatste haalt de
+                            knop die je net aanraakte uit de tab-volgorde, waardoor de
+                            focus naar de pagina valt en je je moet terugtabben. Zie de
+                            uitleg bij `.knop[aria-disabled]` in index.css.
+                            En bewust alleen DEZE rij op slot: bij acht afrekeningen
+                            werden er anders zeven grijs zonder uitleg. */}
+                        <button
+                          type="button"
+                          className="knop knop-ghost knop-klein"
+                          aria-disabled={bewijsmapBezig === v.id}
+                          // De zichtbare tekst zegt "Bewijsmap"; wie met een
+                          // schermlezer werkt, hoort er ook bij WELKE afrekening ze
+                          // hoort — en dat ze bezig is, want een tekstwissel op een
+                          // knop wordt niet aangekondigd.
+                          aria-label={
+                            bewijsmapBezig === v.id
+                              ? t('Bewijsmap van {datum} — bezig…', { datum: v.datum })
+                              : t('Bewijsmap met bonnen van de afrekening van {datum}', { datum: v.datum })
+                          }
+                          onClick={() => exportBewijsmap(v)}
+                        >
+                          {bewijsmapBezig === v.id ? t('Bezig…') : t('Bewijsmap')}
                         </button>
                         {/* Ronde 40: de rekenkern achter een afrekening werd tot nu
                             toe alleen door de PDF en de tekstkopie gebruikt. Op het
@@ -580,12 +669,24 @@ export function DossierSectie({
                           kosten={kosten}
                           kinderen={kinderen}
                           categorieen={categorieen}
+                          documenten={documenten}
                         />
                       )}
                     </li>
                   )
                 })}
               </ul>
+              {bewijsmapFout !== '' && (
+                <p className="foutregel" role="alert">
+                  {bewijsmapFout}
+                </p>
+              )}
+              {/* Altijd aanwezig, leeg wanneer er niets te melden is: een
+                  `role="status"` die pas bij de melding in het document verschijnt,
+                  wordt door sommige schermlezers niet voorgelezen. */}
+              <p className="rij-meta" role="status">
+                {bewijsmapKlaar}
+              </p>
             </Kaart>
           )}
 
@@ -642,6 +743,7 @@ function AfrekeningOpbouw({
   kosten,
   kinderen,
   categorieen,
+  documenten = [],
 }: {
   t: Vertaler
   dossier: Dossier
@@ -649,8 +751,12 @@ function AfrekeningOpbouw({
   kosten: GedeeldeKost[]
   kinderen: Kind[]
   categorieen: Categorie[]
+  /** De documentkluis, zodat het scherm dezelfde bonnen ziet als de bewijsmap. */
+  documenten?: DossierDocument[]
 }) {
-  const o = bouwAfrekeningOverzicht(dossier, afrekening, kosten, kinderen, categorieen)
+  const o = bouwAfrekeningOverzicht(dossier, afrekening, kosten, kinderen, categorieen, (k) =>
+    heeftEenBon(k, documenten),
+  )
 
   // Eén uitsplitsing. Vier kolommen zoals in de PDF: totaal, jij, partner, saldo.
   // Op een telefoon stapelen ze onder de naam in plaats van uit de kaart te lopen.

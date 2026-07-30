@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { DossierDocument } from '../data/schema'
-import { bonVanTransactie, documentenVan, eigenaarVanDocument, veldVanSoort } from './kluis'
+import { bonVanTransactie, documentenVan, eigenaarVanDocument, veldVanSoort, bonVanKost, soortNaam } from './kluis'
+import { DOCUMENTSOORTEN } from '../data/schema'
 
 function doc(extra: Partial<DossierDocument>): DossierDocument {
   return {
@@ -59,5 +60,63 @@ describe('kluis', () => {
       doc({ id: 'nieuw', transactieId: 't1', toegevoegdOp: '2026-06-01' }),
     ]
     expect(bonVanTransactie(documenten, 't1')?.id).toBe('nieuw')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 41
+// ---------------------------------------------------------------------------
+
+describe('bonVanKost', () => {
+  const bonInKluis: DossierDocument = {
+    id: 'doc1',
+    transactieId: 'tx1',
+    naam: 'Bon Colruyt',
+    soort: 'bon',
+    bestand: 'data:image/jpeg;base64,UITDEKLUIS',
+    toegevoegdOp: '2026-03-04',
+  }
+
+  it('neemt de bon van de kost zelf wanneer die er is', () => {
+    expect(bonVanKost({ bonnetje: 'data:image/jpeg;base64,OPDEKOST' })).toBe('data:image/jpeg;base64,OPDEKOST')
+  })
+
+  // Dit is de gewóne weg: je boekt een uitgave, hangt de bonfoto eraan en vinkt
+  // "delen in een dossier" aan. De bon staat dan in de kluis onder de transactie en
+  // NIET op de gedeelde kost. Zonder deze regel zei de bewijsmap "geen bon" bij een
+  // kost waar wél een bon van bestond.
+  it('vindt de bon die aan de transactie hangt', () => {
+    expect(bonVanKost({ transactieId: 'tx1' }, [bonInKluis])).toBe('data:image/jpeg;base64,UITDEKLUIS')
+  })
+
+  it('laat de bon op de kost voorgaan op die van de transactie', () => {
+    expect(bonVanKost({ bonnetje: 'data:image/jpeg;base64,OPDEKOST', transactieId: 'tx1' }, [bonInKluis])).toBe(
+      'data:image/jpeg;base64,OPDEKOST',
+    )
+  })
+
+  it('geeft niets terug wanneer er nergens een bon is', () => {
+    expect(bonVanKost({})).toBeUndefined()
+    expect(bonVanKost({ transactieId: 'tx-zonder-bon' }, [bonInKluis])).toBeUndefined()
+  })
+
+  it('behandelt een lege bonstring als geen bon', () => {
+    expect(bonVanKost({ bonnetje: '' })).toBeUndefined()
+  })
+})
+
+describe('soortNaam', () => {
+  const t = (s: string) => s
+
+  it('geeft elke documentsoort een eigen naam', () => {
+    const namen = DOCUMENTSOORTEN.map((s) => soortNaam(t, s))
+    expect(new Set(namen).size).toBe(DOCUMENTSOORTEN.length)
+  })
+
+  it('noemt een vonnis een vonnis', () => {
+    // In een bewijsmap is dit het verschil dat telt: een vonnis en een losse foto
+    // stonden er eerst identiek in.
+    expect(soortNaam(t, 'vonnis')).toBe('Vonnis')
+    expect(soortNaam(t, 'overeenkomst')).toBe('Overeenkomst')
   })
 })

@@ -877,6 +877,19 @@ a:focus-visible {
   .tekstknop {
     min-height: 44px;
   }
+}
+
+/* Een label met een vinkje erin, op raakmaat (ronde 41).
+ *
+ * Waarvoor: het vakje zelf is 18 px (`.tx-vinkje`). Op een aanraakscherm is dát het
+ * kleinste doel van een rij waarin de knoppen ernaast 44 px halen — en bij de
+ * afrekeningen staat het pal naast de knoppen voor de PDF en de bewijsmap. Tikken op
+ * het label werkt ook, dus het label is het raakvlak; die hoort dan ook groot genoeg
+ * te zijn. In de browser nagemeten op 393 px. */
+@media (pointer: coarse) {
+  .raak-label {
+    min-height: 44px;
+  }
 }@media (hover: hover) and (pointer: fine) {
   /* ---------------------------------------------------------------------------
    Hover op een aanraakscherm (ronde 34)
@@ -2644,4 +2657,136 @@ a {
 .statusregel-fout {
   border-color: var(--negative);
   background: var(--negative-soft);
+}
+
+/* Een foutregel onder een actie (ronde 41).
+ *
+ * Waarvoor: bij de drie exportknoppen kan een download mislukken, en dan moet dat te
+ * zien én te horen zijn. Er stond eerst drie keer `class="rij-meta"` met een inline
+ * `color: var(--negative)`. Dat leest als kleine grijze letters met een rode zweem —
+ * zwakker dan elke andere melding in de app, terwijl deze juist om een tweede poging
+ * vraagt.
+ *
+ * Bewust lichter dan `.statusregel-fout` (die heeft een eigen vlak en rand): die
+ * hoort bij een balk over de hele breedte, dit bij één regel onder een knop. */
+.foutregel {
+  margin: 0;
+  font-size: var(--tekst-s);
+  line-height: 1.45;
+  font-weight: 600;
+  color: var(--negative-ink);
+}
+
+/* ---------------------------------------------------------------------------
+   PRINTEN (ronde 41)
+
+   Wat er gebeurde zonder deze regels: je koos Bestand > Afdrukken en kreeg een
+   blad met de navigatiebalk erop, de zwevende plus-knop dwars over de cijfers,
+   crèmekleurige vlakken die een halve inktpatroon opslurpen, en kaarten die
+   midden op een pagina afgebroken werden.
+
+   Wat het WEL doet: alleen de inhoud, in zwart op wit, met kaarten die niet
+   over een bladovergang gesneden worden. Het is bewust géén vervanging van de
+   PDF-export — dat document is opgemaakt om door te sturen. Dit is de snelle weg
+   voor "ik wil dit even op papier".
+
+   `[data-geen-print]` is er voor blokken die per geval weg mogen; alles wat een
+   knop of navigatie is, valt hieronder al weg.
+   --------------------------------------------------------------------------- */
+@media print {
+  /* Geen kleurvlakken en geen schaduwen: die kosten inkt en voegen op papier
+     niets toe. `!important` is hier op zijn plaats — de kleuren komen uit
+     tientallen regels en variabelen, en die één voor één overschrijven zou de
+     printopmaak stil laten breken bij elke nieuwe kaart.
+
+     `.print-kleur` en `.balk-vulling` blijven ERBUITEN. Dat zijn de gekleurde
+     vlakken die zélf het cijfer zijn: de staven van de maandgrafiek, de stippen in
+     een legende en de vulling van een voortgangsbalk. Werden die doorzichtig, dan
+     printte de grafiek als een leeg kader, stond er onder de donut een legende
+     zonder kleuren (geen manier meer om een schijf aan een categorie te koppelen) en
+     was van een budgetbalk niet te zien hoe vol hij staat. */
+  /* `:where()` en niet twee losse `:not()`-regels: `:where()` telt zelf nergens mee
+     voor de specificiteit, dus deze regel blijft even zwak als een kale `*`. Met
+     `*:not(.a):not(.b)` woog ze zwaarder dan `html body` eronder, en dan bleef de
+     achtergrond van de bladzijde alsnog doorzichtig. In de browser nagemeten. */
+  *:not(:where(.print-kleur, .balk-vulling)) {
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    color: #000 !important;
+    text-shadow: none !important;
+  }
+
+  /* `html body` en niet `body`: de `*:not(...)`-regel hierboven heeft door haar twee
+     `:not()`-klassen een hógere specificiteit dan een kale `body`, en zette de
+     achtergrond dus alsnog op doorzichtig. In de browser nagemeten. */
+  html body {
+    background: #fff !important;
+  }
+
+  /* Navigatie, knoppen en al wat zweeft: weg. Wie op papier leest kan er niet op
+     tikken, en ze duwen de inhoud van het blad.
+
+     `.chip` staat hier BEWUST NIET bij, ook al is het een knop. Chips dragen
+     informatie: boven de transactielijst staat er precies in waarop je gefilterd hebt
+     ("Voeding · maart 2026"), en in de vermogensgrafiek is het de legende. Verborgen
+     zou je een gefilterde lijst op papier hebben zonder één woord over het filter — en
+     wie dat blad later terugvindt, denkt dat dit alle boekingen zijn. */
+  aside,
+  nav,
+  header,
+  .kompal-bottombar,
+  .knop-zweef,
+  .knop,
+  [data-geen-print] {
+    display: none !important;
+  }
+
+  /* Gekleurde vlakken die een CIJFER zijn, niet een versiering: de vulling van een
+     voortgangsbalk en de kleurstip in een legende. De `*`-regel hierboven maakte die
+     doorzichtig, en dan print een budgetbalk als een leeg kadertje en staat er bij een
+     donut een legende zonder kleuren — geen manier meer om een schijf aan een categorie
+     te koppelen. Een grijstint kost weinig inkt en houdt de betekenis heel.
+     Deze regels hebben een klasse en verslaan dus de `*`-regel. */
+  /* En de browser moet die kleuren ook écht afdrukken: standaard laat hij
+     achtergronden weg om inkt te sparen. Dit is de enige plek in de app waar we dat
+     omzeilen, en alleen voor vlakken die informatie dragen. */
+  .balk-vulling,
+  .print-kleur {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    /* Een rand als vangnet: weigert een browser toch de vulling te printen, dan is
+       de vorm nog te zien in plaats van helemaal niets. */
+    outline: 0.5pt solid #666;
+  }
+
+  .chip {
+    border: 1px solid #999 !important;
+  }
+
+  /* Een kaart mag niet halverwege over een bladovergang vallen: dan staat de
+     titel onderaan het ene blad en het cijfer bovenaan het volgende. */
+  .kaart {
+    border: 1px solid #999 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Een lijstrij mag ook niet gesneden worden — een bedrag zonder zijn
+     omschrijving is onbruikbaar. `.lijst` heeft op het scherm `overflow: hidden`;
+     op papier zou dat de rest van de lijst wegkappen. */
+  .rij {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .lijst {
+    overflow: visible !important;
+  }
+
+  /* De inhoud mag de volle breedte van het blad gebruiken; de kolomindeling van
+     een breed scherm past niet op A4. */
+  .raster-hoofd {
+    display: block !important;
+  }
 }
