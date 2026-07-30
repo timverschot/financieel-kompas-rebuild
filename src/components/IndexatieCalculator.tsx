@@ -72,7 +72,7 @@ export function IndexatieCalculator() {
       <p style={{ margin: '0 0 12px', fontSize: 'var(--tekst-s)', color: 'var(--text-muted)' }}>
         {soort === 'huur'
           ? t('Voor huur gebruik je de gezondheidsindex: de aanvangsindex is die van de maand vóór de ondertekening van het huurcontract.')
-          : t('Voor onderhoudsgeld is de aanvangsindex die van de maand waarin het bedrag werd vastgelegd.')}
+          : t('Voor onderhoudsgeld is de aanvangsindex die van de maand vóór de maand waarin het bedrag werd vastgelegd — dezelfde regel als bij huur. Hou je een lopende regeling bij, gebruik dan de onderhoudsbijdrage in je dossier: die zoekt de indexcijfers zelf op.')}
       </p>
 
       <div className="veldrij">

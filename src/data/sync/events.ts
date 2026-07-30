@@ -21,6 +21,8 @@ import {
   TransactieSchema,
   VerrekeningSchema,
   WaarderingSchema,
+  OnderhoudsbijdrageSchema,
+  OnderhoudsbetalingSchema,
 } from '../schema'
 
 // Een gebeurtenis beschrijft één wijziging. We slaan nooit data over of
@@ -54,6 +56,11 @@ export const GebeurtenisSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('kindrekening.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
   z.object({ type: z.literal('kindrekeningpost.bewaard'), payload: KindrekeningpostSchema }),
   z.object({ type: z.literal('kindrekeningpost.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
+  // Ronde 42 — de onderhoudsbijdrage en haar betalingen.
+  z.object({ type: z.literal('onderhoudsbijdrage.bewaard'), payload: OnderhoudsbijdrageSchema }),
+  z.object({ type: z.literal('onderhoudsbijdrage.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
+  z.object({ type: z.literal('onderhoudsbetaling.bewaard'), payload: OnderhoudsbetalingSchema }),
+  z.object({ type: z.literal('onderhoudsbetaling.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
   z.object({ type: z.literal('lening.bewaard'), payload: LeningSchema }),
   z.object({ type: z.literal('lening.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
   z.object({ type: z.literal('aflossing.bewaard'), payload: AflossingSchema }),

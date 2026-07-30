@@ -1531,6 +1531,144 @@ const en: Record<string, string> = {
     'The evidence file for {datum} could not be created. Please try again.',
   'Bewijsmap van {datum} — bezig…': 'Evidence file for {datum} — working…',
   '{n} van {totaal}': '{n} of {totaal}',
+  // Ronde 42 — de onderhoudsbijdrage
+  'Onderhoudsbijdrage': 'Maintenance contribution',
+  'Het vaste maandbedrag uit je vonnis of overeenkomst. De app houdt de jaarlijkse indexatie bij en rekent uit wat er betaald is.':
+    'The fixed monthly amount from your court order or agreement. The app tracks the yearly indexation and works out what has been paid.',
+  'Nog geen onderhoudsbijdrage ingesteld voor dit dossier.':
+    'No maintenance contribution set for this case yet.',
+  'Onderhoudsbijdrage instellen': 'Set up maintenance contribution',
+  'Het overzicht is gedownload.': 'The overview has been downloaded.',
+  'Het overzicht kon niet gemaakt worden. Probeer het opnieuw.':
+    'The overview could not be created. Please try again.',
+  'Onderhoudsbijdrage verwijderen': 'Delete maintenance contribution',
+  'Bijdrage vandaag': 'Contribution today',
+  'gelijk aan het bedrag uit de regeling van {datum}':
+    'same as the amount in the {datum} arrangement',
+  'geïndexeerd; in de regeling van {datum} stond {basis}':
+    'indexed; the {datum} arrangement stated {basis}',
+  'Sinds {datum} staat de bijdrage op {bedrag}. Loopt de betaling nog op het oude bedrag, dan is dat sindsdien elke maand een verschil.':
+    'Since {datum} the contribution is {bedrag}. If the payment is still at the old amount, that is a difference every month since then.',
+  'De app kent nog geen indexcijfer voor {maanden}. Ze kent cijfers tot {laatste}. Vul het ontbrekende cijfer hieronder zelf in, dan is de berekening volledig.':
+    'The app has no index figure for {maanden} yet. It knows figures up to {laatste}. Enter the missing figure below and the calculation is complete.',
+  'Verberg de opbouw': 'Hide the breakdown',
+  'Toon de opbouw': 'Show the breakdown',
+  'Verberg wat er betaald is': 'Hide what has been paid',
+  'Toon wat er betaald is': 'Show what has been paid',
+  'Overzicht als PDF': 'Overview as PDF',
+  'Sluit de regeling': 'Close the arrangement',
+  'Wijzig de regeling': 'Change the arrangement',
+  'Hoe dit bedrag tot stand komt': 'How this amount is arrived at',
+  'Elke verjaardag rekent opnieuw vanaf het bedrag uit de regeling, niet vanaf dat van vorig jaar — zo stapelen afrondingen zich niet op.':
+    'Every anniversary is calculated afresh from the amount in the arrangement, not from last year’s — that way rounding does not accumulate.',
+  'De regeling sluit indexatie uit, dus het bedrag blijft ongewijzigd.':
+    'The arrangement excludes indexation, so the amount stays unchanged.',
+  'De eerste verjaardag van de regeling moet nog komen: op {datum}.':
+    'The first anniversary of the arrangement is still to come: on {datum}.',
+  'index van {maand} nog niet bekend — bedrag ongewijzigd gelaten':
+    'index for {maand} not known yet — amount left unchanged',
+  'index {index} uit {maand}': 'index {index} from {maand}',
+  'De app kent indexcijfers tot {laatste}, in basis {jaar} = 100.':
+    'The app knows index figures up to {laatste}, base {jaar} = 100.',
+  'Vul een bedrag groter dan nul in.': 'Enter an amount greater than zero.',
+  'Wat er verschuldigd was en wat er betaald is': 'What was owed and what has been paid',
+  'Verschuldigd': 'Owed',
+  'over {n} maand(en)': 'over {n} month(s)',
+  'Betaald': 'Paid',
+  '{n} betaling(en) geregistreerd': '{n} payment(s) recorded',
+  'Betaling toevoegen': 'Add payment',
+  'Voor de maand': 'For the month',
+  'Nog geen betalingen geregistreerd.': 'No payments recorded yet.',
+  'Verwijder betaling van {datum}': 'Delete payment of {datum}',
+  'Kies een maand en vul een indexcijfer groter dan nul in.':
+    'Choose a month and enter an index figure greater than zero.',
+  'De regeling': 'The arrangement',
+  'Bedrag uit de regeling': 'Amount in the arrangement',
+  'Datum vonnis of overeenkomst': 'Date of court order or agreement',
+  'De andere ouder betaalt aan jou': 'The other parent pays you',
+  'Jij betaalt aan de andere ouder': 'You pay the other parent',
+  'De datum bepaalt twee dingen: de aanvangsindex (de maand ervóór) en de dag waarop er elk jaar geïndexeerd wordt.':
+    'The date determines two things: the starting index (the month before) and the day of the yearly indexation.',
+  'Jaarlijks indexeren (de wettelijke regel, tenzij de akte iets anders zegt)':
+    'Index yearly (the legal rule, unless the deed says otherwise)',
+  'Aanvangsindex uit de akte (optioneel)': 'Starting index from the deed (optional)',
+  'leeg = de app zoekt ze zelf op': 'empty = the app looks it up itself',
+  'Bewaar de regeling': 'Save the arrangement',
+  'Zelf een indexcijfer toevoegen': 'Add an index figure yourself',
+  'De app kent cijfers tot {laatste}. Loopt je verjaardag daarop vooruit, vul het cijfer dan hier in — je vindt het bij Statbel.':
+    'The app knows figures up to {laatste}. If your anniversary is later, enter the figure here — you will find it at Statbel.',
+  'Maand': 'Month',
+  'Gezondheidsindex': 'Health index',
+  'De app kent deze maand al. Vul je hier iets in, dan gaat jouw cijfer voor.':
+    'The app already knows this month. If you enter something here, your figure takes precedence.',
+  'Indexcijfer toevoegen': 'Add index figure',
+  'Verwijder je eigen indexcijfer voor {maand}': 'Delete your own index figure for {maand}',
+  'Voor welke kinderen de bijdrage geldt, stel je in bij de gezinsleden van dit dossier.':
+    'Which children the contribution applies to is set with the family members of this case.',
+  '{basis} x {nieuw} / {aanvang} = {uit}': '{basis} x {nieuw} / {aanvang} = {uit}',
+  'De aanvangsindex is niet bekend: de app kent geen indexcijfer voor {maand}.':
+    'The starting index is unknown: the app has no index figure for {maand}.',
+  'Aanvangsindex {index}, zoals ze in de akte staat.':
+    'Starting index {index}, as stated in the deed.',
+  'Aanvangsindex {index}: de gezondheidsindex van {maand}, de maand vóór de regeling.':
+    'Starting index {index}: the health index of {maand}, the month before the arrangement.',
+  'Let op: de indexcijfers van de app staan in basis {jaar} = 100. Staat er in je vonnis een aanvangsindex uit een ouder basisjaar, vul die dan hier in én gebruik ook voor de nieuwe index een cijfer uit datzelfde basisjaar. Twee cijfers uit verschillende basisjaren geven een bedrag dat er juist uitziet en het niet is.':
+    'Note: the app’s index figures use base {jaar} = 100. If your court order states a starting index from an older base year, enter it here and also use a figure from that same base year for the new index. Two figures from different base years produce an amount that looks right and is not.',
+  'Per maand geteld vanaf de maand van de regeling, telkens met het bedrag dat op de eerste van die maand gold. Een aanpassing die halverwege een maand ingaat, telt dus vanaf de maand erna.':
+    'Counted month by month from the month of the arrangement, each time with the amount that applied on the first of that month. An adjustment taking effect mid-month therefore counts from the following month.',
+  'Dit blad is een berekening op basis van wat er in Financieel Kompas is ingevoerd: het bedrag uit de regeling, de datum ervan en de gezondheidsindex.':
+    'This sheet is a calculation based on what was entered in Financieel Kompas: the amount in the arrangement, its date and the health index.',
+  'De indexatie gebeurt in België van rechtswege, jaarlijks op de verjaardag van de regeling — tenzij de akte iets anders bepaalt. Wat er in jouw akte staat, gaat voor op wat hier staat.':
+    'In Belgium indexation applies by operation of law, yearly on the anniversary of the arrangement — unless the deed provides otherwise. What your deed says takes precedence over what is stated here.',
+  'Dit is geen juridisch advies en geen ingebrekestelling. De app rekent; wat je met het cijfer doet, beslis jij.':
+    'This is not legal advice and not a formal notice of default. The app calculates; what you do with the figure is up to you.',
+  'Betaald en verschuldigd zijn precies gelijk.': 'Paid and owed are exactly equal.',
+  'Er staat nog {bedrag} open die jij verschuldigd bent.':
+    '{bedrag} is still outstanding that you owe.',
+  'Er staat nog {bedrag} open die aan jou verschuldigd is.':
+    '{bedrag} is still outstanding that is owed to you.',
+  'Er is {bedrag} meer betaald dan berekend.': '{bedrag} more has been paid than calculated.',
+  'Er is {bedrag} meer ontvangen dan berekend.':
+    '{bedrag} more has been received than calculated.',
+  'Onderhoudsbijdrage — {naam}': 'Maintenance contribution — {naam}',
+  'Regeling van': 'Arrangement of',
+  'Bedrag in de regeling': 'Amount in the arrangement',
+  'De bijdrage vandaag': 'The contribution today',
+  'De regeling sluit indexatie uit; het bedrag blijft dus ongewijzigd.':
+    'The arrangement excludes indexation; the amount therefore stays unchanged.',
+  'Hoe dit berekend is': 'How this was calculated',
+  'De onderhoudsbijdrage volgt de gezondheidsindex. Het nieuwe bedrag is telkens: het bedrag uit de regeling, maal de index van de maand vóór de verjaardag, gedeeld door de aanvangsindex.':
+    'The maintenance contribution follows the health index. The new amount is always: the amount in the arrangement, times the index of the month before the anniversary, divided by the starting index.',
+  'De indexcijfers komen van Statbel en staan in basis {jaar} = 100. De app kent cijfers tot {laatste}.':
+    'The index figures come from Statbel and use base {jaar} = 100. The app knows figures up to {laatste}.',
+  'Per verjaardag': 'Per anniversary',
+  'Er is nog geen verjaardag van de regeling geweest.':
+    'There has not been an anniversary of the arrangement yet.',
+  'Wat er nog ontbreekt': 'What is still missing',
+  'Voor deze maanden is er geen indexcijfer gebruikt: {maanden}. De bedragen van die verjaardagen zijn daarom ongewijzigd gelaten in plaats van geschat.':
+    'No index figure was used for these months: {maanden}. The amounts for those anniversaries were therefore left unchanged rather than estimated.',
+  'Wat dit blad is': 'What this sheet is',
+  'Onderhoudsbijdrage verwijderd': 'Maintenance contribution deleted',
+  'Betaling verwijderd': 'Payment deleted',
+  // Ronde 42 — na de review
+  'Nog geen onderhoudsbijdrage ingesteld voor dit dossier. Je hebt het bedrag en de datum uit je vonnis of overeenkomst nodig.':
+    'No maintenance contribution set for this case yet. You will need the amount and the date from your court order or agreement.',
+  'Bijdrage bij het einde van de regeling': 'Contribution at the end of the arrangement',
+  'Deze regeling liep tot {datum}; daarna is er niets meer bijgekomen.':
+    'This arrangement ran until {datum}; nothing has been added since.',
+  'De aanvangsindex is geen geldig getal. Laat het veld leeg om de app het cijfer zelf te laten opzoeken.':
+    'The starting index is not a valid number. Leave the field empty to let the app look the figure up itself.',
+  'Loopt tot (optioneel)': 'Runs until (optional)',
+  'Voor welke kinderen (optioneel)': 'For which children (optional)',
+  'Per maand geteld vanaf de maand van de regeling, telkens met het bedrag dat op de eerste van die maand gold. Twee gevolgen die je moet kennen voor je dit cijfer gebruikt: de maand van de regeling telt volledig mee, ook als ze halverwege begon, en de maand waarin er geïndexeerd wordt telt nog aan het oude, lagere bedrag. Klopt dat niet met jouw afspraak, corrigeer het dan met een betaling.':
+    'Counted month by month from the month of the arrangement, each time with the amount that applied on the first of that month. Two consequences to know before you use this figure: the month of the arrangement counts in full, even if it started mid-month, and the month in which indexation takes effect still counts at the old, lower amount. If that does not match your agreement, correct it with a payment.',
+  'Betaald door de ouder die dit overzicht opmaakte':
+    'Paid by the parent who produced this overview',
+  'Betaald aan de ouder die dit overzicht opmaakte':
+    'Paid to the parent who produced this overview',
+  'Loopt tot': 'Runs until',
+  'Voor onderhoudsgeld is de aanvangsindex die van de maand vóór de maand waarin het bedrag werd vastgelegd — dezelfde regel als bij huur. Hou je een lopende regeling bij, gebruik dan de onderhoudsbijdrage in je dossier: die zoekt de indexcijfers zelf op.':
+    'For maintenance, the starting index is that of the month before the month in which the amount was set — the same rule as for rent. If you are tracking an ongoing arrangement, use the maintenance contribution in your case: it looks the index figures up itself.',
 }
 const fr: Record<string, string> = {
   // Algemeen
@@ -3047,6 +3185,139 @@ const fr: Record<string, string> = {
     'Le dossier de preuves du {datum} n’a pas pu être créé. Veuillez réessayer.',
   'Bewijsmap van {datum} — bezig…': 'Dossier de preuves du {datum} — en cours…',
   '{n} van {totaal}': '{n} sur {totaal}',
+  // Ronde 42 — de onderhoudsbijdrage
+  'Onderhoudsbijdrage': 'Contribution alimentaire',
+  'Het vaste maandbedrag uit je vonnis of overeenkomst. De app houdt de jaarlijkse indexatie bij en rekent uit wat er betaald is.':
+    'Le montant mensuel fixe de votre jugement ou convention. L’application suit l’indexation annuelle et calcule ce qui a été payé.',
+  'Nog geen onderhoudsbijdrage ingesteld voor dit dossier.':
+    'Aucune contribution alimentaire définie pour ce dossier.',
+  'Onderhoudsbijdrage instellen': 'Définir la contribution alimentaire',
+  'Het overzicht is gedownload.': 'L’aperçu a été téléchargé.',
+  'Het overzicht kon niet gemaakt worden. Probeer het opnieuw.':
+    'L’aperçu n’a pas pu être créé. Veuillez réessayer.',
+  'Onderhoudsbijdrage verwijderen': 'Supprimer la contribution alimentaire',
+  'Bijdrage vandaag': 'Contribution aujourd’hui',
+  'gelijk aan het bedrag uit de regeling van {datum}':
+    'identique au montant de l’accord du {datum}',
+  'geïndexeerd; in de regeling van {datum} stond {basis}':
+    'indexé ; l’accord du {datum} indiquait {basis}',
+  'Sinds {datum} staat de bijdrage op {bedrag}. Loopt de betaling nog op het oude bedrag, dan is dat sindsdien elke maand een verschil.':
+    'Depuis le {datum}, la contribution s’élève à {bedrag}. Si le paiement est resté à l’ancien montant, cela fait une différence chaque mois depuis lors.',
+  'De app kent nog geen indexcijfer voor {maanden}. Ze kent cijfers tot {laatste}. Vul het ontbrekende cijfer hieronder zelf in, dan is de berekening volledig.':
+    'L’application ne connaît pas encore l’indice pour {maanden}. Elle connaît les chiffres jusqu’en {laatste}. Saisissez ci-dessous le chiffre manquant et le calcul sera complet.',
+  'Verberg de opbouw': 'Masquer le détail',
+  'Toon de opbouw': 'Afficher le détail',
+  'Verberg wat er betaald is': 'Masquer ce qui a été payé',
+  'Toon wat er betaald is': 'Afficher ce qui a été payé',
+  'Overzicht als PDF': 'Aperçu en PDF',
+  'Sluit de regeling': 'Fermer l’accord',
+  'Wijzig de regeling': 'Modifier l’accord',
+  'Hoe dit bedrag tot stand komt': 'Comment ce montant est obtenu',
+  'Elke verjaardag rekent opnieuw vanaf het bedrag uit de regeling, niet vanaf dat van vorig jaar — zo stapelen afrondingen zich niet op.':
+    'Chaque anniversaire est calculé à partir du montant de l’accord, et non de celui de l’an dernier — ainsi les arrondis ne s’accumulent pas.',
+  'De regeling sluit indexatie uit, dus het bedrag blijft ongewijzigd.':
+    'L’accord exclut l’indexation ; le montant reste donc inchangé.',
+  'De eerste verjaardag van de regeling moet nog komen: op {datum}.':
+    'Le premier anniversaire de l’accord est encore à venir : le {datum}.',
+  'index van {maand} nog niet bekend — bedrag ongewijzigd gelaten':
+    'indice de {maand} pas encore connu — montant laissé inchangé',
+  'index {index} uit {maand}': 'indice {index} de {maand}',
+  'De app kent indexcijfers tot {laatste}, in basis {jaar} = 100.':
+    'L’application connaît les indices jusqu’en {laatste}, base {jaar} = 100.',
+  'Vul een bedrag groter dan nul in.': 'Saisissez un montant supérieur à zéro.',
+  'Wat er verschuldigd was en wat er betaald is': 'Ce qui était dû et ce qui a été payé',
+  'Verschuldigd': 'Dû',
+  'over {n} maand(en)': 'sur {n} mois',
+  'Betaald': 'Payé',
+  '{n} betaling(en) geregistreerd': '{n} paiement(s) enregistré(s)',
+  'Betaling toevoegen': 'Ajouter un paiement',
+  'Voor de maand': 'Pour le mois',
+  'Nog geen betalingen geregistreerd.': 'Aucun paiement enregistré.',
+  'Verwijder betaling van {datum}': 'Supprimer le paiement du {datum}',
+  'Kies een maand en vul een indexcijfer groter dan nul in.':
+    'Choisissez un mois et saisissez un indice supérieur à zéro.',
+  'De regeling': 'L’accord',
+  'Bedrag uit de regeling': 'Montant de l’accord',
+  'Datum vonnis of overeenkomst': 'Date du jugement ou de la convention',
+  'De andere ouder betaalt aan jou': 'L’autre parent vous paie',
+  'Jij betaalt aan de andere ouder': 'Vous payez l’autre parent',
+  'De datum bepaalt twee dingen: de aanvangsindex (de maand ervóór) en de dag waarop er elk jaar geïndexeerd wordt.':
+    'La date détermine deux choses : l’indice de départ (le mois précédent) et le jour de l’indexation annuelle.',
+  'Jaarlijks indexeren (de wettelijke regel, tenzij de akte iets anders zegt)':
+    'Indexer chaque année (la règle légale, sauf mention contraire dans l’acte)',
+  'Aanvangsindex uit de akte (optioneel)': 'Indice de départ figurant dans l’acte (facultatif)',
+  'leeg = de app zoekt ze zelf op': 'vide = l’application le recherche elle-même',
+  'Bewaar de regeling': 'Enregistrer l’accord',
+  'Zelf een indexcijfer toevoegen': 'Ajouter vous-même un indice',
+  'De app kent cijfers tot {laatste}. Loopt je verjaardag daarop vooruit, vul het cijfer dan hier in — je vindt het bij Statbel.':
+    'L’application connaît les chiffres jusqu’en {laatste}. Si votre anniversaire est postérieur, saisissez le chiffre ici — vous le trouverez chez Statbel.',
+  'Maand': 'Mois',
+  'Gezondheidsindex': 'Indice santé',
+  'De app kent deze maand al. Vul je hier iets in, dan gaat jouw cijfer voor.':
+    'L’application connaît déjà ce mois. Si vous saisissez quelque chose ici, votre chiffre prévaut.',
+  'Indexcijfer toevoegen': 'Ajouter l’indice',
+  'Verwijder je eigen indexcijfer voor {maand}': 'Supprimer votre propre indice pour {maand}',
+  'Voor welke kinderen de bijdrage geldt, stel je in bij de gezinsleden van dit dossier.':
+    'Les enfants concernés par la contribution se règlent auprès des membres de la famille de ce dossier.',
+  '{basis} x {nieuw} / {aanvang} = {uit}': '{basis} x {nieuw} / {aanvang} = {uit}',
+  'De aanvangsindex is niet bekend: de app kent geen indexcijfer voor {maand}.':
+    'L’indice de départ est inconnu : l’application n’a pas d’indice pour {maand}.',
+  'Aanvangsindex {index}, zoals ze in de akte staat.':
+    'Indice de départ {index}, tel qu’il figure dans l’acte.',
+  'Aanvangsindex {index}: de gezondheidsindex van {maand}, de maand vóór de regeling.':
+    'Indice de départ {index} : l’indice santé de {maand}, le mois précédant l’accord.',
+  'Let op: de indexcijfers van de app staan in basis {jaar} = 100. Staat er in je vonnis een aanvangsindex uit een ouder basisjaar, vul die dan hier in én gebruik ook voor de nieuwe index een cijfer uit datzelfde basisjaar. Twee cijfers uit verschillende basisjaren geven een bedrag dat er juist uitziet en het niet is.':
+    'Attention : les indices de l’application utilisent la base {jaar} = 100. Si votre jugement mentionne un indice de départ d’une base plus ancienne, saisissez-le ici et utilisez également un chiffre de cette même base pour le nouvel indice. Deux chiffres de bases différentes donnent un montant qui semble correct sans l’être.',
+  'Per maand geteld vanaf de maand van de regeling, telkens met het bedrag dat op de eerste van die maand gold. Een aanpassing die halverwege een maand ingaat, telt dus vanaf de maand erna.':
+    'Compté mois par mois à partir du mois de l’accord, chaque fois avec le montant en vigueur le premier de ce mois. Un ajustement prenant effet en cours de mois compte donc à partir du mois suivant.',
+  'Dit blad is een berekening op basis van wat er in Financieel Kompas is ingevoerd: het bedrag uit de regeling, de datum ervan en de gezondheidsindex.':
+    'Cette feuille est un calcul fondé sur ce qui a été saisi dans Financieel Kompas : le montant de l’accord, sa date et l’indice santé.',
+  'De indexatie gebeurt in België van rechtswege, jaarlijks op de verjaardag van de regeling — tenzij de akte iets anders bepaalt. Wat er in jouw akte staat, gaat voor op wat hier staat.':
+    'En Belgique, l’indexation s’applique de plein droit, chaque année à la date anniversaire de l’accord — sauf disposition contraire de l’acte. Ce que dit votre acte prévaut sur ce qui figure ici.',
+  'Dit is geen juridisch advies en geen ingebrekestelling. De app rekent; wat je met het cijfer doet, beslis jij.':
+    'Ceci n’est ni un avis juridique ni une mise en demeure. L’application calcule ; ce que vous faites du chiffre vous appartient.',
+  'Betaald en verschuldigd zijn precies gelijk.': 'Le payé et le dû sont exactement égaux.',
+  'Er staat nog {bedrag} open die jij verschuldigd bent.': 'Il reste {bedrag} que vous devez.',
+  'Er staat nog {bedrag} open die aan jou verschuldigd is.': 'Il reste {bedrag} qui vous est dû.',
+  'Er is {bedrag} meer betaald dan berekend.': '{bedrag} de plus a été payé que calculé.',
+  'Er is {bedrag} meer ontvangen dan berekend.': '{bedrag} de plus a été reçu que calculé.',
+  'Onderhoudsbijdrage — {naam}': 'Contribution alimentaire — {naam}',
+  'Regeling van': 'Accord du',
+  'Bedrag in de regeling': 'Montant de l’accord',
+  'De bijdrage vandaag': 'La contribution aujourd’hui',
+  'De regeling sluit indexatie uit; het bedrag blijft dus ongewijzigd.':
+    'L’accord exclut l’indexation ; le montant reste donc inchangé.',
+  'Hoe dit berekend is': 'Comment ce calcul a été fait',
+  'De onderhoudsbijdrage volgt de gezondheidsindex. Het nieuwe bedrag is telkens: het bedrag uit de regeling, maal de index van de maand vóór de verjaardag, gedeeld door de aanvangsindex.':
+    'La contribution alimentaire suit l’indice santé. Le nouveau montant est toujours : le montant de l’accord, multiplié par l’indice du mois précédant l’anniversaire, divisé par l’indice de départ.',
+  'De indexcijfers komen van Statbel en staan in basis {jaar} = 100. De app kent cijfers tot {laatste}.':
+    'Les indices proviennent de Statbel et utilisent la base {jaar} = 100. L’application connaît les chiffres jusqu’en {laatste}.',
+  'Per verjaardag': 'Par anniversaire',
+  'Er is nog geen verjaardag van de regeling geweest.':
+    'Il n’y a pas encore eu d’anniversaire de l’accord.',
+  'Wat er nog ontbreekt': 'Ce qui manque encore',
+  'Voor deze maanden is er geen indexcijfer gebruikt: {maanden}. De bedragen van die verjaardagen zijn daarom ongewijzigd gelaten in plaats van geschat.':
+    'Aucun indice n’a été utilisé pour ces mois : {maanden}. Les montants de ces anniversaires ont donc été laissés inchangés plutôt qu’estimés.',
+  'Wat dit blad is': 'Ce qu’est cette feuille',
+  'Onderhoudsbijdrage verwijderd': 'Contribution alimentaire supprimée',
+  'Betaling verwijderd': 'Paiement supprimé',
+  // Ronde 42 — na de review
+  'Nog geen onderhoudsbijdrage ingesteld voor dit dossier. Je hebt het bedrag en de datum uit je vonnis of overeenkomst nodig.':
+    'Aucune contribution alimentaire définie pour ce dossier. Vous aurez besoin du montant et de la date de votre jugement ou convention.',
+  'Bijdrage bij het einde van de regeling': 'Contribution à la fin de l’accord',
+  'Deze regeling liep tot {datum}; daarna is er niets meer bijgekomen.':
+    'Cet accord a couru jusqu’au {datum} ; rien n’a été ajouté depuis.',
+  'De aanvangsindex is geen geldig getal. Laat het veld leeg om de app het cijfer zelf te laten opzoeken.':
+    'L’indice de départ n’est pas un nombre valide. Laissez le champ vide pour que l’application recherche elle-même le chiffre.',
+  'Loopt tot (optioneel)': 'Court jusqu’au (facultatif)',
+  'Voor welke kinderen (optioneel)': 'Pour quels enfants (facultatif)',
+  'Per maand geteld vanaf de maand van de regeling, telkens met het bedrag dat op de eerste van die maand gold. Twee gevolgen die je moet kennen voor je dit cijfer gebruikt: de maand van de regeling telt volledig mee, ook als ze halverwege begon, en de maand waarin er geïndexeerd wordt telt nog aan het oude, lagere bedrag. Klopt dat niet met jouw afspraak, corrigeer het dan met een betaling.':
+    'Compté mois par mois à partir du mois de l’accord, chaque fois avec le montant en vigueur le premier de ce mois. Deux conséquences à connaître avant d’utiliser ce chiffre : le mois de l’accord compte en entier, même s’il a commencé en cours de mois, et le mois où l’indexation prend effet compte encore à l’ancien montant, plus bas. Si cela ne correspond pas à votre accord, corrigez-le par un paiement.',
+  'Betaald door de ouder die dit overzicht opmaakte': 'Payé par le parent qui a établi cet aperçu',
+  'Betaald aan de ouder die dit overzicht opmaakte': 'Payé au parent qui a établi cet aperçu',
+  'Loopt tot': 'Court jusqu’au',
+  'Voor onderhoudsgeld is de aanvangsindex die van de maand vóór de maand waarin het bedrag werd vastgelegd — dezelfde regel als bij huur. Hou je een lopende regeling bij, gebruik dan de onderhoudsbijdrage in je dossier: die zoekt de indexcijfers zelf op.':
+    'Pour la pension alimentaire, l’indice de départ est celui du mois précédant le mois où le montant a été fixé — la même règle que pour le loyer. Si vous suivez un accord en cours, utilisez la contribution alimentaire de votre dossier : elle recherche elle-même les indices.',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 

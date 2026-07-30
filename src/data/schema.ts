@@ -535,3 +535,78 @@ export const DossierDocumentSchema = z.object({
   notitie: z.string().optional(),
 })
 export type DossierDocument = z.infer<typeof DossierDocumentSchema>
+
+// ---------------------------------------------------------------------------
+// DE ONDERHOUDSBIJDRAGE (ronde 42)
+//
+// Het vaste maandbedrag dat de ene ouder aan de andere betaalt voor de kinderen,
+// en dat volgens de Belgische regel jaarlijks van rechtswege geïndexeerd wordt.
+// De volledige verantwoording staat in het projectdossier
+// (`domeinonderzoek_kinderkosten_alimentatie_belgie.md`, sectie 4); de rekenregels
+// staan in `utils/onderhoudsbijdrage.ts`.
+//
+// Waarom dit een eigen record is en geen veld op het dossier: er hoort een
+// geschiedenis bij (elke verjaardag een ander bedrag) en er horen betalingen bij.
+//
+// HOOGSTENS ÉÉN PER DOSSIER. Het scherm toont er één en biedt er één aan om te
+// maken; een tweede zou onzichtbaar blijven. Loopt er in beide richtingen een
+// bijdrage (kinderen uit twee relaties), dan is dat vandaag een tweede dossier —
+// wat sowieso al klopt, want ook de kosten en de afrekeningen staan dan los.
+// ---------------------------------------------------------------------------
+
+// Wie betaalt aan wie. Taal-onafhankelijke sleutels, zoals overal in dit bestand.
+//   'jij-betaalt'  = jij betaalt de bijdrage aan de andere ouder.
+//   'jij-ontvangt' = jij ontvangt de bijdrage van de andere ouder.
+export const BIJDRAGERICHTINGEN = ['jij-betaalt', 'jij-ontvangt'] as const
+export type Bijdragerichting = (typeof BIJDRAGERICHTINGEN)[number]
+
+export const OnderhoudsbijdrageSchema = z.object({
+  id: z.string().min(1),
+  dossierId: z.string().min(1),
+  richting: z.enum(BIJDRAGERICHTINGEN),
+  // Het bedrag zoals het LETTERLIJK in het vonnis of de overeenkomst staat, in
+  // centen. Nooit het geïndexeerde bedrag: dat wordt telkens opnieuw uit dit getal
+  // berekend, want elke indexatie vertrekt van het basisbedrag.
+  basisbedrag: z.number().int().positive(),
+  // De datum van het vonnis of de ouderschapsovereenkomst. Bepaalt twee dingen: de
+  // aanvangsindex (de maand ervóór) en de verjaardag waarop er geïndexeerd wordt.
+  datumRegeling: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  // Wordt er geïndexeerd? Standaard ja — dat is de wettelijke regel. Een akte mag
+  // het uitsluiten, en dan hoort de app dat te volgen in plaats van te corrigeren.
+  geindexeerd: z.boolean().optional(),
+  // De aanvangsindex zoals ze in de akte staat, voor het geval die afwijkt van wat
+  // de app voor die maand kent. Dat gebeurt bij oudere vonnissen: de index is
+  // sindsdien herbaseerd, en dan is het getal in de akte in een andere maatstaf
+  // uitgedrukt. Zie INDEX_BASISJAAR in data/gezondheidsindex.ts.
+  aanvangsindexHandmatig: z.number().positive().optional(),
+  // Indexcijfers die de gebruiker zelf toevoegde, als 'JJJJ-MM' -> cijfer. Nodig
+  // omdat de meegeleverde tabel per definitie achterloopt op de werkelijkheid: het
+  // cijfer van deze maand verschijnt pas op het einde van deze maand.
+  eigenIndexcijfers: z.record(z.string(), z.number().positive()).optional(),
+  // Voor welke kinderen de bijdrage geldt. Puur informatief voor het document.
+  kindIds: z.array(z.string()).optional(),
+  // Loopt de regeling af (bv. bij het einde van de studies)? Dan telt er na deze
+  // maand niets meer mee.
+  eindDatum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn').optional(),
+  notitie: z.string().optional(),
+})
+export type Onderhoudsbijdrage = z.infer<typeof OnderhoudsbijdrageSchema>
+
+// Eén betaling van de onderhoudsbijdrage: ontvangen of gedaan.
+//
+// Bewust een eigen record en geen gewone transactie: een betaling hoort bij de
+// regeling, niet bij een rekening. Wie ze ook als transactie wil boeken, doet dat
+// apart — de app koppelt die twee niet automatisch, want dan zou één storting in
+// twee tellingen tegelijk verschijnen.
+export const OnderhoudsbetalingSchema = z.object({
+  id: z.string().min(1),
+  bijdrageId: z.string().min(1),
+  datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  bedrag: z.number().int().positive(), // in centen
+  // Over welke maand deze betaling gaat ('JJJJ-MM'). Optioneel: wie stipt betaalt
+  // heeft het niet nodig, wie een achterstand inhaalt wel — dan wordt één
+  // overschrijving aan een oudere maand toegewezen.
+  voorMaand: z.string().regex(/^\d{4}-\d{2}$/, 'maand moet JJJJ-MM zijn').optional(),
+  notitie: z.string().optional(),
+})
+export type Onderhoudsbetaling = z.infer<typeof OnderhoudsbetalingSchema>

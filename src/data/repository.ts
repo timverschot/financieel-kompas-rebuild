@@ -43,6 +43,10 @@ import {
   type TerugkerendePost,
   type Transactie,
   type Verrekening,
+  OnderhoudsbijdrageSchema,
+  OnderhoudsbetalingSchema,
+  type Onderhoudsbijdrage,
+  type Onderhoudsbetaling,
 } from './schema'
 import { pasGebeurtenisToe, pasGebeurtenissenToe } from './sync/lokaal'
 
@@ -168,6 +172,25 @@ export async function bewaarKindrekeningpost(post: Kindrekeningpost): Promise<vo
 
 export async function verwijderKindrekeningpost(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'kindrekeningpost.verwijderd', payload: { id } })
+}
+
+// Ronde 42 — de onderhoudsbijdrage.
+export async function bewaarOnderhoudsbijdrage(bijdrage: Onderhoudsbijdrage): Promise<void> {
+  const geldig = OnderhoudsbijdrageSchema.parse(bijdrage)
+  await pasGebeurtenisToe({ type: 'onderhoudsbijdrage.bewaard', payload: geldig })
+}
+
+export async function verwijderOnderhoudsbijdrage(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'onderhoudsbijdrage.verwijderd', payload: { id } })
+}
+
+export async function bewaarOnderhoudsbetaling(betaling: Onderhoudsbetaling): Promise<void> {
+  const geldig = OnderhoudsbetalingSchema.parse(betaling)
+  await pasGebeurtenisToe({ type: 'onderhoudsbetaling.bewaard', payload: geldig })
+}
+
+export async function verwijderOnderhoudsbetaling(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'onderhoudsbetaling.verwijderd', payload: { id } })
 }
 
 export async function bewaarLening(lening: Lening): Promise<void> {
@@ -401,6 +424,14 @@ export async function laadKindrekeningen(): Promise<LeesResultaat<Kindrekening>>
 
 export async function laadKindrekeningposten(): Promise<LeesResultaat<Kindrekeningpost>> {
   return valideerLijst(await db.kindrekeningposten.toArray(), KindrekeningpostSchema)
+}
+
+export async function laadOnderhoudsbijdragen(): Promise<LeesResultaat<Onderhoudsbijdrage>> {
+  return valideerLijst(await db.onderhoudsbijdragen.toArray(), OnderhoudsbijdrageSchema)
+}
+
+export async function laadOnderhoudsbetalingen(): Promise<LeesResultaat<Onderhoudsbetaling>> {
+  return valideerLijst(await db.onderhoudsbetalingen.toArray(), OnderhoudsbetalingSchema)
 }
 
 export async function laadLeningen(): Promise<LeesResultaat<Lening>> {

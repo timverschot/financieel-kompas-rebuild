@@ -23,6 +23,8 @@ import type {
   Transactie,
   Verrekening,
   Waardering,
+  Onderhoudsbijdrage,
+  Onderhoudsbetaling,
 } from './data/schema'
 import {
   bewaarBudget,
@@ -66,6 +68,12 @@ import {
   laadOrdeningen,
   bewaarOrdening,
   laadWaarderingen,
+  laadOnderhoudsbijdragen,
+  laadOnderhoudsbetalingen,
+  bewaarOnderhoudsbijdrage,
+  verwijderOnderhoudsbijdrage,
+  bewaarOnderhoudsbetaling,
+  verwijderOnderhoudsbetaling,
   bewaarWaardering,
   verwijderWaardering,
   laadSubcategorieen,
@@ -225,6 +233,8 @@ export function App() {
   const [kinderen, setKinderen] = useState<Kind[]>([])
   const [kindrekeningen, setKindrekeningen] = useState<Kindrekening[]>([])
   const [kindrekeningposten, setKindrekeningposten] = useState<Kindrekeningpost[]>([])
+  const [onderhoudsbijdragen, setOnderhoudsbijdragen] = useState<Onderhoudsbijdrage[]>([])
+  const [onderhoudsbetalingen, setOnderhoudsbetalingen] = useState<Onderhoudsbetaling[]>([])
   const [leningen, setLeningen] = useState<Lening[]>([])
   const [aflossingen, setAflossingen] = useState<Aflossing[]>([])
   const [garanties, setGaranties] = useState<Garantie[]>([])
@@ -327,7 +337,7 @@ export function App() {
   const { budgetDrempel } = useInstellingen()
 
   async function herlaad() {
-    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd] = await Promise.all([
+    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd, obd, obt] = await Promise.all([
       laadTransacties(),
       laadRekeningen(),
       laadCategorieen(),
@@ -349,6 +359,8 @@ export function App() {
       laadOrdeningen(),
       laadDossierDocumenten(),
       laadWaarderingen(),
+      laadOnderhoudsbijdragen(),
+      laadOnderhoudsbetalingen(),
     ])
     setTransacties(tx.geldig)
     // ALLE overgeslagen records tellen, niet alleen die van transacties. Bleven de
@@ -356,7 +368,7 @@ export function App() {
     // kosten uit een afrekening zonder dat er ergens iets stond — en dan stuur je
     // een bedrag van € 610 door waar € 940 hoorde te staan.
     setOngeldig(
-      [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd].reduce(
+      [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd, obd, obt].reduce(
         (som, r) => som + r.ongeldig,
         0,
       ),
@@ -381,6 +393,8 @@ export function App() {
     setOrdeningen(ord.geldig)
     setDossierdocumenten(docs.geldig)
     setWaarderingen(wrd.geldig)
+    setOnderhoudsbijdragen(obd.geldig)
+    setOnderhoudsbetalingen(obt.geldig)
   }
 
   // Toon een korte "ongedaan maken"-melding na een verwijdering. Herstellen is
@@ -411,7 +425,7 @@ export function App() {
       // Eerst de database zelf, mét wachttijd. Zonder deze regel blijft een
       // geblokkeerde opslag eeuwig op "Laden…" staan; zie openDatabase().
       await openDatabase()
-      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd] = await Promise.all([
+      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd, obd, obt] = await Promise.all([
         laadTransacties(),
         laadRekeningen(),
         laadCategorieen(),
@@ -433,6 +447,8 @@ export function App() {
         laadOrdeningen(),
         laadDossierDocumenten(),
         laadWaarderingen(),
+        laadOnderhoudsbijdragen(),
+        laadOnderhoudsbetalingen(),
       ])
       if (!actief) return
       setTransacties(tx.geldig)
@@ -457,11 +473,13 @@ export function App() {
       setOrdeningen(ord.geldig)
       setDossierdocumenten(docs.geldig)
       setWaarderingen(wrd.geldig)
+    setOnderhoudsbijdragen(obd.geldig)
+    setOnderhoudsbetalingen(obt.geldig)
       // Ook bij het OPSTARTEN alle tellers optellen, niet alleen die van
       // transacties. Deze regel stond alleen in `herlaad`, dus wie de app opende en
       // niets wijzigde, zag nooit dat er records overgeslagen waren.
       setOngeldig(
-        [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd].reduce(
+        [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd, obd, obt].reduce(
           (som, r) => som + r.ongeldig,
           0,
         ),
@@ -1054,6 +1072,41 @@ export function App() {
     await herlaad()
     if (oud) toonUndo(t('Beweging verwijderd'), () => bewaarKindrekeningpost(oud))
   }
+  // Ronde 42 — de onderhoudsbijdrage. Zelfde patroon als de rest: bewaren, opnieuw
+  // laden, en bij verwijderen het oude record vasthouden zodat Ongedaan maken werkt.
+  async function onderhoudsbijdrageOpslaan(b: Onderhoudsbijdrage) {
+    await bewaarOnderhoudsbijdrage(b)
+    await herlaad()
+  }
+
+  async function onderhoudsbijdrageVerwijderen(id: string) {
+    const oud = onderhoudsbijdragen.find((b) => b.id === id)
+    // De betalingen horen bij de bijdrage: laat je ze staan, dan zweven ze rond
+    // zonder eigenaar en duiken ze op wanneer je later een nieuwe bijdrage maakt.
+    const oudeBetalingen = onderhoudsbetalingen.filter((b) => b.bijdrageId === id)
+    for (const betaling of oudeBetalingen) await verwijderOnderhoudsbetaling(betaling.id)
+    await verwijderOnderhoudsbijdrage(id)
+    await herlaad()
+    if (oud) {
+      toonUndo(t('Onderhoudsbijdrage verwijderd'), async () => {
+        await bewaarOnderhoudsbijdrage(oud)
+        for (const betaling of oudeBetalingen) await bewaarOnderhoudsbetaling(betaling)
+      })
+    }
+  }
+
+  async function onderhoudsbetalingOpslaan(b: Onderhoudsbetaling) {
+    await bewaarOnderhoudsbetaling(b)
+    await herlaad()
+  }
+
+  async function onderhoudsbetalingVerwijderen(id: string) {
+    const oud = onderhoudsbetalingen.find((b) => b.id === id)
+    await verwijderOnderhoudsbetaling(id)
+    await herlaad()
+    if (oud) toonUndo(t('Betaling verwijderd'), () => bewaarOnderhoudsbetaling(oud))
+  }
+
 
   // --- Leningen & kredieten ---
   async function leningOpslaan(l: Lening) {
@@ -1905,6 +1958,12 @@ export function App() {
                   categorieen={categorieen}
                   kindrekeningen={kindrekeningen}
                   kindrekeningposten={kindrekeningposten}
+                  onderhoudsbijdragen={onderhoudsbijdragen}
+                  onderhoudsbetalingen={onderhoudsbetalingen}
+                  onOnderhoudsbijdrageOpslaan={onderhoudsbijdrageOpslaan}
+                  onOnderhoudsbijdrageVerwijderen={onderhoudsbijdrageVerwijderen}
+                  onOnderhoudsbetalingOpslaan={onderhoudsbetalingOpslaan}
+                  onOnderhoudsbetalingVerwijderen={onderhoudsbetalingVerwijderen}
                   onDossierOpslaan={voegDossierToe}
                   onDossierVerwijderen={verwijderDoss}
                   onKostOpslaan={voegGedeeldeKostToe}

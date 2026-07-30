@@ -20,6 +20,8 @@ import type {
   Transactie,
   Verrekening,
   Waardering,
+  Onderhoudsbijdrage,
+  Onderhoudsbetaling,
 } from '../schema'
 import type { Logregel } from './events'
 import { vergelijkStempel, type Stempel } from './hlc'
@@ -46,6 +48,8 @@ export type Staat = {
   dossierdocumenten: Map<string, DossierDocument>
   ordeningen: Map<string, Ordening>
   waarderingen: Map<string, Waardering>
+  onderhoudsbijdragen: Map<string, Onderhoudsbijdrage>
+  onderhoudsbetalingen: Map<string, Onderhoudsbetaling>
 }
 
 // Het HLC-stempel van een logregel, met terugval op 'tijdstip' voor oude regels
@@ -90,6 +94,8 @@ export function pasToe(regels: Logregel[]): Staat {
     dossierdocumenten: new Map(),
     ordeningen: new Map(),
     waarderingen: new Map(),
+  onderhoudsbijdragen: new Map(),
+  onderhoudsbetalingen: new Map(),
   }
   for (const r of gesorteerd) {
     const g = r.gebeurtenis
@@ -177,6 +183,18 @@ export function pasToe(regels: Logregel[]): Staat {
         break
       case 'kindrekeningpost.verwijderd':
         staat.kindrekeningposten.delete(g.payload.id)
+        break
+      case 'onderhoudsbijdrage.bewaard':
+        staat.onderhoudsbijdragen.set(g.payload.id, g.payload)
+        break
+      case 'onderhoudsbijdrage.verwijderd':
+        staat.onderhoudsbijdragen.delete(g.payload.id)
+        break
+      case 'onderhoudsbetaling.bewaard':
+        staat.onderhoudsbetalingen.set(g.payload.id, g.payload)
+        break
+      case 'onderhoudsbetaling.verwijderd':
+        staat.onderhoudsbetalingen.delete(g.payload.id)
         break
       case 'lening.bewaard':
         staat.leningen.set(g.payload.id, g.payload)

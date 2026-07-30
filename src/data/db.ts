@@ -21,6 +21,8 @@ import type {
   Transactie,
   Verrekening,
   Waardering,
+  Onderhoudsbijdrage,
+  Onderhoudsbetaling,
 } from './schema'
 import type { Logregel, MetaRegel } from './sync/events'
 import { nieuwId } from './sync/id'
@@ -52,6 +54,8 @@ export class FinancieelKompasDB extends Dexie {
   dossierdocumenten!: Table<DossierDocument, string>
   ordeningen!: Table<Ordening, string>
   waarderingen!: Table<Waardering, string>
+  onderhoudsbijdragen!: Table<Onderhoudsbijdrage, string>
+  onderhoudsbetalingen!: Table<Onderhoudsbetaling, string>
 
   constructor() {
     super('financieel-kompas')
@@ -458,6 +462,38 @@ export class FinancieelKompasDB extends Dexie {
       dossierdocumenten: 'id, dossierId',
       ordeningen: 'id',
       waarderingen: 'id, rekeningId',
+    })
+
+    // Versie 20 - de onderhoudsbijdrage en haar betalingen (ronde 42, zie
+    // OnderhoudsbijdrageSchema). Alleen twee nieuwe tabellen: geen bestaande
+    // gegevens worden aangeraakt, dus er valt niets om te zetten. Een dossier
+    // zonder onderhoudsbijdrage gedraagt zich exact zoals voorheen.
+    this.version(20).stores({
+      rekeningen: 'id, naam',
+      transacties: 'id, rekeningId, datum, categorieId',
+      events: 'id, toestelId, volgnummer',
+      meta: 'sleutel',
+      categorieen: 'id, naam',
+      budgetten: 'id, categorieId',
+      dossiers: 'id, naam',
+      gedeeldeKosten: 'id, dossierId, verrekeningId',
+      verrekeningen: 'id, dossierId',
+      terugkerendePosten: 'id',
+      spaardoelen: 'id, naam',
+      subcategorieen: 'id, categorieId',
+      overboekingen: 'id, datum',
+      kinderen: 'id, naam',
+      kindrekeningen: 'id, dossierId',
+      kindrekeningposten: 'id, kindrekeningId',
+      leningen: 'id, richting',
+      aflossingen: 'id, leningId',
+      garanties: 'id, aankoopdatum',
+      streepjescodes: 'id',
+      dossierdocumenten: 'id, dossierId',
+      ordeningen: 'id',
+      waarderingen: 'id, rekeningId',
+      onderhoudsbijdragen: 'id, dossierId',
+      onderhoudsbetalingen: 'id, bijdrageId',
     })
   }
 }

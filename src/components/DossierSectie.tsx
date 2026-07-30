@@ -1,5 +1,16 @@
 import { useEffect, useState } from 'react'
-import type { Categorie, Dossier, DossierDocument, GedeeldeKost, Kind, Kindrekening, Kindrekeningpost, Verrekening } from '../data/schema'
+import type {
+  Categorie,
+  Dossier,
+  DossierDocument,
+  GedeeldeKost,
+  Kind,
+  Kindrekening,
+  Kindrekeningpost,
+  Onderhoudsbetaling,
+  Onderhoudsbijdrage,
+  Verrekening,
+} from '../data/schema'
 import { DossierFormulier } from './DossierFormulier'
 import { GedeeldeKostFormulier } from './GedeeldeKostFormulier'
 import { KindrekeningSectie } from './KindrekeningSectie'
@@ -23,6 +34,7 @@ import { bouwAfrekeningOverzicht, type AfrekeningGroep } from '../utils/afrekeni
 import { exporteerAfrekeningPDF } from '../utils/afrekeningPdf'
 import { exporteerBewijsmapPDF } from '../utils/bewijsmapPdf'
 import { bonVanKost } from '../utils/kluis'
+import { OnderhoudsbijdrageSectie } from './OnderhoudsbijdrageSectie'
 import { labelVanCategorie } from '../data/categorieen/resolve'
 import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { GezinsledenKiezer } from './GezinslidKiezer'
@@ -54,6 +66,7 @@ export const DOSSIER_ONDERDELEN = [
   // vlag dekt al twee kaarten; er een derde bij zetten zou betekenen dat wie de
   // opbouw niet wil zien ook de knop kwijtraakt om een afrekening te maken.
   { id: 'afrekening-detail', label: 'Opbouw van een afrekening' },
+  { id: 'onderhoudsbijdrage', label: 'Onderhoudsbijdrage' },
   { id: 'gezamenlijke-pot', label: 'Kindrekening (gezamenlijke pot)' },
   { id: 'documentkluis', label: 'Documentkluis' },
 ] as const
@@ -83,6 +96,12 @@ export function DossierSectie({
   categorieen,
   kindrekeningen,
   kindrekeningposten,
+  onderhoudsbijdragen,
+  onderhoudsbetalingen,
+  onOnderhoudsbijdrageOpslaan,
+  onOnderhoudsbijdrageVerwijderen,
+  onOnderhoudsbetalingOpslaan,
+  onOnderhoudsbetalingVerwijderen,
   onDossierOpslaan,
   onDossierVerwijderen,
   onKostOpslaan,
@@ -107,6 +126,12 @@ export function DossierSectie({
   categorieen: Categorie[]
   kindrekeningen: Kindrekening[]
   kindrekeningposten: Kindrekeningpost[]
+  onderhoudsbijdragen?: Onderhoudsbijdrage[]
+  onderhoudsbetalingen?: Onderhoudsbetaling[]
+  onOnderhoudsbijdrageOpslaan?: (b: Onderhoudsbijdrage) => Promise<void> | void
+  onOnderhoudsbijdrageVerwijderen?: (id: string) => Promise<void> | void
+  onOnderhoudsbetalingOpslaan?: (b: Onderhoudsbetaling) => Promise<void> | void
+  onOnderhoudsbetalingVerwijderen?: (id: string) => Promise<void> | void
   onDossierOpslaan: (d: Dossier) => Promise<void> | void
   onDossierVerwijderen: (id: string) => Promise<void> | void
   onKostOpslaan: (k: GedeeldeKost) => Promise<void> | void
@@ -307,6 +332,10 @@ export function DossierSectie({
 
   const kindrekening = dossier ? (kindrekeningen.find((k) => k.dossierId === dossier.id) ?? null) : null
   const potPosten = kindrekening ? kindrekeningposten.filter((p) => p.kindrekeningId === kindrekening.id) : []
+  // Hoogstens één bijdrage per dossier. Zijn er er meer (bv. na een import), dan
+  // wint de eerste — beter één die klopt dan twee die elkaar tegenspreken.
+  const bijdrage = dossier ? (onderhoudsbijdragen?.find((b) => b.dossierId === dossier.id) ?? null) : null
+  const bijdrageBetalingen = bijdrage ? (onderhoudsbetalingen ?? []).filter((b) => b.bijdrageId === bijdrage.id) : []
 
   async function kostOpslaan(k: GedeeldeKost) {
     await onKostOpslaan(k)
@@ -688,6 +717,22 @@ export function DossierSectie({
                 {bewijsmapKlaar}
               </p>
             </Kaart>
+          )}
+
+          {/* De onderhoudsbijdrage: het vaste maandbedrag uit het vonnis, met de
+              jaarlijkse indexatie. Staat bewust vóór de gezamenlijke pot: het is de
+              afspraak waar alles op rust, de pot is een manier om ze uit te voeren. */}
+          {toont('onderhoudsbijdrage') && onOnderhoudsbijdrageOpslaan && onOnderhoudsbijdrageVerwijderen && (
+            <OnderhoudsbijdrageSectie
+              dossier={dossier}
+              bijdrage={bijdrage}
+              betalingen={bijdrageBetalingen}
+              kinderen={kinderen}
+              onOpslaan={onOnderhoudsbijdrageOpslaan}
+              onVerwijderen={onOnderhoudsbijdrageVerwijderen}
+              onBetalingOpslaan={onOnderhoudsbetalingOpslaan ?? (() => {})}
+              onBetalingVerwijderen={onOnderhoudsbetalingVerwijderen ?? (() => {})}
+            />
           )}
 
           {/* Kindrekening: de gezamenlijke pot als tweede manier van afrekenen. */}

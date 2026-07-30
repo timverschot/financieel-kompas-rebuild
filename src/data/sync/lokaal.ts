@@ -61,6 +61,8 @@ export const STAAT_NAMEN = [
   'dossierdocumenten',
   'ordeningen',
   'waarderingen',
+  'onderhoudsbijdragen',
+  'onderhoudsbetalingen',
 ] as const satisfies readonly (keyof Staat)[]
 
 // Elke sleutel van Staat moet in STAAT_NAMEN staan. Vergeet je er één, dan is dit
@@ -168,6 +170,18 @@ async function pasStaatToe(regel: Logregel): Promise<void> {
       break
     case 'kindrekeningpost.verwijderd':
       await db.kindrekeningposten.delete(g.payload.id)
+      break
+    case 'onderhoudsbijdrage.bewaard':
+      await db.onderhoudsbijdragen.put(g.payload)
+      break
+    case 'onderhoudsbijdrage.verwijderd':
+      await db.onderhoudsbijdragen.delete(g.payload.id)
+      break
+    case 'onderhoudsbetaling.bewaard':
+      await db.onderhoudsbetalingen.put(g.payload)
+      break
+    case 'onderhoudsbetaling.verwijderd':
+      await db.onderhoudsbetalingen.delete(g.payload.id)
       break
     case 'lening.bewaard':
       await db.leningen.put(g.payload)
