@@ -183,3 +183,20 @@ describe('vertaaltabellen — de maandafsluiting', () => {
     )
   })
 })
+
+describe('vertaaltabellen — de prijsstijgingen', () => {
+  it('vertaalt de teksten van de nieuwe kaart', () => {
+    expect(vertaal('en', 'Wat werd er duurder?')).toBe('What got more expensive?')
+    expect(vertaal('fr', 'vaste last')).toBe('charge fixe')
+    expect(vertaal('en', '{oud} → {nieuw} sinds {datum}', { oud: '€ 11,99', nieuw: '€ 13,99', datum: '5 mrt 2026' })).toBe(
+      '€ 11,99 → € 13,99 since 5 mrt 2026',
+    )
+    // De app moet uitleggen hoe ze aan het cijfer komt, in alle drie de talen.
+    expect(
+      vertaal(
+        'fr',
+        'De app vergelijkt het bedrag dat bij dezelfde handelaar elke keer terugkomt. Ze kijkt achttien maanden terug, vraagt minstens zes betalingen, en zwijgt over winkels waar je bedrag elke keer anders is.',
+      ),
+    ).toContain('dix-huit mois')
+  })
+})

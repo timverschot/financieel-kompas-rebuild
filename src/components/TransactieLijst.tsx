@@ -278,6 +278,7 @@ export function TransactieLijst({
     sub: () => zet({ catId: undefined }),
     domein: () => zet({ domein: undefined }),
     zonderCategorie: () => zet({ zonderCategorie: undefined }),
+    handelaar: () => zet({ handelaar: undefined }),
     van: () => zet({ van: undefined }),
     tot: () => zet({ tot: undefined }),
     maand: () => zet({ maand: undefined }),

@@ -10,6 +10,7 @@ import { maandStand, openMaanden, vorigeMaand, type Stapsleutel } from '../utils
 import { voorstelCategorie, type HandelaarIndex } from '../utils/categorieVoorstel'
 import { labelVanCategorie } from '../data/categorieen/resolve'
 import { mistCategorie } from '../utils/transactieFilter'
+import { bouwPrijsbeeld } from '../utils/prijsstijging'
 import { maandJaarLabel, vandaag } from '../utils/datum'
 import { formatEuro } from '../utils/format'
 import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
@@ -87,6 +88,13 @@ export function MaandafsluitingSectie({
   const stand = useMemo(
     () => maandStand({ maand, transacties, budgetten, terugkerendePosten, afsluitingen, vandaagISO }),
     [maand, transacties, budgetten, terugkerendePosten, afsluitingen, vandaagISO],
+  )
+
+  // Bewust NIET op de gekozen maand: een prijsverhoging van maart zie je niet door
+  // één maand te bekijken. Deze kijkt achttien maanden terug, net als op Analyse.
+  const prijsbeeld = useMemo(
+    () => bouwPrijsbeeld({ transacties, terugkerendePosten, vandaagISO }),
+    [transacties, terugkerendePosten, vandaagISO],
   )
 
   const zonderCategorie = useMemo(
@@ -266,6 +274,16 @@ export function MaandafsluitingSectie({
               ? t('Je kwam {bedrag} tekort.', { bedrag: formatEuro(stand.uitgaven - stand.inkomsten) })
               : t('Je kwam precies uit.')}
         </p>
+        {/* Wat er duurder werd staat hier bewust ALS ZIN en niet als lijst: de
+            volledige uitleg hoort op Analyse, maar de maandafsluiting is het moment
+            waarop je er iets mee kan doen. */}
+        {prijsbeeld.duurderPerMaand > 0 && (
+          <p className="rij-meta" style={{ margin: '10px 0 0' }}>
+            {t('Je terugkerende kosten liggen intussen {bedrag} per maand hoger dan voorheen. Op Analyse staat wat er precies duurder werd.', {
+              bedrag: formatEuro(prijsbeeld.duurderPerMaand),
+            })}
+          </p>
+        )}
         {(stand.budgettenOver > 0 || stand.vasteLastenOpen > 0) && (
           <ul className="lijst" style={{ marginTop: 10 }}>
             {stand.budgettenOver > 0 && (

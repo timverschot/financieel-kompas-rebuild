@@ -210,6 +210,28 @@ const en: Record<string, string> = {
   'Luisterboeken': 'Audiobooks',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Note: the transactions up to and including {datum} are already part of the value you recorded then. They still count below, but no longer in the balance at the top.',
   'geldt nu': 'in effect',
+  // Prijsstijgingen (ronde 43)
+  'Wat werd er duurder?': 'What got more expensive?',
+  'Nog niets gevonden. Daar is minstens een half jaar aan boekingen bij dezelfde handelaar voor nodig.':
+    'Nothing found yet. That needs at least half a year of entries with the same merchant.',
+  '{duurder} per maand duurder, {goedkoper} goedkoper — netto {netto} per maand.':
+    '{duurder} a month more expensive, {goedkoper} cheaper — net {netto} a month.',
+  '{bedrag} per maand duurder dan voorheen, over {n} post(en).':
+    '{bedrag} a month more expensive than before, across {n} item(s).',
+  '{bedrag} per maand goedkoper dan voorheen.': '{bedrag} a month cheaper than before.',
+  '{oud} → {nieuw} sinds {datum}': '{oud} → {nieuw} since {datum}',
+  'per maand': 'a month',
+  'vaste last': 'fixed cost',
+  'nog onzeker': 'not certain yet',
+  'Je vaste last staat op een ander bedrag dan wat je nu betaalt. Pas ze aan bij Budget.':
+    'Your fixed cost holds a different amount from what you now pay. Change it under Budget.',
+  'Nog {n} andere, kleinere wijzigingen.': '{n} more, smaller changes.',
+  'De app vergelijkt het bedrag dat bij dezelfde handelaar elke keer terugkomt. Ze kijkt achttien maanden terug, vraagt minstens zes betalingen, en zwijgt over winkels waar je bedrag elke keer anders is.':
+    'The app compares the amount that recurs with the same merchant. It looks eighteen months back, asks for at least six payments, and stays quiet about shops where your amount differs every time.',
+  'Je terugkerende kosten liggen intussen {bedrag} per maand hoger dan voorheen. Op Analyse staat wat er precies duurder werd.':
+    'Your recurring costs are now {bedrag} a month higher than before. Analysis shows exactly what got more expensive.',
+  'Verberg': 'Hide',
+  'Toon': 'Show',
   // De maandafsluiting (ronde 43)
   'Maandafsluiting': 'Month close',
   'Drie stappen, en dan is je maand rond. Vijf minuten, één keer per maand.':
@@ -2018,6 +2040,28 @@ const fr: Record<string, string> = {
   'Luisterboeken': 'Livres audio',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Attention : les opérations jusqu’au {datum} inclus sont déjà comprises dans la valeur que tu as enregistrée alors. Elles comptent encore ci-dessous, mais plus dans le solde en haut.',
   'geldt nu': 'en vigueur',
+  // Hausses de prix (ronde 43)
+  'Wat werd er duurder?': 'Qu’est-ce qui a augmenté ?',
+  'Nog niets gevonden. Daar is minstens een half jaar aan boekingen bij dezelfde handelaar voor nodig.':
+    'Rien trouvé pour l’instant. Il faut au moins six mois d’écritures chez le même commerçant.',
+  '{duurder} per maand duurder, {goedkoper} goedkoper — netto {netto} per maand.':
+    '{duurder} de plus par mois, {goedkoper} de moins — net {netto} par mois.',
+  '{bedrag} per maand duurder dan voorheen, over {n} post(en).':
+    '{bedrag} de plus par mois qu’avant, sur {n} poste(s).',
+  '{bedrag} per maand goedkoper dan voorheen.': '{bedrag} de moins par mois qu’avant.',
+  '{oud} → {nieuw} sinds {datum}': '{oud} → {nieuw} depuis le {datum}',
+  'per maand': 'par mois',
+  'vaste last': 'charge fixe',
+  'nog onzeker': 'pas encore certain',
+  'Je vaste last staat op een ander bedrag dan wat je nu betaalt. Pas ze aan bij Budget.':
+    'Ta charge fixe indique un montant différent de ce que tu paies aujourd’hui. Modifie-la sous Budget.',
+  'Nog {n} andere, kleinere wijzigingen.': '{n} autres changements, plus petits.',
+  'De app vergelijkt het bedrag dat bij dezelfde handelaar elke keer terugkomt. Ze kijkt achttien maanden terug, vraagt minstens zes betalingen, en zwijgt over winkels waar je bedrag elke keer anders is.':
+    'L’application compare le montant qui revient chez le même commerçant. Elle remonte dix-huit mois, exige au moins six paiements et se tait sur les commerces où ton montant diffère à chaque fois.',
+  'Je terugkerende kosten liggen intussen {bedrag} per maand hoger dan voorheen. Op Analyse staat wat er precies duurder werd.':
+    'Tes charges récurrentes sont désormais {bedrag} par mois plus élevées qu’avant. L’Analyse montre précisément ce qui a augmenté.',
+  'Verberg': 'Masquer',
+  'Toon': 'Afficher',
   // La clôture mensuelle (ronde 43)
   'Maandafsluiting': 'Clôture du mois',
   'Drie stappen, en dan is je maand rond. Vijf minuten, één keer per maand.':

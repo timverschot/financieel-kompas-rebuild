@@ -4,6 +4,7 @@ import { Vermogensevolutie } from './Vermogensevolutie'
 import { TrendsSectie } from './TrendsSectie'
 import { VooruitblikSectie } from './VooruitblikSectie'
 import { BesparenKaart } from './BesparenKaart'
+import { PrijsstijgingenKaart } from './PrijsstijgingenKaart'
 import {
   perHoofdcategorie,
   perItem,
@@ -445,6 +446,21 @@ export function AnalyseSectie({
                 onGaNaarTransacties
                   ? (sleutel) => onGaNaarTransacties(metPeriode({ domein: sleutel, richting: 'uit' }))
                   : undefined
+              }
+            />
+          )}
+
+          {/* Wat werd er duurder? Onder de besparingskaart, want ze beantwoordt de
+              volgende vraag: niet "waar loopt het op" maar "wat kost me nu meer dan
+              vroeger zonder dat ik iets anders deed". Ook ingeklapt, en ook alleen
+              bij uitgaven. Ze kijkt bewust NIET naar de gekozen periode: een
+              prijsverhoging van maart zie je niet door één maand te bekijken. */}
+          {richting === 'uitgave' && (
+            <PrijsstijgingenKaart
+              transacties={transacties}
+              terugkerendePosten={terugkerendePosten}
+              onToonHandelaar={
+                onGaNaarTransacties ? (naam) => onGaNaarTransacties({ handelaar: naam, richting: 'uit' }) : undefined
               }
             />
           )}

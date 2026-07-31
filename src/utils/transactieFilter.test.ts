@@ -254,3 +254,34 @@ describe('filter op boekingen zonder categorie (ronde 43)', () => {
     expect(mistCategorie(restZonderCategorie)).toBe(true)
   })
 })
+
+describe('filter op handelaar (ronde 43)', () => {
+  // Zoals een bankexport eruitziet: elke maand een andere datum en referentie.
+  const bank: Transactie[] = ['01', '02', '03'].map((m) => ({
+    id: `b${m}`,
+    datum: `2026-${m}-05`,
+    omschrijving: `BETALING MAESTRO 6703 NETFLIX.COM ${m}/07 REF 90000${m}`,
+    bedrag: -1399,
+    rekeningId: 'r1',
+  }))
+  const andere: Transactie = {
+    id: 'x',
+    datum: '2026-02-06',
+    omschrijving: 'Aankoop Bancontact DELHAIZE 2530',
+    bedrag: -4000,
+    rekeningId: 'r1',
+  }
+
+  it('vindt alle boekingen van dezelfde handelaar, ondanks datum en referentie', () => {
+    // Met een vrije zoekterm vond je er één van de drie.
+    expect(filterTransacties([...bank, andere], { handelaar: bank[2].omschrijving })).toHaveLength(3)
+  })
+
+  it('houdt een andere handelaar erbuiten', () => {
+    expect(filterTransacties([...bank, andere], { handelaar: 'Delhaize' }).map((t) => t.id)).toEqual(['x'])
+  })
+
+  it('telt mee als actief filter', () => {
+    expect(heeftActiefFilter({ handelaar: 'Netflix' })).toBe(true)
+  })
+})

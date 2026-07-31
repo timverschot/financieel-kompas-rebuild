@@ -2,6 +2,7 @@ import type { Transactie } from '../data/schema'
 import { itemPerId, midPerId } from '../data/categorieen/zoek'
 import { categorieBedragen } from './transactie'
 import { domeinVanCategorie } from './besparen'
+import { handelaarSleutel } from './handelaar'
 
 // Filter- en zoeklaag voor de transactielijst. Zuivere functies zodat ze los
 // getest kunnen worden. De filters zijn allemaal optioneel en werken samen (AND).
@@ -46,6 +47,18 @@ export type TxFilter = {
    * omdat de eerste regel wél ingevuld is.
    */
   zonderCategorie?: boolean
+  /**
+   * Alle boekingen bij DEZELFDE handelaar, ook al schrijft de bank de omschrijving
+   * elke maand anders.
+   *
+   * Waarom dit niet met `zoek` kan. De vrije zoekterm doet een letterlijke
+   * substring-match op de omschrijving, en die bevat bij een bankexport het
+   * kaartnummer, de datum en een referentie — allemaal anders per boeking. Klikte je
+   * vanaf een prijsstijging door, dan vond je één van de zeven betalingen terug. Dit
+   * filter gebruikt dezelfde opschoning als de prijsdetectie, dus je ziet precies de
+   * boekingen waarop dat cijfer gebaseerd is.
+   */
+  handelaar?: string
 }
 
 // Alle categorie-id's waar een transactie naar verwijst: de hoofd-categorieId en
@@ -147,6 +160,7 @@ export function filterTransacties(transacties: Transactie[], filter: TxFilter): 
     if (!raaktCategorie(tx, filter.hoofdId, filter.catId)) return false
     if (filter.domein && !raaktDomein(tx, filter.domein)) return false
     if (filter.zonderCategorie && !mistCategorie(tx)) return false
+    if (filter.handelaar && handelaarSleutel(tx.omschrijving) !== handelaarSleutel(filter.handelaar)) return false
     if (filter.zoek && !raaktZoek(tx, filter.zoek)) return false
     return true
   })
@@ -176,7 +190,8 @@ export function heeftActiefFilter(filter: TxFilter): boolean {
     filter.van ||
     filter.tot ||
     filter.maand ||
-    filter.zonderCategorie
+    filter.zonderCategorie ||
+    filter.handelaar
   )
 }
 
