@@ -210,6 +210,60 @@ const en: Record<string, string> = {
   'Luisterboeken': 'Audiobooks',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Note: the transactions up to and including {datum} are already part of the value you recorded then. They still count below, but no longer in the balance at the top.',
   'geldt nu': 'in effect',
+  // De maandafsluiting (ronde 43)
+  'Maandafsluiting': 'Month close',
+  'Drie stappen, en dan is je maand rond. Vijf minuten, één keer per maand.':
+    'Three steps and your month is done. Five minutes, once a month.',
+  'Welke maand sluit je af?': 'Which month are you closing?',
+  'Er staan nog {n} maanden open. Werk de oudste eerst af, dan sluiten je cijfers op elkaar aan.':
+    '{n} months are still open. Do the oldest first, so your figures follow on from each other.',
+  'Stap 1': 'Step 1',
+  'Stap 2': 'Step 2',
+  'Stap 3': 'Step 3',
+  'Staat alles erin?': 'Is everything in?',
+  'Lees je bankuittreksel in, of tik de laatste boekingen zelf bij.':
+    'Import your bank statement, or type in the last few entries yourself.',
+  'Er staat nog geen enkele boeking in {maand}.': 'There is not a single entry in {maand} yet.',
+  '{n} boeking(en) in {maand}.': '{n} entr(ies) in {maand}.',
+  'Uittreksel inlezen': 'Import a statement',
+  'Bekijk de boekingen ›': 'View the entries ›',
+  'Waar hoort het bij?': 'Where does it belong?',
+  'Wat geen categorie heeft, telt nergens mee — niet in je budget en niet in je analyse.':
+    'Anything without a category counts nowhere — not in your budget and not in your analysis.',
+  'Alles heeft een categorie. Niets te doen.': 'Everything has a category. Nothing to do.',
+  '{n} boeking(en) wachten nog op een categorie.': '{n} entr(ies) are still waiting for a category.',
+  'Nog {n} andere. Werk deze eerst weg; de rest schuift dan vanzelf op.':
+    '{n} more after these. Clear these first; the rest moves up by itself.',
+  'Bekijk ze in de lijst ›': 'View them in the list ›',
+  'Hoe is de maand geweest?': 'How was the month?',
+  'De cijfers waarvoor je het allemaal deed.': 'The figures you did all this for.',
+  'Je hield {bedrag} over.': 'You had {bedrag} left over.',
+  'Je kwam {bedrag} tekort.': 'You were {bedrag} short.',
+  'Je kwam precies uit.': 'You came out exactly even.',
+  '{n} budget(ten) gingen over hun grens.': '{n} budget(s) went over their limit.',
+  '{n} vaste last(en) staan nog niet ingeboekt in deze maand.':
+    '{n} fixed cost(s) have not been recorded in this month yet.',
+  'Klaar?': 'Done?',
+  '{maand} is afgesloten op {datum}.': '{maand} was closed on {datum}.',
+  'Toch nog openzetten': 'Reopen it after all',
+  'Er staat nog werk open. Je mag toch afsluiten — de app onthoudt dan wat er bleef liggen.':
+    'There is still work open. You may close anyway — the app then remembers what was left.',
+  'Alles is rond. Sluit de maand af, dan weet je later dat je ernaar gekeken hebt.':
+    'Everything is done. Close the month, so later you know you have looked at it.',
+  'Maand afsluiten': 'Close the month',
+  '{maand} is afgesloten.': '{maand} has been closed.',
+  '{maand} staat weer open.': '{maand} is open again.',
+  'Afsluiten is niet gelukt. Probeer het opnieuw.': 'Closing failed. Please try again.',
+  'Heropenen is niet gelukt. Probeer het opnieuw.': 'Reopening failed. Please try again.',
+  'rond': 'done',
+  'open': 'open',
+  'voorstel: {naam}': 'suggestion: {naam}',
+  'Categorie voor {naam}': 'Category for {naam}',
+  'Zonder omschrijving': 'No description',
+  '{maand} is nog niet afgesloten.': '{maand} has not been closed yet.',
+  '{maand} is nog niet afgesloten, en de {n} maand(en) daarna ook niet.':
+    '{maand} has not been closed yet, nor have the {n} month(s) after it.',
+  'Neem {naam} over': 'Use {naam}',
   // De indexatiehulp die haar uitkomst kan bewaren
   'Vier kleine rekenmachines die live meerekenen. De indexatiehulp kan haar uitkomst ook als lopende regeling in een dossier bewaren.':
     'Four small calculators that update as you type. The indexation helper can also store its result as an ongoing arrangement in a case.',
@@ -1088,7 +1142,6 @@ const en: Record<string, string> = {
   'Per subcategorie': 'By subcategory',
   'Alle transacties': 'All transactions',
   'Kassaticket gesplitst': 'Receipt split',
-  'Zonder omschrijving': 'No description',
   // Vermogensevolutie (Ronde 5 · Brok S)
   'Vermogensevolutie': 'Net worth over time',
   // Trends & stijgers/dalers (Ronde 5 · Brok T)
@@ -1498,7 +1551,6 @@ const en: Record<string, string> = {
   'Toon {n} regels meer ({rest} nog niet getoond)': 'Show {n} more rows ({rest} not shown yet)',
   'de eerste {n} zijn zichtbaar, maar alles wat aanstaat wordt ingelezen':
     'the first {n} are visible, but everything that is on will be imported',
-  'Uittreksel inlezen': 'Import a statement',
   'Boeking zonder omschrijving': 'Entry without a description',
   'Waar vind ik dat bestand bij mijn bank?': 'Where do I find that file at my bank?',
   'In je bankapp of op de website van je bank zoek je bij je rekeninguittreksels naar "exporteren" of "downloaden". Kies daar het formaat CSV (soms staat er "CSV/Excel"). Kompal kan geen pdf lezen — dat is een afdruk, geen bestand met cijfers erin.':
@@ -1966,6 +2018,60 @@ const fr: Record<string, string> = {
   'Luisterboeken': 'Livres audio',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Attention : les opérations jusqu’au {datum} inclus sont déjà comprises dans la valeur que tu as enregistrée alors. Elles comptent encore ci-dessous, mais plus dans le solde en haut.',
   'geldt nu': 'en vigueur',
+  // La clôture mensuelle (ronde 43)
+  'Maandafsluiting': 'Clôture du mois',
+  'Drie stappen, en dan is je maand rond. Vijf minuten, één keer per maand.':
+    'Trois étapes et ton mois est bouclé. Cinq minutes, une fois par mois.',
+  'Welke maand sluit je af?': 'Quel mois clôtures-tu ?',
+  'Er staan nog {n} maanden open. Werk de oudste eerst af, dan sluiten je cijfers op elkaar aan.':
+    '{n} mois sont encore ouverts. Commence par le plus ancien : tes chiffres s’enchaîneront.',
+  'Stap 1': 'Étape 1',
+  'Stap 2': 'Étape 2',
+  'Stap 3': 'Étape 3',
+  'Staat alles erin?': 'Tout est-il encodé ?',
+  'Lees je bankuittreksel in, of tik de laatste boekingen zelf bij.':
+    'Importe ton extrait bancaire, ou encode toi-même les dernières écritures.',
+  'Er staat nog geen enkele boeking in {maand}.': 'Il n’y a pas encore la moindre écriture en {maand}.',
+  '{n} boeking(en) in {maand}.': '{n} écriture(s) en {maand}.',
+  'Uittreksel inlezen': 'Importer un extrait',
+  'Bekijk de boekingen ›': 'Voir les écritures ›',
+  'Waar hoort het bij?': 'À quoi cela se rattache-t-il ?',
+  'Wat geen categorie heeft, telt nergens mee — niet in je budget en niet in je analyse.':
+    'Ce qui n’a pas de catégorie ne compte nulle part — ni dans ton budget, ni dans ton analyse.',
+  'Alles heeft een categorie. Niets te doen.': 'Tout a une catégorie. Rien à faire.',
+  '{n} boeking(en) wachten nog op een categorie.': '{n} écriture(s) attendent encore une catégorie.',
+  'Nog {n} andere. Werk deze eerst weg; de rest schuift dan vanzelf op.':
+    '{n} autres suivent. Traite d’abord celles-ci ; le reste remontera tout seul.',
+  'Bekijk ze in de lijst ›': 'Les voir dans la liste ›',
+  'Hoe is de maand geweest?': 'Comment s’est passé le mois ?',
+  'De cijfers waarvoor je het allemaal deed.': 'Les chiffres pour lesquels tu as fait tout cela.',
+  'Je hield {bedrag} over.': 'Il te reste {bedrag}.',
+  'Je kwam {bedrag} tekort.': 'Il t’a manqué {bedrag}.',
+  'Je kwam precies uit.': 'Tu es tombé juste.',
+  '{n} budget(ten) gingen over hun grens.': '{n} budget(s) ont dépassé leur limite.',
+  '{n} vaste last(en) staan nog niet ingeboekt in deze maand.':
+    '{n} charge(s) fixe(s) ne sont pas encore encodées pour ce mois.',
+  'Klaar?': 'Terminé ?',
+  '{maand} is afgesloten op {datum}.': '{maand} a été clôturé le {datum}.',
+  'Toch nog openzetten': 'Rouvrir malgré tout',
+  'Er staat nog werk open. Je mag toch afsluiten — de app onthoudt dan wat er bleef liggen.':
+    'Il reste du travail. Tu peux clôturer quand même — l’application retiendra ce qui est resté en suspens.',
+  'Alles is rond. Sluit de maand af, dan weet je later dat je ernaar gekeken hebt.':
+    'Tout est bouclé. Clôture le mois : tu sauras plus tard que tu l’as bien examiné.',
+  'Maand afsluiten': 'Clôturer le mois',
+  '{maand} is afgesloten.': '{maand} est clôturé.',
+  '{maand} staat weer open.': '{maand} est de nouveau ouvert.',
+  'Afsluiten is niet gelukt. Probeer het opnieuw.': 'La clôture a échoué. Réessaie.',
+  'Heropenen is niet gelukt. Probeer het opnieuw.': 'La réouverture a échoué. Réessaie.',
+  'rond': 'bouclé',
+  'open': 'ouvert',
+  'voorstel: {naam}': 'suggestion : {naam}',
+  'Categorie voor {naam}': 'Catégorie pour {naam}',
+  'Zonder omschrijving': 'Sans description',
+  '{maand} is nog niet afgesloten.': '{maand} n’est pas encore clôturé.',
+  '{maand} is nog niet afgesloten, en de {n} maand(en) daarna ook niet.':
+    '{maand} n’est pas encore clôturé, ni le(s) {n} mois suivant(s).',
+  'Neem {naam} over': 'Utiliser {naam}',
   // L’aide à l’indexation qui peut enregistrer son résultat
   'Vier kleine rekenmachines die live meerekenen. De indexatiehulp kan haar uitkomst ook als lopende regeling in een dossier bewaren.':
     'Quatre petites calculatrices qui se mettent à jour au fil de la saisie. L’aide à l’indexation peut aussi enregistrer son résultat comme accord en cours dans un dossier.',
@@ -2843,7 +2949,6 @@ const fr: Record<string, string> = {
   'Per subcategorie': 'Par sous-catégorie',
   'Alle transacties': 'Toutes les transactions',
   'Kassaticket gesplitst': 'Ticket divisé',
-  'Zonder omschrijving': 'Sans description',
   // Vermogensevolutie (Ronde 5 · Brok S)
   'Vermogensevolutie': 'Évolution du patrimoine',
   // Trends & stijgers/dalers (Ronde 5 · Brok T)
@@ -3253,7 +3358,6 @@ const fr: Record<string, string> = {
   'Toon {n} regels meer ({rest} nog niet getoond)': 'Afficher {n} lignes de plus ({rest} pas encore affichées)',
   'de eerste {n} zijn zichtbaar, maar alles wat aanstaat wordt ingelezen':
     'les {n} premières sont visibles, mais tout ce qui est coché sera importé',
-  'Uittreksel inlezen': 'Importer un extrait',
   'Boeking zonder omschrijving': 'Écriture sans description',
   'Waar vind ik dat bestand bij mijn bank?': 'Où trouver ce fichier chez ma banque ?',
   'In je bankapp of op de website van je bank zoek je bij je rekeninguittreksels naar "exporteren" of "downloaden". Kies daar het formaat CSV (soms staat er "CSV/Excel"). Kompal kan geen pdf lezen — dat is een afdruk, geen bestand met cijfers erin.':

@@ -22,6 +22,7 @@ import type {
   Verrekening,
   Waardering,
   Onderhoudsbijdrage,
+  Maandafsluiting,
   Onderhoudsbetaling,
 } from './schema'
 import type { Logregel, MetaRegel } from './sync/events'
@@ -56,6 +57,7 @@ export class FinancieelKompasDB extends Dexie {
   waarderingen!: Table<Waardering, string>
   onderhoudsbijdragen!: Table<Onderhoudsbijdrage, string>
   onderhoudsbetalingen!: Table<Onderhoudsbetaling, string>
+  maandafsluitingen!: Table<Maandafsluiting, string>
 
   constructor() {
     super('financieel-kompas')
@@ -494,6 +496,38 @@ export class FinancieelKompasDB extends Dexie {
       waarderingen: 'id, rekeningId',
       onderhoudsbijdragen: 'id, dossierId',
       onderhoudsbetalingen: 'id, bijdrageId',
+    })
+
+    // Versie 21 - de maandafsluiting (ronde 43, zie MaandafsluitingSchema). Eén
+    // nieuwe tabel met de MAAND als sleutel; bestaande gegevens blijven ongemoeid,
+    // dus er valt niets om te zetten. Wie nooit een maand afsluit, merkt niets.
+    this.version(21).stores({
+      rekeningen: 'id, naam',
+      transacties: 'id, rekeningId, datum, categorieId',
+      events: 'id, toestelId, volgnummer',
+      meta: 'sleutel',
+      categorieen: 'id, naam',
+      budgetten: 'id, categorieId',
+      dossiers: 'id, naam',
+      gedeeldeKosten: 'id, dossierId, verrekeningId',
+      verrekeningen: 'id, dossierId',
+      terugkerendePosten: 'id',
+      spaardoelen: 'id, naam',
+      subcategorieen: 'id, categorieId',
+      overboekingen: 'id, datum',
+      kinderen: 'id, naam',
+      kindrekeningen: 'id, dossierId',
+      kindrekeningposten: 'id, kindrekeningId',
+      leningen: 'id, richting',
+      aflossingen: 'id, leningId',
+      garanties: 'id, aankoopdatum',
+      streepjescodes: 'id',
+      dossierdocumenten: 'id, dossierId',
+      ordeningen: 'id',
+      waarderingen: 'id, rekeningId',
+      onderhoudsbijdragen: 'id, dossierId',
+      onderhoudsbetalingen: 'id, bijdrageId',
+      maandafsluitingen: 'id',
     })
   }
 }

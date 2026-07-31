@@ -129,3 +129,35 @@ export function isGesplitstOverCategorieen(
 ): boolean {
   return groepenVanTransactie(t, gebruikerCategorieen).length > 1
 }
+
+/**
+ * Geef een boeking een categorie, ook wanneer ze gesplitst is.
+ *
+ * Waarom dit niet gewoon `{ ...tx, categorieId }` mag zijn. Zodra een transactie
+ * REGELS heeft, negeert `categorieBedragen` het kopveld volledig — het bedrag zit
+ * dan in de regels. Het kopveld invullen leverde daardoor een boeking op die in de
+ * categorielijst verscheen zonder er één cent aan bij te dragen, terwijl de rij in
+ * de maandafsluiting bleef staan omdat er nog altijd een regel zonder categorie was.
+ * Je kon dus eindeloos kiezen zonder dat er iets veranderde.
+ *
+ * Wat er wél gebeurt bij een gesplitst ticket:
+ *  - elke regel die nog geen categorie heeft, krijgt deze;
+ *  - dekt de som van de regels het totaal niet, dan komt er een regel bij voor het
+ *    restant — precies het bedrag dat `categorieBedragen` anders als 'zonder
+ *    categorie' zou tellen.
+ *
+ * Het restant krijgt alleen een eigen regel wanneer het dezelfde kant op wijst als
+ * het totaal. Wijst het de andere kant op, dan is het totaal het getal dat niet
+ * klopt (zie de uitleg in `categorieBedragen`), en dan zou een extra regel die fout
+ * enkel vastleggen.
+ */
+export function vulCategorieAan(tx: Transactie, categorieId: string): Transactie {
+  if (!tx.regels || tx.regels.length === 0) return { ...tx, categorieId }
+
+  const regels = tx.regels.map((r) => (r.categorieId ? r : { ...r, categorieId }))
+  const som = regels.reduce((s, r) => s + r.bedrag, 0)
+  const rest = tx.bedrag - som
+  const zelfdeRichting = (rest > 0 && tx.bedrag > 0) || (rest < 0 && tx.bedrag < 0)
+  if (rest !== 0 && zelfdeRichting) regels.push({ categorieId, bedrag: rest })
+  return { ...tx, regels }
+}

@@ -19,7 +19,17 @@ import type { TxFilter } from './transactieFilter'
 // mee. Zo blijft dit een zuivere functie die zonder React te testen valt.
 
 /** De sleutel van één filterdeel. Dezelfde volgorde als op het scherm. */
-export type FilterSleutel = 'zoek' | 'richting' | 'rekening' | 'hoofd' | 'sub' | 'domein' | 'van' | 'tot' | 'maand'
+export type FilterSleutel =
+  | 'zoek'
+  | 'richting'
+  | 'rekening'
+  | 'hoofd'
+  | 'sub'
+  | 'domein'
+  | 'zonderCategorie'
+  | 'van'
+  | 'tot'
+  | 'maand'
 
 /** Eén actief filterdeel: zijn sleutel en hoe het heet. */
 export type FilterDeel = { sleutel: FilterSleutel; label: string }
@@ -54,6 +64,7 @@ export function filterDelen(t: Vertaler, filter: TxFilter, namen: FilterNamen = 
     // `naamVanBesparingsdomein` geeft de Nederlandse app-tekst; die mag door t().
     delen.push({ sleutel: 'domein', label: t(naamVanBesparingsdomein(filter.domein) ?? filter.domein) })
   }
+  if (filter.zonderCategorie) delen.push({ sleutel: 'zonderCategorie', label: t('Zonder categorie') })
   if (filter.van) delen.push({ sleutel: 'van', label: t('Van {datum}', { datum: filter.van }) })
   if (filter.tot) delen.push({ sleutel: 'tot', label: t('Tot {datum}', { datum: filter.tot }) })
   if (filter.maand) delen.push({ sleutel: 'maand', label: maandJaarLabel(filter.maand) })

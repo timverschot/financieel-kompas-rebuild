@@ -3,6 +3,7 @@ import type { Transactie } from '../data/schema'
 import {
   filterTransacties,
   heeftActiefFilter,
+  mistCategorie,
   grensDatumMaandenTerug,
   isOmgekeerdBereik,
   filterVoorCategorie,
@@ -181,5 +182,75 @@ describe('filterTransacties — besparingsdomein', () => {
 
   it('telt mee als actief filter, zodat het historiek-venster wijkt', () => {
     expect(heeftActiefFilter({ domein: 'energie' })).toBe(true)
+  })
+})
+
+describe('filter op boekingen zonder categorie (ronde 43)', () => {
+  const zonder: Transactie = { id: 'a', datum: '2026-07-02', omschrijving: 'Onbekend', bedrag: -2500, rekeningId: 'r1' }
+  const met: Transactie = {
+    id: 'b',
+    datum: '2026-07-03',
+    omschrijving: 'Colruyt',
+    bedrag: -4000,
+    rekeningId: 'r1',
+    categorieId: 'ov-voeding',
+  }
+  const halfGesplitst: Transactie = {
+    id: 'c',
+    datum: '2026-07-04',
+    omschrijving: 'Delhaize',
+    bedrag: -5000,
+    rekeningId: 'r1',
+    regels: [
+      { categorieId: 'ov-voeding', bedrag: -3000 },
+      { bedrag: -2000 },
+    ],
+  }
+  const heelGesplitst: Transactie = {
+    id: 'd',
+    datum: '2026-07-05',
+    omschrijving: 'Delhaize',
+    bedrag: -5000,
+    rekeningId: 'r1',
+    regels: [
+      { categorieId: 'ov-voeding', bedrag: -3000 },
+      { categorieId: 'ov-huishouden', bedrag: -2000 },
+    ],
+  }
+  const restZonderCategorie: Transactie = {
+    id: 'e',
+    datum: '2026-07-06',
+    omschrijving: 'Delhaize',
+    bedrag: -5000,
+    rekeningId: 'r1',
+    // De regels dekken maar € 30 van de € 50; de rest hangt nergens.
+    regels: [{ categorieId: 'ov-voeding', bedrag: -3000 }],
+  }
+  const alles = [zonder, met, halfGesplitst, heelGesplitst, restZonderCategorie]
+
+  it('houdt alleen over wat nog een categorie mist', () => {
+    const uit = filterTransacties(alles, { zonderCategorie: true })
+    expect(uit.map((t) => t.id)).toEqual(['a', 'c', 'e'])
+  })
+
+  it('doet niets wanneer de vlag uit staat', () => {
+    expect(filterTransacties(alles, {}).length).toBe(5)
+    expect(filterTransacties(alles, { zonderCategorie: false }).length).toBe(5)
+  })
+
+  it('werkt samen met de andere filters', () => {
+    // Ook een AND met de maand: dat is precies hoe de maandafsluiting hem gebruikt.
+    expect(filterTransacties(alles, { zonderCategorie: true, maand: '2026-07' }).length).toBe(3)
+    expect(filterTransacties(alles, { zonderCategorie: true, maand: '2026-06' }).length).toBe(0)
+  })
+
+  it('mistCategorie kijkt op regelniveau, niet alleen naar het kopveld', () => {
+    // Een ticket waarvan de eerste regel wél ingevuld is, zou anders nooit
+    // gevonden worden — terwijl dat tweede deel van het bedrag nergens meetelt.
+    expect(mistCategorie(zonder)).toBe(true)
+    expect(mistCategorie(met)).toBe(false)
+    expect(mistCategorie(halfGesplitst)).toBe(true)
+    expect(mistCategorie(heelGesplitst)).toBe(false)
+    expect(mistCategorie(restZonderCategorie)).toBe(true)
   })
 })

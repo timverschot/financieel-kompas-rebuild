@@ -1,8 +1,18 @@
-import type { Budget, Dossier, Garantie, Onderhoudsbijdrage, TerugkerendePost, Transactie } from '../data/schema'
+import type {
+  Budget,
+  Dossier,
+  Garantie,
+  Maandafsluiting,
+  Onderhoudsbijdrage,
+  TerugkerendePost,
+  Transactie,
+} from '../data/schema'
 import { uitgavenInMaand } from './budget'
 import { garantieStatus } from './garantie'
 import { maandVooruitblik } from './vooruitblik'
 import { bouwOpbouw, laatsteAanpassing } from './onderhoudsbijdrage'
+import { openMaanden } from './maandafsluiting'
+import { maandJaarLabel } from './datum'
 import type { DossierSoort } from './dossiersoort'
 
 // De rekenkern achter het belletje in de bovenbalk.
@@ -34,9 +44,9 @@ const GARANTIE_DRINGEND_DAGEN = 14
 const BIJDRAGE_VENSTER_DAGEN = 62
 
 /** Naar welke pagina een melding je brengt. Beide zijn geldige `Pagina`-waarden. */
-export type MeldingPagina = 'budget' | 'dossiers'
+export type MeldingPagina = 'budget' | 'dossiers' | 'maandafsluiting'
 
-export type MeldingSoort = 'budget-over' | 'budget-bijna' | 'garantie' | 'vastelast' | 'bijdrage'
+export type MeldingSoort = 'budget-over' | 'budget-bijna' | 'garantie' | 'vastelast' | 'bijdrage' | 'maand'
 
 export type Melding = {
   /** Stabiele sleutel voor React, en handig om in een test te herkennen. */
@@ -85,6 +95,8 @@ export type MeldingenInvoer = {
   onderhoudsbijdragen?: Onderhoudsbijdrage[]
   /** Alleen om de naam van het dossier in de melding te kunnen zetten. */
   dossiers?: Dossier[]
+  /** De maanden die je al afgesloten hebt. Leeg = nog geen enkele. */
+  maandafsluitingen?: Maandafsluiting[]
   /**
    * Hoe een bedrag in centen op het scherm hoort te staan.
    *
@@ -99,10 +111,11 @@ export type MeldingenInvoer = {
 // de lijst niet rond bij elke herberekening.
 const SOORT_ORDE: Record<MeldingSoort, number> = {
   'budget-over': 0,
-  'vastelast': 1,
-  'bijdrage': 2,
-  'garantie': 3,
-  'budget-bijna': 4,
+  'maand': 1,
+  'vastelast': 2,
+  'bijdrage': 3,
+  'garantie': 4,
+  'budget-bijna': 5,
 }
 
 /** Het aantal hele dagen tussen twee datums in 'JJJJ-MM-DD'. */
@@ -281,6 +294,35 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
       },
       ...gemeen,
     })
+  }
+
+  // --- Een maand die nog niet afgesloten is ---
+  //
+  // Eén melding voor de OUDSTE openstaande maand, niet één per maand. Wie de app
+  // een half jaar niet opende, hoort geen zes regels te zien maar één beginpunt;
+  // is die maand rond, dan schuift de melding vanzelf naar de volgende.
+  //
+  // Alleen wanneer 'maandafsluitingen' meegegeven is: zonder die lijst zou de app
+  // elke maand als niet-afgesloten lezen en meteen klagen.
+  if (invoer.maandafsluitingen !== undefined) {
+    const open = openMaanden(invoer.transacties, invoer.maandafsluitingen, invoer.vandaagISO)
+    const oudste = open[0]
+    if (oudste !== undefined) {
+      uit.push({
+        id: `maand-${oudste}`,
+        soort: 'maand',
+        sleutel:
+          open.length > 1
+            ? '{maand} is nog niet afgesloten, en de {n} maand(en) daarna ook niet.'
+            : '{maand} is nog niet afgesloten.',
+        // De maand in woorden, zoals elk ander scherm ze toont. Het kale '2026-05'
+        // is precies het soort verschil waardoor twee schermen niet meer op elkaar
+        // lijken te slaan.
+        params: { maand: maandJaarLabel(oudste), n: open.length - 1 },
+        pagina: 'maandafsluiting',
+        dringend: false,
+      })
+    }
   }
 
   return uit.sort((a, b) => {

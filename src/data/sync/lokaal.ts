@@ -61,6 +61,7 @@ export const STAAT_NAMEN = [
   'dossierdocumenten',
   'ordeningen',
   'waarderingen',
+  'maandafsluitingen',
   'onderhoudsbijdragen',
   'onderhoudsbetalingen',
 ] as const satisfies readonly (keyof Staat)[]
@@ -171,6 +172,14 @@ async function pasStaatToe(regel: Logregel): Promise<void> {
     case 'kindrekeningpost.verwijderd':
       await db.kindrekeningposten.delete(g.payload.id)
       break
+    case 'maandafsluiting.bewaard':
+      await db.maandafsluitingen.put(g.payload)
+      break
+
+    case 'maandafsluiting.verwijderd':
+      await db.maandafsluitingen.delete(g.payload.id)
+      break
+
     case 'onderhoudsbijdrage.bewaard':
       await db.onderhoudsbijdragen.put(g.payload)
       break

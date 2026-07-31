@@ -152,3 +152,34 @@ describe('vertalingen — vangnetten', () => {
     expect(lijmwoorden).toEqual([])
   })
 })
+
+describe('vertaaltabellen — ronde 43', () => {
+  it('vertaalt de teksten van de kredietkaart', () => {
+    expect(vertaal('en', 'Nog openstaand')).toBe('Still outstanding')
+    expect(vertaal('fr', 'Afsluitdag van de kaart')).toBe('Jour d’arrêté de la carte')
+    expect(vertaal('en', 'Dag waarop het bedrag afgeboekt wordt')).toBe('Day the amount is debited')
+    expect(vertaal('en', 'Afgesloten op {datum}: {bedrag}', { datum: '26-07-2026', bedrag: '€ 1.250,00' })).toBe(
+      'Closed on 26-07-2026: € 1.250,00',
+    )
+    expect(vertaal('fr', 'Afrekening boeken')).toBe('Encoder le décompte')
+    // De grens die de knop zelf moet uitspreken: dit is geen uitgave.
+    expect(
+      vertaal('en', 'Dit wordt een overboeking, geen uitgave: de aankopen zelf zijn al geboekt op de kaart.'),
+    ).toContain('not an expense')
+  })
+})
+
+describe('vertaaltabellen — de maandafsluiting', () => {
+  it('vertaalt de teksten van het nieuwe scherm', () => {
+    expect(vertaal('en', 'Maandafsluiting')).toBe('Month close')
+    expect(vertaal('fr', 'Maand afsluiten')).toBe('Clôturer le mois')
+    expect(vertaal('en', '{n} boeking(en) in {maand}.', { n: 12, maand: 'June 2026' })).toBe(
+      '12 entr(ies) in June 2026.',
+    )
+    expect(vertaal('fr', '{maand} is nog niet afgesloten.', { maand: '2026-06' })).toContain('pas encore clôturé')
+    // De belofte van het scherm hoort in alle drie de talen te staan.
+    expect(vertaal('en', 'Drie stappen, en dan is je maand rond. Vijf minuten, één keer per maand.')).toContain(
+      'Five minutes',
+    )
+  })
+})

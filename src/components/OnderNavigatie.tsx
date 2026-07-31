@@ -17,6 +17,7 @@ export type Pagina =
   | 'categorieen'
   | 'rekenhulpen'
   | 'importeren'
+  | 'maandafsluiting'
   | 'instellingen'
 
 // Alle pagina's met icoon + label, in de volgorde van het desktop-zijpaneel.
@@ -35,6 +36,9 @@ export const PAGINAS: { id: Pagina; icoon: string; label: string }[] = [
   { id: 'categorieen', icoon: '🏷️', label: 'Categorieën' },
   { id: 'rekenhulpen', icoon: '🧮', label: 'Rekenhulpen' },
   { id: 'importeren', icoon: '📥', label: 'Inlezen' },
+  // De maandafsluiting staat bewust NA Inlezen: dat is ook de volgorde waarin je
+  // ze gebruikt — eerst je uittreksel erin, dan de maand rondmaken.
+  { id: 'maandafsluiting', icoon: '✅', label: 'Maandafsluiting' },
   { id: 'instellingen', icoon: '⚙️', label: 'Instellingen' },
 ]
 
@@ -42,7 +46,7 @@ export const PAGINAS: { id: Pagina; icoon: string; label: string }[] = [
 // en Transacties, rechts Analyse, en dan Meer. De rest zit onder 'Meer'.
 const PRIMAIR_LINKS: Pagina[] = ['overzicht', 'transacties']
 const PRIMAIR_RECHTS: Pagina[] = ['analyse']
-const SECUNDAIR: Pagina[] = ['opstelling', 'rekeningen', 'spaardoelen', 'budget', 'dossiers', 'categorieen', 'rekenhulpen', 'importeren', 'instellingen']
+const SECUNDAIR: Pagina[] = ['opstelling', 'rekeningen', 'spaardoelen', 'budget', 'dossiers', 'categorieen', 'rekenhulpen', 'importeren', 'maandafsluiting', 'instellingen']
 
 const balk: CSSProperties = {
   position: 'fixed',

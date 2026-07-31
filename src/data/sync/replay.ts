@@ -20,6 +20,7 @@ import type {
   Transactie,
   Verrekening,
   Waardering,
+  Maandafsluiting,
   Onderhoudsbijdrage,
   Onderhoudsbetaling,
 } from '../schema'
@@ -48,6 +49,7 @@ export type Staat = {
   dossierdocumenten: Map<string, DossierDocument>
   ordeningen: Map<string, Ordening>
   waarderingen: Map<string, Waardering>
+  maandafsluitingen: Map<string, Maandafsluiting>
   onderhoudsbijdragen: Map<string, Onderhoudsbijdrage>
   onderhoudsbetalingen: Map<string, Onderhoudsbetaling>
 }
@@ -94,6 +96,7 @@ export function pasToe(regels: Logregel[]): Staat {
     dossierdocumenten: new Map(),
     ordeningen: new Map(),
     waarderingen: new Map(),
+  maandafsluitingen: new Map(),
   onderhoudsbijdragen: new Map(),
   onderhoudsbetalingen: new Map(),
   }
@@ -184,6 +187,14 @@ export function pasToe(regels: Logregel[]): Staat {
       case 'kindrekeningpost.verwijderd':
         staat.kindrekeningposten.delete(g.payload.id)
         break
+      case 'maandafsluiting.bewaard':
+        staat.maandafsluitingen.set(g.payload.id, g.payload)
+        break
+
+      case 'maandafsluiting.verwijderd':
+        staat.maandafsluitingen.delete(g.payload.id)
+        break
+
       case 'onderhoudsbijdrage.bewaard':
         staat.onderhoudsbijdragen.set(g.payload.id, g.payload)
         break

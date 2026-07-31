@@ -1,8 +1,17 @@
 import { describe, it, expect } from 'vitest'
-import type { Budget, Dossier, Garantie, Onderhoudsbijdrage, TerugkerendePost, Transactie } from '../data/schema'
+import type {
+  Budget,
+  Dossier,
+  Garantie,
+  Maandafsluiting,
+  Onderhoudsbijdrage,
+  TerugkerendePost,
+  Transactie,
+} from '../data/schema'
 import { bouwMeldingen, STANDAARD_BUDGETDREMPEL } from './meldingen'
 import { budgetKleur } from './budget'
 import { formatEuro } from './format'
+import { maandJaarLabel } from './datum'
 
 const naamVanCategorie = (id: string) => (id === 'ov-voeding' ? 'Voeding' : id)
 
@@ -359,5 +368,59 @@ describe('bouwMeldingen — de onderhoudsbijdrage, de randgevallen', () => {
     }).filter((m) => m.soort === 'bijdrage')
     expect(twee).toHaveLength(2)
     expect(new Set(twee.map((m) => m.id)).size).toBe(2)
+  })
+})
+
+describe('bouwMeldingen — een maand die nog niet afgesloten is', () => {
+  const transacties = [
+    tx('2026-05-03', -2500, 'ov-voeding'),
+    tx('2026-06-03', -2500, 'ov-voeding'),
+    tx('2026-07-03', -2500, 'ov-voeding'),
+  ]
+  const bel = (afsluitingen: Maandafsluiting[] | undefined, vandaag = '2026-07-10') =>
+    basis({ transacties, maandafsluitingen: afsluitingen, vandaagISO: vandaag }).filter((m) => m.soort === 'maand')
+
+  it('herinnert je aan de oudste maand, niet aan allemaal', () => {
+    // Wie de app een half jaar niet opende, hoort geen zes regels te zien maar één
+    // beginpunt.
+    const m = bel([])
+    expect(m).toHaveLength(1)
+    // De maand in woorden, zoals elk ander scherm ze toont.
+    expect(m[0].params?.maand).toBe(maandJaarLabel('2026-05'))
+    expect(m[0].pagina).toBe('maandafsluiting')
+    expect(m[0].dringend).toBe(false)
+  })
+
+  it('zegt erbij hoeveel er nog volgen', () => {
+    expect(bel([])[0].sleutel).toContain('maand(en) daarna ook niet')
+    expect(bel([])[0].params?.n).toBe(1)
+  })
+
+  it('schuift op zodra je de oudste afsluit', () => {
+    const m = bel([{ id: '2026-05', afgeslotenOp: '2026-06-08' }])
+    expect(m).toHaveLength(1)
+    expect(m[0].params?.maand).toBe(maandJaarLabel('2026-06'))
+    expect(m[0].sleutel).not.toContain('daarna ook niet')
+  })
+
+  it('zwijgt wanneer alles afgesloten is', () => {
+    expect(
+      bel([
+        { id: '2026-05', afgeslotenOp: '2026-06-08' },
+        { id: '2026-06', afgeslotenOp: '2026-07-08' },
+      ]),
+    ).toHaveLength(0)
+  })
+
+  it('zwijgt zolang de lijst niet meegegeven is', () => {
+    // Zonder die lijst zou de app elke maand als niet-afgesloten lezen en meteen
+    // klagen — ook bij wie de maandafsluiting nooit gebruikt.
+    expect(bel(undefined)).toHaveLength(0)
+  })
+
+  it('begint niet meteen op de eerste van de maand', () => {
+    // Dan staan de laatste boekingen van de vorige maand vaak nog niet op je
+    // uittreksel.
+    expect(bel([{ id: '2026-05', afgeslotenOp: '2026-06-08' }], '2026-07-01')).toHaveLength(0)
   })
 })

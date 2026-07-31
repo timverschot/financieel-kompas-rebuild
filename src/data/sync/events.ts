@@ -21,6 +21,7 @@ import {
   TransactieSchema,
   VerrekeningSchema,
   WaarderingSchema,
+  MaandafsluitingSchema,
   OnderhoudsbijdrageSchema,
   OnderhoudsbetalingSchema,
 } from '../schema'
@@ -59,6 +60,9 @@ export const GebeurtenisSchema = z.discriminatedUnion('type', [
   // Ronde 42 — de onderhoudsbijdrage en haar betalingen.
   z.object({ type: z.literal('onderhoudsbijdrage.bewaard'), payload: OnderhoudsbijdrageSchema }),
   z.object({ type: z.literal('onderhoudsbijdrage.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
+  // Ronde 43 — de maandafsluiting.
+  z.object({ type: z.literal('maandafsluiting.bewaard'), payload: MaandafsluitingSchema }),
+  z.object({ type: z.literal('maandafsluiting.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
   z.object({ type: z.literal('onderhoudsbetaling.bewaard'), payload: OnderhoudsbetalingSchema }),
   z.object({ type: z.literal('onderhoudsbetaling.verwijderd'), payload: z.object({ id: z.string().min(1) }) }),
   z.object({ type: z.literal('lening.bewaard'), payload: LeningSchema }),

@@ -617,3 +617,36 @@ export const OnderhoudsbetalingSchema = z.object({
   notitie: z.string().optional(),
 })
 export type Onderhoudsbetaling = z.infer<typeof OnderhoudsbetalingSchema>
+
+// ---------------------------------------------------------------------------
+// DE MAANDAFSLUITING (ronde 43)
+//
+// "Deze maand heb ik nagekeken." Eén record per maand, en niet meer dan dat.
+//
+// Waarom dit een record is en geen berekening. De app kan zélf wel zien of er nog
+// boekingen zonder categorie zijn, maar niet of JIJ je uittreksel al ingelezen hebt
+// of je cijfers bekeken hebt. Dat is precies het verschil tussen "er valt niets
+// meer te doen" en "ik heb ernaar gekeken". Zonder dat verschil kan de app je ook
+// niet aan een vergeten maand herinneren — en dat herinneren is het hele punt van
+// de maandafsluiting.
+//
+// De MAAND is de identiteit: 'JJJJ-MM' is het id. Twee toestellen die dezelfde
+// maand afsluiten schrijven dus hetzelfde record in plaats van er twee te maken,
+// en dat klopt ook inhoudelijk — een maand is één keer nagekeken of niet.
+// ---------------------------------------------------------------------------
+export const MaandafsluitingSchema = z.object({
+  /** De maand zelf, 'JJJJ-MM'. Tegelijk de sleutel. */
+  id: z.string().regex(/^\d{4}-\d{2}$/, 'maand moet JJJJ-MM zijn'),
+  /** Wanneer je ze afgesloten hebt. Puur informatief. */
+  afgeslotenOp: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  /**
+   * Hoeveel boekingen er op dat moment nog zonder categorie stonden.
+   *
+   * Je mag een maand afsluiten met werk dat blijft liggen — de app houdt je niet
+   * tegen. Maar dan hoort ze wel te onthouden dat je dat wist, in plaats van later
+   * te doen alsof alles rond was.
+   */
+  zonderCategorie: z.number().int().nonnegative().optional(),
+  notitie: z.string().optional(),
+})
+export type Maandafsluiting = z.infer<typeof MaandafsluitingSchema>

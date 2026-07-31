@@ -43,8 +43,10 @@ import {
   type TerugkerendePost,
   type Transactie,
   type Verrekening,
+  MaandafsluitingSchema,
   OnderhoudsbijdrageSchema,
   OnderhoudsbetalingSchema,
+  type Maandafsluiting,
   type Onderhoudsbijdrage,
   type Onderhoudsbetaling,
 } from './schema'
@@ -182,6 +184,19 @@ export async function bewaarOnderhoudsbijdrage(bijdrage: Onderhoudsbijdrage): Pr
 
 export async function verwijderOnderhoudsbijdrage(id: string): Promise<void> {
   await pasGebeurtenisToe({ type: 'onderhoudsbijdrage.verwijderd', payload: { id } })
+}
+
+// --- De maandafsluiting (ronde 43) ---
+//
+// De MAAND is de sleutel: dezelfde maand twee keer afsluiten schrijft hetzelfde
+// record, ook vanaf twee toestellen. Dat klopt ook inhoudelijk — een maand is één
+// keer nagekeken of niet.
+export async function bewaarMaandafsluiting(m: Maandafsluiting): Promise<void> {
+  await pasGebeurtenisToe({ type: 'maandafsluiting.bewaard', payload: m })
+}
+
+export async function verwijderMaandafsluiting(id: string): Promise<void> {
+  await pasGebeurtenisToe({ type: 'maandafsluiting.verwijderd', payload: { id } })
 }
 
 export async function bewaarOnderhoudsbetaling(betaling: Onderhoudsbetaling): Promise<void> {
@@ -442,6 +457,10 @@ export async function laadOnderhoudsbijdragen(): Promise<LeesResultaat<Onderhoud
 
 export async function laadOnderhoudsbetalingen(): Promise<LeesResultaat<Onderhoudsbetaling>> {
   return valideerLijst(await db.onderhoudsbetalingen.toArray(), OnderhoudsbetalingSchema)
+}
+
+export async function laadMaandafsluitingen(): Promise<LeesResultaat<Maandafsluiting>> {
+  return valideerLijst(await db.maandafsluitingen.toArray(), MaandafsluitingSchema)
 }
 
 export async function laadLeningen(): Promise<LeesResultaat<Lening>> {

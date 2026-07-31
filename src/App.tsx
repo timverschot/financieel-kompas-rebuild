@@ -23,6 +23,7 @@ import type {
   Transactie,
   Verrekening,
   Waardering,
+  Maandafsluiting,
   Onderhoudsbijdrage,
   Onderhoudsbetaling,
 } from './data/schema'
@@ -69,9 +70,12 @@ import {
   bewaarOrdening,
   laadWaarderingen,
   laadOnderhoudsbijdragen,
+  laadMaandafsluitingen,
   laadOnderhoudsbetalingen,
   bewaarOnderhoudsbijdrage,
+  verwijderMaandafsluiting,
   verwijderOnderhoudsbijdrage,
+  bewaarMaandafsluiting,
   bewaarOnderhoudsbetaling,
   verwijderOnderhoudsbetaling,
   bewaarWaardering,
@@ -135,6 +139,7 @@ import { downloadTekst } from './utils/download'
 import { kaartbedragUitOpslag } from './utils/kredietkaart'
 import { TopDrie } from './components/TopDrie'
 import { RekenhulpenSectie } from './components/RekenhulpenSectie'
+import { MaandafsluitingSectie } from './components/MaandafsluitingSectie'
 import { TerugkerendeSectie } from './components/TerugkerendeSectie'
 import { PlanRegels } from './components/PlanRegels'
 import { OverboekingSectie } from './components/OverboekingSectie'
@@ -157,6 +162,7 @@ import type { DonutInvoer } from './utils/donut'
 import { filterVoorCategorie, type TxFilter } from './utils/transactieFilter'
 import { inkomstenUitgavenPerMaand } from './utils/maandverloop'
 import { labelVanCategorie } from './data/categorieen/resolve'
+import { vulCategorieAan } from './utils/transactie'
 import { stelCategorieboomIn } from './data/categorieen/zoek'
 import { budgetKleur, uitgavenInMaand } from './utils/budget'
 import { bouwHandelaarIndex } from './utils/categorieVoorstel'
@@ -235,6 +241,7 @@ export function App() {
   const [kindrekeningen, setKindrekeningen] = useState<Kindrekening[]>([])
   const [kindrekeningposten, setKindrekeningposten] = useState<Kindrekeningpost[]>([])
   const [onderhoudsbijdragen, setOnderhoudsbijdragen] = useState<Onderhoudsbijdrage[]>([])
+  const [maandafsluitingen, setMaandafsluitingen] = useState<Maandafsluiting[]>([])
   const [onderhoudsbetalingen, setOnderhoudsbetalingen] = useState<Onderhoudsbetaling[]>([])
   const [leningen, setLeningen] = useState<Lening[]>([])
   const [aflossingen, setAflossingen] = useState<Aflossing[]>([])
@@ -338,7 +345,7 @@ export function App() {
   const { budgetDrempel } = useInstellingen()
 
   async function herlaad() {
-    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd, obd, obt] = await Promise.all([
+    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd, obd, obt, maf] = await Promise.all([
       laadTransacties(),
       laadRekeningen(),
       laadCategorieen(),
@@ -362,6 +369,7 @@ export function App() {
       laadWaarderingen(),
       laadOnderhoudsbijdragen(),
       laadOnderhoudsbetalingen(),
+      laadMaandafsluitingen(),
     ])
     setTransacties(tx.geldig)
     // ALLE overgeslagen records tellen, niet alleen die van transacties. Bleven de
@@ -369,7 +377,7 @@ export function App() {
     // kosten uit een afrekening zonder dat er ergens iets stond — en dan stuur je
     // een bedrag van € 610 door waar € 940 hoorde te staan.
     setOngeldig(
-      [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd, obd, obt].reduce(
+      [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd, obd, obt, maf].reduce(
         (som, r) => som + r.ongeldig,
         0,
       ),
@@ -396,6 +404,7 @@ export function App() {
     setWaarderingen(wrd.geldig)
     setOnderhoudsbijdragen(obd.geldig)
     setOnderhoudsbetalingen(obt.geldig)
+    setMaandafsluitingen(maf.geldig)
   }
 
   // Toon een korte "ongedaan maken"-melding na een verwijdering. Herstellen is
@@ -1092,6 +1101,29 @@ export function App() {
     await herlaad()
   }
 
+  // Ronde 43 — de maandafsluiting. De MAAND is de sleutel, dus opnieuw afsluiten
+  // overschrijft hetzelfde record in plaats van er een tweede te maken.
+  async function maandAfsluiten(m: Maandafsluiting) {
+    await bewaarMaandafsluiting(m)
+    await herlaad()
+  }
+
+  async function maandHeropenen(maand: string) {
+    await verwijderMaandafsluiting(maand)
+    await herlaad()
+  }
+
+  // Eén boeking een categorie geven, vanuit de maandafsluiting. Bewust hier en niet
+  // in het scherm: dat schrijft nergens zelf naar de opslag.
+  async function geefCategorie(transactieId: string, categorieId: string) {
+    const oud = (transacties ?? []).find((tx) => tx.id === transactieId)
+    if (!oud) return
+    // `vulCategorieAan` en niet `{ ...oud, categorieId }`: bij een gesplitst ticket
+    // negeert de rekenkern het kopveld, en dan verandert er niets.
+    await bewaarTransactie(vulCategorieAan(oud, categorieId))
+    await herlaad()
+  }
+
   async function onderhoudsbijdrageVerwijderen(id: string) {
     const oud = onderhoudsbijdragen.find((b) => b.id === id)
     // De betalingen horen bij de bijdrage: laat je ze staan, dan zweven ze rond
@@ -1337,6 +1369,7 @@ export function App() {
     onderhoudsbijdragen,
     dossiers,
     formatBedrag: formatEuro,
+    maandafsluitingen,
   })
 
   // Eén vooruitblik voor de Plan-pagina: zowel de verwachte als de al geboekte
@@ -2278,6 +2311,25 @@ export function App() {
             dossiers={dossiers}
             onderhoudsbijdragen={onderhoudsbijdragen}
             onBewaarBijdrage={onderhoudsbijdrageOpslaan}
+          />
+        </ErrorBoundary>
+      )}
+
+      {pagina === 'maandafsluiting' && (
+        <ErrorBoundary naam="Maandafsluiting">
+          <MaandafsluitingSectie
+            transacties={transacties ?? []}
+            categorieen={categorieen}
+            budgetten={budgetten}
+            terugkerendePosten={terugkerendePosten}
+            afsluitingen={maandafsluitingen}
+            handelaarIndex={handelaarIndex}
+            onCategoriseer={geefCategorie}
+            onAfsluiten={maandAfsluiten}
+            onHeropen={maandHeropenen}
+            onGaNaarInlezen={() => setPagina('importeren')}
+            onToonBoekingen={(maand) => gaNaarTransacties({ maand })}
+            onToonZonderCategorie={(maand) => gaNaarTransacties({ maand, zonderCategorie: true })}
           />
         </ErrorBoundary>
       )}

@@ -31,6 +31,21 @@ export type TxFilter = {
    * (`domeinVanCategorie`) als de rekenkern van dat blok.
    */
   domein?: string
+  /**
+   * Alleen wat nog GEEN categorie heeft.
+   *
+   * Waarom een eigen vlag en niet een lege `hoofdId`: een lege `hoofdId` betekent
+   * "geen categoriefilter", dus die kon nooit "zonder categorie" betekenen. Tot nu
+   * toe was "Zonder categorie" daardoor een doodlopend pad — je zag het cijfer in de
+   * analyse en in de import, maar je kon de boekingen zelf niet opvragen. Precies
+   * die lijst is de tweede stap van de maandafsluiting (ronde 43).
+   *
+   * Op REGELNIVEAU, net als de rest van dit bestand: een gesplitst kassaticket
+   * waarvan één regel nog geen categorie heeft, hoort erbij — want dat deel van het
+   * bedrag telt nergens mee. Zonder die regel zou je een ticket nooit terugvinden
+   * omdat de eerste regel wél ingevuld is.
+   */
+  zonderCategorie?: boolean
 }
 
 // Alle categorie-id's waar een transactie naar verwijst: de hoofd-categorieId en
@@ -99,6 +114,20 @@ function raaktRichting(tx: Transactie, richting: 'in' | 'uit'): boolean {
   return regels.some((r) => r.bedrag < 0)
 }
 
+/**
+ * Ontbreekt er ergens in deze boeking nog een categorie?
+ *
+ * Drie gevallen, en alle drie horen ze in de lijst thuis:
+ *  - geen categorie en geen splitsing → het hele bedrag hangt nergens;
+ *  - een splitsing waarvan minstens één regel geen categorie heeft;
+ *  - een splitsing die het totaal niet volledig dekt: `categorieBedragen` maakt
+ *    van dat restbedrag zelf een regel zonder categorie, dus die wordt hier gratis
+ *    meegevangen.
+ */
+export function mistCategorie(tx: Transactie): boolean {
+  return categorieBedragen(tx).some((r) => r.categorieId === undefined || r.categorieId === '')
+}
+
 // Vrije-tekst-zoek op omschrijving en de omschrijvingen van split-regels.
 function raaktZoek(tx: Transactie, zoek: string): boolean {
   const t = zoek.trim().toLowerCase()
@@ -117,6 +146,7 @@ export function filterTransacties(transacties: Transactie[], filter: TxFilter): 
     if (filter.maand && !tx.datum.startsWith(filter.maand)) return false
     if (!raaktCategorie(tx, filter.hoofdId, filter.catId)) return false
     if (filter.domein && !raaktDomein(tx, filter.domein)) return false
+    if (filter.zonderCategorie && !mistCategorie(tx)) return false
     if (filter.zoek && !raaktZoek(tx, filter.zoek)) return false
     return true
   })
@@ -145,7 +175,8 @@ export function heeftActiefFilter(filter: TxFilter): boolean {
     filter.rekeningId ||
     filter.van ||
     filter.tot ||
-    filter.maand
+    filter.maand ||
+    filter.zonderCategorie
   )
 }
 

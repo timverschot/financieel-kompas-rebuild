@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { categorieBedragen } from './transactie'
+import { categorieBedragen, vulCategorieAan } from './transactie'
 import type { Transactie } from '../data/schema'
 
 const basis: Transactie = {
@@ -138,5 +138,66 @@ describe('categorieBedragen — randgevallen bij kapotte tickets', () => {
       regels: [{ categorieId: 'a', bedrag: -10000 }, { categorieId: 'b', bedrag: -1 }],
     }
     for (const r of categorieBedragen(tx)) expect(Object.is(r.bedrag, -0)).toBe(false)
+  })
+})
+
+describe('vulCategorieAan (ronde 43)', () => {
+  const basisTx: Transactie = {
+    id: 't1',
+    datum: '2026-06-07',
+    omschrijving: 'Delhaize',
+    bedrag: -5000,
+    rekeningId: 'r1',
+  }
+
+  it('zet de categorie op het kopveld bij een gewone boeking', () => {
+    expect(vulCategorieAan(basisTx, 'ov-voeding').categorieId).toBe('ov-voeding')
+  })
+
+  it('vult de lege regels van een gesplitst ticket', () => {
+    // `{ ...tx, categorieId }` deed hier niets: de rekenkern negeert het kopveld
+    // zodra er regels zijn. Je kon dus eindeloos kiezen zonder resultaat.
+    const gesplitst: Transactie = {
+      ...basisTx,
+      regels: [
+        { categorieId: 'ov-voeding', bedrag: -3000 },
+        { bedrag: -2000 },
+      ],
+    }
+    const uit = vulCategorieAan(gesplitst, 'ov-huishouden')
+    expect(uit.regels?.map((r) => r.categorieId)).toEqual(['ov-voeding', 'ov-huishouden'])
+    expect(categorieBedragen(uit).every((r) => r.categorieId)).toBe(true)
+  })
+
+  it('maakt een regel voor het restbedrag dat nergens hing', () => {
+    const ondergedekt: Transactie = { ...basisTx, regels: [{ categorieId: 'ov-voeding', bedrag: -3000 }] }
+    const uit = vulCategorieAan(ondergedekt, 'ov-huishouden')
+    expect(uit.regels).toHaveLength(2)
+    expect(uit.regels?.[1]).toEqual({ categorieId: 'ov-huishouden', bedrag: -2000 })
+    expect(categorieBedragen(uit).every((r) => r.categorieId)).toBe(true)
+  })
+
+  it('laat een ticket waarvan de regels het totaal overschrijden met rust', () => {
+    // Dan is het TOTAAL het getal dat niet klopt; een extra regel zou die fout
+    // enkel vastleggen. Zie de uitleg in categorieBedragen.
+    const teveel: Transactie = {
+      ...basisTx,
+      regels: [
+        { categorieId: 'ov-voeding', bedrag: -4000 },
+        { categorieId: 'ov-huishouden', bedrag: -2000 },
+      ],
+    }
+    expect(vulCategorieAan(teveel, 'ov-vervoer-en-mobiliteit').regels).toHaveLength(2)
+  })
+
+  it('raakt regels die al een categorie hebben niet aan', () => {
+    const volledig: Transactie = {
+      ...basisTx,
+      regels: [
+        { categorieId: 'ov-voeding', bedrag: -3000 },
+        { categorieId: 'ov-huishouden', bedrag: -2000 },
+      ],
+    }
+    expect(vulCategorieAan(volledig, 'ov-vervoer-en-mobiliteit').regels).toEqual(volledig.regels)
   })
 })
