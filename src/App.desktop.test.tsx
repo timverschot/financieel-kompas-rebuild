@@ -5,6 +5,7 @@ import { App } from './App'
 import { db } from './data/db'
 import { bewaarBudget, bewaarCategorie, bewaarRekening, bewaarTransactie } from './data/repository'
 import { herstelSchermbreedte, zetSchermbreedte } from './test/schermbreedte'
+import { huidigeMaand, vandaag } from './utils/datum'
 
 // De desktopweergave (zijpaneel + brede rasters) werd tot nu toe nooit getest:
 // jsdom kende geen matchMedia, dus de app viel altijd terug op de mobiele
@@ -27,14 +28,28 @@ beforeEach(async () => {
 // De app start sinds ronde 16 volledig leeg — er wordt géén voorbeelddata meer
 // aangemaakt. Deze tests gaan wél uit van een rekening met wat boekingen, dus
 // zetten ze die hier zelf klaar (dezelfde gegevens als de vroegere seed).
+// De boekingen staan in de HUIDIGE maand, niet op een vaste datum.
+//
+// Ze stonden hardgecodeerd op juli 2026. Zolang de CI in die maand draaide viel dat
+// niet op, maar het Overzicht, de budgetten, de donuts en het belletje gaan allemaal
+// over DEZE maand — dus vanaf 1 augustus zou de helft van deze tests rood staan
+// zonder dat er iets aan de app veranderd was. Nagerekend met `faketime`: negen
+// tests over drie bestanden.
+const MAAND = huidigeMaand()
+// ... en nooit ná vandaag. Het saldo telt bewust geen boekingen met een datum in
+// de toekomst, dus op de 1e of de 3e van een maand vielen de tweede en de derde
+// boeking weg en klopte "2400 - 950 - 320 = 1130" niet meer.
+const DAG_VANDAAG = Number(vandaag().slice(8, 10))
+const dag = (n: number) => String(Math.min(n, DAG_VANDAAG)).padStart(2, '0')
+
 async function maakStartgegevens() {
   await bewaarRekening({ id: 'r1', naam: 'Betaalrekening', beginsaldo: 0 })
   await bewaarCategorie({ id: 'cat-inkomsten', naam: 'Inkomsten' })
   await bewaarCategorie({ id: 'cat-wonen', naam: 'Huisvesting' })
   await bewaarCategorie({ id: 'cat-voeding', naam: 'Voeding' })
-  await bewaarTransactie({ id: 't1', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 240000, rekeningId: 'r1', categorieId: 'cat-inkomsten' })
-  await bewaarTransactie({ id: 't2', datum: '2026-07-03', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', categorieId: 'cat-wonen' })
-  await bewaarTransactie({ id: 't3', datum: '2026-07-05', omschrijving: 'Boodschappen', bedrag: -32000, rekeningId: 'r1', categorieId: 'cat-voeding' })
+  await bewaarTransactie({ id: 't1', datum: `${MAAND}-${dag(1)}`, omschrijving: 'Loon', bedrag: 240000, rekeningId: 'r1', categorieId: 'cat-inkomsten' })
+  await bewaarTransactie({ id: 't2', datum: `${MAAND}-${dag(3)}`, omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', categorieId: 'cat-wonen' })
+  await bewaarTransactie({ id: 't3', datum: `${MAAND}-${dag(5)}`, omschrijving: 'Boodschappen', bedrag: -32000, rekeningId: 'r1', categorieId: 'cat-voeding' })
 }
 
 afterEach(() => {

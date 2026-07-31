@@ -14,7 +14,8 @@ import {
   bewaarRekening,
   bewaarTransactie,
 } from './data/repository'
-import { vandaag } from './utils/datum'
+import { huidigeMaand, vandaag } from './utils/datum'
+import { vorigeMaand } from './utils/maandafsluiting'
 
 beforeEach(async () => {
   await Promise.all([
@@ -42,15 +43,29 @@ beforeEach(async () => {
 // aangemaakt. Deze tests gaan wél uit van een rekening met wat boekingen, dus
 // zetten ze die hier zelf klaar. Precies dezelfde gegevens als de vroegere seed,
 // zodat alle bestaande verwachtingen blijven kloppen.
+// De boekingen staan in de HUIDIGE maand, niet op een vaste datum.
+//
+// Ze stonden hardgecodeerd op juli 2026. Zolang de CI in die maand draaide viel dat
+// niet op, maar het Overzicht, de budgetten, de donuts en het belletje gaan allemaal
+// over DEZE maand — dus vanaf 1 augustus zou de helft van deze tests rood staan
+// zonder dat er iets aan de app veranderd was. Nagerekend met `faketime`: negen
+// tests over drie bestanden.
+const MAAND = huidigeMaand()
+// ... en nooit ná vandaag. Het saldo telt bewust geen boekingen met een datum in
+// de toekomst, dus op de 1e of de 3e van een maand vielen de tweede en de derde
+// boeking weg en klopte "2400 - 950 - 320 = 1130" niet meer.
+const DAG_VANDAAG = Number(vandaag().slice(8, 10))
+const dag = (n: number) => String(Math.min(n, DAG_VANDAAG)).padStart(2, '0')
+
 async function maakStartgegevens() {
   await bewaarRekening({ id: 'r1', naam: 'Betaalrekening', beginsaldo: 0 })
   await bewaarCategorie({ id: 'cat-inkomsten', naam: 'Inkomsten' })
   await bewaarCategorie({ id: 'cat-wonen', naam: 'Huisvesting' })
   await bewaarCategorie({ id: 'cat-voeding', naam: 'Voeding' })
   // Bedragen in centen: €2400,00 / -€950,00 / -€320,00.
-  await bewaarTransactie({ id: 't1', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 240000, rekeningId: 'r1', categorieId: 'cat-inkomsten' })
-  await bewaarTransactie({ id: 't2', datum: '2026-07-03', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', categorieId: 'cat-wonen' })
-  await bewaarTransactie({ id: 't3', datum: '2026-07-05', omschrijving: 'Boodschappen', bedrag: -32000, rekeningId: 'r1', categorieId: 'cat-voeding' })
+  await bewaarTransactie({ id: 't1', datum: `${MAAND}-${dag(1)}`, omschrijving: 'Loon', bedrag: 240000, rekeningId: 'r1', categorieId: 'cat-inkomsten' })
+  await bewaarTransactie({ id: 't2', datum: `${MAAND}-${dag(3)}`, omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', categorieId: 'cat-wonen' })
+  await bewaarTransactie({ id: 't3', datum: `${MAAND}-${dag(5)}`, omschrijving: 'Boodschappen', bedrag: -32000, rekeningId: 'r1', categorieId: 'cat-voeding' })
 }
 
 // Zoekt het bedrag binnen de Saldo-tegel, zodat het niet verwart met andere
@@ -196,7 +211,7 @@ describe('App', () => {
       omschrijving: 'Boodschappen',
       bedrag: 32000,
       betaaldDoor: 'jij',
-      datum: '2026-07-05',
+      datum: `${MAAND}-${dag(5)}`,
     })
     await bewaarDossierDocument({
       id: 'doc-1',
@@ -204,7 +219,7 @@ describe('App', () => {
       naam: 'Kassaticket',
       soort: 'bon',
       bestand: 'data:application/pdf;base64,AA==',
-      toegevoegdOp: '2026-07-05',
+      toegevoegdOp: `${MAAND}-${dag(5)}`,
     })
 
     render(<App />)
@@ -286,9 +301,14 @@ describe('App', () => {
     await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
     await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
     // "Loopt tot en met" de maand vóór deze: de post is dus nu al gestopt.
-    const vorigeMaand = new Date()
-    vorigeMaand.setMonth(vorigeMaand.getMonth() - 1)
-    const maandwaarde = `${vorigeMaand.getFullYear()}-${String(vorigeMaand.getMonth() + 1).padStart(2, '0')}`
+    //
+    // Bewust via `vorigeMaand` en NIET via `new Date().setMonth(m - 1)`. Dat laatste
+    // rolt door wanneer de dag van vandaag niet in de vorige maand bestaat: op 31
+    // juli wordt "30 juni" stil 1 juli, en dan zette deze test de einddatum op de
+    // HUIDIGE maand — de post was dan niet gestopt en de test faalde. Alleen op de
+    // 29e, 30e en 31e van een maand na een kortere maand, dus jarenlang groen en
+    // dan plots rood in de CI.
+    const maandwaarde = vorigeMaand(huidigeMaand())
     fireEvent.change(within(lasten).getByLabelText('Loopt tot en met'), { target: { value: maandwaarde } })
     await user.click(within(lasten).getByRole('button', { name: 'Vaste post toevoegen' }))
 

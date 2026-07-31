@@ -477,9 +477,13 @@ describe('TransactieLijst — maandschakelaar', () => {
 
 describe('TransactieLijst — sorteren', () => {
   it('zet standaard de nieuwste bovenaan', () => {
+    // Twee datums BINNEN het venster van zes maanden. Met vaste datums (juli 2026)
+    // vielen ze vanaf begin 2027 buiten dat venster en vond de test niets meer —
+    // een test die jarenlang groen staat en dan plots rood, zonder dat er iets aan
+    // de app veranderde.
     toon([
-      tx({ id: 'oud', omschrijving: 'Oud', datum: '2026-07-01' }),
-      tx({ id: 'nieuw', omschrijving: 'Nieuw', datum: '2026-07-20' }),
+      tx({ id: 'oud', omschrijving: 'Oud', datum: `${recent.slice(0, 7)}-01` }),
+      tx({ id: 'nieuw', omschrijving: 'Nieuw', datum: recent }),
     ])
     const titels = screen.getAllByText(/Oud|Nieuw/)
     expect(titels[0].textContent).toBe('Nieuw')
