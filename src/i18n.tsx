@@ -210,7 +210,27 @@ const en: Record<string, string> = {
   'Luisterboeken': 'Audiobooks',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Note: the transactions up to and including {datum} are already part of the value you recorded then. They still count below, but no longer in the balance at the top.',
   'geldt nu': 'in effect',
+  // Product opzoeken (ronde 45)
+  'De camera doet het niet': 'The camera is not working',
+  'Streepjescode {code} staat niet in de databank. Typ de naam zelf.':
+    'Barcode {code} is not in the database. Type the name yourself.',
+  'Niets gevonden. Typ de naam zelf.': 'Nothing found. Type the name yourself.',
+  'Product opzoeken': 'Look up product',
+  'Of typ de streepjescode': 'Or type the barcode',
+  'Of zoek op productnaam': 'Or search by product name',
+  'Opzoeken': 'Look up',
+  'bijv. 5410041001008': 'e.g. 5410041001008',
+  'bijv. choco of volle melk': 'e.g. chocolate spread or whole milk',
+  'Een streepjescode heeft 8, 12, 13 of 14 cijfers.': 'A barcode has 8, 12, 13 or 14 digits.',
+  'Zoeken…': 'Searching…',
+  'Niets gevonden. Probeer een ander woord, of typ de omschrijving zelf.':
+    'Nothing found. Try another word, or type the description yourself.',
+  'Houd de code een handbreedte van de lens en zorg voor licht. Lukt het niet? Typ de code of zoek op naam.':
+    'Hold the code a hand’s width from the lens and make sure there is light. Not working? Type the code or search by name.',
   // Uitwisselen met de andere ouder (ronde 44)
+  'Categorie (optioneel)': 'Category (optional)',
+  'Subcategorie (optioneel)': 'Subcategory (optional)',
+  'minder': 'less',
   'Intrekken': 'Withdraw',
   'Terugdraaien': 'Undo',
   'Dit is dezelfde': 'This is the same one',
@@ -2143,7 +2163,27 @@ const fr: Record<string, string> = {
   'Luisterboeken': 'Livres audio',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Attention : les opérations jusqu’au {datum} inclus sont déjà comprises dans la valeur que tu as enregistrée alors. Elles comptent encore ci-dessous, mais plus dans le solde en haut.',
   'geldt nu': 'en vigueur',
+  // Rechercher un produit (ronde 45)
+  'De camera doet het niet': 'La caméra ne fonctionne pas',
+  'Streepjescode {code} staat niet in de databank. Typ de naam zelf.':
+    'Le code-barres {code} n’est pas dans la base de données. Tape le nom toi-même.',
+  'Niets gevonden. Typ de naam zelf.': 'Rien trouvé. Tape le nom toi-même.',
+  'Product opzoeken': 'Rechercher un produit',
+  'Of typ de streepjescode': 'Ou tape le code-barres',
+  'Of zoek op productnaam': 'Ou cherche par nom de produit',
+  'Opzoeken': 'Rechercher',
+  'bijv. 5410041001008': 'p. ex. 5410041001008',
+  'bijv. choco of volle melk': 'p. ex. pâte à tartiner ou lait entier',
+  'Een streepjescode heeft 8, 12, 13 of 14 cijfers.': 'Un code-barres compte 8, 12, 13 ou 14 chiffres.',
+  'Zoeken…': 'Recherche…',
+  'Niets gevonden. Probeer een ander woord, of typ de omschrijving zelf.':
+    'Rien trouvé. Essaie un autre mot, ou tape la description toi-même.',
+  'Houd de code een handbreedte van de lens en zorg voor licht. Lukt het niet? Typ de code of zoek op naam.':
+    'Tiens le code à une main de l’objectif et veille à la lumière. Ça ne marche pas ? Tape le code ou cherche par nom.',
   // Échange avec l’autre parent (ronde 44)
+  'Categorie (optioneel)': 'Catégorie (facultatif)',
+  'Subcategorie (optioneel)': 'Sous-catégorie (facultatif)',
+  'minder': 'moins',
   'Intrekken': 'Retirer',
   'Terugdraaien': 'Annuler',
   'Dit is dezelfde': 'C’est le même',

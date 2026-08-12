@@ -63,7 +63,11 @@ describe('CategorieKiezer', () => {
 
   it('toont het label van een gekozen middencategorie', () => {
     render(<CategorieKiezer waarde="cat-broodwaren" onKies={() => {}} gebruikerCategorieen={[]} />)
-    expect(screen.getByText('Broodwaren')).toBeInTheDocument()
+    // Sinds de trap (ronde 45) staat "Broodwaren" twee keer op het scherm: als
+    // gekozen label bovenaan, en als actieve chip in de laag eronder. Beide horen
+    // er te staan, dus de test wijst nu aan welke ze bedoelt.
+    expect(screen.getByRole('strong')).toHaveTextContent('Broodwaren')
+    expect(screen.getByRole('button', { name: 'Broodwaren', pressed: true })).toBeInTheDocument()
   })
 
   it('kiest met Tab het gemarkeerde voorstel', async () => {
@@ -193,3 +197,86 @@ describe('CategorieKiezer', () => {
     expect(await screen.findByLabelText('Onder welke categorie')).toBeInTheDocument()
   })
 })
+
+// De trap: hoofdcategorie -> categorie -> subcategorie (ronde 45).
+//
+// Waarom ze er is: de boom heeft meer dan duizend items. Tot nu koos je een
+// hoofdcategorie met één tik en moest je al de rest TYPEN. Wie de naam van een
+// item niet precies kent, blijft dan zoeken.
+describe('CategorieKiezer — doorklikken in plaats van typen', () => {
+  it('toont niets onder de hoofdcategorie zolang er geen gekozen is', () => {
+    render(<CategorieKiezer waarde={undefined} onKies={() => {}} gebruikerCategorieen={[]} />)
+    expect(screen.queryByRole('group', { name: 'Categorie (optioneel)' })).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Subcategorie (optioneel)' })).toBeNull()
+  })
+
+  it('toont de categorieën zodra er een hoofdcategorie staat', () => {
+    render(<CategorieKiezer waarde="ov-drank" onKies={() => {}} gebruikerCategorieen={[]} />)
+    const laag = screen.getByRole('group', { name: 'Categorie (optioneel)' })
+    expect(within(laag).getByRole('button', { name: 'Frisdrank' })).toBeInTheDocument()
+    // De derde laag komt er pas bij zodra je een categorie kiest.
+    expect(screen.queryByRole('group', { name: 'Subcategorie (optioneel)' })).toBeNull()
+  })
+
+  it('kiest een categorie met één tik', async () => {
+    const user = userEvent.setup()
+    const onKies = vi.fn()
+    render(<CategorieKiezer waarde="ov-voeding" onKies={onKies} gebruikerCategorieen={[]} />)
+    await user.click(screen.getByRole('button', { name: 'Broodwaren' }))
+    expect(onKies).toHaveBeenCalledWith('cat-broodwaren')
+  })
+
+  it('toont de subcategorieën zodra er een categorie staat', () => {
+    render(<CategorieKiezer waarde="cat-broodwaren" onKies={() => {}} gebruikerCategorieen={[]} />)
+    const laag = screen.getByRole('group', { name: 'Subcategorie (optioneel)' })
+    expect(within(laag).getByRole('button', { name: 'Brood (wit)' })).toBeInTheDocument()
+  })
+
+  it('kiest een subcategorie met één tik', async () => {
+    const user = userEvent.setup()
+    const onKies = vi.fn()
+    render(<CategorieKiezer waarde="cat-broodwaren" onKies={onKies} gebruikerCategorieen={[]} />)
+    await user.click(screen.getByRole('button', { name: 'Brood (wit)' }))
+    expect(onKies).toHaveBeenCalledWith('i-brood--wit-9238')
+  })
+
+  it('gaat een laag terug wanneer je de actieve chip nog eens aantikt', async () => {
+    // Anders kan je een te diepe keuze alleen met "wissen" rechtzetten en moet je
+    // helemaal opnieuw beginnen.
+    const user = userEvent.setup()
+    const onKies = vi.fn()
+    render(<CategorieKiezer waarde="cat-broodwaren" onKies={onKies} gebruikerCategorieen={[]} />)
+    await user.click(screen.getByRole('button', { name: 'Broodwaren', pressed: true }))
+    expect(onKies).toHaveBeenCalledWith('ov-voeding')
+  })
+
+  it('laat zien waar een item hangt dat je via het zoekveld koos', () => {
+    // De trap heeft geen eigen geheugen: ze leidt alles af uit de keuze. Zoek je
+    // "Brood (wit)", dan staan Voeding en Broodwaren daarna vanzelf aangeduid.
+    render(<CategorieKiezer waarde="i-brood--wit-9238" onKies={() => {}} gebruikerCategorieen={[]} />)
+    expect(screen.getByRole('button', { name: /Hoofdcategorie: Voeding/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Broodwaren', pressed: true })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Brood (wit)', pressed: true })).toBeInTheDocument()
+  })
+
+  it('klapt een lange laag in en op verzoek weer uit', async () => {
+    // Voeding heeft 26 categorieën en sommige categorieën bijna negentig items.
+    // Alles tonen maakt van een keuzerij een muur.
+    const user = userEvent.setup()
+    render(<CategorieKiezer waarde="ov-voeding" onKies={() => {}} gebruikerCategorieen={[]} />)
+    const laag = () => screen.getByRole('group', { name: 'Categorie (optioneel)' })
+    const aantal = laag().querySelectorAll('button').length
+    expect(aantal).toBeLessThan(20)
+    await user.click(within(laag()).getByRole('button', { name: /nog \d+/ }))
+    expect(laag().querySelectorAll('button').length).toBeGreaterThan(aantal)
+  })
+
+  it('houdt de gekozen chip in beeld ook als die buiten de eerste twaalf valt', () => {
+    // Anders lijkt je keuze verdwenen zodra de laag weer inklapt.
+    // "Zuivel en Kaas" staat als laatste van de 26 categorieën van Voeding.
+    render(<CategorieKiezer waarde="cat-zuivel-en-kaas" onKies={() => {}} gebruikerCategorieen={[]} />)
+    const laag = screen.getByRole('group', { name: 'Categorie (optioneel)' })
+    expect(within(laag).getByRole('button', { name: 'Zuivel en Kaas', pressed: true })).toBeInTheDocument()
+  })
+})
+

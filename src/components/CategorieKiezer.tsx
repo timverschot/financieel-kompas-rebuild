@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
 import type { Categorie } from '../data/schema'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
-import { zoekItems, zoekMidCategorieen, ZOEK_VANAF } from '../data/categorieen/zoek'
+import { zoekItems, zoekMidCategorieen, midsVanHoofd, itemsVanMid, midPerId, itemPerId, ZOEK_VANAF } from '../data/categorieen/zoek'
 import { groepVanCategorie, labelVanCategorie, type EigenCategorie } from '../data/categorieen/resolve'
 import { alleHoofdcategorieen, opVolgorde } from '../utils/categorieVolgorde'
 import { useHoofdvolgorde } from '../categorievolgorde'
@@ -164,6 +164,153 @@ export function HoofdcategorieChips({
         </div>
       )}
     </div>
+  )
+}
+
+
+// ---------------------------------------------------------------------------
+// De trap: hoofdcategorie -> categorie -> subcategorie
+//
+// Waarom dit er is. De boom heeft drie lagen en meer dan duizend items. Tot nu
+// koos je een hoofdcategorie met één tik, en al de rest moest je TYPEN. Wie de
+// naam van een item niet precies kent ("Brood (wit)"? "Wit brood"?) blijft dan
+// zoeken. Zodra er een hoofdcategorie gekozen is, verschijnen daarom de
+// categorieën eronder, en na een categorie haar subcategorieën. Zo kan je van
+// boven naar beneden doorklikken zonder één letter te typen.
+//
+// Elke laag is OPTIONEEL en op zich een geldige keuze: alleen "Voeding" mag, en
+// "Voeding > Broodwaren" ook. Dat stond er al zo in de rekenkern (alles rolt op
+// naar de hoofdcategorie), maar het was niet zichtbaar.
+//
+// Er is bewust GEEN eigen toestand: welke laag open staat, leiden we af uit de
+// gekozen waarde. Zo klopt de trap ook wanneer je een item via het zoekveld
+// koos — je ziet dan meteen waar dat item in de boom hangt.
+// ---------------------------------------------------------------------------
+
+/** Hoeveel chips een laag toont voor ze inklapt. Voeding heeft 26 categorieën en
+ *  sommige categorieën bijna negentig items; die allemaal tonen maakt van een
+ *  keuzerij een muur. */
+const CHIPS_INGEKLAPT = 12
+
+function trapVan(waarde: string | undefined): { hoofdId?: string; midId?: string } {
+  if (!waarde) return {}
+  const item = itemPerId(waarde)
+  if (item) return { hoofdId: item.hoofdId, midId: item.categorieId }
+  const mid = midPerId(waarde)
+  if (mid) return { hoofdId: mid.hoofdId, midId: mid.id }
+  // Dan is het een hoofdcategorie (ingebouwd of een eigen zonder ouder).
+  return { hoofdId: waarde }
+}
+
+function ChipLaag({
+  label,
+  keuzes,
+  actiefId,
+  onKies,
+}: {
+  label: string
+  keuzes: { id: string; naam: string }[]
+  actiefId?: string
+  onKies: (id: string) => void
+}) {
+  const { t } = useT()
+  const [alles, setAlles] = useState(false)
+  if (keuzes.length === 0) return null
+  // De gekozen chip staat altijd in beeld, ook als ze buiten de eerste twaalf
+  // valt: anders lijkt je keuze verdwenen zodra de laag weer inklapt.
+  const zichtbaar = alles
+    ? keuzes
+    : [...keuzes.slice(0, CHIPS_INGEKLAPT), ...keuzes.filter((k, i) => i >= CHIPS_INGEKLAPT && k.id === actiefId)]
+  const rest = keuzes.length - zichtbaar.length
+
+  return (
+    <div className="trap-laag">
+      <p className="label-caps trap-label">{label}</p>
+      <div role="group" aria-label={label} className="chiprooster">
+        {zichtbaar.map((k) => (
+          <button
+            key={k.id}
+            type="button"
+            className={'chip' + (actiefId === k.id ? ' chip-actief' : '')}
+            aria-pressed={actiefId === k.id}
+            // Voorkom dat het zoekveld de focus verliest vóór de klik telt.
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => onKies(k.id)}
+          >
+            {k.naam}
+          </button>
+        ))}
+        {rest > 0 && (
+          <button
+            type="button"
+            className="chip chip-meer"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setAlles(true)}
+          >
+            {t('+ nog {n}', { n: rest })}
+          </button>
+        )}
+        {alles && keuzes.length > CHIPS_INGEKLAPT && (
+          <button
+            type="button"
+            className="chip chip-meer"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setAlles(false)}
+          >
+            {t('minder')}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * De twee lagen ONDER de hoofdcategorie. Geeft niets terug zolang er geen
+ * hoofdcategorie gekozen is — dan is er ook niets om in door te klikken.
+ *
+ * Een tik op een chip die al actief is, gaat een laag terug (de categorie wordt
+ * de keuze in plaats van de subcategorie). Zonder dat zou je een te diepe keuze
+ * alleen met "wissen" kunnen rechtzetten en helemaal opnieuw moeten beginnen.
+ */
+export function CategorieTrap({
+  waarde,
+  onKies,
+}: {
+  waarde: string | undefined
+  onKies: (id: string) => void
+}) {
+  const { t } = useT()
+  const { hoofdId, midId } = trapVan(waarde)
+
+  const mids = useMemo(() => (hoofdId ? midsVanHoofd(hoofdId) : []), [hoofdId])
+  const items = useMemo(() => (midId ? itemsVanMid(midId) : []), [midId])
+
+  if (!hoofdId) return null
+
+  return (
+    <>
+      {/* De `key` is geen detail: zonder haar houdt React de "toon alles"-stand van
+          een laag vast wanneer de INHOUD volledig verandert. Klapte je de 26
+          categorieën van Voeding uit en wisselde je dan van hoofdcategorie, dan
+          stond de nieuwe laag ook meteen open — en bij de subcategorieën kon dat
+          83 chips tegelijk zijn. Precies de muur die het inklappen moest
+          voorkomen. */}
+      <ChipLaag
+        key={`mid-${hoofdId}`}
+        label={t('Categorie (optioneel)')}
+        keuzes={mids}
+        actiefId={midId}
+        onKies={(id) => onKies(id === midId ? hoofdId : id)}
+      />
+      <ChipLaag
+        key={`item-${midId ?? ''}`}
+        label={t('Subcategorie (optioneel)')}
+        keuzes={items}
+        actiefId={waarde && itemPerId(waarde) ? waarde : undefined}
+        onKies={(id) => onKies(id === waarde ? (midId ?? hoofdId) : id)}
+      />
+    </>
   )
 }
 
@@ -387,7 +534,7 @@ export function CategorieKiezer({
   }
 
   return (
-    <div className="veldgroep" style={{ position: 'relative' }}>
+    <div className="veldgroep">
       <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span className="label-caps">{t('Categorie:')}</span> <strong>{gekozenLabel ?? t('Geen')}</strong>
         {waarde && (
@@ -396,6 +543,10 @@ export function CategorieKiezer({
           </button>
         )}
       </p>
+      {/* Het invoerveld en de voorstellenlijst zitten samen in een eigen laagje.
+          Hing de lijst aan de hele veldgroep, dan duwden de traplagen eronder haar
+          honderden pixels omlaag — met het toetsenbord open vaak buiten beeld. */}
+      <div style={{ position: 'relative' }}>
       <input
         aria-label={t('Zoek categorie of item')}
         autoCorrect="off"
@@ -422,12 +573,6 @@ export function CategorieKiezer({
           zetHoog(0)
         }}
         onKeyDown={opToets}
-      />
-      <HoofdcategorieChips
-        actiefId={hoofdInBeeld}
-        onKies={(id) => kies(id)}
-        eigenCategorieen={gebruikerCategorieen}
-        voorkeurId={voorkeurId}
       />
       {open && aantalRegels > 0 && nieuweNaam === null && (
         // De regels zijn `div`-jes met `role="option"` en géén knoppen meer. Een
@@ -471,6 +616,16 @@ export function CategorieKiezer({
           )}
         </ul>
       )}
+      </div>
+      <HoofdcategorieChips
+        actiefId={hoofdInBeeld}
+        onKies={(id) => kies(id)}
+        eigenCategorieen={gebruikerCategorieen}
+        voorkeurId={voorkeurId}
+      />
+      {/* Doorklikken in plaats van typen: zodra er een hoofdcategorie staat,
+          verschijnen de categorieën eronder, en daarna de subcategorieën. */}
+      <CategorieTrap waarde={waarde} onKies={(id) => kies(id)} />
       {nieuweNaam !== null && (
         <NieuweSubcategoriePaneel
           naam={nieuweNaam}

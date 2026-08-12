@@ -1286,6 +1286,36 @@ a:focus-visible {
   color: var(--bg);
 }
 
+/* Een knop die met `aria-disabled` uitgeschakeld staat (huisregel sinds ronde 41:
+   nooit `disabled`, want dan is de knop voor voorleessoftware onvindbaar en hoor je
+   nooit waarom er niets gebeurt). Zonder deze stand zag zo'n knop er normaal uit en
+   deed hij niets — verwarrender dan een knop die er duidelijk uit ligt. */
+.knop-uit {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* De trap onder de hoofdcategorie (ronde 45): categorie -> subcategorie.
+ *
+ * Twee lagen chips onder elkaar. Het label staat er klein boven, want zonder dat
+ * lezen twee chiprijen als één hoop knoppen. De marge boven is groter dan de
+ * tussenruimte binnen een rij, zodat de lagen visueel uit elkaar vallen. */
+.trap-laag {
+  margin-top: 10px;
+}
+
+.trap-label {
+  margin: 0;
+  color: var(--text-subtle);
+}
+
+/* De chip "+ nog 14" en "minder": zelfde vorm als een gewone chip, maar zonder
+   rand, zodat ze leest als een bediening en niet als nog een keuze. */
+.chip-meer {
+  border-style: dashed;
+  color: var(--text-subtle);
+}
+
 /* Een rij chips die AFBREEKT in plaats van zijwaarts weg te schuiven. Zijwaarts
    schuiven verbergt keuzes: op een telefoon zag je zo drie van de veertien
    categorieën, en niets verklapte dat er meer was. Wat past staat nu in beeld,
@@ -2105,6 +2135,66 @@ a {
    titel en de meta-regel. Bij een lijst die je scant is dichtheid geen winst. */
 .tx-lijst .rij {
   padding-block: 12px;
+  /* Het anker voor `.tx-openen` hieronder. */
+  position: relative;
+}
+
+/* De onzichtbare knop die de HELE transactierij aanklikbaar maakt (ronde 45).
+ *
+ * Op Overzicht kon je een boeking al openen door op de regel te tikken; in de
+ * lijst moest je nog naar een potloodje van 44 px mikken. Deze knop ligt over de
+ * rij en heeft alleen een aria-label — de zichtbare tekst staat eronder.
+ *
+ * `position: absolute` doet twee dingen tegelijk: ze legt de knop over de rij én
+ * haalt ze uit de roosterstroom, zodat de tabelvorm vanaf 1024 px nog steeds
+ * precies zeven kolommen telt. */
+.tx-openen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  /* Geen eigen focusring hier: die zou een rechthoek om de hele rij trekken en
+     over de rijlijn heen vallen. Zie de regel hieronder. */
+}
+
+/* Het `.rij `-voorvoegsel is hier geen opsmuk. Zonder dat wint
+   `.rij button:focus-visible { outline: none }` op specificiteit, en blijft er
+   alleen een box-shadow-ring over die `.lijst { overflow: hidden }` links en
+   rechts wegknipt. Dezelfde reden staat bij `.rij .rij-knop:focus-visible` en
+   `.rij .badge-knop:focus-visible`. */
+.rij .tx-openen:focus-visible {
+  outline: 2px solid var(--focus-rand);
+  outline-offset: -3px;
+  box-shadow: none;
+  border-radius: var(--radius-sm);
+}
+
+/* Alles wat zélf aanklikbaar is, ligt boven de rijknop. Zonder deze regel vangt
+   de rijknop de klik op en zou je de boeking openen terwijl je het vinkje, een
+   badge of het kruisje bedoelde. */
+.tx-lijst .rij > .tx-vinkje,
+.tx-lijst .rij > .tx-vinkje-vlak,
+.tx-lijst .rij .badge-knop,
+.tx-lijst .rij > .rij-acties {
+  position: relative;
+  z-index: 1;
+}
+
+/* Het vakje zelf is 18 px. Nu er een knop ONDER ligt die de hele rij opent,
+   betekende een tik van tien pixels ernaast dat de boeking openging in plaats van
+   dat je een rij aanvinkte. Vóór ronde 45 gebeurde er bij zo'n misser gewoon
+   niets. Het label eromheen maakt het doel 44 px, zoals overal in de app. */
+.tx-vinkje-vlak {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  min-height: 44px;
+  margin: -12px 0;
+  cursor: pointer;
 }
 
 .tx-lijst .rij-titel {
@@ -2173,11 +2263,11 @@ a {
   .tx-lijst .rij,
   .tx-kop {
     display: grid;
-    /* De laatste kolom is voor ✎ en ×. Ronde 34 bracht die knoppen van 30 naar
-     44 px en de tussenruimte van 6 naar 10, dus 44 + 10 + 44 = 98. Met de oude
-     68 px werden ze tot smalle staafjes geperst — precies het tegenovergestelde
-     van wat de vergroting moest bereiken. */
-  grid-template-columns: 34px minmax(120px, 1.6fr) 104px minmax(120px, 1.6fr) minmax(90px, 1fr) 120px 98px;
+    /* De laatste kolom is voor het kruisje. Ronde 34 bracht die knop van 30 naar
+     44 px; met de oude 68 px werd ze tot een smal staafje geperst — precies het
+     tegenovergestelde van wat de vergroting moest bereiken. Sinds ronde 45 staat
+     het potlood er niet meer bij (de hele rij opent de boeking), dus 98 werd 54. */
+  grid-template-columns: 34px minmax(120px, 1.6fr) 104px minmax(120px, 1.6fr) minmax(90px, 1fr) 120px 54px;
     align-items: center;
     gap: 12px;
   }

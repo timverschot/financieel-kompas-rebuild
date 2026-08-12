@@ -257,6 +257,27 @@ export function midPerId(id: string): MidCategorie | undefined {
   return midRegister.get(id)
 }
 
+/**
+ * De middencategorieën die onder één hoofdcategorie hangen, op naam gesorteerd.
+ *
+ * Waarom hier en niet in de component: dit register (ingebouwd + wat de gebruiker
+ * zelf maakte) bestaat alleen hier, en het is precies de reden dat `zoekItems` en
+ * `zoekHoofdcategorieen` ook hier staan. Een filter in een component zou de eigen
+ * categorieën van de gebruiker missen.
+ */
+export function midsVanHoofd(hoofdId: string): MidCategorie[] {
+  return huidigeMids
+    .filter((m) => m.hoofdId === hoofdId)
+    .sort((a, b) => a.naam.localeCompare(b.naam, 'nl'))
+}
+
+/** De items (subcategorieën) die onder één middencategorie hangen, op naam. */
+export function itemsVanMid(categorieId: string): PlatItem[] {
+  return huidigeItems
+    .filter((i) => i.categorieId === categorieId)
+    .sort((a, b) => a.naam.localeCompare(b.naam, 'nl'))
+}
+
 /** Eén hoofdcategorie, ingebouwd of eigen. */
 export type HoofdCategorie = { id: string; naam: string; kleur: string; icoon: string; eigen: boolean }
 

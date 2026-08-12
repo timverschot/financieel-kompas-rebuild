@@ -626,7 +626,9 @@ export function TransactieLijst({
           {/* Bewust hier en niet in de kolomkop: die kop bestaat pas vanaf 1024 px,
               dus op een telefoon zou "alles selecteren" onbereikbaar zijn. */}
           {kanSelecteren && zichtbaar.length > 0 && (
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
+            /* `raak-label` (ronde 45): het vakje zelf is 18 px, te klein om met een
+               duim te treffen. Dezelfde klasse als overal elders in de app. */
+            <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
               <input
                 type="checkbox"
                 className="tx-vinkje"
@@ -856,14 +858,42 @@ function TransactieRij({
   // maar één versie van de rij in de code.
   return (
     <li className={aangevinkt ? 'rij rij-aangevinkt' : 'rij'}>
+      {/* De HELE rij opent de boeking (ronde 45), net zoals op Overzicht. Daar was
+          dat al zo, hier stond nog een potloodknopje van 44 px waar je met een duim
+          naar moest mikken.
+
+          Waarom een onzichtbare knop OVER de rij en niet de rij zelf in een knop,
+          zoals `RecenteTransacties` het doet: deze rij bevat al knoppen — het
+          vinkje, de badges 'gedeeld' en 'garantie', en het kruisje. Een knop in een
+          knop is ongeldige HTML en voorleessoftware maakt daar onvoorspelbare
+          dingen van. Deze knop ligt eronder (`.tx-openen`); alles wat zelf
+          aanklikbaar is, ligt er met een z-index bovenop.
+
+          Absoluut gepositioneerd is ze ook geen rooster-cel, dus de tabelvorm
+          vanaf 1024 px blijft zeven kolommen tellen. */}
+      <button
+        type="button"
+        className="tx-openen"
+        aria-label={t('Bewerk {oms} — {datum}, {bedrag}', {
+          oms: tx.omschrijving,
+          datum: tx.datum,
+          bedrag: formatEuro(tx.bedrag),
+        })}
+        onClick={() => onBewerk(tx)}
+      />
       {selecteerbaar ? (
-        <input
-          type="checkbox"
-          className="tx-vinkje"
-          aria-label={t('Selecteer {oms}', { oms: tx.omschrijving })}
-          checked={aangevinkt}
-          onChange={() => onSchakel(tx.id)}
-        />
+        // Het label eromheen maakt het raakvlak 44 px. Zonder dat opende een tik
+        // van tien pixels naast het vakje de boeking (de rijknop eronder) in
+        // plaats van de rij aan te vinken.
+        <label className="tx-vinkje-vlak">
+          <input
+            type="checkbox"
+            className="tx-vinkje"
+            aria-label={t('Selecteer {oms}', { oms: tx.omschrijving })}
+            checked={aangevinkt}
+            onChange={() => onSchakel(tx.id)}
+          />
+        </label>
       ) : (
         /* Decoratief: wat het icoon zegt, staat ook in de meta-regel eronder. */
         <span className="rij-teken" aria-hidden="true" style={{ backgroundColor: zachteAchtergrond(kleur) }}>
@@ -883,7 +913,10 @@ function TransactieRij({
               Gevolg was dat "Apotheek Van Damme Sint-Niklaas centrum" de badge
               ernaast uit de titelkolom duwde, waar `overflow: hidden` hem
               wegknipte — onzichtbaar én onaanklikbaar. */}
-          <span className="tx-omschrijving">{tx.omschrijving}</span>
+          {/* `title` erbij sinds ronde 45: de omschrijving kapt af met een
+              beletselteken én ligt onder de rijknop, dus met slepen viel ze niet
+              meer te selecteren. Zo is een lange naam op een pc toch te lezen. */}
+          <span className="tx-omschrijving" title={tx.omschrijving}>{tx.omschrijving}</span>
           {/* De koppeling met een dossier bestaat sinds ronde 22, maar was in de
               lijst nergens te zien: je moest de boeking openen om te weten of ze
               gedeeld werd. */}
@@ -943,15 +976,8 @@ function TransactieRij({
         </span>
       </span>
       <Bedrag centen={tx.bedrag} richting="auto" />
+      {/* Alleen nog het kruisje: bewerken doe je door op de rij te tikken. */}
       <span className="rij-acties">
-        <button
-          type="button"
-          className="knop knop-kaal"
-          aria-label={t('Bewerk {oms}', { oms: tx.omschrijving })}
-          onClick={() => onBewerk(tx)}
-        >
-          ✎
-        </button>
         <button
           type="button"
           className="knop knop-kaal knop-gevaar"

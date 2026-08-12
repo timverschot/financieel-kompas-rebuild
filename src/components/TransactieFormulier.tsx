@@ -30,8 +30,14 @@ import { useT } from '../i18n'
 import { vandaag } from '../utils/datum'
 import { Bonknop } from '../ui/Bonknop'
 
+/** De sleutel die zegt: de scan hoort bij de BOEKING zelf, niet bij een
+ *  ticketregel. Een echte regelsleutel is een uuid, dus botsen kan niet. */
+const HELE_BOEKING = '__hele-boeking__'
+
 // De scanner (en de ZXing-bibliotheek) worden pas geladen wanneer je effectief scant.
 const BarcodeScanner = lazy(() => import('./BarcodeScanner'))
+// Alleen het TYPE, dus de bibliotheek wordt hier niet mee ingeladen.
+import type { Productkeuze } from './BarcodeScanner'
 
 /**
  * Het invoertijdstip van een boeking: bij een nieuwe het moment van nu, bij een
@@ -187,7 +193,20 @@ export function TransactieFormulier({
   const nieuwGarantieIdRef = useRef(nieuwId())
   const [kassaRegels, setKassaRegels] = useState<KassaRegel[]>(() => [nieuweKassaRegel()])
   const zoekRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  // Welke regel de scanner openzette. De vaste waarde HELE_BOEKING betekent: geen
+  // ticketregel maar de boeking zelf (ronde 45) — koop je één product, dan hoef je
+  // niet eerst te splitsen om de naam en de Nutri-Score op te halen.
   const [scanVoor, setScanVoor] = useState<string | null>(null)
+  // Wat er misging bij een opzoeking. Staat vlak bij het handelaarsveld, want daar
+  // kijk je op het moment dat je op de knop drukte.
+  const [scanFout, setScanFout] = useState('')
+  // De ACTUELE omschrijving, en die van het moment waarop de opzoeking startte.
+  // Een opzoeking kan seconden duren; typte je intussen zelf iets, dan wint dat.
+  const omschrijvingRef = useRef('')
+  const omschrijvingBijScanRef = useRef('')
+  // De code die bij een gewone boeking gescand is. Ze wordt pas bij het opslaan
+  // onthouden, samen met de categorie die je dan gekozen hebt.
+  const gescandeCodeRef = useRef<string | null>(null)
   // Welke van de twee opslaanknoppen ingedrukt werd. Een klik komt altijd vóór de
   // verzending van het formulier, dus dit staat juist op het moment dat we het lezen.
   const blijfOpen = useRef(false)
@@ -328,6 +347,10 @@ export function TransactieFormulier({
   }, [bewerken?.id])
 
   const teken = soort === 'uitgave' ? -1 : 1
+  // De ref meelopen met de state, zodat een traag antwoord kan zien of jij
+  // intussen zelf getypt hebt.
+  omschrijvingRef.current = omschrijving
+
   const bedragCenten = invoerNaarCenten(bedrag)
   const totaalCenten = Number.isFinite(bedragCenten) && bedragCenten > 0 ? bedragCenten : 0
 
@@ -382,15 +405,62 @@ export function TransactieFormulier({
   // onthouden hebben (meteen, ook offline), anders online opzoeken via Open Food
   // Facts. De code blijft aan de regel hangen zodat ze bij het opslaan (met de
   // uiteindelijke naam + categorie) onthouden wordt.
-  async function verwerkScan(sleutel: string, code: string) {
+  async function verwerkScan(sleutel: string, keuze: Productkeuze) {
     setScanVoor(null)
-    const onthouden = streepjescodes.find((s) => s.id === code)
-    if (onthouden) {
-      wijzigRegel(sleutel, { omschrijving: onthouden.naam, categorieId: onthouden.categorieId ?? '', code, nutriScore: onthouden.nutriScore })
+    setScanFout('')
+    const code = keuze.code
+    // Wat we zélf al van deze code weten. Dat telt altijd mee, ook wanneer je op
+    // naam zocht: van een eerdere scan kennen we misschien de categorie, en die
+    // staat nooit in de databank.
+    const onthouden = code ? streepjescodes.find((s) => s.id === code) : undefined
+    const uitDatabank = keuze.naam
+      ? { naam: keuze.naam, nutriScore: keuze.nutriScore }
+      : onthouden
+        ? { naam: onthouden.naam, nutriScore: onthouden.nutriScore }
+        : code
+          ? await zoekProduct(code)
+          : null
+
+    const naam = uitDatabank?.naam
+    const nutri = uitDatabank?.nutriScore ?? onthouden?.nutriScore
+    const cat = onthouden?.categorieId
+
+    if (!naam) {
+      // Niets gevonden. Bewust NIETS overschrijven: had je de omschrijving al
+      // ingevuld, dan wiste een mislukte opzoeking ze — en dat is precies wat een
+      // gebruiker nooit mag overkomen. Wel zeggen dat het misging, anders lijkt het
+      // alsof de tik niet geregistreerd is.
+      setScanFout(
+        code
+          ? t('Streepjescode {code} staat niet in de databank. Typ de naam zelf.', { code })
+          : t('Niets gevonden. Typ de naam zelf.'),
+      )
       return
     }
-    const gevonden = await zoekProduct(code)
-    wijzigRegel(sleutel, { omschrijving: gevonden?.naam ?? '', categorieId: '', code, nutriScore: gevonden?.nutriScore })
+
+    if (sleutel === HELE_BOEKING) {
+      // Bij een gewone boeking is er geen regel: we vullen de handelaar in en, als
+      // we ze kennen, de categorie. De Nutri-Score hoort bij een ticketregel en
+      // heeft hier geen plaats — hij wordt wel mee onthouden bij de code, zodat een
+      // latere scan van hetzelfde product hem toont.
+      //
+      // De opzoeking kan seconden duren. Is er intussen door de gebruiker getypt,
+      // dan laten we het antwoord vallen: zijn eigen invoer wint altijd.
+      if (omschrijvingRef.current === omschrijvingBijScanRef.current) setOmschrijving(naam)
+      if (cat && !categorieId) setCategorieId(cat)
+      // De code wordt pas bij het opslaan onthouden (zie verzend), samen met de
+      // categorie die je dan gekozen hebt. Hier al bewaren zou de code voorgoed
+      // zonder categorie vastleggen.
+      gescandeCodeRef.current = code ?? null
+      return
+    }
+
+    wijzigRegel(sleutel, {
+      omschrijving: naam,
+      ...(cat ? { categorieId: cat } : {}),
+      ...(code ? { code } : {}),
+      ...(nutri ? { nutriScore: nutri } : {}),
+    })
   }
 
   function opBedragToets(e: KeyboardEvent<HTMLInputElement>, sleutel: string) {
@@ -472,6 +542,18 @@ export function TransactieFormulier({
 
     // Onthoud elke gescande regel (barcode -> naam + categorie + Nutri-Score), zodat
     // een volgende scan van hetzelfde product meteen werkt, ook offline.
+    // Een gewone boeking heeft geen regels, maar wel misschien een gescande code.
+    // Die wordt hier pas onthouden — mét de categorie die je intussen koos. Bij het
+    // scannen zelf bewaren zou de code voorgoed zonder categorie vastleggen, en dan
+    // levert een tweede scan van hetzelfde product opnieuw niets op.
+    if (!gesplitst && gescandeCodeRef.current && onOnthoudStreepjescode && omschrijving.trim()) {
+      await onOnthoudStreepjescode({
+        id: gescandeCodeRef.current,
+        naam: omschrijving.trim(),
+        ...(categorieId ? { categorieId } : {}),
+      })
+    }
+
     if (gesplitst && onOnthoudStreepjescode) {
       for (const r of kassaRegels) {
         if (r.code && r.omschrijving.trim()) {
@@ -711,7 +793,39 @@ export function TransactieFormulier({
       <div className="veldrij">
         <div className="veldgroep" style={{ flex: '2 1 220px' }}>
           <label className="label-caps" htmlFor="handelaar">{t('Handelaar / winkel')}</label>
-          <HandelaarVeld id="handelaar" waarde={omschrijving} onWijzig={setOmschrijving} suggestiesBron={handelaars} />
+          <div className="veldrij">
+            {/* `.veldrij` geeft alleen kinderen MET klasse `.veldgroep` de ruimte
+                om mee te groeien. Zonder dit omhulsel bleef het belangrijkste veld
+                van het formulier op zijn eigen breedte staan, met een gat naast de
+                knop. */}
+            <div className="veldgroep">
+              <HandelaarVeld id="handelaar" waarde={omschrijving} onWijzig={setOmschrijving} suggestiesBron={handelaars} />
+            </div>
+            {/* Ook zonder ticket te splitsen (ronde 45): koop je één product, dan
+                haal je de naam hier op met de camera, de code of een zoekterm.
+                Bij een GESPLITST ticket staat de knop bij elke regel, en zou ze hier
+                de winkelnaam met een productnaam overschrijven. */}
+            {!gesplitst && (
+            <button
+              type="button"
+              className="knop knop-icoon"
+              aria-label={t('Product opzoeken')}
+              title={t('Product opzoeken')}
+              onClick={() => {
+                setScanFout('')
+                omschrijvingBijScanRef.current = omschrijving
+                setScanVoor(HELE_BOEKING)
+              }}
+            >
+              📷
+            </button>
+            )}
+          </div>
+          {/* Altijd aanwezig, ook leeg: een schermlezer moet een mislukte
+              opzoeking horen zonder dat het element pas dan verschijnt. */}
+          <p className="rij-meta" role="status" style={{ margin: scanFout ? '4px 0 0' : 0 }}>
+            {scanFout}
+          </p>
         </div>
 
         <div className="veldgroep">
@@ -726,7 +840,9 @@ export function TransactieFormulier({
         </div>
       </div>
 
-      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, alignSelf: 'flex-start' }}>
+      {/* `raak-label` (ronde 45): het vakje zelf is 13 px en dat is met een duim
+          niet te treffen. Dezelfde klasse als overal elders in de app. */}
+      <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, alignSelf: 'flex-start' }}>
         <input type="checkbox" checked={gesplitst} onChange={(e) => setGesplitst(e.target.checked)} /> {t('Kassaticket splitsen')}
       </label>
 
@@ -1158,7 +1274,7 @@ export function TransactieFormulier({
 
       {scanVoor && (
         <Suspense fallback={null}>
-          <BarcodeScanner onGevonden={(code) => void verwerkScan(scanVoor, code)} onSluiten={() => setScanVoor(null)} />
+          <BarcodeScanner onGevonden={(keuze) => void verwerkScan(scanVoor, keuze)} onSluiten={() => setScanVoor(null)} />
         </Suspense>
       )}
     </form>

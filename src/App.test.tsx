@@ -239,7 +239,9 @@ describe('App', () => {
 
     await ga(user, 'Transacties')
     await screen.findByText('Huur')
-    await user.click(screen.getByRole('button', { name: 'Bewerk Huur' }))
+    // Sinds ronde 45 opent de HELE rij de boeking, met datum en bedrag in het
+    // label — er is geen apart potloodknopje meer.
+    await user.click(screen.getByRole('button', { name: /^Bewerk Huur/ }))
     const bedrag = screen.getByLabelText('Bedrag (€)')
     await user.clear(bedrag)
     await user.type(bedrag, '1000')

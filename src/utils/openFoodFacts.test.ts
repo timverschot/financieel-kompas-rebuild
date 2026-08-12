@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { zoekOpenFoodFacts, zoekProduct } from './openFoodFacts'
+import { zoekOpenFoodFacts, zoekProduct, zoekProductenOpNaam } from './openFoodFacts'
 
 function res(data: unknown, ok = true): Response {
   return { ok, status: ok ? 200 : 404, json: async () => data } as unknown as Response
@@ -72,5 +72,84 @@ describe('zoekProduct (alle Open-databanken)', () => {
   it('geeft null als geen enkele databank het product kent', async () => {
     stub({})
     expect(await zoekProduct('000')).toBeNull()
+  })
+})
+
+// Zoeken op NAAM in plaats van op streepjescode (ronde 45). Op een iPhone heeft
+// Safari geen ingebouwde streepjescodelezer, dus de camera is daar de zwakke
+// schakel — en dezelfde gegevens zijn ook op naam op te halen.
+describe('zoekProductenOpNaam', () => {
+  function nepAntwoord(producten: unknown[]) {
+    return vi.fn().mockResolvedValue({ ok: true, json: async () => ({ products: producten }) })
+  }
+
+  it('geeft niets terug bij een te korte term, zonder het net op te gaan', async () => {
+    const fetchMock = nepAntwoord([])
+    vi.stubGlobal('fetch', fetchMock)
+    expect(await zoekProductenOpNaam('ch')).toEqual([])
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('zet naam, merk en Nutri-Score om, net als bij een scan', async () => {
+    vi.stubGlobal(
+      'fetch',
+      nepAntwoord([{ code: '123', product_name_nl: 'Choco', brands: 'Kwatta', nutriscore_grade: 'D' }]),
+    )
+    expect(await zoekProductenOpNaam('choco')).toEqual([{ code: '123', naam: 'Choco (Kwatta)', nutriScore: 'd' }])
+  })
+
+  it('gooit dezelfde naam maar één keer in de lijst', async () => {
+    // De databank bevat dezelfde naam soms tientallen keren (per land, per
+    // verpakking). Twintig keer "Choco" in een keuzelijst helpt niemand.
+    vi.stubGlobal(
+      'fetch',
+      nepAntwoord([
+        { code: '1', product_name: 'Choco' },
+        { code: '2', product_name: 'choco' },
+        { code: '3', product_name: 'Choco light' },
+      ]),
+    )
+    const uit = await zoekProductenOpNaam('choco')
+    expect(uit.map((p) => p.naam)).toEqual(['Choco', 'Choco light'])
+  })
+
+  it('laat een product zonder naam of zonder code weg', async () => {
+    vi.stubGlobal('fetch', nepAntwoord([{ code: '1' }, { product_name: 'Naamloos' }, { code: '2', product_name: 'Melk' }]))
+    expect(await zoekProductenOpNaam('melk')).toEqual([{ code: '2', naam: 'Melk' }])
+  })
+
+  it('geeft een lege lijst wanneer de opzoeking mislukt', async () => {
+    // Offline of geblokkeerd: dit is een hulpje, geen kritieke stap.
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+    expect(await zoekProductenOpNaam('melk')).toEqual([])
+  })
+
+  it('stuurt alleen de zoekterm mee', async () => {
+    const fetchMock = nepAntwoord([])
+    vi.stubGlobal('fetch', fetchMock)
+    await zoekProductenOpNaam('volle melk')
+    const url = String(fetchMock.mock.calls[0][0])
+    expect(url).toContain('search_terms=volle%20melk')
+    expect(url).toContain('openfoodfacts.org')
+  })
+
+  it('kijkt ook in de zusterdatabanken wanneer voeding niets oplevert', async () => {
+    // Sinds de knop bij élke boeking staat, is "shampoo" een normale zoekterm.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ products: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ products: [{ code: '7', product_name: 'Shampoo' }] }) })
+    vi.stubGlobal('fetch', fetchMock)
+    expect(await zoekProductenOpNaam('shampoo')).toEqual([{ code: '7', naam: 'Shampoo' }])
+    expect(String(fetchMock.mock.calls[1][0])).toContain('openbeautyfacts')
+  })
+
+  it('kost één verzoek wanneer voeding meteen antwoordt', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ products: [{ code: '1', product_name: 'Melk' }] }) })
+    vi.stubGlobal('fetch', fetchMock)
+    await zoekProductenOpNaam('melk')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })

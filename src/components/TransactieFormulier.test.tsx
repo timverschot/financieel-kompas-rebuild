@@ -1113,3 +1113,68 @@ describe('TransactieFormulier — garantiebewijs, de scherpe randen', () => {
   })
 })
 
+// Product opzoeken bij een GEWONE boeking (ronde 45). Tot deze ronde stond de
+// scanknop alleen bij een gesplitst kassaticket.
+describe('TransactieFormulier — product opzoeken bij een gewone boeking', () => {
+  const streepjescodes = [{ id: '5410041001008', naam: 'Choco', categorieId: 'cat-zoet-beleg', nutriScore: 'd' }]
+
+  async function openScanner(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('button', { name: 'Product opzoeken' }))
+    return await screen.findByRole('dialog', { name: 'Product opzoeken' })
+  }
+
+  it('vult de handelaar met wat de app al van die code weet, ook offline', async () => {
+    const user = userEvent.setup()
+    toonUitgebreid({ streepjescodes, onOnthoudStreepjescode: vi.fn() })
+    await openScanner(user)
+    await user.type(screen.getByLabelText('Of typ de streepjescode'), '5410041001008')
+    await user.click(screen.getByRole('button', { name: 'Opzoeken' }))
+    await waitFor(() => expect(screen.getByLabelText('Handelaar / winkel')).toHaveValue('Choco'))
+  })
+
+  it('laat je invoer staan wanneer de code niet gevonden wordt, en zegt waarom', async () => {
+    // Dit is de belangrijkste regel van het hele formulier: een mislukte opzoeking
+    // mag je nooit je invoer kosten.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ status: 0 }) }))
+    const user = userEvent.setup()
+    toonUitgebreid({ onOnthoudStreepjescode: vi.fn() })
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Colruyt')
+    await openScanner(user)
+    await user.type(screen.getByLabelText('Of typ de streepjescode'), '5410041001009')
+    await user.click(screen.getByRole('button', { name: 'Opzoeken' }))
+
+    await waitFor(() => expect(screen.getByText(/staat niet in de databank/)).toBeInTheDocument())
+    expect(screen.getByLabelText('Handelaar / winkel')).toHaveValue('Colruyt')
+    vi.unstubAllGlobals()
+  })
+
+  it('onthoudt de code pas bij het opslaan, met de categorie erbij', async () => {
+    // Bij het scannen zelf bewaren zou de code voorgoed zonder categorie
+    // vastleggen, en dan levert een tweede scan opnieuw niets op.
+    const user = userEvent.setup()
+    const onOnthoudStreepjescode = vi.fn()
+    const { onOpslaan } = toonUitgebreid({ streepjescodes, onOnthoudStreepjescode })
+    await openScanner(user)
+    await user.type(screen.getByLabelText('Of typ de streepjescode'), '5410041001008')
+    await user.click(screen.getByRole('button', { name: 'Opzoeken' }))
+    await waitFor(() => expect(screen.getByLabelText('Handelaar / winkel')).toHaveValue('Choco'))
+
+    await user.type(screen.getByLabelText('Bedrag (€)'), '3,50')
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+    await waitFor(() => expect(onOpslaan).toHaveBeenCalled())
+    expect(onOnthoudStreepjescode).toHaveBeenCalledWith(
+      expect.objectContaining({ id: '5410041001008', naam: 'Choco', categorieId: 'cat-zoet-beleg' }),
+    )
+  })
+
+  it('verbergt de knop zodra je het ticket splitst', async () => {
+    // Daar staat ze bij elke regel; hier zou ze de winkelnaam met een productnaam
+    // overschrijven.
+    const user = userEvent.setup()
+    toonUitgebreid()
+    expect(screen.getByRole('button', { name: 'Product opzoeken' })).toBeInTheDocument()
+    await user.click(screen.getByLabelText('Kassaticket splitsen'))
+    expect(screen.queryByRole('button', { name: 'Product opzoeken' })).toBeNull()
+  })
+})
+

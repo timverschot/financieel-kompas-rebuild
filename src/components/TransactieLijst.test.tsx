@@ -5,6 +5,7 @@ import { TransactieLijst, aantalActieveFilters, uitsplitsingTekst } from './Tran
 import type { Garantie, Transactie } from '../data/schema'
 import { vandaag } from '../utils/datum'
 import { grensDatumMaandenTerug } from '../utils/transactieFilter'
+import { formatEuro } from '../utils/format'
 
 const rekeningen = [
   { id: 'r1', naam: 'Betaal', beginsaldo: 0 },
@@ -876,3 +877,45 @@ describe('TransactieLijst — CSV exporteren', () => {
     }
   })
 })
+
+// De hele rij opent de boeking (ronde 45). Op Overzicht was dat al zo; hier stond
+// nog een potloodknopje.
+describe('TransactieLijst — de rij zelf opent de boeking', () => {
+  // Bewust een datum die MEELOOPT met de kalender: de lijst toont standaard een
+  // venster van zes maanden, dus een vaste datum valt er vanzelf buiten zodra de
+  // tijd verstrijkt. Dat is precies de tijdbom die de CI-uitslag ooit rood maakte.
+  const dag = `${recent.slice(0, 7)}-01`
+  const boeking = [tx({ id: 't1', omschrijving: 'Colruyt', bedrag: -4500, datum: dag })]
+
+  it('opent de boeking wanneer je op de rij tikt', async () => {
+    const gebruiker = userEvent.setup()
+    const { onBewerk } = toon(boeking)
+    await gebruiker.click(screen.getByRole('button', { name: /Bewerk Colruyt/ }))
+    expect(onBewerk).toHaveBeenCalledWith(expect.objectContaining({ omschrijving: 'Colruyt' }))
+  })
+
+  it('zet datum en bedrag ín het label, net als op Overzicht', () => {
+    // Wie de app laat voorlezen, hoort anders veertien keer "Bewerk" zonder te
+    // weten welke boeking eronder zit.
+    toon(boeking)
+    const knop = screen.getByRole('button', { name: /Bewerk Colruyt/ })
+    expect(knop.getAttribute('aria-label')).toContain(dag)
+    expect(knop.getAttribute('aria-label')).toContain(formatEuro(-4500))
+  })
+
+  it('heeft geen apart potloodknopje meer', () => {
+    toon(boeking)
+    expect(screen.queryByText('✎')).toBeNull()
+  })
+
+  it('houdt het kruisje apart van de rijknop', async () => {
+    // Zonder de z-index eronder vangt de rijknop de klik en open je de boeking
+    // terwijl je verwijderen bedoelde.
+    const gebruiker = userEvent.setup()
+    const { onBewerk, onVerwijder } = toon(boeking)
+    await gebruiker.click(screen.getByRole('button', { name: /Verwijder Colruyt/ }))
+    expect(onVerwijder).toHaveBeenCalled()
+    expect(onBewerk).not.toHaveBeenCalled()
+  })
+})
+
