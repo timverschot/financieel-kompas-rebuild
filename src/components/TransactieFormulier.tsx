@@ -571,7 +571,13 @@ export function TransactieFormulier({
       if (gekoppeldeKost) await onDossierKost(null)
       return
     }
-    await onDossierKost({
+    // Van de BESTAANDE kost vertrekken en alleen overschrijven wat deze boeking
+    // bepaalt. Stond hier een witte lijst van velden, dan wiste elke bewerking van
+    // de transactie alles wat dit formulier niet kent: een eigen verdeelpercentage,
+    // een bon, en sinds ronde 44 ook het antwoord van de andere ouder. Je zou dan
+    // een betwisting kwijtraken door een typfout in de omschrijving te verbeteren.
+    const kost: GedeeldeKost = {
+      ...(gekoppeldeKost ?? {}),
       id: gekoppeldeKost ? gekoppeldeKost.id : nieuwKostIdRef.current,
       dossierId: gekozen,
       transactieId: tx.id,
@@ -584,9 +590,12 @@ export function TransactieFormulier({
       betaaldDoor: 'jij',
       datum: tx.datum,
       kostenType,
-      ...(persoonIds.length > 0 ? { kindIds: persoonIds } : {}),
-      ...(categorieId ? { categorieId } : {}),
-    })
+    }
+    if (persoonIds.length > 0) kost.kindIds = persoonIds
+    else delete kost.kindIds
+    if (categorieId) kost.categorieId = categorieId
+    else delete kost.categorieId
+    await onDossierKost(kost)
   }
 
   // Maakt of verwijdert het garantiebewijs dat bij deze aankoop hoort.

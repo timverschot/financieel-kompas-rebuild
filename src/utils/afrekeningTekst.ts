@@ -71,6 +71,10 @@ export function sleutelHerkomst(t: Vertaler, s: Verdeelsleutel): string {
     return t('afspraak voor {bron}', { bron: s.bron === 'buitengewoon' ? t('buitengewone kosten') : t('gewone kosten') })
   }
   if (s.herkomst === 'dossier') return t('standaardverdeling van het dossier')
+  // Ronde 44: bij een kost die uit een uitwisseling komt is het percentage niet
+  // door jou gekozen maar door de andere ouder opgegeven. Dat hoort er zo te
+  // staan, want anders beweert het document dat je het zelf besliste.
+  if (s.herkomst === 'uitwisseling') return t('percentage zoals opgegeven door de andere ouder')
   return t('afwijkende verdeling')
 }
 
@@ -98,6 +102,11 @@ export function totaalRegels(t: Vertaler, o: AfrekeningOverzicht): { label: stri
           ? t('{n}, waarvan {m} met bon', { n: o.aantalKosten, m: o.aantalMetBonnetje })
           : String(o.aantalKosten),
     },
+    // Ronde 44: de betwisting hoort in de samenvatting, niet alleen bij de losse
+    // regel. Wie het stuk snel doorneemt, moet meteen zien dat er discussie is.
+    ...(o.aantalBetwist > 0
+      ? [{ label: t('Betwist'), waarde: t('waarvan {n} betwist door de andere ouder', { n: o.aantalBetwist }) }]
+      : []),
     { label: t('Jij betaalde'), waarde: formatEuro(o.betaaldDoorJou) },
     { label: t('Partner betaalde'), waarde: formatEuro(o.betaaldDoorPartner) },
     { label: t('Jouw aandeel'), waarde: formatEuro(o.jouwAandeel) },
@@ -256,6 +265,26 @@ export function berekeningTekst(t: Vertaler, r: AfrekeningRegel): string {
     jouw: formatEuro(r.jouwAandeel),
     partner: formatEuro(r.partnerAandeel),
   })
+}
+
+/**
+ * Het antwoord van de andere ouder op één kost, in klare taal (ronde 44).
+ *
+ * Geeft een lege tekst wanneer er geen antwoord is: de aanroeper laat de regel dan
+ * gewoon weg. Een kost die betwist wordt telt volledig mee in alle bedragen — stil
+ * geld uit een afrekening laten vallen is erger dan het te vermelden — maar het
+ * document mag niet verzwijgen dat er discussie over is.
+ */
+export function reactieTekst(t: Vertaler, r: AfrekeningRegel): string {
+  if (r.reactie === 'betwist') {
+    // De reden erbij, want dat is het enige wat een derde verder helpt. De tekst
+    // komt van de andere ouder en wordt dus nooit vertaald.
+    return r.reactieReden
+      ? `${t('betwist door de andere ouder')}: ${r.reactieReden}`
+      : t('betwist door de andere ouder')
+  }
+  if (r.reactie === 'akkoord') return t('aanvaard door de andere ouder')
+  return ''
 }
 
 /**

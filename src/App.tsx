@@ -32,6 +32,7 @@ import {
   bewaarCategorie,
   bewaarDossier,
   bewaarGedeeldeKost,
+  bewaarGedeeldeKosten,
   bewaarAflossing,
   bewaarDossierDocument,
   bewaarGarantie,
@@ -813,6 +814,14 @@ export function App() {
 
   async function voegGedeeldeKostToe(k: GedeeldeKost) {
     await bewaarGedeeldeKost(k)
+    await herlaad()
+  }
+
+  // Een reeks kosten in ÉÉN blok (de uitwisseling met de andere ouder, ronde 44).
+  // Alles of niets: een half ingelezen bestand zou je met een dossier opzadelen
+  // waarvan je niet weet welke helft er staat.
+  async function bewaarKostenBlok(kosten: GedeeldeKost[]) {
+    await bewaarGedeeldeKosten(kosten)
     await herlaad()
   }
 
@@ -2019,6 +2028,7 @@ export function App() {
                   onDossierOpslaan={voegDossierToe}
                   onDossierVerwijderen={verwijderDoss}
                   onKostOpslaan={voegGedeeldeKostToe}
+                  onKostenBewaren={bewaarKostenBlok}
                   onKostVerwijderen={verwijderKost}
                   onGenereer={genereerAfrekening}
                   onMarkeerOvergemaakt={markeerOvergemaakt}

@@ -15,6 +15,7 @@ import { DossierFormulier } from './DossierFormulier'
 import { GedeeldeKostFormulier } from './GedeeldeKostFormulier'
 import { KindrekeningSectie } from './KindrekeningSectie'
 import { Documentkluis } from './DossierKluis'
+import { UitwisselingKaart } from './UitwisselingKaart'
 import { CategorieKiezer } from './CategorieKiezer'
 import { saldoVerrekeningDossier } from '../utils/dossier'
 import { isOpenKost, kostenVoorAfrekening, type AfrekeningFilter } from '../utils/afrekening'
@@ -69,6 +70,9 @@ export const DOSSIER_ONDERDELEN = [
   { id: 'onderhoudsbijdrage', label: 'Onderhoudsbijdrage' },
   { id: 'gezamenlijke-pot', label: 'Kindrekening (gezamenlijke pot)' },
   { id: 'documentkluis', label: 'Documentkluis' },
+  // Ronde 44. Wie zijn dossier alleen bijhoudt, wisselt niets uit en hoort deze
+  // kaart niet elke keer voorbij te scrollen.
+  { id: 'uitwisseling', label: 'Uitwisselen met de andere ouder' },
 ] as const
 
 export type DossierOnderdeel = (typeof DOSSIER_ONDERDELEN)[number]['id']
@@ -105,6 +109,7 @@ export function DossierSectie({
   onDossierOpslaan,
   onDossierVerwijderen,
   onKostOpslaan,
+  onKostenBewaren,
   onKostVerwijderen,
   onGenereer,
   onMarkeerOvergemaakt,
@@ -135,6 +140,11 @@ export function DossierSectie({
   onDossierOpslaan: (d: Dossier) => Promise<void> | void
   onDossierVerwijderen: (id: string) => Promise<void> | void
   onKostOpslaan: (k: GedeeldeKost) => Promise<void> | void
+  /** Schrijft een reeks kosten in ÉÉN blok weg (alles of niets). Nodig voor de
+   *  uitwisseling met de andere ouder: een half ingelezen bestand mag niet
+   *  bestaan. Optioneel, zodat bestaande tests van dit scherm ongewijzigd
+   *  blijven; zonder deze prop verschijnt de uitwisselkaart gewoon niet. */
+  onKostenBewaren?: (kosten: GedeeldeKost[]) => Promise<void>
   onKostVerwijderen: (id: string) => Promise<void> | void
   onGenereer: (dossier: Dossier, filter: AfrekeningFilter) => Promise<void> | void
   onMarkeerOvergemaakt: (v: Verrekening, overgemaakt: boolean) => Promise<void> | void
@@ -759,6 +769,21 @@ export function DossierSectie({
             documenten={documenten}
             onOpslaan={onDocumentOpslaan}
             onVerwijderen={onDocumentVerwijderen}
+          />
+          )}
+
+          {/* Uitwisselen met de andere ouder (ronde 44): doorsturen, inlezen,
+              antwoorden. Onderaan, want het is de laatste stap — je stuurt door
+              wat hierboven staat. */}
+          {toont('uitwisseling') && onKostenBewaren && (
+          <UitwisselingKaart
+            dossier={dossier}
+            dossiers={dossiers}
+            kosten={kosten}
+            verrekeningen={verrekeningen}
+            kinderen={kinderen}
+            categorieen={categorieen}
+            onKostenBewaren={onKostenBewaren}
           />
           )}
         </div>

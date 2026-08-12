@@ -3,8 +3,13 @@ import type { GedeeldeKost, Verrekening } from '../data/schema'
 // Een kost is 'open' (nog te verrekenen) zolang ze niet afgerekend is. De oude
 // 'verrekeningId'-koppeling telt als afgerekend, voor terugwaartse compatibiliteit
 // met dossiers van vóór het niet-blokkerende afrekenmodel.
+//
+// Een INGETROKKEN kost telt evenmin mee: de andere ouder heeft ze uit haar eigen
+// dossier gehaald en dat bij een uitwisseling gemeld (ronde 44). Ze blijft wel
+// staan — doorgestreept — want stil geld uit een saldo laten vallen is erger dan
+// het zichtbaar te maken.
 export function isOpenKost(k: GedeeldeKost): boolean {
-  return !k.afgerekend && !k.verrekeningId
+  return !k.afgerekend && !k.verrekeningId && !k.ingetrokken
 }
 
 export type AfrekeningFilter = {

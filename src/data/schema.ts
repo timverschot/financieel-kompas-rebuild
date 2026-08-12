@@ -220,6 +220,39 @@ export const GedeeldeKostSchema = z.object({
   // dezelfde transactie een tweede gedeelde kost maken, en zou je de koppeling
   // nooit meer kunnen terugvinden of weghalen.
   transactieId: z.string().min(1).optional(),
+  // === Uitwisseling met de andere ouder (ronde 44) ===
+  //
+  // De identiteit die deze kost DRAAGT in een uitwisselbestand. Bij een kost die
+  // je zelf boekte staat dit veld er niet en geldt haar eigen 'id'. Bij een kost
+  // die je van de andere ouder inlas, staat hier de id die zij in HAAR app had.
+  //
+  // Waarom het niet volstaat om de id van de afzender gewoon over te nemen: het
+  // logboek is append-only en per id last-writer-wins. Een import met een vreemde
+  // id zou stil een eigen kost kunnen overschrijven. De ingelezen kost krijgt dus
+  // altijd een nieuwe eigen id, en deze verwijzing ernaast.
+  //
+  // Waarom het bij het EXPORTEREN opnieuw gebruikt wordt: zo houdt één kost
+  // dezelfde identiteit over meerdere heen-en-weers. Zonder dat zou een kost die
+  // A ooit van B kreeg, bij B als nieuwe kost terugkomen — elke ronde opnieuw.
+  uitwisselId: z.string().min(1).optional(),
+  // Het antwoord van de andere ouder op deze kost. 'op' is de dag van het
+  // antwoord; 'bedrag' en 'datum' leggen vast WAAROP het sloeg, zodat een
+  // akkoord vervalt zodra de kost nadien wijzigt (een akkoord over € 40 is geen
+  // akkoord over € 400).
+  reactie: z
+    .object({
+      soort: z.enum(['akkoord', 'betwist']),
+      op: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      reden: z.string().optional(),
+      bedrag: z.number().int().optional(),
+      datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    })
+    .optional(),
+  // De andere ouder heeft deze kost ingetrokken. Bewust GEEN verwijdering: een
+  // kost die uit een bestand verdwijnt kan van alles betekenen, en stil geld uit
+  // een saldo laten vallen is erger dan het zichtbaar doorstrepen. Een
+  // ingetrokken kost telt niet meer mee (zie isOpenKost).
+  ingetrokken: z.boolean().optional(),
 })
 export type GedeeldeKost = z.infer<typeof GedeeldeKostSchema>
 

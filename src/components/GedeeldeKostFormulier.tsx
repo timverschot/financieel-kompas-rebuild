@@ -126,7 +126,18 @@ export function GedeeldeKostFormulier({
     if (!geldig) return
     const override = Number.parseFloat(aandeelOverride.replace(',', '.'))
     const heeftOverride = Number.isFinite(override) && override >= 0 && override <= 100
-    await onOpslaan({
+
+    // We beginnen van de BESTAANDE kost en overschrijven wat dit formulier kent.
+    // Vroeger stond hier een witte lijst van velden, en dan verdween alles wat het
+    // formulier niet kende bij de eerste bewerking. Dat is één keer misgegaan met
+    // 'transactieId' (de kost werd niet meer bij haar transactie gevonden, en een
+    // tweede bewaring maakte een tweede kost — dezelfde rekening twee keer in de
+    // afrekening én in de pdf naar de andere ouder). Met de uitwisseling erbij
+    // zouden 'uitwisselId' en 'reactie' precies dezelfde weg gegaan zijn, met
+    // dezelfde dubbeltelling tot gevolg. Vandaar deze vorm: nieuwe velden blijven
+    // vanzelf behouden, zonder dat iemand eraan moet denken.
+    const kost: GedeeldeKost = {
+      ...(bewerken ?? {}),
       id: bewerken ? bewerken.id : nieuwId(),
       dossierId: bewerken ? bewerken.dossierId : dossierId,
       omschrijving: omschrijving.trim(),
@@ -134,21 +145,19 @@ export function GedeeldeKostFormulier({
       betaaldDoor,
       datum,
       kostenType,
-      ...(kindIds.length > 0 ? { kindIds } : {}),
-      ...(categorieId ? { categorieId } : {}),
-      ...(heeftOverride ? { aandeelJijOverride: override } : {}),
-      ...(bonnetje ? { bonnetje } : {}),
-      // Behoud de koppeling aan een afrekening en de afgerekend-status bij bewerken.
-      ...(bewerken?.verrekeningId ? { verrekeningId: bewerken.verrekeningId } : {}),
-      ...(bewerken?.afgerekend ? { afgerekend: true } : {}),
-      // En de koppeling aan de transactie waaruit deze kost ontstaan is. Die viel
-      // hier weg, met een dubbeltelling tot gevolg: de app zoekt de kost bij een
-      // transactie via dit veld, dus na een bewerking vond ze hem niet meer. Vinkte
-      // je het dossier dan opnieuw aan, dan kwam er een TWEEDE kost bij en stond
-      // dezelfde rekening twee keer in de afrekening — ook in de pdf die naar de
-      // andere ouder gaat.
-      ...(bewerken?.transactieId ? { transactieId: bewerken.transactieId } : {}),
-    })
+    }
+    // De optionele velden die dit formulier WEL bestuurt: leeggemaakt betekent
+    // hier weg, niet "laat maar staan".
+    if (kindIds.length > 0) kost.kindIds = kindIds
+    else delete kost.kindIds
+    if (categorieId) kost.categorieId = categorieId
+    else delete kost.categorieId
+    if (heeftOverride) kost.aandeelJijOverride = override
+    else delete kost.aandeelJijOverride
+    if (bonnetje) kost.bonnetje = bonnetje
+    else delete kost.bonnetje
+
+    await onOpslaan(kost)
     // Bij een NIEUWE kost blijft 'bewerken' null, dus de useEffect hierboven draait
     // niet. Daarom hier leegmaken, anders blijft alles ingevuld staan en boek je met
     // een tweede klik dezelfde kost nog eens.

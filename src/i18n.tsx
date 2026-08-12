@@ -210,6 +210,109 @@ const en: Record<string, string> = {
   'Luisterboeken': 'Audiobooks',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Note: the transactions up to and including {datum} are already part of the value you recorded then. They still count below, but no longer in the balance at the top.',
   'geldt nu': 'in effect',
+  // Uitwisselen met de andere ouder (ronde 44)
+  'Intrekken': 'Withdraw',
+  'Terugdraaien': 'Undo',
+  'Dit is dezelfde': 'This is the same one',
+  'Toch niet dezelfde': 'Not the same after all',
+  'Ingetrokken': 'Withdrawn',
+  'telt niet mee in het saldo': 'does not count towards the balance',
+  'Wat de andere ouder van jouw kosten vindt': 'What the other parent thinks of your costs',
+  'Ingetrokken. Stuur het bestand door zodat de andere ouder het ziet.':
+    'Withdrawn. Send the file so the other parent sees it.',
+  'De intrekking is teruggedraaid.': 'The withdrawal has been undone.',
+  'Over de {n} kost(en) in dit bestand komen jullie allebei op {bedrag} uit. Je eigen kosten zitten er niet in.':
+    'Over the {n} cost(s) in this file you both arrive at {bedrag}. Your own costs are not included.',
+  'Vink alleen aan wat echt een andere kost is. Anders telt hetzelfde geld twee keer. Is het dezelfde kost, kies dan "Dit is dezelfde" — anders komt ze elke ronde opnieuw terug.':
+    'Only tick what really is a different cost. Otherwise the same money counts twice. If it is the same cost, choose "This is the same one" \u2014 otherwise it returns every round.',
+  '{n} kost(en) liggen hier vast (afgerekend, ingetrokken of in een afrekening) en blijven zoals ze zijn.':
+    '{n} cost(s) are fixed here (settled, withdrawn or part of a settlement) and stay as they are.',
+  'De andere ouder trekt in: {namen}. Ze blijven staan, maar tellen niet meer mee.':
+    'The other parent withdraws: {namen}. They stay visible, but no longer count.',
+  'Uitwisselen met de andere ouder': 'Exchange with the other parent',
+  '1. Doorsturen': '1. Send',
+  '2. Inlezen wat je kreeg': '2. Read what you received',
+  '3. Je antwoord': '3. Your answer',
+  'Bestand klaarzetten': 'Prepare file',
+  'Kies een uitwisselbestand': 'Choose an exchange file',
+  'Neem over': 'Apply',
+  'Akkoord': 'Agree',
+  'Betwist': 'Dispute',
+  'percentage zoals opgegeven door de andere ouder': 'percentage as given by the other parent',
+  'Nieuw voor jou': 'New to you',
+  'Gewijzigd door de andere ouder': 'Changed by the other parent',
+  'Lijkt op een kost die je al hebt': 'Looks like a cost you already have',
+  'Reden (alleen bij betwisten)': 'Reason (only when disputing)',
+  'Reden om {naam} te betwisten': 'Reason for disputing {naam}',
+  'betaald door de andere ouder': 'paid by the other parent',
+  'betaald door jou': 'paid by you',
+  'Bij jou: {bedrag} op {datum}': 'At your end: {bedrag} on {datum}',
+  'Er gaan {n} kost(en) mee, samen {bedrag}. Alleen wat nog niet afgerekend is. Je stuurt het bestand door zoals je een foto doorstuurt; de andere ouder leest het in zijn eigen Financieel Kompas in.':
+    '{n} cost(s) will be included, {bedrag} in total. Only what has not been settled yet. You send the file the way you send a photo; the other parent reads it into their own Financieel Kompas.',
+  'Ook de kosten meesturen die de andere ouder betaalde': 'Also include the costs the other parent paid',
+  'Standaard uit: die staan bij hem al, en dan krijgt hij ze van jou terug als vermoedelijke dubbel.':
+    'Off by default: they already have those, and would get them back from you as a suspected duplicate.',
+  'Bonnen meesturen': 'Include receipts',
+  'Maakt het bestand een stuk groter. Zonder bonnen blijft het klein genoeg om te mailen.':
+    'Makes the file considerably larger. Without receipts it stays small enough to email.',
+  'De app legt het bestand eerst naast dit dossier. Er verandert niets tot je het bevestigt.':
+    'The app first lays the file next to this case. Nothing changes until you confirm.',
+  'Wat je hier antwoordt, reist mee in het volgende bestand dat je klaarzet. Betwist een kost liever dan hem te verwijderen: verwijder je hem, dan komt hij bij de volgende uitwisseling gewoon terug.':
+    'What you answer here travels along in the next file you prepare. Dispute a cost rather than deleting it: if you delete it, it simply comes back at the next exchange.',
+  'Er staan nog geen kosten van de andere ouder in dit dossier.':
+    'There are no costs from the other parent in this case yet.',
+  'Uit het dossier "{naam}", klaargezet op {datum}.': 'From the case "{naam}", prepared on {datum}.',
+  'Jullie komen allebei op {bedrag} uit.': 'You both arrive at {bedrag}.',
+  'De andere ouder komt op {hun}, jij op {jouw}. Eén cent verschil, door afronding.':
+    'The other parent arrives at {hun}, you at {jouw}. One cent apart, due to rounding.',
+  'Let op: de andere ouder komt op {hun}, jij op {jouw}.':
+    'Note: the other parent arrives at {hun}, you at {jouw}.',
+  'Vink alleen aan wat echt een andere kost is. Anders telt hetzelfde geld twee keer.':
+    'Only tick what really is a different cost. Otherwise the same money counts twice.',
+  '{n} kost(en) staan er al en zijn ongewijzigd.': '{n} cost(s) are already there and unchanged.',
+  '{n} kost(en) zitten al vast in een afrekening en blijven zoals ze zijn.':
+    '{n} cost(s) are already locked into a settlement and stay as they are.',
+  '{n} kost(en) staan in een ander dossier ({naam}) en worden hier niet nog eens ingelezen.':
+    '{n} cost(s) are in another case ({naam}) and will not be read in here again.',
+  '{n} antwoord(en) op jouw kosten. Die worden altijd overgenomen.':
+    '{n} answer(s) to your costs. Those are always applied.',
+  '{n} kost(en) heeft de andere ouder ingetrokken. Ze blijven staan, maar tellen niet meer mee.':
+    'The other parent withdrew {n} cost(s). They stay visible, but no longer count.',
+  '{n} antwoord(en) horen bij een kost die hier niet (meer) staat.':
+    '{n} answer(s) belong to a cost that is no longer here.',
+  '{n} kost(en) gebruiken een andere verdeelsleutel dan dit dossier. De app houdt het percentage van de andere ouder aan, zodat jullie hetzelfde bedrag zien.':
+    '{n} cost(s) use a different split than this case. The app keeps the other parent\u2019s percentage, so you both see the same amount.',
+  '{n} regel(s) in het bestand waren onleesbaar en zijn overgeslagen.':
+    '{n} line(s) in the file were unreadable and were skipped.',
+  '{naam} klaargezet: {n} kost(en).': '{naam} prepared: {n} cost(s).',
+  '{naam} klaargezet: {n} kost(en). {b} bon(nen) waren te groot om mee te sturen.':
+    '{naam} prepared: {n} cost(s). {b} receipt(s) were too large to include.',
+  'Het bestand kon niet klaargezet worden.': 'The file could not be prepared.',
+  'Het bestand kon niet gelezen worden.': 'The file could not be read.',
+  'Dit bestand komt van een nieuwere versie van de app. Werk eerst bij.':
+    'This file comes from a newer version of the app. Update first.',
+  'Dit bestand is te groot om in te lezen.': 'This file is too large to read.',
+  'Dit is geen uitwisselbestand van Financieel Kompas.': 'This is not a Financieel Kompas exchange file.',
+  'Er viel niets over te nemen.': 'There was nothing to apply.',
+  '{n} kost(en) bijgewerkt of toegevoegd.': '{n} cost(s) updated or added.',
+  'Het overnemen is niet gelukt. Er is niets gewijzigd.': 'Applying failed. Nothing was changed.',
+  'Genoteerd als akkoord. Stuur het bestand door zodat de andere ouder het ziet.':
+    'Recorded as agreed. Send the file so the other parent sees it.',
+  'Genoteerd als betwist. Stuur het bestand door zodat de andere ouder het ziet.':
+    'Recorded as disputed. Send the file so the other parent sees it.',
+  'Je antwoord kon niet bewaard worden.': 'Your answer could not be saved.',
+  '{n} kost(en) al beantwoord.': '{n} cost(s) already answered.',
+  'De andere ouder betwist {n} kost(en). {rest}': 'The other parent disputes {n} cost(s). {rest}',
+  '{k} kost(en) klaar om door te sturen.': '{k} cost(s) ready to send.',
+  '{n} kost(en) van de andere ouder wachten op je antwoord.':
+    '{n} cost(s) from the other parent are waiting for your answer.',
+  'Niets om door te sturen: er staan geen open kosten in dit dossier.':
+    'Nothing to send: there are no open costs in this case.',
+  '{n} kost(en) klaar om door te sturen, samen {bedrag}.': '{n} cost(s) ready to send, {bedrag} in total.',
+  'Uitwisseling met de andere ouder': 'Exchange with the other parent',
+  'betwist door de andere ouder': 'disputed by the other parent',
+  'aanvaard door de andere ouder': 'accepted by the other parent',
+  'waarvan {n} betwist door de andere ouder': 'of which {n} disputed by the other parent',
   // Prijsstijgingen (ronde 43)
   'Wat werd er duurder?': 'What got more expensive?',
   'Nog niets gevonden. Daar is minstens een half jaar aan boekingen bij dezelfde handelaar voor nodig.':
@@ -2040,6 +2143,109 @@ const fr: Record<string, string> = {
   'Luisterboeken': 'Livres audio',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Attention : les opérations jusqu’au {datum} inclus sont déjà comprises dans la valeur que tu as enregistrée alors. Elles comptent encore ci-dessous, mais plus dans le solde en haut.',
   'geldt nu': 'en vigueur',
+  // Échange avec l’autre parent (ronde 44)
+  'Intrekken': 'Retirer',
+  'Terugdraaien': 'Annuler',
+  'Dit is dezelfde': 'C’est le même',
+  'Toch niet dezelfde': 'Finalement pas le même',
+  'Ingetrokken': 'Retiré',
+  'telt niet mee in het saldo': 'ne compte pas dans le solde',
+  'Wat de andere ouder van jouw kosten vindt': 'Ce que l’autre parent pense de tes frais',
+  'Ingetrokken. Stuur het bestand door zodat de andere ouder het ziet.':
+    'Retiré. Transmets le fichier pour que l’autre parent le voie.',
+  'De intrekking is teruggedraaid.': 'Le retrait a été annulé.',
+  'Over de {n} kost(en) in dit bestand komen jullie allebei op {bedrag} uit. Je eigen kosten zitten er niet in.':
+    'Sur les {n} frais de ce fichier, vous arrivez tous les deux à {bedrag}. Tes propres frais n’y figurent pas.',
+  'Vink alleen aan wat echt een andere kost is. Anders telt hetzelfde geld twee keer. Is het dezelfde kost, kies dan "Dit is dezelfde" — anders komt ze elke ronde opnieuw terug.':
+    'Ne coche que ce qui est réellement un autre frais. Sinon le même argent compte deux fois. S’il s’agit du même frais, choisis « C’est le même » — sinon il reviendra à chaque tour.',
+  '{n} kost(en) liggen hier vast (afgerekend, ingetrokken of in een afrekening) en blijven zoals ze zijn.':
+    '{n} frais sont figés ici (réglés, retirés ou dans un décompte) et restent tels quels.',
+  'De andere ouder trekt in: {namen}. Ze blijven staan, maar tellen niet meer mee.':
+    'L’autre parent retire : {namen}. Ils restent visibles, mais ne comptent plus.',
+  'Uitwisselen met de andere ouder': 'Échanger avec l’autre parent',
+  '1. Doorsturen': '1. Envoyer',
+  '2. Inlezen wat je kreeg': '2. Lire ce que tu as reçu',
+  '3. Je antwoord': '3. Ta réponse',
+  'Bestand klaarzetten': 'Préparer le fichier',
+  'Kies een uitwisselbestand': 'Choisis un fichier d’échange',
+  'Neem over': 'Appliquer',
+  'Akkoord': 'D’accord',
+  'Betwist': 'Conteste',
+  'percentage zoals opgegeven door de andere ouder': 'pourcentage tel qu’indiqué par l’autre parent',
+  'Nieuw voor jou': 'Nouveau pour toi',
+  'Gewijzigd door de andere ouder': 'Modifié par l’autre parent',
+  'Lijkt op een kost die je al hebt': 'Ressemble à un frais que tu as déjà',
+  'Reden (alleen bij betwisten)': 'Motif (uniquement en cas de contestation)',
+  'Reden om {naam} te betwisten': 'Motif de contestation de {naam}',
+  'betaald door de andere ouder': 'payé par l’autre parent',
+  'betaald door jou': 'payé par toi',
+  'Bij jou: {bedrag} op {datum}': 'Chez toi : {bedrag} le {datum}',
+  'Er gaan {n} kost(en) mee, samen {bedrag}. Alleen wat nog niet afgerekend is. Je stuurt het bestand door zoals je een foto doorstuurt; de andere ouder leest het in zijn eigen Financieel Kompas in.':
+    '{n} frais seront inclus, {bedrag} au total. Uniquement ce qui n’est pas encore réglé. Tu transmets le fichier comme une photo ; l’autre parent le lit dans son propre Financieel Kompas.',
+  'Ook de kosten meesturen die de andere ouder betaalde': 'Inclure aussi les frais payés par l’autre parent',
+  'Standaard uit: die staan bij hem al, en dan krijgt hij ze van jou terug als vermoedelijke dubbel.':
+    'Désactivé par défaut : il les a déjà, et il les recevrait de toi comme doublon présumé.',
+  'Bonnen meesturen': 'Inclure les justificatifs',
+  'Maakt het bestand een stuk groter. Zonder bonnen blijft het klein genoeg om te mailen.':
+    'Cela alourdit fortement le fichier. Sans justificatifs, il reste assez léger pour un e-mail.',
+  'De app legt het bestand eerst naast dit dossier. Er verandert niets tot je het bevestigt.':
+    'L’app compare d’abord le fichier à ce dossier. Rien ne change tant que tu ne confirmes pas.',
+  'Wat je hier antwoordt, reist mee in het volgende bestand dat je klaarzet. Betwist een kost liever dan hem te verwijderen: verwijder je hem, dan komt hij bij de volgende uitwisseling gewoon terug.':
+    'Ce que tu réponds ici accompagne le prochain fichier que tu prépares. Conteste un frais plutôt que de le supprimer : si tu le supprimes, il reviendra au prochain échange.',
+  'Er staan nog geen kosten van de andere ouder in dit dossier.':
+    'Il n’y a pas encore de frais de l’autre parent dans ce dossier.',
+  'Uit het dossier "{naam}", klaargezet op {datum}.': 'Du dossier « {naam} », préparé le {datum}.',
+  'Jullie komen allebei op {bedrag} uit.': 'Vous arrivez tous les deux à {bedrag}.',
+  'De andere ouder komt op {hun}, jij op {jouw}. Eén cent verschil, door afronding.':
+    'L’autre parent arrive à {hun}, toi à {jouw}. Un centime d’écart, dû à l’arrondi.',
+  'Let op: de andere ouder komt op {hun}, jij op {jouw}.':
+    'Attention : l’autre parent arrive à {hun}, toi à {jouw}.',
+  'Vink alleen aan wat echt een andere kost is. Anders telt hetzelfde geld twee keer.':
+    'Ne coche que ce qui est réellement un autre frais. Sinon le même argent compte deux fois.',
+  '{n} kost(en) staan er al en zijn ongewijzigd.': '{n} frais y figurent déjà et sont inchangés.',
+  '{n} kost(en) zitten al vast in een afrekening en blijven zoals ze zijn.':
+    '{n} frais sont déjà fixés dans un décompte et restent tels quels.',
+  '{n} kost(en) staan in een ander dossier ({naam}) en worden hier niet nog eens ingelezen.':
+    '{n} frais figurent dans un autre dossier ({naam}) et ne seront pas relus ici.',
+  '{n} antwoord(en) op jouw kosten. Die worden altijd overgenomen.':
+    '{n} réponse(s) à tes frais. Elles sont toujours reprises.',
+  '{n} kost(en) heeft de andere ouder ingetrokken. Ze blijven staan, maar tellen niet meer mee.':
+    'L’autre parent a retiré {n} frais. Ils restent visibles, mais ne comptent plus.',
+  '{n} antwoord(en) horen bij een kost die hier niet (meer) staat.':
+    '{n} réponse(s) concernent un frais qui ne figure plus ici.',
+  '{n} kost(en) gebruiken een andere verdeelsleutel dan dit dossier. De app houdt het percentage van de andere ouder aan, zodat jullie hetzelfde bedrag zien.':
+    '{n} frais utilisent une autre clé de répartition que ce dossier. L’app retient le pourcentage de l’autre parent, afin que vous voyiez le même montant.',
+  '{n} regel(s) in het bestand waren onleesbaar en zijn overgeslagen.':
+    '{n} ligne(s) du fichier étaient illisibles et ont été ignorées.',
+  '{naam} klaargezet: {n} kost(en).': '{naam} préparé : {n} frais.',
+  '{naam} klaargezet: {n} kost(en). {b} bon(nen) waren te groot om mee te sturen.':
+    '{naam} préparé : {n} frais. {b} justificatif(s) étaient trop volumineux pour être inclus.',
+  'Het bestand kon niet klaargezet worden.': 'Le fichier n’a pas pu être préparé.',
+  'Het bestand kon niet gelezen worden.': 'Le fichier n’a pas pu être lu.',
+  'Dit bestand komt van een nieuwere versie van de app. Werk eerst bij.':
+    'Ce fichier provient d’une version plus récente de l’app. Mets-la d’abord à jour.',
+  'Dit bestand is te groot om in te lezen.': 'Ce fichier est trop volumineux à lire.',
+  'Dit is geen uitwisselbestand van Financieel Kompas.': 'Ceci n’est pas un fichier d’échange de Financieel Kompas.',
+  'Er viel niets over te nemen.': 'Il n’y avait rien à reprendre.',
+  '{n} kost(en) bijgewerkt of toegevoegd.': '{n} frais mis à jour ou ajoutés.',
+  'Het overnemen is niet gelukt. Er is niets gewijzigd.': 'La reprise a échoué. Rien n’a été modifié.',
+  'Genoteerd als akkoord. Stuur het bestand door zodat de andere ouder het ziet.':
+    'Noté comme accord. Transmets le fichier pour que l’autre parent le voie.',
+  'Genoteerd als betwist. Stuur het bestand door zodat de andere ouder het ziet.':
+    'Noté comme contesté. Transmets le fichier pour que l’autre parent le voie.',
+  'Je antwoord kon niet bewaard worden.': 'Ta réponse n’a pas pu être enregistrée.',
+  '{n} kost(en) al beantwoord.': '{n} frais déjà répondus.',
+  'De andere ouder betwist {n} kost(en). {rest}': 'L’autre parent conteste {n} frais. {rest}',
+  '{k} kost(en) klaar om door te sturen.': '{k} frais prêts à être envoyés.',
+  '{n} kost(en) van de andere ouder wachten op je antwoord.':
+    '{n} frais de l’autre parent attendent ta réponse.',
+  'Niets om door te sturen: er staan geen open kosten in dit dossier.':
+    'Rien à envoyer : il n’y a pas de frais ouverts dans ce dossier.',
+  '{n} kost(en) klaar om door te sturen, samen {bedrag}.': '{n} frais prêts à être envoyés, {bedrag} au total.',
+  'Uitwisseling met de andere ouder': 'Échange avec l’autre parent',
+  'betwist door de andere ouder': 'contesté par l’autre parent',
+  'aanvaard door de andere ouder': 'accepté par l’autre parent',
+  'waarvan {n} betwist door de andere ouder': 'dont {n} contesté(s) par l’autre parent',
   // Hausses de prix (ronde 43)
   'Wat werd er duurder?': 'Qu’est-ce qui a augmenté ?',
   'Nog niets gevonden. Daar is minstens een half jaar aan boekingen bij dezelfde handelaar voor nodig.':

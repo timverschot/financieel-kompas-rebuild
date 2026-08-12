@@ -1,6 +1,10 @@
 import type { Categorie, Dossier, GedeeldeKost, Kind, Kostentype, Verrekening } from '../data/schema'
 import { groepVanCategorie, labelVanCategorie } from '../data/categorieen/resolve'
 import { effectiefAandeel, saldoVerrekeningDossier } from './dossier'
+// Bewust dezelfde functie als de uitwisseling zelf gebruikt, niet een kopie: liep
+// die uit elkaar, dan zou het scherm "moet nog beantwoord worden" zeggen terwijl
+// de bewijsmap "aanvaard door de andere ouder" drukt.
+import { reactieVervallen } from './uitwisseling'
 
 // ---------------------------------------------------------------------------
 // Dit bestand is de ENIGE rekenkern achter een afrekening. De PDF-export en de
@@ -23,7 +27,10 @@ export function afrekeningKosten(afrekening: Verrekening, kosten: GedeeldeKost[]
 
 // Waar komt het toegepaste percentage vandaan? Dit is enkel een LABEL: het
 // percentage zelf komt altijd uit effectiefAandeel() in dossier.ts.
-export type AandeelHerkomst = 'kost' | 'categorie' | 'kostensoort' | 'dossier' | 'onbekend'
+// 'uitwisseling' (ronde 44): het percentage komt niet van een eigen keuze maar van
+// de andere ouder, vastgepind bij het inlezen van een uitwisselbestand. Dat als
+// 'kost' rapporteren zou in het document beweren dat je het zelf koos.
+export type AandeelHerkomst = 'kost' | 'categorie' | 'kostensoort' | 'dossier' | 'uitwisseling' | 'onbekend'
 
 export type AandeelUitleg = {
   percentageJij: number
@@ -46,7 +53,7 @@ export function aandeelUitleg(
   const percentageJij = effectiefAandeel(dossier, kost)
 
   if (kost.aandeelJijOverride === percentageJij) {
-    return { percentageJij, herkomst: 'kost', bron: '' }
+    return { percentageJij, herkomst: kost.uitwisselId ? 'uitwisseling' : 'kost', bron: '' }
   }
 
   const splits = dossier.categorieAandelen
@@ -102,6 +109,13 @@ export type AfrekeningRegel = {
   categorieNaam: string
   heeftCategorie: boolean
   heeftBonnetje: boolean
+  // Het antwoord van de andere ouder op deze kost (ronde 44), zodat de PDF en de
+  // klembordtekst het kunnen vermelden. Een document dat een betwisting verzwijgt
+  // is erger dan geen document: dat is net het enige waar discussie over is.
+  reactie?: 'akkoord' | 'betwist'
+  // De reden die de andere ouder opgaf. Juist dát is voor een bemiddelaar het
+  // interessantste stuk: niet DAT er betwist wordt, maar waarom.
+  reactieReden?: string
   jouwAandeel: number
   partnerAandeel: number
   netto: number
@@ -124,6 +138,11 @@ export type AfrekeningOverzicht = {
   kindNamen: string[] // waarop de afrekening filterde; leeg = alle kinderen
   aantalKosten: number
   aantalMetBonnetje: number
+  // Hoeveel van die kosten de andere ouder betwist, respectievelijk aanvaardde
+  // (ronde 44). Ze tellen gewoon mee in alle bedragen — stil geld uit een
+  // afrekening laten vallen is erger — maar ze staan er wel bij.
+  aantalBetwist: number
+  aantalAkkoord: number
   totaal: number
   betaaldDoorJou: number
   betaaldDoorPartner: number
@@ -360,6 +379,9 @@ export function bouwAfrekeningOverzicht(
       categorieNaam: groepVanCategorie(k.categorieId, gebruikerCategorieen).naam,
       heeftCategorie: !!k.categorieId,
       heeftBonnetje: heeftBon(k),
+      ...(k.reactie && !reactieVervallen(k)
+        ? { reactie: k.reactie.soort, ...(k.reactie.reden ? { reactieReden: k.reactie.reden } : {}) }
+        : {}),
       jouwAandeel: perKost[i].jouwAandeel,
       partnerAandeel: perKost[i].partnerAandeel,
       netto: perKost[i].netto,
@@ -394,6 +416,8 @@ export function bouwAfrekeningOverzicht(
     kindNamen: (afrekening.kindIds ?? []).map(kindNaam),
     aantalKosten: regelKosten.length,
     aantalMetBonnetje: regelKosten.filter((k) => heeftBon(k)).length,
+    aantalBetwist: regels.filter((r) => r.reactie === 'betwist').length,
+    aantalAkkoord: regels.filter((r) => r.reactie === 'akkoord').length,
     totaal,
     betaaldDoorJou,
     betaaldDoorPartner: totaal - betaaldDoorJou,

@@ -35,6 +35,20 @@ describe('vertaaltabellen', () => {
     expect([...fr].filter((k) => !en.has(k))).toEqual([])
   })
 
+  it('vertaalt de nieuwe teksten van ronde 44', () => {
+    expect(vertaal('en', 'Uitwisselen met de andere ouder')).toBe('Exchange with the other parent')
+    expect(vertaal('fr', 'Neem over')).toBe('Appliquer')
+    expect(vertaal('en', '{n} kost(en) bijgewerkt of toegevoegd.', { n: 3 })).toBe('3 cost(s) updated or added.')
+    // De waarschuwing die het verschil tussen twee huishoudens zichtbaar maakt,
+    // moet in elke taal even duidelijk zijn: hier gaat geld over.
+    expect(vertaal('fr', 'Let op: de andere ouder komt op {hun}, jij op {jouw}.', { hun: 'A', jouw: 'B' })).toContain(
+      'Attention',
+    )
+    expect(vertaal('en', 'Vink alleen aan wat echt een andere kost is. Anders telt hetzelfde geld twee keer.')).toContain(
+      'counts twice',
+    )
+  })
+
   it('vertaalt de nieuwe teksten van ronde 41', () => {
     expect(vertaal('en', 'Exporteer CSV')).toBe('Export CSV')
     expect(vertaal('fr', 'Bewijsmap')).toBe('Dossier de preuves')

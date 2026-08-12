@@ -104,6 +104,21 @@ export async function bewaarGedeeldeKost(kost: GedeeldeKost): Promise<void> {
   await pasGebeurtenisToe({ type: 'gedeeldekost.bewaard', payload: geldig })
 }
 
+/**
+ * Meerdere gedeelde kosten in ÉÉN blok wegschrijven — dezelfde reden als bij
+ * 'bewaarTransacties': een uitwisseling met de andere ouder gaat in één keer door
+ * of helemaal niet. Een half ingelezen bestand zou je met een dossier opzadelen
+ * waarvan je niet weet welke helft er staat, en één keer ongedaan maken haalt nu
+ * precies dezelfde reeks weer weg.
+ */
+export async function bewaarGedeeldeKosten(kosten: GedeeldeKost[]): Promise<void> {
+  if (kosten.length === 0) return
+  const gebeurtenissen = kosten.map(
+    (k) => ({ type: 'gedeeldekost.bewaard', payload: GedeeldeKostSchema.parse(k) }) as const,
+  )
+  await pasGebeurtenissenToe(gebeurtenissen)
+}
+
 export async function bewaarVerrekening(verrekening: Verrekening): Promise<void> {
   const geldig = VerrekeningSchema.parse(verrekening)
   await pasGebeurtenisToe({ type: 'verrekening.bewaard', payload: geldig })

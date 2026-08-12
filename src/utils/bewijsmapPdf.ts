@@ -3,6 +3,7 @@ import type { Vertaler } from '../i18n'
 import { bouwAfrekeningOverzicht, type AfrekeningGroep, type AfrekeningRegel } from './afrekeningOverzicht'
 import {
   berekeningTekst,
+  reactieTekst,
   groepLabel,
   kinderenTekst,
   periodeTekst,
@@ -268,9 +269,14 @@ export async function exporteerBewijsmapPDF(
       // De bon-status van `regelMeta` wordt vervangen door de verwijzing naar de
       // bladzijde waar die bon staat. Een tweede regel eronder zou hetzelfde twee
       // keer zeggen, en bij een kost zonder bon zelfs twee keer "geen bon".
+      const antwoord = reactieTekst(t, r)
       const uitleg = [
         berekeningTekst(t, r),
         `${t('Verdeelsleutel')}: ${sleutelHerkomst(t, sleutelVanRegel(r))}`,
+        // Ronde 44: een betwisting hoort in het stuk dat naar een advocaat of
+        // bemiddelaar gaat. Zonder deze regel verzwijgt het document precies het
+        // enige waarover partijen het oneens zijn.
+        ...(antwoord ? [antwoord] : []),
         ...regelMeta(t, r, nummers.length > 0 ? t('zie bijlage {n}', { n: nummers.join(', ') }) : undefined),
       ]
       const titelDelen = doc.splitTextToSize(`${r.datum}  ${r.omschrijving}`, KOL_TOTAAL - LINKS) as string[]
