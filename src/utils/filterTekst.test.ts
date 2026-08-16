@@ -101,3 +101,28 @@ describe('filterDelen — de exacte omschrijving', () => {
     expect(delen).toContainEqual({ sleutel: 'omschrijving', label: 'Colruyt 1234' })
   })
 })
+
+describe('filterDelen — gezinsleden (ronde 49)', () => {
+  it('toont de NAAM van het gezinslid, niet zijn id', () => {
+    const delen = filterDelen(t, { persoonId: 'k1' }, { persoonNaam: (id) => (id === 'k1' ? 'Emma' : undefined) })
+    expect(delen).toContainEqual({ sleutel: 'persoon', label: 'Emma' })
+  })
+
+  it('valt terug op een leesbare tekst wanneer het lid verdwenen is', () => {
+    // Een kaal id boven je lijst — en in de naam van het CSV-bestand dat je
+    // doorstuurt — leest niemand.
+    expect(filterDelen(t, { persoonId: 'weg' })).toContainEqual({
+      sleutel: 'persoon',
+      label: 'Onbekend gezinslid',
+    })
+  })
+
+  it('maakt van de gezinsgroep een chip die niet als "alles" leest', () => {
+    // Kaal "Het gezin" leest naast "Voeding · augustus 2026" als géén filter,
+    // terwijl het net het scherpste filter van de rij is.
+    expect(filterDelen(t, { zonderPersoon: true })).toContainEqual({
+      sleutel: 'zonderPersoon',
+      label: 'Het gezin (zonder gezinslid)',
+    })
+  })
+})

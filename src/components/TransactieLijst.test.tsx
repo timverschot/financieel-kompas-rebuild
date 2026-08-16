@@ -932,4 +932,37 @@ describe('aantalActieveFilters — de drie die niet meetelden', () => {
     expect(aantalActieveFilters({ omschrijving: 'Colruyt' })).toBe(1)
     expect(aantalActieveFilters({ omschrijving: 'Colruyt', richting: 'uit' })).toBe(2)
   })
+
+  it('telt ook de twee persoonsfilters mee (ronde 49)', () => {
+    expect(aantalActieveFilters({ persoonId: 'k1' })).toBe(1)
+    expect(aantalActieveFilters({ zonderPersoon: true })).toBe(1)
+  })
+})
+
+describe('TransactieLijst — de chip van een persoonsfilter (ronde 49)', () => {
+  it('toont de NAAM van het gezinslid, niet zijn kale id', async () => {
+    // Datzelfde etiket belandt in de naam van het CSV-bestand dat je doorstuurt.
+    toonUitgebreid([tx({ id: 'a', persoonIds: ['k1'] })], {
+      beginFilter: { persoonId: 'k1' },
+      gezinsleden: [{ id: 'k1', naam: 'Emma' }],
+    })
+    expect(await screen.findByRole('button', { name: 'Wis filter Emma' })).toBeInTheDocument()
+  })
+
+  it('wist met die chip het juiste filter', async () => {
+    const gebruiker = userEvent.setup()
+    toonUitgebreid([tx({ id: 'a', persoonIds: ['k1'] })], {
+      beginFilter: { persoonId: 'k1' },
+      gezinsleden: [{ id: 'k1', naam: 'Emma' }],
+    })
+    await gebruiker.click(await screen.findByRole('button', { name: 'Wis filter Emma' }))
+    expect(screen.queryByRole('button', { name: 'Wis filter Emma' })).toBeNull()
+  })
+
+  it('noemt de groep zonder gezinslid zo dat ze niet als "alles" leest', async () => {
+    toonUitgebreid([tx({ id: 'a' })], { beginFilter: { zonderPersoon: true } })
+    expect(
+      await screen.findByRole('button', { name: 'Wis filter Het gezin (zonder gezinslid)' }),
+    ).toBeInTheDocument()
+  })
 })

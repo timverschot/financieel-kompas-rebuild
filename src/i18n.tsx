@@ -210,7 +210,12 @@ const en: Record<string, string> = {
   'Luisterboeken': 'Audiobooks',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Note: the transactions up to and including {datum} are already part of the value you recorded then. They still count below, but no longer in the balance at the top.',
   'geldt nu': 'in effect',
-  // Doorklikken van een cijfer naar zijn boekingen (ronde 48)
+  // Doorklikken van een cijfer naar zijn boekingen (ronde 48/49)
+  'Het gezin (zonder gezinslid)': 'The household (no family member)',
+  'Wat aan niemand persoonlijk hangt, staat bij "Het gezin". Een kost voor meerdere gezinsleden wordt gelijk verdeeld; zo’n aandeel bestaat niet als aparte boeking, dus die rij klikt niet door.':
+    'Anything not tied to one person is listed under "The household". A cost for several family members is split equally; such a share does not exist as a separate transaction, so that row does not link through.',
+  'Subcategorieën — brood, koffiekoeken, elektriciteit… Klik je door, dan zie je de volledige boeking, dus een gesplitst kassaticket komt in zijn geheel in beeld.':
+    'Subcategories — bread, pastries, electricity… Clicking through shows the whole transaction, so a split receipt appears in full.',
   'Inkomsten {bedrag} — bekijk de boekingen': 'Income {bedrag} — view the transactions',
   'Uitgaven {bedrag} — bekijk de boekingen': 'Spending {bedrag} — view the transactions',
   'Netto {bedrag} — bekijk alle boekingen van deze maand': 'Net {bedrag} — view all transactions for this month',
@@ -2214,7 +2219,12 @@ const fr: Record<string, string> = {
   'Luisterboeken': 'Livres audio',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Attention : les opérations jusqu’au {datum} inclus sont déjà comprises dans la valeur que tu as enregistrée alors. Elles comptent encore ci-dessous, mais plus dans le solde en haut.',
   'geldt nu': 'en vigueur',
-  // Passer d’un chiffre à ses opérations (ronde 48)
+  // Passer d’un chiffre à ses opérations (ronde 48/49)
+  'Het gezin (zonder gezinslid)': 'Le ménage (sans membre de la famille)',
+  'Wat aan niemand persoonlijk hangt, staat bij "Het gezin". Een kost voor meerdere gezinsleden wordt gelijk verdeeld; zo’n aandeel bestaat niet als aparte boeking, dus die rij klikt niet door.':
+    'Ce qui n’est lié à personne figure sous « Le ménage ». Un coût pour plusieurs membres de la famille est réparti également ; une telle part n’existe pas comme opération distincte, donc cette ligne ne mène nulle part.',
+  'Subcategorieën — brood, koffiekoeken, elektriciteit… Klik je door, dan zie je de volledige boeking, dus een gesplitst kassaticket komt in zijn geheel in beeld.':
+    'Sous-catégories — pain, viennoiseries, électricité… En cliquant, tu vois l’opération complète : un ticket ventilé apparaît donc en entier.',
   'Inkomsten {bedrag} — bekijk de boekingen': 'Revenus {bedrag} — voir les opérations',
   'Uitgaven {bedrag} — bekijk de boekingen': 'Dépenses {bedrag} — voir les opérations',
   'Netto {bedrag} — bekijk alle boekingen van deze maand': 'Net {bedrag} — voir toutes les opérations de ce mois',

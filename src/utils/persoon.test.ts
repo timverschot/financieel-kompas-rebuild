@@ -101,8 +101,8 @@ describe('uitgavenPerPersoon', () => {
       labels,
     )
     expect(rijen).toEqual([
-      { id: 'p1', naam: 'Emma', bedrag: 1250 },
-      { id: 'p2', naam: 'Noah', bedrag: 500 },
+      { id: 'p1', naam: 'Emma', bedrag: 1250, gedeeld: false },
+      { id: 'p2', naam: 'Noah', bedrag: 500, gedeeld: false },
     ])
   })
 
@@ -119,7 +119,7 @@ describe('uitgavenPerPersoon', () => {
 
   it('telt dezelfde persoon binnen één post maar één keer', () => {
     const rijen = uitgavenPerPersoon([{ bedrag: 1000, persoonIds: ['p1', 'p1'] }], leden, labels)
-    expect(rijen).toEqual([{ id: 'p1', naam: 'Emma', bedrag: 1000 }])
+    expect(rijen).toEqual([{ id: 'p1', naam: 'Emma', bedrag: 1000, gedeeld: false }])
   })
 
   it('zet posten zonder personen onder Het gezin, altijd onderaan', () => {
@@ -133,14 +133,14 @@ describe('uitgavenPerPersoon', () => {
       labels,
     )
     expect(rijen).toEqual([
-      { id: 'p1', naam: 'Emma', bedrag: 300 },
-      { id: null, naam: 'Het gezin', bedrag: 1000 },
+      { id: 'p1', naam: 'Emma', bedrag: 300, gedeeld: false },
+      { id: null, naam: 'Het gezin', bedrag: 1000, gedeeld: false },
     ])
   })
 
   it('laat het bedrag van een verdwenen lid niet stil vallen', () => {
     const rijen = uitgavenPerPersoon([{ bedrag: 400, persoonIds: ['weg'] }], leden, labels)
-    expect(rijen).toEqual([{ id: 'weg', naam: 'Onbekend', bedrag: 400 }])
+    expect(rijen).toEqual([{ id: 'weg', naam: 'Onbekend', bedrag: 400, gedeeld: false }])
   })
 
   it('bewaart het volledige totaal over alle regels heen', () => {
@@ -151,5 +151,51 @@ describe('uitgavenPerPersoon', () => {
     ]
     const rijen = uitgavenPerPersoon(posten, leden, labels)
     expect(som(rijen.map((r) => r.bedrag))).toBe(1832)
+  })
+})
+
+// --- Ronde 49: welke regel wijst een echte verzameling boekingen aan? ------------
+
+describe('uitgavenPerPersoon — gedeeld of niet', () => {
+  const leden = [
+    { id: 'p1', naam: 'Emma' },
+    { id: 'p2', naam: 'Noah' },
+  ]
+  const labels = { gezin: 'Het gezin', onbekend: 'Onbekend' }
+
+  it('merkt een regel als gedeeld zodra één post over meerdere personen liep', () => {
+    // Emma's € 5,00 bestaat nergens als boeking: het is de helft van een kost van
+    // € 10,00. Doorklikken zou € 10,00 tonen waar € 5,00 staat.
+    const rijen = uitgavenPerPersoon([{ bedrag: 1000, persoonIds: ['p1', 'p2'] }], leden, labels)
+    expect(rijen.every((r) => r.gedeeld)).toBe(true)
+  })
+
+  it('besmet alleen de personen die aan die gedeelde post hingen', () => {
+    const rijen = uitgavenPerPersoon(
+      [
+        { bedrag: 1000, persoonIds: ['p1', 'p2'] },
+        { bedrag: 400, persoonIds: ['p1'] },
+      ],
+      leden,
+      labels,
+    )
+    // p1 zit in de gedeelde post, dus zijn totaal is een mengsel van een heel bedrag
+    // en een half bedrag. p2 ook. Er is hier dus geen zuivere persoonsregel.
+    expect(rijen.find((r) => r.id === 'p1')?.gedeeld).toBe(true)
+    expect(rijen.find((r) => r.id === 'p2')?.gedeeld).toBe(true)
+  })
+
+  it('laat een persoon met alleen eigen posten zuiver', () => {
+    const rijen = uitgavenPerPersoon(
+      [
+        { bedrag: 1000, persoonIds: ['p1', 'p2'] },
+        { bedrag: 400, persoonIds: ['p1'] },
+        { bedrag: 250 },
+      ],
+      leden,
+      labels,
+    )
+    // De gezinsgroep wordt nooit verdeeld: daar gaat elke post in haar geheel in.
+    expect(rijen.find((r) => r.id === null)?.gedeeld).toBe(false)
   })
 })

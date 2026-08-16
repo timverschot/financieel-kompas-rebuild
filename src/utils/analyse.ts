@@ -1,5 +1,6 @@
 import type { Categorie, Transactie } from '../data/schema'
 import { groepVanCategorie, labelVanCategorie } from '../data/categorieen/resolve'
+import { itemPerId } from '../data/categorieen/zoek'
 import { categorieBedragen } from './transactie'
 
 // Rekenkern voor de Analyse-pagina. Alles zuiver en los testbaar. Werkt over een
@@ -55,7 +56,31 @@ export function perHoofdcategorie(
     .sort((a, b) => b.bedrag - a.bedrag)
 }
 
-// Verdeling per product/subcategorie (het specifieke niveau dat gekozen werd).
+/**
+ * Verdeling per product/subcategorie (het specifieke niveau dat gekozen werd).
+ *
+ * Er wordt op NAAM gegroepeerd, niet op id, en dat blijft zo: dat is wat je op het
+ * scherm wil zien. Maar om te kunnen doorklikken hoort er een sleutel bij, en die
+ * mag er alleen komen wanneer ze aantoonbaar exact dezelfde boekingen aanwijst als
+ * de rij (ronde 49). Twee voorwaarden:
+ *
+ *  1. **Eén naam, één id.** Twee categorieën kunnen dezelfde naam dragen, en een
+ *     onbekend id wordt door `labelVanCategorie` 'Onbekend' genoemd — dan rollen er
+ *     meerdere id's in één rij en wijst geen enkel filter die rij precies aan.
+ *  2. **Het id is een ITEM**, geen middencategorie. Een filter op een
+ *     middencategorie vangt ook alles wat eronder hangt (zie `raaktCategorie` in
+ *     utils/transactieFilter.ts), terwijl deze telling alleen meeneemt wat
+ *     rechtstreeks op die categorie geboekt staat. Boek je € 3 op "Elektriciteit"
+ *     zelf en € 40 op de items eronder, dan staat hier € 3 en toonde het filter
+ *     € 43.
+ *
+ * Wat een sleutel NIET belooft: dat het bedrag boven de gefilterde lijst gelijk is
+ * aan het bedrag op de rij. Deze telling is op REGELniveau; de lijst toont hele
+ * boekingen. Een kassaticket met brood én melk komt dus volledig in beeld. Dat is
+ * hoe elke categorie-doorklik in deze app werkt (budgetten, de donut op het
+ * Overzicht, de drilldown) en het is de enige zinnige keuze: een halve bon tonen is
+ * erger.
+ */
 export function perItem(
   transacties: Transactie[],
   categorieen: Categorie[],
@@ -63,14 +88,25 @@ export function perItem(
   richting: Richting,
 ): AnalysePost[] {
   const m = new Map<string, number>()
+  // Per naam: de id's die eraan bijdroegen. Meer dan één = geen sleutel.
+  const idsPerNaam = new Map<string, Set<string>>()
   for (const t of transacties) {
     if (!inPeriode(t.datum, periode)) continue
     for (const l of relevanteLijnen(t, richting)) {
       const naam = labelVanCategorie(l.categorieId, categorieen) ?? 'Zonder categorie'
       m.set(naam, (m.get(naam) ?? 0) + l.bedrag)
+      const ids = idsPerNaam.get(naam) ?? new Set<string>()
+      ids.add(l.categorieId ?? '')
+      idsPerNaam.set(naam, ids)
     }
   }
-  return [...m.entries()].map(([naam, bedrag]) => ({ naam, bedrag })).sort((a, b) => b.bedrag - a.bedrag)
+  return [...m.entries()]
+    .map(([naam, bedrag]) => {
+      const ids = [...(idsPerNaam.get(naam) ?? [])]
+      const sleutel = ids.length === 1 && itemPerId(ids[0]) ? ids[0] : undefined
+      return sleutel ? { naam, bedrag, sleutel } : { naam, bedrag }
+    })
+    .sort((a, b) => b.bedrag - a.bedrag)
 }
 
 // Verdeling per winkel/handelaar (de omschrijving van de transactie). De

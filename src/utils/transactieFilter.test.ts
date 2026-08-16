@@ -321,3 +321,87 @@ describe('filterTransacties — omschrijving', () => {
     expect(heeftActiefFilter({ omschrijving: 'Colruyt' })).toBe(true)
   })
 })
+
+// --- Ronde 49: filteren op een gezinslid ---------------------------------------
+
+describe('filterTransacties — gezinsleden', () => {
+  const tx = (id: string, persoonIds?: string[]): Transactie => ({
+    id,
+    datum: '2026-08-10',
+    omschrijving: 'Winkel',
+    bedrag: -1000,
+    rekeningId: 'r1',
+    ...(persoonIds ? { persoonIds } : {}),
+  })
+  const alle = [tx('a', ['k1']), tx('b', ['k1', 'k2']), tx('c', ['k2']), tx('d'), tx('e', [])]
+
+  it('neemt elke boeking waar dat gezinslid aan hangt, ook een gedeelde', () => {
+    expect(filterTransacties(alle, { persoonId: 'k1' }).map((t) => t.id)).toEqual(['a', 'b'])
+  })
+
+  it('neemt bij "zonder persoon" alleen wat aan niemand hangt', () => {
+    // Een lege lijst telt als "aan niemand", net zoals in uitgavenPerPersoon.
+    expect(filterTransacties(alle, { zonderPersoon: true }).map((t) => t.id)).toEqual(['d', 'e'])
+  })
+
+  it('tellen allebei mee als actief filter', () => {
+    // Zonder dit blijft het zesmaandsvenster van de lijst aanstaan.
+    expect(heeftActiefFilter({ persoonId: 'k1' })).toBe(true)
+    expect(heeftActiefFilter({ zonderPersoon: true })).toBe(true)
+  })
+})
+
+// --- Ronde 49: categorie en richting op DEZELFDE regel --------------------------
+
+describe('filterTransacties — categorie samen met richting', () => {
+  const BROOD = 'i-brood--wit-9238'
+  const MELK = 'i-melk-halfvolle-1978'
+
+  const gewoon: Transactie = {
+    id: 'gewoon',
+    datum: '2026-08-10',
+    omschrijving: 'Colruyt',
+    bedrag: -500,
+    rekeningId: 'r1',
+    categorieId: BROOD,
+  }
+  // Een ticket met een RETOUR op brood: de broodregel is een INKOMST, de melk een
+  // uitgave. Aan "uitgaven op brood" draagt deze boeking nul cent bij.
+  const retour: Transactie = {
+    id: 'retour',
+    datum: '2026-08-11',
+    omschrijving: 'Delhaize',
+    bedrag: -2000,
+    rekeningId: 'r1',
+    regels: [
+      { categorieId: BROOD, bedrag: 300 },
+      { categorieId: MELK, bedrag: -2300 },
+    ],
+  }
+
+  it('laat een boeking weg die aan die categorie niets in die richting bijdroeg', () => {
+    const uit = filterTransacties([gewoon, retour], { catId: BROOD, richting: 'uit' })
+    expect(uit.map((t) => t.id)).toEqual(['gewoon'])
+  })
+
+  it('vindt diezelfde boeking wél terug onder de andere richting', () => {
+    const in_ = filterTransacties([gewoon, retour], { catId: BROOD, richting: 'in' })
+    expect(in_.map((t) => t.id)).toEqual(['retour'])
+  })
+
+  it('verandert niets wanneer er alleen een richting staat, zonder categorie', () => {
+    // Dan blijft de oude betekenis gelden: een boeking hoort bij "uitgaven" zodra
+    // ze ergens een negatieve regel heeft.
+    expect(filterTransacties([gewoon, retour], { richting: 'uit' }).map((t) => t.id)).toEqual([
+      'gewoon',
+      'retour',
+    ])
+  })
+
+  it('verandert niets wanneer er alleen een categorie staat, zonder richting', () => {
+    expect(filterTransacties([gewoon, retour], { catId: BROOD }).map((t) => t.id)).toEqual([
+      'gewoon',
+      'retour',
+    ])
+  })
+})

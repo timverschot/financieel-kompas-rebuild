@@ -13,6 +13,7 @@ import {
 // Ingebouwde ids (gecontroleerd in ingebouwd.ts): hoofdcategorie 'ov-voeding'
 // (Voeding), item 'i-brood--wit-9238' (Brood (wit)) rolt op naar Voeding.
 const BROOD = 'i-brood--wit-9238'
+const MID_BROOD = 'cat-broodwaren'
 const VOEDING = 'ov-voeding'
 
 function tx(over: Partial<Transactie>): Transactie {
@@ -66,9 +67,34 @@ describe('analyse — perItem', () => {
     ]
     const r = perItem(txs, [], OPEN, 'uitgave')
     expect(r).toEqual([
-      { naam: 'Brood (wit)', bedrag: 500 },
+      // Sinds ronde 49 draagt een rij haar sleutel mee zodra die eenduidig is, zodat
+      // je kan doorklikken naar de boekingen erachter.
+      { naam: 'Brood (wit)', bedrag: 500, sleutel: BROOD },
       { naam: 'Zonder categorie', bedrag: 200 },
     ])
+  })
+
+  // Ronde 49: wanneer mag een rij een sleutel dragen?
+  it('geeft GEEN sleutel wanneer twee categorieën in dezelfde rij vallen', () => {
+    // `labelVanCategorie` noemt elk onbekend id 'Onbekend', dus die rollen samen in
+    // één rij. Geen enkel filter wijst die rij dan precies aan.
+    const txs = [
+      tx({ categorieId: 'i-bestaat-niet-1', bedrag: -500 }),
+      tx({ categorieId: 'i-bestaat-niet-2', bedrag: -300 }),
+    ]
+    const r = perItem(txs, [], OPEN, 'uitgave')
+    expect(r).toHaveLength(1)
+    expect(r[0].bedrag).toBe(800)
+    expect(r[0].sleutel).toBeUndefined()
+  })
+
+  it('geeft GEEN sleutel aan een boeking op een middencategorie', () => {
+    // Een filter op een middencategorie vangt ook alles wat eronder hangt, terwijl
+    // deze telling alleen meeneemt wat rechtstreeks op die categorie staat. Klikte
+    // je op € 3,00, dan toonde de lijst € 43,00.
+    const r = perItem([tx({ categorieId: MID_BROOD, bedrag: -300 })], [], OPEN, 'uitgave')
+    expect(r).toHaveLength(1)
+    expect(r[0].sleutel).toBeUndefined()
   })
 })
 

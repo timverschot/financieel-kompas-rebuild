@@ -1983,6 +1983,7 @@ export function App() {
               rekeningen={rekeningen}
               gedeeldeKosten={gedeeldeKosten}
               garanties={garanties}
+              gezinsleden={kinderen}
               beginFilter={txFilter?.filter}
               onBewerk={setBewerkTransactie}
               onVerwijder={verwijder}

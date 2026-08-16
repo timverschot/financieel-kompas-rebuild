@@ -29,6 +29,8 @@ export type FilterSleutel =
   | 'zonderCategorie'
   | 'handelaar'
   | 'omschrijving'
+  | 'persoon'
+  | 'zonderPersoon'
   | 'van'
   | 'tot'
   | 'maand'
@@ -40,6 +42,12 @@ export type FilterDeel = { sleutel: FilterSleutel; label: string }
 export type FilterNamen = {
   categorieNaam?: (id: string) => string | undefined
   rekeningNaam?: (id: string) => string | undefined
+  /**
+   * De naam van een gezinslid. Zonder deze opzoeker zou de chip een kaal id tonen —
+   * en dan staat er boven je lijst iets wat niemand kan lezen, ook niet in de naam
+   * van het CSV-bestand dat je doorstuurt.
+   */
+  persoonNaam?: (id: string) => string | undefined
 }
 
 /**
@@ -52,6 +60,7 @@ export function filterDelen(t: Vertaler, filter: TxFilter, namen: FilterNamen = 
   const delen: FilterDeel[] = []
   const catNaam = namen.categorieNaam ?? (() => undefined)
   const rekNaam = namen.rekeningNaam ?? (() => undefined)
+  const persoonNaam = namen.persoonNaam ?? (() => undefined)
 
   if (filter.zoek) delen.push({ sleutel: 'zoek', label: t('Zoek: {term}', { term: filter.zoek }) })
   if (filter.richting) {
@@ -69,6 +78,14 @@ export function filterDelen(t: Vertaler, filter: TxFilter, namen: FilterNamen = 
   if (filter.zonderCategorie) delen.push({ sleutel: 'zonderCategorie', label: t('Zonder categorie') })
   if (filter.handelaar) delen.push({ sleutel: 'handelaar', label: filter.handelaar })
   if (filter.omschrijving) delen.push({ sleutel: 'omschrijving', label: filter.omschrijving })
+  if (filter.persoonId) {
+    delen.push({ sleutel: 'persoon', label: persoonNaam(filter.persoonId) ?? t('Onbekend gezinslid') })
+  }
+  // BEWUST niet alleen "Het gezin". Dat leest in een chiprij naast "Voeding ·
+  // augustus 2026" als "alles van het gezin", dus als géén filter — terwijl het net
+  // het scherpste filter van de rij is. De broer van dit filter heet in de chip ook
+  // "Zonder categorie"; de ontkenning hoort zichtbaar te zijn.
+  if (filter.zonderPersoon) delen.push({ sleutel: 'zonderPersoon', label: t('Het gezin (zonder gezinslid)') })
   if (filter.van) delen.push({ sleutel: 'van', label: t('Van {datum}', { datum: filter.van }) })
   if (filter.tot) delen.push({ sleutel: 'tot', label: t('Tot {datum}', { datum: filter.tot }) })
   if (filter.maand) delen.push({ sleutel: 'maand', label: maandJaarLabel(filter.maand) })

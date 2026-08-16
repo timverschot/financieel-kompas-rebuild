@@ -2182,13 +2182,15 @@ a {
   flex-shrink: 0;
 }
 
-.analyse-rij:focus-visible .rij-chevron {
+.analyse-rij:focus-visible .rij-chevron,
+.rij-knop:focus-visible .rij-chevron {
   color: var(--accent);
   transform: translateX(2px);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .analyse-rij:hover .rij-chevron {
+  .analyse-rij:hover .rij-chevron,
+  .rij-knop:hover .rij-chevron {
     color: var(--accent);
     transform: translateX(2px);
   }

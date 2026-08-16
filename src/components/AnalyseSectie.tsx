@@ -95,7 +95,7 @@ function DonutKaart({
    * Geeft de aanroeper `undefined` terug voor een post, dan blijft die rij gewone
    * tekst. Liever geen doorklik dan een verkeerde.
    */
-  onKiesPost?: (post: Gekleurd) => (() => void) | undefined
+  onKiesPost?: (post: Gekleurd, index: number) => (() => void) | undefined
 }) {
   const { t } = useT()
   const [toonAlles, setToonAlles] = useState(false)
@@ -127,10 +127,14 @@ function DonutKaart({
             gewoon langer worden. */}
         <ul className="lijst">
           {legende.map((p, i) => {
-            const kies = onKiesPost?.(p)
+            // De index telt mee: `legende` is altijd het begin van `posten`, dus
+            // rij i hoort bij post i. De kaart "per gezinslid" heeft dat nodig om
+            // bij het id van de persoon te komen; dat staat niet in de gekleurde
+            // post, en voor de groep "Het gezin" bestaat er sowieso geen id.
+            const kies = onKiesPost?.(p, i)
             const inhoud = (
               <>
-                <span style={{ ...stip, background: p.kleur }} />
+                <span style={{ ...stip, background: p.kleur }} aria-hidden />
                 <span className="rij-midden">
                   <span className="rij-titel" style={afkap}>
                     {p.naam}
@@ -138,6 +142,17 @@ function DonutKaart({
                 </span>
                 <span className="rij-pct">{percentages[i]}%</span>
                 <Bedrag centen={p.bedrag} />
+                {/* Het pijltje staat er ALTIJD, maar alleen zichtbaar wanneer de rij
+                    ergens heen gaat. In deze drie kaarten klikt de ene rij wel en de
+                    andere niet — een rij zonder eenduidige categorie, of een kost die
+                    over meerdere gezinsleden verdeeld is. Zonder teken is dat verschil
+                    onzichtbaar en lijkt de app willekeurig te reageren. Met
+                    `visibility` in plaats van weglaten blijft de bedragkolom van alle
+                    rijen op dezelfde plek staan. Hetzelfde pijltje als in de kaart
+                    'Verdeling uitgaven' hierboven, waar je het al leert kennen. */}
+                <span className="rij-chevron" aria-hidden style={kies ? undefined : { visibility: 'hidden' }}>
+                  ›
+                </span>
               </>
             )
             return (
@@ -592,9 +607,20 @@ export function AnalyseSectie({
           {byItem.length > 0 && (
             <DonutKaart
               titel={t('Verdeling per product/dienst')}
-              subtitel={t('Subcategorieën — brood, koffiekoeken, elektriciteit…')}
+              subtitel={t('Subcategorieën — brood, koffiekoeken, elektriciteit… Klik je door, dan zie je de volledige boeking, dus een gesplitst kassaticket komt in zijn geheel in beeld.')}
               posten={byItem}
               richting={richting}
+              // `perItem` geeft alleen een sleutel mee wanneer die rij aantoonbaar
+              // op één item uitkomt; zonder sleutel geen knop. Zie de uitleg bij
+              // `perItem` in utils/analyse.ts.
+              onKiesPost={
+                onGaNaarTransacties
+                  ? (p) =>
+                      p.sleutel
+                        ? () => onGaNaarTransacties(metRichting(filterVoorCategorie(p.sleutel as string)))
+                        : undefined
+                  : undefined
+              }
             />
           )}
           {byWinkel.length > 0 && (
@@ -618,9 +644,29 @@ export function AnalyseSectie({
           {perPersoonGekleurd.length > 0 && (
             <DonutKaart
               titel={richting === 'uitgave' ? t('Uitgaven per gezinslid') : t('Inkomsten per gezinslid')}
-              subtitel={t('Hangt een transactie aan meerdere gezinsleden, dan wordt het bedrag gelijk over hen verdeeld.')}
+              subtitel={t('Wat aan niemand persoonlijk hangt, staat bij "Het gezin". Een kost voor meerdere gezinsleden wordt gelijk verdeeld; zo\u2019n aandeel bestaat niet als aparte boeking, dus die rij klikt niet door.')}
               posten={perPersoonGekleurd}
               richting={richting}
+              // Alleen een ZUIVERE regel krijgt een knop. Bij een kost die aan
+              // meerdere gezinsleden hing, staat hier een berekend aandeel — een
+              // derde van € 90 — en dat bedrag bestaat nergens als boeking. De
+              // groep "Het gezin" is altijd zuiver: daar wordt nooit iets verdeeld.
+              onKiesPost={
+                onGaNaarTransacties
+                  ? (_p, i) => {
+                      const rij = perPersoon[i]
+                      if (!rij || rij.gedeeld) return undefined
+                      // Een lid dat intussen verwijderd is, heeft geen naam meer. Twee
+                      // van die rijen heten allebei "Onbekend gezinslid", en de chip
+                      // boven de lijst — en de naam van je CSV-bestand — zou dan niet
+                      // zeggen naar wie je kijkt.
+                      if (rij.id !== null && !gezinsleden.some((g) => g.id === rij.id)) return undefined
+                      const filter: TxFilter =
+                        rij.id === null ? { zonderPersoon: true } : { persoonId: rij.id }
+                      return () => onGaNaarTransacties(metRichting(filter))
+                    }
+                  : undefined
+              }
             />
           )}
 

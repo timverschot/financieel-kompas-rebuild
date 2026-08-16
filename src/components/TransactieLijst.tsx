@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Categorie, Garantie, GedeeldeKost, Rekening, Transactie } from '../data/schema'
+import type { Categorie, Garantie, GedeeldeKost, Kind, Rekening, Transactie } from '../data/schema'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
 import { labelVanCategorie, padVanCategorie } from '../data/categorieen/resolve'
 import { filterTransacties, heeftActiefFilter, grensDatumMaandenTerug, type TxFilter } from '../utils/transactieFilter'
@@ -58,6 +58,8 @@ export function aantalActieveFilters(filter: TxFilter): number {
     filter.zonderCategorie,
     filter.handelaar,
     filter.omschrijving,
+    filter.persoonId,
+    filter.zonderPersoon,
     filter.van,
     filter.tot,
   ].filter(Boolean).length
@@ -125,6 +127,7 @@ export function TransactieLijst({
   rekeningen,
   gedeeldeKosten = [],
   garanties = [],
+  gezinsleden = [],
   onBewerk,
   onVerwijder,
   onVerwijderMeerdere,
@@ -139,6 +142,12 @@ export function TransactieLijst({
   gedeeldeKosten?: GedeeldeKost[]
   /** Om te tonen dat er een garantiebewijs aan een boeking hangt (ronde 36). */
   garanties?: Garantie[]
+  /**
+   * Alleen om de chip van een persoonsfilter een NAAM te kunnen geven (ronde 49).
+   * Zonder deze lijst zou er "p-3f2a…" boven je lijst staan, en datzelfde id zou in
+   * de naam van het CSV-bestand belanden dat je doorstuurt.
+   */
+  gezinsleden?: Kind[]
   onBewerk: (tx: Transactie) => void
   onVerwijder: (id: string) => void
   /**
@@ -275,6 +284,7 @@ export function TransactieLijst({
     // de gewone categorienaam in plaats van op het kale id.
     categorieNaam: (id) => subOpties.find((c) => c.id === id)?.naam ?? categorieNaam(id),
     rekeningNaam: (id) => rekeningNaam(id),
+    persoonNaam: (id) => gezinsleden.find((g) => g.id === id)?.naam,
   }
   const wissers: Record<FilterSleutel, () => void> = {
     zoek: () => zet({ zoek: undefined }),
@@ -287,6 +297,8 @@ export function TransactieLijst({
     zonderCategorie: () => zet({ zonderCategorie: undefined }),
     handelaar: () => zet({ handelaar: undefined }),
     omschrijving: () => zet({ omschrijving: undefined }),
+    persoon: () => zet({ persoonId: undefined }),
+    zonderPersoon: () => zet({ zonderPersoon: undefined }),
     van: () => zet({ van: undefined }),
     tot: () => zet({ tot: undefined }),
     maand: () => zet({ maand: undefined }),

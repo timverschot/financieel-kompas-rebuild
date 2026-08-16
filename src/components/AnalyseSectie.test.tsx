@@ -294,16 +294,94 @@ describe('AnalyseSectie — doorklikken vanaf de winkellegende', () => {
     expect(screen.queryByRole('button', { name: /bekijk de boekingen$/ })).toBeNull()
   })
 
-  it('laat de legendes per product/dienst en per gezinslid bewust met rust', () => {
-    // Die twee rekenkernen gooien hun sleutel weg (per naam gegroepeerd) of
-    // VERDELEN een bedrag over meerdere personen. Een filter selecteert hele
-    // transacties, dus daar zou de lijst een ander bedrag tonen dan de rij. Zolang
-    // dat niet opgelost is, hoort daar geen knop te staan.
+  it('laat een product/dienst doorklikken op zijn eigen categorie', () => {
     const onGaNaarTransacties = vi.fn()
     toonMet([boodschappen, tanken], { onGaNaarTransacties })
-    const namen = screen.getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? '')
-    // Wel de winkel (de omschrijving), niet de subcategorie.
-    expect(namen.some((n) => n.startsWith('Colruyt '))).toBe(true)
-    expect(namen.some((n) => n.startsWith('Brood (wit) ') && n.endsWith('bekijk de boekingen'))).toBe(false)
+    const knop = screen.getByRole('button', { name: /^Brood \(wit\) .* bekijk de boekingen$/ })
+    knop.click()
+    expect(onGaNaarTransacties).toHaveBeenCalledWith(
+      expect.objectContaining({ catId: 'i-brood--wit-9238', richting: 'uit' }),
+    )
+  })
+})
+
+// --- Ronde 49: de legende per gezinslid ----------------------------------------
+//
+// `uitgavenPerPersoon` VERDEELT een kost die aan meerdere gezinsleden hangt. Zo'n
+// aandeel bestaat nergens als boeking, dus daar hoort geen doorklik te staan. Een
+// regel waar niets verdeeld is, wijst wél een echte verzameling aan.
+
+describe('AnalyseSectie — doorklikken vanaf de gezinslegende', () => {
+  const metPersoon = (id: string, personen: string[], bedrag: number): Transactie => ({
+    ...tx(id, 'i-brood--wit-9238', bedrag),
+    persoonIds: personen,
+  })
+
+  it('laat een zuivere persoonsregel doorklikken op dat gezinslid', async () => {
+    const user = userEvent.setup()
+    const onGaNaarTransacties = vi.fn()
+    toonMet([metPersoon('p', ['k1'], -4000)], { onGaNaarTransacties, gezinsleden: [{ id: 'k1', naam: 'Emma' }] })
+    await user.click(await screen.findByRole('button', { name: /^Emma .* bekijk de boekingen$/ }))
+    expect(onGaNaarTransacties).toHaveBeenCalledWith(expect.objectContaining({ persoonId: 'k1' }))
+  })
+
+  it('laat de groep Het gezin doorklikken op "zonder persoon"', async () => {
+    const user = userEvent.setup()
+    const onGaNaarTransacties = vi.fn()
+    // De kaart verschijnt alleen wanneer er gezinsleden bestaan; de boeking zelf
+    // hangt bewust aan niemand, en valt dus onder "Het gezin".
+    toonMet([tx('g', 'i-brood--wit-9238', -3000)], {
+      onGaNaarTransacties,
+      gezinsleden: [{ id: 'k1', naam: 'Emma' }],
+    })
+    await user.click(await screen.findByRole('button', { name: /^Het gezin .* bekijk de boekingen$/ }))
+    expect(onGaNaarTransacties).toHaveBeenCalledWith(expect.objectContaining({ zonderPersoon: true }))
+  })
+
+  it('geeft GEEN knop aan een gezinslid dat niet meer bestaat', () => {
+    // De chip boven de lijst zou dan geen naam hebben, en twee verwijderde leden
+    // zouden allebei dezelfde chip krijgen naar een andere lijst.
+    toonMet([metPersoon('w', ['weg'], -4000)], {
+      onGaNaarTransacties: vi.fn(),
+      gezinsleden: [{ id: 'k1', naam: 'Emma' }],
+    })
+    expect(screen.queryByRole('button', { name: /^Onbekend gezinslid .* bekijk de boekingen$/ })).toBeNull()
+  })
+
+  it('geeft GEEN knop aan een gedeelde kost', () => {
+    // Emma's helft van € 40 bestaat niet als boeking; de lijst zou € 40 tonen waar
+    // € 20 staat.
+    toonMet([metPersoon('d', ['k1', 'k2'], -4000)], {
+      onGaNaarTransacties: vi.fn(),
+      gezinsleden: [
+        { id: 'k1', naam: 'Emma' },
+        { id: 'k2', naam: 'Noah' },
+      ],
+    })
+    expect(screen.queryByRole('button', { name: /^Emma .* bekijk de boekingen$/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Noah .* bekijk de boekingen$/ })).toBeNull()
+  })
+})
+
+describe('AnalyseSectie — welke rijen mogen doorklikken', () => {
+  it('geeft geen knop aan een rij zonder eenduidige categorie', () => {
+    // 'Zonder categorie' en een boeking op een middencategorie wijzen geen enkele
+    // verzameling precies aan; het pijltje hoort daar dan ook niet te staan.
+    const zonder: Transactie = { ...tx('z', '', -1000), categorieId: undefined }
+    toonMet([zonder, boodschappen], { onGaNaarTransacties: vi.fn() })
+    expect(screen.queryByRole('button', { name: /^Zonder categorie .* bekijk de boekingen$/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /^Brood \(wit\) .* bekijk de boekingen$/ })).toBeInTheDocument()
+  })
+
+  it('toont het pijltje alleen op een rij die ergens heen gaat', () => {
+    const zonder: Transactie = { ...tx('z', '', -1000), categorieId: undefined }
+    toonMet([zonder, boodschappen], { onGaNaarTransacties: vi.fn() })
+    const kaartje = screen.getByText('Verdeling per product/dienst').closest('section.kaart') as HTMLElement
+    const pijltjes = [...kaartje.querySelectorAll('.rij-chevron')]
+    // Even veel pijltjes als rijen, maar alleen zichtbaar waar er een knop is:
+    // zo blijft de bedragkolom van alle rijen op dezelfde plek staan.
+    expect(pijltjes.length).toBe(2)
+    const verborgen = pijltjes.filter((p) => (p as HTMLElement).style.visibility === 'hidden')
+    expect(verborgen).toHaveLength(1)
   })
 })

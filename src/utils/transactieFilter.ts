@@ -74,6 +74,25 @@ export type TxFilter = {
    * nemen, dan toonde elk van die twee rijen de som van allebei.
    */
   omschrijving?: string
+  /**
+   * Alle boekingen die aan één gezinslid hangen (ronde 49).
+   *
+   * `persoonIds` staat op de TRANSACTIE, niet per regel, dus dit filter selecteert
+   * hele boekingen — precies wat de kaart "Uitgaven per gezinslid" op Analyse
+   * optelt, zolang die kost aan één persoon hing. Hing ze aan meerdere, dan toont
+   * die kaart een BEREKEND aandeel en bestaat het getal nergens als boeking; daar
+   * hoort dan ook geen doorklik te staan (zie `gedeeld` in utils/persoon.ts).
+   */
+  persoonId?: string
+  /**
+   * Alleen wat aan GEEN ENKEL gezinslid hangt: de groep "Het gezin".
+   *
+   * Naar het model van `zonderCategorie` hierboven, en om dezelfde reden: een lege
+   * `persoonId` betekent "geen persoonsfilter" en kon dus nooit "zonder persoon"
+   * betekenen. Dit is de enige regel van die kaart die altijd zuiver is — daar wordt
+   * nooit iets verdeeld.
+   */
+  zonderPersoon?: boolean
 }
 
 // Alle categorie-id's waar een transactie naar verwijst: de hoofd-categorieId en
@@ -88,9 +107,20 @@ function categorieIdsVan(tx: Transactie): string[] {
 // Behoort een transactie tot de gekozen hoofd- en/of mid-categorie? Een item
 // (i-*) rolt op naar zijn hoofd- en mid-categorie; een rechtstreeks getagde
 // hoofd- of eigen categorie matcht op id.
-function raaktCategorie(tx: Transactie, hoofdId?: string, catId?: string): boolean {
+function raaktCategorie(tx: Transactie, hoofdId?: string, catId?: string, richting?: 'in' | 'uit'): boolean {
   if (!hoofdId && !catId) return true
-  const ids = categorieIdsVan(tx)
+  // Met een richting erbij wordt er op REGELniveau gekeken: dezelfde regel moet
+  // zowel bij de categorie horen als het juiste teken hebben (ronde 49).
+  //
+  // Waarom dat nodig is. Categorie en richting werden los beoordeeld, dus een
+  // kassaticket met een RETOUR op brood (+ € 3) en melk (− € 23) kwam onder
+  // "Voeding, uitgaven" in beeld — terwijl het aan de uitgave op brood nul cent
+  // bijdroeg. De rekenkernen van de Analyse tellen wél per regel, en dus toonde de
+  // lijst boekingen die niet in het bedrag zaten waarop je klikte.
+  const lijnen = richting
+    ? categorieBedragen(tx).filter((r) => (richting === 'in' ? r.bedrag > 0 : r.bedrag < 0))
+    : null
+  const ids = lijnen ? lijnen.map((r) => r.categorieId ?? '') : categorieIdsVan(tx)
   return ids.some((id) => {
     const item = itemPerId(id)
     // Sinds ronde 27 kan een boeking ook op de MIDDENLAAG staan (bv. rechtstreeks
@@ -172,7 +202,10 @@ export function filterTransacties(transacties: Transactie[], filter: TxFilter): 
     if (filter.van && tx.datum < filter.van) return false
     if (filter.tot && tx.datum > filter.tot) return false
     if (filter.maand && !tx.datum.startsWith(filter.maand)) return false
-    if (!raaktCategorie(tx, filter.hoofdId, filter.catId)) return false
+    // De richting gaat hier BEWUST mee naar binnen. Staan er een categorie én een
+    // richting aan, dan moet één en dezelfde regel aan allebei voldoen; anders komen
+    // er boekingen in beeld die aan het bedrag niets bijdroegen.
+    if (!raaktCategorie(tx, filter.hoofdId, filter.catId, filter.richting)) return false
     if (filter.domein && !raaktDomein(tx, filter.domein)) return false
     if (filter.zonderCategorie && !mistCategorie(tx)) return false
     if (filter.handelaar && handelaarSleutel(tx.omschrijving) !== handelaarSleutel(filter.handelaar)) return false
@@ -180,6 +213,8 @@ export function filterTransacties(transacties: Transactie[], filter: TxFilter): 
     // filteren maar géén chip krijgen, niet meetellen in het aantal en het
     // zesmaandsvenster laten staan — een onzichtbaar filter zonder wisknop.
     if (filter.omschrijving && tx.omschrijving.trim() !== filter.omschrijving.trim()) return false
+    if (filter.persoonId && !(tx.persoonIds ?? []).includes(filter.persoonId)) return false
+    if (filter.zonderPersoon && (tx.persoonIds ?? []).filter((id) => id).length > 0) return false
     if (filter.zoek && !raaktZoek(tx, filter.zoek)) return false
     return true
   })
@@ -211,7 +246,9 @@ export function heeftActiefFilter(filter: TxFilter): boolean {
     filter.maand ||
     filter.zonderCategorie ||
     filter.handelaar ||
-    filter.omschrijving
+    filter.omschrijving ||
+    filter.persoonId ||
+    filter.zonderPersoon
   )
 }
 

@@ -52,8 +52,18 @@ export function verdeelBedrag(bedrag: number, aantal: number): number[] {
 /** Eén post om te verdelen: een bedrag (positief, in centen) en de personen eraan. */
 export type TeVerdelenPost = { bedrag: number; persoonIds?: string[] }
 
-/** Eén regel in de verdeling. 'id' is null voor de groep 'Het gezin'. */
-export type PersoonPost = { id: string | null; naam: string; bedrag: number }
+/**
+ * Eén regel in de verdeling. 'id' is null voor de groep 'Het gezin'.
+ *
+ * `gedeeld` is waar zodra er ook maar één post aan deze regel bijdroeg die aan
+ * MEERDERE personen hing. Dat is geen detail voor de weergave maar een grens voor
+ * wat de app met de regel mag doen (ronde 49): bij een gedeelde post staat hier een
+ * BEREKEND aandeel — een derde van een kost van € 90 — en zo'n bedrag bestaat
+ * nergens als boeking. Doorklikken naar "de boekingen achter dit bedrag" zou dan
+ * € 90 tonen waar € 30 staat. Alleen een regel zonder verdeling wijst een echte
+ * verzameling boekingen aan.
+ */
+export type PersoonPost = { id: string | null; naam: string; bedrag: number; gedeeld: boolean }
 
 /**
  * De teksten die de verdeling nodig heeft. Ze komen van buiten (via t()), zodat
@@ -81,6 +91,8 @@ export function uitgavenPerPersoon(
   labels: PersoonLabels,
 ): PersoonPost[] {
   const perPersoon = new Map<string, number>()
+  // De personen van wie minstens één bijdrage uit een GEDEELDE post kwam.
+  const gedeeldeIds = new Set<string>()
   let gezin = 0
   let heeftGezin = false
 
@@ -95,12 +107,20 @@ export function uitgavenPerPersoon(
     }
     const delen = verdeelBedrag(post.bedrag, ids.length)
     ids.forEach((id, i) => perPersoon.set(id, (perPersoon.get(id) ?? 0) + delen[i]))
+    if (ids.length > 1) for (const id of ids) gedeeldeIds.add(id)
   }
 
   const rijen: PersoonPost[] = [...perPersoon.entries()]
-    .map(([id, bedrag]) => ({ id, naam: naamVanPersoon(id, leden) ?? labels.onbekend, bedrag }))
+    .map(([id, bedrag]) => ({
+      id,
+      naam: naamVanPersoon(id, leden) ?? labels.onbekend,
+      bedrag,
+      gedeeld: gedeeldeIds.has(id),
+    }))
     .sort((a, b) => b.bedrag - a.bedrag || a.naam.localeCompare(b.naam))
 
-  if (heeftGezin) rijen.push({ id: null, naam: labels.gezin, bedrag: gezin })
+  // De gezinsgroep is per definitie nooit verdeeld: daar komt elke post in haar
+  // geheel in terecht.
+  if (heeftGezin) rijen.push({ id: null, naam: labels.gezin, bedrag: gezin, gedeeld: false })
   return rijen
 }
