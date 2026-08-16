@@ -3,7 +3,7 @@ import { db } from '../db'
 import { bewaarTransactie, laadTransacties } from '../repository'
 import { GeheugenBackend, type SyncBackend } from './backend'
 import { synchroniseer } from './sync'
-import type { Logregel } from './events'
+import { LOG_FORMAAT, type Logregel } from './events'
 
 beforeEach(async () => {
   await db.transacties.clear()
@@ -15,7 +15,7 @@ beforeEach(async () => {
 // Een logregel afkomstig van een fictief ander toestel ('toestel-B'), met een
 // laat tijdstip zodat het bij een conflict wint.
 function vreemdeRegel(id: string, gebeurtenis: Logregel['gebeurtenis']): Logregel {
-  return { id, toestelId: 'toestel-B', volgnummer: 1, tijdstip: Date.now() + 1000, gebeurtenis }
+  return { id, toestelId: 'toestel-B', volgnummer: 1, tijdstip: Date.now() + 1000, formaat: LOG_FORMAAT, gebeurtenis }
 }
 
 describe('synchroniseer', () => {
@@ -115,6 +115,7 @@ describe('synchroniseer bewaart een logregel ongeschonden', () => {
       // Een veld uit een toekomstige versie van de app.
       hlcL: 1,
       hlcC: 0,
+      formaat: LOG_FORMAAT,
       veldVanMorgen: 'moet blijven staan',
     } as unknown as Logregel
 
@@ -153,6 +154,7 @@ describe('een mislukte verwerking laat niets half achter', () => {
       tijdstip: 1000,
       hlcL: 1000,
       hlcC: 0,
+      formaat: LOG_FORMAAT,
       gebeurtenis: {
         type: 'transactie.bewaard' as const,
         payload: { id: 't-van-b', datum: '2026-07-02', omschrijving: 'Colruyt', bedrag: -4200, rekeningId: 'r1' },
@@ -178,3 +180,81 @@ describe('een mislukte verwerking laat niets half achter', () => {
     expect((await db.transacties.get('t-van-b'))?.bedrag).toBe(-4200)
   })
 })
+
+// ---------------------------------------------------------------------------
+// De eenheid van een logregel (ronde 46)
+//
+// Wat er misging. De app bewaarde geld eerst als euro's en stapte later over op
+// gehele centen. Die overstap was een database-migratie: ze zette om wat op dat
+// moment in het LOKALE logboek stond. Maar het logboek staat ook op Drive en in
+// back-upbestanden, en een regel die van daar binnenkomt NA die migratie wordt
+// door niemand meer omgezet — er is geen tweede migratie die haar ziet.
+//
+// En een bedrag is gewoon een getal: van buiten kan je niet zien of `2400` nu
+// € 24,00 of € 2.400,00 betekent. Wie de app opnieuw met Drive verbond op een
+// toestel waarvan de browser de lokale gegevens had opgeruimd, kreeg zijn oudste
+// bedragen dus honderd keer te klein terug. Stil, en precies bij de cijfers waar
+// het om gaat.
+// ---------------------------------------------------------------------------
+describe('synchroniseer — de eenheid van de bedragen', () => {
+  // Een regel zoals de app ze vóór deze versie schreef: zonder eenheid, en met
+  // een bedrag dat toen euro's betekende.
+  function euroTijdRegel(id: string, bedrag: number): Logregel {
+    return {
+      id,
+      toestelId: 'toestel-oud',
+      volgnummer: 1,
+      tijdstip: Date.now() + 1000,
+      gebeurtenis: {
+        type: 'transactie.bewaard',
+        payload: { id: 'oud-1', datum: '2026-01-05', omschrijving: 'Loon', bedrag, rekeningId: 'r1' },
+      },
+    } as Logregel
+  }
+
+  it('leest een regel uit de euro-tijd NIET in', async () => {
+    // Zou ze wel ingelezen worden, dan stond € 2.400 er als € 24,00.
+    const backend = new GeheugenBackend()
+    await backend.stuur('toestel-oud', [euroTijdRegel('oud-r1', 2400)])
+
+    const uit = await synchroniseer(backend)
+    expect(uit.verouderd).toBe(1)
+    expect(uit.opgehaald).toBe(0)
+    expect((await laadTransacties()).geldig).toEqual([])
+  })
+
+  it('raakt bestaande gegevens niet aan wanneer zo een regel binnenkomt', async () => {
+    await bewaarTransactie({ id: 't1', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 240000, rekeningId: 'r1' })
+    const backend = new GeheugenBackend()
+    await synchroniseer(backend)
+    await backend.stuur('toestel-oud', [euroTijdRegel('oud-r1', 2400)])
+
+    await synchroniseer(backend)
+    const tx = (await laadTransacties()).geldig
+    expect(tx).toHaveLength(1)
+    expect(tx[0].bedrag).toBe(240000)
+  })
+
+  it('zet de eenheid op elke regel die deze versie schrijft', async () => {
+    // Zonder dit veld is de fout over een paar jaar precies zo terug.
+    await bewaarTransactie({ id: 't1', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 240000, rekeningId: 'r1' })
+    const regels = await db.events.toArray()
+    expect(regels).toHaveLength(1)
+    expect(regels[0].formaat).toBe(LOG_FORMAAT)
+  })
+
+  it('laat een regel MET de juiste eenheid gewoon door', async () => {
+    const backend = new GeheugenBackend()
+    await backend.stuur('toestel-B', [
+      vreemdeRegel('b1', {
+        type: 'transactie.bewaard',
+        payload: { id: 'b-tx', datum: '2026-07-02', omschrijving: 'Colruyt', bedrag: -4500, rekeningId: 'r1' },
+      }),
+    ])
+    const uit = await synchroniseer(backend)
+    expect(uit.verouderd).toBe(0)
+    expect(uit.opgehaald).toBe(1)
+    expect((await laadTransacties()).geldig[0].bedrag).toBe(-4500)
+  })
+})
+

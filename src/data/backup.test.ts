@@ -155,3 +155,54 @@ describe('backup draagt ook de andere tabellen', () => {
     expect(wrd[0].saldo).toBe(-123456)
   })
 })
+
+// De eenheid van een logregel (ronde 46). Zie de uitleg bij LOG_FORMAAT in
+// sync/events.ts: een regel uit de euro-tijd draagt geen eenheid, en haar bedragen
+// als centen lezen maakt van € 2.400 stil € 24.
+describe('backup — een bestand uit de euro-tijd', () => {
+  const euroTijd = JSON.stringify({
+    app: 'financieel-kompas',
+    soort: 'backup',
+    versie: 1,
+    gemaaktOp: '2026-01-01T10:00:00.000Z',
+    events: [
+      {
+        id: 'oud-1',
+        toestelId: 'toestel-oud',
+        volgnummer: 1,
+        tijdstip: 1735725600000,
+        gebeurtenis: {
+          type: 'transactie.bewaard',
+          payload: { id: 'oud-tx', datum: '2026-01-01', omschrijving: 'Loon', bedrag: 2400, rekeningId: 'r1' },
+        },
+      },
+    ],
+  })
+
+  it('leest zo een bestand niet in, en zegt hoeveel regels het betreft', async () => {
+    const r = await importeerBackup(euroTijd)
+    expect(r.verouderd).toBe(1)
+    expect(r.toegevoegd).toBe(0)
+    expect((await laadTransacties()).geldig).toHaveLength(0)
+  })
+
+  it('laat wat er al staat volledig met rust', async () => {
+    await bewaarTransactie(loon)
+    await importeerBackup(euroTijd)
+    const tx = (await laadTransacties()).geldig
+    expect(tx).toHaveLength(1)
+    expect(tx[0].bedrag).toBe(240000)
+  })
+
+  it('herstelt een bestand van DEZE versie gewoon', async () => {
+    await bewaarTransactie(loon)
+    const json = await exporteerBackup()
+    await db.transacties.clear()
+    await db.events.clear()
+
+    const r = await importeerBackup(json)
+    expect(r.verouderd).toBe(0)
+    expect(r.toegevoegd).toBe(1)
+    expect((await laadTransacties()).geldig[0].bedrag).toBe(240000)
+  })
+})

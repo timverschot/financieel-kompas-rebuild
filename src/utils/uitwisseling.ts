@@ -49,7 +49,19 @@ import { labelVanCategorie, type EigenCategorie } from '../data/categorieen/reso
 //    het hele uitwisselen geen zin meer.
 // ============================================================================
 
-export const UITWISSEL_VERSIE = 1
+/**
+ * De versie van het bestandsformaat.
+ *
+ * Van 1 naar 2 (ronde 46) om dezelfde reden als LOG_FORMAAT in sync/events.ts: een
+ * bedrag is gewoon een getal, en van buiten kan je niet zien of `2400` € 24,00 of
+ * € 2.400,00 betekent. De app bewaarde geld vroeger in euro's; een uitwisselbestand
+ * uit die tijd zou hier binnenkomen als centen, en dan staat € 2.400 er als € 24.
+ * `.int()` vangt de bedragen met een komma af, maar een rond bedrag glipt erdoor.
+ *
+ * Versie 1 wordt daarom geweigerd. Het bestand droeg altijd al een versienummer;
+ * het werd alleen nooit gebruikt om déze vraag te beantwoorden.
+ */
+export const UITWISSEL_VERSIE = 2
 
 // Bovengrenzen. Ze staan er niet om de gebruiker te pesten maar omdat dit bestand
 // van buiten komt: een kapot of kwaadaardig bestand mag de app niet laten
@@ -297,7 +309,7 @@ export function bouwUitwisselBestand(
 
 export type LeesResultaat =
   | { ok: true; bestand: UitwisselBestand; overgeslagen: number }
-  | { ok: false; fout: 'geen-json' | 'geen-uitwisseling' | 'nieuwere-versie' | 'te-groot' }
+  | { ok: false; fout: 'geen-json' | 'geen-uitwisseling' | 'nieuwere-versie' | 'oudere-versie' | 'te-groot' }
 
 // Leest en valideert een bestand. Bewust per record: één rotte regel mag de hele
 // import niet kosten, maar ze wordt wel geteld en gemeld — nooit stil weggelaten.
@@ -315,6 +327,10 @@ export function leesUitwisselBestand(json: string): LeesResultaat {
     return { ok: false, fout: telFout ? 'te-groot' : 'geen-uitwisseling' }
   }
   if (buiten.data.versie > UITWISSEL_VERSIE) return { ok: false, fout: 'nieuwere-versie' }
+  // Een ouder bestand: de bedragen daarin staan mogelijk in euro's, en dat is van
+  // buiten niet te zien. Weigeren is de enige veilige keuze — een bedrag honderd
+  // keer verkeerd overnemen is erger dan een bestand niet kunnen lezen.
+  if (buiten.data.versie < UITWISSEL_VERSIE) return { ok: false, fout: 'oudere-versie' }
 
   let overgeslagen = 0
   const gezien = new Set<string>()

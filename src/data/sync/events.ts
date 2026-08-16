@@ -88,6 +88,59 @@ export type Gebeurtenis = z.infer<typeof GebeurtenisSchema>
 // (zie hlc.ts). Ze zijn optioneel voor terugwaartse compatibiliteit: oudere
 // logregels (of back-ups van vóór deze versie) missen ze; bij het ordenen valt de
 // app dan terug op 'tijdstip'.
+/**
+ * In welke EENHEID de bedragen in een logregel staan.
+ *
+ * Waarom dit veld bestaat (en waarom het er veel te laat kwam). De app bewaarde
+ * geld vroeger als euro's met een komma, en stapte later over op gehele centen.
+ * Die overstap gebeurde als een database-migratie: bij het opstarten werd alles
+ * omgezet wat op dat moment in het LOKALE logboek stond.
+ *
+ * Alleen: het logboek is niet lokaal. Het staat ook op Google Drive, en het zit in
+ * back-upbestanden. Een regel die van daar binnenkomt NADAT de migratie gedraaid
+ * heeft, wordt door niemand nog omgezet — er is geen tweede migratie die haar ziet.
+ * En omdat een bedrag gewoon een getal is, kan je van buiten niet zien of `2400`
+ * nu € 24,00 of € 2.400,00 betekent.
+ *
+ * Gevolg in de praktijk: wie de app opnieuw met Drive verbond op een toestel
+ * waarvan de browser de lokale gegevens had opgeruimd, kreeg zijn oudste bedragen
+ * honderd keer te klein terug. € 2.400 werd € 24. Stil, en precies bij de cijfers
+ * waar het om gaat.
+ *
+ * Vanaf nu draagt elke logregel haar eigen eenheid. Een regel zonder dit veld komt
+ * uit de euro-tijd; die wordt NIET toegepast maar geteld en gemeld. Dat is bewust
+ * de veilige kant: een bedrag honderd keer verkeerd tonen is erger dan een regel
+ * niet tonen en dat luid zeggen.
+ */
+export const LOG_FORMAAT = 2
+
+/** Een regel zonder `formaat` komt uit de euro-tijd (formaat 1). */
+export function formaatVan(r: { formaat?: number }): number {
+  return r.formaat ?? 1
+}
+
+/** Kunnen we de bedragen in deze regel vertrouwen? */
+export function leesbaarFormaat(r: { formaat?: number }): boolean {
+  return formaatVan(r) === LOG_FORMAAT
+}
+
+/**
+ * Waarom een regel niet leesbaar is. De twee gevallen vragen een ander antwoord van
+ * de gebruiker, en dus een andere melding.
+ *
+ * 'te-oud'   — de regel komt uit een versie van vóór deze; haar bedragen kunnen in
+ *              euro's staan. Er valt hier niets aan te doen behalve opnieuw beginnen.
+ * 'te-nieuw' — de regel komt uit een NIEUWERE versie dan deze app. Dan draait DIT
+ *              toestel achter, en de oplossing is de app hier bijwerken. Zonder dit
+ *              onderscheid zou de app een regel van morgen "verouderd" noemen en een
+ *              advies geven dat nergens toe leidt.
+ */
+export function formaatOordeel(r: { formaat?: number }): 'ok' | 'te-oud' | 'te-nieuw' {
+  const f = formaatVan(r)
+  if (f === LOG_FORMAAT) return 'ok'
+  return f < LOG_FORMAAT ? 'te-oud' : 'te-nieuw'
+}
+
 export const LogregelSchema = z.object({
   id: z.string().min(1),
   toestelId: z.string().min(1),
@@ -95,6 +148,9 @@ export const LogregelSchema = z.object({
   tijdstip: z.number(),
   hlcL: z.number().optional(),
   hlcC: z.number().int().nonnegative().optional(),
+  // De eenheid van de bedragen in deze regel. Optioneel, want regels van vóór
+  // deze versie hebben hem niet — en dat is precies het signaal dat we nodig hebben.
+  formaat: z.number().int().positive().optional(),
   gebeurtenis: GebeurtenisSchema,
 })
 export type Logregel = z.infer<typeof LogregelSchema>

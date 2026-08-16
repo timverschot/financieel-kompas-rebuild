@@ -1,5 +1,5 @@
 import { db } from './db'
-import { LogregelSchema, type Logregel } from './sync/events'
+import { LOG_FORMAAT, LogregelSchema, formaatOordeel, type Logregel } from './sync/events'
 import { herbouwStaat, verwerkOntvangenHlc } from './sync/lokaal'
 
 // Een onafhankelijk vangnet, los van Google Drive: de volledige geschiedenis
@@ -10,7 +10,9 @@ import { herbouwStaat, verwerkOntvangenHlc } from './sync/lokaal'
 export type BackupBestand = {
   app: 'financieel-kompas'
   soort: 'backup'
-  versie: 1
+  /** 1 = de euro-tijd (bedragen met een komma), 2 = gehele centen én elke regel
+   *  draagt zelf haar eenheid. Zie LOG_FORMAAT in sync/events.ts. */
+  versie: number
   gemaaktOp: string
   events: Logregel[]
 }
@@ -21,14 +23,23 @@ export async function exporteerBackup(): Promise<string> {
   const bestand: BackupBestand = {
     app: 'financieel-kompas',
     soort: 'backup',
-    versie: 1,
+    versie: LOG_FORMAAT,
     gemaaktOp: new Date().toISOString(),
     events,
   }
   return JSON.stringify(bestand, null, 2)
 }
 
-export type ImportResultaat = { toegevoegd: number; overgeslagen: number; ongeldig: number }
+export type ImportResultaat = {
+  toegevoegd: number
+  overgeslagen: number
+  ongeldig: number
+  /** Regels uit een oudere versie van de app, waarvan de bedragen niet betrouwbaar
+   *  te lezen zijn. Zie LOG_FORMAAT in sync/events.ts. */
+  verouderd: number
+  /** Regels uit een NIEUWERE versie dan deze app. Dan draait dit toestel achter. */
+  teNieuw: number
+}
 
 // Zet een back-up terug. Werkt net als een sync: gebeurtenissen worden
 // samengevoegd (append-only), nooit overschreven. Bestaande gebeurtenissen
@@ -50,6 +61,8 @@ export async function importeerBackup(json: string): Promise<ImportResultaat> {
   const nieuw: Logregel[] = []
   let overgeslagen = 0
   let ongeldig = 0
+  let verouderd = 0
+  let teNieuw = 0
   for (const ruw of events) {
     const check = LogregelSchema.safeParse(ruw)
     if (!check.success) {
@@ -58,6 +71,17 @@ export async function importeerBackup(json: string): Promise<ImportResultaat> {
     }
     if (bestaandeIds.has(check.data.id)) {
       overgeslagen++
+      continue
+    }
+    // Zie sync/sync.ts: een regel uit de euro-tijd draagt geen eenheid, en haar
+    // bedragen als centen lezen maakt van € 2.400 stil € 24.
+    const oordeel = formaatOordeel(check.data)
+    if (oordeel === 'te-oud') {
+      verouderd++
+      continue
+    }
+    if (oordeel === 'te-nieuw') {
+      teNieuw++
       continue
     }
     // BEWUST de ruwe regel, niet `check.data`. Het schema controleert of de regel
@@ -78,5 +102,5 @@ export async function importeerBackup(json: string): Promise<ImportResultaat> {
     await verwerkOntvangenHlc(nieuw.map((r) => ({ l: r.hlcL ?? r.tijdstip, c: r.hlcC ?? 0 })))
     await herbouwStaat()
   }
-  return { toegevoegd: nieuw.length, overgeslagen, ongeldig }
+  return { toegevoegd: nieuw.length, overgeslagen, ongeldig, verouderd, teNieuw }
 }

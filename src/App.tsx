@@ -252,6 +252,28 @@ export function App() {
   const [ordeningen, setOrdeningen] = useState<Ordening[]>([])
   const [waarderingen, setWaarderingen] = useState<Waardering[]>([])
   const [ongeldig, setOngeldig] = useState(0)
+  // Regels uit de euro-tijd die geweigerd zijn. Apart van 'ongeldig', want de
+  // oorzaak én wat je eraan doet zijn anders. Zie LOG_FORMAAT in sync/events.ts.
+  const [verouderd, setVerouderd] = useState(0)
+  // Regels uit een NIEUWERE versie dan deze app: dan draait DIT toestel achter.
+  const [teNieuw, setTeNieuw] = useState(0)
+  // De banner mag weggeklikt worden; anders staat hij de hele sessie op je scherm.
+  const [formaatMeldingWeg, setFormaatMeldingWeg] = useState(false)
+
+  // Onthoudt wat een synchronisatie of herstel niet kon lezen. Bewust op ÉÉN plek:
+  // deze tellers werden op vier plaatsen aangeroepen en op één daarvan gelezen, en
+  // dat was net de plek waar de fout gemeld werd — "opnieuw verbinden met Drive".
+  // Dan zwijgt de app precies wanneer ze zou moeten spreken.
+  function onthoudFormaat(r: { verouderd: number; teNieuw: number }) {
+    if (r.verouderd > 0) {
+      setVerouderd((n) => Math.max(n, r.verouderd))
+      setFormaatMeldingWeg(false)
+    }
+    if (r.teNieuw > 0) {
+      setTeNieuw((n) => Math.max(n, r.teNieuw))
+      setFormaatMeldingWeg(false)
+    }
+  }
   // Ging de database helemaal niet open? Dan is 'Laden…' geen eerlijk antwoord.
   const [startFout, setStartFout] = useState<string | null>(null)
   // Of de statusmelding een fout is. `role="status"` is beleefd — een schermlezer
@@ -436,7 +458,12 @@ export function App() {
       // Eerst de database zelf, mét wachttijd. Zonder deze regel blijft een
       // geblokkeerde opslag eeuwig op "Laden…" staan; zie openDatabase().
       await openDatabase()
-      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd, obd, obt] = await Promise.all([
+      // 'maf' (de maandafsluitingen) ontbrak hier, terwijl `herlaad()` ze wél
+      // laadt. Gevolg: wie de app opende en niets wijzigde, kreeg een lege
+      // maandafsluiting te zien — en een ongeldige maandafsluiting werd nergens
+      // gemeld. Dezelfde soort fout als de vergeten `ordeningen` uit ronde 35;
+      // twee handgeschreven lijsten die uit elkaar lopen.
+      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd, obd, obt, maf] = await Promise.all([
         laadTransacties(),
         laadRekeningen(),
         laadCategorieen(),
@@ -460,8 +487,10 @@ export function App() {
         laadWaarderingen(),
         laadOnderhoudsbijdragen(),
         laadOnderhoudsbetalingen(),
+        laadMaandafsluitingen(),
       ])
       if (!actief) return
+      setMaandafsluitingen(maf.geldig)
       setTransacties(tx.geldig)
       setPagina(rk.geldig.length === 0 ? 'opstelling' : 'overzicht')
       setRekeningen(rk.geldig)
@@ -490,7 +519,7 @@ export function App() {
       // transacties. Deze regel stond alleen in `herlaad`, dus wie de app opende en
       // niets wijzigde, zag nooit dat er records overgeslagen waren.
       setOngeldig(
-        [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd, obd, obt].reduce(
+        [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd, obd, obt, maf].reduce(
           (som, r) => som + r.ongeldig,
           0,
         ),
@@ -529,6 +558,7 @@ export function App() {
         setVerbonden(true)
         const r = await synchroniseer(backendRef.current)
         await herlaad()
+        onthoudFormaat(r)
         if (actief) meld(t('Automatisch gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald.', { gepusht: r.gepusht, opgehaald: r.opgehaald }))
       } catch {
         // Stil laten mislukken: geen storende melding bij het opstarten.
@@ -553,6 +583,7 @@ export function App() {
       bezigMetSync = true
       try {
         const r = await synchroniseer(backend!)
+        onthoudFormaat(r)
         if (r.gepusht > 0 || r.opgehaald > 0) await herlaad()
       } catch {
         // Stil: een mislukte auto-sync mag de gebruiker niet storen.
@@ -600,12 +631,23 @@ export function App() {
       const tekst = await bestand.text()
       const r = await importeerBackup(tekst)
       await herlaad()
+      onthoudFormaat(r)
       setBackupTekst(
-        t('Hersteld: {toegevoegd} toegevoegd, {overgeslagen} al aanwezig, {ongeldig} ongeldig.', {
-          toegevoegd: r.toegevoegd,
-          overgeslagen: r.overgeslagen,
-          ongeldig: r.ongeldig,
-        }),
+        r.verouderd > 0
+          ? t(
+              'Hersteld: {toegevoegd} toegevoegd, {overgeslagen} al aanwezig, {ongeldig} ongeldig, {verouderd} uit een te oude versie (niet ingelezen).',
+              {
+                toegevoegd: r.toegevoegd,
+                overgeslagen: r.overgeslagen,
+                ongeldig: r.ongeldig,
+                verouderd: r.verouderd,
+              },
+            )
+          : t('Hersteld: {toegevoegd} toegevoegd, {overgeslagen} al aanwezig, {ongeldig} ongeldig.', {
+              toegevoegd: r.toegevoegd,
+              overgeslagen: r.overgeslagen,
+              ongeldig: r.ongeldig,
+            }),
       )
     } catch (e) {
       setBackupTekst(t('Herstellen mislukte: {fout}', { fout: e instanceof Error ? e.message : t('onbekende fout') }))
@@ -1316,7 +1358,18 @@ export function App() {
       if (!backendRef.current) backendRef.current = new DriveBackend()
       const r = await synchroniseer(backendRef.current)
       await herlaad()
-      meld(t('Gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald.', { gepusht: r.gepusht, opgehaald: r.opgehaald }))
+      onthoudFormaat(r)
+      // Het aantal geweigerde regels hoort IN de statusregel: "0 opgehaald" terwijl
+      // er honderden regels geweigerd zijn, is misleidend.
+      meld(
+        r.verouderd > 0 || r.teNieuw > 0
+          ? t('Gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald, {geweigerd} niet leesbaar.', {
+              gepusht: r.gepusht,
+              opgehaald: r.opgehaald,
+              geweigerd: r.verouderd + r.teNieuw,
+            })
+          : t('Gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald.', { gepusht: r.gepusht, opgehaald: r.opgehaald }),
+      )
     } catch (e) {
       meld(t('Verbinden mislukte: {fout}', { fout: e instanceof Error ? e.message : t('onbekende fout') }), 'fout')
     } finally {
@@ -1330,7 +1383,18 @@ export function App() {
     try {
       const r = await synchroniseer(backendRef.current)
       await herlaad()
-      meld(t('Gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald.', { gepusht: r.gepusht, opgehaald: r.opgehaald }))
+      onthoudFormaat(r)
+      // Het aantal geweigerde regels hoort IN de statusregel: "0 opgehaald" terwijl
+      // er honderden regels geweigerd zijn, is misleidend.
+      meld(
+        r.verouderd > 0 || r.teNieuw > 0
+          ? t('Gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald, {geweigerd} niet leesbaar.', {
+              gepusht: r.gepusht,
+              opgehaald: r.opgehaald,
+              geweigerd: r.verouderd + r.teNieuw,
+            })
+          : t('Gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald.', { gepusht: r.gepusht, opgehaald: r.opgehaald }),
+      )
     } catch (e) {
       meld(t('Synchroniseren mislukte: {fout}', { fout: e instanceof Error ? e.message : t('onbekende fout') }), 'fout')
     } finally {
@@ -1613,6 +1677,38 @@ export function App() {
 
       {pagina === 'overzicht' && (
         <>
+          {/* Geweigerde regels. Bewust een eigen, uitgeschreven melding: dit gaat
+              over GELD dat anders honderd keer te klein op je scherm zou staan, en
+              de gebruiker moet weten wat hij eraan kan doen.
+
+              De tekst zegt niet dát die regels uit de euro-tijd komen — dat wéét de
+              app niet, ze weet alleen dat het etiket ontbreekt. Ze zegt wat er aan
+              de hand is en wat je eraan kan doen. */}
+          {(verouderd > 0 || teNieuw > 0) && !formaatMeldingWeg && (
+            <p
+              className="kaart kaart-compact"
+              style={{ background: 'var(--negative-soft)', borderColor: 'var(--negative)', color: 'var(--text)' }}
+            >
+              {teNieuw > 0
+                ? t(
+                    'Let op: {n} regel(s) komen van een toestel met een NIEUWERE versie van de app. Deze app kan ze nog niet lezen, dus ze zijn niet ingelezen. Werk deze app bij (sluit hem helemaal af en open hem opnieuw) en probeer het dan nog eens.',
+                    { n: teNieuw },
+                  )
+                : t(
+                    'Let op: van {n} regel(s) kan de app niet zien in welke eenheid de bedragen staan. Ze zijn daarom NIET ingelezen: als eenheid gelezen zou € 2.400 er als € 24 komen te staan. Er is niets van je huidige gegevens veranderd. Komen die regels van een ander toestel, werk de app daar dan ook bij.',
+                    { n: verouderd },
+                  )}
+              <button
+                type="button"
+                className="knop knop-ghost knop-klein"
+                style={{ marginLeft: 8 }}
+                onClick={() => setFormaatMeldingWeg(true)}
+              >
+                {t('Verberg')}
+              </button>
+            </p>
+          )}
+
           {ongeldig > 0 && (
             <p
               className="kaart kaart-compact"

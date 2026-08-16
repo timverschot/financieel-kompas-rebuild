@@ -161,7 +161,9 @@ export function UitwisselingKaart({
       setFout(
         uit.fout === 'nieuwere-versie'
           ? t('Dit bestand komt van een nieuwere versie van de app. Werk eerst bij.')
-          : uit.fout === 'te-groot'
+          : uit.fout === 'oudere-versie'
+            ? t('Dit bestand komt van een oudere versie van de app. De bedragen erin zijn niet betrouwbaar te lezen; vraag de andere ouder om een nieuw bestand.')
+            : uit.fout === 'te-groot'
             ? t('Dit bestand is te groot om in te lezen.')
             : t('Dit is geen uitwisselbestand van Financieel Kompas.'),
       )

@@ -14,6 +14,7 @@ import {
   rondPercentage,
   uitwisselBestandsnaam,
   MAX_BON,
+  UITWISSEL_VERSIE,
   type UitwisselBestand,
 } from './uitwisseling'
 import type { Dossier, GedeeldeKost, Kind } from '../data/schema'
@@ -339,7 +340,7 @@ describe('reacties', () => {
     const terug: UitwisselBestand = {
       app: 'financieel-kompas',
       soort: 'uitwisseling',
-      versie: 1,
+      versie: UITWISSEL_VERSIE,
       gemaaktOp: NU,
       dossierNaam: 'Kinderen',
       kosten: [],
@@ -470,6 +471,15 @@ describe('leesUitwisselBestand', () => {
     expect(leesUitwisselBestand(nieuwer)).toEqual({ ok: false, fout: 'nieuwere-versie' })
   })
 
+
+  it('weigert een bestand van een OUDERE versie', () => {
+    // Zo'n bestand kan bedragen in euro's dragen, en dat is van buiten niet te
+    // zien: € 2.400 zou er dan als € 24 in komen. Weigeren is de enige veilige
+    // keuze (ronde 46).
+    const ouder = JSON.stringify({ ...geldig(), versie: 1 })
+    expect(leesUitwisselBestand(ouder)).toEqual({ ok: false, fout: 'oudere-versie' })
+  })
+
   it('slaat een rotte regel over en telt hem, in plaats van het hele bestand te weigeren', () => {
     const met = { ...geldig(), kosten: [...geldig().kosten, { id: 'stuk', bedrag: -5 }] }
     const uit = leesUitwisselBestand(JSON.stringify(met))
@@ -580,7 +590,7 @@ describe('wat de review na het bouwen ving', () => {
     const bestand = heenEnWeer({
       app: 'financieel-kompas' as const,
       soort: 'uitwisseling' as const,
-      versie: 1,
+      versie: UITWISSEL_VERSIE,
       gemaaktOp: NU,
       dossierNaam: 'Kinderen',
       kosten: [],
@@ -600,7 +610,7 @@ describe('wat de review na het bouwen ving', () => {
     const bestand = heenEnWeer({
       app: 'financieel-kompas' as const,
       soort: 'uitwisseling' as const,
-      versie: 1,
+      versie: UITWISSEL_VERSIE,
       gemaaktOp: NU,
       dossierNaam: 'Kinderen',
       kosten: [],

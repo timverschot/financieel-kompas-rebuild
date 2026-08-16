@@ -1,6 +1,6 @@
 import { db } from '../db'
 import { pasToe, type Staat } from './replay'
-import { GebeurtenisSchema, type Gebeurtenis, type Logregel } from './events'
+import { GebeurtenisSchema, LOG_FORMAAT, type Gebeurtenis, type Logregel } from './events'
 import { nieuwId } from './id'
 import { lokaleStap, ontvangstStap, type Stempel } from './hlc'
 
@@ -280,6 +280,10 @@ export async function pasGebeurtenissenToe(gebeurtenissen: Gebeurtenis[]): Promi
         tijdstip: nu,
         hlcL: stempel.l,
         hlcC: stempel.c,
+        // De eenheid van de bedragen, in de regel zelf. Zie LOG_FORMAAT in
+        // events.ts: zonder dit veld kan niemand die deze regel later inleest nog
+        // zien of een bedrag in euro's of in centen staat.
+        formaat: LOG_FORMAAT,
         gebeurtenis: geldig,
       }
       await db.events.put(regel)

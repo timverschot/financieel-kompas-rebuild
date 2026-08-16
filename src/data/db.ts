@@ -28,6 +28,7 @@ import type {
 import type { Logregel, MetaRegel } from './sync/events'
 import { nieuwId } from './sync/id'
 import { euroNaarCenten, gebeurtenisNaarCenten, transactieNaarCenten } from './migraties'
+import { LOG_FORMAAT } from './sync/events'
 
 // De echte database in de browser (IndexedDB), via Dexie. Dit is de bron van
 // waarheid op je toestel: snel, offline, en met echte garanties.
@@ -529,6 +530,39 @@ export class FinancieelKompasDB extends Dexie {
       onderhoudsbetalingen: 'id, bijdrageId',
       maandafsluitingen: 'id',
     })
+
+    // v22: elke bestaande logregel krijgt de eenheid van haar bedragen mee.
+    //
+    // Waarom dit moet (ronde 46). Sinds deze versie draagt elke NIEUWE logregel een
+    // veld `formaat`, en wordt een regel zonder dat veld niet meer toegepast — want
+    // dan kan niemand nog zien of `2400` € 24,00 of € 2.400,00 betekent. Zonder deze
+    // migratie zou die weigering ook je EIGEN, correcte geschiedenis treffen: die
+    // regels staan al in centen, ze missen alleen het etiket. Je back-up van vorige
+    // week zou onleesbaar worden en een tweede toestel zou niets meer binnenhalen.
+    //
+    // Waarom stempelen hier veilig is: dit toestel heeft de v8-migratie gedraaid
+    // (anders zou het deze versie niet halen), en die heeft het lokale logboek naar
+    // centen omgezet. Wat hier staat, ís dus centen.
+    //
+    // De grens van deze migratie, eerlijk gezegd: een regel die NA v8 van Drive
+    // binnenkwam en toen nog in euro's stond, is hier al besmet. Die kunnen we niet
+    // meer van een correcte regel onderscheiden, en ze wordt dus als centen
+    // gestempeld. Dat is geen verlies — ze stond al fout — maar het is ook geen
+    // herstel. Wie dat vermoedt, begint met een schone lei ("Begin opnieuw").
+    this.version(22)
+      .stores({})
+      .upgrade(async (trans) => {
+        await trans
+          .table('events')
+          .toCollection()
+          .modify((r: { formaat?: number }) => {
+            if (r.formaat === undefined) r.formaat = LOG_FORMAAT
+          })
+        // Het eigen logboek opnieuw naar Drive laten sturen, zodat de gestempelde
+        // versie daar de ongestempelde vervangt. Anders staat er in de back-up nog
+        // altijd een logboek dat een vers toestel zou weigeren.
+        await trans.table('meta').put({ sleutel: 'laatstGepushtVolgnummer', waarde: 0 })
+      })
   }
 }
 
