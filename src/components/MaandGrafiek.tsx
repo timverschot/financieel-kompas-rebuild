@@ -24,7 +24,29 @@ import { useT } from '../i18n'
 
 const HOOGTE = 132
 
-export function MaandGrafiek({ data, lopendeMaand }: { data: MaandPaar[]; lopendeMaand: string }) {
+export function MaandGrafiek({
+  data,
+  lopendeMaand,
+  onKiesMaand,
+}: {
+  data: MaandPaar[]
+  lopendeMaand: string
+  /**
+   * Naar de boekingen van één maand (ronde 48).
+   *
+   * BEWUST één knop per maand en niet één per staaf. Nagerekend op een scherm van
+   * 390 px: 390 min 32 (rand van de pagina) min 40 (rand van de kaart) min 40 (vijf
+   * tussenruimtes) = 278 px over zes maanden, dus ongeveer 46 px per maand. Een
+   * losse staaf komt daarmee op zo'n 21 px — minder dan de helft van de 44 px die
+   * deze app zichzelf oplegt. De maandkolom haalt die maat wel, tot ongeveer 384 px
+   * schermbreedte; daaronder wordt ze krapper en is er met zes maanden naast elkaar
+   * niets meer aan te doen.
+   *
+   * Het filter blijft exact: `{maand}` telt precies op wat de twee staven samen
+   * tonen. Wie daarna in of uit wil, heeft de richtingknop bovenaan de lijst.
+   */
+  onKiesMaand?: (maand: string) => void
+}) {
   const { t } = useT()
   if (data.length === 0) return null
 
@@ -64,15 +86,11 @@ export function MaandGrafiek({ data, lopendeMaand }: { data: MaandPaar[]; lopend
           // vertraging hoort hier en niet in de CSS: alleen deze component weet
           // hoeveel maanden er zijn.
           const vertraging = `${i * 60}ms`
-          const label = `${maandKort(d.maand)}: ${t('in')} ${formatEuro(d.inkomsten)}, ${t('uit')} ${formatEuro(d.uitgaven)}${loopt ? ` (${t('loopt nog')})` : ''}`
-          return (
-            <div
-              key={d.maand}
-              style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 3, height: '100%' }}
-              title={label}
-              role="img"
-              aria-label={label}
-            >
+          // De maand voluit, want dit is de toegankelijke naam van de knop en
+          // "jul" laat een schermlezer "juul" zeggen.
+          const label = `${maandVoluit(d.maand)}: ${t('in')} ${formatEuro(d.inkomsten)}, ${t('uit')} ${formatEuro(d.uitgaven)}${loopt ? ` (${t('loopt nog')})` : ''}`
+          const staven = (
+            <>
               <span
                 className="staaf-in print-kleur"
                 style={{
@@ -99,6 +117,35 @@ export function MaandGrafiek({ data, lopendeMaand }: { data: MaandPaar[]; lopend
                   animationDelay: vertraging,
                 }}
               />
+            </>
+          )
+          const vorm = {
+            flex: 1,
+            minWidth: 0,
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            gap: 3,
+            height: '100%',
+          } as const
+          // Zonder doorklik blijft de kolom een plaatje met een naam. Met doorklik
+          // MOET `role="img"` weg: een knop binnen een `role="img"` wordt door
+          // voorleessoftware niet meer aangeboden.
+          return onKiesMaand ? (
+            <button
+              key={d.maand}
+              type="button"
+              className="maandstaaf-knop"
+              style={vorm}
+              title={label}
+              aria-label={t('{maand} — bekijk de boekingen', { maand: label })}
+              onClick={() => onKiesMaand(d.maand)}
+            >
+              {staven}
+            </button>
+          ) : (
+            <div key={d.maand} style={vorm} title={label} role="img" aria-label={label}>
+              {staven}
             </div>
           )
         })}

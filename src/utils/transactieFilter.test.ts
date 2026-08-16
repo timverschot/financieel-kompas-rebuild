@@ -285,3 +285,39 @@ describe('filter op handelaar (ronde 43)', () => {
     expect(heeftActiefFilter({ handelaar: 'Netflix' })).toBe(true)
   })
 })
+
+// --- Ronde 48: exact op de omschrijving ----------------------------------------
+//
+// De kaart "Uitgaven per winkel" op Analyse groepeert op de LETTERLIJKE
+// omschrijving. Wie daar doorklikt, hoort exact die boekingen terug te zien —
+// niet meer, want dan klopt het bedrag boven de lijst niet meer met de rij waarop
+// hij klikte.
+describe('filterTransacties — omschrijving', () => {
+  const tx = (id: string, omschrijving: string): Transactie => ({
+    id,
+    datum: '2026-08-10',
+    omschrijving,
+    bedrag: -1000,
+    rekeningId: 'r1',
+  })
+  const alle = [tx('a', 'Colruyt'), tx('b', 'Colruyt Collect'), tx('c', 'colruyt'), tx('d', '  Colruyt  ')]
+
+  it('neemt alleen de exact gelijke omschrijving', () => {
+    const uit = filterTransacties(alle, { omschrijving: 'Colruyt' })
+    // 'Colruyt Collect' valt af: een substring-vergelijking zou hem meenemen en
+    // dan stond er een hoger bedrag boven de lijst dan op de rij.
+    expect(uit.map((t) => t.id)).toEqual(['a', 'd'])
+  })
+
+  it('is hoofdlettergevoelig, net als de rekenkern van de analyse', () => {
+    // 'colruyt' is daar een eigen rij met een eigen bedrag. Zou dit filter de twee
+    // samennemen, dan toonde elk van die rijen de som van allebei.
+    expect(filterTransacties(alle, { omschrijving: 'colruyt' }).map((t) => t.id)).toEqual(['c'])
+  })
+
+  it('telt mee als actief filter', () => {
+    // Zonder dit blijft het zesmaandsvenster van de lijst aanstaan, en zie je maar
+    // een deel van de boekingen achter het bedrag.
+    expect(heeftActiefFilter({ omschrijving: 'Colruyt' })).toBe(true)
+  })
+})

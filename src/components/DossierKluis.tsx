@@ -301,7 +301,11 @@ export function Documentkluis({
         )}
 
         <div className="knoprij">
-          <button type="submit" disabled={!geldig} className="knop knop-primair">
+          {/* Secundair sinds ronde 47: DESIGN.md staat hoogstens één gevulde knop
+              per scherm toe, en op Dossiers is "Kost toevoegen" de handeling waar
+              je voor komt. Twee gevulde knoppen naast elkaar zeggen allebei "begin
+              hier" en dan zegt geen van beide nog iets. */}
+          <button type="submit" disabled={!geldig} className="knop knop-secundair">
             {t('Document toevoegen')}
           </button>
         </div>

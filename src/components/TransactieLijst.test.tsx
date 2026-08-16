@@ -919,3 +919,17 @@ describe('TransactieLijst — de rij zelf opent de boeking', () => {
   })
 })
 
+
+// --- Ronde 48 -----------------------------------------------------------------
+
+describe('aantalActieveFilters — de drie die niet meetelden', () => {
+  it('telt zonderCategorie, handelaar en omschrijving mee', () => {
+    // Ze zetten wél een chip en filteren wél de lijst, maar telden niet mee. Gevolg:
+    // "1 filter" boven een lijst met er twee, en de filterlade klapte niet open
+    // wanneer je via een doorklik binnenkwam met alleen zo'n filter.
+    expect(aantalActieveFilters({ zonderCategorie: true })).toBe(1)
+    expect(aantalActieveFilters({ handelaar: 'Colruyt' })).toBe(1)
+    expect(aantalActieveFilters({ omschrijving: 'Colruyt' })).toBe(1)
+    expect(aantalActieveFilters({ omschrijving: 'Colruyt', richting: 'uit' })).toBe(2)
+  })
+})

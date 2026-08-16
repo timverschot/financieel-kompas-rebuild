@@ -1057,6 +1057,29 @@ describe('App — doorklikken van een cijfer naar zijn boekingen', () => {
     expect(screen.getByRole('button', { name: 'Wis filter Voeding' })).toBeInTheDocument()
   })
 
+  // Ronde 48
+  it('brengt je van het kengetal Uitgaven naar de uitgaven van die maand', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.click(screen.getByRole('button', { name: /^Uitgaven / }))
+
+    // De lijst staat op uitgaven van deze maand: 'Boodschappen' hoort erbij, en het
+    // filter is zichtbaar zodat je het weer kan wegklikken.
+    expect(await screen.findByText('Boodschappen')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Wis filter Uitgaven' })).toBeInTheDocument()
+  })
+
+  it('maakt van het totale saldo GEEN knop', async () => {
+    // Bewust: dat is de som over álle rekeningen, en die som staat nergens op de
+    // Rekeningen-pagina. Dan klik je op een cijfer en kom je op een scherm waar het
+    // niet voorkomt.
+    render(<App />)
+    await screen.findByText('Saldo')
+    expect(screen.queryByRole('button', { name: /^Saldo/ })).toBeNull()
+  })
+
   it('wist het doorklik-filter zodra je gewoon naar Transacties navigeert', async () => {
     // Anders opent Transacties de volgende keer opnieuw met een filter van een klik
     // die je een half uur geleden deed, zonder dat je weet waar het vandaan komt.

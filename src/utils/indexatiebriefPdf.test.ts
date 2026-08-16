@@ -197,9 +197,24 @@ describe('exporteerIndexatiebriefPDF — grensgevallen', () => {
   })
 
   it('meldt een aanvangsindex die uit de akte komt als zodanig', async () => {
-    const uitAkte = { ...bijdrage, aanvangsindexHandmatig: 100 }
+    // Het cijfer moet overeenkomen met wat de app voor augustus 2021 kent, anders
+    // weigert de rekenkern sinds ronde 47 te rekenen: een akte-cijfer uit een
+    // andere reeks mag niet met de tabel gecombineerd worden.
+    const uitAkte = { ...bijdrage, aanvangsindexHandmatig: 112.74 }
     await exporteerIndexatiebriefPDF(t, dossier, uitAkte, opbouwVan(uitAkte), kinderen, VANDAAG)
     expect(alleTekst(nep).replace(/\n/g, ' ')).toContain('zoals ze in de akte staat')
+  })
+
+  it('beweert niets over verjaardagen wanneer de indexreeksen botsen', async () => {
+    // Dit blad kan bij een advocaat belanden. Het mag dan niet zeggen dat de app de
+    // maand niet kent (dat doet ze wel) of dat er nog geen verjaardag geweest is
+    // (dat waren er vijf) — het moet de echte reden noemen.
+    const gemengd = { ...bijdrage, aanvangsindexHandmatig: 88.5 }
+    await exporteerIndexatiebriefPDF(t, dossier, gemengd, opbouwVan(gemengd), kinderen, VANDAAG)
+    const doorlopend = alleTekst(nep).replace(/\n/g, ' ')
+    expect(doorlopend).toContain('niet uit dezelfde reeks')
+    expect(doorlopend).not.toContain('Er is nog geen verjaardag van de regeling geweest')
+    expect(doorlopend).not.toContain('is in deze app niet bekend')
   })
 
   it('werkt zonder kinderen', async () => {

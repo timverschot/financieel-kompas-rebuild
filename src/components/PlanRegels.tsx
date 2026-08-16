@@ -33,6 +33,7 @@ export function PlanRegels({
   maand,
   verwachteInkomsten,
   geboekteInkomsten,
+  onGaNaarTransacties,
 }: {
   posten: TerugkerendePost[]
   budgetten: Budget[]
@@ -42,6 +43,16 @@ export function PlanRegels({
   verwachteInkomsten: number
   /** Uit `maandVooruitblik`: wat er deze maand effectief al binnengekomen is. */
   geboekteInkomsten: number
+  /**
+   * Naar de boekingen achter een cijfer (ronde 48).
+   *
+   * Alleen de regel "er kwam deze maand X binnen" krijgt een doorklik, en dat is
+   * geen willekeurige keuze. `verwachteInkomsten` bovenaan telt óók vaste posten
+   * mee die nog NIET geboekt zijn — daar bestaat geen transactie voor. Wie op 3
+   * augustus op € 3.200 klikt, zou dus een lege lijst krijgen. `geboekteInkomsten`
+   * telt regel voor regel exact hetzelfde op als de lijst zelf.
+   */
+  onGaNaarTransacties?: (filter: { maand: string; richting: 'in' }) => void
 }) {
   const { t } = useT()
   const cijfers = plancijfers(posten, maand)
@@ -106,6 +117,25 @@ export function PlanRegels({
                   verschil: formatEuro(cijfers.vasteInkomsten - geboekteInkomsten),
                 })}
         </p>
+      )}
+
+      {/* De knop staat ONDER de zin en is een gewone knop, geen tekstknop middenin
+          de regel: een raakvlak van 44 px in een lopende tekstregel duwt die regel
+          uit elkaar (zie `.badge-knop` in index.css voor hetzelfde probleem). En je
+          leest eerst waar het over gaat, dan pas wat je ermee kan. */}
+      {cijfers.vasteInkomsten > 0 && geboekteInkomsten > 0 && onGaNaarTransacties && (
+        <div className="knoprij">
+          <button
+            type="button"
+            className="knop knop-ghost knop-klein"
+            aria-label={t('Bekijk die boekingen — er kwam deze maand {gekregen} binnen', {
+              gekregen: formatEuro(geboekteInkomsten),
+            })}
+            onClick={() => onGaNaarTransacties({ maand, richting: 'in' })}
+          >
+            {t('Bekijk die boekingen')}
+          </button>
+        </div>
       )}
 
       {/* De brug naar de budgetten eronder: eisen ze samen meer op dan er is? */}

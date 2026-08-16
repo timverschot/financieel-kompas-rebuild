@@ -270,6 +270,20 @@ describe('bouwMeldingen — de onderhoudsbijdrage', () => {
     expect(m[0].dringend).toBe(false)
   })
 
+  it('meldt GEEN geïndexeerd bedrag wanneer de indexcijfers uit twee reeksen komen', () => {
+    // Ronde 47. De meldingen bouwden hun eigen invoer op en vergaten daarbij het
+    // veld dat het conflict bepaalt. Gevolg: het dossierscherm weigerde een bedrag
+    // te tonen terwijl de startpagina er wél eentje meldde — twee verschillende
+    // cijfers uit één app, en het foute stond vooraan.
+    const gemengd = { ...bijdrage, aanvangsindexHandmatig: 88.5 }
+    const m = bel({ onderhoudsbijdragen: [gemengd] }).filter((x) => x.soort === 'bijdrage')
+    expect(m).toHaveLength(1)
+    expect(m[0].id).toContain('bijdrage-reeks')
+    // Geen enkel bedrag in de melding: dat is het hele punt.
+    expect(m[0].params?.oud).toBeUndefined()
+    expect(m[0].params?.nieuw).toBeUndefined()
+  })
+
   it('brengt je naar het juiste dossier, niet enkel naar de pagina', () => {
     const m = bel().find((x) => x.soort === 'bijdrage')
     expect(m?.pagina).toBe('dossiers')

@@ -14,6 +14,7 @@ import {
   type BijdrageInvoer,
 } from './onderhoudsbijdrage'
 import { gezondheidsindex, laatsteIndexmaand } from '../data/gezondheidsindex'
+import { INDEX_BASISJAAR } from '../data/gezondheidsindex'
 
 // Ronde 42. Dit zijn bedragen waarover twee ouders het oneens kunnen worden, dus
 // elke regel hieronder is met de hand na te rekenen met de cijfers uit
@@ -145,8 +146,17 @@ describe('bouwOpbouw — grensgevallen', () => {
     expect(o.huidigBedrag).toBe(25000)
   })
 
-  it('gebruikt de aanvangsindex uit de akte wanneer die ingevuld is', () => {
-    const o = bouwOpbouw(bijdrage({ aanvangsindexHandmatig: 100 }), VANDAAG)
+  it('gebruikt de aanvangsindex uit de akte wanneer de gebruiker ook de rest invult', () => {
+    // Vanaf ronde 47 mag een zelf ingetikte aanvangsindex niet meer gecombineerd
+    // worden met cijfers uit de tabel van de app: die kunnen uit een andere reeks
+    // komen. Vult de gebruiker élke verjaardagsmaand zelf in, dan komt de tabel er
+    // niet aan te pas en klopt de verhouding weer. Dit is dus de akte-index in
+    // gebruik, langs de weg die overblijft.
+    const o = bouwOpbouw(
+      bijdrage({ aanvangsindexHandmatig: 100, eigenIndexcijfers: { '2022-08': 123.68 } }),
+      '2023-01-15',
+    )
+    expect(o.indexConflict).toBeNull()
     expect(o.aanvangsindex).toBe(100)
     expect(o.aanvangsindexUitAkte).toBe(true)
     // € 250,00 x 123,68 / 100 = € 309,20
@@ -412,3 +422,162 @@ describe('de achterstand in cijfers', () => {
     expect(berekenAchterstand(regels, []).verschuldigd).toBe(13 * 25000 + 3 * nieuw)
   })
 })
+
+// Twee indexreeksen door elkaar (ronde 47).
+//
+// Een indexcijfer is een kaal getal; wat het betekent hangt volledig af van de
+// basis waarin het staat. Statbel herbaseert om de zoveel jaar. Zolang beide
+// cijfers uit dezelfde reeks komen klopt de verhouding — maar één van elk geeft
+// een bedrag dat er tientallen procenten naast zit, zonder foutmelding. Dezelfde
+// ziekte als de euro's die als centen gelezen werden (ronde 46).
+//
+// De regel die de app bewaakt staat in `data/gezondheidsindex.ts`: ofwel komen
+// beide cijfers uit de tabel, ofwel tikt de gebruiker ze allebei zelf in.
+describe('bouwOpbouw — cijfers uit twee verschillende indexreeksen', () => {
+  const basis = {
+    basisbedrag: 30000,
+    datumRegeling: '2020-06-15',
+  }
+  // De aanvangsmaand van deze regeling is mei 2020; de tabel kent die.
+  const TABEL_MEI_2020 = gezondheidsindex('2020-05') as number
+
+  it('rekent gewoon wanneer alles uit de tabel van de app komt', () => {
+    const o = bouwOpbouw({ ...basis }, '2026-08-16')
+    expect(o.indexConflict).toBeNull()
+    expect(o.stappen.length).toBeGreaterThan(0)
+    expect(o.huidigBedrag).toBeGreaterThan(30000)
+  })
+
+  it('rekent gewoon wanneer de ingetikte aanvangsindex gelijk is aan de tabel', () => {
+    // Het gewone geval: een recente regeling waarvan de gebruiker het cijfer
+    // letterlijk overtikt. Dat mag hem niet blokkeren.
+    const o = bouwOpbouw({ ...basis, aanvangsindexHandmatig: TABEL_MEI_2020 }, '2026-08-16')
+    expect(o.indexConflict).toBeNull()
+    expect(o.aanvangsindex).toBe(TABEL_MEI_2020)
+    expect(o.stappen.length).toBeGreaterThan(0)
+  })
+
+  it('laat afronden toe: een half procent verschil is nog hetzelfde cijfer', () => {
+    const o = bouwOpbouw(
+      { ...basis, aanvangsindexHandmatig: Math.round(TABEL_MEI_2020 * 10) / 10 },
+      '2026-08-16',
+    )
+    expect(o.indexConflict).toBeNull()
+  })
+
+  it('weigert te rekenen wanneer het ingetikte cijfer uit een andere reeks komt', () => {
+    // Basis 2004 = 100 ligt zo'n kwart hoger dan basis 2013 = 100. Dit is het
+    // geval van een vonnis van vóór de laatste herbasering.
+    const o = bouwOpbouw({ ...basis, aanvangsindexHandmatig: TABEL_MEI_2020 * 1.24 }, '2026-08-16')
+    expect(o.indexConflict).toBe('akte-met-tabel')
+    expect(o.aanvangsindex).toBeNull()
+    expect(o.stappen).toEqual([])
+    expect(o.huidigBedrag).toBe(30000)
+  })
+
+  it('BEDRAG: zonder de blokkade zou hier een fors te hoog bedrag staan', () => {
+    // De eigenlijke belofte van deze ronde, in centen. Rekent de app door met een
+    // aanvangsindex uit een oudere reeks, dan valt het bedrag ver naast de
+    // werkelijkheid — hier ruim een vijfde te laag, omdat er door een te groot
+    // getal gedeeld wordt. Dat bedrag ziet er geloofwaardig uit.
+    const zonderBlokkade = bouwOpbouw(
+      { ...basis, aanvangsindexHandmatig: TABEL_MEI_2020 * 1.24, eigenIndexcijfers: eigenVoorAlleVerjaardagen() },
+      '2026-08-16',
+    )
+    const metBlokkade = bouwOpbouw(
+      { ...basis, aanvangsindexHandmatig: TABEL_MEI_2020 * 1.24 },
+      '2026-08-16',
+    )
+    // Links: de gebruiker vulde alles zelf in, dus de app rekent — en komt op een
+    // ander bedrag uit dan het basisbedrag.
+    expect(zonderBlokkade.indexConflict).toBeNull()
+    expect(zonderBlokkade.huidigBedrag).not.toBe(30000)
+    // Rechts: gemengd, dus geen bedrag. Het verschil tussen die twee is precies
+    // wat een gebruiker anders zonder waarschuwing te zien kreeg.
+    expect(metBlokkade.huidigBedrag).toBe(30000)
+    expect(Math.abs(zonderBlokkade.huidigBedrag - metBlokkade.huidigBedrag)).toBeGreaterThan(1000)
+  })
+
+  it('rekent wél wanneer de gebruiker ELKE verjaardagsmaand zelf invult', () => {
+    // De uitweg voor een oud vonnis: alle cijfers uit dezelfde oude reeks, dus de
+    // tabel komt er niet aan te pas en de verhouding klopt weer.
+    const o = bouwOpbouw(
+      { ...basis, aanvangsindexHandmatig: 139.0, eigenIndexcijfers: eigenVoorAlleVerjaardagen() },
+      '2026-08-16',
+    )
+    expect(o.indexConflict).toBeNull()
+    expect(o.tabelMaanden).toEqual([])
+    expect(o.stappen.length).toBeGreaterThan(0)
+  })
+
+  it('noemt precies de maanden die de gebruiker nog zelf moet invullen', () => {
+    const o = bouwOpbouw({ ...basis, aanvangsindexHandmatig: 999 }, '2026-08-16')
+    // De verjaardagen vallen op 15 juni; de index komt telkens uit mei ervoor.
+    expect(o.tabelMaanden).toEqual(['2021-05', '2022-05', '2023-05', '2024-05', '2025-05', '2026-05'])
+  })
+
+  it('geeft het cijfer dat de app zelf kent, zodat het scherm kan zeggen "laat leeg"', () => {
+    const o = bouwOpbouw({ ...basis, aanvangsindexHandmatig: 999 }, '2026-08-16')
+    expect(o.aanvangsindexTabel).toBe(TABEL_MEI_2020)
+  })
+
+  it('meldt geen ontbrekende maand wanneer de reeksen het probleem zijn', () => {
+    // Anders zegt het scherm "de app kent die maand niet", en dan gaat iemand een
+    // cijfer bijtikken dat het probleem juist verergert.
+    const o = bouwOpbouw({ ...basis, aanvangsindexHandmatig: 999 }, '2026-08-16')
+    expect(o.ontbrekendeMaanden).toEqual([])
+  })
+
+  it('slaat geen alarm wanneer de akte indexatie uitsluit', () => {
+    // Wordt er niet geïndexeerd, dan komt er geen breuk aan te pas en kan er niets
+    // fout gaan. Een rode waarschuwing zou hier vals alarm zijn.
+    const o = bouwOpbouw(
+      { ...basis, geindexeerd: false, aanvangsindexHandmatig: 999 },
+      '2026-08-16',
+    )
+    expect(o.indexConflict).toBeNull()
+    expect(o.huidigBedrag).toBe(30000)
+  })
+
+  it('weigert wanneer de eigen maandcijfers uit een oudere basis komen', () => {
+    // Kan pas gebeuren nadat deze app ooit een nieuwe basis meelevert; het veld
+    // legt vast in welke maatstaf de gebruiker zijn cijfers intikte.
+    const o = bouwOpbouw(
+      { ...basis, eigenIndexcijfers: { '2026-05': 141.2 }, indexBasisjaar: 2004 },
+      '2026-08-16',
+    )
+    expect(o.indexConflict).toBe('ander-basisjaar')
+    expect(o.basisjaarEigen).toBe(2004)
+    expect(o.basisjaarTabel).toBe(INDEX_BASISJAAR)
+    expect(o.huidigBedrag).toBe(30000)
+  })
+
+  it('behandelt een record zonder basisjaar als de basis die de app altijd had', () => {
+    // Elk bestaand record mist dit veld, en die maandcijfers zijn in basis 2013
+    // ingetikt — de enige basis die deze app ooit gehad heeft. Zonder deze regel
+    // zou de reparatie elke bestaande regeling stilleggen.
+    const o = bouwOpbouw({ ...basis, eigenIndexcijfers: { '2026-05': 139.22 } }, '2026-08-16')
+    expect(o.indexConflict).toBeNull()
+  })
+
+  it('telt de achterstand niet door alsof er niets aan de hand is', () => {
+    // Bij een conflict staat elke maand aan het basisbedrag. Het cijfer is dan
+    // structureel te laag; het scherm hoort dat te zeggen in plaats van het te
+    // tonen. Deze test legt vast dát het te laag is, zodat het scherm zich niet
+    // ongemerkt kan bedenken.
+    const invoer = { ...basis, aanvangsindexHandmatig: 999 }
+    const o = bouwOpbouw(invoer, '2026-08-16')
+    const regels = verschuldigdPerMaand(invoer, o, '2026-08-16')
+    expect(regels.every((r) => r.verschuldigd === 30000)).toBe(true)
+  })
+})
+
+/** Een eigen cijfer voor elke verjaardagsmaand van de regeling van juni 2020. */
+function eigenVoorAlleVerjaardagen(): Record<string, number> {
+  const uit: Record<string, number> = {}
+  for (const jaar of [2021, 2022, 2023, 2024, 2025, 2026]) {
+    // Willekeurige, maar onderling consistente cijfers uit "een andere reeks".
+    uit[`${jaar}-05`] = 140 + (jaar - 2021) * 4
+  }
+  return uit
+}

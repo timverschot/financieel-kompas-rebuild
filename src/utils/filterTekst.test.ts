@@ -90,3 +90,14 @@ describe('filterBeschrijving', () => {
     expect(beschrijving).toBe('Voeding · maart 2026')
   })
 })
+
+// --- Ronde 48 -----------------------------------------------------------------
+
+describe('filterDelen — de exacte omschrijving', () => {
+  it('zet er een chip voor, met de omschrijving zelf als etiket', () => {
+    // Zonder chip filtert de lijst iets weg zonder te zeggen wát, en kan je het
+    // niet meer wegklikken.
+    const delen = filterDelen(t, { omschrijving: 'Colruyt 1234' })
+    expect(delen).toContainEqual({ sleutel: 'omschrijving', label: 'Colruyt 1234' })
+  })
+})

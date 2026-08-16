@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, it, expect, vi } from 'vitest'
 import { PlanRegels } from './PlanRegels'
 import type { Budget, TerugkerendePost } from '../data/schema'
 
@@ -21,6 +22,7 @@ function toon(
   maand = '2026-07',
   inkomsten = 240000,
   geboekt = 0,
+  onGaNaarTransacties?: (filter: { maand: string; richting: 'in' }) => void,
 ) {
   render(
     <PlanRegels
@@ -29,6 +31,7 @@ function toon(
       maand={maand}
       verwachteInkomsten={inkomsten}
       geboekteInkomsten={geboekt}
+      onGaNaarTransacties={onGaNaarTransacties}
     />,
   )
 }
@@ -131,5 +134,32 @@ describe('PlanRegels — verwacht tegenover werkelijk binnengekomen', () => {
   it('zegt het ook wanneer het precies klopt', () => {
     toon([huur, loon], [], '2026-07', 240000, 240000)
     expect(vergelijking()).toMatch(/precies je vaste inkomsten/)
+  })
+})
+
+// --- Ronde 48: van een cijfer naar de boekingen --------------------------------
+
+describe('PlanRegels — doorklikken', () => {
+  const MAAND = '2026-07'
+  // De vergelijkingsregel verschijnt pas met een vaste INKOMST én iets geboekt.
+  const loon: TerugkerendePost = { id: 'loon', omschrijving: 'Loon', bedrag: 200000, rekeningId: 'r1', dag: 25 }
+
+  it('laat alleen het GEBOEKTE bedrag doorklikken, niet het verwachte', async () => {
+    // "Verwachte inkomsten" telt ook vaste posten mee die nog niet geboekt zijn —
+    // daar bestaat geen transactie voor. Wie daarop klikt, zou een lege lijst
+    // krijgen. Het geboekte bedrag telt regel voor regel exact hetzelfde op als de
+    // lijst zelf.
+    const gebruiker = userEvent.setup()
+    const onGaNaarTransacties = vi.fn()
+    toon([huur, loon], [], MAAND, 240000, 200000, onGaNaarTransacties)
+    expect(screen.queryByRole('button', { name: /Verwachte inkomsten/ })).toBeNull()
+    const knop = screen.getByRole('button', { name: /^Bekijk die boekingen/ })
+    await gebruiker.click(knop)
+    expect(onGaNaarTransacties).toHaveBeenCalledWith({ maand: MAAND, richting: 'in' })
+  })
+
+  it('maakt geen knop wanneer de app er niets mee kan', () => {
+    toon([huur, loon], [], MAAND, 240000, 200000)
+    expect(screen.queryByRole('button', { name: /^Bekijk die boekingen/ })).toBeNull()
   })
 })

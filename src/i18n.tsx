@@ -210,6 +210,46 @@ const en: Record<string, string> = {
   'Luisterboeken': 'Audiobooks',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Note: the transactions up to and including {datum} are already part of the value you recorded then. They still count below, but no longer in the balance at the top.',
   'geldt nu': 'in effect',
+  // Doorklikken van een cijfer naar zijn boekingen (ronde 48)
+  'Inkomsten {bedrag} — bekijk de boekingen': 'Income {bedrag} — view the transactions',
+  'Uitgaven {bedrag} — bekijk de boekingen': 'Spending {bedrag} — view the transactions',
+  'Netto {bedrag} — bekijk alle boekingen van deze maand': 'Net {bedrag} — view all transactions for this month',
+  '{maand} — bekijk de boekingen': '{maand} — view the transactions',
+  'Verschil {bedrag} — bekijk de boekingen van deze maand': 'Difference {bedrag} — view this month’s transactions',
+  '{oms} {bedrag} op {datum} — open deze boeking': '{oms} {bedrag} on {datum} — open this transaction',
+  'Bekijk ze allemaal': 'View them all',
+  '{naam} {pct}% {bedrag} — bekijk de boekingen': '{naam} {pct}% {bedrag} — view the transactions',
+  'Uit je boeking van {datum}: {oms} — {bedrag}. Open die boeking.':
+    'From your transaction of {datum}: {oms} — {bedrag}. Open that transaction.',
+  'Bekijk die boekingen': 'View those transactions',
+  'Bekijk die boekingen — er kwam deze maand {gekregen} binnen':
+    'View those transactions — {gekregen} came in this month',
+  'Netto vermogen {bedrag} — bekijk het op je overzicht': 'Net worth {bedrag} — see it on your overview',
+  // Twee indexreeksen door elkaar (ronde 47)
+  'De app rekent niet meer met deze regeling. De indexcijfers die je zelf bijzette staan in basis {eigen} = 100, en de tabel in de app staat nu in basis {tabel} = 100. Dat zijn twee verschillende maatstaven; ze combineren geeft een bedrag dat er tientallen procenten naast zit. Verwijder je eigen cijfers hieronder en zet ze opnieuw met de cijfers uit de huidige reeks.':
+    'The app no longer calculates with this arrangement. The index figures you added yourself are on base {eigen} = 100, while the table in the app is now on base {tabel} = 100. Those are two different yardsticks; combining them gives an amount that is tens of percent off. Remove your own figures below and enter them again using the current series.',
+  'De app rekent niet met deze regeling. Je vulde zelf aanvangsindex {eigen} in, maar voor {maand} kent de app {tabel}. Dat verschil wijst erop dat je cijfer uit een oudere indexreeks komt (de index wordt om de zoveel jaar herbaseerd). Combineren met de tabel geeft een bedrag dat er tientallen procenten naast zit. Klopt {tabel} met je akte, laat het veld dan leeg. Klopt het niet, vul dan ook de cijfers van {maanden} zelf in, uit dezelfde reeks als je akte.':
+    'The app does not calculate with this arrangement. You entered starting index {eigen} yourself, but for {maand} the app has {tabel}. That difference suggests your figure comes from an older index series (the index is rebased every so many years). Combining it with the table gives an amount that is tens of percent off. If {tabel} matches your deed, leave the field empty. If it does not, also enter the figures for {maanden} yourself, from the same series as your deed.',
+  'De app rekent niet met deze regeling. Je vulde de aanvangsindex zelf in, maar de jaarlijkse cijfers zou de app uit haar eigen tabel halen (basis {tabel} = 100). Staat je akte in een oudere reeks, dan zit het bedrag er tientallen procenten naast. Vul daarom ook de indexcijfers van {maanden} zelf in, uit dezelfde reeks als je akte.':
+    'The app does not calculate with this arrangement. You entered the starting index yourself, but the app would take the yearly figures from its own table (base {tabel} = 100). If your deed uses an older series, the amount is tens of percent off. So also enter the index figures for {maanden} yourself, from the same series as your deed.',
+  'De onderhoudsbijdrage van {dossier} wordt niet meer geïndexeerd: de indexcijfers komen uit twee verschillende reeksen. Open de regeling om het op te lossen.':
+    'The maintenance payment for {dossier} is no longer being indexed: the index figures come from two different series. Open the arrangement to resolve it.',
+  'De indexatie kon niet berekend worden omdat de gebruikte indexcijfers niet uit dezelfde reeks komen. Hieronder staat daarom nog het bedrag uit de regeling zelf: {basis} per maand.':
+    'The indexation could not be calculated because the index figures used do not come from the same series. Below is therefore still the amount from the arrangement itself: {basis} per month.',
+  'De verjaardagen zijn niet berekend, omdat de gebruikte indexcijfers niet uit dezelfde reeks komen.':
+    'The anniversaries have not been calculated, because the index figures used do not come from the same series.',
+  'het bedrag uit de regeling van {datum}; de indexatie is niet berekend':
+    'the amount from the arrangement of {datum}; the indexation has not been calculated',
+  'De opbouw is niet berekend, want de indexcijfers komen niet uit dezelfde reeks. Bovenaan de kaart staat wat er moet gebeuren.':
+    'The breakdown has not been calculated, because the index figures do not come from the same series. What needs to happen is stated at the top of the card.',
+  'De brief staat uit zolang de indexcijfers niet uit dezelfde reeks komen: ze zou een bedrag bevatten dat de app niet kan verantwoorden.':
+    'The letter is switched off as long as the index figures do not come from the same series: it would contain an amount the app cannot account for.',
+  'Wat er openstaat is niet te berekenen: elke maand zou hier aan het bedrag uit de regeling geteld worden, zonder de indexatie. Het echte bedrag ligt hoger. Los eerst de indexcijfers bovenaan op.':
+    'What is outstanding cannot be calculated: every month would be counted here at the amount from the arrangement, without the indexation. The real amount is higher. First resolve the index figures at the top.',
+  'Je eerdere indexcijfers stonden in basis {oud} = 100 en zijn verwijderd. Zet ze opnieuw met de cijfers uit de huidige reeks.':
+    'Your earlier index figures were on base {oud} = 100 and have been removed. Enter them again using the figures from the current series.',
+  'Kies eerst van welke rekening naar welke rekening je overboekt.':
+    'First choose which account you are transferring from and to.',
   // De eenheid van een logregel (ronde 46)
   'Dit bestand komt van een oudere versie van de app. De bedragen erin zijn niet betrouwbaar te lezen; vraag de andere ouder om een nieuw bestand.':
     'This file comes from an older version of the app. Its amounts cannot be read reliably; ask the other parent for a new file.',
@@ -2174,6 +2214,46 @@ const fr: Record<string, string> = {
   'Luisterboeken': 'Livres audio',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Attention : les opérations jusqu’au {datum} inclus sont déjà comprises dans la valeur que tu as enregistrée alors. Elles comptent encore ci-dessous, mais plus dans le solde en haut.',
   'geldt nu': 'en vigueur',
+  // Passer d’un chiffre à ses opérations (ronde 48)
+  'Inkomsten {bedrag} — bekijk de boekingen': 'Revenus {bedrag} — voir les opérations',
+  'Uitgaven {bedrag} — bekijk de boekingen': 'Dépenses {bedrag} — voir les opérations',
+  'Netto {bedrag} — bekijk alle boekingen van deze maand': 'Net {bedrag} — voir toutes les opérations de ce mois',
+  '{maand} — bekijk de boekingen': '{maand} — voir les opérations',
+  'Verschil {bedrag} — bekijk de boekingen van deze maand': 'Différence {bedrag} — voir les opérations de ce mois',
+  '{oms} {bedrag} op {datum} — open deze boeking': '{oms} {bedrag} le {datum} — ouvrir cette opération',
+  'Bekijk ze allemaal': 'Voir toutes',
+  '{naam} {pct}% {bedrag} — bekijk de boekingen': '{naam} {pct}% {bedrag} — voir les opérations',
+  'Uit je boeking van {datum}: {oms} — {bedrag}. Open die boeking.':
+    'Issu de ton opération du {datum} : {oms} — {bedrag}. Ouvrir cette opération.',
+  'Bekijk die boekingen': 'Voir ces opérations',
+  'Bekijk die boekingen — er kwam deze maand {gekregen} binnen':
+    'Voir ces opérations — {gekregen} sont rentrés ce mois-ci',
+  'Netto vermogen {bedrag} — bekijk het op je overzicht': 'Patrimoine net {bedrag} — le voir sur ton aperçu',
+  // Deux séries d’indices mélangées (ronde 47)
+  'De app rekent niet meer met deze regeling. De indexcijfers die je zelf bijzette staan in basis {eigen} = 100, en de tabel in de app staat nu in basis {tabel} = 100. Dat zijn twee verschillende maatstaven; ze combineren geeft een bedrag dat er tientallen procenten naast zit. Verwijder je eigen cijfers hieronder en zet ze opnieuw met de cijfers uit de huidige reeks.':
+    'L’app ne calcule plus avec cet arrangement. Les indices que tu as ajoutés toi-même sont exprimés en base {eigen} = 100, alors que la table de l’app est désormais en base {tabel} = 100. Ce sont deux étalons différents ; les combiner donne un montant erroné de plusieurs dizaines de pour cent. Supprime tes propres indices ci-dessous et réencode-les d’après la série actuelle.',
+  'De app rekent niet met deze regeling. Je vulde zelf aanvangsindex {eigen} in, maar voor {maand} kent de app {tabel}. Dat verschil wijst erop dat je cijfer uit een oudere indexreeks komt (de index wordt om de zoveel jaar herbaseerd). Combineren met de tabel geeft een bedrag dat er tientallen procenten naast zit. Klopt {tabel} met je akte, laat het veld dan leeg. Klopt het niet, vul dan ook de cijfers van {maanden} zelf in, uit dezelfde reeks als je akte.':
+    'L’app ne calcule pas avec cet arrangement. Tu as encodé toi-même l’indice de départ {eigen}, mais pour {maand} l’app connaît {tabel}. Cet écart indique que ton chiffre provient d’une série d’indices plus ancienne (l’indice est rebasé tous les quelques années). Le combiner avec la table donne un montant erroné de plusieurs dizaines de pour cent. Si {tabel} correspond à ton acte, laisse le champ vide. Sinon, encode aussi toi-même les indices de {maanden}, issus de la même série que ton acte.',
+  'De app rekent niet met deze regeling. Je vulde de aanvangsindex zelf in, maar de jaarlijkse cijfers zou de app uit haar eigen tabel halen (basis {tabel} = 100). Staat je akte in een oudere reeks, dan zit het bedrag er tientallen procenten naast. Vul daarom ook de indexcijfers van {maanden} zelf in, uit dezelfde reeks als je akte.':
+    'L’app ne calcule pas avec cet arrangement. Tu as encodé toi-même l’indice de départ, mais l’app prendrait les indices annuels dans sa propre table (base {tabel} = 100). Si ton acte utilise une série plus ancienne, le montant est erroné de plusieurs dizaines de pour cent. Encode donc aussi toi-même les indices de {maanden}, issus de la même série que ton acte.',
+  'De onderhoudsbijdrage van {dossier} wordt niet meer geïndexeerd: de indexcijfers komen uit twee verschillende reeksen. Open de regeling om het op te lossen.':
+    'La contribution alimentaire de {dossier} n’est plus indexée : les indices proviennent de deux séries différentes. Ouvre l’arrangement pour résoudre le problème.',
+  'De indexatie kon niet berekend worden omdat de gebruikte indexcijfers niet uit dezelfde reeks komen. Hieronder staat daarom nog het bedrag uit de regeling zelf: {basis} per maand.':
+    'L’indexation n’a pas pu être calculée parce que les indices utilisés ne proviennent pas de la même série. Ci-dessous figure donc encore le montant de l’arrangement lui-même : {basis} par mois.',
+  'De verjaardagen zijn niet berekend, omdat de gebruikte indexcijfers niet uit dezelfde reeks komen.':
+    'Les anniversaires n’ont pas été calculés, parce que les indices utilisés ne proviennent pas de la même série.',
+  'het bedrag uit de regeling van {datum}; de indexatie is niet berekend':
+    'le montant de l’arrangement du {datum} ; l’indexation n’a pas été calculée',
+  'De opbouw is niet berekend, want de indexcijfers komen niet uit dezelfde reeks. Bovenaan de kaart staat wat er moet gebeuren.':
+    'Le détail n’a pas été calculé, car les indices ne proviennent pas de la même série. Ce qu’il faut faire est indiqué en haut de la fiche.',
+  'De brief staat uit zolang de indexcijfers niet uit dezelfde reeks komen: ze zou een bedrag bevatten dat de app niet kan verantwoorden.':
+    'La lettre est désactivée tant que les indices ne proviennent pas de la même série : elle contiendrait un montant que l’app ne peut pas justifier.',
+  'Wat er openstaat is niet te berekenen: elke maand zou hier aan het bedrag uit de regeling geteld worden, zonder de indexatie. Het echte bedrag ligt hoger. Los eerst de indexcijfers bovenaan op.':
+    'Ce qui reste dû n’est pas calculable : chaque mois serait compté ici au montant de l’arrangement, sans l’indexation. Le montant réel est plus élevé. Résous d’abord les indices en haut.',
+  'Je eerdere indexcijfers stonden in basis {oud} = 100 en zijn verwijderd. Zet ze opnieuw met de cijfers uit de huidige reeks.':
+    'Tes indices précédents étaient exprimés en base {oud} = 100 et ont été supprimés. Réencode-les avec les chiffres de la série actuelle.',
+  'Kies eerst van welke rekening naar welke rekening je overboekt.':
+    'Choisis d’abord de quel compte vers quel compte tu transfères.',
   // L’unité d’une ligne du journal (ronde 46)
   'Dit bestand komt van een oudere versie van de app. De bedragen erin zijn niet betrouwbaar te lezen; vraag de andere ouder om een nieuw bestand.':
     'Ce fichier provient d’une version plus ancienne de l’app. Ses montants ne sont pas lisibles de façon fiable ; demande un nouveau fichier à l’autre parent.',

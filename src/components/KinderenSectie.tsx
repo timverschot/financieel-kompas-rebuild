@@ -114,9 +114,13 @@ export function KinderenSectie({
               >
                 ✎
               </button>
+              {/* `knop-kaal` is de vorm voor een ICOON: vast 44 x 44 px. Een woord
+                  van negen letters werd daarin afgekapt. Een tekstknop hoort
+                  `knop-ghost knop-klein` te zijn, die met de tekst meegroeit en
+                  onder een grove aanwijzer ook 44 px hoog wordt (ronde 47). */}
               <button
                 type="button"
-                className="knop knop-kaal"
+                className="knop knop-ghost knop-klein"
                 aria-label={
                   isArchief
                     ? t('Heropen gezinslid {naam}', { naam: k.naam })

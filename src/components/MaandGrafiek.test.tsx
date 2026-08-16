@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, it, expect, vi } from 'vitest'
 import { MaandGrafiek } from './MaandGrafiek'
 import type { MaandPaar } from '../utils/maandverloop'
 import { formatEuro } from '../utils/format'
@@ -21,13 +22,15 @@ describe('MaandGrafiek', () => {
     // formatEuro zet een vaste spatie tussen teken en getal, dus we bouwen de
     // verwachting met dezelfde functie in plaats van ze over te typen.
     const labels = screen.getAllByRole('img').map((el) => el.getAttribute('aria-label'))
-    expect(labels).toContain(`jun: in ${formatEuro(200000)}, uit ${formatEuro(140000)}`)
+    // De maand voluit en niet afgekort: dit is de toegankelijke naam, en een
+    // schermlezer maakt van "jun" geen "juni" (ronde 48).
+    expect(labels).toContain(`juni: in ${formatEuro(200000)}, uit ${formatEuro(140000)}`)
   })
 
   it('markeert de lopende maand als onvolledig', () => {
     render(<MaandGrafiek data={reeks} lopendeMaand="2026-07" />)
     const labels = screen.getAllByRole('img').map((el) => el.getAttribute('aria-label') ?? '')
-    expect(labels.some((l) => l.startsWith('jul:') && l.includes('loopt nog'))).toBe(true)
+    expect(labels.some((l) => l.startsWith('juli:') && l.includes('loopt nog'))).toBe(true)
     expect(screen.getByText('* Deze maand loopt nog, dus die staaf is nog niet volledig.')).toBeInTheDocument()
   })
 
@@ -103,5 +106,41 @@ describe('MaandGrafiek — de voetnoot hoort bij het sterretje', () => {
   it('toont de voetnoot wél zodra de lopende maand in het venster valt', () => {
     render(<MaandGrafiek data={reeks} lopendeMaand="2026-06" />)
     expect(screen.getByText(voetnoot)).toBeInTheDocument()
+  })
+})
+
+// --- Ronde 48: van een staaf naar de boekingen ---------------------------------
+
+describe('MaandGrafiek — doorklikken naar een maand', () => {
+  it('maakt geen knoppen wanneer de app niets met een klik kan doen', () => {
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-07" />)
+    expect(screen.queryAllByRole('button')).toHaveLength(0)
+    // Dan blijft de kolom een plaatje met een naam.
+    expect(screen.getAllByRole('img').length).toBe(3)
+  })
+
+  it('maakt elke maandkolom aanklikbaar zodra er een bestemming is', async () => {
+    const gebruiker = userEvent.setup()
+    const onKiesMaand = vi.fn()
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-07" onKiesMaand={onKiesMaand} />)
+    const knoppen = screen.getAllByRole('button')
+    expect(knoppen).toHaveLength(3)
+    await gebruiker.click(knoppen[1])
+    expect(onKiesMaand).toHaveBeenCalledWith('2026-06')
+  })
+
+  it('laat het role="img" vallen zodra het knoppen worden', () => {
+    // Een knop bínnen een role="img" wordt door voorleessoftware niet meer
+    // aangeboden: dan verlies je de doorklik voor wie hem het hardst nodig heeft.
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-07" onKiesMaand={vi.fn()} />)
+    expect(screen.queryAllByRole('img')).toHaveLength(0)
+  })
+
+  it('zet de zichtbare maandnaam vooraan in de toegankelijke naam', () => {
+    // WCAG 2.5.3: wie met zijn stem stuurt, zegt wat hij ziet staan.
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-07" onKiesMaand={vi.fn()} />)
+    const namen = screen.getAllByRole('button').map((el) => el.getAttribute('aria-label') ?? '')
+    expect(namen.some((n) => n.startsWith('juni:'))).toBe(true)
+    expect(namen.every((n) => n.includes('bekijk de boekingen'))).toBe(true)
   })
 })

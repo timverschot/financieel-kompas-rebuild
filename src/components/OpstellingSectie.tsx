@@ -446,6 +446,14 @@ export function OpstellingSectie({
           ontstaan terwijl je invult, in plaats van pas aan het eind — en geen van
           deze vier cijfers heeft één transactie nodig. */}
       <Kaart titel={t('Dit is je situatie')} data-situatie>
+        {/* Doorklikken alleen waar de bestemming het cijfer ook echt toont (ronde 48).
+            "Netto vermogen" staat voluit op het Overzicht (VermogenRegel): rekeningen
+            plus bezit min leningen, precies dezelfde som. "Vaste lasten per maand" en
+            "Waarvan sluipend" krijgen GEEN knop: de blokken hieronder zijn
+            aanvinklijsten met voorstellen, geen uitsplitsing met bedragen, en op de
+            Budget-pagina staat een gelijkaardig label met een ánder getal ("deze
+            maand" in plaats van "gemiddeld per maand"). Een knop die belooft te tonen
+            waaruit een bedrag bestaat en dat niet doet, is erger dan geen knop. */}
         <div className="tegelrij">
           <Stat label={t('Vaste lasten per maand')}>
             {buffer.vasteLastenPerMaand > 0 ? formatEuro(buffer.vasteLastenPerMaand) : '—'}
@@ -456,7 +464,19 @@ export function OpstellingSectie({
               ? t('{n} maanden', { n: (Math.floor(buffer.maanden * 10) / 10).toString().replace('.', ',') })
               : '—'}
           </Stat>
-          <Stat label={t('Netto vermogen')}>
+          <Stat
+            label={t('Netto vermogen')}
+            doorklik={
+              rekeningen.length > 0 || leningen.length > 0
+                ? {
+                    naam: t('Netto vermogen {bedrag} — bekijk het op je overzicht', {
+                      bedrag: formatEuro(vermogen),
+                    }),
+                    naar: () => onNaarPagina('overzicht'),
+                  }
+                : undefined
+            }
+          >
             {rekeningen.length > 0 || leningen.length > 0 ? formatEuro(vermogen) : '—'}
           </Stat>
         </div>

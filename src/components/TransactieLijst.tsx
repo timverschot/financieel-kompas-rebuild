@@ -51,6 +51,13 @@ export function aantalActieveFilters(filter: TxFilter): number {
     filter.hoofdId,
     filter.catId,
     filter.domein,
+    // Deze drie ontbraken hier (ronde 48). Ze zetten wél een chip en filteren wél
+    // de lijst, maar telden niet mee in het aantal — dus stond er "1 filter"
+    // boven een lijst met er twee, en klapte het paneel niet open wanneer je via
+    // een doorklik binnenkwam met alleen zo'n filter.
+    filter.zonderCategorie,
+    filter.handelaar,
+    filter.omschrijving,
     filter.van,
     filter.tot,
   ].filter(Boolean).length
@@ -279,6 +286,7 @@ export function TransactieLijst({
     domein: () => zet({ domein: undefined }),
     zonderCategorie: () => zet({ zonderCategorie: undefined }),
     handelaar: () => zet({ handelaar: undefined }),
+    omschrijving: () => zet({ omschrijving: undefined }),
     van: () => zet({ van: undefined }),
     tot: () => zet({ tot: undefined }),
     maand: () => zet({ maand: undefined }),
@@ -673,7 +681,14 @@ export function TransactieLijst({
             <button
               type="button"
               className="knop knop-ghost knop-klein"
-              style={{ padding: 0, minHeight: 0 }}
+              // `minHeight: 0` stond hier en zette de 44 px-regel voor aanraken
+              // uit: deze knop was 19 px hoog. Zonder die regel geldt op een
+              // telefoon opnieuw `min-height: 44px`; de negatieve marge trekt dat
+              // grotendeels terug uit de tekstregel, zodat de regel er zo'n vier
+              // pixels bij krijgt in plaats van vijfentwintig. Het raakvlak steekt
+              // 12 px boven en onder uit, twee minder dan de 14 px tussenruimte van
+              // de kaart, dus het ligt niet over een naburige knop (ronde 47).
+              style={{ padding: '12px 0', margin: '-12px 0' }}
               onClick={() => setToonAlles(true)}
             >
               {t('Toon ze ook')}

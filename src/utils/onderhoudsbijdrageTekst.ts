@@ -58,6 +58,11 @@ export function getalTekst(waarde: number): string {
 
 /** Waar de aanvangsindex vandaan komt — dat hoort navolgbaar te zijn. */
 export function aanvangsindexTekst(t: Vertaler, opbouw: BijdrageOpbouw): string {
+  // Eerst het conflict. Zonder deze tak zou hier "de app kent geen indexcijfer voor
+  // die maand" staan — en dat is meestal niet waar: de app kent de maand wél, ze
+  // weigert alleen twee reeksen door elkaar te halen. Een onware reden in een
+  // document dat naar de andere ouder gaat, is erger dan geen reden.
+  if (opbouw.indexConflict !== null) return reeksConflictUitleg(t, opbouw)
   if (opbouw.aanvangsindex === null) {
     return t('De aanvangsindex is niet bekend: de app kent geen indexcijfer voor {maand}.', {
       maand: maandJaarLabel(`${opbouw.aanvangsmaand}-01`),
@@ -79,6 +84,43 @@ export function aanvangsindexTekst(t: Vertaler, opbouw: BijdrageOpbouw): string 
  * staat in een andere maatstaf dan de tabel van vandaag, en die twee combineren
  * geeft een verschil van tientallen procenten zonder één foutmelding.
  */
+export function reeksConflictUitleg(t: Vertaler, opbouw: BijdrageOpbouw): string {
+  if (opbouw.indexConflict === null) return ''
+
+  // De eigen maandcijfers dateren van vóór een herbasering van de tabel. Kan pas
+  // gebeuren wanneer deze app ooit een nieuwe basis meelevert.
+  if (opbouw.indexConflict === 'ander-basisjaar') {
+    return t(
+      'De app rekent niet meer met deze regeling. De indexcijfers die je zelf bijzette staan in basis {eigen} = 100, en de tabel in de app staat nu in basis {tabel} = 100. Dat zijn twee verschillende maatstaven; ze combineren geeft een bedrag dat er tientallen procenten naast zit. Verwijder je eigen cijfers hieronder en zet ze opnieuw met de cijfers uit de huidige reeks.',
+      { eigen: opbouw.basisjaarEigen, tabel: opbouw.basisjaarTabel },
+    )
+  }
+
+  const maanden = opbouw.tabelMaanden.map((m) => maandJaarLabel(`${m}-01`)).join(', ')
+
+  // Kent de app de aanvangsmaand zelf, dan is het verschil met het ingetikte cijfer
+  // het concreetste wat we kunnen tonen — en meteen de eenvoudigste uitweg: laat het
+  // veld leeg.
+  if (opbouw.aanvangsindexTabel !== null) {
+    return t(
+      'De app rekent niet met deze regeling. Je vulde zelf aanvangsindex {eigen} in, maar voor {maand} kent de app {tabel}. Dat verschil wijst erop dat je cijfer uit een oudere indexreeks komt (de index wordt om de zoveel jaar herbaseerd). Combineren met de tabel geeft een bedrag dat er tientallen procenten naast zit. Klopt {tabel} met je akte, laat het veld dan leeg. Klopt het niet, vul dan ook de cijfers van {maanden} zelf in, uit dezelfde reeks als je akte.',
+      {
+        eigen: opbouw.aanvangsindexIngetikt === null ? '' : getalTekst(opbouw.aanvangsindexIngetikt),
+        tabel: getalTekst(opbouw.aanvangsindexTabel),
+        maand: maandJaarLabel(`${opbouw.aanvangsmaand}-01`),
+        maanden,
+      },
+    )
+  }
+
+  // De app kent de aanvangsmaand niet (een oud vonnis). Dan is er niets te
+  // vergelijken en is zelf invullen de enige weg.
+  return t(
+    'De app rekent niet met deze regeling. Je vulde de aanvangsindex zelf in, maar de jaarlijkse cijfers zou de app uit haar eigen tabel halen (basis {tabel} = 100). Staat je akte in een oudere reeks, dan zit het bedrag er tientallen procenten naast. Vul daarom ook de indexcijfers van {maanden} zelf in, uit dezelfde reeks als je akte.',
+    { tabel: opbouw.basisjaarTabel, maanden },
+  )
+}
+
 export function basisjaarWaarschuwing(t: Vertaler): string {
   return t(
     'Let op: de indexcijfers van de app staan in basis {jaar} = 100. Staat er in je vonnis een aanvangsindex uit een ouder basisjaar, vul die dan hier in én gebruik ook voor de nieuwe index een cijfer uit datzelfde basisjaar. Twee cijfers uit verschillende basisjaren geven een bedrag dat er juist uitziet en het niet is.',
@@ -182,7 +224,16 @@ export function briefKern(
 
   // 2. Het bedrag — en alleen een bedrag dat ook echt berekend is.
   const laatste = laatsteAanpassing(opbouw, basisbedrag)
-  if (!geenIndexatie && opbouw.aanvangsindex === null) {
+  if (!geenIndexatie && opbouw.indexConflict !== null) {
+    // Deze brief gaat naar de andere ouder of naar een advocaat. Beweren dat de app
+    // de maand niet kent, terwijl ze weigert twee reeksen te mengen, is dan geen
+    // detail. Het scherm blokkeert deze knop al; dit is het vangnet eronder.
+    alineas.push(
+      t('De indexatie kon niet berekend worden omdat de gebruikte indexcijfers niet uit dezelfde reeks komen. Hieronder staat daarom nog het bedrag uit de regeling zelf: {basis} per maand.', {
+        basis: formatEuro(basisbedrag),
+      }),
+    )
+  } else if (!geenIndexatie && opbouw.aanvangsindex === null) {
     alineas.push(
       t('De aanvangsindex van {maand} is in deze app niet bekend, waardoor de indexatie niet berekend kon worden. Hieronder staat daarom nog het bedrag uit de regeling zelf: {basis} per maand.', {
         maand: maandJaarLabel(`${opbouw.aanvangsmaand}-01`),

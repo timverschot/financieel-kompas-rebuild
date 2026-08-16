@@ -272,3 +272,38 @@ describe('AnalyseSectie — doorklikken naar de transacties', () => {
     expect(screen.queryByRole('button', { name: /Bewerk Colruyt/ })).toBeNull()
   })
 })
+
+// --- Ronde 48: de legende "per winkel" -----------------------------------------
+
+describe('AnalyseSectie — doorklikken vanaf de winkellegende', () => {
+  it('filtert op de exacte omschrijving, met de periode en de richting erbij', async () => {
+    const user = userEvent.setup()
+    const onGaNaarTransacties = vi.fn()
+    toonMet([boodschappen, tanken], { onGaNaarTransacties })
+    await user.click(await screen.findByRole('button', { name: /^Colruyt .* bekijk de boekingen$/ }))
+    // `perWinkel` groepeert op de letterlijke omschrijving, dus het filter doet dat
+    // ook. Zou het via `handelaar` gaan, dan kwamen er boekingen bij die niet in
+    // het bedrag op deze rij zitten.
+    expect(onGaNaarTransacties).toHaveBeenCalledWith(
+      expect.objectContaining({ omschrijving: 'Colruyt', richting: 'uit' }),
+    )
+  })
+
+  it('maakt geen knop van een legenderij wanneer de app er niets mee kan', () => {
+    toonMet([boodschappen, tanken])
+    expect(screen.queryByRole('button', { name: /bekijk de boekingen$/ })).toBeNull()
+  })
+
+  it('laat de legendes per product/dienst en per gezinslid bewust met rust', () => {
+    // Die twee rekenkernen gooien hun sleutel weg (per naam gegroepeerd) of
+    // VERDELEN een bedrag over meerdere personen. Een filter selecteert hele
+    // transacties, dus daar zou de lijst een ander bedrag tonen dan de rij. Zolang
+    // dat niet opgelost is, hoort daar geen knop te staan.
+    const onGaNaarTransacties = vi.fn()
+    toonMet([boodschappen, tanken], { onGaNaarTransacties })
+    const namen = screen.getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? '')
+    // Wel de winkel (de omschrijving), niet de subcategorie.
+    expect(namen.some((n) => n.startsWith('Colruyt '))).toBe(true)
+    expect(namen.some((n) => n.startsWith('Brood (wit) ') && n.endsWith('bekijk de boekingen'))).toBe(false)
+  })
+})

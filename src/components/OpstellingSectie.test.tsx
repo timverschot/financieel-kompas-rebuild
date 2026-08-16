@@ -503,3 +503,29 @@ describe('OpstellingSectie — de blokken', () => {
     expect(onNaarPagina).toHaveBeenCalledWith('budget')
   })
 })
+
+// --- Ronde 48: doorklikken vanaf de tegels -------------------------------------
+
+describe('OpstellingSectie — de tegels van "Dit is je situatie"', () => {
+  it('laat netto vermogen doorklikken naar het overzicht, waar dat cijfer staat', async () => {
+    const gebruiker = userEvent.setup()
+    const props = toon({ rekeningen: [rekening] })
+    await gebruiker.click(screen.getByRole('button', { name: /^Netto vermogen/ }))
+    expect(props.onNaarPagina).toHaveBeenCalledWith('overzicht')
+  })
+
+  it('maakt GEEN knop van de vaste lasten en het sluipende deel', () => {
+    // De blokken hieronder zijn aanvinklijsten met voorstellen, geen uitsplitsing
+    // met bedragen — en op Budget staat een gelijkaardig label met een ander getal.
+    // Een knop die belooft te tonen waaruit een bedrag bestaat en dat niet doet, is
+    // erger dan geen knop.
+    toon({ terugkerendePosten: [{ id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 3 }] })
+    expect(screen.queryByRole('button', { name: /^Vaste lasten per maand/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Waarvan sluipend/ })).toBeNull()
+  })
+
+  it('maakt geen knop van een tegel die een streepje toont', () => {
+    toon()
+    expect(screen.queryByRole('button', { name: /^Netto vermogen/ })).toBeNull()
+  })
+})

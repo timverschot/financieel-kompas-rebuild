@@ -71,7 +71,32 @@ const DONUT_GROOTTE = 300
 
 // Uitklapbare donutkaart: het diagram toont top 10 + een 'Overige'-schijf; de
 // legende toont standaard de top 10 en kan naar alles uitklappen.
-function DonutKaart({ titel, subtitel, posten, richting }: { titel: string; subtitel?: string; posten: Gekleurd[]; richting: Richting }) {
+function DonutKaart({
+  titel,
+  subtitel,
+  posten,
+  richting,
+  onKiesPost,
+}: {
+  titel: string
+  subtitel?: string
+  posten: Gekleurd[]
+  richting: Richting
+  /**
+   * Van één legenderij naar haar boekingen (ronde 48).
+   *
+   * BEWUST een callback met de hele post en geen kale `sleutel`-string. Deze kaart
+   * wordt door drie verschillende verdelingen gebruikt (per winkel, per
+   * product/dienst, per gezinslid) en die hebben elk een ANDER filter nodig.
+   * Een string die "de sleutel" heet, betekent dan bij elke aanroeper iets
+   * anders — en precies zo sluipt er een doorklik binnen die een ander bedrag
+   * toont dan waarop je klikte. De aanroeper bouwt zijn eigen filter.
+   *
+   * Geeft de aanroeper `undefined` terug voor een post, dan blijft die rij gewone
+   * tekst. Liever geen doorklik dan een verkeerde.
+   */
+  onKiesPost?: (post: Gekleurd) => (() => void) | undefined
+}) {
   const { t } = useT()
   const [toonAlles, setToonAlles] = useState(false)
   const totaal = totaalVan(posten)
@@ -101,18 +126,41 @@ function DonutKaart({ titel, subtitel, posten, richting }: { titel: string; subt
             daarvoor zag — de knop "toon meer" toonde dus mínder. De kaart mag
             gewoon langer worden. */}
         <ul className="lijst">
-          {legende.map((p, i) => (
-            <li key={`${i}-${p.naam}`} className="rij">
-              <span style={{ ...stip, background: p.kleur }} />
-              <span className="rij-midden">
-                <span className="rij-titel" style={afkap}>
-                  {p.naam}
+          {legende.map((p, i) => {
+            const kies = onKiesPost?.(p)
+            const inhoud = (
+              <>
+                <span style={{ ...stip, background: p.kleur }} />
+                <span className="rij-midden">
+                  <span className="rij-titel" style={afkap}>
+                    {p.naam}
+                  </span>
                 </span>
-              </span>
-              <span className="rij-pct">{percentages[i]}%</span>
-              <Bedrag centen={p.bedrag} />
-            </li>
-          ))}
+                <span className="rij-pct">{percentages[i]}%</span>
+                <Bedrag centen={p.bedrag} />
+              </>
+            )
+            return (
+              <li key={`${i}-${p.naam}`} className="rij">
+                {kies ? (
+                  <button
+                    type="button"
+                    className="rij-knop"
+                    aria-label={t('{naam} {pct}% {bedrag} — bekijk de boekingen', {
+                      naam: p.naam,
+                      pct: percentages[i],
+                      bedrag: formatEuro(p.bedrag),
+                    })}
+                    onClick={kies}
+                  >
+                    {inhoud}
+                  </button>
+                ) : (
+                  inhoud
+                )}
+              </li>
+            )
+          })}
         </ul>
       </div>
       {rest.length > 0 && (
@@ -555,6 +603,15 @@ export function AnalyseSectie({
               subtitel={t('Gebaseerd op de omschrijving bij elke transactie')}
               posten={byWinkel}
               richting={richting}
+              // `perWinkel` groepeert op de letterlijke omschrijving, dus de naam
+              // ÍS de sleutel en het filter vergelijkt er exact op. Niet via
+              // `handelaar`: dat schoont de omschrijving op en zou meer boekingen
+              // teruggeven dan het bedrag op deze rij.
+              onKiesPost={
+                onGaNaarTransacties
+                  ? (p) => () => onGaNaarTransacties(metRichting({ omschrijving: p.naam }))
+                  : undefined
+              }
             />
           )}
 

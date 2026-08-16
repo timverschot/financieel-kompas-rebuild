@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import type { TxFilter } from '../utils/transactieFilter'
 import type { Categorie, Overboeking, Rekening, Transactie, Waardering } from '../data/schema'
 import { labelVanCategorie } from '../data/categorieen/resolve'
 import { groepenVanTransactie, isGesplitstOverCategorieen } from '../utils/transactie'
@@ -505,6 +506,8 @@ export function RekeningDetail({
   onWaarderingVerwijderen,
   rekeningen = [],
   onOverboeking,
+  onGaNaarTransacties,
+  onBewerkTransactie,
 }: {
   rekening: Rekening
   /** Alle transacties; dit component filtert zelf op deze rekening. */
@@ -524,6 +527,20 @@ export function RekeningDetail({
   rekeningen?: Rekening[]
   /** Ontbreekt deze, dan toont de kaart haar afrekening wel maar zonder knop. */
   onOverboeking?: (o: Overboeking) => Promise<void> | void
+  /**
+   * Naar de boekingenlijst met een filter (ronde 48).
+   *
+   * LET OP welke cijfers hier wél en niet mogen doorklikken. `Binnengekomen` en
+   * `Eraf gegaan` tellen op TRANSACTIENIVEAU (zie de kop van dit bestand), terwijl
+   * het richting-filter van de lijst op REGELNIVEAU werkt. Een kassaticket van
+   * € 47 met een regel statiegeld van + € 3 staat hier dus volledig onder "eraf",
+   * maar de gefilterde lijst zou er € 50 uitgaven boven zetten — en bij "in" zou
+   * je op € 0,00 klikken en toch een boeking krijgen. Alleen `Verschil` telt in
+   * beide berekeningen hetzelfde op, en die krijgt daarom als enige een knop.
+   */
+  onGaNaarTransacties?: (filter: TxFilter) => void
+  /** Eén boeking openen om ze te bewerken. */
+  onBewerkTransactie?: (tx: Transactie) => void
 }) {
   const { t } = useT()
 
@@ -665,7 +682,21 @@ export function RekeningDetail({
         <div className="stat-rij">
           <Stat label={t('Binnengekomen')}>{formatEuro(binnen)}</Stat>
           <Stat label={t('Eraf gegaan')}>{formatEuro(Math.abs(eraf))}</Stat>
-          <Stat label={t('Verschil')}>{formatEuro(verschil)}</Stat>
+          <Stat
+            label={t('Verschil')}
+            doorklik={
+              onGaNaarTransacties
+                ? {
+                    naam: t('Verschil {bedrag} — bekijk de boekingen van deze maand', {
+                      bedrag: formatEuro(verschil),
+                    }),
+                    naar: () => onGaNaarTransacties({ rekeningId: rekening.id, maand }),
+                  }
+                : undefined
+            }
+          >
+            {formatEuro(verschil)}
+          </Stat>
         </div>
         <p className="kaart-bijschrift" style={{ margin: 0 }}>
           {t('Overboekingen tellen hier niet mee: die verschuiven enkel geld tussen je eigen rekeningen.')}
@@ -686,8 +717,8 @@ export function RekeningDetail({
               const gesplitst = isGesplitstOverCategorieen(tx, categorieen)
               const { teken, kleur } = tekenVanTransactie(tx, groepen, gesplitst)
               const cat = gesplitst ? uitsplitsingTekst(groepen) : labelVanCategorie(tx.categorieId, categorieen)
-              return (
-                <li key={tx.id} className="rij">
+              const inhoud = (
+                <>
                   {/* Decoratief: wat het icoon zegt, staat ook in de meta-regel eronder. */}
                   <span className="rij-teken" aria-hidden="true" style={{ backgroundColor: zachteAchtergrond(kleur) }}>
                     {teken}
@@ -700,14 +731,52 @@ export function RekeningDetail({
                     </span>
                   </span>
                   <Bedrag centen={tx.bedrag} richting="auto" />
+                </>
+                )
+                return (
+                <li key={tx.id} className="rij">
+                  {onBewerkTransactie ? (
+                    <button
+                      type="button"
+                      className="rij-knop"
+                      aria-label={t('{oms} {bedrag} op {datum} — open deze boeking', {
+                        oms: tx.omschrijving,
+                        bedrag: formatEuro(tx.bedrag),
+                        datum: tx.datum,
+                      })}
+                      onClick={() => onBewerkTransactie(tx)}
+                    >
+                      {inhoud}
+                    </button>
+                  ) : (
+                    inhoud
+                  )}
                 </li>
               )
             })}
           </ul>
+          {/* De tekstregel blijft ALTIJD staan, ook wanneer er een knop bij komt.
+              De printregels verbergen elke `.knop`, dus zou de knop de tekst
+              vervangen, dan stond er op een afdruk een lijst van acht boekingen
+              zonder één woord over de zevenenveertig die volgen — en dan denkt wie
+              dat blad later terugvindt dat dit alles was. */}
           {meerTransacties > 0 && (
-            <p className="kaart-bijschrift" style={{ margin: 0 }}>
-              {t('+ nog {n}', { n: meerTransacties })}
-            </p>
+            <>
+              <p className="kaart-bijschrift" style={{ margin: 0 }}>
+                {t('+ nog {n}', { n: meerTransacties })}
+              </p>
+              {onGaNaarTransacties && (
+                <div className="knoprij">
+                  <button
+                    type="button"
+                    className="knop knop-ghost knop-klein"
+                    onClick={() => onGaNaarTransacties({ rekeningId: rekening.id })}
+                  >
+                    {t('Bekijk ze allemaal')}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </Kaart>
       )}

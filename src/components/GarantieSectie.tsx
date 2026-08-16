@@ -32,6 +32,7 @@ export function GarantieSectie({
   documenten = [],
   onDocumentOpslaan,
   onDocumentVerwijderen,
+  onBewerkTransactie,
 }: {
   // Optioneel: doorgegeven aan het formulier, om iets aan een gezinslid te koppelen.
   gezinsleden?: Kind[]
@@ -44,6 +45,14 @@ export function GarantieSectie({
   documenten?: DossierDocument[]
   onDocumentOpslaan?: (d: DossierDocument) => Promise<void> | void
   onDocumentVerwijderen?: (id: string) => Promise<void> | void
+  /**
+   * De boeking openen waaruit de aankoop komt (ronde 48).
+   *
+   * Zonder dit was de garantielade een doodlopende weg: je zag wél staan uit welke
+   * betaling het toestel kwam, maar je kon er niet naartoe. Ontbreekt de prop, dan
+   * blijft de regel gewone tekst — een knop die niets doet is erger dan geen knop.
+   */
+  onBewerkTransactie?: (tx: Transactie) => void
 }) {
   const { t } = useT()
   const [bewerk, setBewerk] = useState<Garantie | null>(null)
@@ -133,13 +142,32 @@ export function GarantieSectie({
                   const txBon = bonVanTransactie(documenten, tx.id)
                   return (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      <span className="rij-meta">
-                        {t('Uit je boeking van {datum}: {oms}', { datum: dagKort(tx.datum), oms: tx.omschrijving })}
-                        {' · '}
-                        <span className="bedrag" style={{ fontSize: 'inherit' }}>
-                          {formatEuro(Math.abs(tx.bedrag))}
+                      {onBewerkTransactie ? (
+                        <button
+                          type="button"
+                          className="rij-meta tekstknop tekstknop-meta"
+                          aria-label={t('Uit je boeking van {datum}: {oms} — {bedrag}. Open die boeking.', {
+                            datum: dagKort(tx.datum),
+                            oms: tx.omschrijving,
+                            bedrag: formatEuro(Math.abs(tx.bedrag)),
+                          })}
+                          onClick={() => onBewerkTransactie(tx)}
+                        >
+                          {t('Uit je boeking van {datum}: {oms}', { datum: dagKort(tx.datum), oms: tx.omschrijving })}
+                          {' · '}
+                          <span className="bedrag" style={{ fontSize: 'inherit' }}>
+                            {formatEuro(Math.abs(tx.bedrag))}
+                          </span>
+                        </button>
+                      ) : (
+                        <span className="rij-meta">
+                          {t('Uit je boeking van {datum}: {oms}', { datum: dagKort(tx.datum), oms: tx.omschrijving })}
+                          {' · '}
+                          <span className="bedrag" style={{ fontSize: 'inherit' }}>
+                            {formatEuro(Math.abs(tx.bedrag))}
+                          </span>
                         </span>
-                      </span>
+                      )}
                       {txBon && <Bonknop bestand={txBon.bestand} naam={tx.omschrijving} label={t('bon van de boeking')} />}
                     </div>
                   )

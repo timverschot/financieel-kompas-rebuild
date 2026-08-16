@@ -110,6 +110,39 @@ describe('BoekingDialoog', () => {
     expect(onSluiten).toHaveBeenCalled()
   })
 
+  it('houdt de popup niet open na een mislukte "Opslaan + volgende" (ronde 47)', async () => {
+    // Sinds die knop `aria-disabled` is in plaats van `disabled`, loopt zijn onClick
+    // óók bij een onvolledig formulier. Zonder het wissen van de vlag hield de
+    // volgende, gewone opslag de popup open met lege velden — en dan denk je dat het
+    // niet gelukt is en boek je alles een tweede keer.
+    const user = userEvent.setup()
+    const { onSluiten, onOverboeking } = toon()
+    await user.click(screen.getByRole('button', { name: 'Sparen' }))
+
+    // Nog geen rekeningen gekozen: deze klik hoort niets te doen.
+    await user.click(screen.getByRole('button', { name: 'Opslaan + volgende' }))
+    expect(onOverboeking).not.toHaveBeenCalled()
+
+    await user.selectOptions(screen.getByLabelText('Van rekening'), 'r1')
+    await user.selectOptions(screen.getByLabelText('Naar rekening'), 'r2')
+    await user.type(screen.getByLabelText('Over te boeken bedrag (€)'), '200')
+    await user.click(screen.getByRole('button', { name: 'Overboeking toevoegen' }))
+    expect(onOverboeking).toHaveBeenCalledTimes(1)
+    expect(onSluiten).toHaveBeenCalled()
+  })
+
+  it('zegt waarom de knop uitstaat in plaats van enkel niet te reageren', async () => {
+    const user = userEvent.setup()
+    toon()
+    await user.click(screen.getByRole('button', { name: 'Sparen' }))
+    expect(screen.getByText('Kies eerst van welke rekening naar welke rekening je overboekt.')).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('Van rekening'), 'r1')
+    await user.selectOptions(screen.getByLabelText('Naar rekening'), 'r1')
+    expect(screen.getByText('Kies twee verschillende rekeningen.')).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('Naar rekening'), 'r2')
+    expect(screen.getByText('Vul een bedrag groter dan nul in.')).toBeInTheDocument()
+  })
+
   it('opent op de soort waarmee ze geopend werd', () => {
     toon({ beginSoort: 'sparen' })
     expect(screen.getByRole('button', { name: 'Sparen' })).toHaveAttribute('aria-pressed', 'true')

@@ -623,6 +623,17 @@ export const OnderhoudsbijdrageSchema = z.object({
   // omdat de meegeleverde tabel per definitie achterloopt op de werkelijkheid: het
   // cijfer van deze maand verschijnt pas op het einde van deze maand.
   eigenIndexcijfers: z.record(z.string(), z.number().positive()).optional(),
+  // Het basisjaar waarin de twee velden hierboven uitgedrukt staan. Een indexcijfer
+  // is een kaal getal; wat het betekent hangt af van de basis. Statbel herbaseert om
+  // de zoveel jaar, en dan betekent een eerder ingetikt cijfer stil iets anders —
+  // met een bijdrage die er tientallen procenten naast zit als gevolg. Dezelfde
+  // ziekte als de euro's die als centen gelezen werden (ronde 46). Ontbreekt het
+  // veld, dan komt het cijfer uit de tijd van basis 2013: de enige basis die deze
+  // app ooit gehad heeft. Zie INDEX_BASISJAAR in data/gezondheidsindex.ts.
+  // De grenzen zijn geen sierlijkheid: een beschadigde logregel van een ander
+  // toestel met `7` of `99999` erin zou anders gewoon doorgelaten worden, en dan
+  // botst het basisjaar met de tabel zonder dat er iets aan de hand is.
+  indexBasisjaar: z.number().int().min(1900).max(2200).optional(),
   // Voor welke kinderen de bijdrage geldt. Puur informatief voor het document.
   kindIds: z.array(z.string()).optional(),
   // Loopt de regeling af (bv. bij het einde van de studies)? Dan telt er na deze

@@ -38,6 +38,8 @@ function toon(opties: {
   onWaardering?: (w: Waardering) => void
   rekeningen?: Rekening[]
   onOverboeking?: (o: Overboeking) => void
+  onGaNaarTransacties?: (filter: unknown) => void
+  onBewerkTransactie?: (tx: Transactie) => void
 } = {}) {
   const onBewerk = vi.fn()
   const onArchiveer = vi.fn()
@@ -59,6 +61,8 @@ function toon(opties: {
       onVerwijder={onVerwijder}
       rekeningen={opties.rekeningen}
       onOverboeking={onOverboeking}
+      onGaNaarTransacties={opties.onGaNaarTransacties}
+      onBewerkTransactie={opties.onBewerkTransactie}
     />,
   )
   return { ...resultaat, onBewerk, onArchiveer, onVerwijder, onOverboeking }
@@ -448,5 +452,59 @@ describe('RekeningDetail — de punten uit de review (ronde 43)', () => {
     const { container } = toon({ rekening: oud })
     expect(container.textContent).toContain('bij de start stond er')
     expect(container.textContent).not.toContain('€ -1.000,00')
+  })
+})
+
+// --- Ronde 48: van een cijfer naar de boekingen --------------------------------
+
+describe('RekeningDetail — doorklikken', () => {
+  it('laat alleen Verschil doorklikken, niet Binnengekomen of Eraf gegaan', () => {
+    // Die twee tellen op TRANSACTIEniveau, terwijl het richting-filter van de lijst
+    // op regelniveau werkt. Een kassaticket van € 47 met een regel statiegeld van
+    // + € 3 staat hier volledig onder "eraf", maar de gefilterde lijst zou er € 50
+    // uitgaven boven zetten — en bij "in" zou je op € 0,00 klikken en tóch een
+    // boeking krijgen. Verschil telt in beide berekeningen hetzelfde op.
+    toon({ onGaNaarTransacties: vi.fn() })
+    expect(screen.getByRole('button', { name: /^Verschil / })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Binnengekomen / })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Eraf gegaan / })).toBeNull()
+  })
+
+  it('geeft bij Verschil de rekening én de maand mee', async () => {
+    const gebruiker = userEvent.setup()
+    const onGaNaarTransacties = vi.fn()
+    toon({ onGaNaarTransacties })
+    await gebruiker.click(screen.getByRole('button', { name: /^Verschil / }))
+    const filter = onGaNaarTransacties.mock.calls[0][0]
+    expect(filter.rekeningId).toBe('r1')
+    // De maand van dit scherm, niet die van de maandschakelaar elders in de app:
+    // de Rekeningen-pagina heeft er geen, dus het cijfer gaat altijd over nu.
+    expect(filter.maand).toBe(new Date().toISOString().slice(0, 7))
+  })
+
+  it('maakt van de kengetallen geen knoppen zonder bestemming', () => {
+    toon()
+    expect(screen.queryByRole('button', { name: /^Verschil / })).toBeNull()
+  })
+
+  it('opent een boeking vanaf haar rij', async () => {
+    const gebruiker = userEvent.setup()
+    const onBewerkTransactie = vi.fn()
+    const boeking = tx({ id: 't1', omschrijving: 'Colruyt' })
+    toon({ transacties: [boeking], onBewerkTransactie })
+    await gebruiker.click(screen.getByRole('button', { name: /^Colruyt / }))
+    expect(onBewerkTransactie).toHaveBeenCalledWith(boeking)
+  })
+
+  it('houdt "+ nog n" als tekst staan naast de knop', async () => {
+    // De printregels verbergen elke knop. Verving de knop de tekst, dan stond er op
+    // een afdruk een lijst van acht boekingen zonder één woord over de rest.
+    const gebruiker = userEvent.setup()
+    const onGaNaarTransacties = vi.fn()
+    const veel = Array.from({ length: 10 }, (_, i) => tx({ id: `t${i}` }))
+    toon({ transacties: veel, onGaNaarTransacties })
+    expect(screen.getByText('+ nog 2')).toBeInTheDocument()
+    await gebruiker.click(screen.getByRole('button', { name: 'Bekijk ze allemaal' }))
+    expect(onGaNaarTransacties).toHaveBeenCalledWith({ rekeningId: 'r1' })
   })
 })

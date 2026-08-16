@@ -396,3 +396,71 @@ describe('OnderhoudsbijdrageSectie — een ongeldige aanvangsindex', () => {
     expect(onOpslaan.mock.calls[0][0].aanvangsindexHandmatig).toBeUndefined()
   })
 })
+
+// Twee indexreeksen door elkaar (ronde 47).
+//
+// De rekenkern weigert dan te rekenen; deze tests leggen vast dat het SCHERM dat
+// ook laat zien. De eerste versie van deze reparatie had de waarschuwing wel, maar
+// toonde er onderaan nog een openstaand bedrag bij en liet de brief gewoon maken.
+describe('OnderhoudsbijdrageSectie — indexcijfers uit twee reeksen', () => {
+  // De aanvangsmaand is augustus 2021; de app kent daarvoor 112,74. Een cijfer dat
+  // daar ver naast ligt, wijst op een oudere reeks.
+  const gemengd: Onderhoudsbijdrage = { ...bijdrage, aanvangsindexHandmatig: 88.5 }
+
+  it('waarschuwt bovenaan, vóór het bedrag', () => {
+    toon({ bijdrage: gemengd })
+    const waarschuwing = document.querySelector('[data-basisjaar]')
+    expect(waarschuwing).not.toBeNull()
+    expect(waarschuwing?.textContent).toContain('112,74')
+    expect(waarschuwing?.textContent).toContain('88,50')
+  })
+
+  it('toont het bedrag uit de regeling en zegt dat er niet geïndexeerd is', () => {
+    toon({ bijdrage: gemengd })
+    const stat = document.querySelector('.stat') as HTMLElement
+    expect(stat.textContent).toContain(formatEuro(25000))
+    expect(stat.textContent).toContain('de indexatie is niet berekend')
+  })
+
+  it('maakt geen brief zolang het conflict er is', async () => {
+    const gebruiker = userEvent.setup()
+    toon({ bijdrage: gemengd })
+    const knop = screen.getByRole('button', { name: 'Brief met de berekening' })
+    expect(knop).toHaveAttribute('aria-disabled', 'true')
+    await gebruiker.click(knop)
+    expect(brief).not.toHaveBeenCalled()
+    // En de knop zegt waarom, in plaats van enkel niet te reageren.
+    expect(screen.getByText(/De brief staat uit zolang/)).toBeInTheDocument()
+  })
+
+  it('noemt geen openstaand bedrag bij de achterstand', async () => {
+    const gebruiker = userEvent.setup()
+    toon({ bijdrage: gemengd })
+    await gebruiker.click(screen.getByRole('button', { name: 'Toon wat er betaald is' }))
+    const open = document.querySelector('[data-open]')
+    expect(open?.textContent).toContain('niet te berekenen')
+  })
+
+  it('beweert niet dat de eerste verjaardag nog moet komen', async () => {
+    const gebruiker = userEvent.setup()
+    toon({ bijdrage: gemengd })
+    await gebruiker.click(screen.getByRole('button', { name: 'Toon de opbouw' }))
+    expect(screen.queryByText(/De eerste verjaardag van de regeling moet nog komen/)).toBeNull()
+    expect(screen.getByText(/De opbouw is niet berekend/)).toBeInTheDocument()
+  })
+
+  it('stempelt geen basisjaar op een aanvangsindex uit de akte', async () => {
+    // Het cijfer komt uit een akte van jaren geleden; in welke reeks het staat weet
+    // niemand. Een stempel zou dat als vaststaand vastleggen — precies de fout van
+    // de euro's die als centen gelezen werden.
+    const gebruiker = userEvent.setup()
+    const props = toon()
+    await gebruiker.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
+    await gebruiker.type(screen.getByLabelText('Aanvangsindex uit de akte (optioneel)'), '112,74')
+    await gebruiker.click(screen.getByRole('button', { name: 'Bewaar de regeling' }))
+    expect(props.onOpslaan).toHaveBeenCalled()
+    const bewaard = props.onOpslaan.mock.calls[0][0] as Onderhoudsbijdrage
+    expect(bewaard.aanvangsindexHandmatig).toBe(112.74)
+    expect(bewaard.indexBasisjaar).toBeUndefined()
+  })
+})

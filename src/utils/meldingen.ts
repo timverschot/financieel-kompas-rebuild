@@ -10,7 +10,7 @@ import type {
 import { uitgavenInMaand } from './budget'
 import { garantieStatus } from './garantie'
 import { maandVooruitblik } from './vooruitblik'
-import { bouwOpbouw, laatsteAanpassing } from './onderhoudsbijdrage'
+import { alsBijdrageInvoer, bouwOpbouw, laatsteAanpassing } from './onderhoudsbijdrage'
 import { openMaanden } from './maandafsluiting'
 import { maandJaarLabel } from './datum'
 import type { DossierSoort } from './dossiersoort'
@@ -220,21 +220,7 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
     // Een regeling die afgelopen is, indexeert niet meer.
     if (bijdrage.eindDatum !== undefined && bijdrage.eindDatum < invoer.vandaagISO) continue
 
-    const opbouw = bouwOpbouw(
-      {
-        basisbedrag: bijdrage.basisbedrag,
-        datumRegeling: bijdrage.datumRegeling,
-        geindexeerd: bijdrage.geindexeerd,
-        aanvangsindexHandmatig: bijdrage.aanvangsindexHandmatig,
-        eigenIndexcijfers: bijdrage.eigenIndexcijfers,
-        eindDatum: bijdrage.eindDatum,
-      },
-      invoer.vandaagISO,
-    )
-    const laatsteStap = opbouw.stappen[opbouw.stappen.length - 1]
-    if (!laatsteStap) continue
-    const dagenGeleden = dagenTussen(laatsteStap.datum, invoer.vandaagISO)
-    if (dagenGeleden < 0 || dagenGeleden > BIJDRAGE_VENSTER_DAGEN) continue
+    const opbouw = bouwOpbouw(alsBijdrageInvoer(bijdrage), invoer.vandaagISO)
 
     // Een bijdrage waarvan het dossier niet meer bestaat, is een weesrecord: de
     // melding zou een lege naam tonen en je naar een dossier brengen dat er niet is.
@@ -247,6 +233,25 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
       dossierId: bijdrage.dossierId,
       dringend: false,
     }
+
+    // Loopt de berekening vast op twee verschillende indexreeksen, dan staat het
+    // bedrag stil. Zonder deze melding zou de bijdrage gewoon uit de lijst
+    // verdwijnen — geen nieuws, terwijl er juist iets te doen is.
+    if (opbouw.indexConflict !== null) {
+      uit.push({
+        id: `bijdrage-reeks-${bijdrage.id}`,
+        soort: 'bijdrage',
+        sleutel: 'De onderhoudsbijdrage van {dossier} wordt niet meer geïndexeerd: de indexcijfers komen uit twee verschillende reeksen. Open de regeling om het op te lossen.',
+        params: { dossier: naam },
+        ...gemeen,
+      })
+      continue
+    }
+
+    const laatsteStap = opbouw.stappen[opbouw.stappen.length - 1]
+    if (!laatsteStap) continue
+    const dagenGeleden = dagenTussen(laatsteStap.datum, invoer.vandaagISO)
+    if (dagenGeleden < 0 || dagenGeleden > BIJDRAGE_VENSTER_DAGEN) continue
 
     // Wachten op een indexcijfer is iets anders dan een aanpassing die er is: in het
     // eerste geval kan je zélf iets doen (het cijfer bijzetten), in het tweede moet

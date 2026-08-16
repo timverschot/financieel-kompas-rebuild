@@ -28,6 +28,7 @@ export type FilterSleutel =
   | 'domein'
   | 'zonderCategorie'
   | 'handelaar'
+  | 'omschrijving'
   | 'van'
   | 'tot'
   | 'maand'
@@ -67,6 +68,7 @@ export function filterDelen(t: Vertaler, filter: TxFilter, namen: FilterNamen = 
   }
   if (filter.zonderCategorie) delen.push({ sleutel: 'zonderCategorie', label: t('Zonder categorie') })
   if (filter.handelaar) delen.push({ sleutel: 'handelaar', label: filter.handelaar })
+  if (filter.omschrijving) delen.push({ sleutel: 'omschrijving', label: filter.omschrijving })
   if (filter.van) delen.push({ sleutel: 'van', label: t('Van {datum}', { datum: filter.van }) })
   if (filter.tot) delen.push({ sleutel: 'tot', label: t('Tot {datum}', { datum: filter.tot }) })
   if (filter.maand) delen.push({ sleutel: 'maand', label: maandJaarLabel(filter.maand) })

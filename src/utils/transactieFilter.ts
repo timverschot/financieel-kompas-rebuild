@@ -59,6 +59,21 @@ export type TxFilter = {
    * boekingen waarop dat cijfer gebaseerd is.
    */
   handelaar?: string
+  /**
+   * Eén EXACTE omschrijving, precies zoals ze op de boeking staat.
+   *
+   * Waarom dit naast `handelaar` bestaat en niet in de plaats. De kaart
+   * "Uitgaven per winkel" op Analyse groepeert op de letterlijke omschrijving
+   * (`perWinkel` in `utils/analyse.ts`), inclusief hoofdletters en het
+   * kaartnummer dat de bank erbij zet. `handelaar` schoont dat juist op en zou
+   * dus MEER boekingen teruggeven dan het bedrag waarop je klikte — en `zoek` is
+   * een substring-vergelijking die "Colruyt" ook in "Colruyt Collect" vindt.
+   *
+   * Hoofdlettergevoelig, om dezelfde reden: de rekenkern groepeert dat ook zo,
+   * dus "Colruyt" en "colruyt" zijn daar twee rijen. Zou dit filter ze samen
+   * nemen, dan toonde elk van die twee rijen de som van allebei.
+   */
+  omschrijving?: string
 }
 
 // Alle categorie-id's waar een transactie naar verwijst: de hoofd-categorieId en
@@ -161,6 +176,10 @@ export function filterTransacties(transacties: Transactie[], filter: TxFilter): 
     if (filter.domein && !raaktDomein(tx, filter.domein)) return false
     if (filter.zonderCategorie && !mistCategorie(tx)) return false
     if (filter.handelaar && handelaarSleutel(tx.omschrijving) !== handelaarSleutel(filter.handelaar)) return false
+    // Op waarheid en niet op `!== undefined`: een lege string zou anders wél
+    // filteren maar géén chip krijgen, niet meetellen in het aantal en het
+    // zesmaandsvenster laten staan — een onzichtbaar filter zonder wisknop.
+    if (filter.omschrijving && tx.omschrijving.trim() !== filter.omschrijving.trim()) return false
     if (filter.zoek && !raaktZoek(tx, filter.zoek)) return false
     return true
   })
@@ -191,7 +210,8 @@ export function heeftActiefFilter(filter: TxFilter): boolean {
     filter.tot ||
     filter.maand ||
     filter.zonderCategorie ||
-    filter.handelaar
+    filter.handelaar ||
+    filter.omschrijving
   )
 }
 

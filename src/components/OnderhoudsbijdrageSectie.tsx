@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Dossier, Kind, Onderhoudsbetaling, Onderhoudsbijdrage } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
@@ -9,18 +9,19 @@ import { centenNaarInvoer, formatEuro, invoerNaarCenten } from '../utils/format'
 import { maandJaarLabel, vandaag } from '../utils/datum'
 import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 import {
+  alsBijdrageInvoer,
   berekenAchterstand,
   bouwOpbouw,
   laatsteAanpassing,
   verschuldigdPerMaand,
   volgendeVerjaardag,
-  type BijdrageInvoer,
 } from '../utils/onderhoudsbijdrage'
 import {
   aanvangsindexTekst,
   basisjaarWaarschuwing,
   getalTekst,
   openTekst,
+  reeksConflictUitleg,
   richtingTekst,
   stapUitleg,
   telwijzeTekst,
@@ -78,10 +79,11 @@ export function OnderhoudsbijdrageSectie({
   const [briefBezig, setBriefBezig] = useState(false)
   const [melding, setMelding] = useState('')
   const [fout, setFout] = useState('')
+  const briefRedenId = useId()
 
   const opbouw = useMemo(() => {
     if (!bijdrage) return null
-    return bouwOpbouw(alsInvoer(bijdrage), vandaagISO)
+    return bouwOpbouw(alsBijdrageInvoer(bijdrage), vandaagISO)
   }, [bijdrage, vandaagISO])
 
   if (!bijdrage) {
@@ -119,19 +121,20 @@ export function OnderhoudsbijdrageSectie({
 
   const o = opbouw as NonNullable<typeof opbouw>
   const aanpassing = laatsteAanpassing(o, bijdrage.basisbedrag)
-  const maandRegels = verschuldigdPerMaand(alsInvoer(bijdrage), o, vandaagISO)
+  const maandRegels = verschuldigdPerMaand(alsBijdrageInvoer(bijdrage), o, vandaagISO)
   const stand = berekenAchterstand(maandRegels, betalingen)
   const kentAlles = o.ontbrekendeMaanden.length === 0
   // Is de regeling afgelopen, dan is "vandaag" het verkeerde woord: er is sindsdien
   // niets meer verschuldigd en er wordt niets meer geïndexeerd.
   const gestopt = Boolean(bijdrage.eindDatum && bijdrage.eindDatum < vandaagISO)
+  const briefGeblokkeerd = o.indexConflict !== null
   const kindNamen = (bijdrage.kindIds ?? [])
     .map((id) => kinderen.find((k) => k.id === id)?.naam)
     .filter(Boolean)
     .join(', ')
 
   async function maakBrief() {
-    if (briefBezig || !bijdrage) return
+    if (briefBezig || briefGeblokkeerd || !bijdrage) return
     setBriefBezig(true)
     setFout('')
     setMelding('')
@@ -159,12 +162,27 @@ export function OnderhoudsbijdrageSectie({
         </button>
       }
     >
+      {/* Het basisjaar van de index klopt niet meer met dat van je eigen cijfers.
+          Dit staat BOVEN het bedrag, want zolang dit niet opgelost is, is er geen
+          bedrag om te tonen — en een geïndexeerd bedrag uit twee verschillende
+          maatstaven ziet er geloofwaardig uit terwijl het er tientallen procenten
+          naast zit. Dat is het gevaarlijkste wat deze app kan doen. */}
+      {o.indexConflict !== null && (
+        <p className="foutregel" role="alert" data-basisjaar>
+          {reeksConflictUitleg(t, o)}
+        </p>
+      )}
+
       {/* Het cijfer waar mensen voor komen, meteen bovenaan. */}
       <div className="stat">
         <span className="label-caps">{gestopt ? t('Bijdrage bij het einde van de regeling') : t('Bijdrage vandaag')}</span>
         <Bedrag centen={o.huidigBedrag} groot />
         <span className="rij-meta">
-          {o.huidigBedrag === bijdrage.basisbedrag
+          {o.indexConflict !== null
+            ? t('het bedrag uit de regeling van {datum}; de indexatie is niet berekend', {
+                datum: bijdrage.datumRegeling,
+              })
+            : o.huidigBedrag === bijdrage.basisbedrag
             ? t('gelijk aan het bedrag uit de regeling van {datum}', { datum: bijdrage.datumRegeling })
             : t('geïndexeerd; in de regeling van {datum} stond {basis}', {
                 datum: bijdrage.datumRegeling,
@@ -222,10 +240,15 @@ export function OnderhoudsbijdrageSectie({
         >
           {toonAchterstand ? t('Verberg wat er betaald is') : t('Toon wat er betaald is')}
         </button>
+        {/* Bij een reeksconflict staat de brief uit. Ze bevat een bedrag en een
+            berekening, en ze is bedoeld om aan de andere ouder of aan een advocaat te
+            geven. Een brief versturen met een bedrag waarvan de app zelf zegt dat ze
+            het niet kan berekenen, is het ergste wat hier kan gebeuren. */}
         <button
           type="button"
-          className="knop knop-secundair knop-klein"
-          aria-disabled={briefBezig}
+          className={`knop knop-secundair knop-klein${briefGeblokkeerd ? ' knop-uit' : ''}`}
+          aria-disabled={briefBezig || briefGeblokkeerd}
+          aria-describedby={briefGeblokkeerd ? briefRedenId : undefined}
           onClick={maakBrief}
         >
           {briefBezig ? t('Bezig…') : t('Brief met de berekening')}
@@ -240,6 +263,15 @@ export function OnderhoudsbijdrageSectie({
         </button>
       </div>
 
+      {/* Waarom de brief uitstaat, in het document zelf: een knop die niet reageert
+          zonder te zeggen waarom, is een raadsel — en `aria-disabled` alleen laat een
+          schermlezer "niet-beschikbaar" zeggen zonder één woord uitleg. */}
+      <p id={briefRedenId} className="rij-meta" role="status" style={{ margin: 0 }}>
+        {briefGeblokkeerd
+          ? t('De brief staat uit zolang de indexcijfers niet uit dezelfde reeks komen: ze zou een bedrag bevatten dat de app niet kan verantwoorden.')
+          : ''}
+      </p>
+
       {fout !== '' && (
         <p className="foutregel" role="alert">
           {fout}
@@ -253,6 +285,7 @@ export function OnderhoudsbijdrageSectie({
 
       {toonAchterstand && (
         <Achterstand
+          conflict={o.indexConflict !== null}
           t={t}
           bijdrage={bijdrage}
           betalingen={betalingen}
@@ -268,18 +301,6 @@ export function OnderhoudsbijdrageSectie({
       )}
     </Kaart>
   )
-}
-
-/** Het record omzetten naar wat de rekenkern vraagt. */
-function alsInvoer(b: Onderhoudsbijdrage): BijdrageInvoer {
-  return {
-    basisbedrag: b.basisbedrag,
-    datumRegeling: b.datumRegeling,
-    geindexeerd: b.geindexeerd,
-    aanvangsindexHandmatig: b.aanvangsindexHandmatig,
-    eigenIndexcijfers: b.eigenIndexcijfers,
-    eindDatum: b.eindDatum,
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -309,9 +330,14 @@ function Opbouw({
         <Leeg>
           {bijdrage.geindexeerd === false
             ? t('De regeling sluit indexatie uit, dus het bedrag blijft ongewijzigd.')
-            : t('De eerste verjaardag van de regeling moet nog komen: op {datum}.', {
-                datum: volgendeVerjaardag(bijdrage.datumRegeling, vandaagISO),
-              })}
+            : /* Bij een reeksconflict is de lijst óók leeg, maar niet omdat de eerste
+                 verjaardag nog moet komen. Zonder deze tak beweert dit paneel dat er
+                 nog geen verjaardag geweest is bij een regeling die er zestien had. */
+              opbouw.indexConflict !== null
+              ? t('De opbouw is niet berekend, want de indexcijfers komen niet uit dezelfde reeks. Bovenaan de kaart staat wat er moet gebeuren.')
+              : t('De eerste verjaardag van de regeling moet nog komen: op {datum}.', {
+                  datum: volgendeVerjaardag(bijdrage.datumRegeling, vandaagISO),
+                })}
         </Leeg>
       ) : (
         <ul className="lijst">
@@ -347,6 +373,7 @@ function Achterstand({
   bijdrage,
   betalingen,
   stand,
+  conflict,
   onBetalingOpslaan,
   onBetalingVerwijderen,
   vandaagISO,
@@ -355,6 +382,8 @@ function Achterstand({
   bijdrage: Onderhoudsbijdrage
   betalingen: Onderhoudsbetaling[]
   stand: ReturnType<typeof berekenAchterstand>
+  /** Loopt de indexatie vast op twee reeksen? Dan is dit geen bruikbaar cijfer. */
+  conflict: boolean
   onBetalingOpslaan: (b: Onderhoudsbetaling) => Promise<void> | void
   onBetalingVerwijderen: (id: string) => Promise<void> | void
   vandaagISO: string
@@ -402,8 +431,14 @@ function Achterstand({
           <Bedrag centen={stand.betaald} />
         </li>
       </ul>
-      <p className="rij-titel" style={{ margin: 0 }} data-open>
-        {openTekst(t, stand.open, bijdrage.richting)}
+      {/* Bij een reeksconflict telt elke maand aan het NIET-geïndexeerde bedrag. Het
+          openstaande bedrag is dan structureel te laag, en dit is net het getal dat
+          mensen overnemen. Het cijfer noemen zonder dat erbij te zeggen is erger dan
+          het niet noemen. */}
+      <p className={conflict ? 'foutregel' : 'rij-titel'} style={{ margin: 0 }} data-open>
+        {conflict
+          ? t('Wat er openstaat is niet te berekenen: elke maand zou hier aan het bedrag uit de regeling geteld worden, zonder de indexatie. Het echte bedrag ligt hoger. Los eerst de indexcijfers bovenaan op.')
+          : openTekst(t, stand.open, bijdrage.richting)}
       </p>
       <p className="rij-meta" style={{ margin: 0 }}>
         {telwijzeTekst(t)}
@@ -496,6 +531,7 @@ function Regeling({
   const [eigenCijfer, setEigenCijfer] = useState('')
   const [gekozenKinderen, setGekozenKinderen] = useState<string[]>(bijdrage.kindIds ?? [])
   const [fout, setFout] = useState('')
+  const [regelingMelding, setRegelingMelding] = useState('')
 
   const eigen = bijdrage.eigenIndexcijfers ?? {}
 
@@ -522,6 +558,12 @@ function Regeling({
       richting,
       geindexeerd: indexeren,
       // `undefined` wist het veld — zo raak je een handmatige aanvangsindex weer kwijt.
+      //
+      // Er wordt hier BEWUST geen basisjaar bij gestempeld. Het cijfer komt uit een
+      // akte van jaren geleden; in welke reeks het staat, weet de gebruiker niet en
+      // wij dus ook niet. Een stempel zou een bewering vastleggen die niemand
+      // gecontroleerd heeft — precies de fout van de euro's die als centen gelezen
+      // werden. De rekenkern leidt het zelf af (zie `indexConflict`).
       ...(Number.isFinite(handmatig) && handmatig > 0
         ? { aanvangsindexHandmatig: handmatig }
         : { aanvangsindexHandmatig: undefined }),
@@ -538,7 +580,28 @@ function Regeling({
       return
     }
     setFout('')
-    await onOpslaan({ ...bijdrage, eigenIndexcijfers: { ...eigen, [eigenMaand]: cijfer } })
+    // Het basisjaar mee vastleggen: zonder dat weet niemand later nog in welke
+    // maatstaf dit cijfer staat, en dan komt de bijdrage er na een herbasering
+    // tientallen procenten naast (ronde 47).
+    //
+    // Staan de bestaande cijfers nog in een OUDERE basis, dan mag dit nieuwe cijfer
+    // er niet bijgezet worden. Anders draagt het record één basisjaar over cijfers
+    // uit twee reeksen, verdwijnt de waarschuwing na het eerste cijfer, en rekent de
+    // app verder met een mengsel. De reparatie zou zichzelf ontmantelen langs de weg
+    // die ze zelf aanraadt. Dus: de oude cijfers gaan weg, en het scherm zegt dat.
+    const oudeBasis = (bijdrage.indexBasisjaar ?? INDEX_BASISJAAR) !== INDEX_BASISJAAR
+    await onOpslaan({
+      ...bijdrage,
+      eigenIndexcijfers: oudeBasis ? { [eigenMaand]: cijfer } : { ...eigen, [eigenMaand]: cijfer },
+      indexBasisjaar: INDEX_BASISJAAR,
+    })
+    if (oudeBasis) {
+      setRegelingMelding(
+        t('Je eerdere indexcijfers stonden in basis {oud} = 100 en zijn verwijderd. Zet ze opnieuw met de cijfers uit de huidige reeks.', {
+          oud: bijdrage.indexBasisjaar ?? INDEX_BASISJAAR,
+        }),
+      )
+    }
     setEigenMaand('')
     setEigenCijfer('')
   }
@@ -655,6 +718,9 @@ function Regeling({
             {t('Indexcijfer toevoegen')}
           </button>
         </div>
+        <p className="rij-meta" role="status" style={{ margin: 0 }}>
+          {regelingMelding}
+        </p>
         {Object.keys(eigen).length > 0 && (
           <ul className="lijst">
             {Object.entries(eigen)
@@ -677,8 +743,6 @@ function Regeling({
           </ul>
         )}
       </div>
-
-
     </Kaart>
   )
 }

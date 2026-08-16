@@ -157,7 +157,15 @@ export async function exporteerIndexatiebriefPDF(
     }
   } else {
     blad.kop(t('Per verjaardag'))
-    blad.alinea(t('Er is nog geen verjaardag van de regeling geweest.'), { grijs: true })
+    // Bij een reeksconflict is de lijst óók leeg, maar niet omdat er nog geen
+    // verjaardag geweest is — bij een regeling uit 2010 waren dat er zestien. Zo'n
+    // onware zin in een blad dat naar een advocaat kan gaan, is geen detail.
+    blad.alinea(
+      opbouw.indexConflict !== null
+        ? t('De verjaardagen zijn niet berekend, omdat de gebruikte indexcijfers niet uit dezelfde reeks komen.')
+        : t('Er is nog geen verjaardag van de regeling geweest.'),
+      { grijs: true },
+    )
   }
 
   // ---- Wat ontbreekt ------------------------------------------------------

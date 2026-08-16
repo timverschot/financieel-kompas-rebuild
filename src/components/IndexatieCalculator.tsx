@@ -221,6 +221,12 @@ function BewaarAlsBijdrage({
         basisbedrag,
         datumRegeling: datum,
         // Alleen bewaren wanneer jouw cijfer afwijkt van wat de app zelf kent.
+        //
+        // Er wordt geen basisjaar bij gestempeld: in welke reeks een cijfer uit een
+        // akte staat, weet de gebruiker meestal niet, en een stempel zou dat als
+        // vaststaand vastleggen. De rekenkern leidt het zelf af — komt dit cijfer
+        // niet overeen met de tabel, dan weigert ze te indexeren en zegt ze waarom
+        // (ronde 47).
         ...(automatisch === undefined || wijktAf ? { aanvangsindexHandmatig: aanvangsindex } : {}),
       })
       // De naam uit ALLE dossiers halen: het net bewaarde dossier valt uit `vrij`.

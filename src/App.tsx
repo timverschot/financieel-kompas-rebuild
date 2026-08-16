@@ -1430,20 +1430,58 @@ export function App() {
   // maakte dan ook een transactie mét een datum in maart, zonder dat er ergens
   // stond dat dat gebeurde. Meldingen gaan over NU; de maandschakelaar gaat over
   // wat je bekijkt. Dat zijn twee verschillende dingen.
-  const meldingen = bouwMeldingen({
-    budgetten,
-    transacties: transacties ?? [],
-    maand: huidigeMaand(),
-    garanties,
-    terugkerendePosten,
-    vandaagISO: vandaag(),
-    drempel: budgetDrempel,
-    naamVanCategorie: (id) => labelVanCategorie(id, categorieen) ?? t('Geen categorie'),
-    onderhoudsbijdragen,
-    dossiers,
-    formatBedrag: formatEuro,
-    maandafsluitingen,
-  })
+  // Gememoiseerd (ronde 47): deze functie loopt over alle budgetten, transacties,
+  // garanties, vaste lasten, onderhoudsbijdragen én maandafsluitingen, en ze draaide
+  // bij ELKE render van App — dus ook wanneer je alleen een tabblad opende of een
+  // letter in een zoekveld tikte. Er ging niets fout, maar het is werk voor niets op
+  // precies het toestel waar dat het meest voelbaar is.
+  //
+  // De datum staat BUITEN de useMemo, en dat is geen stijlkwestie. `vandaag()` en
+  // `huidigeMaand()` binnen de memo zouden één keer uitgerekend worden en daarna
+  // bevroren blijven tot er toevallig data verandert. Precies de meldingen die van
+  // de datum afhangen — een garantie die morgen vervalt, een vaste last die deze
+  // maand nog niet geboekt is — bleven dan hangen op de dag van gisteren. En erger:
+  // de knop 'boek deze vaste last in' rekent de maand bij de klik opnieuw uit, dus
+  // de melding zou over juli gaan terwijl de knop in augustus boekt. Het zijn
+  // gewone strings, dus de memo slaat het werk nog altijd over bij elke render
+  // binnen dezelfde dag — hij ververst enkel wanneer de dag echt verandert.
+  const meldingVandaagISO = vandaag()
+  const meldingMaand = huidigeMaand()
+  const meldingen = useMemo(
+    () =>
+      bouwMeldingen({
+        budgetten,
+        transacties: transacties ?? [],
+        maand: meldingMaand,
+        garanties,
+        terugkerendePosten,
+        vandaagISO: meldingVandaagISO,
+        drempel: budgetDrempel,
+        naamVanCategorie: (id) => labelVanCategorie(id, categorieen) ?? t('Geen categorie'),
+        onderhoudsbijdragen,
+        dossiers,
+        formatBedrag: formatEuro,
+        maandafsluitingen,
+      }),
+    [
+      budgetten,
+      transacties,
+      meldingMaand,
+      meldingVandaagISO,
+      garanties,
+      terugkerendePosten,
+      budgetDrempel,
+      categorieen,
+      // `labelVanCategorie` leest het register dat met `subcategorieen` gevuld wordt.
+      // Zonder deze dep blijft een hernoemde eigen subcategorie in de melding onder
+      // haar oude naam staan tot er toevallig iets anders verandert.
+      subcategorieen,
+      onderhoudsbijdragen,
+      dossiers,
+      maandafsluitingen,
+      t,
+    ],
+  )
 
   // Eén vooruitblik voor de Plan-pagina: zowel de verwachte als de al geboekte
   // inkomsten komen hieruit, zodat beide cijfers gegarandeerd bij elkaar horen.
@@ -1739,18 +1777,44 @@ export function App() {
                 <span className="label-caps">{t('Saldo')}</span>
                 <span className="bedrag-groot">{formatEuro(totaalSaldo)}</span>
               </div>
-              <div className="kengetal">
+              {/* Doorklikken naar de boekingen erachter (ronde 48).
+
+                  Waarom deze drie wél en het saldo hierboven NIET: `maandInkomsten`
+                  en `maandUitgaven` tellen op regelniveau op, precies zoals de
+                  kengetallen boven de transactielijst, dus je ziet daar exact het
+                  getal terug waarop je klikte. Het totale saldo is de som over álle
+                  rekeningen, en die som staat nergens op de Rekeningen-pagina — dan
+                  klik je op een cijfer en kom je op een scherm waar het niet
+                  voorkomt. */}
+              <button
+                type="button"
+                className="kengetal kengetal-knop"
+                aria-label={t('Inkomsten {bedrag} — bekijk de boekingen', { bedrag: formatEuro(inkomsten) })}
+                onClick={() => gaNaarTransacties({ maand, richting: 'in' })}
+              >
                 <span className="label-caps">{t('Inkomsten')}</span>
                 <Bedrag centen={inkomsten} richting="in" groot />
-              </div>
-              <div className="kengetal">
+              </button>
+              <button
+                type="button"
+                className="kengetal kengetal-knop"
+                aria-label={t('Uitgaven {bedrag} — bekijk de boekingen', { bedrag: formatEuro(uitgaven) })}
+                onClick={() => gaNaarTransacties({ maand, richting: 'uit' })}
+              >
                 <span className="label-caps">{t('Uitgaven')}</span>
                 <Bedrag centen={uitgaven} richting="uit" groot />
-              </div>
-              <div className="kengetal">
+              </button>
+              <button
+                type="button"
+                className="kengetal kengetal-knop"
+                aria-label={t('Netto {bedrag} — bekijk alle boekingen van deze maand', {
+                  bedrag: formatEuro(inkomsten - uitgaven),
+                })}
+                onClick={() => gaNaarTransacties({ maand })}
+              >
                 <span className="label-caps">{t('Netto')}</span>
                 <Bedrag centen={inkomsten - uitgaven} richting="auto" groot />
-              </div>
+              </button>
             </div>
 
             {/* Benoemen wat het netto-cijfer betekent, wat je na aftrek van je
@@ -1868,7 +1932,11 @@ export function App() {
                   tot: maandJaarLabel(`${maandPaar[maandPaar.length - 1]?.maand ?? maand}-01`),
                 })}
               >
-                <MaandGrafiek data={maandPaar} lopendeMaand={huidigeMaand()} />
+                <MaandGrafiek
+                  data={maandPaar}
+                  lopendeMaand={huidigeMaand()}
+                  onKiesMaand={(m) => gaNaarTransacties({ maand: m })}
+                />
               </Kaart>
 
               {/* Onderaan, bewust: je exporteert een maand nadat je ze bekeken hebt,
@@ -1977,6 +2045,7 @@ export function App() {
               maand={maand}
               verwachteInkomsten={planBlik.verwachteInkomsten}
               geboekteInkomsten={planBlik.geboekt.inkomsten}
+              onGaNaarTransacties={gaNaarTransacties}
             />
           </ErrorBoundary>
 
@@ -2171,6 +2240,7 @@ export function App() {
                   documenten={dossierdocumenten}
                   onDocumentOpslaan={dossierDocumentOpslaan}
                   onDocumentVerwijderen={dossierDocumentVerwijderen}
+                  onBewerkTransactie={setBewerkTransactie}
                 />
               </ErrorBoundary>
             )}
@@ -2206,6 +2276,8 @@ export function App() {
                 onWaarderingVerwijderen={verwijderWaarderingH}
                 rekeningen={rekeningen}
                 onOverboeking={voegOverboekingToe}
+                onGaNaarTransacties={gaNaarTransacties}
+                onBewerkTransactie={setBewerkTransactie}
               />
             )}
           </div>

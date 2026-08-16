@@ -106,13 +106,44 @@ export function Bedrag({
   )
 }
 
-/** Klein label boven een cijfer, en het cijfer zelf. */
-export function Stat({ label, children }: { label: ReactNode; children: ReactNode }) {
-  return (
-    <div className="stat">
+/**
+ * Klein label boven een cijfer, en het cijfer zelf.
+ *
+ * Met `onClick` wordt het hele blokje een knop die naar de gegevens achter het
+ * cijfer leidt (ronde 48). Zonder `onClick` blijft het een gewoon blokje — een
+ * knop die nergens heen gaat, is erger dan geen knop.
+ *
+ * `aria-label` is dan verplicht in de praktijk: "€ 1.240,00" alleen zegt een
+ * schermlezer niets. De zichtbare tekst hoort er vooraan in te staan (WCAG 2.5.3,
+ * "Label in Name"), dus de vorm is "{label} {waarde} — bekijk …" en niet
+ * "Bekijk de … van {label}".
+ */
+export function Stat({
+  label,
+  doorklik,
+  children,
+}: {
+  label: ReactNode
+  children: ReactNode
+  /**
+   * Bestemming en toegankelijke naam samen in ÉÉN prop, en niet als twee losse
+   * optionele props. Zo kan er geen knop ontstaan zonder naam: dan zou een
+   * schermlezer alleen "Verschil€ 1.500,00" voorlezen, zonder dat er iets zegt dat
+   * je erop kan tikken of waar je terechtkomt.
+   */
+  doorklik?: { naar: () => void; naam: string }
+}) {
+  const inhoud = (
+    <>
       <span className="label-caps">{label}</span>
       <span className="stat-waarde">{children}</span>
-    </div>
+    </>
+  )
+  if (!doorklik) return <div className="stat">{inhoud}</div>
+  return (
+    <button type="button" className="stat stat-knop" aria-label={doorklik.naam} onClick={doorklik.naar}>
+      {inhoud}
+    </button>
   )
 }
 

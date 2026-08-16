@@ -63,3 +63,37 @@ describe('GarantieSectie', () => {
     expect(screen.queryByText(/Uit je boeking/)).toBeNull()
   })
 })
+
+// --- Ronde 48: de weg van een garantie naar haar boeking ------------------------
+
+describe('GarantieSectie — doorklikken naar de boeking', () => {
+  const tx: Transactie = {
+    id: 'tx1',
+    datum: '2026-01-01',
+    omschrijving: 'Media Markt',
+    bedrag: -89900,
+    rekeningId: 'r1',
+  }
+  const g: Garantie = {
+    id: 'g1',
+    product: 'Laptop',
+    aankoopdatum: '2026-01-01',
+    garantieMaanden: 24,
+    transactieId: 'tx1',
+  }
+
+  it('maakt van de gekoppelde boeking een knop zodra de app ze kan openen', async () => {
+    const gebruiker = userEvent.setup()
+    const onBewerkTransactie = vi.fn()
+    toon([g], { onBewerkTransactie }, [tx])
+    await gebruiker.click(await screen.findByRole('button', { name: /^Uit je boeking van/ }))
+    expect(onBewerkTransactie).toHaveBeenCalledWith(expect.objectContaining({ id: 'tx1' }))
+  })
+
+  it('laat het gewone tekst wanneer er geen bestemming is', () => {
+    // Een knop die niets doet, is erger dan geen knop.
+    toon([g], {}, [tx])
+    expect(screen.queryByRole('button', { name: /^Uit je boeking van/ })).toBeNull()
+    expect(screen.getByText(/Uit je boeking van/)).toBeInTheDocument()
+  })
+})

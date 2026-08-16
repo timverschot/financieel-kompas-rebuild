@@ -1,5 +1,16 @@
-import { gezondheidsindex, laatsteIndexmaand } from '../data/gezondheidsindex'
+import { gezondheidsindex, laatsteIndexmaand, INDEX_BASISJAAR } from '../data/gezondheidsindex'
 import { indexeerBedrag } from './indexatie'
+
+/**
+ * Hoeveel een zelf ingetikte aanvangsindex van het cijfer in de tabel mag afwijken
+ * en toch als "hetzelfde cijfer" gelden: een half procent.
+ *
+ * Waarom er speling nodig is: wie het cijfer uit zijn akte overtikt, kan afronden
+ * (110,1 in plaats van 110,05). Waarom de speling klein mag blijven: een
+ * herbasering schuift de hele reeks met tientallen procenten op, dus die valt er
+ * nooit binnen. Een tikfout van een factor tien evenmin.
+ */
+export const AKTE_TOLERANTIE = 0.005
 
 // De rekenkern van de onderhoudsbijdrage (ronde 42).
 //
@@ -69,6 +80,27 @@ export type BijdrageInvoer = {
    */
   eigenIndexcijfers?: Record<string, number>
   /**
+   * Het basisjaar waarin de EIGEN MAANDCIJFERS hierboven uitgedrukt staan.
+   *
+   * Waarom dit veld bestaat (ronde 47). Een indexcijfer is een kaal getal; wat het
+   * betekent, hangt volledig af van de basis waarin het staat. Statbel herbaseert
+   * om de zoveel jaar: alle cijfers worden dan door dezelfde constante gedeeld.
+   * Zolang beide cijfers uit dezelfde reeks komen, klopt de verhouding — maar zodra
+   * er één van elk gebruikt wordt, rekent de app met twee maatstaven en zit het
+   * bedrag er tientallen procenten naast. Zonder foutmelding.
+   *
+   * Dit veld gaat NIET over `aanvangsindexHandmatig`. Dat cijfer komt uit een akte
+   * van jaren geleden en niemand kan van de gebruiker verwachten dat hij weet in
+   * welke basis het staat — de app leidt dat zelf af, door het te vergelijken met
+   * haar eigen tabel. Zie `indexConflict`.
+   *
+   * De maandcijfers die de gebruiker zelf bijzet, tikt hij vandaag over uit de
+   * lopende publicatie, dus in de basis die vandaag geldt. Ontbreekt het veld, dan
+   * is dat basis 2013 — de enige basis die deze app ooit gehad heeft. Na een
+   * volgende herbasering vertelt het veld dat die cijfers verouderd zijn.
+   */
+  indexBasisjaar?: number
+  /**
    * De dag waarop de regeling ophoudt (bv. bij het einde van de studies).
    *
    * Vanaf die dag komt er geen indexatie meer bij en telt er geen maand meer mee.
@@ -76,6 +108,35 @@ export type BijdrageInvoer = {
    * doorindexeren en bovenaan een bedrag tonen dat al jaren niet meer bestond.
    */
   eindDatum?: string
+}
+
+/**
+ * Een bewaarde onderhoudsbijdrage omzetten naar wat de rekenkern vraagt.
+ *
+ * Waarom dit hier staat en niet in het scherm: deze velden werden op drie plekken
+ * met de hand overgetikt (het dossierscherm, de meldingen, de PDF-brief), en toen er
+ * in ronde 47 één veld bijkwam, vergat de meldingenlijst het. Gevolg: het
+ * dossierscherm weigerde een bedrag te tonen terwijl de startpagina er wél eentje
+ * meldde. Eén functie, drie aanroepers.
+ */
+export function alsBijdrageInvoer(b: {
+  basisbedrag: number
+  datumRegeling: string
+  geindexeerd?: boolean
+  aanvangsindexHandmatig?: number
+  eigenIndexcijfers?: Record<string, number>
+  indexBasisjaar?: number
+  eindDatum?: string
+}): BijdrageInvoer {
+  return {
+    basisbedrag: b.basisbedrag,
+    datumRegeling: b.datumRegeling,
+    geindexeerd: b.geindexeerd,
+    aanvangsindexHandmatig: b.aanvangsindexHandmatig,
+    eigenIndexcijfers: b.eigenIndexcijfers,
+    indexBasisjaar: b.indexBasisjaar,
+    eindDatum: b.eindDatum,
+  }
 }
 
 /** Eén aanpassing op een verjaardag van de regeling. */
@@ -94,11 +155,29 @@ export type IndexatieStap = {
   berekend: boolean
 }
 
+/**
+ * De twee manieren waarop een berekening cijfers uit verschillende indexreeksen
+ * door elkaar zou halen.
+ *
+ * - `akte-met-tabel`: de gebruiker tikte de aanvangsindex uit zijn akte in, maar de
+ *   jaarlijkse cijfers zouden uit de meegeleverde tabel komen. De akte kan van vóór
+ *   een herbasering dateren; dan staan die twee getallen in een andere maatstaf.
+ * - `ander-basisjaar`: de eigen maandcijfers zijn ingetikt toen de app nog een
+ *   andere basis gebruikte dan nu.
+ */
+export type IndexConflict = 'akte-met-tabel' | 'ander-basisjaar'
+
 export type BijdrageOpbouw = {
   /** De aanvangsindex die gebruikt is, of null wanneer ze onbekend is. */
   aanvangsindex: number | null
   /** Komt de aanvangsindex uit de akte in plaats van uit de tabel? */
   aanvangsindexUitAkte: boolean
+  /**
+   * Het cijfer dat de gebruiker letterlijk intikte, ook wanneer de berekening
+   * geweigerd is. Zonder dit veld kan het scherm bij een conflict niet zeggen wélk
+   * getal het over heeft — `aanvangsindex` is dan namelijk null.
+   */
+  aanvangsindexIngetikt: number | null
   /** De maand waaruit de aanvangsindex komt, 'JJJJ-MM'. */
   aanvangsmaand: string
   /** Elke verjaardag tot en met vandaag, oudste eerst. */
@@ -109,6 +188,31 @@ export type BijdrageOpbouw = {
   ontbrekendeMaanden: string[]
   /** De laatste maand waarvoor de app een cijfer kent. */
   laatsteBekendeMaand: string
+  /**
+   * Zou deze berekening cijfers uit twee verschillende indexreeksen door elkaar
+   * halen? Dan rekent deze functie niets uit: het basisbedrag blijft staan, en het
+   * scherm legt uit waarom. Een bedrag dat er tientallen procenten naast zit maar er
+   * geloofwaardig uitziet, is het gevaarlijkste wat deze app kan tonen.
+   *
+   * `null` betekent: geen vermenging, de uitkomst mag gebruikt worden.
+   */
+  indexConflict: IndexConflict | null
+  /** Het basisjaar van de meegeleverde tabel, voor de uitleg op het scherm. */
+  basisjaarTabel: number
+  /** Het basisjaar waarin de eigen maandcijfers staan, voor de uitleg op het scherm. */
+  basisjaarEigen: number
+  /**
+   * Wat de tabel van de app zelf voor de aanvangsmaand kent, of null wanneer ze die
+   * maand niet heeft. Hiermee kan het scherm zeggen: "de app kent dit cijfer al —
+   * laat het veld leeg" in plaats van enkel te weigeren.
+   */
+  aanvangsindexTabel: number | null
+  /**
+   * De verjaardagsmaanden waarvoor deze berekening de tabel van de app zou
+   * gebruiken. Bij `akte-met-tabel` zijn dit precies de maanden die de gebruiker
+   * zelf moet invullen om de vermenging op te heffen.
+   */
+  tabelMaanden: string[]
 }
 
 /** Het indexcijfer van een maand, met de eigen toevoegingen van de gebruiker erbij. */
@@ -152,22 +256,82 @@ export function verjaardag(datumRegeling: string, n: number): string {
 export function bouwOpbouw(invoer: BijdrageInvoer, vandaagISO: string): BijdrageOpbouw {
   const aanvangsmaand = maandVoor(invoer.datumRegeling)
   const uitAkte = typeof invoer.aanvangsindexHandmatig === 'number' && invoer.aanvangsindexHandmatig > 0
-  const aanvangsindex = uitAkte
-    ? (invoer.aanvangsindexHandmatig as number)
-    : (indexVan(aanvangsmaand, invoer.eigenIndexcijfers) ?? null)
-
-  const ontbrekende: string[] = []
-  if (aanvangsindex === null) ontbrekende.push(aanvangsmaand)
-
-  const stappen: IndexatieStap[] = []
-  let bedrag = invoer.basisbedrag
+  const eigen = invoer.eigenIndexcijfers ?? {}
 
   // Indexeren uitgezet in de akte: dan is er geen enkele stap en blijft het
   // basisbedrag gelden. Dat mag: het is een geldige afspraak.
   // Na de einddatum verandert er niets meer: dan telt de laatste dag van de
   // regeling, niet vandaag.
   const peildatum = invoer.eindDatum && invoer.eindDatum < vandaagISO ? invoer.eindDatum : vandaagISO
-  const jaren = invoer.geindexeerd === false ? 0 : Math.min(jarenTussen(invoer.datumRegeling, peildatum), MAX_JAREN)
+  const jarenMogelijk =
+    invoer.geindexeerd === false ? 0 : Math.min(jarenTussen(invoer.datumRegeling, peildatum), MAX_JAREN)
+
+  // --- Zouden er cijfers uit twee verschillende reeksen in één breuk komen? ---
+  //
+  // De regel staat in `data/gezondheidsindex.ts` en in het projectdossier: ofwel
+  // komen beide cijfers uit de tabel van de app, ofwel tikt de gebruiker ze allebei
+  // zelf in. Nooit één van elk. Een aanvangsindex die letterlijk in een vonnis uit
+  // 2010 staat, is uitgedrukt in de basis van tóén; delen door een cijfer uit de
+  // huidige tabel geeft een verschil van tientallen procenten.
+  //
+  // Belangrijk: we VRAGEN de gebruiker niets. Hij weet doorgaans niet in welke basis
+  // zijn akte staat, en een antwoord dat hij moet raden is erger dan geen antwoord.
+  // De app leidt het af uit wat ze zelf weet.
+
+  // Voor welke verjaardagsmaanden zou de app haar eigen tabel raadplegen?
+  const tabelMaanden: string[] = []
+  for (let n = 1; n <= jarenMogelijk; n++) {
+    const maand = maandVoor(verjaardag(invoer.datumRegeling, n))
+    const eigenCijfer = eigen[maand]
+    if (typeof eigenCijfer === 'number' && eigenCijfer > 0) continue
+    if (gezondheidsindex(maand) === undefined) continue
+    if (!tabelMaanden.includes(maand)) tabelMaanden.push(maand)
+  }
+
+  // Kent de tabel de aanvangsmaand, en is het ingetikte cijfer daaraan gelijk? Dan
+  // is bewezen dat de akte in dezelfde reeks staat en is er niets aan de hand — dat
+  // is het gewone geval van een recente regeling die de gebruiker letterlijk
+  // overtikt.
+  const aanvangsindexTabel = gezondheidsindex(aanvangsmaand) ?? null
+  const akteVolgtTabel =
+    uitAkte &&
+    aanvangsindexTabel !== null &&
+    Math.abs((invoer.aanvangsindexHandmatig as number) - aanvangsindexTabel) <=
+      aanvangsindexTabel * AKTE_TOLERANTIE
+
+  // Vult de gebruiker élke verjaardagsmaand zelf in, dan komt de tabel er niet aan
+  // te pas en mag zijn akte in gelijk welke reeks staan. Dat is de uitweg voor een
+  // oud vonnis: alle cijfers uit dezelfde oude reeks.
+  const conflictAkte = uitAkte && !akteVolgtTabel && tabelMaanden.length > 0
+
+  // De tweede vermenging: eigen maandcijfers uit de tijd dat de app een andere basis
+  // gebruikte. Dat kan pas gebeuren na een volgende herbasering van de meegeleverde
+  // tabel. Wordt er niet geïndexeerd, dan komt er ook geen breuk aan te pas.
+  const basisjaarEigen = invoer.indexBasisjaar ?? INDEX_BASISJAAR
+  const conflictBasisjaar =
+    invoer.geindexeerd !== false &&
+    Object.keys(eigen).length > 0 &&
+    basisjaarEigen !== INDEX_BASISJAAR
+
+  const indexConflict: IndexConflict | null = conflictBasisjaar
+    ? 'ander-basisjaar'
+    : conflictAkte
+      ? 'akte-met-tabel'
+      : null
+
+  const aanvangsindex = indexConflict
+    ? null
+    : uitAkte
+      ? (invoer.aanvangsindexHandmatig as number)
+      : (indexVan(aanvangsmaand, invoer.eigenIndexcijfers) ?? null)
+
+  const ontbrekende: string[] = []
+  if (aanvangsindex === null && !indexConflict) ontbrekende.push(aanvangsmaand)
+
+  const stappen: IndexatieStap[] = []
+  let bedrag = invoer.basisbedrag
+
+  const jaren = indexConflict ? 0 : jarenMogelijk
 
   for (let n = 1; n <= jaren; n++) {
     const datum = verjaardag(invoer.datumRegeling, n)
@@ -196,11 +360,17 @@ export function bouwOpbouw(invoer: BijdrageInvoer, vandaagISO: string): Bijdrage
   return {
     aanvangsindex,
     aanvangsindexUitAkte: uitAkte,
+    aanvangsindexIngetikt: uitAkte ? (invoer.aanvangsindexHandmatig as number) : null,
     aanvangsmaand,
     stappen,
     huidigBedrag: bedrag,
     ontbrekendeMaanden: ontbrekende,
     laatsteBekendeMaand: laatsteIndexmaand(),
+    indexConflict,
+    basisjaarTabel: INDEX_BASISJAAR,
+    basisjaarEigen,
+    aanvangsindexTabel,
+    tabelMaanden,
   }
 }
 

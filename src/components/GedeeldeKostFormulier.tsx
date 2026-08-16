@@ -264,11 +264,14 @@ export function GedeeldeKostFormulier({
       </div>
       <div className="veldgroep">
         <span className="label-caps">{t('Betaald door:')}</span>
+        {/* `raak-label` (ronde 47): het bolletje zelf is 13 px en het label was
+            23 px hoog. Dit is de enige keuze in dit formulier die de RICHTING van
+            het geld bepaalt — wie hem mist, boekt een kost op de verkeerde ouder. */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <input type="radio" name="betaalddoor" checked={betaaldDoor === 'jij'} onChange={() => setBetaaldDoor('jij')} /> {t('Jij')}
           </label>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <input type="radio" name="betaalddoor" checked={betaaldDoor === 'partner'} onChange={() => setBetaaldDoor('partner')} /> {t('Partner')}
           </label>
         </div>
