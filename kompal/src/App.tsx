@@ -1777,18 +1777,44 @@ export function App() {
                 <span className="label-caps">{t('Saldo')}</span>
                 <span className="bedrag-groot">{formatEuro(totaalSaldo)}</span>
               </div>
-              <div className="kengetal">
+              {/* Doorklikken naar de boekingen erachter (ronde 48).
+
+                  Waarom deze drie wél en het saldo hierboven NIET: `maandInkomsten`
+                  en `maandUitgaven` tellen op regelniveau op, precies zoals de
+                  kengetallen boven de transactielijst, dus je ziet daar exact het
+                  getal terug waarop je klikte. Het totale saldo is de som over álle
+                  rekeningen, en die som staat nergens op de Rekeningen-pagina — dan
+                  klik je op een cijfer en kom je op een scherm waar het niet
+                  voorkomt. */}
+              <button
+                type="button"
+                className="kengetal kengetal-knop"
+                aria-label={t('Inkomsten {bedrag} — bekijk de boekingen', { bedrag: formatEuro(inkomsten) })}
+                onClick={() => gaNaarTransacties({ maand, richting: 'in' })}
+              >
                 <span className="label-caps">{t('Inkomsten')}</span>
                 <Bedrag centen={inkomsten} richting="in" groot />
-              </div>
-              <div className="kengetal">
+              </button>
+              <button
+                type="button"
+                className="kengetal kengetal-knop"
+                aria-label={t('Uitgaven {bedrag} — bekijk de boekingen', { bedrag: formatEuro(uitgaven) })}
+                onClick={() => gaNaarTransacties({ maand, richting: 'uit' })}
+              >
                 <span className="label-caps">{t('Uitgaven')}</span>
                 <Bedrag centen={uitgaven} richting="uit" groot />
-              </div>
-              <div className="kengetal">
+              </button>
+              <button
+                type="button"
+                className="kengetal kengetal-knop"
+                aria-label={t('Netto {bedrag} — bekijk alle boekingen van deze maand', {
+                  bedrag: formatEuro(inkomsten - uitgaven),
+                })}
+                onClick={() => gaNaarTransacties({ maand })}
+              >
                 <span className="label-caps">{t('Netto')}</span>
                 <Bedrag centen={inkomsten - uitgaven} richting="auto" groot />
-              </div>
+              </button>
             </div>
 
             {/* Benoemen wat het netto-cijfer betekent, wat je na aftrek van je
@@ -1906,7 +1932,11 @@ export function App() {
                   tot: maandJaarLabel(`${maandPaar[maandPaar.length - 1]?.maand ?? maand}-01`),
                 })}
               >
-                <MaandGrafiek data={maandPaar} lopendeMaand={huidigeMaand()} />
+                <MaandGrafiek
+                  data={maandPaar}
+                  lopendeMaand={huidigeMaand()}
+                  onKiesMaand={(m) => gaNaarTransacties({ maand: m })}
+                />
               </Kaart>
 
               {/* Onderaan, bewust: je exporteert een maand nadat je ze bekeken hebt,
@@ -2015,6 +2045,7 @@ export function App() {
               maand={maand}
               verwachteInkomsten={planBlik.verwachteInkomsten}
               geboekteInkomsten={planBlik.geboekt.inkomsten}
+              onGaNaarTransacties={gaNaarTransacties}
             />
           </ErrorBoundary>
 
@@ -2209,6 +2240,7 @@ export function App() {
                   documenten={dossierdocumenten}
                   onDocumentOpslaan={dossierDocumentOpslaan}
                   onDocumentVerwijderen={dossierDocumentVerwijderen}
+                  onBewerkTransactie={setBewerkTransactie}
                 />
               </ErrorBoundary>
             )}
@@ -2244,6 +2276,8 @@ export function App() {
                 onWaarderingVerwijderen={verwijderWaarderingH}
                 rekeningen={rekeningen}
                 onOverboeking={voegOverboekingToe}
+                onGaNaarTransacties={gaNaarTransacties}
+                onBewerkTransactie={setBewerkTransactie}
               />
             )}
           </div>

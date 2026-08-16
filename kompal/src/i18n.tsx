@@ -210,6 +210,21 @@ const en: Record<string, string> = {
   'Luisterboeken': 'Audiobooks',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Note: the transactions up to and including {datum} are already part of the value you recorded then. They still count below, but no longer in the balance at the top.',
   'geldt nu': 'in effect',
+  // Doorklikken van een cijfer naar zijn boekingen (ronde 48)
+  'Inkomsten {bedrag} — bekijk de boekingen': 'Income {bedrag} — view the transactions',
+  'Uitgaven {bedrag} — bekijk de boekingen': 'Spending {bedrag} — view the transactions',
+  'Netto {bedrag} — bekijk alle boekingen van deze maand': 'Net {bedrag} — view all transactions for this month',
+  '{maand} — bekijk de boekingen': '{maand} — view the transactions',
+  'Verschil {bedrag} — bekijk de boekingen van deze maand': 'Difference {bedrag} — view this month’s transactions',
+  '{oms} {bedrag} op {datum} — open deze boeking': '{oms} {bedrag} on {datum} — open this transaction',
+  'Bekijk ze allemaal': 'View them all',
+  '{naam} {pct}% {bedrag} — bekijk de boekingen': '{naam} {pct}% {bedrag} — view the transactions',
+  'Uit je boeking van {datum}: {oms} — {bedrag}. Open die boeking.':
+    'From your transaction of {datum}: {oms} — {bedrag}. Open that transaction.',
+  'Bekijk die boekingen': 'View those transactions',
+  'Bekijk die boekingen — er kwam deze maand {gekregen} binnen':
+    'View those transactions — {gekregen} came in this month',
+  'Netto vermogen {bedrag} — bekijk het op je overzicht': 'Net worth {bedrag} — see it on your overview',
   // Twee indexreeksen door elkaar (ronde 47)
   'De app rekent niet meer met deze regeling. De indexcijfers die je zelf bijzette staan in basis {eigen} = 100, en de tabel in de app staat nu in basis {tabel} = 100. Dat zijn twee verschillende maatstaven; ze combineren geeft een bedrag dat er tientallen procenten naast zit. Verwijder je eigen cijfers hieronder en zet ze opnieuw met de cijfers uit de huidige reeks.':
     'The app no longer calculates with this arrangement. The index figures you added yourself are on base {eigen} = 100, while the table in the app is now on base {tabel} = 100. Those are two different yardsticks; combining them gives an amount that is tens of percent off. Remove your own figures below and enter them again using the current series.',
@@ -2199,6 +2214,21 @@ const fr: Record<string, string> = {
   'Luisterboeken': 'Livres audio',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Attention : les opérations jusqu’au {datum} inclus sont déjà comprises dans la valeur que tu as enregistrée alors. Elles comptent encore ci-dessous, mais plus dans le solde en haut.',
   'geldt nu': 'en vigueur',
+  // Passer d’un chiffre à ses opérations (ronde 48)
+  'Inkomsten {bedrag} — bekijk de boekingen': 'Revenus {bedrag} — voir les opérations',
+  'Uitgaven {bedrag} — bekijk de boekingen': 'Dépenses {bedrag} — voir les opérations',
+  'Netto {bedrag} — bekijk alle boekingen van deze maand': 'Net {bedrag} — voir toutes les opérations de ce mois',
+  '{maand} — bekijk de boekingen': '{maand} — voir les opérations',
+  'Verschil {bedrag} — bekijk de boekingen van deze maand': 'Différence {bedrag} — voir les opérations de ce mois',
+  '{oms} {bedrag} op {datum} — open deze boeking': '{oms} {bedrag} le {datum} — ouvrir cette opération',
+  'Bekijk ze allemaal': 'Voir toutes',
+  '{naam} {pct}% {bedrag} — bekijk de boekingen': '{naam} {pct}% {bedrag} — voir les opérations',
+  'Uit je boeking van {datum}: {oms} — {bedrag}. Open die boeking.':
+    'Issu de ton opération du {datum} : {oms} — {bedrag}. Ouvrir cette opération.',
+  'Bekijk die boekingen': 'Voir ces opérations',
+  'Bekijk die boekingen — er kwam deze maand {gekregen} binnen':
+    'Voir ces opérations — {gekregen} sont rentrés ce mois-ci',
+  'Netto vermogen {bedrag} — bekijk het op je overzicht': 'Patrimoine net {bedrag} — le voir sur ton aperçu',
   // Deux séries d’indices mélangées (ronde 47)
   'De app rekent niet meer met deze regeling. De indexcijfers die je zelf bijzette staan in basis {eigen} = 100, en de tabel in de app staat nu in basis {tabel} = 100. Dat zijn twee verschillende maatstaven; ze combineren geeft een bedrag dat er tientallen procenten naast zit. Verwijder je eigen cijfers hieronder en zet ze opnieuw met de cijfers uit de huidige reeks.':
     'L’app ne calcule plus avec cet arrangement. Les indices que tu as ajoutés toi-même sont exprimés en base {eigen} = 100, alors que la table de l’app est désormais en base {tabel} = 100. Ce sont deux étalons différents ; les combiner donne un montant erroné de plusieurs dizaines de pour cent. Supprime tes propres indices ci-dessous et réencode-les d’après la série actuelle.',

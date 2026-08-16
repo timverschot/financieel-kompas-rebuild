@@ -1,0 +1,146 @@
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, it, expect, vi } from 'vitest'
+import { MaandGrafiek } from './MaandGrafiek'
+import type { MaandPaar } from '../utils/maandverloop'
+import { formatEuro } from '../utils/format'
+
+// Ronde 31: de oude staafgrafiek toonde zes kale staafjes met alleen de uitgaven —
+// geen bedrag, geen schaal, geen referentiepunt. En omdat de lopende maand nog niet
+// af is, stond die altijd te laag: de grafiek suggereerde elke maand opnieuw dat je
+// zuiniger geworden was.
+
+const reeks: MaandPaar[] = [
+  { maand: '2026-05', inkomsten: 200000, uitgaven: 100000 },
+  { maand: '2026-06', inkomsten: 200000, uitgaven: 140000 },
+  { maand: '2026-07', inkomsten: 50000, uitgaven: 20000 },
+]
+
+describe('MaandGrafiek', () => {
+  it('noemt per maand zowel wat er binnenkwam als wat eruit ging', () => {
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-07" />)
+    // formatEuro zet een vaste spatie tussen teken en getal, dus we bouwen de
+    // verwachting met dezelfde functie in plaats van ze over te typen.
+    const labels = screen.getAllByRole('img').map((el) => el.getAttribute('aria-label'))
+    // De maand voluit en niet afgekort: dit is de toegankelijke naam, en een
+    // schermlezer maakt van "jun" geen "juni" (ronde 48).
+    expect(labels).toContain(`juni: in ${formatEuro(200000)}, uit ${formatEuro(140000)}`)
+  })
+
+  it('markeert de lopende maand als onvolledig', () => {
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-07" />)
+    const labels = screen.getAllByRole('img').map((el) => el.getAttribute('aria-label') ?? '')
+    expect(labels.some((l) => l.startsWith('juli:') && l.includes('loopt nog'))).toBe(true)
+    expect(screen.getByText('* Deze maand loopt nog, dus die staaf is nog niet volledig.')).toBeInTheDocument()
+  })
+
+  it('toont het gemiddelde zonder de lopende maand mee te tellen', () => {
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-07" />)
+    // (1000 + 1400) / 2 = 1200. Zou juli meetellen, dan stond er € 866,67 en zou
+    // de lat elke maand opnieuw verlaagd worden door een halve maand.
+    // Op de ruwe tekst vergelijken: getByText maakt van de vaste spatie in
+    // formatEuro een gewone spatie, en dan matcht de string nooit.
+    const teksten = [...document.querySelectorAll('.rij-meta')].map((el) => el.textContent)
+    expect(teksten).toContain(`Gemiddeld ${formatEuro(120000)} per maand`)
+  })
+
+  it('legt uit welke kleur waarvoor staat', () => {
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-07" />)
+    expect(screen.getByText('Inkomsten')).toBeInTheDocument()
+    expect(screen.getByText('Uitgaven')).toBeInTheDocument()
+  })
+
+  // Ronde 32
+  it('zet de maand zowel kort als voluit klaar, en laat CSS kiezen', () => {
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-07" />)
+    // Op een breed scherm is er ruimte zat voor "juli"; op een telefoon niet.
+    // Allebei staan ze in de DOM; welke je ziet, bepaalt de mediaquery.
+    // Bewust juni en niet mei: in het Nederlands is "mei" al even lang als zijn
+    // afkorting, dus daar zou de test niets bewijzen.
+    const kort = [...document.querySelectorAll('.alleen-smal')].map((e) => e.textContent)
+    const lang = [...document.querySelectorAll('.alleen-breed')].map((e) => e.textContent)
+    expect(kort[1]).toBe('jun')
+    expect(lang[1]).toBe('juni')
+  })
+
+  it('laat elke staaf van nul naar zijn waarde groeien', () => {
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-07" />)
+    const staven = [...document.querySelectorAll('.staaf-in')] as HTMLElement[]
+    // Twee staven per maand (inkomsten + uitgaven).
+    expect(staven.length).toBe(reeks.length * 2)
+    // De maanden beginnen na elkaar, zodat de grafiek zich van links naar rechts
+    // opbouwt in plaats van in één klap te staan.
+    expect(staven[0].style.animationDelay).toBe('0ms')
+    expect(staven[2].style.animationDelay).toBe('60ms')
+  })
+
+  it('toont niets bij een lege reeks', () => {
+    const { container } = render(<MaandGrafiek data={[]} lopendeMaand="2026-07" />)
+    expect(container.firstChild).toBeNull()
+  })
+
+  it('zegt het in één regel wanneer er niets geboekt is', () => {
+    const leeg: MaandPaar[] = [
+      { maand: '2026-06', inkomsten: 0, uitgaven: 0 },
+      { maand: '2026-07', inkomsten: 0, uitgaven: 0 },
+    ]
+    render(<MaandGrafiek data={leeg} lopendeMaand="2026-07" />)
+    // Platte staven en een lijn op nul zouden druk doen over niets.
+    expect(screen.getByText('Nog niets geboekt in deze maanden.')).toBeInTheDocument()
+    expect(screen.queryByRole('img')).toBeNull()
+  })
+})
+
+// --- Ronde 40 -----------------------------------------------------------------
+
+describe('MaandGrafiek — de voetnoot hoort bij het sterretje', () => {
+  const voetnoot = '* Deze maand loopt nog, dus die staaf is nog niet volledig.'
+
+  it('zwijgt over de lopende maand wanneer die niet in beeld staat', () => {
+    // Blader je terug naar een venster van zes afgesloten maanden, dan staat er
+    // nergens een sterretje — en dan hoort de app er ook geen te verklaren.
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-11" />)
+    expect(screen.queryByText(voetnoot)).toBeNull()
+  })
+
+  it('toont de voetnoot wél zodra de lopende maand in het venster valt', () => {
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-06" />)
+    expect(screen.getByText(voetnoot)).toBeInTheDocument()
+  })
+})
+
+// --- Ronde 48: van een staaf naar de boekingen ---------------------------------
+
+describe('MaandGrafiek — doorklikken naar een maand', () => {
+  it('maakt geen knoppen wanneer de app niets met een klik kan doen', () => {
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-07" />)
+    expect(screen.queryAllByRole('button')).toHaveLength(0)
+    // Dan blijft de kolom een plaatje met een naam.
+    expect(screen.getAllByRole('img').length).toBe(3)
+  })
+
+  it('maakt elke maandkolom aanklikbaar zodra er een bestemming is', async () => {
+    const gebruiker = userEvent.setup()
+    const onKiesMaand = vi.fn()
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-07" onKiesMaand={onKiesMaand} />)
+    const knoppen = screen.getAllByRole('button')
+    expect(knoppen).toHaveLength(3)
+    await gebruiker.click(knoppen[1])
+    expect(onKiesMaand).toHaveBeenCalledWith('2026-06')
+  })
+
+  it('laat het role="img" vallen zodra het knoppen worden', () => {
+    // Een knop bínnen een role="img" wordt door voorleessoftware niet meer
+    // aangeboden: dan verlies je de doorklik voor wie hem het hardst nodig heeft.
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-07" onKiesMaand={vi.fn()} />)
+    expect(screen.queryAllByRole('img')).toHaveLength(0)
+  })
+
+  it('zet de zichtbare maandnaam vooraan in de toegankelijke naam', () => {
+    // WCAG 2.5.3: wie met zijn stem stuurt, zegt wat hij ziet staan.
+    render(<MaandGrafiek data={reeks} lopendeMaand="2026-07" onKiesMaand={vi.fn()} />)
+    const namen = screen.getAllByRole('button').map((el) => el.getAttribute('aria-label') ?? '')
+    expect(namen.some((n) => n.startsWith('juni:'))).toBe(true)
+    expect(namen.every((n) => n.includes('bekijk de boekingen'))).toBe(true)
+  })
+})

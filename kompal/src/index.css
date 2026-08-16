@@ -638,6 +638,103 @@ h4 {
   font-weight: 600;
 }
 
+/* Een kengetal op het Overzicht dat naar zijn boekingen leidt (ronde 48).
+ *
+ * De knopstijl van de browser wordt teruggezet zodat de tegel er precies
+ * hetzelfde uitziet als voorheen: `.kengetal` levert de achtergrond, de rand, de
+ * padding en de gloed, en die regels blijven gewoon gelden omdat de klasse
+ * dezelfde is. Alleen `font`, `color` en `text-align` moeten terug — een knop
+ * erft die niet.
+ *
+ * Geen `min-height: 44px` nodig: de tegel heeft 14 px padding boven en onder plus
+ * een label en een groot bedrag, dus ze zit ruim boven de norm. */
+.kengetal-knop {
+  font: inherit;
+  color: inherit;
+  text-align: center;
+  cursor: pointer;
+  width: 100%;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .kengetal-knop:hover {
+    border-color: var(--accent);
+  }
+}
+
+.kengetal-knop:focus-visible {
+  outline: 3px solid var(--focus-rand);
+  outline-offset: 2px;
+}
+
+/* Een maandkolom in de staafgrafiek die naar haar boekingen leidt (ronde 48).
+ *
+ * De knopstijl van de browser wordt teruggezet; de staven zelf blijven de vorm.
+ * Aanwijzen zet er een zachte achtergrond onder in plaats van de staven te
+ * verkleuren — die kleuren betekenen iets (groen is in, rood is uit) en mogen
+ * niet gaan schuiven omdat je muis er toevallig boven hangt. */
+.maandstaaf-knop {
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  border-radius: 6px 6px 0 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .maandstaaf-knop:hover {
+    background: var(--surface-2);
+  }
+}
+
+.maandstaaf-knop:focus-visible {
+  outline: 3px solid var(--focus-rand);
+  outline-offset: 2px;
+}
+
+/* Een statblokje dat naar zijn eigen gegevens leidt (ronde 48).
+ *
+ * De knopstijl van de browser wordt volledig teruggezet: dit blijft er precies
+ * hetzelfde uitzien als een gewone `.stat`, want een cijfer dat plots als knop
+ * oogt, trekt de aandacht weg van het cijfer zelf. Alleen de wijzer en de
+ * hover-tint verraden dat er iets achter zit.
+ *
+ * De 44 px onder `pointer: coarse` is geen luxe: een `.stat` heeft geen padding
+ * en komt op ongeveer 45 px uit puur door de regelhoogtes van het label en het
+ * cijfer. Dat is toeval, geen norm — bij een kortere letter of een andere taal
+ * valt het eronder. */
+.stat-knop {
+  padding: 0;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  border-radius: var(--radius-sm);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .stat-knop:hover .stat-waarde {
+    color: var(--accent);
+  }
+}
+
+.rij .stat-knop:focus-visible,
+.stat-knop:focus-visible {
+  outline: 3px solid var(--focus-rand);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+@media (pointer: coarse) {
+  .stat-knop {
+    min-height: 44px;
+  }
+}
+
 .stat-rij {
   display: flex;
   gap: 18px;
@@ -859,6 +956,18 @@ a:focus-visible {
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
+}
+
+/* Een tekstknop die de kleinere, grijze meta-tekst moet blijven.
+ *
+ * `.tekstknop` zet `font-size: inherit` en `color: var(--text)`, en die winnen van
+ * `.rij-meta` omdat ze later in dit bestand staan. Gevolg zonder deze klasse: een
+ * garantie die aan een boeking hangt, werd in 15 px zwarte tekst getoond en de
+ * garantie ernaast in 13 px grijs — twee rijen die er verschillend uitzien puur
+ * omdat de ene doorklikbaar is. Dezelfde val als bij `.rij-titel` hierboven. */
+.tekstknop-meta {
+  font-size: var(--tekst-s);
+  color: var(--text-subtle);
 }
 
 /* Specificiteit: gelijk aan `.rij button:focus-visible` hierboven, en later in

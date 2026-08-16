@@ -51,6 +51,13 @@ export function aantalActieveFilters(filter: TxFilter): number {
     filter.hoofdId,
     filter.catId,
     filter.domein,
+    // Deze drie ontbraken hier (ronde 48). Ze zetten wél een chip en filteren wél
+    // de lijst, maar telden niet mee in het aantal — dus stond er "1 filter"
+    // boven een lijst met er twee, en klapte het paneel niet open wanneer je via
+    // een doorklik binnenkwam met alleen zo'n filter.
+    filter.zonderCategorie,
+    filter.handelaar,
+    filter.omschrijving,
     filter.van,
     filter.tot,
   ].filter(Boolean).length
@@ -279,6 +286,7 @@ export function TransactieLijst({
     domein: () => zet({ domein: undefined }),
     zonderCategorie: () => zet({ zonderCategorie: undefined }),
     handelaar: () => zet({ handelaar: undefined }),
+    omschrijving: () => zet({ omschrijving: undefined }),
     van: () => zet({ van: undefined }),
     tot: () => zet({ tot: undefined }),
     maand: () => zet({ maand: undefined }),
