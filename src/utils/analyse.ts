@@ -15,7 +15,20 @@ export type AnalyseGroep = { sleutel: string; naam: string; bedrag: number; kleu
 // wordt op de omschrijving gegroepeerd, en daar bestaat geen id voor. Staat ze er
 // wél (drilldown per subcategorie), dan kan je vanaf die rij doorklikken naar de
 // onderliggende boekingen.
-export type AnalysePost = { naam: string; bedrag: number; sleutel?: string }
+export type AnalysePost = {
+  naam: string
+  bedrag: number
+  sleutel?: string
+  /**
+   * De rij "Zonder categorie": alle regels erin misten een categorie (ronde 51).
+   *
+   * Een aparte vlag en geen sleutel, want een sleutel is per definitie een
+   * categorie-id en de lege string is er geen — `filterVoorCategorie('')` zou er
+   * onzin van maken. Precies dezelfde oplossing als bij de gezinsleden, waar de
+   * groep "Het gezin" met `zonderPersoon` werkt in plaats van met een persoons-id.
+   */
+  zonderCategorie?: true
+}
 export type DrillTransactie = { transactie: Transactie; bedrag: number; lijnen: { categorieId?: string; bedrag: number }[] }
 
 export function inPeriode(datum: string, p: Periode): boolean {
@@ -103,6 +116,9 @@ export function perItem(
   return [...m.entries()]
     .map(([naam, bedrag]) => {
       const ids = [...(idsPerNaam.get(naam) ?? [])]
+      // Alle regels misten een categorie: dan is de rij niet dood te lopen, want er
+      // bestaat een filter voor precies dat geval.
+      if (ids.length === 1 && ids[0] === '') return { naam, bedrag, zonderCategorie: true as const }
       const sleutel = ids.length === 1 && itemPerId(ids[0]) ? ids[0] : undefined
       return sleutel ? { naam, bedrag, sleutel } : { naam, bedrag }
     })
@@ -168,7 +184,12 @@ export function drillPerItem(drill: DrillTransactie[], categorieen: Categorie[])
     }
   }
   return [...m.entries()]
-    .map(([naam, v]) => ({ naam, bedrag: v.bedrag, ...(v.gemengd || !v.sleutel ? {} : { sleutel: v.sleutel }) }))
+    .map(([naam, v]) => {
+      // Geen id én niet gemengd: elke regel eronder miste een categorie. Ook hier
+      // hoeft die rij dus niet dood te lopen (ronde 51).
+      if (!v.gemengd && !v.sleutel) return { naam, bedrag: v.bedrag, zonderCategorie: true as const }
+      return { naam, bedrag: v.bedrag, ...(v.gemengd || !v.sleutel ? {} : { sleutel: v.sleutel }) }
+    })
     .sort((a, b) => b.bedrag - a.bedrag)
 }
 

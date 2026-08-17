@@ -143,6 +143,67 @@ export function Stat({
   return (
     <button type="button" className="stat stat-knop" aria-label={doorklik.naam} onClick={doorklik.naar}>
       {inhoud}
+      <Chevron />
+    </button>
+  )
+}
+
+/**
+ * Het pijltje dat zegt: hier zit iets achter (ronde 51).
+ *
+ * WAAROM DIT NODIG IS. `.stat-knop` en `.kengetal-knop` laten zich alleen kennen
+ * door `cursor: pointer` en een randje bij aanwijzen — en allebei bestaan niet op een
+ * aanraakscherm. Op een telefoon, waar deze app vooral gebruikt wordt, was een
+ * klikbaar kengetal dus visueel niet te onderscheiden van een gewoon cijfer. Wie niet
+ * toevallig tikte, wist niet dat er iets achter zat.
+ *
+ * Hetzelfde teken en dezelfde klasse als bij een klikbare lijstrij (ronde 48/49), want
+ * het betekent hetzelfde. `aria-hidden`: de toegankelijke naam van de knop zegt al
+ * waar je terechtkomt, en "groter dan"-teken erbij voorgelezen krijgen helpt niemand.
+ */
+function Chevron() {
+  return (
+    <span className="rij-chevron" aria-hidden="true">
+      ›
+    </span>
+  )
+}
+
+/**
+ * Een tegel met een label en een groot bedrag: de rij bovenaan het Overzicht en
+ * bovenaan de transactielijst.
+ *
+ * Waarom dit één component is (ronde 51): allebei de schermen bouwden hun eigen
+ * versie uit dezelfde CSS-klassen, en op het Overzicht waren ze sinds ronde 48
+ * klikbaar terwijl ze boven de transactielijst kale blokjes bleven. Ze zagen er
+ * identiek uit, dus tikte je erop en gebeurde er niets.
+ *
+ * `children` en geen `bedrag`-prop: de twee schermen kleuren hun cijfer verschillend,
+ * en dat verschil hoort niet in deze component thuisgesmokkeld te worden.
+ *
+ * `doorklik` heeft dezelfde vorm als bij `Stat`, en om dezelfde reden: bestemming en
+ * toegankelijke naam in één prop, zodat er geen naamloze knop kan ontstaan.
+ */
+export function Kengetal({
+  label,
+  doorklik,
+  children,
+}: {
+  label: ReactNode
+  children: ReactNode
+  doorklik?: { naar: () => void; naam: string }
+}) {
+  const inhoud = (
+    <>
+      <span className="label-caps">{label}</span>
+      {children}
+    </>
+  )
+  if (!doorklik) return <div className="kengetal">{inhoud}</div>
+  return (
+    <button type="button" className="kengetal kengetal-knop" aria-label={doorklik.naam} onClick={doorklik.naar}>
+      {inhoud}
+      <Chevron />
     </button>
   )
 }

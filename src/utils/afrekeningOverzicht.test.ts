@@ -266,6 +266,31 @@ describe('aandeelUitleg', () => {
   it('valt terug op de standaard van het dossier', () => {
     expect(aandeelUitleg(dossier, kost({}))).toMatchObject({ percentageJij: 50, herkomst: 'dossier' })
   })
+
+  // Ronde 44 gaf een ingelezen kost een eigen herkomst, zodat het document niet
+  // beweert dat jij dat percentage koos. Ronde 51 zorgt dat die bewering ook waar
+  // blijft nadat je het percentage zelf aanpast.
+  it('noemt een ingelezen percentage van de andere ouder', () => {
+    const ingelezen = kost({ aandeelJijOverride: 60, uitwisselAandeel: 60, uitwisselId: 'u-1' })
+    expect(aandeelUitleg(dossier, ingelezen)).toMatchObject({ percentageJij: 60, herkomst: 'uitwisseling' })
+  })
+
+  it('noemt het JOUW percentage zodra je het zelf aanpaste', () => {
+    // De kost houdt haar `uitwisselId` — daaraan herkennen beide apps ze bij een
+    // volgend heen-en-weer. Maar het cijfer komt niet meer van de andere ouder, en
+    // dan mag de bewijsmap dat ook niet meer zeggen.
+    const aangepast = kost({ aandeelJijOverride: 75, uitwisselAandeel: 60, uitwisselId: 'u-1' })
+    expect(aandeelUitleg(dossier, aangepast)).toMatchObject({ percentageJij: 75, herkomst: 'kost' })
+  })
+
+  it('houdt het oude gedrag aan bij een kost van vóór deze ronde', () => {
+    // Zo'n kost draagt geen `uitwisselAandeel`, dus kan de app het verschil niet
+    // zien. Dan blijft staan wat er stond — dat klopt voor het gewone geval, waarin
+    // je zo'n percentage gewoon laat staan, en het herstelt zich volledig zodra de
+    // andere ouder die kost nog eens doorstuurt.
+    const oud = kost({ aandeelJijOverride: 60, uitwisselId: 'u-1' })
+    expect(aandeelUitleg(dossier, oud)).toMatchObject({ herkomst: 'uitwisseling' })
+  })
 })
 
 describe('bouwAfrekeningOverzicht — kop en detail', () => {

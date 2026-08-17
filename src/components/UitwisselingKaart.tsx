@@ -717,10 +717,17 @@ function Voorstel({
         )}
       </ul>
 
+      {/* Secundair, om dezelfde reden als "Document toevoegen" in DossierKluis.tsx
+          (ronde 47): DESIGN.md staat hoogstens één gevulde knop per SCHERM toe, en op
+          Dossiers is dat "Kost toevoegen". Deze kaart verschijnt pas nadat je een
+          bestand hebt ingelezen, dus stonden er vanaf dat moment twee gevulde knoppen
+          onder elkaar die allebei "begin hier" zeggen. Dat de knop minder opvalt maakt
+          hem niet minder vindbaar: hij staat alleen op het scherm wanneer er iets over
+          te nemen valt, en hij staat er als eerste. */}
       <div className="knoprij" style={{ marginTop: 10 }}>
         <button
           type="button"
-          className="knop knop-primair"
+          className="knop knop-secundair"
           aria-disabled={bezig}
           onClick={() => {
             if (bezig) return

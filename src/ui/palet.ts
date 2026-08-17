@@ -42,6 +42,21 @@ export const GRAFIEKKLEUREN: string[] = PALET.map((p) => p.kleur)
  */
 export const OVERIGE_KLEUR = '#A08C77'
 
+/**
+ * De tint voor "Het gezin": alles wat aan géén enkel gezinslid hangt (ronde 51).
+ *
+ * Ook géén kleur uit het palet, om dezelfde reden als hierboven — deze groep is geen
+ * persoon en mag er niet als een lezen. Maar het is ook geen RESTgroep: het is een
+ * echte, benoemde categorie uitgaven waar je op kan doorklikken.
+ *
+ * Waarom ze een eigen tint kreeg: ze deelde `OVERIGE_KLEUR` met de schijf
+ * "Overige (n)", en sinds "Het gezin" bij tien of meer gezinsleden vastgepind in de
+ * ring blijft staan, kunnen die twee nu naast elkaar voorkomen. Twee schijven in
+ * dezelfde kleur zijn niet aan hun legende te koppelen, en dat is precies waar een
+ * donut voor dient.
+ */
+export const GEZIN_KLEUR = '#5B6B7C'
+
 /** De kleur voor plaats `i` in een lijst, met herhaling zodra het palet rond is. */
 export function kleurVoor(i: number): string {
   return GRAFIEKKLEUREN[i % GRAFIEKKLEUREN.length]

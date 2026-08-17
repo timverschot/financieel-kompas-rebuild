@@ -436,6 +436,83 @@ describe('TransactieLijst — kengetallen', () => {
     expect(kengetal('Uitgaven')).toMatch(/30,00/)
   })
 
+  it('filtert de lijst zelf wanneer je op een tegel tikt', async () => {
+    // Ronde 51. Deze tegels zagen er identiek uit aan die op Overzicht, die sinds
+    // ronde 48 wél doorklikken — dus tikte je erop en gebeurde er niets. De
+    // bestemming is hier het filter van deze lijst: je blijft staan, de lijst krimpt.
+    const user = userEvent.setup()
+    toon([
+      tx({ id: '1', omschrijving: 'Loon', bedrag: 200000 }),
+      tx({ id: '2', omschrijving: 'Winkel', bedrag: -3000 }),
+    ])
+    await user.click(screen.getByRole('button', { name: /^Uitgaven .* toon alleen deze boekingen/ }))
+    expect(screen.queryByText('Loon')).toBeNull()
+    expect(screen.getByText('Winkel')).toBeInTheDocument()
+    // En het cijfer waarop je klikte staat er ná het filteren nog altijd hetzelfde.
+    expect(kengetal('Uitgaven')).toMatch(/30,00/)
+  })
+
+  it('sleept het venster van zes maanden mee, zodat je historiek er niet bijkomt', async () => {
+    // Zonder actief filter toont de lijst alleen de recente maanden. Een richting
+    // TELT als actief filter, dus zonder deze voorzorg viel dat venster weg op het
+    // moment van de klik en sprong het bedrag omhoog — je klikte op € 30 en kreeg
+    // € 1.030 te zien.
+    const user = userEvent.setup()
+    toon([
+      tx({ id: '1', omschrijving: 'Winkel', bedrag: -3000 }),
+      tx({ id: 'oud', omschrijving: 'Lang geleden', bedrag: -100000, datum: '2019-04-01' }),
+    ])
+    expect(kengetal('Uitgaven')).toMatch(/30,00/)
+    await user.click(screen.getByRole('button', { name: /^Uitgaven .* toon alleen deze boekingen/ }))
+    expect(kengetal('Uitgaven')).toMatch(/30,00/)
+    expect(screen.queryByText('Lang geleden')).toBeNull()
+  })
+
+  it('biedt geen knop aan wanneer het bedrag er ná het filteren anders zou staan', async () => {
+    // Een gesplitst kassaticket met een statiegeldregel erin. Staat het filter op
+    // "uit", dan telt de inkomstentegel alleen dat statiegeld; klikken op "in" zou
+    // het loon erbij halen. Dan is er geen lijst die precies dát getal oplevert, en
+    // hoort er geen knop te staan.
+    const user = userEvent.setup()
+    toon([
+      tx({ id: 'loon', omschrijving: 'Loon', bedrag: 300000 }),
+      tx({ id: 'bon', omschrijving: 'Colruyt', bedrag: -5000, regels: [{ bedrag: -5300 }, { bedrag: 300 }] }),
+    ])
+    await klapFiltersOpen(user)
+    await user.selectOptions(screen.getByLabelText('Richting'), 'uit')
+    expect(kengetal('Inkomsten')).toMatch(/3,00/)
+    expect(screen.queryByRole('button', { name: /^Inkomsten .* toon alleen deze boekingen/ })).toBeNull()
+  })
+
+  it('haalt de knop weg zodra het filter al op die richting staat', async () => {
+    // Een knop die nergens heen gaat is erger dan geen knop — dezelfde regel als in
+    // ronde 48 en 49.
+    const user = userEvent.setup()
+    toon([tx({ id: '1', omschrijving: 'Winkel', bedrag: -3000 })])
+    await user.click(screen.getByRole('button', { name: /^Uitgaven .* toon alleen deze boekingen/ }))
+    expect(screen.queryByRole('button', { name: /^Uitgaven .* toon alleen deze boekingen/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Inkomsten .* toon alleen deze boekingen/ })).not.toBeNull()
+  })
+
+  it('laat het saldo een gewone tegel', () => {
+    // Saldo is inkomsten min uitgaven; er bestaat geen kortere lijst die precies dát
+    // getal oplevert. Dezelfde reden waarom de saldotegel op Overzicht geen knop werd.
+    toon([tx({ id: '1', omschrijving: 'Winkel', bedrag: -3000 })])
+    const blok = document.querySelector('[data-kengetallen]') as HTMLElement
+    const tegel = within(blok).getByText('Saldo').closest('.kengetal') as HTMLElement
+    expect(tegel.tagName).toBe('DIV')
+  })
+
+  it('zet een pijltje op de tegels waar iets achter zit', () => {
+    // Op een aanraakscherm bestaan `:hover` en `cursor` niet, dus verraadde niets dat
+    // je erop kon tikken.
+    toon([tx({ id: '1', omschrijving: 'Winkel', bedrag: -3000 })])
+    const tegels = document.querySelectorAll('[data-kengetallen] .kengetal')
+    const metPijl = [...tegels].filter((e) => e.querySelector('.rij-chevron') !== null)
+    expect(metPijl).toHaveLength(2)
+    expect([...tegels].find((e) => e.textContent?.includes('Saldo'))?.querySelector('.rij-chevron')).toBeNull()
+  })
+
   it('splitst een kassaticket uit, net als de rest van de app', () => {
     // € 50 uitgave met een statiegeldregel van € 3 erin.
     toon([

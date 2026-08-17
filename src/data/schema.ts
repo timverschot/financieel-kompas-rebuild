@@ -235,6 +235,20 @@ export const GedeeldeKostSchema = z.object({
   // dezelfde identiteit over meerdere heen-en-weers. Zonder dat zou een kost die
   // A ooit van B kreeg, bij B als nieuwe kost terugkomen — elke ronde opnieuw.
   uitwisselId: z.string().min(1).optional(),
+  // Het percentage dat bij het INLEZEN uit het bestand kwam (ronde 51).
+  //
+  // Waarom dit apart naast 'aandeelJijOverride' staat, dat op datzelfde moment
+  // dezelfde waarde krijgt: pas je het percentage daarna zelf aan, dan blijft
+  // 'uitwisselId' staan (bewust — de kost houdt haar identiteit over meerdere
+  // heen-en-weers). De app kon daardoor niet meer zien of het huidige percentage
+  // nog van de andere ouder kwam, en bleef in de afrekening, de bewijsmap en de
+  // klembordtekst zeggen "opgegeven door de andere ouder" terwijl jij het intussen
+  // veranderd had. Dat is een bewering over de herkomst van een cijfer, en die mag
+  // niet onwaar zijn: precies zo'n zin komt bij een advocaat of bemiddelaar terecht.
+  //
+  // Optioneel, dus bestaande kosten blijven geldig — geen migratie. Bij een kost
+  // van vóór deze ronde ontbreekt het veld en valt de app terug op het oude gedrag.
+  uitwisselAandeel: z.number().min(0).max(100).optional(),
   // Het antwoord van de andere ouder op deze kost. 'op' is de dag van het
   // antwoord; 'bedrag' en 'datum' leggen vast WAAROP het sloeg, zodat een
   // akkoord vervalt zodra de kost nadien wijzigt (een akkoord over € 40 is geen

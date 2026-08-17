@@ -534,6 +534,10 @@ export function naarEigenKost(
     betaaldDoor: u.betaaldDoorAfzender ? 'partner' : 'jij',
     datum: u.datum,
     aandeelJijOverride: rondPercentage(100 - u.aandeelAfzender),
+    // Dezelfde waarde, maar met een andere betekenis: dit is wat de ANDERE OUDER
+    // opgaf. Wijzig je het percentage later zelf, dan blijft dit staan en ziet de
+    // app dat het huidige aandeel niet meer van haar komt (ronde 51).
+    uitwisselAandeel: rondPercentage(100 - u.aandeelAfzender),
     uitwisselId: u.id,
   }
   // Gezinsleden koppelen we op NAAM, en alleen aan wie al bestaat. Automatisch
@@ -559,6 +563,7 @@ export function metWijziging(eigen: GedeeldeKost, u: UitwisselKost): GedeeldeKos
     bedrag: u.bedrag,
     datum: u.datum,
     aandeelJijOverride: rondPercentage(100 - u.aandeelAfzender),
+    uitwisselAandeel: rondPercentage(100 - u.aandeelAfzender),
     uitwisselId: u.id,
   }
   delete bijgewerkt.reactie

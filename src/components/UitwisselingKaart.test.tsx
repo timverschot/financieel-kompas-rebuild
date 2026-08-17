@@ -272,13 +272,19 @@ describe('UitwisselingKaart — intrekkingen en antwoorden komen altijd mee', ()
 })
 
 describe('UitwisselingKaart — één gevulde knop', () => {
-  it('heeft hoogstens één knop-primair op het scherm', async () => {
-    // DESIGN.md: hoogstens één gevulde knop per scherm.
+  it('laat de gevulde knop van de pagina met rust', async () => {
+    // DESIGN.md rekent per SCHERM, niet per kaart. Op Dossiers is de gevulde knop
+    // "Kost toevoegen" (GedeeldeKostFormulier); deze kaart verschijnt daar bovenop
+    // zodra je een bestand inleest. Had "Neem over" ook de gevulde opmaak, dan stonden
+    // er vanaf dat moment twee knoppen die allebei "begin hier" zeggen — en dan zegt
+    // geen van beide nog iets. Dezelfde afweging als bij "Document toevoegen" in
+    // ronde 47.
     const gebruiker = userEvent.setup()
     const { container } = toon([kost()])
     await gebruiker.click(screen.getByRole('button', { name: 'Toon' }))
     await gebruiker.upload(bestandInvoer(), bestandVanAndereOuder([kost({ id: 'a-1' })]))
-    expect(within(container).queryAllByRole('button').filter((b) => b.className.includes('knop-primair'))).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Neem over' })).toBeInTheDocument()
+    expect(within(container).queryAllByRole('button').filter((b) => b.className.includes('knop-primair'))).toHaveLength(0)
   })
 })
 

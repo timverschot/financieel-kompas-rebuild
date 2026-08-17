@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { AnalyseSectie } from './AnalyseSectie'
+import { TaalProvider } from '../i18n'
 import type { Transactie } from '../data/schema'
 import { vandaag, huidigeMaand } from '../utils/datum'
 import { verschuifMaand } from '../utils/maandverloop'
@@ -364,18 +365,33 @@ describe('AnalyseSectie — doorklikken vanaf de gezinslegende', () => {
 })
 
 describe('AnalyseSectie — welke rijen mogen doorklikken', () => {
-  it('geeft geen knop aan een rij zonder eenduidige categorie', () => {
-    // 'Zonder categorie' en een boeking op een middencategorie wijzen geen enkele
-    // verzameling precies aan; het pijltje hoort daar dan ook niet te staan.
-    const zonder: Transactie = { ...tx('z', '', -1000), categorieId: undefined }
-    toonMet([zonder, boodschappen], { onGaNaarTransacties: vi.fn() })
-    expect(screen.queryByRole('button', { name: /^Zonder categorie .* bekijk de boekingen$/ })).toBeNull()
+  // Een boeking rechtstreeks op een MIDDENcategorie: het filter zou daar alles
+  // meenemen wat eronder hangt, dus een groter bedrag dan de rij zelf toont.
+  const opMidden = tx('m', 'cat-broodwaren', -900, 'Bakker')
+
+  it('geeft geen knop aan een rij die een groter bedrag zou tonen dan ze zelf is', () => {
+    toonMet([opMidden, boodschappen], { onGaNaarTransacties: vi.fn() })
+    expect(screen.queryByRole('button', { name: /^Broodwaren .* bekijk de boekingen$/ })).toBeNull()
     expect(screen.getByRole('button', { name: /^Brood \(wit\) .* bekijk de boekingen$/ })).toBeInTheDocument()
   })
 
-  it('toont het pijltje alleen op een rij die ergens heen gaat', () => {
+  it('laat "Zonder categorie" wél doorklikken, naar haar eigen filter', async () => {
+    // Ronde 51. Deze rij liep dood terwijl de app precies wist welke boekingen ze
+    // bedoelde: het filter `zonderCategorie` bestond al. En juist die boekingen wil
+    // je openen — dat zijn de uitgaven die je nog moet indelen.
+    const gebruiker = userEvent.setup()
+    const naarTransacties = vi.fn()
     const zonder: Transactie = { ...tx('z', '', -1000), categorieId: undefined }
-    toonMet([zonder, boodschappen], { onGaNaarTransacties: vi.fn() })
+    toonMet([zonder, boodschappen], { onGaNaarTransacties: naarTransacties })
+    const kaartje = screen.getByText('Verdeling per product/dienst').closest('section.kaart') as HTMLElement
+    await gebruiker.click(
+      within(kaartje).getByRole('button', { name: /^Zonder categorie .* bekijk de boekingen$/ }),
+    )
+    expect(naarTransacties).toHaveBeenCalledWith(expect.objectContaining({ zonderCategorie: true, richting: 'uit' }))
+  })
+
+  it('toont het pijltje alleen op een rij die ergens heen gaat', () => {
+    toonMet([opMidden, boodschappen], { onGaNaarTransacties: vi.fn() })
     const kaartje = screen.getByText('Verdeling per product/dienst').closest('section.kaart') as HTMLElement
     const pijltjes = [...kaartje.querySelectorAll('.rij-chevron')]
     // Even veel pijltjes als rijen, maar alleen zichtbaar waar er een knop is:
@@ -383,5 +399,149 @@ describe('AnalyseSectie — welke rijen mogen doorklikken', () => {
     expect(pijltjes.length).toBe(2)
     const verborgen = pijltjes.filter((p) => (p as HTMLElement).style.visibility === 'hidden')
     expect(verborgen).toHaveLength(1)
+  })
+})
+
+describe('AnalyseSectie — "Het gezin" bij een groot gezin', () => {
+  // Ronde 51. "Het gezin" staat altijd achteraan in de lijst, en de donut toonde de
+  // tien grootste plus één restschijf. Bij tien of meer gezinsleden viel die groep
+  // dus weg — en de restschijf had toevallig dezelfde kleur, dus je zag het niet.
+  const veelLeden = Array.from({ length: 12 }, (_, i) => ({ id: `g${i}`, naam: `Lid ${i}` }))
+  const boekingen: Transactie[] = [
+    // Elk lid een eigen uitgave, aflopend van groot naar klein.
+    ...veelLeden.map((lid, i) => ({ ...tx(`p${i}`, '', -(50000 - i * 1000)), persoonIds: [lid.id] })),
+    // En één uitgave die aan niemand hangt: dat is "Het gezin", en ze is de kleinste.
+    tx('gezin', '', -100),
+  ]
+
+  function toonGezin(over: Record<string, unknown> = {}) {
+    render(
+      <AnalyseSectie
+        transacties={boekingen}
+        categorieen={[]}
+        rekeningen={rekeningen}
+        overboekingen={[]}
+        waarderingen={[]}
+        terugkerendePosten={[]}
+        gezinsleden={veelLeden}
+        {...over}
+      />,
+    )
+  }
+
+  it('houdt de rij in de legende staan, ook al is ze de kleinste van dertien', () => {
+    toonGezin()
+    const kaartje = screen.getByText('Uitgaven per gezinslid').closest('section.kaart') as HTMLElement
+    expect(within(kaartje).getByText('Het gezin')).toBeInTheDocument()
+    // En de rij die ze verdrong staat er niet: de lijst blijft even lang.
+    expect(within(kaartje).queryByText('Lid 11')).toBeNull()
+  })
+
+  it('geeft haar een andere kleur dan de restschijf', () => {
+    // Dit is de kern: "Het gezin" en de schijf "Overige" staan nu naast elkaar in
+    // dezelfde ring. Deelden ze een kleur, dan kan je geen van beide nog aan haar
+    // legende koppelen — en dat is precies waar een donut voor dient.
+    toonGezin()
+    const kaartje = screen.getByText('Uitgaven per gezinslid').closest('section.kaart') as HTMLElement
+    const schijven = [...kaartje.querySelectorAll('svg path[fill]')].map((e) => e.getAttribute('fill'))
+    const gekleurd = schijven.filter((k) => k !== null && k !== 'none')
+    // Elf schijven (tien grootste + "Het gezin") plus één "Overige".
+    expect(gekleurd).toHaveLength(12)
+    expect(new Set(gekleurd).size).toBe(gekleurd.length)
+  })
+
+  it('laat haar doorklikken, ook vanaf die vastgepinde plaats', async () => {
+    // De plaats in de lijst bepaalt welk filter eraan hangt; werd die verschoven,
+    // dan kwam je bij een ander gezinslid uit.
+    const gebruiker = userEvent.setup()
+    const naarTransacties = vi.fn()
+    toonGezin({ onGaNaarTransacties: naarTransacties })
+    const kaartje = screen.getByText('Uitgaven per gezinslid').closest('section.kaart') as HTMLElement
+    await gebruiker.click(within(kaartje).getByRole('button', { name: /^Het gezin .* bekijk de boekingen$/ }))
+    expect(naarTransacties).toHaveBeenCalledWith(expect.objectContaining({ zonderPersoon: true }))
+  })
+})
+
+describe('AnalyseSectie — uitklappen zonder de donut te verbouwen', () => {
+  // Ronde 51. Bij het vastpinnen van "Het gezin" werd de ring per ongeluk aan het
+  // uitklappen gekoppeld: na "Toon alle …" kreeg je vijftien haarfijne schijfjes en
+  // was de knop om weer in te klappen verdwenen.
+  const veel: Transactie[] = Array.from({ length: 15 }, (_, i) =>
+    tx(`w${i}`, '', -(50000 - i * 1000), `Winkel ${i}`),
+  )
+
+  it('houdt de ring op de grootste schijven plus Overige, ook uitgeklapt', async () => {
+    const gebruiker = userEvent.setup()
+    toon(veel)
+    const kaartje = screen.getByText('Uitgaven per winkel').closest('section.kaart') as HTMLElement
+    const schijven = () => kaartje.querySelectorAll('svg path[fill]:not([fill="none"])').length
+    expect(schijven()).toBe(11)
+    await gebruiker.click(within(kaartje).getByRole('button', { name: /Toon alle 15/ }))
+    expect(schijven()).toBe(11)
+  })
+
+  it('laat je weer inklappen', async () => {
+    const gebruiker = userEvent.setup()
+    toon(veel)
+    const kaartje = screen.getByText('Uitgaven per winkel').closest('section.kaart') as HTMLElement
+    await gebruiker.click(within(kaartje).getByRole('button', { name: /Toon alle 15/ }))
+    expect(within(kaartje).getByText('Winkel 14')).toBeInTheDocument()
+    await gebruiker.click(within(kaartje).getByRole('button', { name: 'Toon minder' }))
+    expect(within(kaartje).queryByText('Winkel 14')).toBeNull()
+  })
+})
+
+describe('AnalyseSectie — "Zonder categorie" in een andere taal', () => {
+  // Deze rij is een woord van de app zelf, geen winkelnaam. Ze bleef Nederlands in
+  // de legende terwijl de zusterlijst eronder ze wél vertaalde — dan heet hetzelfde
+  // begrip twee dingen op één scherm.
+  it('vertaalt de rij, en laat winkelnamen met rust', () => {
+    localStorage.setItem('fk_taal', 'en')
+    const zonder: Transactie = { ...tx('z', '', -1000), categorieId: undefined, omschrijving: 'Colruyt' }
+    render(
+      <TaalProvider>
+        <AnalyseSectie
+          transacties={[zonder, boodschappen]}
+          categorieen={[]}
+          rekeningen={rekeningen}
+          overboekingen={[]}
+          waarderingen={[]}
+          terugkerendePosten={[]}
+        />
+      </TaalProvider>,
+    )
+    const kaartje = screen.getByText('Breakdown by product/service').closest('section.kaart') as HTMLElement
+    expect(within(kaartje).getByText('Uncategorised')).toBeInTheDocument()
+    expect(within(kaartje).queryByText('Zonder categorie')).toBeNull()
+    // De winkelnaam blijft staan zoals ze op je afschrift stond.
+    expect(within(kaartje).getByText('Brood (wit)')).toBeInTheDocument()
+    localStorage.removeItem('fk_taal')
+  })
+})
+
+describe('AnalyseSectie — "Zonder categorie" in de drilldown', () => {
+  // De derde en vierde plek waar deze rij doodliep. Op de donut kon je er zelfs op
+  // tikken zonder dat er iets gebeurde.
+  const zonder: Transactie = { ...tx('z', '', -1000), categorieId: undefined }
+
+  it('opent de boekingen vanaf de knop onder de ingezoomde kaart', async () => {
+    const gebruiker = userEvent.setup()
+    const naarTransacties = vi.fn()
+    toonMet([zonder, boodschappen], { onGaNaarTransacties: naarTransacties })
+    await gebruiker.click(screen.getByRole('button', { name: 'Toon details van Zonder categorie' }))
+    await gebruiker.click(screen.getByRole('button', { name: /Bekijk in Transacties/ }))
+    expect(naarTransacties).toHaveBeenCalledWith(expect.objectContaining({ zonderCategorie: true }))
+  })
+
+  it('laat ook de rij in de lijst per subcategorie doorklikken', async () => {
+    const gebruiker = userEvent.setup()
+    const naarTransacties = vi.fn()
+    toonMet([zonder, boodschappen], { onGaNaarTransacties: naarTransacties })
+    await gebruiker.click(screen.getByRole('button', { name: 'Toon details van Zonder categorie' }))
+    const kaartje = screen.getByText('Per subcategorie').closest('section.kaart') as HTMLElement
+    await gebruiker.click(
+      within(kaartje).getByRole('button', { name: /^Bekijk de boekingen van Zonder categorie/ }),
+    )
+    expect(naarTransacties).toHaveBeenCalledWith(expect.objectContaining({ zonderCategorie: true }))
   })
 })

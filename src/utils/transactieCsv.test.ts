@@ -4,7 +4,7 @@ import { splitsCsv } from './csv'
 import { vertaal } from '../i18n'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
 import { groepVanCategorie, labelVanCategorie } from '../data/categorieen/resolve'
-import type { Categorie, Rekening, Transactie } from '../data/schema'
+import type { Categorie, Gezinslid, Rekening, Transactie } from '../data/schema'
 
 // Echte id's uit de ingebouwde boom: met een verzonnen id lost elke categorienaam
 // naar "Onbekend" op, en dan meet een test op de categoriekolommen niets.
@@ -29,41 +29,47 @@ const tx = (over: Partial<Transactie> & { id: string }): Transactie => ({
   ...over,
 })
 
+const gezinsleden: Gezinslid[] = [
+  { id: 'g1', naam: 'Emma' },
+  { id: 'g2', naam: 'Lucas' },
+]
+
 // Kolommen: datum, handelaar, toelichting, hoofdcategorie, categorie, rekening,
-// bedrag, soort, ticket.
-const BEDRAG = 6
-const SOORT = 7
-const TICKET = 8
+// gezinslid, bedrag, soort, ticket.
+const GEZINSLID = 6
+const BEDRAG = 7
+const SOORT = 8
+const TICKET = 9
 
 describe('transactieCsvRijen', () => {
   it('begint met een rij kolomkoppen', () => {
-    const rijen = transactieCsvRijen(t, [], categorieen, rekeningen)
+    const rijen = transactieCsvRijen(t, [], categorieen, rekeningen, gezinsleden)
     expect(rijen).toHaveLength(1)
     expect(rijen[0][0]).toBe('Datum')
-    expect(rijen[0]).toHaveLength(9)
+    expect(rijen[0]).toHaveLength(10)
   })
 
   it('schrijft het bedrag als kaal decimaal getal met een komma', () => {
     // NIET als "€ 41,20": dat leest Excel als tekst, en dan kan je er niet meer
     // mee rekenen. Het minteken blijft staan, want dat maakt het een uitgave.
-    const rijen = transactieCsvRijen(t, [tx({ id: 't1' })], categorieen, rekeningen)
+    const rijen = transactieCsvRijen(t, [tx({ id: 't1' })], categorieen, rekeningen, gezinsleden)
     expect(rijen[1][BEDRAG]).toBe('-41,20')
     expect(rijen[1][SOORT]).toBe('uitgave')
   })
 
   it('noemt een positief bedrag een inkomst', () => {
-    const rijen = transactieCsvRijen(t, [tx({ id: 't1', bedrag: 200000 })], categorieen, rekeningen)
+    const rijen = transactieCsvRijen(t, [tx({ id: 't1', bedrag: 200000 })], categorieen, rekeningen, gezinsleden)
     expect(rijen[1][BEDRAG]).toBe('2000,00')
     expect(rijen[1][SOORT]).toBe('inkomst')
   })
 
   it('zet de rekeningnaam erbij, niet het id', () => {
-    const rijen = transactieCsvRijen(t, [tx({ id: 't1', rekeningId: 'r2' })], categorieen, rekeningen)
+    const rijen = transactieCsvRijen(t, [tx({ id: 't1', rekeningId: 'r2' })], categorieen, rekeningen, gezinsleden)
     expect(rijen[1][5]).toBe('Spaarrekening')
   })
 
   it('laat de rekeningkolom leeg wanneer de rekening niet meer bestaat', () => {
-    const rijen = transactieCsvRijen(t, [tx({ id: 't1', rekeningId: 'weg' })], categorieen, rekeningen)
+    const rijen = transactieCsvRijen(t, [tx({ id: 't1', rekeningId: 'weg' })], categorieen, rekeningen, gezinsleden)
     expect(rijen[1][5]).toBe('')
   })
 
@@ -78,7 +84,7 @@ describe('transactieCsvRijen', () => {
         { categorieId: WASMIDDEL, bedrag: -1260 },
       ],
     })
-    const rijen = transactieCsvRijen(t, [gesplitst], categorieen, rekeningen)
+    const rijen = transactieCsvRijen(t, [gesplitst], categorieen, rekeningen, gezinsleden)
     expect(rijen).toHaveLength(3)
     expect(rijen[1][BEDRAG]).toBe('-41,20')
     expect(rijen[2][BEDRAG]).toBe('-12,60')
@@ -96,14 +102,14 @@ describe('transactieCsvRijen', () => {
         { categorieId: WASMIDDEL, bedrag: -1260 },
       ],
     })
-    const rijen = transactieCsvRijen(t, [gesplitst], categorieen, rekeningen)
+    const rijen = transactieCsvRijen(t, [gesplitst], categorieen, rekeningen, gezinsleden)
     expect(rijen[1][2]).toBe('brood en beleg')
     expect(rijen[2][2]).toBe('')
   })
 
   it('laat de toelichting leeg bij een gewone boeking', () => {
     // Anders staat de handelaarsnaam er twee keer, in twee kolommen naast elkaar.
-    const rijen = transactieCsvRijen(t, [tx({ id: 't1' })], categorieen, rekeningen)
+    const rijen = transactieCsvRijen(t, [tx({ id: 't1' })], categorieen, rekeningen, gezinsleden)
     expect(rijen[1][2]).toBe('')
   })
 
@@ -119,13 +125,13 @@ describe('transactieCsvRijen', () => {
         { categorieId: WASMIDDEL, bedrag: -2000 },
       ],
     })
-    const rijen = transactieCsvRijen(t, [gesplitst], categorieen, rekeningen)
+    const rijen = transactieCsvRijen(t, [gesplitst], categorieen, rekeningen, gezinsleden)
     const som = rijen.slice(1).reduce((s, r) => s + Math.round(Number(r[BEDRAG].replace(',', '.')) * 100), 0)
     expect(som).toBe(-5000)
   })
 
   it('maakt een handelaarsnaam onschadelijk die Excel als formule zou lezen', () => {
-    const rijen = transactieCsvRijen(t, [tx({ id: 't1', omschrijving: '=SOM(A1)' })], categorieen, rekeningen)
+    const rijen = transactieCsvRijen(t, [tx({ id: 't1', omschrijving: '=SOM(A1)' })], categorieen, rekeningen, gezinsleden)
     expect(rijen[1][1]).toBe("'=SOM(A1)")
   })
 
@@ -136,6 +142,7 @@ describe('transactieCsvRijen', () => {
       [tx({ id: 'b', datum: '2026-07-09' }), tx({ id: 'a', datum: '2026-07-01' })],
       categorieen,
       rekeningen,
+      gezinsleden,
     )
     expect(rijen[1][TICKET]).toBe('b')
     expect(rijen[2][TICKET]).toBe('a')
@@ -144,11 +151,11 @@ describe('transactieCsvRijen', () => {
 
 describe('transactieCsvBestand', () => {
   it('begint met een byte-volgordemarkering', () => {
-    expect(transactieCsvBestand(t, [], categorieen, rekeningen).charCodeAt(0)).toBe(0xfeff)
+    expect(transactieCsvBestand(t, [], categorieen, rekeningen, gezinsleden).charCodeAt(0)).toBe(0xfeff)
   })
 
   it('is met puntkomma als scheidingsteken te lezen en houdt de bedragen heel', () => {
-    const bestand = transactieCsvBestand(t, [tx({ id: 't1', omschrijving: 'COLRUYT; HALLE' })], categorieen, rekeningen)
+    const bestand = transactieCsvBestand(t, [tx({ id: 't1', omschrijving: 'COLRUYT; HALLE' })], categorieen, rekeningen, gezinsleden)
     const rijen = splitsCsv(bestand.slice(1), ';')
     expect(rijen[1][1]).toBe('COLRUYT; HALLE')
     expect(rijen[1][BEDRAG]).toBe('-41,20')
@@ -177,7 +184,7 @@ describe('de categoriekolommen', () => {
   it('zet de hoofdcategorie en de laagste categorie in twee aparte kolommen', () => {
     // Twee kolommen en niet één pad met '›': in Excel filter en draaitabel je per
     // niveau, en dat kan niet als beide in dezelfde cel staan.
-    const rijen = transactieCsvRijen(t, [tx({ id: 't1', categorieId: BROOD })], categorieen, rekeningen)
+    const rijen = transactieCsvRijen(t, [tx({ id: 't1', categorieId: BROOD })], categorieen, rekeningen, gezinsleden)
     expect(rijen[1][3]).toBe(groepVanCategorie(BROOD, categorieen).naam)
     expect(rijen[1][4]).toBe(labelVanCategorie(BROOD, categorieen))
     expect(rijen[1][3]).not.toBe(rijen[1][4])
@@ -192,13 +199,13 @@ describe('de categoriekolommen', () => {
         { categorieId: WASMIDDEL, bedrag: -1260 },
       ],
     })
-    const rijen = transactieCsvRijen(t, [gesplitst], categorieen, rekeningen)
+    const rijen = transactieCsvRijen(t, [gesplitst], categorieen, rekeningen, gezinsleden)
     expect(rijen[1][4]).toBe(labelVanCategorie(BROOD, categorieen))
     expect(rijen[2][4]).toBe(labelVanCategorie(WASMIDDEL, categorieen))
   })
 
   it('laat de categoriekolom leeg bij een boeking zonder categorie', () => {
-    const rijen = transactieCsvRijen(t, [tx({ id: 't1' })], categorieen, rekeningen)
+    const rijen = transactieCsvRijen(t, [tx({ id: 't1' })], categorieen, rekeningen, gezinsleden)
     expect(rijen[1][4]).toBe('')
   })
 })
@@ -228,7 +235,7 @@ describe('de koppeling tussen een ticketregel en haar toelichting', () => {
         { categorieId: WASMIDDEL, bedrag: -1000, omschrijving: 'wasmiddel' },
       ],
     })
-    const rijen = transactieCsvRijen(t, [gesplitst], categorieen, rekeningen)
+    const rijen = transactieCsvRijen(t, [gesplitst], categorieen, rekeningen, gezinsleden)
     expect(rijen).toHaveLength(4)
     expect(rijen[1][2]).toBe('brood')
     expect(rijen[2][2]).toBe('wasmiddel')
@@ -247,10 +254,61 @@ describe('de koppeling tussen een ticketregel en haar toelichting', () => {
         { categorieId: WASMIDDEL, bedrag: -2000, omschrijving: 'wasmiddel' },
       ],
     })
-    const rijen = transactieCsvRijen(t, [gesplitst], categorieen, rekeningen)
+    const rijen = transactieCsvRijen(t, [gesplitst], categorieen, rekeningen, gezinsleden)
     expect(rijen[1][2]).toBe('brood')
     expect(rijen[2][2]).toBe('wasmiddel')
     expect(rijen[1][4]).toBe(labelVanCategorie(BROOD, categorieen))
     expect(rijen[2][4]).toBe(labelVanCategorie(WASMIDDEL, categorieen))
+  })
+})
+
+describe('transactieCsvRijen — de kolom Gezinslid', () => {
+  // Ronde 51. Je kan op een gezinslid FILTEREN, en die naam belandde ook in de
+  // bestandsnaam — maar in het bestand zelf stond nergens wie waarbij hoorde.
+
+  it('zet de namen van de gezinsleden in het bestand, niet hun id', () => {
+    const rijen = transactieCsvRijen(t, [tx({ id: 't1', persoonIds: ['g1'] })], categorieen, rekeningen, gezinsleden)
+    expect(rijen[0][GEZINSLID]).toBe('Gezinslid')
+    expect(rijen[1][GEZINSLID]).toBe('Emma')
+  })
+
+  it('zet er meerdere naast elkaar wanneer een boeking aan twee leden hangt', () => {
+    const rijen = transactieCsvRijen(
+      t,
+      [tx({ id: 't1', persoonIds: ['g1', 'g2'] })],
+      categorieen,
+      rekeningen,
+      gezinsleden,
+    )
+    expect(rijen[1][GEZINSLID]).toBe('Emma, Lucas')
+  })
+
+  it('laat de kolom leeg bij een boeking die aan niemand hangt', () => {
+    const rijen = transactieCsvRijen(t, [tx({ id: 't1' })], categorieen, rekeningen, gezinsleden)
+    expect(rijen[1][GEZINSLID]).toBe('')
+  })
+
+  it('herhaalt de namen op elke regel van een gesplitst ticket', () => {
+    // Net als de kolom Rekening: `persoonIds` staat op de boeking, niet per regel, en
+    // zo blijft elke rij op zichzelf leesbaar in een draaitabel.
+    const gesplitst = tx({
+      id: 't1',
+      bedrag: -5000,
+      persoonIds: ['g1'],
+      regels: [
+        { categorieId: BROOD, bedrag: -2000 },
+        { categorieId: WASMIDDEL, bedrag: -3000 },
+      ],
+    })
+    const rijen = transactieCsvRijen(t, [gesplitst], categorieen, rekeningen, gezinsleden)
+    expect(rijen[1][GEZINSLID]).toBe('Emma')
+    expect(rijen[2][GEZINSLID]).toBe('Emma')
+  })
+
+  it('verzwijgt een verwijderd gezinslid niet', () => {
+    // Een lege cel zou lezen als "hangt aan niemand", en dat is iets anders dan
+    // "hangt aan iemand die je intussen verwijderd hebt".
+    const rijen = transactieCsvRijen(t, [tx({ id: 't1', persoonIds: ['weg'] })], categorieen, rekeningen, gezinsleden)
+    expect(rijen[1][GEZINSLID]).toBe('Onbekend gezinslid')
   })
 })

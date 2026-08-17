@@ -17,6 +17,7 @@ import {
   UITWISSEL_VERSIE,
   type UitwisselBestand,
 } from './uitwisseling'
+import type { UitwisselKost } from './uitwisseling'
 import type { Dossier, GedeeldeKost, Kind } from '../data/schema'
 import { veiligeBestandsnaam } from './download'
 import { isOpenKost } from './afrekening'
@@ -663,3 +664,39 @@ describe('wat de review na het bouwen ving', () => {
   })
 })
 
+
+describe('het ingelezen aandeel apart bewaren', () => {
+  // Ronde 51. Een ingelezen kost HOUDT haar `uitwisselId` nadat jij het percentage
+  // aanpaste — daaraan herkennen beide apps ze bij een volgend heen-en-weer. Maar
+  // dat id zei niets meer over waar het huidige cijfer vandaan kwam, en dan bleef de
+  // bewijsmap "opgegeven door de andere ouder" zetten onder een getal dat jij zelf
+  // had ingetikt.
+  const binnen: UitwisselKost = {
+    id: 'a-1',
+    omschrijving: 'Schoolreis',
+    bedrag: 9000,
+    datum: '2026-05-04',
+    betaaldDoorAfzender: true,
+    aandeelAfzender: 40,
+  }
+
+  it('bewaart bij het inlezen wat de andere ouder opgaf', () => {
+    const bijB = naarEigenKost(binnen, 'db', [], 'b-1')
+    expect(bijB.aandeelJijOverride).toBe(60)
+    expect(bijB.uitwisselAandeel).toBe(60)
+  })
+
+  it('laat het verschil zien zodra jij het percentage zelf aanpast', () => {
+    const bijB = naarEigenKost(binnen, 'db', [], 'b-1')
+    const zelfAangepast = { ...bijB, aandeelJijOverride: 90 }
+    expect(zelfAangepast.uitwisselAandeel).not.toBe(zelfAangepast.aandeelJijOverride)
+  })
+
+  it('herstelt zich zodra dezelfde kost opnieuw binnenkomt', () => {
+    const bijB = naarEigenKost(binnen, 'db', [], 'b-1')
+    const zelfAangepast = { ...bijB, aandeelJijOverride: 90 }
+    const opnieuw = metWijziging(zelfAangepast, { ...binnen, aandeelAfzender: 25 })
+    expect(opnieuw.aandeelJijOverride).toBe(75)
+    expect(opnieuw.uitwisselAandeel).toBe(75)
+  })
+})

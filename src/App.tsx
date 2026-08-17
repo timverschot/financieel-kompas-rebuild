@@ -176,7 +176,7 @@ import { boekingDieDezePostAfdekt, maandVooruitblik, vasteLastTransactieId } fro
 import { useInstellingen } from './instellingen'
 import { huidigeMaand, maandJaarLabel, vandaag } from './utils/datum'
 import { saldoVanRekening, totaalSaldoVan } from './utils/saldo'
-import { Balk, Bedrag, Kaart, Leeg, PaginaKop } from './ui/basis'
+import { Balk, Bedrag, Kaart, Kengetal, Leeg, PaginaKop } from './ui/basis'
 import { useT } from './i18n'
 
 const container: CSSProperties = {
@@ -1787,35 +1787,35 @@ export function App() {
                   rekeningen, en die som staat nergens op de Rekeningen-pagina — dan
                   klik je op een cijfer en kom je op een scherm waar het niet
                   voorkomt. */}
-              <button
-                type="button"
-                className="kengetal kengetal-knop"
-                aria-label={t('Inkomsten {bedrag} — bekijk de boekingen', { bedrag: formatEuro(inkomsten) })}
-                onClick={() => gaNaarTransacties({ maand, richting: 'in' })}
+              <Kengetal
+                label={t('Inkomsten')}
+                doorklik={{
+                  naar: () => gaNaarTransacties({ maand, richting: 'in' }),
+                  naam: t('Inkomsten {bedrag} — bekijk de boekingen', { bedrag: formatEuro(inkomsten) }),
+                }}
               >
-                <span className="label-caps">{t('Inkomsten')}</span>
                 <Bedrag centen={inkomsten} richting="in" groot />
-              </button>
-              <button
-                type="button"
-                className="kengetal kengetal-knop"
-                aria-label={t('Uitgaven {bedrag} — bekijk de boekingen', { bedrag: formatEuro(uitgaven) })}
-                onClick={() => gaNaarTransacties({ maand, richting: 'uit' })}
+              </Kengetal>
+              <Kengetal
+                label={t('Uitgaven')}
+                doorklik={{
+                  naar: () => gaNaarTransacties({ maand, richting: 'uit' }),
+                  naam: t('Uitgaven {bedrag} — bekijk de boekingen', { bedrag: formatEuro(uitgaven) }),
+                }}
               >
-                <span className="label-caps">{t('Uitgaven')}</span>
                 <Bedrag centen={uitgaven} richting="uit" groot />
-              </button>
-              <button
-                type="button"
-                className="kengetal kengetal-knop"
-                aria-label={t('Netto {bedrag} — bekijk alle boekingen van deze maand', {
-                  bedrag: formatEuro(inkomsten - uitgaven),
-                })}
-                onClick={() => gaNaarTransacties({ maand })}
+              </Kengetal>
+              <Kengetal
+                label={t('Netto')}
+                doorklik={{
+                  naar: () => gaNaarTransacties({ maand }),
+                  naam: t('Netto {bedrag} — bekijk alle boekingen van deze maand', {
+                    bedrag: formatEuro(inkomsten - uitgaven),
+                  }),
+                }}
               >
-                <span className="label-caps">{t('Netto')}</span>
                 <Bedrag centen={inkomsten - uitgaven} richting="auto" groot />
-              </button>
+              </Kengetal>
             </div>
 
             {/* Benoemen wat het netto-cijfer betekent, wat je na aftrek van je

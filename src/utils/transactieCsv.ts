@@ -1,4 +1,4 @@
-import type { Categorie, Rekening, Transactie } from '../data/schema'
+import type { Categorie, Gezinslid, Rekening, Transactie } from '../data/schema'
 import { groepVanCategorie, labelVanCategorie } from '../data/categorieen/resolve'
 import type { Vertaler } from '../i18n'
 import { maakCsv, metBom, veiligeCsvTekst } from './csv'
@@ -6,6 +6,7 @@ import { centenNaarInvoer } from './format'
 import { veiligeBestandsnaam } from './download'
 import { filterBeschrijving, type FilterNamen } from './filterTekst'
 import { categorieBedragen } from './transactie'
+import { naamVanPersoon } from './persoon'
 import type { TxFilter } from './transactieFilter'
 
 // De transactielijst als CSV-bestand voor Excel.
@@ -30,6 +31,30 @@ import type { TxFilter } from './transactieFilter'
 // De volgorde en de selectie van de rijen komen van de aanroeper: het bestand moet
 // precies zijn wat er op het scherm staat.
 
+/**
+ * De gezinsleden van één boeking, als namen (ronde 51).
+ *
+ * Waarom deze kolom er is: je kan op een gezinslid FILTEREN, en die naam belandt dan
+ * ook in de bestandsnaam — maar in het bestand zelf stond nergens wie waarbij hoorde.
+ * Je stuurde dus een bestand met "emma" in de naam waarin Emma niet één keer voorkomt.
+ *
+ * Namen en geen id's, om dezelfde reden als bij de filterchips: een id zegt de lezer
+ * niets, en dit bestand gaat de deur uit.
+ *
+ * `persoonIds` staat op de BOEKING en niet per ticketregel. Bij een gesplitst
+ * kassaticket herhaalt de waarde zich dus op elke regel — net zoals de kolom Rekening
+ * dat al doet. Zo blijft elke rij op zichzelf leesbaar.
+ *
+ * Een lid dat intussen verwijderd is, wordt "Onbekend gezinslid" en verdwijnt niet
+ * stil: anders zou een boeking die wél aan iemand hangt er in het bestand uitzien als
+ * een boeking die aan niemand hangt.
+ */
+function gezinsledenTekst(t: Vertaler, tx: Transactie, leden: Gezinslid[]): string {
+  const ids = tx.persoonIds ?? []
+  if (ids.length === 0) return ''
+  return ids.map((id) => naamVanPersoon(id, leden) ?? t('Onbekend gezinslid')).join(', ')
+}
+
 /** De kolomkoppen, in de volgorde van de rijen. Vertaalbaar; de data niet. */
 export function csvKoppen(t: Vertaler): string[] {
   return [
@@ -39,6 +64,7 @@ export function csvKoppen(t: Vertaler): string[] {
     t('Hoofdcategorie'),
     t('Categorie'),
     t('Rekening'),
+    t('Gezinslid'),
     t('Bedrag'),
     t('Soort'),
     t('Ticket'),
@@ -56,6 +82,7 @@ export function transactieCsvRijen(
   transacties: Transactie[],
   categorieen: Categorie[],
   rekeningen: Rekening[],
+  gezinsleden: Gezinslid[],
 ): string[][] {
   const rekeningNaam = new Map(rekeningen.map((r) => [r.id, r.naam]))
   const rijen: string[][] = [csvKoppen(t)]
@@ -75,6 +102,7 @@ export function transactieCsvRijen(
         veiligeCsvTekst(groep.naam),
         veiligeCsvTekst(labelVanCategorie(regel.categorieId, categorieen) ?? ''),
         veiligeCsvTekst(rekeningNaam.get(tx.rekeningId) ?? ''),
+        veiligeCsvTekst(gezinsledenTekst(t, tx, gezinsleden)),
         centenNaarInvoer(regel.bedrag),
         regel.bedrag >= 0 ? t('inkomst') : t('uitgave'),
         veiligeCsvTekst(tx.id),
@@ -91,8 +119,9 @@ export function transactieCsvBestand(
   transacties: Transactie[],
   categorieen: Categorie[],
   rekeningen: Rekening[],
+  gezinsleden: Gezinslid[],
 ): string {
-  return metBom(maakCsv(transactieCsvRijen(t, transacties, categorieen, rekeningen), ';'))
+  return metBom(maakCsv(transactieCsvRijen(t, transacties, categorieen, rekeningen, gezinsleden), ';'))
 }
 
 /**

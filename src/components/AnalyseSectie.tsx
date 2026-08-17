@@ -27,7 +27,7 @@ import { useT } from '../i18n'
 import { naarDatumTekst, huidigeMaand, maandJaarLabel } from '../utils/datum'
 import { verschuifMaand } from '../utils/maandverloop'
 import { isOmgekeerdBereik, filterVoorCategorie, type TxFilter } from '../utils/transactieFilter'
-import { kleurVoor, OVERIGE_KLEUR } from '../ui/palet'
+import { GEZIN_KLEUR, kleurVoor, OVERIGE_KLEUR } from '../ui/palet'
 import { itemPerId } from '../data/categorieen/zoek'
 import { dagKort } from '../utils/datum'
 
@@ -68,15 +68,21 @@ const rijKnop: CSSProperties = {
 // openslaat. De kolombreedte ernaast staat in `.donut-naast` (index.css).
 const DONUT_GROOTTE = 300
 
+// Hoeveel schijven de ring toont vóór de rest op één 'Overige'-schijf samengeveegd
+// wordt. Meer dan dit levert haarfijne schijfjes op die je niet meer aan hun legende
+// kan koppelen. Eén uitzondering: een vastgepinde rij komt er altijd bij, ook als ze
+// buiten dit aantal valt — dan zijn het er elf.
+const MAX_SCHIJVEN = 10
 
-// Uitklapbare donutkaart: het diagram toont top 10 + een 'Overige'-schijf; de
-// legende toont standaard de top 10 en kan naar alles uitklappen.
+// Uitklapbare donutkaart: het diagram toont de grootste schijven plus een
+// 'Overige'-schijf, en dat blijft zo. Alleen de LEGENDE klapt uit naar alle rijen.
 function DonutKaart({
   titel,
   subtitel,
   posten,
   richting,
   onKiesPost,
+  vastgepind,
 }: {
   titel: string
   subtitel?: string
@@ -96,19 +102,48 @@ function DonutKaart({
    * tekst. Liever geen doorklik dan een verkeerde.
    */
   onKiesPost?: (post: Gekleurd, index: number) => (() => void) | undefined
+  /**
+   * De plaats van een rij die ALTIJD zichtbaar moet blijven, ook als ze buiten de
+   * tien grootste valt (ronde 51).
+   *
+   * Waarvoor dit bestaat: de kaart "per gezinslid" zet de groep "Het gezin" — alles
+   * wat aan niemand hangt — altijd achteraan. Bij tien of meer gezinsleden viel die
+   * groep daardoor in de restschijf, die toevallig ook nog dezelfde kleur had. Je
+   * zag dus niet dát ze verdwenen was.
+   *
+   * Een plaats en geen naam, want namen zijn niet uniek en kunnen vertaald zijn.
+   */
+  vastgepind?: number
 }) {
   const { t } = useT()
   const [toonAlles, setToonAlles] = useState(false)
   const totaal = totaalVan(posten)
-  const top10 = posten.slice(0, 10)
-  const rest = posten.slice(10)
+
+  // Welke PLAATSEN uit `posten` de ring toont — plaatsen en geen kopieën van de rijen
+  // zelf, want twee dingen hangen aan die plaats: het percentage (over de volledige
+  // lijst berekend) en `onKiesPost`, waarmee de kaart "per gezinslid" bij het id van
+  // de persoon komt. Sneed je de lijst gewoon door, dan liepen die twee uiteen zodra
+  // er een rij van achteraan bijgetrokken wordt.
+  const inDeRing: number[] = [
+    ...new Set([
+      ...posten.slice(0, MAX_SCHIJVEN).map((_, i) => i),
+      ...(vastgepind !== undefined && vastgepind >= 0 && vastgepind < posten.length ? [vastgepind] : []),
+    ]),
+  ].sort((a, b) => a - b)
+
+  const getoond = new Set(inDeRing)
+  const rest = posten.filter((_, i) => !getoond.has(i))
   const restTotaal = totaalVan(rest)
-  const ring = top10.map((p) => ({ naam: p.naam, bedrag: p.bedrag, kleur: p.kleur }))
+  const ring = inDeRing.map((i) => ({ naam: posten[i].naam, bedrag: posten[i].bedrag, kleur: posten[i].kleur }))
   if (restTotaal > 0) ring.push({ naam: t('Overige ({n})', { n: rest.length }), bedrag: restTotaal, kleur: OVERIGE_KLEUR })
-  const legende = toonAlles ? posten : top10
-  // Percentages over de VOLLEDIGE lijst berekenen (niet enkel de zichtbare top 10),
-  // zodat een rij hetzelfde percentage houdt als je de lijst uitklapt. 'legende' is
-  // altijd het begin van 'posten', dus de plaatsen lopen gelijk.
+
+  // Alleen de LIJST klapt uit, de ring niet. Zou de ring meegroeien, dan krijg je bij
+  // vijftien posten vijftien haarfijne schijfjes die je niet meer aan hun legende kan
+  // koppelen — precies wat `MAX_SCHIJVEN` moet tegenhouden. En de schijf "Overige"
+  // zou verdwijnen terwijl je net méér wilde zien.
+  const zichtbaar: number[] = toonAlles ? posten.map((_, i) => i) : inDeRing
+  // Percentages over de VOLLEDIGE lijst berekenen (niet enkel de zichtbare rijen),
+  // zodat een rij hetzelfde percentage houdt als je de lijst uitklapt.
   const percentages = afgerondePercentages(posten.map((p) => p.bedrag))
 
   return (
@@ -126,18 +161,25 @@ function DonutKaart({
             daarvoor zag — de knop "toon meer" toonde dus mínder. De kaart mag
             gewoon langer worden. */}
         <ul className="lijst">
-          {legende.map((p, i) => {
-            // De index telt mee: `legende` is altijd het begin van `posten`, dus
-            // rij i hoort bij post i. De kaart "per gezinslid" heeft dat nodig om
-            // bij het id van de persoon te komen; dat staat niet in de gekleurde
-            // post, en voor de groep "Het gezin" bestaat er sowieso geen id.
+          {zichtbaar.map((i) => {
+            const p = posten[i]
+            // De plaats in de VOLLEDIGE lijst telt mee, niet de plaats in wat je ziet.
+            // De kaart "per gezinslid" heeft die nodig om bij het id van de persoon te
+            // komen; dat staat niet in de gekleurde post, en voor de groep "Het gezin"
+            // bestaat er sowieso geen id.
             const kies = onKiesPost?.(p, i)
+            // `p.naam` wordt NIET zomaar vertaald: deze kaart toont ook winkelnamen,
+            // en die blijven overal in de app onvertaald. Alleen de rij "Zonder
+            // categorie" is een woord van de app zelf — en die stond in het Engels en
+            // het Frans nog in het Nederlands, terwijl de zusterlijst eronder ze wél
+            // vertaalde. Dan heet hetzelfde begrip twee dingen op één scherm.
+            const naam = p.zonderCategorie ? t('Zonder categorie') : p.naam
             const inhoud = (
               <>
                 <span style={{ ...stip, background: p.kleur }} aria-hidden />
                 <span className="rij-midden">
                   <span className="rij-titel" style={afkap}>
-                    {p.naam}
+                    {naam}
                   </span>
                 </span>
                 <span className="rij-pct">{percentages[i]}%</span>
@@ -162,7 +204,7 @@ function DonutKaart({
                     type="button"
                     className="rij-knop"
                     aria-label={t('{naam} {pct}% {bedrag} — bekijk de boekingen', {
-                      naam: p.naam,
+                      naam,
                       pct: percentages[i],
                       bedrag: formatEuro(p.bedrag),
                     })}
@@ -342,12 +384,14 @@ export function AnalyseSectie({
     })
   }, [bereikOmgekeerd, gezinsleden, transacties, periode, richting, t])
 
-  // Kleuren zoals elders op deze pagina; de gezinsgroep krijgt bewust de neutrale
-  // 'overige'-tint, zodat ze niet als een persoon leest.
+  // Kleuren zoals elders op deze pagina; de gezinsgroep krijgt bewust een neutrale
+  // tint, zodat ze niet als een persoon leest. Sinds ronde 51 een EIGEN neutrale tint
+  // en niet meer die van de restschijf: die twee kunnen nu naast elkaar in de ring
+  // staan, en dan zijn ze niet meer aan hun legende te koppelen.
   const perPersoonGekleurd = useMemo(
     () =>
       kleuren(perPersoon.map((p) => ({ naam: p.naam, bedrag: p.bedrag }))).map((p, i) =>
-        perPersoon[i].id === null ? { ...p, kleur: OVERIGE_KLEUR } : p,
+        perPersoon[i].id === null ? { ...p, kleur: GEZIN_KLEUR } : p,
       ),
     [perPersoon],
   )
@@ -400,10 +444,13 @@ export function AnalyseSectie({
     metPeriode({ ...filter, richting: richting === 'uitgave' ? 'uit' : 'in' })
 
   const naarCategorie = (sleutel: string) => {
-    // 'Zonder categorie' heeft geen id om op te filteren; dan is er niets om
-    // heen te gaan en tonen we de knop ook niet.
-    if (!onGaNaarTransacties || !sleutel) return
-    onGaNaarTransacties(metRichting(filterVoorCategorie(sleutel)))
+    if (!onGaNaarTransacties) return
+    // 'Zonder categorie' heeft geen categorie-id, maar sinds ronde 51 wél een weg:
+    // het filter `zonderCategorie` bestond al en toont precies dezelfde boekingen.
+    // Voordien liep deze schijf dood — en op de donut kon je er wél op tikken,
+    // waarna er zichtbaar niets gebeurde. Juist die boekingen wil je openen: dat
+    // zijn de uitgaven die je nog moet indelen.
+    onGaNaarTransacties(metRichting(sleutel === '' ? { zonderCategorie: true } : filterVoorCategorie(sleutel)))
   }
 
   /**
@@ -613,12 +660,21 @@ export function AnalyseSectie({
               // `perItem` geeft alleen een sleutel mee wanneer die rij aantoonbaar
               // op één item uitkomt; zonder sleutel geen knop. Zie de uitleg bij
               // `perItem` in utils/analyse.ts.
+              //
+              // Sinds ronde 51 klikt "Zonder categorie" wél door: daar bestaat een
+              // eigen filter voor, net als bij "Het gezin" hieronder. Het was de enige
+              // rij die doodliep terwijl de app precies wist welke boekingen ze bedoelde
+              // — en juist die rij wil je openen, want dat zijn de boekingen die je nog
+              // moet indelen.
               onKiesPost={
                 onGaNaarTransacties
-                  ? (p) =>
-                      p.sleutel
-                        ? () => onGaNaarTransacties(metRichting(filterVoorCategorie(p.sleutel as string)))
-                        : undefined
+                  ? (p) => {
+                      if (p.zonderCategorie) {
+                        return () => onGaNaarTransacties(metRichting({ zonderCategorie: true }))
+                      }
+                      if (!p.sleutel) return undefined
+                      return () => onGaNaarTransacties(metRichting(filterVoorCategorie(p.sleutel as string)))
+                    }
                   : undefined
               }
             />
@@ -647,6 +703,12 @@ export function AnalyseSectie({
               subtitel={t('Wat aan niemand persoonlijk hangt, staat bij "Het gezin". Een kost voor meerdere gezinsleden wordt gelijk verdeeld; zo\u2019n aandeel bestaat niet als aparte boeking, dus die rij klikt niet door.')}
               posten={perPersoonGekleurd}
               richting={richting}
+              // "Het gezin" staat altijd achteraan (zie `uitgavenPerPersoon`), dus bij
+              // tien of meer gezinsleden viel ze buiten de ring en verdween ze in de
+              // restschijf — zonder dat iets dat verried. Ze blijft nu vastgepind
+              // staan (ronde 51). Praktisch zeldzaam, maar het was een echte fout in
+              // de aanname dat "de tien grootste" altijd volstaat.
+              vastgepind={perPersoon.findIndex((r) => r.id === null)}
               // Alleen een ZUIVERE regel krijgt een knop. Bij een kost die aan
               // meerdere gezinsleden hing, staat hier een berekend aandeel — een
               // derde van € 90 — en dat bedrag bestaat nergens als boeking. De
@@ -722,7 +784,7 @@ export function AnalyseSectie({
             {/* De weg van dit cijfer naar de lijst waar je het kan bewerken.
                 Zonder deze knop eindigde de drilldown blind: je zag de boekingen
                 wel staan, maar kon er niets mee. */}
-            {onGaNaarTransacties && drill.sleutel !== '' && (
+            {onGaNaarTransacties && (
               <div className="knoprij">
                 <button type="button" className="knop knop-ghost knop-klein" onClick={() => naarCategorie(drill.sleutel)}>
                   {t('Bekijk in Transacties ›')}
@@ -749,8 +811,11 @@ export function AnalyseSectie({
                         {(() => {
                           // Alleen een ITEM: zie de uitleg bij `naarItem`. Voor een
                           // rij die een hoofd- of middencategorie is, zou het filter
-                          // een groter bedrag tonen dan de rij zelf.
-                          const kanDoor = Boolean(onGaNaarTransacties && p.sleutel && itemPerId(p.sleutel))
+                          // een groter bedrag tonen dan de rij zelf. "Zonder categorie"
+                          // mag sinds ronde 51 wél door, via haar eigen filter.
+                          const kanDoor = Boolean(
+                            onGaNaarTransacties && (p.zonderCategorie || (p.sleutel && itemPerId(p.sleutel))),
+                          )
                           const inhoud = (
                             <>
                               <span style={{ ...stip, background: p.kleur }} />
@@ -771,12 +836,28 @@ export function AnalyseSectie({
                                 naam: t(p.naam),
                                 bedrag: formatEuro(p.bedrag),
                               })}
-                              onClick={() => naarItem(p.sleutel as string)}
+                              onClick={() =>
+                                p.zonderCategorie
+                                  ? onGaNaarTransacties?.(metRichting({ zonderCategorie: true }))
+                                  : naarItem(p.sleutel as string)
+                              }
                             >
                               {inhoud}
+                              <span className="rij-chevron" aria-hidden="true">
+                                ›
+                              </span>
                             </button>
                           ) : (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>{inhoud}</span>
+                            // Het pijltje staat er ook hier, maar onzichtbaar: klikt in
+                            // één lijst de ene rij wel en de andere niet, dan hoort dat
+                            // verschil zichtbaar te zijn — en met `visibility` blijft de
+                            // bedragkolom van alle rijen op dezelfde plek staan.
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                              {inhoud}
+                              <span className="rij-chevron" aria-hidden="true" style={{ visibility: 'hidden' }}>
+                                ›
+                              </span>
+                            </span>
                           )
                         })()}
                         <Balk label={p.naam} fractie={fractie} kleur={p.kleur} />

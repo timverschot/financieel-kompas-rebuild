@@ -276,3 +276,19 @@ describe('vertaaltabellen — het fiscale jaaroverzicht', () => {
     expect(vertaal('fr', 'Vak X')).toBe('Cadre X')
   })
 })
+
+describe('vertaaltabellen — de opruimronde', () => {
+  it('vertaalt de nieuwe kolom en de nieuwe tegelknoppen', () => {
+    // De kolomkop belandt in een bestand dat je doorstuurt; de knoptekst is de
+    // toegankelijke naam die een schermlezer voorleest. Allebei mogen ze niet stil
+    // terugvallen op het Nederlands.
+    expect(vertaal('en', 'Gezinslid')).toBe('Family member')
+    expect(vertaal('fr', 'Gezinslid')).toBe('Membre du foyer')
+    expect(
+      vertaal('en', 'Uitgaven {bedrag} — toon alleen deze boekingen', { bedrag: '€ 30,00' }),
+    ).toContain('show only these entries')
+    expect(
+      vertaal('fr', 'Inkomsten {bedrag} — toon alleen deze boekingen', { bedrag: '€ 30,00' }),
+    ).toContain('opérations')
+  })
+})

@@ -70,7 +70,9 @@ describe('analyse — perItem', () => {
       // Sinds ronde 49 draagt een rij haar sleutel mee zodra die eenduidig is, zodat
       // je kan doorklikken naar de boekingen erachter.
       { naam: 'Brood (wit)', bedrag: 500, sleutel: BROOD },
-      { naam: 'Zonder categorie', bedrag: 200 },
+      // Sinds ronde 51 draagt deze rij een eigen markering: er bestaat een filter
+      // `zonderCategorie`, dus hoeft ze niet dood te lopen.
+      { naam: 'Zonder categorie', bedrag: 200, zonderCategorie: true },
     ])
   })
 
@@ -144,5 +146,27 @@ describe('analyse — drill', () => {
       { naam: 'Voeding', bedrag: 300, sleutel: VOEDING },
       { naam: 'Brood (wit)', bedrag: 500, sleutel: BROOD },
     ].sort((a, b) => b.bedrag - a.bedrag))
+  })
+})
+
+describe('analyse — de rij "Zonder categorie"', () => {
+  // Ronde 51. Dit was de enige rij die doodliep terwijl de app precies wist welke
+  // boekingen ze bedoelde — en juist die wil je openen: het zijn de uitgaven die je
+  // nog moet indelen.
+
+  it('markeert alleen een rij waarvan élke regel zonder categorie is', () => {
+    const r = perItem([tx({ bedrag: -200 })], [], OPEN, 'uitgave')
+    expect(r[0]).toMatchObject({ naam: 'Zonder categorie', zonderCategorie: true })
+    expect(r[0].sleutel).toBeUndefined()
+  })
+
+  it('markeert een gewone rij niet', () => {
+    const r = perItem([tx({ categorieId: BROOD, bedrag: -500 })], [], OPEN, 'uitgave')
+    expect(r[0].zonderCategorie).toBeUndefined()
+  })
+
+  it('markeert ook de rij in de drilldown per subcategorie', () => {
+    const sub = drillPerItem(drillTransacties([tx({ bedrag: -400 })], [], OPEN, 'uitgave', ''), [])
+    expect(sub[0]).toMatchObject({ naam: 'Zonder categorie', zonderCategorie: true })
   })
 })

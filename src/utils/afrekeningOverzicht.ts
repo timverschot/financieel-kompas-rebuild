@@ -53,7 +53,23 @@ export function aandeelUitleg(
   const percentageJij = effectiefAandeel(dossier, kost)
 
   if (kost.aandeelJijOverride === percentageJij) {
-    return { percentageJij, herkomst: kost.uitwisselId ? 'uitwisseling' : 'kost', bron: '' }
+    // 'uitwisseling' alleen zolang het percentage nog écht dat van de andere ouder
+    // is (ronde 51). Een ingelezen kost HOUDT haar `uitwisselId` nadat jij het
+    // aandeel aanpaste — dat is met opzet, want daaraan herkennen beide apps
+    // dezelfde kost bij een volgend heen-en-weer. Maar dat id alleen zei niets meer
+    // over waar het huidige cijfer vandaan komt, en dan stond er in de afrekening,
+    // de bewijsmap en de klembordtekst "opgegeven door de andere ouder" onder een
+    // getal dat jij zelf had ingetikt.
+    //
+    // De grens, eerlijk gezegd: bij een kost die vóór deze ronde ingelezen werd,
+    // ONTBREEKT `uitwisselAandeel` en kan de app het verschil niet zien. Daar houden
+    // we het oude gedrag aan. Dat is geen achteruitgang — het is letterlijk wat er
+    // stond — en het klopt voor het gewone geval, waarin je zo'n percentage gewoon
+    // laat staan. Zodra de andere ouder die kost nog eens doorstuurt, vult
+    // `metWijziging` het veld alsnog in en klopt het weer helemaal.
+    const eigenGetal = kost.uitwisselAandeel !== undefined && kost.uitwisselAandeel !== percentageJij
+    const vanDeAndere = kost.uitwisselId !== undefined && !eigenGetal
+    return { percentageJij, herkomst: vanDeAndere ? 'uitwisseling' : 'kost', bron: '' }
   }
 
   const splits = dossier.categorieAandelen

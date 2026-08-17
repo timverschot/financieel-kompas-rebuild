@@ -18,7 +18,7 @@ import {
   type Sorteerveld,
   type Sortering,
 } from '../utils/transactieSorteer'
-import { Bedrag, Kaart, Leeg } from '../ui/basis'
+import { Bedrag, Kaart, Kengetal, Leeg } from '../ui/basis'
 import { useT, type Vertaler } from '../i18n'
 import { huidigeMaand, maandJaarLabel, vandaag } from '../utils/datum'
 
@@ -318,11 +318,46 @@ export function TransactieLijst({
   // erin zit, en klopt hij met de rijen die geëxporteerd worden.
   const exportFilter: TxFilter = venster ? { ...filter, van: grens } : filter
 
+  /**
+   * De doorklik van één kengetaltegel — of `undefined` wanneer die niet klopt.
+   *
+   * De regel van dit project is streng: wie doorklikt, hoort exact hetzelfde bedrag
+   * terug te vinden. Bij deze tegels is dat NIET vanzelfsprekend, en de eerste versie
+   * van ronde 51 beloofde het ten onrechte. Drie manieren waarop het misging:
+   *
+   *  1. Het VENSTER van zes maanden. Zonder actief filter toont de lijst alleen de
+   *     recente maanden. Zodra er een richting in het filter komt, telt die als een
+   *     actief filter en valt het venster weg — dus kwam je hele historiek erbij.
+   *     Daarom reist `van: grens` mee, net als bij de CSV-export hieronder.
+   *  2. Een gesplitst kassaticket met regels in twee richtingen. Staat het filter al
+   *     op "uit", dan telt de inkomstentegel alleen het statiegeld op zulke tickets;
+   *     na een wissel naar "in" komt je loon erbij.
+   *  3. Een categoriefilter samen met zo'n ticket: dan kan de lijst na het filteren
+   *     zelfs leeg zijn terwijl de tegel een bedrag toonde.
+   *
+   * Geval 1 lossen we op; 2 en 3 niet — daar bestaat geen lijst die precies dat
+   * getal oplevert. Dan hoort er geen knop te staan, en dat is wat deze functie
+   * afdwingt: ze rekent het doel gewoon uit en vergelijkt.
+   */
+  function tegelDoorklik(kant: 'in' | 'uit', bedrag: number): { naar: () => void; naam: string } | undefined {
+    if (filter.richting === kant) return undefined
+    const doel: TxFilter = { ...filter, richting: kant, ...(venster ? { van: grens } : {}) }
+    const na = kengetallenVan(filterTransacties(transacties, doel))
+    if ((kant === 'in' ? na.inkomsten : na.uitgaven) !== bedrag) return undefined
+    return {
+      naar: () => setFilter(doel),
+      naam:
+        kant === 'in'
+          ? t('Inkomsten {bedrag} — toon alleen deze boekingen', { bedrag: formatEuro(bedrag) })
+          : t('Uitgaven {bedrag} — toon alleen deze boekingen', { bedrag: formatEuro(bedrag) }),
+    }
+  }
+
   function exporteerCsv() {
     try {
       downloadTekst(
         transactieCsvBestandsnaam(t, exportFilter, vandaag(), filterNamen),
-        transactieCsvBestand(t, zichtbaar, categorieen, rekeningen),
+        transactieCsvBestand(t, zichtbaar, categorieen, rekeningen, gezinsleden),
         'text/csv;charset=utf-8',
       )
       setExportFout('')
@@ -383,18 +418,30 @@ export function TransactieLijst({
           nu exact dezelfde tegels als op Overzicht, uit dezelfde CSS-klassen. Eén
           soort kengetal in de hele app in plaats van twee. */}
       <div className="tegelrij tegelrij-drie" data-kengetallen>
-        <div className="kengetal">
-          <span className="label-caps">{t('Inkomsten')}</span>
-          <span className="bedrag-groot" style={{ color: 'var(--positive-ink)' }}>{formatEuro(cijfers.inkomsten)}</span>
-        </div>
-        <div className="kengetal">
-          <span className="label-caps">{t('Uitgaven')}</span>
-          <span className="bedrag-groot" style={{ color: 'var(--negative-ink)' }}>{formatEuro(cijfers.uitgaven)}</span>
-        </div>
-        <div className="kengetal">
-          <span className="label-caps">{t('Saldo')}</span>
+        {/* Klikbaar sinds ronde 51. Op Overzicht waren deze tegels dat al (ronde 48) en
+            ze zien er hier exact hetzelfde uit — dus tikte je erop en gebeurde er
+            niets. Hier is de bestemming niet een andere pagina maar het filter van
+            deze lijst zelf: je blijft staan en de lijst eronder krimpt tot precies de
+            boekingen waar dat bedrag uit komt.
+
+            `tegelDoorklik` beslist per tegel of dat waar is; is het dat niet, dan komt
+            er géén knop. Zie de uitleg daar. */}
+        <Kengetal label={t('Inkomsten')} doorklik={tegelDoorklik('in', cijfers.inkomsten)}>
+          <span className="bedrag-groot" style={{ color: 'var(--positive-ink)' }}>
+            {formatEuro(cijfers.inkomsten)}
+          </span>
+        </Kengetal>
+        <Kengetal label={t('Uitgaven')} doorklik={tegelDoorklik('uit', cijfers.uitgaven)}>
+          <span className="bedrag-groot" style={{ color: 'var(--negative-ink)' }}>
+            {formatEuro(cijfers.uitgaven)}
+          </span>
+        </Kengetal>
+        {/* Het saldo krijgt bewust GEEN knop: het is inkomsten min uitgaven, dus er
+            bestaat geen kortere lijst die precies dát getal oplevert. Dezelfde reden
+            waarom de saldotegel op Overzicht een gewone tegel bleef. */}
+        <Kengetal label={t('Saldo')}>
           <span className="bedrag-groot">{formatEuro(cijfers.saldo)}</span>
-        </div>
+        </Kengetal>
       </div>
 
       <Kaart>

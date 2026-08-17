@@ -3030,3 +3030,72 @@ a {
     min-height: 44px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Het pijltje op een klikbaar kengetal (ronde 51)
+   ---------------------------------------------------------------------------
+
+   `.stat-knop` en `.kengetal-knop` lieten zich alleen kennen door `cursor: pointer`
+   en een randje bij aanwijzen — en allebei bestaan die niet op een aanraakscherm.
+   Op een telefoon was een klikbaar kengetal dus niet te onderscheiden van een gewoon
+   cijfer. Dat was de laatste open bedenking uit ronde 48.
+
+   Hetzelfde teken en dezelfde klasse `.rij-chevron` als bij een klikbare lijstrij,
+   want het betekent hetzelfde: hier zit iets achter.
+
+   ABSOLUUT GEPLAATST, en dat is de hele truc: `.stat` en `.kengetal` zijn kolommen
+   (label boven, bedrag eronder). Een derde kind in die kolom zou het pijltje ONDER
+   het bedrag zetten, en dan schuift het cijfer omhoog en staat een klikbare tegel
+   ineens anders dan een niet-klikbare ernaast. Zo blijft de tegel exact even hoog. */
+.stat-knop,
+.kengetal-knop {
+  position: relative;
+}
+
+.stat-knop .rij-chevron,
+.kengetal-knop .rij-chevron {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: var(--tekst-sm);
+  line-height: 1;
+}
+
+/* Ruimte MAKEN voor het pijltje in plaats van ze te delen.
+   `.stat` heeft geen binnenruimte en is in een `.stat-rij` zo breed als haar
+   breedste kind. Is dat het label en niet het bedrag — "VERSCHIL" boven "€ 0,00",
+   of het Franse "DIFFÉRENCE" — dan zou het pijltje bovenop de laatste letters
+   vallen. Alleen op de knopvariant, dus een gewone `.stat` ernaast schuift niet. */
+.stat-knop {
+  padding-right: 16px;
+}
+
+/* De tegel heeft 14 px binnenruimte; zonder deze regel plakt het pijltje tegen de
+   rand in plaats van in de hoek te staan. */
+.kengetal-knop .rij-chevron {
+  top: 8px;
+  right: 10px;
+}
+
+.stat-knop:focus-visible .rij-chevron,
+.kengetal-knop:focus-visible .rij-chevron {
+  color: var(--accent);
+  transform: translateX(2px);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .stat-knop:hover .rij-chevron,
+  .kengetal-knop:hover .rij-chevron {
+    color: var(--accent);
+    transform: translateX(2px);
+  }
+}
+
+/* Op papier betekent "hier kan je op tikken" niets. Het pijltje is de enige
+   versiering in dit bestand die puur een handeling aankondigt, dus het is ook de
+   enige die weg mag. De rij zelf blijft staan, met haar tekst en haar bedrag. */
+@media print {
+  .rij-chevron {
+    display: none !important;
+  }
+}

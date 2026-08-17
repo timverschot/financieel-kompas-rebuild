@@ -210,6 +210,10 @@ const en: Record<string, string> = {
   'Luisterboeken': 'Audiobooks',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Note: the transactions up to and including {datum} are already part of the value you recorded then. They still count below, but no longer in the balance at the top.',
   'geldt nu': 'in effect',
+  // De opruimronde (ronde 51)
+  'Gezinslid': 'Family member',
+  'Inkomsten {bedrag} — toon alleen deze boekingen': 'Income {bedrag} — show only these entries',
+  'Uitgaven {bedrag} — toon alleen deze boekingen': 'Expenses {bedrag} — show only these entries',
   // Het fiscale jaaroverzicht (ronde 50)
   'Fiscaal jaaroverzicht {jaar}': 'Annual tax overview {jaar}',
   'Meegeven aan je boekhouder': 'To hand to your accountant',
@@ -2328,6 +2332,10 @@ const fr: Record<string, string> = {
   'Luisterboeken': 'Livres audio',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Attention : les opérations jusqu’au {datum} inclus sont déjà comprises dans la valeur que tu as enregistrée alors. Elles comptent encore ci-dessous, mais plus dans le solde en haut.',
   'geldt nu': 'en vigueur',
+  // Le tour de nettoyage (ronde 51)
+  'Gezinslid': 'Membre du foyer',
+  'Inkomsten {bedrag} — toon alleen deze boekingen': 'Revenus {bedrag} — n’afficher que ces opérations',
+  'Uitgaven {bedrag} — toon alleen deze boekingen': 'Dépenses {bedrag} — n’afficher que ces opérations',
   // L’aperçu fiscal annuel (ronde 50)
   'Fiscaal jaaroverzicht {jaar}': 'Aperçu fiscal annuel {jaar}',
   'Meegeven aan je boekhouder': 'À remettre à ton comptable',
