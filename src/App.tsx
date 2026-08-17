@@ -133,6 +133,7 @@ import { SpaardoelSectie } from './components/SpaardoelSectie'
 import { CategorieBoom } from './components/CategorieBoom'
 import { OverzichtZijkolom } from './components/OverzichtZijkolom'
 import { Donut } from './components/Donut'
+import { FiscaalSectie } from './components/FiscaalSectie'
 import { MaandGrafiek } from './components/MaandGrafiek'
 import { RecenteTransacties } from './components/RecenteTransacties'
 import { RapportKaart } from './components/RapportKaart'
@@ -2509,6 +2510,18 @@ export function App() {
             onGaNaarInlezen={() => setPagina('importeren')}
             onToonBoekingen={(maand) => gaNaarTransacties({ maand })}
             onToonZonderCategorie={(maand) => gaNaarTransacties({ maand, zonderCategorie: true })}
+          />
+        </ErrorBoundary>
+      )}
+
+      {pagina === 'fiscaal' && (
+        <ErrorBoundary naam="Fiscaal jaaroverzicht">
+          <FiscaalSectie
+            transacties={transacties ?? []}
+            onderhoudsbijdragen={onderhoudsbijdragen}
+            onderhoudsbetalingen={onderhoudsbetalingen}
+            documenten={dossierdocumenten}
+            onBewerkTransactie={setBewerkTransactie}
           />
         </ErrorBoundary>
       )}

@@ -2999,3 +2999,34 @@ a {
     display: block !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   De bronverwijzing (ronde 50)
+   ---------------------------------------------------------------------------
+
+   De eerste echte externe link in de app. Het fiscale jaaroverzicht zegt over
+   zichzelf dat het niet adviseert; dan hoort er per post te staan wáár de regel
+   vandaan komt. Een link zonder eigen klasse zou de blauwe browserstandaard
+   krijgen — de enige blauwe tekst in een app die verder alleen `--accent` kent.
+
+   De 44 px onder `pointer: coarse` om dezelfde reden als bij `.stat-knop` en
+   `.rij-knop`: dit is een aanraakdoel, ook al is het geen knop. Zonder die regel
+   is het een regel tekst van 17 px hoog, en dat is op een telefoon niet te raken
+   zonder de link ernaast mee te nemen. */
+.bronlink {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.bronlink:hover,
+.bronlink:focus-visible {
+  color: var(--accent-strong);
+}
+
+@media (pointer: coarse) {
+  .bronlink {
+    min-height: 44px;
+  }
+}

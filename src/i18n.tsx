@@ -210,6 +210,115 @@ const en: Record<string, string> = {
   'Luisterboeken': 'Audiobooks',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Note: the transactions up to and including {datum} are already part of the value you recorded then. They still count below, but no longer in the balance at the top.',
   'geldt nu': 'in effect',
+  // Het fiscale jaaroverzicht (ronde 50)
+  'Fiscaal jaaroverzicht {jaar}': 'Annual tax overview {jaar}',
+  'Meegeven aan je boekhouder': 'To hand to your accountant',
+  'De PDF leest als een blad: elk bedrag met zijn voorbehoud erbij. De CSV is om zelf mee te rekenen — één rij per boeking.':
+    'The PDF reads like a sheet: every amount with its caveat next to it. The CSV is for working with yourself — one row per transaction.',
+  'PDF voor je boekhouder': 'PDF for your accountant',
+  'PDF voor je boekhouder — bezig…': 'PDF for your accountant — working…',
+  'Het document is gedownload.': 'The document has been downloaded.',
+  'Het document kon niet gemaakt worden. Probeer het opnieuw.': 'The document could not be created. Try again.',
+  'Dit jaar staat niet in de app': 'This year is not in the app',
+  'Niets gevonden': 'Nothing found',
+  'Bron': 'Source',
+  'Lees de voorwaarden bij de bron': 'Read the conditions at the source',
+  'De lijst is die van België. Waar een post gewestelijk is, staat ze zoals ze in Vlaanderen geldt; in Brussel en Wallonië gelden andere regels.':
+    'The list is the Belgian one. Where an item is regional, it is shown as it applies in Flanders; different rules apply in Brussels and Wallonia.',
+  '{jaar} loopt nog: deze bedragen groeien nog aan tot 31 december.':
+    '{jaar} is still running: these amounts will keep growing until 31 December.',
+  '{jaar} loopt nog: deze bedragen groeien nog aan tot 31 december. Vul je nu je aangifte in, kies dan het jaar ervóór.':
+    '{jaar} is still running: these amounts will keep growing until 31 December. If you are filling in your return now, pick the year before.',
+  'Kijkt in: {categorieen}.': 'Looks in: {categorieen}.',
+  'Kijkt in: je betalingen op een onderhoudsregeling in Dossiers.':
+    'Looks in: your payments on a maintenance arrangement in Cases.',
+  'Twee dingen ziet dit scherm nooit: een overboeking tussen je eigen rekeningen (dat is geen uitgave) en een aflossing die je los van een categorie boekt. Staat je storting of je lening zo in de app, boek ze dan als uitgave met de juiste categorie.':
+    'Two things this screen never sees: a transfer between your own accounts (that is not an expense) and a repayment you book without a category. If your contribution or your loan is entered that way, book it as an expense with the right category instead.',
+  'Totaal per post': 'Total per item',
+  'Komt in aanmerking': 'Qualifying amount',
+  'Aantal met bon': 'Number with receipt',
+  'Fiscaal jaaroverzicht': 'Annual tax overview',
+  'Wat je dat jaar uitgaf onder een post die in je belastingaangifte staat, met het vak en de code erbij.':
+    'What you spent that year under an item that appears in your tax return, with the box and code alongside.',
+  'Inkomstenjaar': 'Income year',
+  'Wat je in {jaar} betaalde, geef je aan in de aangifte van aanslagjaar {aj}.':
+    'What you paid in {jaar} goes into the return for assessment year {aj}.',
+  'De app verzamelt en telt op. Ze rekent niet uit wat je terugkrijgt: dat hangt af van je volledige aangifte. Dit is geen belastingadvies.':
+    'The app collects and adds up. It does not work out what you get back: that depends on your full return. This is not tax advice.',
+  'Voor aanslagjaar {aj} heeft de app geen lijst. In aanslagjaar 2026 verdween een reeks belastingverminderingen in één keer, dus een lijst uit die tijd zou vandaag posten tonen die niet meer bestaan — en een te korte lijst leest als "er valt niets af te trekken".':
+    'The app has no list for assessment year {aj}. A whole set of tax reductions disappeared at once in assessment year 2026, so a list from back then would show items that no longer exist today — and a list that is too short reads as "there is nothing to deduct".',
+  'De app vond in {jaar} geen boekingen onder een fiscale post. Boek je die uitgaven onder een andere categorie, dan vindt ze hier niets — hieronder staat per post waar ze kijkt.':
+    'The app found no transactions under a tax item in {jaar}. If you book those expenses under a different category, it will find nothing here — below you can see where it looks for each item.',
+  'Dit bestaat niet meer': 'This no longer exists',
+  'Je hebt hier nog boekingen onder staan, maar voor aanslagjaar {aj} valt er niets meer in te vullen.':
+    'You still have transactions under this, but there is nothing left to fill in for assessment year {aj}.',
+  'Waar de app nog gekeken heeft': 'Where else the app looked',
+  'Onder deze posten vond ze in {jaar} niets. Staat er iets dat je wél betaalde, dan is het waarschijnlijk onder een andere categorie geboekt.':
+    'It found nothing under these items in {jaar}. If something here is an expense you did pay, it was probably booked under a different category.',
+  'Exporteer als CSV': 'Export as CSV',
+  'Het bestand is gedownload.': 'The file has been downloaded.',
+  'Het bestand kon niet gemaakt worden. Probeer het opnieuw.': 'The file could not be created. Try again.',
+  'Betaald in dit jaar': 'Paid this year',
+  '{n} boeking(en)': '{n} transaction(s)',
+  '{n} met bon': '{n} with receipt',
+  'Toon de {n} boeking(en)': 'Show the {n} transaction(s)',
+  'Verberg de boekingen': 'Hide the transactions',
+  '{pct}% van dit bedrag komt in aanmerking: {bedrag}. Dat percentage hoort bij het jaar waarin je betaalde en daalt de komende jaren nog. Of je de aftrek ook mag vragen, hangt af van de voorwaarden hieronder.':
+    '{pct}% of this amount qualifies: {bedrag}. That percentage belongs to the year in which you paid and drops further in the coming years. Whether you may actually claim the deduction depends on the conditions below.',
+  '{pct}% van dit bedrag komt in aanmerking: {bedrag}. Dat percentage hoort bij het jaar waarin je betaalde. Of je de aftrek ook mag vragen, hangt af van de voorwaarden hieronder.':
+    '{pct}% of this amount qualifies: {bedrag}. That percentage belongs to the year in which you paid. Whether you may actually claim the deduction depends on the conditions below.',
+  '{vak} · code {codes}': '{vak} · code {codes}',
+  '{vak} — de code hangt af van je situatie en staat op je attest':
+    '{vak} — the code depends on your situation and is stated on your certificate',
+  'Betaling': 'Payment',
+  'Vak VIII': 'Box VIII',
+  'Vak IX': 'Box IX',
+  'Vak X': 'Box X',
+  'Post': 'Item',
+  'Vak': 'Box',
+  'Code': 'Code',
+  'Let op': 'Note',
+  'Boeking': 'Transaction',
+  'Vervallen': 'Discontinued',
+  'waarvan {pct}% aftrekbaar: {bedrag}': 'of which {pct}% deductible: {bedrag}',
+  'ja': 'yes',
+  'nee': 'no',
+  'Betaalde onderhoudsuitkeringen': 'Maintenance payments you made',
+  'Betalingen voor het pensioensparen': 'Pension savings contributions',
+  'Premies van individuele levensverzekeringen (langetermijnsparen)':
+    'Individual life insurance premiums (long-term savings)',
+  'Giften': 'Donations',
+  'Uitgaven voor kinderoppas': 'Childcare expenses',
+  'Hypothecaire lening voor je eigen woning': 'Mortgage on your own home',
+  'Dienstencheques': 'Service vouchers',
+  'Alleen wat je regelmatig betaalt op grond van een wettelijke onderhoudsplicht, aan iemand die niet bij jou woont en in de EER of Zwitserland verblijft.':
+    'Only what you pay regularly under a legal maintenance obligation, to someone who does not live with you and resides in the EEA or Switzerland.',
+  'Je bent minstens 18, je laatste storting valt in het jaar waarin je 64 wordt, en de begunstigde moet aan de voorwaarden voldoen — een feitelijk samenwonende partner mag het niet zijn.':
+    'You are at least 18, your last contribution falls in the year you turn 64, and the beneficiary must meet the conditions — a cohabiting partner is not allowed.',
+  'Een contract van minstens tien jaar, afgesloten vóór je 65e, met jezelf of een verwante als begunstigde.':
+    'A contract of at least ten years, taken out before you turn 65, with yourself or a relative as beneficiary.',
+  'Alleen aan een ERKENDE instelling, die je daarvoor een fiscaal attest bezorgt.':
+    'Only to a RECOGNISED institution, which gives you a tax certificate for it.',
+  'Voor een kind ten laste jonger dan 14 jaar (jonger dan 21 bij een zware handicap), en je moet zelf een beroepsinkomen hebben.':
+    'For a dependent child under 14 (under 21 with a severe disability), and you must have earned income yourself.',
+  'Alleen voor leningen die al liepen: Vlaanderen schafte de woonbonus af voor nieuwe leningen, en de federale regeling verdween met aanslagjaar 2026.':
+    'Only for loans already running: Flanders abolished the housing bonus for new loans, and the federal scheme ended with assessment year 2026.',
+  'Gold voor cheques die je zelf kocht, met een attest van de uitgever.':
+    'Applied to vouchers you bought yourself, with a certificate from the issuer.',
+  'Kies je voor fiscaal co-ouderschap (de toeslag op de belastingvrije som delen), dan kan je deze aftrek in de regel niet óók vragen; alleen in het jaar van de feitelijke scheiding zelf kunnen ze samengaan. Dat is een keuze, geen berekening — de app maakt ze niet voor jou. Doen jullie een gezamenlijke aangifte en is de uitkering door jullie samen verschuldigd, dan bestaat daar een aparte code voor.':
+    'If you opt for split tax parenthood (sharing the increase in the tax-free allowance), you generally cannot claim this deduction as well; only in the year of the actual separation can the two go together. That is a choice, not a calculation — the app does not make it for you. If you file jointly and the payment is owed by both of you together, there is a separate code for that.',
+  'Op je rekeningafschrift ziet een storting voor pensioensparen er hetzelfde uit als een storting voor langetermijnsparen: dezelfde bank, hetzelfde soort bedrag. Welke van de twee het is, staat op het attest van je bank of verzekeraar. Neem het bedrag hieronder dus als geheugensteun, niet als eindcijfer.':
+    'On your bank statement a pension savings contribution looks exactly like a long-term savings contribution: same bank, same kind of amount. Which of the two it is, is stated on the certificate from your bank or insurer. So take the amount below as a reminder, not as a final figure.',
+  'Je maximum hangt af van je beroepsinkomen, en de storting is op je afschrift niet te onderscheiden van pensioensparen. Het attest van je verzekeraar bepaalt het bedrag.':
+    'Your maximum depends on your earned income, and on your statement the contribution is indistinguishable from pension savings. The certificate from your insurer determines the amount.',
+  'Twee dingen die de app niet aan een overschrijving kan zien: of de instelling erkend is, en of je bij díe instelling boven de jaarlijkse drempel komt. Die drempel geldt per instelling per jaar, niet over al je giften samen.':
+    'Two things the app cannot tell from a transfer: whether the institution is recognised, and whether you pass the annual threshold at that particular institution. That threshold applies per institution per year, not across all your donations together.',
+  'Het maximum geldt PER OPVANGDAG, en een schoolfactuur mengt opvang met maaltijden, uitstappen en materiaal — alleen het opvangdeel telt. Het attest van de opvang splitst dat; je bankboeking niet.':
+    'The maximum applies PER DAY OF CARE, and a school invoice mixes childcare with meals, outings and materials — only the childcare part counts. The certificate from the childcare provider splits that out; your bank transaction does not.',
+  'Je maandelijkse domiciliëring is kapitaal, interest en schuldsaldoverzekering in één bedrag. Alleen het bankattest splitst dat, en alleen die opsplitsing hoort in de aangifte. Het bedrag hieronder is dus wat er van je rekening ging, niet wat je invult.':
+    'Your monthly direct debit is capital, interest and mortgage protection insurance in one amount. Only the bank certificate splits that out, and only that breakdown belongs in the return. So the amount below is what left your account, not what you fill in.',
+  'In Vlaanderen geven dienstencheques die je vanaf 2025 kocht geen belastingvoordeel meer, en er worden ook geen attesten meer uitgereikt. In Brussel en Wallonië bestaat de vermindering nog wél — daar gelden andere bedragen.':
+    'In Flanders, service vouchers bought from 2025 onwards no longer give a tax benefit, and certificates are no longer issued. In Brussels and Wallonia the reduction does still exist — with different amounts.',
   // Doorklikken van een cijfer naar zijn boekingen (ronde 48/49)
   'Het gezin (zonder gezinslid)': 'The household (no family member)',
   'Wat aan niemand persoonlijk hangt, staat bij "Het gezin". Een kost voor meerdere gezinsleden wordt gelijk verdeeld; zo’n aandeel bestaat niet als aparte boeking, dus die rij klikt niet door.':
@@ -2219,6 +2328,115 @@ const fr: Record<string, string> = {
   'Luisterboeken': 'Livres audio',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Attention : les opérations jusqu’au {datum} inclus sont déjà comprises dans la valeur que tu as enregistrée alors. Elles comptent encore ci-dessous, mais plus dans le solde en haut.',
   'geldt nu': 'en vigueur',
+  // L’aperçu fiscal annuel (ronde 50)
+  'Fiscaal jaaroverzicht {jaar}': 'Aperçu fiscal annuel {jaar}',
+  'Meegeven aan je boekhouder': 'À remettre à ton comptable',
+  'De PDF leest als een blad: elk bedrag met zijn voorbehoud erbij. De CSV is om zelf mee te rekenen — één rij per boeking.':
+    'Le PDF se lit comme une feuille : chaque montant avec sa réserve. Le CSV sert à calculer toi-même — une ligne par opération.',
+  'PDF voor je boekhouder': 'PDF pour ton comptable',
+  'PDF voor je boekhouder — bezig…': 'PDF pour ton comptable — en cours…',
+  'Het document is gedownload.': 'Le document a été téléchargé.',
+  'Het document kon niet gemaakt worden. Probeer het opnieuw.': 'Le document n’a pas pu être créé. Réessaie.',
+  'Dit jaar staat niet in de app': 'Cette année ne figure pas dans l’app',
+  'Niets gevonden': 'Rien trouvé',
+  'Bron': 'Source',
+  'Lees de voorwaarden bij de bron': 'Lis les conditions à la source',
+  'De lijst is die van België. Waar een post gewestelijk is, staat ze zoals ze in Vlaanderen geldt; in Brussel en Wallonië gelden andere regels.':
+    'La liste est celle de la Belgique. Lorsqu’une rubrique est régionale, elle est présentée telle qu’elle s’applique en Flandre ; à Bruxelles et en Wallonie, d’autres règles s’appliquent.',
+  '{jaar} loopt nog: deze bedragen groeien nog aan tot 31 december.':
+    '{jaar} n’est pas terminée : ces montants continueront d’augmenter jusqu’au 31 décembre.',
+  '{jaar} loopt nog: deze bedragen groeien nog aan tot 31 december. Vul je nu je aangifte in, kies dan het jaar ervóór.':
+    '{jaar} n’est pas terminée : ces montants continueront d’augmenter jusqu’au 31 décembre. Si tu remplis ta déclaration maintenant, choisis l’année précédente.',
+  'Kijkt in: {categorieen}.': 'Cherche dans : {categorieen}.',
+  'Kijkt in: je betalingen op een onderhoudsregeling in Dossiers.':
+    'Cherche dans : tes paiements sur une convention alimentaire dans Dossiers.',
+  'Twee dingen ziet dit scherm nooit: een overboeking tussen je eigen rekeningen (dat is geen uitgave) en een aflossing die je los van een categorie boekt. Staat je storting of je lening zo in de app, boek ze dan als uitgave met de juiste categorie.':
+    'Deux choses que cet écran ne voit jamais : un virement entre tes propres comptes (ce n’est pas une dépense) et un remboursement que tu comptabilises sans catégorie. Si ton versement ou ton emprunt est encodé ainsi, comptabilise-le plutôt comme une dépense avec la bonne catégorie.',
+  'Totaal per post': 'Total par rubrique',
+  'Komt in aanmerking': 'Montant éligible',
+  'Aantal met bon': 'Nombre avec justificatif',
+  'Fiscaal jaaroverzicht': 'Aperçu fiscal annuel',
+  'Wat je dat jaar uitgaf onder een post die in je belastingaangifte staat, met het vak en de code erbij.':
+    'Ce que tu as dépensé cette année-là sous une rubrique qui figure dans ta déclaration, avec la case et le code.',
+  'Inkomstenjaar': 'Année de revenus',
+  'Wat je in {jaar} betaalde, geef je aan in de aangifte van aanslagjaar {aj}.':
+    'Ce que tu as payé en {jaar} se déclare dans la déclaration de l’exercice d’imposition {aj}.',
+  'De app verzamelt en telt op. Ze rekent niet uit wat je terugkrijgt: dat hangt af van je volledige aangifte. Dit is geen belastingadvies.':
+    'L’app rassemble et additionne. Elle ne calcule pas ce que tu récupères : cela dépend de ta déclaration complète. Ceci n’est pas un conseil fiscal.',
+  'Voor aanslagjaar {aj} heeft de app geen lijst. In aanslagjaar 2026 verdween een reeks belastingverminderingen in één keer, dus een lijst uit die tijd zou vandaag posten tonen die niet meer bestaan — en een te korte lijst leest als "er valt niets af te trekken".':
+    'L’app n’a pas de liste pour l’exercice d’imposition {aj}. Une série de réductions d’impôt a disparu d’un coup lors de l’exercice 2026 : une liste de cette époque montrerait aujourd’hui des rubriques qui n’existent plus — et une liste trop courte se lit comme « il n’y a rien à déduire ».',
+  'De app vond in {jaar} geen boekingen onder een fiscale post. Boek je die uitgaven onder een andere categorie, dan vindt ze hier niets — hieronder staat per post waar ze kijkt.':
+    'L’app n’a trouvé aucune opération sous une rubrique fiscale en {jaar}. Si tu comptabilises ces dépenses sous une autre catégorie, elle ne trouvera rien ici — ci-dessous, tu vois où elle cherche pour chaque rubrique.',
+  'Dit bestaat niet meer': 'Cela n’existe plus',
+  'Je hebt hier nog boekingen onder staan, maar voor aanslagjaar {aj} valt er niets meer in te vullen.':
+    'Tu as encore des opérations ici, mais il n’y a plus rien à remplir pour l’exercice d’imposition {aj}.',
+  'Waar de app nog gekeken heeft': 'Où l’app a encore cherché',
+  'Onder deze posten vond ze in {jaar} niets. Staat er iets dat je wél betaalde, dan is het waarschijnlijk onder een andere categorie geboekt.':
+    'Elle n’a rien trouvé sous ces rubriques en {jaar}. Si l’une d’elles correspond à une dépense réelle, elle a sans doute été comptabilisée sous une autre catégorie.',
+  'Exporteer als CSV': 'Exporter en CSV',
+  'Het bestand is gedownload.': 'Le fichier a été téléchargé.',
+  'Het bestand kon niet gemaakt worden. Probeer het opnieuw.': 'Le fichier n’a pas pu être créé. Réessaie.',
+  'Betaald in dit jaar': 'Payé cette année',
+  '{n} boeking(en)': '{n} opération(s)',
+  '{n} met bon': '{n} avec justificatif',
+  'Toon de {n} boeking(en)': 'Afficher les {n} opération(s)',
+  'Verberg de boekingen': 'Masquer les opérations',
+  '{pct}% van dit bedrag komt in aanmerking: {bedrag}. Dat percentage hoort bij het jaar waarin je betaalde en daalt de komende jaren nog. Of je de aftrek ook mag vragen, hangt af van de voorwaarden hieronder.':
+    '{pct}% de ce montant entre en ligne de compte : {bedrag}. Ce pourcentage correspond à l’année du paiement et diminuera encore dans les années à venir. Le fait de pouvoir réellement demander la déduction dépend des conditions ci-dessous.',
+  '{pct}% van dit bedrag komt in aanmerking: {bedrag}. Dat percentage hoort bij het jaar waarin je betaalde. Of je de aftrek ook mag vragen, hangt af van de voorwaarden hieronder.':
+    '{pct}% de ce montant entre en ligne de compte : {bedrag}. Ce pourcentage correspond à l’année du paiement. Le fait de pouvoir réellement demander la déduction dépend des conditions ci-dessous.',
+  '{vak} · code {codes}': '{vak} · code {codes}',
+  '{vak} — de code hangt af van je situatie en staat op je attest':
+    '{vak} — le code dépend de ta situation et figure sur ton attestation',
+  'Betaling': 'Paiement',
+  'Vak VIII': 'Cadre VIII',
+  'Vak IX': 'Cadre IX',
+  'Vak X': 'Cadre X',
+  'Post': 'Rubrique',
+  'Vak': 'Cadre',
+  'Code': 'Code',
+  'Let op': 'Attention',
+  'Boeking': 'Opération',
+  'Vervallen': 'Supprimé',
+  'waarvan {pct}% aftrekbaar: {bedrag}': 'dont {pct}% déductible : {bedrag}',
+  'ja': 'oui',
+  'nee': 'non',
+  'Betaalde onderhoudsuitkeringen': 'Rentes alimentaires payées',
+  'Betalingen voor het pensioensparen': 'Versements d’épargne-pension',
+  'Premies van individuele levensverzekeringen (langetermijnsparen)':
+    'Primes d’assurance-vie individuelle (épargne à long terme)',
+  'Giften': 'Dons',
+  'Uitgaven voor kinderoppas': 'Frais de garde d’enfants',
+  'Hypothecaire lening voor je eigen woning': 'Emprunt hypothécaire pour ton habitation propre',
+  'Dienstencheques': 'Titres-services',
+  'Alleen wat je regelmatig betaalt op grond van een wettelijke onderhoudsplicht, aan iemand die niet bij jou woont en in de EER of Zwitserland verblijft.':
+    'Uniquement ce que tu paies régulièrement en vertu d’une obligation alimentaire légale, à une personne qui ne vit pas avec toi et réside dans l’EEE ou en Suisse.',
+  'Je bent minstens 18, je laatste storting valt in het jaar waarin je 64 wordt, en de begunstigde moet aan de voorwaarden voldoen — een feitelijk samenwonende partner mag het niet zijn.':
+    'Tu as au moins 18 ans, ton dernier versement tombe l’année de tes 64 ans, et le bénéficiaire doit remplir les conditions — un partenaire cohabitant de fait n’est pas admis.',
+  'Een contract van minstens tien jaar, afgesloten vóór je 65e, met jezelf of een verwante als begunstigde.':
+    'Un contrat d’au moins dix ans, souscrit avant tes 65 ans, avec toi-même ou un parent comme bénéficiaire.',
+  'Alleen aan een ERKENDE instelling, die je daarvoor een fiscaal attest bezorgt.':
+    'Uniquement à une institution AGRÉÉE, qui te délivre une attestation fiscale.',
+  'Voor een kind ten laste jonger dan 14 jaar (jonger dan 21 bij een zware handicap), en je moet zelf een beroepsinkomen hebben.':
+    'Pour un enfant à charge de moins de 14 ans (moins de 21 ans en cas de handicap lourd), et tu dois avoir des revenus professionnels.',
+  'Alleen voor leningen die al liepen: Vlaanderen schafte de woonbonus af voor nieuwe leningen, en de federale regeling verdween met aanslagjaar 2026.':
+    'Uniquement pour les emprunts en cours : la Flandre a supprimé le bonus logement pour les nouveaux emprunts, et le régime fédéral a disparu avec l’exercice 2026.',
+  'Gold voor cheques die je zelf kocht, met een attest van de uitgever.':
+    'S’appliquait aux titres que tu achetais toi-même, avec une attestation de l’émetteur.',
+  'Kies je voor fiscaal co-ouderschap (de toeslag op de belastingvrije som delen), dan kan je deze aftrek in de regel niet óók vragen; alleen in het jaar van de feitelijke scheiding zelf kunnen ze samengaan. Dat is een keuze, geen berekening — de app maakt ze niet voor jou. Doen jullie een gezamenlijke aangifte en is de uitkering door jullie samen verschuldigd, dan bestaat daar een aparte code voor.':
+    'Si tu optes pour la coparentalité fiscale (partager le supplément de quotité exemptée), tu ne peux en règle générale pas demander aussi cette déduction ; seule l’année de la séparation de fait permet de cumuler les deux. C’est un choix, pas un calcul — l’app ne le fait pas à ta place. Si vous déclarez ensemble et que la rente est due par vous deux, un code distinct existe.',
+  'Op je rekeningafschrift ziet een storting voor pensioensparen er hetzelfde uit als een storting voor langetermijnsparen: dezelfde bank, hetzelfde soort bedrag. Welke van de twee het is, staat op het attest van je bank of verzekeraar. Neem het bedrag hieronder dus als geheugensteun, niet als eindcijfer.':
+    'Sur ton extrait de compte, un versement d’épargne-pension ressemble exactement à un versement d’épargne à long terme : même banque, même type de montant. Lequel des deux, cela figure sur l’attestation de ta banque ou de ton assureur. Prends donc le montant ci-dessous comme aide-mémoire, pas comme chiffre définitif.',
+  'Je maximum hangt af van je beroepsinkomen, en de storting is op je afschrift niet te onderscheiden van pensioensparen. Het attest van je verzekeraar bepaalt het bedrag.':
+    'Ton maximum dépend de tes revenus professionnels, et sur ton extrait le versement ne se distingue pas de l’épargne-pension. C’est l’attestation de ton assureur qui détermine le montant.',
+  'Twee dingen die de app niet aan een overschrijving kan zien: of de instelling erkend is, en of je bij díe instelling boven de jaarlijkse drempel komt. Die drempel geldt per instelling per jaar, niet over al je giften samen.':
+    'Deux choses que l’app ne peut pas déduire d’un virement : si l’institution est agréée, et si tu dépasses le seuil annuel auprès de cette institution-là. Ce seuil s’applique par institution et par an, pas sur l’ensemble de tes dons.',
+  'Het maximum geldt PER OPVANGDAG, en een schoolfactuur mengt opvang met maaltijden, uitstappen en materiaal — alleen het opvangdeel telt. Het attest van de opvang splitst dat; je bankboeking niet.':
+    'Le maximum s’applique PAR JOUR DE GARDE, et une facture scolaire mêle garde, repas, sorties et matériel — seule la part de garde compte. L’attestation de l’accueil fait cette distinction ; pas ton opération bancaire.',
+  'Je maandelijkse domiciliëring is kapitaal, interest en schuldsaldoverzekering in één bedrag. Alleen het bankattest splitst dat, en alleen die opsplitsing hoort in de aangifte. Het bedrag hieronder is dus wat er van je rekening ging, niet wat je invult.':
+    'Ta domiciliation mensuelle réunit capital, intérêts et assurance solde restant dû en un seul montant. Seule l’attestation bancaire fait la distinction, et seule cette ventilation figure dans la déclaration. Le montant ci-dessous est donc ce qui a quitté ton compte, pas ce que tu encodes.',
+  'In Vlaanderen geven dienstencheques die je vanaf 2025 kocht geen belastingvoordeel meer, en er worden ook geen attesten meer uitgereikt. In Brussel en Wallonië bestaat de vermindering nog wél — daar gelden andere bedragen.':
+    'En Flandre, les titres-services achetés à partir de 2025 ne donnent plus d’avantage fiscal, et aucune attestation n’est plus délivrée. À Bruxelles et en Wallonie, la réduction existe encore — avec d’autres montants.',
   // Passer d’un chiffre à ses opérations (ronde 48/49)
   'Het gezin (zonder gezinslid)': 'Le ménage (sans membre de la famille)',
   'Wat aan niemand persoonlijk hangt, staat bij "Het gezin". Een kost voor meerdere gezinsleden wordt gelijk verdeeld; zo’n aandeel bestaat niet als aparte boeking, dus die rij klikt niet door.':

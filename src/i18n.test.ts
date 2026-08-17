@@ -214,3 +214,65 @@ describe('vertaaltabellen — de prijsstijgingen', () => {
     ).toContain('dix-huit mois')
   })
 })
+
+describe('vertaaltabellen — het fiscale jaaroverzicht', () => {
+  it('vertaalt de teksten van het nieuwe scherm', () => {
+    expect(vertaal('en', 'Fiscaal jaaroverzicht')).toBe('Annual tax overview')
+    expect(vertaal('fr', 'Inkomstenjaar')).toBe('Année de revenus')
+    expect(vertaal('en', 'Wat je in {jaar} betaalde, geef je aan in de aangifte van aanslagjaar {aj}.', {
+      jaar: 2026,
+      aj: 2027,
+    })).toBe('What you paid in 2026 goes into the return for assessment year 2027.')
+  })
+
+  it('vertaalt de grens die het scherm over zichzelf uitspreekt', () => {
+    // Dit is de zin die dit scherm ervan weerhoudt belastingadvies te lijken. Valt ze
+    // in één taal terug op het Nederlands, dan is precies die grens weg.
+    expect(
+      vertaal(
+        'fr',
+        'De app verzamelt en telt op. Ze rekent niet uit wat je terugkrijgt: dat hangt af van je volledige aangifte. Dit is geen belastingadvies.',
+      ),
+    ).toContain('conseil fiscal')
+    expect(
+      vertaal(
+        'en',
+        'De lijst is die van België. Waar een post gewestelijk is, staat ze zoals ze in Vlaanderen geldt; in Brussel en Wallonië gelden andere regels.',
+      ),
+    ).toContain('Flanders')
+  })
+
+  it('heeft allebei de varianten van de aftrekbaar-zin', () => {
+    // De ene zegt dat het percentage nog daalt, de andere niet. Ontbreekt er één, dan
+    // beweert de app in die taal iets over de toekomst wat de wet niet vastlegt.
+    expect(
+      vertaal(
+        'en',
+        '{pct}% van dit bedrag komt in aanmerking: {bedrag}. Dat percentage hoort bij het jaar waarin je betaalde en daalt de komende jaren nog. Of je de aftrek ook mag vragen, hangt af van de voorwaarden hieronder.',
+        { pct: 60, bedrag: '€ 180,00' },
+      ),
+    ).toContain('drops further')
+    expect(
+      vertaal(
+        'fr',
+        '{pct}% van dit bedrag komt in aanmerking: {bedrag}. Dat percentage hoort bij het jaar waarin je betaalde. Of je de aftrek ook mag vragen, hangt af van de voorwaarden hieronder.',
+        { pct: 50, bedrag: '€ 150,00' },
+      ),
+    ).toContain('ligne de compte')
+  })
+
+  it('vertaalt de kolomkoppen van het CSV-bestand', () => {
+    // Het bestand gaat naar een boekhouder; een kop die terugvalt op het Nederlands
+    // maakt van een Franstalig bestand een half-Nederlands bestand.
+    expect(vertaal('fr', 'Totaal per post')).toBe('Total par rubrique')
+    expect(vertaal('en', 'Komt in aanmerking')).toBe('Qualifying amount')
+    expect(vertaal('fr', 'Aantal met bon')).toBe('Nombre avec justificatif')
+  })
+
+  it('vertaalt de namen van de fiscale posten', () => {
+    expect(vertaal('en', 'Betaalde onderhoudsuitkeringen')).toBe('Maintenance payments you made')
+    expect(vertaal('fr', 'Uitgaven voor kinderoppas')).toBe('Frais de garde d’enfants')
+    expect(vertaal('en', 'Vak VIII')).toBe('Box VIII')
+    expect(vertaal('fr', 'Vak X')).toBe('Cadre X')
+  })
+})

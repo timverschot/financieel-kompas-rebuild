@@ -121,17 +121,40 @@ function raaktCategorie(tx: Transactie, hoofdId?: string, catId?: string, richti
     ? categorieBedragen(tx).filter((r) => (richting === 'in' ? r.bedrag > 0 : r.bedrag < 0))
     : null
   const ids = lijnen ? lijnen.map((r) => r.categorieId ?? '') : categorieIdsVan(tx)
-  return ids.some((id) => {
-    const item = itemPerId(id)
-    // Sinds ronde 27 kan een boeking ook op de MIDDENLAAG staan (bv. rechtstreeks
-    // op 'Elektriciteit'). Die hoort dan bij haar eigen hoofdcategorie te vallen,
-    // net als een item — anders vind je zo'n boeking niet terug met het filter op
-    // hoofdcategorie.
-    const mid = midPerId(id)
-    const hoofdOk = !hoofdId || id === hoofdId || item?.hoofdId === hoofdId || mid?.hoofdId === hoofdId
-    const catOk = !catId || id === catId || item?.categorieId === catId
-    return hoofdOk && catOk
-  })
+  return ids.some((id) => hoortBij(id, hoofdId) && hoortBijCat(id, catId))
+}
+
+/**
+ * Valt één categorie-id onder een gekozen HOOFDcategorie?
+ *
+ * Sinds ronde 27 kan een boeking ook op de MIDDENLAAG staan (bv. rechtstreeks op
+ * 'Elektriciteit'). Die hoort dan bij haar eigen hoofdcategorie te vallen, net als
+ * een item — anders vind je zo'n boeking niet terug met het filter op
+ * hoofdcategorie.
+ */
+function hoortBij(id: string, hoofdId?: string): boolean {
+  if (!hoofdId) return true
+  return id === hoofdId || itemPerId(id)?.hoofdId === hoofdId || midPerId(id)?.hoofdId === hoofdId
+}
+
+/** Valt één categorie-id onder een gekozen MIDDENcategorie (of is het die zelf)? */
+function hoortBijCat(id: string, catId?: string): boolean {
+  if (!catId) return true
+  return id === catId || itemPerId(id)?.categorieId === catId
+}
+
+/**
+ * Valt één categorie-id onder een andere categorie, op welk niveau die ook staat?
+ *
+ * Dezelfde regel als `filterVoorCategorie` hierboven, maar dan voor één losse
+ * regel in plaats van een hele boeking. Bestaat opdat het fiscale jaaroverzicht
+ * (ronde 50) niet zijn eigen versie van deze logica hoeft te schrijven — zoiets
+ * loopt na één wijziging uiteen, en dan telt het ene scherm iets anders dan het
+ * andere.
+ */
+export function categorieValtOnder(categorieId: string, doelId: string): boolean {
+  if (midPerId(doelId) || itemPerId(doelId)) return hoortBijCat(categorieId, doelId)
+  return hoortBij(categorieId, doelId)
 }
 
 // Raakt een transactie het gekozen besparingsdomein? Op REGELNIVEAU, net als

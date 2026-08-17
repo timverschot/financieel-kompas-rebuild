@@ -7,7 +7,10 @@ import {
   grensDatumMaandenTerug,
   isOmgekeerdBereik,
   filterVoorCategorie,
+  categorieValtOnder,
 } from './transactieFilter'
+
+import { itemPerId } from '../data/categorieen/zoek'
 
 const tx = (extra: Partial<Transactie> & { id: string }): Transactie => ({
   datum: '2026-06-01',
@@ -403,5 +406,31 @@ describe('filterTransacties — categorie samen met richting', () => {
       'gewoon',
       'retour',
     ])
+  })
+})
+
+describe('categorieValtOnder', () => {
+  // Ronde 49 legde deze helper apart, ronde 50 leunt er zwaar op: het fiscale
+  // jaaroverzicht koppelt elke post aan categorie-id's op verschillende NIVEAUS
+  // (een middencategorie voor kinderopvang, losse items voor de kampen). Ging dit
+  // fout, dan telde de app te veel of te weinig in een belastingaangifte.
+  it('vangt een item onder zijn middencategorie', () => {
+    expect(categorieValtOnder('i-cr-che-9817', 'cat-kinderopvang')).toBe(true)
+  })
+
+  it('vangt een item onder zichzelf', () => {
+    expect(categorieValtOnder('i-cr-che-9817', 'i-cr-che-9817')).toBe(true)
+  })
+
+  it('vangt een item NIET onder een andere middencategorie', () => {
+    // De uitstappen staan in dezelfde boom als de kampen; alleen de kampen zijn
+    // opvang. Zonder deze grens zou een pretparkticket in een aangifte belanden.
+    expect(categorieValtOnder('i-brood--wit-9238', 'cat-kinderopvang')).toBe(false)
+  })
+
+  it('vangt een item onder zijn hoofdcategorie', () => {
+    const item = itemPerId('i-cr-che-9817')
+    expect(item).toBeDefined()
+    expect(categorieValtOnder('i-cr-che-9817', (item as { hoofdId: string }).hoofdId)).toBe(true)
   })
 })
