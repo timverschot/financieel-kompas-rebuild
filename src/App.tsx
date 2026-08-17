@@ -133,6 +133,7 @@ import { SpaardoelSectie } from './components/SpaardoelSectie'
 import { CategorieBoom } from './components/CategorieBoom'
 import { OverzichtZijkolom } from './components/OverzichtZijkolom'
 import { Donut } from './components/Donut'
+import { KindkostenSectie } from './components/KindkostenSectie'
 import { FiscaalSectie } from './components/FiscaalSectie'
 import { MaandGrafiek } from './components/MaandGrafiek'
 import { RecenteTransacties } from './components/RecenteTransacties'
@@ -2522,6 +2523,18 @@ export function App() {
             onderhoudsbetalingen={onderhoudsbetalingen}
             documenten={dossierdocumenten}
             onBewerkTransactie={setBewerkTransactie}
+          />
+        </ErrorBoundary>
+      )}
+
+      {pagina === 'kindkosten' && (
+        <ErrorBoundary naam="Wat kost elk gezinslid?">
+          <KindkostenSectie
+            transacties={transacties ?? []}
+            gedeeldeKosten={gedeeldeKosten}
+            dossiers={dossiers}
+            gezinsleden={kinderen}
+            onGaNaarTransacties={gaNaarTransacties}
           />
         </ErrorBoundary>
       )}

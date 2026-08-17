@@ -210,6 +210,36 @@ const en: Record<string, string> = {
   'Luisterboeken': 'Audiobooks',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Note: the transactions up to and including {datum} are already part of the value you recorded then. They still count below, but no longer in the balance at the top.',
   'geldt nu': 'in effect',
+  // Wat kost elk gezinslid? (ronde 53)
+  '{naam} {bedrag} — bekijk de boekingen': '{naam} {bedrag} — view the transactions',
+  'Een rij met een aandeel uit een gedeelde kost klikt niet door: zo’n aandeel is een berekening en bestaat nergens als losse boeking.':
+    'A row containing a share of a shared cost does not click through: such a share is a calculation and exists nowhere as a separate transaction.',
+  'Let op: {n} gedeelde kost(en) vallen op dezelfde dag en op hetzelfde bedrag samen met een losse boeking. Staat dezelfde uitgave hier twee keer, dan is dit bedrag te hoog. Koppel zo’n boeking aan het dossier in het invoervenster, dan telt ze maar één keer.':
+    'Note: {n} shared cost(s) coincide with a separate transaction on the same day and for the same amount. If the same expense appears here twice, this figure is too high. Link such a transaction to the case in the entry window and it will be counted only once.',
+  'Wat kost elk gezinslid?': 'What does each family member cost?',
+  'Wat jij dat jaar uitgaf voor elk gezinslid: je eigen boekingen plus jouw aandeel in de gedeelde kosten.':
+    'What you spent that year on each family member: your own entries plus your share of the shared costs.',
+  'Jaar': 'Year',
+  'Samen in {jaar}': 'Together in {jaar}',
+  '{n} boeking(en) en {m} gedeelde kost(en)': '{n} transaction(s) and {m} shared cost(s)',
+  '{jaar} loopt nog: dit bedrag groeit nog aan tot 31 december.':
+    '{jaar} is still running: this amount will keep growing until 31 December.',
+  'In {jaar} staat er nog niets op naam van een gezinslid. Zet een gezinslid bij een boeking, of hang een kost in een dossier aan een kind.':
+    'Nothing is assigned to a family member in {jaar} yet. Add a family member to an entry, or attach a cost in a case to a child.',
+  'Per gezinslid': 'Per family member',
+  '{bedrag} uit je boekingen': '{bedrag} from your own entries',
+  '{bedrag} uit gedeelde kosten': '{bedrag} from shared costs',
+  'Wat hier NIET in zit': 'What is NOT included here',
+  'De onderhoudsbijdrage': 'The maintenance contribution',
+  'Die is niet per kind toe te wijzen zonder een verdeling te verzinnen die in geen enkele akte staat. Je vindt ze op het dossier zelf.':
+    'It cannot be assigned per child without inventing a split that appears in no agreement. You will find it on the case itself.',
+  'De gezamenlijke pot': 'The joint pot',
+  'Daar zit ook geld van de andere ouder in. Meetellen zou "wat kost het mij" te hoog maken.':
+    'It also holds money from the other parent. Including it would make "what does it cost me" too high.',
+  'Een gedeelde kost telt hier voor JOUW aandeel, ook wanneer de andere ouder ze betaalde — dat aandeel ben je verschuldigd. Betaalde jij ze zelf, dan telt ze ook maar voor jouw aandeel, want de rest komt terug via de afrekening.':
+    'A shared cost counts here for YOUR share, even when the other parent paid it — you owe that share. If you paid it yourself, it also counts only for your share, because the rest comes back through the settlement.',
+  '{n} boeking(en) staan hier als gedeelde kost en niet als boeking, omdat je ze aan een dossier koppelde. Zo telt dezelfde uitgave maar één keer.':
+    '{n} transaction(s) appear here as a shared cost rather than as an entry, because you linked them to a case. That way the same expense is counted only once.',
   // De grondslag van de verdeling (ronde 52)
   'Waarop steunt deze verdeling?': 'What is this split based on?',
   'Duid de overeenkomst of het vonnis aan waarin de verdeling staat. De bewijsmap verwijst er dan bij elke afspraak naar, met het bijlagenummer erbij.':
@@ -2348,6 +2378,36 @@ const fr: Record<string, string> = {
   'Luisterboeken': 'Livres audio',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Attention : les opérations jusqu’au {datum} inclus sont déjà comprises dans la valeur que tu as enregistrée alors. Elles comptent encore ci-dessous, mais plus dans le solde en haut.',
   'geldt nu': 'en vigueur',
+  // Ce que coûte chaque membre du foyer (ronde 53)
+  '{naam} {bedrag} — bekijk de boekingen': '{naam} {bedrag} — voir les opérations',
+  'Een rij met een aandeel uit een gedeelde kost klikt niet door: zo’n aandeel is een berekening en bestaat nergens als losse boeking.':
+    'Une ligne contenant une part d’un frais partagé ne s’ouvre pas : cette part est un calcul et n’existe nulle part comme opération distincte.',
+  'Let op: {n} gedeelde kost(en) vallen op dezelfde dag en op hetzelfde bedrag samen met een losse boeking. Staat dezelfde uitgave hier twee keer, dan is dit bedrag te hoog. Koppel zo’n boeking aan het dossier in het invoervenster, dan telt ze maar één keer.':
+    'Attention : {n} frais partagé(s) coïncident avec une opération distincte le même jour et pour le même montant. Si la même dépense figure ici deux fois, ce montant est trop élevé. Rattache cette opération au dossier dans la fenêtre de saisie et elle ne sera comptée qu’une fois.',
+  'Wat kost elk gezinslid?': 'Que coûte chaque membre du foyer ?',
+  'Wat jij dat jaar uitgaf voor elk gezinslid: je eigen boekingen plus jouw aandeel in de gedeelde kosten.':
+    'Ce que tu as dépensé cette année-là pour chaque membre du foyer : tes propres opérations plus ta part des frais partagés.',
+  'Jaar': 'Année',
+  'Samen in {jaar}': 'Ensemble en {jaar}',
+  '{n} boeking(en) en {m} gedeelde kost(en)': '{n} opération(s) et {m} frais partagé(s)',
+  '{jaar} loopt nog: dit bedrag groeit nog aan tot 31 december.':
+    '{jaar} n’est pas terminée : ce montant continuera d’augmenter jusqu’au 31 décembre.',
+  'In {jaar} staat er nog niets op naam van een gezinslid. Zet een gezinslid bij een boeking, of hang een kost in een dossier aan een kind.':
+    'Rien n’est encore attribué à un membre du foyer en {jaar}. Ajoute un membre du foyer à une opération, ou rattache un frais d’un dossier à un enfant.',
+  'Per gezinslid': 'Par membre du foyer',
+  '{bedrag} uit je boekingen': '{bedrag} de tes propres opérations',
+  '{bedrag} uit gedeelde kosten': '{bedrag} des frais partagés',
+  'Wat hier NIET in zit': 'Ce qui n’est PAS compris ici',
+  'De onderhoudsbijdrage': 'La contribution alimentaire',
+  'Die is niet per kind toe te wijzen zonder een verdeling te verzinnen die in geen enkele akte staat. Je vindt ze op het dossier zelf.':
+    'Elle ne peut pas être attribuée par enfant sans inventer une répartition qui ne figure dans aucun acte. Tu la trouves sur le dossier même.',
+  'De gezamenlijke pot': 'La cagnotte commune',
+  'Daar zit ook geld van de andere ouder in. Meetellen zou "wat kost het mij" te hoog maken.':
+    'Elle contient aussi de l’argent de l’autre parent. La compter rendrait « ce que ça me coûte » trop élevé.',
+  'Een gedeelde kost telt hier voor JOUW aandeel, ook wanneer de andere ouder ze betaalde — dat aandeel ben je verschuldigd. Betaalde jij ze zelf, dan telt ze ook maar voor jouw aandeel, want de rest komt terug via de afrekening.':
+    'Un frais partagé compte ici pour TA part, même si l’autre parent l’a payé — tu dois cette part. Si tu l’as payé toi-même, il ne compte lui aussi que pour ta part, car le reste revient via le décompte.',
+  '{n} boeking(en) staan hier als gedeelde kost en niet als boeking, omdat je ze aan een dossier koppelde. Zo telt dezelfde uitgave maar één keer.':
+    '{n} opération(s) figurent ici comme frais partagé et non comme opération, parce que tu les as rattachées à un dossier. Ainsi la même dépense n’est comptée qu’une fois.',
   // Le fondement de la répartition (ronde 52)
   'Waarop steunt deze verdeling?': 'Sur quoi repose cette répartition ?',
   'Duid de overeenkomst of het vonnis aan waarin de verdeling staat. De bewijsmap verwijst er dan bij elke afspraak naar, met het bijlagenummer erbij.':

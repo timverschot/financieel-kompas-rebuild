@@ -326,3 +326,28 @@ describe('vertaaltabellen — de grondslag van de verdeling', () => {
     }
   })
 })
+
+describe('vertaaltabellen — wat kost elk gezinslid', () => {
+  it('vertaalt het scherm', () => {
+    expect(vertaal('en', 'Wat kost elk gezinslid?')).toBe('What does each family member cost?')
+    expect(vertaal('fr', 'Per gezinslid')).toBe('Par membre du foyer')
+    expect(vertaal('en', 'Samen in {jaar}', { jaar: 2026 })).toBe('Together in 2026')
+  })
+
+  it('vertaalt de grens die het scherm over zichzelf uitspreekt', () => {
+    // Een cijfer dat de alimentatie en de pot stilzwijgend weglaat, leest als een
+    // volledig antwoord. Valt die uitleg in één taal terug op het Nederlands, dan is
+    // precies die grens weg.
+    expect(vertaal('en', 'Wat hier NIET in zit')).toBe('What is NOT included here')
+    expect(vertaal('fr', 'De onderhoudsbijdrage')).toBe('La contribution alimentaire')
+    expect(
+      vertaal('en', 'Daar zit ook geld van de andere ouder in. Meetellen zou "wat kost het mij" te hoog maken.'),
+    ).toContain('other parent')
+    expect(
+      vertaal(
+        'fr',
+        'Een gedeelde kost telt hier voor JOUW aandeel, ook wanneer de andere ouder ze betaalde — dat aandeel ben je verschuldigd. Betaalde jij ze zelf, dan telt ze ook maar voor jouw aandeel, want de rest komt terug via de afrekening.',
+      ),
+    ).toContain('TA part')
+  })
+})

@@ -19,6 +19,7 @@ export type Pagina =
   | 'importeren'
   | 'maandafsluiting'
   | 'fiscaal'
+  | 'kindkosten'
   | 'instellingen'
 
 // Alle pagina's met icoon + label, in de volgorde van het desktop-zijpaneel.
@@ -42,6 +43,7 @@ export const PAGINAS: { id: Pagina; icoon: string; label: string }[] = [
   { id: 'maandafsluiting', icoon: '✅', label: 'Maandafsluiting' },
   // Eén keer per jaar, dus in de lade en niet in de balk.
   { id: 'fiscaal', icoon: '🧾', label: 'Fiscaal jaaroverzicht' },
+  { id: 'kindkosten', icoon: '👶', label: 'Wat kost elk gezinslid?' },
   { id: 'instellingen', icoon: '⚙️', label: 'Instellingen' },
 ]
 
@@ -49,7 +51,7 @@ export const PAGINAS: { id: Pagina; icoon: string; label: string }[] = [
 // en Transacties, rechts Analyse, en dan Meer. De rest zit onder 'Meer'.
 const PRIMAIR_LINKS: Pagina[] = ['overzicht', 'transacties']
 const PRIMAIR_RECHTS: Pagina[] = ['analyse']
-const SECUNDAIR: Pagina[] = ['opstelling', 'rekeningen', 'spaardoelen', 'budget', 'dossiers', 'categorieen', 'rekenhulpen', 'importeren', 'maandafsluiting', 'fiscaal', 'instellingen']
+const SECUNDAIR: Pagina[] = ['opstelling', 'rekeningen', 'spaardoelen', 'budget', 'dossiers', 'categorieen', 'rekenhulpen', 'importeren', 'maandafsluiting', 'fiscaal', 'kindkosten', 'instellingen']
 
 const balk: CSSProperties = {
   position: 'fixed',

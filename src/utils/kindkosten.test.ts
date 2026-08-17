@@ -1,0 +1,339 @@
+import { describe, it, expect } from 'vitest'
+import type { Dossier, GedeeldeKost, Gezinslid, Transactie } from '../data/schema'
+import { beschikbareKindjaren, kindkostenVanJaar, magDoorklikken } from './kindkosten'
+
+// Ronde 53. Dit scherm beantwoordt "wat kost elk gezinslid mij per jaar", en dat
+// cijfer kan in een gesprek met de andere ouder terechtkomen. Elke test hieronder
+// is met de hand na te rekenen.
+
+const LABELS = { gezin: 'Het gezin', onbekend: 'Onbekend gezinslid' }
+
+const leden: Gezinslid[] = [
+  { id: 'emma', naam: 'Emma' },
+  { id: 'noah', naam: 'Noah' },
+]
+
+const dossier: Dossier = { id: 'd1', naam: 'Kinderen', aandeelJij: 60 }
+
+const tx = (over: Partial<Transactie> & { id: string }): Transactie => ({
+  datum: '2026-03-10',
+  omschrijving: 'Winkel',
+  bedrag: -5000,
+  rekeningId: 'r1',
+  ...over,
+})
+
+const kost = (over: Partial<GedeeldeKost> & { id: string }): GedeeldeKost => ({
+  dossierId: 'd1',
+  omschrijving: 'Schoolreis',
+  bedrag: 9000,
+  betaaldDoor: 'jij',
+  datum: '2026-05-04',
+  ...over,
+})
+
+function overzicht(over: Partial<Parameters<typeof kindkostenVanJaar>[0]> = {}) {
+  return kindkostenVanJaar({ jaar: 2026, transacties: [], labels: LABELS, gezinsleden: leden, ...over })
+}
+
+
+function regelVan(o: ReturnType<typeof kindkostenVanJaar>, id: string | null) {
+  return o.regels.find((r) => r.id === id)
+}
+
+describe('kindkostenVanJaar — je eigen boekingen', () => {
+  it('telt het volledige bedrag van een boeking op naam van één gezinslid', () => {
+    const o = overzicht({ transacties: [tx({ id: 'a', persoonIds: ['emma'] })] })
+    expect(regelVan(o, 'emma')?.bedrag).toBe(5000)
+    expect(regelVan(o, 'emma')?.uitBoekingen).toBe(5000)
+    expect(regelVan(o, 'emma')?.uitDossiers).toBe(0)
+  })
+
+  it('verdeelt een boeking die aan twee gezinsleden hangt', () => {
+    const o = overzicht({ transacties: [tx({ id: 'a', bedrag: -9000, persoonIds: ['emma', 'noah'] })] })
+    expect(regelVan(o, 'emma')?.bedrag).toBe(4500)
+    expect(regelVan(o, 'noah')?.bedrag).toBe(4500)
+  })
+
+  it('zet wat aan niemand hangt bij "Het gezin", achteraan', () => {
+    const o = overzicht({ transacties: [tx({ id: 'a' }), tx({ id: 'b', bedrag: -9000, persoonIds: ['emma'] })] })
+    expect(o.regels[o.regels.length - 1]).toMatchObject({ id: null, naam: 'Het gezin', bedrag: 5000 })
+  })
+
+  it('telt alleen uitgaven, en op regelniveau', () => {
+    // Een kassaticket met een statiegeldregel erop kost je het uitgavedeel, niet het
+    // nettobedrag — dezelfde regel als overal in deze app.
+    const o = overzicht({
+      transacties: [
+        tx({ id: 'loon', bedrag: 200000, persoonIds: ['emma'] }),
+        tx({ id: 'bon', bedrag: -5000, persoonIds: ['emma'], regels: [{ bedrag: -5300 }, { bedrag: 300 }] }),
+      ],
+    })
+    expect(regelVan(o, 'emma')?.bedrag).toBe(5300)
+  })
+
+  it('laat boekingen van een ander jaar staan', () => {
+    const o = overzicht({
+      transacties: [tx({ id: 'a', persoonIds: ['emma'] }), tx({ id: 'oud', datum: '2025-03-10', persoonIds: ['emma'] })],
+    })
+    expect(regelVan(o, 'emma')?.bedrag).toBe(5000)
+    expect(o.aantalBoekingen).toBe(1)
+  })
+
+  it('verzwijgt een verwijderd gezinslid niet', () => {
+    // Het bedrag mag nooit stil uit het totaal verdwijnen.
+    const o = overzicht({ transacties: [tx({ id: 'a', persoonIds: ['weg'] })] })
+    expect(regelVan(o, 'weg')).toMatchObject({ naam: 'Onbekend gezinslid', bedrag: 5000 })
+  })
+})
+
+describe('kindkostenVanJaar — jouw aandeel in een gedeelde kost', () => {
+  it('rekent jouw percentage, niet het volle bedrag', () => {
+    // € 90 aan 60 % is € 54, ook al betaalde jij de hele rekening: de andere € 36
+    // komt terug via de afrekening.
+    const o = overzicht({ dossiers: [dossier], gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'] })] })
+    expect(regelVan(o, 'emma')?.bedrag).toBe(5400)
+    expect(regelVan(o, 'emma')?.uitDossiers).toBe(5400)
+  })
+
+  it('telt ook een kost die de ANDERE ouder betaalde', () => {
+    // Jij hebt niets uitgegeven, maar je bent je aandeel wel verschuldigd. Dat is
+    // wat het jou kost.
+    const o = overzicht({
+      dossiers: [dossier],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'], betaaldDoor: 'partner' })],
+    })
+    expect(regelVan(o, 'emma')?.bedrag).toBe(5400)
+  })
+
+  it('volgt de verdeelsleutel van de kost zelf', () => {
+    const o = overzicht({
+      dossiers: [dossier],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'], aandeelJijOverride: 25 })],
+    })
+    expect(regelVan(o, 'emma')?.bedrag).toBe(2250)
+  })
+
+  it('laat een INGETROKKEN kost helemaal weg', () => {
+    // Intrekken is sinds ronde 44 het eerlijke alternatief voor verwijderen; zo'n
+    // kost telt nergens anders in de app nog mee.
+    const o = overzicht({
+      dossiers: [dossier],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'], ingetrokken: true })],
+    })
+    expect(regelVan(o, 'emma')).toBeUndefined()
+    expect(o.totaal).toBe(0)
+  })
+
+  it('slaat een kost over waarvan het dossier niet meer bestaat', () => {
+    // De verdeelsleutel staat op dat dossier. Stil op 100 % zetten zou een bedrag
+    // opleveren dat nergens uit volgt.
+    const o = overzicht({ dossiers: [], gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'] })] })
+    expect(o.totaal).toBe(0)
+    expect(o.aantalDossierkosten).toBe(0)
+  })
+})
+
+describe('kindkostenVanJaar — de dubbeltelling', () => {
+  // Koppel je een boeking aan een dossier, dan bestaat dezelfde uitgave twee keer.
+  const boeking = tx({ id: 'schoolreis', bedrag: -9000, persoonIds: ['emma'] })
+  const gekoppeld = kost({ id: 'k1', kindIds: ['emma'], transactieId: 'schoolreis' })
+
+  it('telt zo’n uitgave één keer, en dan als jouw aandeel', () => {
+    // Zonder ontdubbeling stond hier € 90 + € 54 = € 144.
+    const o = overzicht({ transacties: [boeking], dossiers: [dossier], gedeeldeKosten: [gekoppeld] })
+    expect(regelVan(o, 'emma')?.bedrag).toBe(5400)
+    expect(regelVan(o, 'emma')?.uitBoekingen).toBe(0)
+    expect(o.aantalOvergeslagen).toBe(1)
+  })
+
+  it('laat een INGETROKKEN koppeling de boeking weer meetellen', () => {
+    // De kost telt niet meer mee, dus zou de uitgave anders helemaal verdwijnen.
+    const o = overzicht({
+      transacties: [boeking],
+      dossiers: [dossier],
+      gedeeldeKosten: [{ ...gekoppeld, ingetrokken: true }],
+    })
+    expect(regelVan(o, 'emma')?.bedrag).toBe(9000)
+    expect(regelVan(o, 'emma')?.uitBoekingen).toBe(9000)
+  })
+})
+
+describe('kindkostenVanJaar — de twee bronnen samen', () => {
+  it('telt ze op en houdt ze apart zichtbaar', () => {
+    const o = overzicht({
+      transacties: [tx({ id: 'a', bedrag: -2000, persoonIds: ['emma'] })],
+      dossiers: [dossier],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'] })],
+    })
+    expect(regelVan(o, 'emma')).toMatchObject({ bedrag: 7400, uitBoekingen: 2000, uitDossiers: 5400 })
+    expect(o.totaal).toBe(7400)
+  })
+
+  it('telt het totaal over alle regels, "Het gezin" inbegrepen', () => {
+    // Hier mág een totaal: het is dezelfde eenheid met dezelfde betekenis.
+    const o = overzicht({
+      transacties: [tx({ id: 'a', bedrag: -2000, persoonIds: ['emma'] }), tx({ id: 'b', bedrag: -1000 })],
+    })
+    expect(o.totaal).toBe(3000)
+  })
+})
+
+describe('magDoorklikken', () => {
+  // Een doorklik moet exact de verzameling tonen waaruit het cijfer komt.
+
+  it('mag bij een rij die één op één uit gewone boekingen komt', () => {
+    const o = overzicht({ transacties: [tx({ id: 'a', persoonIds: ['emma'] })] })
+    expect(magDoorklikken(regelVan(o, 'emma')!, leden)).toBe(true)
+  })
+
+  it('mag NIET bij een gezinslid dat niet meer bestaat', () => {
+    // Dan heeft de chip boven de lijst geen naam, en twee zulke rijen heten allebei
+    // "Onbekend gezinslid" — dezelfde reden als op de Analyse-pagina sinds ronde 49.
+    const o = overzicht({ transacties: [tx({ id: 'a', persoonIds: ['weg'] })] })
+    expect(magDoorklikken(regelVan(o, 'weg')!, leden)).toBe(false)
+  })
+
+  it('mag altijd bij "Het gezin", want die groep bestaat per definitie', () => {
+    const o = overzicht({ transacties: [tx({ id: 'a' })] })
+    expect(magDoorklikken(regelVan(o, null)!, leden)).toBe(true)
+  })
+
+  it('mag NIET zodra er een aandeel uit een dossier in zit', () => {
+    // Jouw 60 % van € 90 bestaat nergens als boeking.
+    const o = overzicht({ dossiers: [dossier], gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'] })] })
+    expect(magDoorklikken(regelVan(o, 'emma')!, leden)).toBe(false)
+  })
+
+  it('mag NIET wanneer een uitgave over twee gezinsleden verdeeld werd', () => {
+    const o = overzicht({ transacties: [tx({ id: 'a', persoonIds: ['emma', 'noah'] })] })
+    expect(magDoorklikken(regelVan(o, 'emma')!, leden)).toBe(false)
+  })
+
+  it('mag NIET wanneer er een boeking is overgeslagen', () => {
+    // Die overgeslagen boeking zou in de gefilterde lijst wél opduiken, en dan toont
+    // de lijst een groter bedrag dan de rij.
+    const o = overzicht({
+      transacties: [
+        tx({ id: 'los', bedrag: -2000, persoonIds: ['emma'] }),
+        tx({ id: 'gekoppeld', bedrag: -9000, persoonIds: ['emma'] }),
+      ],
+      dossiers: [dossier],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['noah'], transactieId: 'gekoppeld' })],
+    })
+    expect(regelVan(o, 'emma')?.uitDossiers).toBe(0)
+    expect(regelVan(o, 'emma')?.gedeeld).toBe(false)
+    expect(magDoorklikken(regelVan(o, 'emma')!, leden)).toBe(false)
+  })
+})
+
+describe('beschikbareKindjaren', () => {
+  it('neemt het huidige jaar altijd mee, ook zonder gegevens', () => {
+    expect(beschikbareKindjaren([], [], '2026-08-17')).toEqual([2026])
+  })
+
+  it('voegt de jaren van je boekingen en je gedeelde kosten toe, nieuwste eerst', () => {
+    const jaren = beschikbareKindjaren(
+      [tx({ id: 'a', datum: '2024-02-02' })],
+      [kost({ id: 'k1', datum: '2025-06-01' })],
+      '2026-08-17',
+    )
+    expect(jaren).toEqual([2026, 2025, 2024])
+  })
+
+  it('telt een ingetrokken kost niet mee voor de jaarkeuze', () => {
+    const jaren = beschikbareKindjaren([], [kost({ id: 'k1', datum: '2023-06-01', ingetrokken: true })], '2026-08-17')
+    expect(jaren).toEqual([2026])
+  })
+})
+
+describe('kindkostenVanJaar — wat de app NIET zeker weet', () => {
+  // De ontdubbeling werkt via `transactieId`, en die koppeling ontstaat alleen in
+  // het invoervenster. Lees je je bankuittreksel in en registreer je dezelfde kost
+  // daarnaast in een dossier, dan staat ze hier twee keer.
+
+  it('meldt een gedeelde kost die samenvalt met een losse boeking', () => {
+    const o = overzicht({
+      transacties: [tx({ id: 'a', datum: '2026-05-04', bedrag: -9000, persoonIds: ['emma'] })],
+      dossiers: [dossier],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'] })],
+    })
+    expect(o.mogelijkeDubbels).toBe(1)
+    // De app beslist NIET: ze telt allebei mee en zegt dat er iets verdachts is.
+    expect(regelVan(o, 'emma')?.bedrag).toBe(14400)
+  })
+
+  it('meldt niets wanneer de kost wél aan die boeking gekoppeld is', () => {
+    const o = overzicht({
+      transacties: [tx({ id: 'a', datum: '2026-05-04', bedrag: -9000, persoonIds: ['emma'] })],
+      dossiers: [dossier],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'], transactieId: 'a' })],
+    })
+    expect(o.mogelijkeDubbels).toBe(0)
+    expect(regelVan(o, 'emma')?.bedrag).toBe(5400)
+  })
+
+  it('meldt niets bij een ander bedrag of een andere dag', () => {
+    const o = overzicht({
+      transacties: [tx({ id: 'a', datum: '2026-05-05', bedrag: -9000, persoonIds: ['emma'] })],
+      dossiers: [dossier],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'] })],
+    })
+    expect(o.mogelijkeDubbels).toBe(0)
+  })
+})
+
+describe('kindkostenVanJaar — een gekoppelde kost die nadien wijzigde', () => {
+  it('laat het deel dat niet gedeeld werd bij jou staan', () => {
+    // Bij het koppelen krijgt de kost het volle bedrag van de boeking, maar je kan
+    // dat nadien vrij wijzigen. Zet je de kost van € 90 naar € 60, dan is € 30 van
+    // die boeking helemaal van jou, en de gedeelde € 60 kosten je 60 % = € 36.
+    const o = overzicht({
+      transacties: [tx({ id: 'a', bedrag: -9000, persoonIds: ['emma'] })],
+      dossiers: [dossier],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'], bedrag: 6000, transactieId: 'a' })],
+    })
+    expect(regelVan(o, 'emma')).toMatchObject({ bedrag: 6600, uitBoekingen: 3000, uitDossiers: 3600 })
+  })
+})
+
+describe('kindkostenVanJaar — een kost en haar boeking in verschillende jaren', () => {
+  it('telt de uitgave niet in allebei de jaren', () => {
+    // Boeking op 30 december, kost op 2 januari. Zonder een koppeling die over de
+    // jaargrens heen geldt, stond 2025 op € 90 en 2026 op € 54 voor dezelfde reis.
+    const invoer = {
+      transacties: [tx({ id: 'a', datum: '2025-12-30', bedrag: -9000, persoonIds: ['emma'] })],
+      dossiers: [dossier],
+      gedeeldeKosten: [kost({ id: 'k1', datum: '2026-01-02', kindIds: ['emma'], transactieId: 'a' })],
+    }
+    expect(overzicht({ ...invoer, jaar: 2025 }).totaal).toBe(0)
+    expect(overzicht({ ...invoer, jaar: 2026 }).totaal).toBe(5400)
+  })
+})
+
+describe('kindkostenVanJaar — een verweesd dossier', () => {
+  it('laat de boeking gewoon meetellen in plaats van haar te laten verdwijnen', () => {
+    // De kost levert geen aandeel op (de verdeelsleutel staat op dat dossier), dus
+    // ze mag de boeking ook niet afdekken. Anders staat er € 0,00 én zegt het scherm
+    // dat de uitgave als gedeelde kost geteld is.
+    const o = overzicht({
+      transacties: [tx({ id: 'a', bedrag: -9000, persoonIds: ['emma'] })],
+      dossiers: [],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'], transactieId: 'a' })],
+    })
+    expect(regelVan(o, 'emma')?.bedrag).toBe(9000)
+    expect(o.aantalOvergeslagen).toBe(0)
+  })
+})
+
+describe('kindkostenVanJaar — de tellingen in de kop', () => {
+  it('telt een kost pas mee wanneer ze ook iets bijdroeg', () => {
+    // Bij 0 % stond er "1 gedeelde kost" boven een leeg scherm.
+    const o = overzicht({
+      dossiers: [{ ...dossier, aandeelJij: 0 }],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'] })],
+    })
+    expect(o.aantalDossierkosten).toBe(0)
+    expect(o.regels).toHaveLength(0)
+  })
+})
