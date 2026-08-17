@@ -1,6 +1,11 @@
 import type { Categorie, Dossier, DossierDocument, GedeeldeKost, Kind, Verrekening } from '../data/schema'
 import type { Vertaler } from '../i18n'
-import { bouwAfrekeningOverzicht, type AfrekeningGroep, type AfrekeningRegel } from './afrekeningOverzicht'
+import {
+  bouwAfrekeningOverzicht,
+  type AandeelHerkomst,
+  type AfrekeningGroep,
+  type AfrekeningRegel,
+} from './afrekeningOverzicht'
 import {
   berekeningTekst,
   reactieTekst,
@@ -64,6 +69,14 @@ export type Bijlage = {
   bestand: string
   /** Bij een bon van een kost: welke kost. Bij een kluisdocument: leeg. */
   kostId?: string
+  /**
+   * Bij een document uit de kluis: welk document (ronde 52).
+   *
+   * Bestaat opdat de bewijsmap vanuit de verdeelsleutel naar het bijlagenummer van
+   * de overeenkomst kan verwijzen. Zonder dit veld zou je op de titel moeten
+   * matchen, en twee documenten mogen gerust dezelfde naam dragen.
+   */
+  documentId?: string
   /** Een PDF-bijlage kan niet als afbeelding ingevoegd worden. */
   isPdf: boolean
 }
@@ -127,11 +140,47 @@ export function bouwBijlagen(
       titel: `${soortNaam(t, d.soort)}: ${d.naam}`,
       meta: [t('toegevoegd op {datum}', { datum: d.toegevoegdOp }), ...(d.notitie ? [d.notitie] : [])],
       bestand: d.bestand,
+      documentId: d.id,
       isPdf: isPdfBestand(d.bestand),
     })
   }
 
   return bijlagen
+}
+
+/**
+ * Volgt dit percentage uit een AFSPRAAK, of uit iets anders?
+ *
+ * 'kost' betekent dat je voor die ene kost zelf een percentage intikte, en
+ * 'uitwisseling' dat het van de andere ouder komt. Die twee staan niet in de
+ * overeenkomst. 'onbekend' betekent dat geen enkele regel het getal verklaart.
+ *
+ * Eén functie, gebruikt door zowel de verwijzing per kost als het blok eronder, zodat
+ * die twee niet uit elkaar kunnen lopen: dan zou de samenvatting een document citeren
+ * dat de kostenlijst er zorgvuldig buiten houdt.
+ */
+
+/**
+ * De verwijzing "(zie bijlage n)" achter een verdeelsleutel — of een lege string.
+ *
+ * ALLEEN bij een sleutel die uit een AFSPRAAK volgt. Bij 'kost' tikte je zelf een
+ * percentage in voor die ene kost, en bij 'uitwisseling' komt het van de andere
+ * ouder; die twee staan niet in de overeenkomst, en er dan naar verwijzen zou
+ * beweren dat de akte iets vastlegt wat er niet in staat. 'onbekend' betekent dat
+ * geen enkele regel dit getal verklaart — dan al helemaal geen verwijzing.
+ *
+ * De verwijzing wordt hier BUITEN `sleutelHerkomst` gehouden en pas in de bewijsmap
+ * aangeplakt, want alleen dit document heeft bijlagen. De klembordtekst en de
+ * afrekening-PDF gebruiken dezelfde functie en zouden anders naar een bijlage
+ * verwijzen die daar niet bestaat.
+ */
+export function uitAfspraak(herkomst: AandeelHerkomst): boolean {
+  return herkomst === 'dossier' || herkomst === 'categorie' || herkomst === 'kostensoort'
+}
+
+export function grondslagVerwijzing(t: Vertaler, herkomst: AandeelHerkomst, bijlage: number | undefined): string {
+  if (bijlage === undefined || !uitAfspraak(herkomst)) return ''
+  return ` (${t('zie bijlage {n}', { n: bijlage })})`
 }
 
 /**
@@ -170,6 +219,24 @@ export async function exporteerBewijsmapPDF(
     if (b.kostId === undefined) continue
     bijlagenPerKost.set(b.kostId, [...(bijlagenPerKost.get(b.kostId) ?? []), b.nummer])
   }
+  // Het document dat de verdeling vastlegt, en het nummer waaronder het achteraan
+  // staat. Allebei kunnen ze ontbreken: er is er geen aangeduid, of het aangeduide
+  // document staat niet meer in de kluis. In beide gevallen zegt het blad dat er
+  // geen is — een bijlagenummer dat nergens naar wijst is erger dan geen nummer.
+  //
+  // LET OP de eerste voorwaarde, en waarom ze er staat. Zonder haar vergelijkt de
+  // zoekactie `undefined === undefined`: een bon van een kost draagt geen
+  // `documentId`, dus zodra er niets aangeduid was — het gewone geval — matchte de
+  // EERSTE BON. Elke kost verwees dan naar "bijlage 1", en dat was de foto van een
+  // kassaticket. Het blad zei bovenaan dat er geen document was en stuurde een
+  // advocaat er tegelijk naartoe.
+  const grondslagBijlage =
+    dossier.grondslagDocumentId === undefined
+      ? undefined
+      : bijlagen.find((b) => b.documentId === dossier.grondslagDocumentId)?.nummer
+  const grondslag =
+    grondslagBijlage === undefined ? undefined : documenten.find((d) => d.id === dossier.grondslagDocumentId)
+
   const opmaakdatum = vandaag(nu)
 
   const { jsPDF } = await import('jspdf')
@@ -203,6 +270,44 @@ export async function exporteerBewijsmapPDF(
       grijs: true,
     })
     for (const s of o.verdeelsleutels) blad.alinea(`• ${verdeelsleutelTekst(t, s)}`)
+
+    // WAAROP DIE AFSPRAKEN STEUNEN (ronde 52).
+    //
+    // Dit blok is de reden dat een bewijsmap iets waard is bij een bemiddelaar: het
+    // legt de brug tussen een percentage in een tabel en het papier dat dat
+    // percentage vastlegt. Zonder die brug stond de overeenkomst wél als bijlage
+    // achteraan, maar wees niets van de cijfers ernaar.
+    //
+    // ALLEEN wanneer er hierboven écht een afspraak staat. Kwamen alle percentages
+    // van een eigen invoer per kost of van de andere ouder, dan is er niets dat op
+    // een akte steunt — en dan is zowel "de verdeling steunt op X" als "er is geen
+    // document aangeduid" een uitspraak over iets wat niet speelt.
+    //
+    // En het zegt er eerlijk bij wat de app NIET deed: ze heeft dat document niet
+    // gelezen. Wie dit blad krijgt, mag niet denken dat de app de akte controleerde.
+    if (o.verdeelsleutels.some((s) => uitAfspraak(s.herkomst))) {
+      blad.verschuif(2)
+      if (grondslag && grondslagBijlage !== undefined) {
+        // "Waar hierboven … staat" en niet "de verdeling steunt op": staan er ook
+        // sleutels van het type 'kost' of 'uitwisseling' tussen, dan steunt de
+        // verdeling maar voor een DEEL op dat document. De per-kost-verwijzing zegt
+        // daarna precies welke.
+        blad.alinea(
+          t('Waar hierboven een afspraak staat, komt die uit: {naam} (bijlage {n}). De app heeft dat document niet gelezen; je hebt het zelf aangeduid.', {
+            naam: `${soortNaam(t, grondslag.soort)}: ${grondslag.naam}`,
+            n: grondslagBijlage,
+          }),
+          { klein: true },
+        )
+      } else {
+        // Zwijgen zou dit blad volledig doen lijken. Wie het leest hoort te zien dat
+        // hier iets ontbreekt — en wat hij eraan kan doen.
+        blad.alinea(
+          t('Voor deze afspraken is geen document aangeduid. Voeg de overeenkomst of het vonnis toe aan de documentkluis van dit dossier en duid ze daar aan, dan staat ze hier met haar bijlagenummer.'),
+          { klein: true },
+        )
+      }
+    }
   }
 
   // ---- Totalen ------------------------------------------------------------
@@ -272,7 +377,7 @@ export async function exporteerBewijsmapPDF(
       const antwoord = reactieTekst(t, r)
       const uitleg = [
         berekeningTekst(t, r),
-        `${t('Verdeelsleutel')}: ${sleutelHerkomst(t, sleutelVanRegel(r))}`,
+        `${t('Verdeelsleutel')}: ${sleutelHerkomst(t, sleutelVanRegel(r))}${grondslagVerwijzing(t, r.herkomst, grondslagBijlage)}`,
         // Ronde 44: een betwisting hoort in het stuk dat naar een advocaat of
         // bemiddelaar gaat. Zonder deze regel verzwijgt het document precies het
         // enige waarover partijen het oneens zijn.
@@ -339,8 +444,14 @@ export async function exporteerBewijsmapPDF(
       // beter dan een blanco bladzijde: wie het stuk leest, weet dan dat er een
       // bewijsstuk bestaat en dat het los op te vragen is.
       blad.verschuif(BIJLAGE_MARGE)
+      // "Bon" alleen wanneer het er ook een is. Een ouderschapsovereenkomst of een
+      // vonnis is bijna altijd een PDF, en sinds ronde 52 stuurt het blok over de
+      // verdeelsleutel de lezer hier expliciet naartoe. Die daar "deze bon" zien
+      // staan onder een vonnis, ondermijnt precies de brug die die verwijzing legt.
       blad.alinea(
-        t('Deze bon is als PDF-bestand toegevoegd en kan niet als afbeelding worden ingevoegd. Vraag het losse bestand op.'),
+        b.documentId === undefined
+          ? t('Deze bon is als PDF-bestand toegevoegd en kan niet als afbeelding worden ingevoegd. Vraag het losse bestand op.')
+          : t('Dit document is als PDF-bestand toegevoegd en kan niet als afbeelding worden ingevoegd. Vraag het losse bestand op.'),
       )
       continue
     }

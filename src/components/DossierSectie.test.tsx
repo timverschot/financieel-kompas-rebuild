@@ -211,3 +211,76 @@ describe('DossierSectie — de bewijsmap', () => {
     expect(screen.queryByRole('button', { name: /Bewijsmap/ })).toBeNull()
   })
 })
+
+describe('DossierSectie — waarop de verdeling steunt', () => {
+  // Ronde 52. De bewijsmap kan pas naar de overeenkomst verwijzen wanneer je hier
+  // aanduidt welke dat is.
+
+  it('biedt de documenten van dít dossier aan, met hun soort erbij', () => {
+    // Een attest dat aan een lening of een garantie hangt, legt geen verdeling vast
+    // en hoort dus niet in deze lijst.
+    toon({
+      documenten: [
+        ...documenten,
+        { id: 'doc2', leningId: 'l1', naam: 'Kredietakte', soort: 'ander', bestand: 'data:image/jpeg;base64,AAAA', toegevoegdOp: '2026-02-01' },
+        { id: 'doc3', dossierId: 'ander', naam: 'Vonnis van iemand anders', soort: 'vonnis', bestand: 'data:image/jpeg;base64,AAAA', toegevoegdOp: '2026-02-01' },
+      ],
+    })
+    const keuze = screen.getByLabelText('Document') as HTMLSelectElement
+    const opties = [...keuze.options].map((o) => o.textContent)
+    expect(opties).toEqual(['Geen document aangeduid', 'Overeenkomst: Overeenkomst'])
+  })
+
+  it('toont de kaart zodra er een document in de kluis staat', () => {
+    // De tegenhanger van de test hieronder: zonder deze zou "geen keuzelijst" ook
+    // slagen wanneer de hele kaart nooit gebouwd wordt.
+    toon()
+    expect(screen.getByLabelText('Document')).toBeInTheDocument()
+  })
+
+  it('bewaart je keuze op het dossier', async () => {
+    const gebruiker = userEvent.setup()
+    const opslaan = vi.fn()
+    toon({ onDossierOpslaan: opslaan })
+    await gebruiker.selectOptions(screen.getByLabelText('Document'), 'doc1')
+    expect(opslaan).toHaveBeenCalledWith(expect.objectContaining({ id: 'd1', grondslagDocumentId: 'doc1' }))
+  })
+
+  it('haalt het veld weg wanneer je de keuze wist, in plaats van een lege waarde te bewaren', async () => {
+    const gebruiker = userEvent.setup()
+    const opslaan = vi.fn()
+    toon({ dossiers: [{ ...dossier, grondslagDocumentId: 'doc1' }], onDossierOpslaan: opslaan })
+    await gebruiker.selectOptions(screen.getByLabelText('Document'), '')
+    expect(opslaan).toHaveBeenCalledTimes(1)
+    expect(Object.keys(opslaan.mock.calls[0][0])).not.toContain('grondslagDocumentId')
+  })
+
+  it('zegt het wanneer het aangeduide document niet meer in de kluis staat', () => {
+    // Stil terugvallen op "geen" zou de indruk wekken dat je nooit iets koos.
+    toon({ dossiers: [{ ...dossier, grondslagDocumentId: 'weg' }] })
+    expect(document.querySelector('[data-grondslag-weg]')?.textContent).toMatch(/staat niet meer in de kluis/)
+    expect((screen.getByLabelText('Document') as HTMLSelectElement).value).toBe('')
+  })
+
+  it('houdt de kaart weg zolang er niets te kiezen valt', () => {
+    // Een lege keuzelijst zou alleen meescrollen; de bewijsmap zegt zelf wat er
+    // ontbreekt en hoe je het oplost.
+    toon({ documenten: [] })
+    expect(screen.queryByLabelText('Document')).toBeNull()
+  })
+
+  it('zegt erbij dat de app het document niet gelezen heeft', () => {
+    toon()
+    expect(screen.getByText(/leest dit document niet/)).toBeInTheDocument()
+  })
+})
+
+describe('DossierSectie — de grondslagkaart en de chips', () => {
+  it('verdwijnt mee met de documentkluis', async () => {
+    // Haar bijschrift en haar foutregel verwijzen allebei naar die kluis. Wie de
+    // kluis uitzet, zou hier een verwijzing houden naar iets wat op zijn scherm niet
+    // meer bestaat.
+    toon({ dossiers: [{ ...dossier, verborgenOnderdelen: ['documentkluis'] }] })
+    expect(screen.queryByLabelText('Document')).toBeNull()
+  })
+})

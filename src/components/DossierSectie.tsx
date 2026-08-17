@@ -34,7 +34,7 @@ import {
 import { bouwAfrekeningOverzicht, type AfrekeningGroep } from '../utils/afrekeningOverzicht'
 import { exporteerAfrekeningPDF } from '../utils/afrekeningPdf'
 import { exporteerBewijsmapPDF } from '../utils/bewijsmapPdf'
-import { bonVanKost } from '../utils/kluis'
+import { bonVanKost, documentenVan, soortNaam } from '../utils/kluis'
 import { OnderhoudsbijdrageSectie } from './OnderhoudsbijdrageSectie'
 import { labelVanCategorie } from '../data/categorieen/resolve'
 import { Bedrag, Kaart, Leeg } from '../ui/basis'
@@ -256,6 +256,26 @@ export function DossierSectie({
     await onDossierOpslaan(bijgewerkt)
   }
 
+  // Welk document legt de verdeling vast (ronde 52)?
+  //
+  // Alleen de documenten uit de kluis van DIT dossier komen in aanmerking: een
+  // attest dat aan een lening of een garantie hangt, legt geen verdeling vast.
+  const dossierDocumenten = dossier ? documentenVan(documenten, { soort: 'dossier', id: dossier.id }) : []
+  // Een aangeduid document dat intussen verwijderd is, telt niet meer mee. Dat is
+  // geen fout maar het huis-patroon: een dode verwijzing wordt bij het TONEN
+  // opgevangen, niet bij het verwijderen opgeruimd.
+  const grondslagBestaat = dossierDocumenten.some((d) => d.id === dossier?.grondslagDocumentId)
+
+  async function zetGrondslag(id: string) {
+    if (!dossier) return
+    const bijgewerkt: Dossier = { ...dossier }
+    // Leeg? Dan halen we het veld helemaal weg in plaats van een lege string weg te
+    // schrijven — zelfde keuze als bij `typeAandelen` en `verborgenOnderdelen`.
+    if (id) bijgewerkt.grondslagDocumentId = id
+    else delete bijgewerkt.grondslagDocumentId
+    await onDossierOpslaan(bijgewerkt)
+  }
+
   async function verwijderSplit(catId: string) {
     if (!dossier || !dossier.categorieAandelen) return
     const nieuw = { ...dossier.categorieAandelen }
@@ -428,6 +448,48 @@ export function DossierSectie({
 
       {dossier && (
         <div className="stapel">
+          {/* Waarop steunt de verdeling? (ronde 52)
+              Deze kaart verschijnt alleen wanneer er iets te kiezen valt — staat er
+              nog geen document in de kluis, dan zou een lege keuzelijst enkel
+              meescrollen. De bewijsmap zegt dan zélf dat er niets aangeduid is, en
+              hoe je dat oplost; dat is de plek waar je het mist.
+
+              Ze hangt aan `documentkluis` en niet aan een eigen chip: haar bijschrift
+              en haar foutregel verwijzen allebei naar die kluis, en wie die kaart
+              uitzet zou hier een verwijzing houden naar iets wat op zijn scherm niet
+              meer bestaat. */}
+          {toont('documentkluis') && (dossierDocumenten.length > 0 || dossier.grondslagDocumentId) && (
+            <Kaart
+              titel={t('Waarop steunt deze verdeling?')}
+              bijschrift={t('Duid de overeenkomst of het vonnis aan waarin de verdeling staat. De bewijsmap verwijst er dan bij elke afspraak naar, met het bijlagenummer erbij.')}
+            >
+              <label className="veldgroep">
+                <span className="label-caps">{t('Document')}</span>
+                <select
+                  value={grondslagBestaat ? (dossier.grondslagDocumentId ?? '') : ''}
+                  onChange={(e) => zetGrondslag(e.target.value)}
+                >
+                  <option value="">{t('Geen document aangeduid')}</option>
+                  {dossierDocumenten.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {`${soortNaam(t, d.soort)}: ${d.naam}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {/* Het aangeduide document is verdwenen uit de kluis. Stil terugvallen
+                  op "geen" zou de indruk wekken dat je nooit iets koos. */}
+              {dossier.grondslagDocumentId && !grondslagBestaat && (
+                <p className="statusregel" role="status" style={{ margin: 0 }} data-grondslag-weg>
+                  {t('Het document dat je hier had aangeduid, staat niet meer in de kluis van dit dossier. Kies er een ander, of voeg het opnieuw toe.')}
+                </p>
+              )}
+              <p className="rij-meta" style={{ margin: 0 }}>
+                {t('De app leest dit document niet en controleert de inhoud ervan niet; ze noemt het alleen als de afspraak die jij aanduidde.')}
+              </p>
+            </Kaart>
+          )}
+
           {/* Verdeling per categorie */}
           {toont('verdeling-categorie') && (
           <Kaart

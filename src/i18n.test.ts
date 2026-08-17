@@ -292,3 +292,37 @@ describe('vertaaltabellen — de opruimronde', () => {
     ).toContain('opérations')
   })
 })
+
+describe('vertaaltabellen — de grondslag van de verdeling', () => {
+  it('vertaalt het scherm en de zin op het blad', () => {
+    // Deze zinnen belanden in een document voor een bemiddelaar of advocaat. Valt er
+    // één terug op het Nederlands, dan staat er een halve Franse akte.
+    expect(vertaal('en', 'Waarop steunt deze verdeling?')).toBe('What is this split based on?')
+    expect(vertaal('fr', 'Geen document aangeduid')).toBe('Aucun document indiqué')
+    expect(
+      vertaal('en', 'Waar hierboven een afspraak staat, komt die uit: {naam} (bijlage {n}). De app heeft dat document niet gelezen; je hebt het zelf aangeduid.', {
+        naam: 'Agreement',
+        n: 3,
+      }),
+    ).toContain('appendix 3')
+    expect(
+      vertaal(
+        'fr',
+        'Voor deze afspraken is geen document aangeduid. Voeg de overeenkomst of het vonnis toe aan de documentkluis van dit dossier en duid ze daar aan, dan staat ze hier met haar bijlagenummer.',
+      ),
+    ).toContain('Aucun document')
+    // Het onderscheid bon/document op een bijlageblad, want een vonnis is geen bon.
+    expect(
+      vertaal('en', 'Dit document is als PDF-bestand toegevoegd en kan niet als afbeelding worden ingevoegd. Vraag het losse bestand op.'),
+    ).toContain('This document')
+  })
+
+  it('houdt de grens die de app over zichzelf uitspreekt in alle drie de talen', () => {
+    // Zonder deze zin leest het blad alsof de app de akte gecontroleerd heeft.
+    for (const taal of ['en', 'fr'] as const) {
+      expect(
+        vertaal(taal, 'De app leest dit document niet en controleert de inhoud ervan niet; ze noemt het alleen als de afspraak die jij aanduidde.'),
+      ).not.toContain('De app leest')
+    }
+  })
+})

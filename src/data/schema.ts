@@ -185,6 +185,23 @@ export const DossierSchema = z.object({
   // op een nieuwere versie een onderdeel verborg, mag op een oudere versie niet
   // ongeldig worden en uit de replay vallen.
   verborgenOnderdelen: z.array(z.string()).optional(),
+  // Het document dat de verdeling vastlegt: de ouderschapsovereenkomst of het
+  // vonnis (ronde 52). Verwijst naar een `DossierDocument` in de kluis van dit
+  // dossier.
+  //
+  // WAAROM ÉÉN PER DOSSIER en niet één per afspraak: in de praktijk staat alles in
+  // dezelfde akte — de standaardverdeling, de uitzondering voor voeding én de regel
+  // voor buitengewone kosten. Eén verwijzing per afspraak zou betekenen dat je hem
+  // vijf keer moet invullen om hetzelfde stuk vijf keer aan te wijzen.
+  //
+  // WAT DIT VELD NIET IS: een bewering van de app. De gebruiker duidt zelf aan welk
+  // document het is; de app leest de inhoud niet en controleert niets. De bewijsmap
+  // zegt dat er ook bij.
+  //
+  // Een id dat niet meer bestaat (document verwijderd) is GEEN fout: dan gedraagt
+  // het dossier zich alsof er niets aangeduid is. Zelfde regel als bij
+  // `categorieAandelen` met een verwijderde categorie en bij `OrdeningSchema`.
+  grondslagDocumentId: z.string().min(1).optional(),
 })
 export type Dossier = z.infer<typeof DossierSchema>
 

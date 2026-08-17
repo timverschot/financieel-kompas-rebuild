@@ -14,7 +14,7 @@ vi.mock('jspdf', async () => {
   return { jsPDF: nepJsPdfKlasse(nep) }
 })
 
-const { bouwBijlagen, exporteerBewijsmapPDF } = await import('./bewijsmapPdf')
+const { bouwBijlagen, exporteerBewijsmapPDF, grondslagVerwijzing, uitAfspraak } = await import('./bewijsmapPdf')
 
 const t = (s: string, p?: Record<string, string | number>) => vertaal('nl', s, p)
 
@@ -538,5 +538,153 @@ describe('een staande bon', () => {
     expect(beeld.y + beeld.hoogte).toBeLessThanOrEqual(ONDERGRENS + 0.01)
     // En ze is niet onnodig klein gemaakt: minstens de helft van de beschikbare hoogte.
     expect(beeld.hoogte).toBeGreaterThan((ONDERGRENS - beeld.y) / 2)
+  })
+})
+
+describe('de grondslag van de verdeling', () => {
+  // Ronde 52. Dit blok is de reden dat een bewijsmap iets waard is bij een
+  // bemiddelaar: het legt de brug tussen een percentage in een tabel en het papier
+  // dat dat percentage vastlegt. Zonder die brug stond de overeenkomst wél achteraan
+  // als bijlage, maar wees niets van de cijfers ernaar.
+  const overeenkomst: DossierDocument = {
+    id: 'd-oud',
+    dossierId: 'd1',
+    naam: 'Ouderschapsovereenkomst',
+    soort: 'overeenkomst',
+    bestand: BON,
+    toegevoegdOp: '2024-01-10',
+  }
+
+  // Eén regel, zodat de tekst van het blad ook over een bladbreedte heen te lezen is.
+  const plat = () => alleTekst(nep).replace(/[ \n\r\t]+/g, ' ')
+
+  it('noemt het aangeduide document met een bijlagenummer dat er ook echt staat', async () => {
+    // Het nummer wordt NIET hardgecodeerd: het hangt af van hoeveel bonnen er vóór
+    // de kluisdocumenten komen. Wat wél vastligt, is dat het nummer in de zin naar
+    // dezelfde bijlage wijst als waar dat document afgedrukt staat — een verwijzing
+    // naar een verkeerd blad is erger dan geen verwijzing.
+    const metGrondslag: Dossier = { ...dossier, grondslagDocumentId: 'd-oud' }
+    await exporteerBewijsmapPDF(t, metGrondslag, afrekening, kosten, kinderen, [], [overeenkomst], NU)
+    const tekst = plat()
+    const gevonden = tekst.match(/Waar hierboven een afspraak staat, komt die uit: Overeenkomst: Ouderschapsovereenkomst \(bijlage (\d+)\)/)
+    expect(gevonden).not.toBeNull()
+    const nummer = Number((gevonden as RegExpMatchArray)[1])
+    expect(tekst).toContain(`Bijlage ${nummer} Overeenkomst: Ouderschapsovereenkomst`)
+  })
+
+  it('zegt erbij dat de app dat document niet gelezen heeft', async () => {
+    // Wie dit blad krijgt, mag niet denken dat de app de akte gecontroleerd heeft.
+    const metGrondslag: Dossier = { ...dossier, grondslagDocumentId: 'd-oud' }
+    await exporteerBewijsmapPDF(t, metGrondslag, afrekening, kosten, kinderen, [], [overeenkomst], NU)
+    expect(plat()).toContain('De app heeft dat document niet gelezen')
+  })
+
+  it('zegt het wanneer er niets aangeduid is, in plaats van te zwijgen', async () => {
+    // Zwijgen zou dit blad volledig doen lijken. Wie het leest hoort te zien dat er
+    // iets ontbreekt — en wat hij eraan kan doen.
+    await exporteerBewijsmapPDF(t, dossier, afrekening, kosten, kinderen, [], [overeenkomst], NU)
+    expect(plat()).toContain('Voor deze afspraken is geen document aangeduid')
+    expect(plat()).toContain('documentkluis van dit dossier')
+  })
+
+  it('valt terug op "geen" wanneer het aangeduide document niet meer bestaat', async () => {
+    // Een bijlagenummer dat nergens naar wijst is erger dan geen nummer.
+    const weg: Dossier = { ...dossier, grondslagDocumentId: 'bestaat-niet' }
+    await exporteerBewijsmapPDF(t, weg, afrekening, kosten, kinderen, [], [overeenkomst], NU)
+    expect(plat()).toContain('Voor deze afspraken is geen document aangeduid')
+    expect(plat()).not.toContain('Waar hierboven een afspraak staat')
+  })
+
+  it('verwijst per kost alleen bij een sleutel die uit een AFSPRAAK volgt', async () => {
+    // Een percentage dat je voor één kost zelf intikte, staat niet in de
+    // overeenkomst. Ernaar verwijzen zou beweren dat de akte iets vastlegt wat er
+    // niet in staat.
+    const metGrondslag: Dossier = { ...dossier, grondslagDocumentId: 'd-oud' }
+    const eigen = kost({ id: 'eigen', omschrijving: 'Zelf gekozen', aandeelJijOverride: 25 })
+    // De afrekening somt op wélke kosten erin zitten; zonder dit id valt de nieuwe
+    // kost er stil buiten en meet de test niets.
+    const met = { ...afrekening, kostIds: [...(afrekening.kostIds ?? []), eigen.id] }
+    await exporteerBewijsmapPDF(t, metGrondslag, met, [...kosten, eigen], kinderen, [], [overeenkomst], NU)
+    const tekst = plat()
+    // Allebei de soorten sleutel komen op het blad voor …
+    expect(tekst).toContain('Verdeelsleutel: standaardverdeling van het dossier (zie bijlage')
+    expect(tekst).toContain('Verdeelsleutel: eigen percentage op de kost')
+    // … maar alleen de afspraak draagt de verwijzing.
+    expect(tekst).not.toContain('Verdeelsleutel: eigen percentage op de kost (zie bijlage')
+  })
+})
+
+describe('grondslagVerwijzing', () => {
+  // Los getest, want deze functie beslist of het document geciteerd MAG worden.
+  it('verwijst bij een afspraak, en zwijgt bij een eigen of ingelezen percentage', () => {
+    expect(grondslagVerwijzing(t, 'dossier', 3)).toContain('bijlage 3')
+    expect(grondslagVerwijzing(t, 'categorie', 3)).toContain('bijlage 3')
+    expect(grondslagVerwijzing(t, 'kostensoort', 3)).toContain('bijlage 3')
+    expect(grondslagVerwijzing(t, 'kost', 3)).toBe('')
+    expect(grondslagVerwijzing(t, 'uitwisseling', 3)).toBe('')
+    expect(grondslagVerwijzing(t, 'onbekend', 3)).toBe('')
+  })
+
+  it('zwijgt zodra er geen bijlage is', () => {
+    expect(grondslagVerwijzing(t, 'dossier', undefined)).toBe('')
+  })
+})
+
+describe('de grondslag — wat er NIET mag gebeuren', () => {
+  const overeenkomst: DossierDocument = {
+    id: 'd-oud',
+    dossierId: 'd1',
+    naam: 'Ouderschapsovereenkomst',
+    soort: 'overeenkomst',
+    bestand: BON,
+    toegevoegdOp: '2024-01-10',
+  }
+  const vonnisPdf: DossierDocument = { ...overeenkomst, id: 'd-pdf', naam: 'Beschikking', soort: 'vonnis', bestand: BON_PDF }
+  const plat = () => alleTekst(nep).replace(/[ \n\r\t]+/g, ' ')
+
+  it('verwijst nergens naar een bijlage wanneer er niets aangeduid is', async () => {
+    // De valkuil: een bon draagt geen documentId, dus `undefined === undefined`
+    // matchte de EERSTE BON. Elke kost verwees dan naar "bijlage 1" — een foto van
+    // een kassaticket, als bewijs van de verdeelafspraak. En dat terwijl het blad
+    // bovenaan zei dat er geen document was.
+    await exporteerBewijsmapPDF(t, dossier, afrekening, kosten, kinderen, [], documenten, NU)
+    const tekst = plat()
+    expect(tekst).toContain('Voor deze afspraken is geen document aangeduid')
+    expect(tekst).not.toContain('Verdeelsleutel: standaardverdeling van het dossier (zie bijlage')
+  })
+
+  it('zwijgt over de grondslag wanneer geen enkele sleutel uit een afspraak volgt', async () => {
+    // Alleen een percentage dat je zelf per kost intikte: dan is er niets dat op een
+    // akte steunt, en is zowel "dit komt uit X" als "er is geen document" een
+    // uitspraak over iets wat niet speelt.
+    const metGrondslag: Dossier = { ...dossier, grondslagDocumentId: 'd-oud' }
+    const eigen = kost({ id: 'eigen', omschrijving: 'Zelf gekozen', aandeelJijOverride: 25 })
+    const alleen = { ...afrekening, kostIds: [eigen.id] }
+    await exporteerBewijsmapPDF(t, metGrondslag, alleen, [eigen], kinderen, [], [overeenkomst], NU)
+    const tekst = plat()
+    expect(tekst).toContain('eigen percentage op de kost')
+    expect(tekst).not.toContain('Waar hierboven een afspraak staat')
+    expect(tekst).not.toContain('geen document aangeduid')
+  })
+
+  it('noemt een vonnis geen bon wanneer het een PDF is', async () => {
+    // De verwijzing stuurt de lezer naar dat blad. "Deze bon" onder een vonnis
+    // ondermijnt precies de brug die die verwijzing legt.
+    const metGrondslag: Dossier = { ...dossier, grondslagDocumentId: 'd-pdf' }
+    await exporteerBewijsmapPDF(t, metGrondslag, afrekening, kosten, kinderen, [], [vonnisPdf], NU)
+    const tekst = plat()
+    expect(tekst).toContain('Vonnis: Beschikking')
+    expect(tekst).toContain('Dit document is als PDF-bestand toegevoegd')
+  })
+})
+
+describe('uitAfspraak', () => {
+  it('laat alleen de drie sleutels toe die in een overeenkomst staan', () => {
+    expect(uitAfspraak('dossier')).toBe(true)
+    expect(uitAfspraak('categorie')).toBe(true)
+    expect(uitAfspraak('kostensoort')).toBe(true)
+    expect(uitAfspraak('kost')).toBe(false)
+    expect(uitAfspraak('uitwisseling')).toBe(false)
+    expect(uitAfspraak('onbekend')).toBe(false)
   })
 })

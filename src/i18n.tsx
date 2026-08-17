@@ -210,6 +210,22 @@ const en: Record<string, string> = {
   'Luisterboeken': 'Audiobooks',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Note: the transactions up to and including {datum} are already part of the value you recorded then. They still count below, but no longer in the balance at the top.',
   'geldt nu': 'in effect',
+  // De grondslag van de verdeling (ronde 52)
+  'Waarop steunt deze verdeling?': 'What is this split based on?',
+  'Duid de overeenkomst of het vonnis aan waarin de verdeling staat. De bewijsmap verwijst er dan bij elke afspraak naar, met het bijlagenummer erbij.':
+    'Point to the agreement or court order that sets out the split. The evidence file will then refer to it at every arrangement, with the appendix number.',
+  'Document': 'Document',
+  'Geen document aangeduid': 'No document selected',
+  'Het document dat je hier had aangeduid, staat niet meer in de kluis van dit dossier. Kies er een ander, of voeg het opnieuw toe.':
+    'The document you selected here is no longer in this case’s vault. Pick another one, or add it again.',
+  'De app leest dit document niet en controleert de inhoud ervan niet; ze noemt het alleen als de afspraak die jij aanduidde.':
+    'The app does not read this document and does not check its contents; it only names it as the arrangement you pointed to.',
+  'Waar hierboven een afspraak staat, komt die uit: {naam} (bijlage {n}). De app heeft dat document niet gelezen; je hebt het zelf aangeduid.':
+    'Where an arrangement appears above, it comes from: {naam} (appendix {n}). The app has not read that document; you selected it yourself.',
+  'Voor deze afspraken is geen document aangeduid. Voeg de overeenkomst of het vonnis toe aan de documentkluis van dit dossier en duid ze daar aan, dan staat ze hier met haar bijlagenummer.':
+    'No document has been selected for these arrangements. Add the agreement or court order to this case’s document vault and select it there, and it will appear here with its appendix number.',
+  'Dit document is als PDF-bestand toegevoegd en kan niet als afbeelding worden ingevoegd. Vraag het losse bestand op.':
+    'This document was added as a PDF file and cannot be inserted as an image. Ask for the separate file.',
   // De opruimronde (ronde 51)
   'Gezinslid': 'Family member',
   'Inkomsten {bedrag} — toon alleen deze boekingen': 'Income {bedrag} — show only these entries',
@@ -2332,6 +2348,22 @@ const fr: Record<string, string> = {
   'Luisterboeken': 'Livres audio',
   'Let op: de boekingen tot en met {datum} zitten al in de waarde die je toen hebt vastgelegd. Ze tellen hieronder wel mee, maar niet meer in het saldo bovenaan.': 'Attention : les opérations jusqu’au {datum} inclus sont déjà comprises dans la valeur que tu as enregistrée alors. Elles comptent encore ci-dessous, mais plus dans le solde en haut.',
   'geldt nu': 'en vigueur',
+  // Le fondement de la répartition (ronde 52)
+  'Waarop steunt deze verdeling?': 'Sur quoi repose cette répartition ?',
+  'Duid de overeenkomst of het vonnis aan waarin de verdeling staat. De bewijsmap verwijst er dan bij elke afspraak naar, met het bijlagenummer erbij.':
+    'Indique la convention ou le jugement qui fixe la répartition. Le dossier de preuves y renverra alors à chaque accord, avec le numéro d’annexe.',
+  'Document': 'Document',
+  'Geen document aangeduid': 'Aucun document indiqué',
+  'Het document dat je hier had aangeduid, staat niet meer in de kluis van dit dossier. Kies er een ander, of voeg het opnieuw toe.':
+    'Le document que tu avais indiqué ici ne se trouve plus dans le coffre de ce dossier. Choisis-en un autre, ou ajoute-le à nouveau.',
+  'De app leest dit document niet en controleert de inhoud ervan niet; ze noemt het alleen als de afspraak die jij aanduidde.':
+    'L’app ne lit pas ce document et n’en vérifie pas le contenu ; elle le cite uniquement comme l’accord que tu as indiqué.',
+  'Waar hierboven een afspraak staat, komt die uit: {naam} (bijlage {n}). De app heeft dat document niet gelezen; je hebt het zelf aangeduid.':
+    'Là où un accord figure ci-dessus, il provient de : {naam} (annexe {n}). L’app n’a pas lu ce document ; c’est toi qui l’as indiqué.',
+  'Voor deze afspraken is geen document aangeduid. Voeg de overeenkomst of het vonnis toe aan de documentkluis van dit dossier en duid ze daar aan, dan staat ze hier met haar bijlagenummer.':
+    'Aucun document n’a été indiqué pour ces accords. Ajoute la convention ou le jugement au coffre à documents de ce dossier et indique-le là, il apparaîtra ici avec son numéro d’annexe.',
+  'Dit document is als PDF-bestand toegevoegd en kan niet als afbeelding worden ingevoegd. Vraag het losse bestand op.':
+    'Ce document a été ajouté sous forme de fichier PDF et ne peut pas être inséré comme image. Demande le fichier séparé.',
   // Le tour de nettoyage (ronde 51)
   'Gezinslid': 'Membre du foyer',
   'Inkomsten {bedrag} — toon alleen deze boekingen': 'Revenus {bedrag} — n’afficher que ces opérations',
