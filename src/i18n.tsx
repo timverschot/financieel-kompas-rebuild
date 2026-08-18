@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { TAAL_OPSLAG_SLEUTEL, leesTaal, zetOpmaaktaal } from './utils/opmaaktaal'
 
 // Meertaligheid (NL/EN/FR). Bewust eenvoudig gehouden: de SLEUTEL is de
 // Nederlandse tekst zelf. Ontbreekt een vertaling voor de gekozen taal, dan valt
@@ -214,8 +215,7 @@ const en: Record<string, string> = {
   '{naam} {bedrag} — bekijk de boekingen': '{naam} {bedrag} — view the transactions',
   'Een rij met een aandeel uit een gedeelde kost klikt niet door: zo’n aandeel is een berekening en bestaat nergens als losse boeking.':
     'A row containing a share of a shared cost does not click through: such a share is a calculation and exists nowhere as a separate transaction.',
-  'Let op: {n} gedeelde kost(en) vallen op dezelfde dag en op hetzelfde bedrag samen met een losse boeking. Staat dezelfde uitgave hier twee keer, dan is dit bedrag te hoog. Koppel zo’n boeking aan het dossier in het invoervenster, dan telt ze maar één keer.':
-    'Note: {n} shared cost(s) coincide with a separate transaction on the same day and for the same amount. If the same expense appears here twice, this figure is too high. Link such a transaction to the case in the entry window and it will be counted only once.',
+  'Let op: {n} gedeelde kost(en) komen op hetzelfde bedrag uit als een losse boeking van rond dezelfde datum (hoogstens {dagen} dagen ernaast). Staat dezelfde uitgave hier twee keer, dan is dit bedrag te hoog. Koppel zo’n boeking aan het dossier in het invoervenster, dan telt ze maar één keer.': 'Careful: {n} shared cost(s) come to the same amount as a separate transaction from around the same date (at most {dagen} days apart). If the same expense is in here twice, this amount is too high. Link such a transaction to the case in the entry window and it will only count once.',
   'Wat kost elk gezinslid?': 'What does each family member cost?',
   'Wat jij dat jaar uitgaf voor elk gezinslid: je eigen boekingen plus jouw aandeel in de gedeelde kosten.':
     'What you spent that year on each family member: your own entries plus your share of the shared costs.',
@@ -259,6 +259,8 @@ const en: Record<string, string> = {
   // De opruimronde (ronde 51)
   'Gezinslid': 'Family member',
   'Inkomsten {bedrag} — toon alleen deze boekingen': 'Income {bedrag} — show only these entries',
+  'De tegel {naam} klikt nu niet door: met de filters die aanstaan bestaat er geen lijst die precies dat bedrag oplevert. Dat gebeurt bij een gesplitst kassaticket, waar één boeking zowel geld in als geld uit bevat.': 'The {naam} tile does not open a list right now: with the filters that are on, there is no list that adds up to exactly that amount. This happens with a split receipt, where one entry holds both money in and money out.',
+  'De tegels Inkomsten en Uitgaven klikken nu niet door: met de filters die aanstaan bestaat er geen lijst die precies dat bedrag oplevert. Dat gebeurt bij een gesplitst kassaticket, waar één boeking zowel geld in als geld uit bevat.': 'The Income and Expenses tiles do not open a list right now: with the filters that are on, there is no list that adds up to exactly that amount. This happens with a split receipt, where one entry holds both money in and money out.',
   'Uitgaven {bedrag} — toon alleen deze boekingen': 'Expenses {bedrag} — show only these entries',
   // Het fiscale jaaroverzicht (ronde 50)
   'Fiscaal jaaroverzicht {jaar}': 'Annual tax overview {jaar}',
@@ -1568,6 +1570,7 @@ const en: Record<string, string> = {
   'Opslaan is mislukt. Probeer het opnieuw; je invoer blijft staan.':
     'Saving failed. Please try again; your input is kept.',
   'Document verwijderd': 'Document deleted',
+  'Document verwijderd. Het stond in dit dossier als grondslag van de verdeling; die aanduiding is mee weg.': 'Document deleted. It was selected in this case as the basis for the split; that selection is gone with it.',
   'Bewaar de leningovereenkomst en de betalingsbewijzen van deze lening op één plek.':
     'Keep the loan agreement and the proofs of payment for this loan in one place.',
   'Bewaar de factuur, het aankoopbewijs, het garantiebewijs en de handleiding van deze aankoop op één plek.':
@@ -2382,8 +2385,7 @@ const fr: Record<string, string> = {
   '{naam} {bedrag} — bekijk de boekingen': '{naam} {bedrag} — voir les opérations',
   'Een rij met een aandeel uit een gedeelde kost klikt niet door: zo’n aandeel is een berekening en bestaat nergens als losse boeking.':
     'Une ligne contenant une part d’un frais partagé ne s’ouvre pas : cette part est un calcul et n’existe nulle part comme opération distincte.',
-  'Let op: {n} gedeelde kost(en) vallen op dezelfde dag en op hetzelfde bedrag samen met een losse boeking. Staat dezelfde uitgave hier twee keer, dan is dit bedrag te hoog. Koppel zo’n boeking aan het dossier in het invoervenster, dan telt ze maar één keer.':
-    'Attention : {n} frais partagé(s) coïncident avec une opération distincte le même jour et pour le même montant. Si la même dépense figure ici deux fois, ce montant est trop élevé. Rattache cette opération au dossier dans la fenêtre de saisie et elle ne sera comptée qu’une fois.',
+  'Let op: {n} gedeelde kost(en) komen op hetzelfde bedrag uit als een losse boeking van rond dezelfde datum (hoogstens {dagen} dagen ernaast). Staat dezelfde uitgave hier twee keer, dan is dit bedrag te hoog. Koppel zo’n boeking aan het dossier in het invoervenster, dan telt ze maar één keer.': 'Attention : {n} frais partagé(s) correspondent au même montant qu’une opération distincte datée d’à peu près le même jour (au maximum {dagen} jours d’écart). Si la même dépense figure deux fois ici, ce montant est trop élevé. Lie une telle opération au dossier dans la fenêtre de saisie et elle ne comptera qu’une seule fois.',
   'Wat kost elk gezinslid?': 'Que coûte chaque membre du foyer ?',
   'Wat jij dat jaar uitgaf voor elk gezinslid: je eigen boekingen plus jouw aandeel in de gedeelde kosten.':
     'Ce que tu as dépensé cette année-là pour chaque membre du foyer : tes propres opérations plus ta part des frais partagés.',
@@ -2427,6 +2429,8 @@ const fr: Record<string, string> = {
   // Le tour de nettoyage (ronde 51)
   'Gezinslid': 'Membre du foyer',
   'Inkomsten {bedrag} — toon alleen deze boekingen': 'Revenus {bedrag} — n’afficher que ces opérations',
+  'De tegel {naam} klikt nu niet door: met de filters die aanstaan bestaat er geen lijst die precies dat bedrag oplevert. Dat gebeurt bij een gesplitst kassaticket, waar één boeking zowel geld in als geld uit bevat.': 'La tuile {naam} n’ouvre aucune liste pour l’instant : avec les filtres actifs, aucune liste ne donne exactement ce montant. Cela arrive avec un ticket de caisse ventilé, où une même opération contient de l’argent qui entre et de l’argent qui sort.',
+  'De tegels Inkomsten en Uitgaven klikken nu niet door: met de filters die aanstaan bestaat er geen lijst die precies dat bedrag oplevert. Dat gebeurt bij een gesplitst kassaticket, waar één boeking zowel geld in als geld uit bevat.': 'Les tuiles Revenus et Dépenses n’ouvrent aucune liste pour l’instant : avec les filtres actifs, aucune liste ne donne exactement ce montant. Cela arrive avec un ticket de caisse ventilé, où une même opération contient de l’argent qui entre et de l’argent qui sort.',
   'Uitgaven {bedrag} — toon alleen deze boekingen': 'Dépenses {bedrag} — n’afficher que ces opérations',
   // L’aperçu fiscal annuel (ronde 50)
   'Fiscaal jaaroverzicht {jaar}': 'Aperçu fiscal annuel {jaar}',
@@ -3735,6 +3739,7 @@ const fr: Record<string, string> = {
   'Opslaan is mislukt. Probeer het opnieuw; je invoer blijft staan.':
     'Échec de l’enregistrement. Réessayez ; votre saisie est conservée.',
   'Document verwijderd': 'Document supprimé',
+  'Document verwijderd. Het stond in dit dossier als grondslag van de verdeling; die aanduiding is mee weg.': 'Document supprimé. Il était désigné dans ce dossier comme la base de la répartition ; cette désignation disparaît avec lui.',
   'Bewaar de leningovereenkomst en de betalingsbewijzen van deze lening op één plek.':
     'Conservez le contrat de prêt et les preuves de paiement de ce prêt au même endroit.',
   'Bewaar de factuur, het aankoopbewijs, het garantiebewijs en de handleiding van deze aankoop op één plek.':
@@ -4384,22 +4389,29 @@ const standaard: TaalContextType = {
 
 const TaalContext = createContext<TaalContextType>(standaard)
 
-const OPSLAG_SLEUTEL = 'fk_taal'
-function leesTaal(): Taal {
-  try {
-    const t = localStorage.getItem(OPSLAG_SLEUTEL)
-    if (t === 'nl' || t === 'en' || t === 'fr') return t
-  } catch {
-    // localStorage niet beschikbaar: stil terugvallen op Nederlands.
-  }
-  return 'nl'
-}
 
 export function TaalProvider({ children }: { children: ReactNode }) {
   const [taal, setTaal] = useState<Taal>(leesTaal)
+
+  // Datums en bedragen volgen de taal mee (ronde 54). Dit staat hier en niet in elke
+  // component, want `formatEuro` en de datumhelpers worden op honderden plaatsen
+  // aangeroepen — zie utils/opmaaktaal.ts.
+  //
+  // WAAROM TIJDENS HET TEKENEN en niet in het effect hieronder, waar het eerst stond.
+  // Een effect draait NA het tekenen. Wisselde je van taal, dan tekenden alle schermen
+  // eerst opnieuw — met de nieuwe teksten, maar terwijl `opmaaktaal` nog op de oude
+  // stond — en pas daarna liep het effect. Dat zet geen state, dus er volgde geen
+  // tweede tekening: je kreeg een Engels scherm met "juli 2026" en "€ 12,50" erin, tot
+  // je toevallig iets anders aanraakte. De opmaak liep zo precies één taalwissel achter.
+  //
+  // Dit is veilig om tijdens het tekenen te doen: het schrijft alleen een waarde weg
+  // die van `taal` afgeleid is. Twee keer draaien (React in strikte modus) geeft
+  // hetzelfde resultaat.
+  zetOpmaaktaal(taal)
+
   useEffect(() => {
     try {
-      localStorage.setItem(OPSLAG_SLEUTEL, taal)
+      localStorage.setItem(TAAL_OPSLAG_SLEUTEL, taal)
     } catch {
       // stil negeren
     }

@@ -15,6 +15,7 @@ import {
   laadKindrekeningposten,
   laadTransacties,
   laadVerrekeningen,
+  verwijderDossierDocument,
   verwijderDossierMetAanhang,
   verwijderTransactie,
   verwijderTransactieMetAanhang,
@@ -123,6 +124,72 @@ describe('verwijderen met aanhang', () => {
     expect((await laadGedeeldeKosten()).geldig).toHaveLength(0)
     expect((await laadDossierDocumenten()).geldig).toHaveLength(0)
     expect((await laadGaranties()).geldig).toHaveLength(0)
+  })
+
+  it('haalt de grondslag-verwijzing weg wanneer dat document verdwijnt (ronde 54)', async () => {
+    // Sinds ronde 52 wijst een dossier één document aan als de akte waar zijn
+    // verdeling uit komt. Verdween dat document, dan bleef die aanwijzing staan en
+    // klaagde het scherm voor altijd dat het document niet meer bestaat.
+    await bewaarDossier({ id: 'd1', naam: 'Co-ouderschap', aandeelJij: 50, grondslagDocumentId: 'doc1' })
+    await bewaarDossierDocument({
+      id: 'doc1',
+      dossierId: 'd1',
+      naam: 'Vonnis',
+      soort: 'vonnis',
+      bestand: 'data:application/pdf;base64,AAAA',
+      toegevoegdOp: '2026-07-01',
+    })
+
+    await verwijderDossierDocument('doc1', 'd1')
+
+    expect((await laadDossierDocumenten()).geldig).toHaveLength(0)
+    const na = (await laadDossiers()).geldig[0]
+    expect(na.grondslagDocumentId).toBeUndefined()
+    // De rest van het dossier blijft ongemoeid — het percentage is niet ineens weg.
+    expect(na.aandeelJij).toBe(50)
+  })
+
+  it('vertrekt van het dossier zoals het NU is, niet van een oude momentopname', async () => {
+    // Tussen het inladen van het scherm en je klik kan er via de synchronisatie een
+    // wijziging van een ander toestel binnenkomen. Schreef het verwijderen de oude
+    // momentopname terug, dan wiste het die wijziging stil — en dat is precies een
+    // verdeelsleutel die later in een afrekening met de andere ouder belandt.
+    await bewaarDossier({ id: 'd1', naam: 'Co-ouderschap', aandeelJij: 50, grondslagDocumentId: 'doc1' })
+    await bewaarDossierDocument({
+      id: 'doc1',
+      dossierId: 'd1',
+      naam: 'Vonnis',
+      soort: 'vonnis',
+      bestand: 'data:application/pdf;base64,AAAA',
+      toegevoegdOp: '2026-07-01',
+    })
+    // Dit komt binnen ná het inladen van het scherm.
+    await bewaarDossier({ id: 'd1', naam: 'Co-ouderschap', aandeelJij: 65, grondslagDocumentId: 'doc1' })
+
+    await verwijderDossierDocument('doc1', 'd1')
+
+    const na = (await laadDossiers()).geldig[0]
+    expect(na.aandeelJij).toBe(65)
+    expect(na.grondslagDocumentId).toBeUndefined()
+  })
+
+  it('laat de grondslag van een ANDER dossier met rust', async () => {
+    // Twee dossiers, en het verwijderde document hoort bij het tweede. Zou de
+    // opschoning op naam werken in plaats van op de verwijzing, dan verloor het
+    // verkeerde dossier zijn akte.
+    await bewaarDossier({ id: 'd1', naam: 'Co-ouderschap', aandeelJij: 50, grondslagDocumentId: 'doc-a' })
+    await bewaarDossierDocument({
+      id: 'doc-b',
+      dossierId: 'd1',
+      naam: 'Foto',
+      soort: 'ander',
+      bestand: 'data:image/jpeg;base64,AAAA',
+      toegevoegdOp: '2026-07-01',
+    })
+
+    await verwijderDossierDocument('doc-b', 'd1')
+
+    expect((await laadDossiers()).geldig[0].grondslagDocumentId).toBe('doc-a')
   })
 
   it('haalt een dossier samen met kosten, afrekeningen en kindrekeningen weg', async () => {

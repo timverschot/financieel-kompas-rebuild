@@ -255,8 +255,66 @@ export async function bewaarDossierDocument(d: DossierDocument): Promise<void> {
   await pasGebeurtenisToe({ type: 'dossierdocument.bewaard', payload: geldig })
 }
 
-export async function verwijderDossierDocument(id: string): Promise<void> {
-  await pasGebeurtenisToe({ type: 'dossierdocument.verwijderd', payload: { id } })
+/**
+ * Een document uit de kluis verwijderen, en de verwijzing ernaar mee (ronde 54).
+ *
+ * Sinds ronde 52 kan een dossier één document aanwijzen als de GRONDSLAG van zijn
+ * verdeling — de akte of het vonnis waar de percentages uit komen. Verdween dat
+ * document, dan bleef die aanwijzing staan: het dossier wees naar iets dat niet
+ * meer bestond. Het scherm ving dat netjes op ("het aangeduide document bestaat
+ * niet meer"), maar die melding ging nooit meer weg, ook niet nadat je een ánder
+ * document had toegevoegd — je moest zelf raden dat je de keuzelijst opnieuw op
+ * "geen" moest zetten.
+ *
+ * In ÉÉN schrijfactie, om dezelfde reden als bij `verwijderTransactieMetAanhang`:
+ * ging de tweede stap mis, dan was het document weg én bleef de dode verwijzing
+ * staan — precies de toestand die we wilden vermijden.
+ *
+ * `grondslagVanDossierId` is het dossier dat dit document aanwees, als dat er is.
+ *
+ * WAAROM EEN ID EN NIET HET DOSSIER ZELF. Een gebeurtenis 'dossier.bewaard' schrijft
+ * het HELE dossier weg, en het logboek werkt met "de laatste schrijver wint". Kreeg
+ * deze functie een dossier mee dat het scherm even eerder had ingeladen, dan zette ze
+ * die momentopname terug — inclusief een verdeelsleutel die je intussen op je gsm van
+ * 65 naar 50 had gezet en die net was binnengekomen via de synchronisatie. Zo'n cijfer
+ * belandt later in een afrekening met de andere ouder. Daarom halen we het dossier
+ * hier zelf op, vlak vóór het schrijven, en halen we er alleen dat ene veld af.
+ *
+ * De controle `grondslagDocumentId === id` staat er ook nog eens, zodat een verkeerd
+ * meegegeven dossier niet stilzwijgend zijn grondslag verliest.
+ */
+export async function verwijderDossierDocument(id: string, grondslagVanDossierId?: string): Promise<void> {
+  const gebeurtenissen: Parameters<typeof pasGebeurtenissenToe>[0] = [
+    { type: 'dossierdocument.verwijderd', payload: { id } },
+  ]
+  if (grondslagVanDossierId) {
+    const dossier = (await laadDossiers()).geldig.find((d) => d.id === grondslagVanDossierId)
+    if (dossier && dossier.grondslagDocumentId === id) {
+      const opgeschoond: Dossier = { ...dossier }
+      // Het veld helemaal WEG, niet op een lege tekst — zelfde keuze als in het
+      // scherm zelf, en het schema laat geen lege tekst toe.
+      delete opgeschoond.grondslagDocumentId
+      gebeurtenissen.push({ type: 'dossier.bewaard', payload: DossierSchema.parse(opgeschoond) })
+    }
+  }
+  await pasGebeurtenissenToe(gebeurtenissen)
+}
+
+/**
+ * Een verwijderd document terugzetten, samen met de grondslag-verwijzing die eraan
+ * hing — als ÉÉN schrijfactie (ronde 54).
+ *
+ * De tegenhanger van `verwijderDossierDocument` hierboven, en om dezelfde reden
+ * ondeelbaar: ging de tweede schrijfactie mis, dan stond het document er weer maar
+ * verwees geen enkel dossier er nog naar, terwijl het balkje beloofde dat allebei
+ * terugkwamen.
+ */
+export async function herstelDossierDocument(document: DossierDocument, dossier?: Dossier): Promise<void> {
+  const gebeurtenissen: Parameters<typeof pasGebeurtenissenToe>[0] = [
+    { type: 'dossierdocument.bewaard', payload: DossierDocumentSchema.parse(document) },
+  ]
+  if (dossier) gebeurtenissen.push({ type: 'dossier.bewaard', payload: DossierSchema.parse(dossier) })
+  await pasGebeurtenissenToe(gebeurtenissen)
 }
 
 export async function bewaarStreepjescode(s: Streepjescode): Promise<void> {

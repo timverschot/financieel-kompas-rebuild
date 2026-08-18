@@ -484,6 +484,33 @@ describe('TransactieLijst — kengetallen', () => {
     expect(screen.queryByRole('button', { name: /^Inkomsten .* toon alleen deze boekingen/ })).toBeNull()
   })
 
+  it('zegt eronder WAAROM die tegel dan niet klikt (ronde 54)', async () => {
+    // Twee tegels die er identiek uitzien en waarvan er één reageert, leest als een
+    // app die hapert. De zin noemt de tegel bij naam.
+    const user = userEvent.setup()
+    toon([
+      tx({ id: 'loon', omschrijving: 'Loon', bedrag: 300000 }),
+      tx({ id: 'bon', omschrijving: 'Colruyt', bedrag: -5000, regels: [{ bedrag: -5300 }, { bedrag: 300 }] }),
+    ])
+    expect(document.querySelector('[data-tegelmelding]')).toBeNull()
+    await klapFiltersOpen(user)
+    await user.selectOptions(screen.getByLabelText('Richting'), 'uit')
+    const melding = document.querySelector('[data-tegelmelding]') as HTMLElement
+    expect(melding).not.toBeNull()
+    expect(melding.textContent).toContain('Inkomsten')
+    expect(melding.textContent).not.toContain('Uitgaven')
+  })
+
+  it('zwijgt wanneer de knop ontbreekt omdat het filter er al op staat', async () => {
+    // Dan is het vanzelfsprekend dat die tegel nergens heen gaat: je staat er al.
+    // Een uitleg zou hier ruis zijn.
+    const user = userEvent.setup()
+    toon([tx({ id: '1', omschrijving: 'Winkel', bedrag: -3000 })])
+    await user.click(screen.getByRole('button', { name: /^Uitgaven .* toon alleen deze boekingen/ }))
+    expect(screen.queryByRole('button', { name: /^Uitgaven .* toon alleen deze boekingen/ })).toBeNull()
+    expect(document.querySelector('[data-tegelmelding]')).toBeNull()
+  })
+
   it('haalt de knop weg zodra het filter al op die richting staat', async () => {
     // Een knop die nergens heen gaat is erger dan geen knop — dezelfde regel als in
     // ronde 48 en 49.

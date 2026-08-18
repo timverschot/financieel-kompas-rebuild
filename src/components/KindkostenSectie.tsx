@@ -1,7 +1,13 @@
 import { useMemo, useState } from 'react'
 import type { Dossier, GedeeldeKost, Kind, Transactie } from '../data/schema'
 import type { TxFilter } from '../utils/transactieFilter'
-import { beschikbareKindjaren, kindkostenVanJaar, magDoorklikken, type KindkostenRegel } from '../utils/kindkosten'
+import {
+  DUBBEL_SPELING_DAGEN,
+  beschikbareKindjaren,
+  kindkostenVanJaar,
+  magDoorklikken,
+  type KindkostenRegel,
+} from '../utils/kindkosten'
 import { formatEuro } from '../utils/format'
 import { vandaag } from '../utils/datum'
 import { Bedrag, Kaart, Leeg, PaginaKop, Stat } from '../ui/basis'
@@ -194,14 +200,18 @@ export function KindkostenSectie({
         <p className="rij-meta" style={{ margin: 0 }}>
           {t('Een gedeelde kost telt hier voor JOUW aandeel, ook wanneer de andere ouder ze betaalde — dat aandeel ben je verschuldigd. Betaalde jij ze zelf, dan telt ze ook maar voor jouw aandeel, want de rest komt terug via de afrekening.')}
         </p>
-        {/* De app KAN dit niet zeker weten — twee uitstappen van € 90 op dezelfde dag
+        {/* De app KAN dit niet zeker weten — twee uitstappen van € 90 in dezelfde week
             zijn niet uitgesloten — dus beslist ze niet en telt ze allebei mee. Ze
             zegt wel dat er iets verdachts staat, en hoe je het oplost. Zelfde houding
-            als bij het inlezen van een uitwisselbestand. */}
+            als bij het inlezen van een uitwisselbestand.
+
+            De marge staat er met zoveel woorden bij (ronde 54): "rond dezelfde datum"
+            alleen laat je raden of drie weken verschil ook meetelt. */}
         {overzicht.mogelijkeDubbels > 0 && (
           <p className="statusregel" style={{ margin: 0 }} data-dubbels>
-            {t('Let op: {n} gedeelde kost(en) vallen op dezelfde dag en op hetzelfde bedrag samen met een losse boeking. Staat dezelfde uitgave hier twee keer, dan is dit bedrag te hoog. Koppel zo’n boeking aan het dossier in het invoervenster, dan telt ze maar één keer.', {
+            {t('Let op: {n} gedeelde kost(en) komen op hetzelfde bedrag uit als een losse boeking van rond dezelfde datum (hoogstens {dagen} dagen ernaast). Staat dezelfde uitgave hier twee keer, dan is dit bedrag te hoog. Koppel zo’n boeking aan het dossier in het invoervenster, dan telt ze maar één keer.', {
               n: overzicht.mogelijkeDubbels,
+              dagen: DUBBEL_SPELING_DAGEN,
             })}
           </p>
         )}

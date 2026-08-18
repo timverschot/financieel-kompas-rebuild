@@ -3099,3 +3099,45 @@ a {
     display: none !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Het pijltje op een klikbare badge (ronde 54)
+   ---------------------------------------------------------------------------
+
+   `.badge-knop` hield bewust exact het uiterlijk van een gewone `.badge` — het is
+   geen tweede knopsoort. Maar dat betekende ook dat er op een aanraakscherm NIETS
+   was dat haar van een gewone badge onderscheidde: `cursor: pointer` en de
+   focusring bestaan daar allebei niet. Wie "gedeeld" zag staan, kon niet weten dat
+   er een dossier achter zat.
+
+   Dezelfde oplossing als bij een klikbaar kengetal (ronde 51) en een klikbare
+   lijstrij (ronde 48): het teken `›`. Alleen kleiner en met wat lucht ervoor, want
+   een badge is maar een paar letters breed — een chevron op volle grootte zou de
+   badge bijna verdubbelen.
+
+   NIET absoluut geplaatst, anders dan bij `.stat-knop`: een badge is zo smal dat
+   een pijltje in de hoek bovenop de tekst zou vallen. Hij hoort gewoon achter het
+   woord, en de badge mag daarvoor een paar pixels breder worden. */
+.badge-pijl {
+  margin-left: 3px;
+  opacity: 0.75;
+  transition: transform var(--overgang);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .badge-knop:hover .badge-pijl {
+    transform: translateX(1px);
+  }
+}
+
+.badge-knop:focus-visible .badge-pijl {
+  transform: translateX(1px);
+}
+
+/* Op papier betekent "hier kan je op tikken" niets — zelfde regel als bij
+   `.rij-chevron`. De badge zelf blijft wél staan: die draagt informatie. */
+@media print {
+  .badge-pijl {
+    display: none !important;
+  }
+}

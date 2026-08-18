@@ -4,6 +4,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { KindkostenSectie } from './KindkostenSectie'
 import type { Dossier, GedeeldeKost, Kind, Transactie } from '../data/schema'
 import { formatEuro } from '../utils/format'
+import { DUBBEL_SPELING_DAGEN } from '../utils/kindkosten'
 
 // Ronde 53. Dit cijfer kan in een gesprek met de andere ouder terechtkomen, dus de
 // tests bewaken vooral de GRENS: wat het scherm wél en niet meetelt, en welke rij
@@ -179,6 +180,19 @@ describe('KindkostenSectie — wat de app niet zeker weet', () => {
       gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'] })],
     })
     expect(document.querySelector('[data-dubbels]')?.textContent).toMatch(/dit bedrag te hoog/)
+  })
+
+  it('waarschuwt ook wanneer de bank een paar dagen later boekte, en noemt die marge', () => {
+    // Ronde 54. De kost staat op 4 mei, de bank boekte op 6 mei. Dat is de gewone
+    // vorm van deze fout, en die viel voordien buiten de waarschuwing.
+    toon({
+      transacties: [tx({ id: 'a', datum: '2026-05-06', bedrag: -9000, persoonIds: ['emma'] })],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'], datum: '2026-05-04' })],
+    })
+    const melding = document.querySelector('[data-dubbels]')?.textContent ?? ''
+    expect(melding).toMatch(/dit bedrag te hoog/)
+    // Zonder het getal laat "rond dezelfde datum" je raden of drie weken ook meetelt.
+    expect(melding).toContain(String(DUBBEL_SPELING_DAGEN))
   })
 
   it('zwijgt daarover wanneer de kost aan die boeking gekoppeld is', () => {

@@ -89,6 +89,7 @@ import {
   verwijderCategorie,
   verwijderGedeeldeKost,
   verwijderAflossing,
+  herstelDossierDocument,
   verwijderDossierDocument,
   verwijderGarantie,
   verwijderKind,
@@ -1261,9 +1262,45 @@ export function App() {
 
   async function dossierDocumentVerwijderen(id: string) {
     const oud = dossierdocumenten.find((d) => d.id === id)
-    await verwijderDossierDocument(id)
+    // Wijst een dossier dit document aan als de grondslag van zijn verdeling, dan
+    // gaat die aanwijzing mee — anders bleef het dossier verwijzen naar iets dat
+    // niet meer bestaat. Ongedaan maken zet allebei terug; dat is één undo, want
+    // het was ook één handeling.
+    const grondslagVan = dossiers.find((d) => d.grondslagDocumentId === id)
+    await verwijderDossierDocument(id, grondslagVan?.id)
     await herlaad()
-    if (oud) toonUndo(t('Document verwijderd'), () => bewaarDossierDocument(oud))
+    if (oud) {
+      toonUndo(
+        grondslagVan
+          ? t('Document verwijderd. Het stond in dit dossier als grondslag van de verdeling; die aanduiding is mee weg.')
+          : t('Document verwijderd'),
+        async () => {
+          // NIET het hele oude dossier terugschrijven. Tussen het verwijderen en het
+          // ongedaan maken zitten tot acht seconden, en in die tijd kan je op ditzelfde
+          // scherm een kaart aan- of uitzetten, of kan er een wijziging van je gsm
+          // binnenkomen via de synchronisatie. Het logboek werkt met "de laatste
+          // schrijver wint", dus een oude foto terugzetten zou zo'n wijziging stil
+          // wissen — bijvoorbeeld een verdeelsleutel die van 65 naar 50 terugspringt,
+          // en dat cijfer komt later in een afrekening terecht. Daarom halen we het
+          // dossier op zoals het NU is en zetten we er alleen dat ene veld weer op.
+          //
+          // Eerst LEZEN, dan pas schrijven, en het lezen mag mislukken: gaat dat mis,
+          // dan komt het document nog altijd terug. Andersom (eerst het document
+          // terugzetten en dan pas lezen) zou een mislukte lezing je met een half
+          // hersteld dossier achterlaten, zonder melding.
+          let terug: Dossier | undefined
+          if (grondslagVan) {
+            try {
+              const nu = (await laadDossiers()).geldig.find((d) => d.id === grondslagVan.id)
+              if (nu) terug = { ...nu, grondslagDocumentId: grondslagVan.grondslagDocumentId }
+            } catch {
+              // Stil: het document terugzetten is belangrijker dan de verwijzing.
+            }
+          }
+          await herstelDossierDocument(oud, terug)
+        },
+      )
+    }
   }
 
   // Onthoud een gescande streepjescode (barcode -> product). Stil bijwerken; geen

@@ -261,9 +261,13 @@ export function DossierSectie({
   // Alleen de documenten uit de kluis van DIT dossier komen in aanmerking: een
   // attest dat aan een lening of een garantie hangt, legt geen verdeling vast.
   const dossierDocumenten = dossier ? documentenVan(documenten, { soort: 'dossier', id: dossier.id }) : []
-  // Een aangeduid document dat intussen verwijderd is, telt niet meer mee. Dat is
-  // geen fout maar het huis-patroon: een dode verwijzing wordt bij het TONEN
-  // opgevangen, niet bij het verwijderen opgeruimd.
+  // Een aangeduid document dat intussen verwijderd is, telt niet meer mee.
+  //
+  // Sinds ronde 54 ruimt het verwijderen zelf die verwijzing op, dus in de gewone
+  // gang van zaken kan dit niet meer gebeuren. Deze opvang blijft toch staan, en
+  // dat is geen dubbel werk: een ánder toestel kan een document geschrapt hebben
+  // met een oudere versie van de app, en dat komt hier binnen via het logboek.
+  // Data die van elders komt, wordt bij het TONEN gecontroleerd — nooit vertrouwd.
   const grondslagBestaat = dossierDocumenten.some((d) => d.id === dossier?.grondslagDocumentId)
 
   async function zetGrondslag(id: string) {

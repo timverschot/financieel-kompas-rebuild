@@ -2,6 +2,16 @@ import type { Dossier, GedeeldeKost, Gezinslid, Transactie } from '../data/schem
 import { categorieBedragen } from './transactie'
 import { effectiefAandeel } from './dossier'
 import { uitgavenPerPersoon, type PersoonLabels, type TeVerdelenPost } from './persoon'
+import { dagenTussen } from './datum'
+
+/**
+ * Hoeveel dagen mag een gedeelde kost naast een losse boeking liggen voordat de app
+ * ze niet langer als hetzelfde beschouwt? Zie de uitleg bij `mogelijkeDubbels`.
+ *
+ * Het scherm noemt dit getal in zijn waarschuwing, dus het staat hier één keer en
+ * reist mee — anders zou de tekst kunnen gaan liegen wanneer de marge wijzigt.
+ */
+export const DUBBEL_SPELING_DAGEN = 3
 
 // Wat kost elk gezinslid mij per jaar? (ronde 53)
 //
@@ -83,7 +93,7 @@ export type Kindkosten = {
    * gedeelde kost voor de afrekening. Dan staat ze hier twee keer — één keer voor
    * € 90 en één keer voor jouw € 54 — en niets verraadt dat.
    *
-   * De app KAN dat niet zeker weten (twee uitstappen van € 90 op dezelfde dag zijn
+   * De app KAN dat niet zeker weten (twee uitstappen van € 90 in dezelfde week zijn
    * niet uitgesloten), dus ze beslist niet: ze telt hoeveel paren er verdacht zijn
    * en zegt het. Zelfde houding als bij het inlezen van een uitwisselbestand, waar
    * een vermoedelijk duplicaat wél getoond maar niet voorgevinkt wordt.
@@ -133,6 +143,9 @@ export function kindkostenVanJaar(invoer: KindkostenInvoer): Kindkosten {
   const perDossier = new Map(dossiers.map((d) => [d.id, d]))
 
   const uitDossiers: TeVerdelenPost[] = []
+  // De kosten die in dit jaar ECHT meetellen en die jij betaalde: alleen die kunnen
+  // dezelfde uitgave zijn als een losse boeking. Zie verderop bij `mogelijkeDubbels`.
+  const dubbelKandidaten: GedeeldeKost[] = []
   let aantalDossierkosten = 0
   // Per boeking: hoeveel van haar bedrag al door een gedeelde kost gedekt is.
   //
@@ -165,15 +178,24 @@ export function kindkostenVanJaar(invoer: KindkostenInvoer): Kindkosten {
     if (aandeel <= 0) continue
     aantalDossierkosten += 1
     uitDossiers.push({ bedrag: aandeel, persoonIds: kost.kindIds })
+    // Kan DEZE kost dezelfde uitgave zijn als een van je eigen boekingen? Alleen als
+    // ze hier ook echt meetelt (dus na alle `continue`'s hierboven) én als JIJ ze
+    // betaald hebt. Een kost die de andere ouder betaalde, staat per definitie niet
+    // op jouw rekeninguittreksel — die kan nooit dezelfde uitgave zijn, en in een
+    // dossier is dat ruwweg de helft van alle kosten. Zonder deze voorwaarde
+    // waarschuwde het scherm over uitgaven waar niets mis mee was.
+    if (!kost.transactieId && kost.betaaldDoor === 'jij') dubbelKandidaten.push(kost)
   }
 
   const uitBoekingen: TeVerdelenPost[] = []
   const overgeslagenIds = new Set<string>()
   let aantalBoekingen = 0
   let aantalOvergeslagen = 0
-  // De bedragen van de boekingen die dit jaar meetelden, om verdachte duplicaten te
-  // kunnen herkennen: 'JJJJ-MM-DD|centen'.
-  const losseBoekingen = new Map<string, number>()
+  // De boekingen die dit jaar meetelden, om verdachte duplicaten te herkennen.
+  // Per bedrag de datums waarop zo'n boeking staat; `op` gaat op waar zodra dat
+  // exemplaar aan een gedeelde kost gekoppeld is, zodat één boeking niet twee
+  // kosten kan "verklaren".
+  const losseBoekingen = new Map<number, { datum: string; gebruikt: boolean }[]>()
 
   for (const tx of transacties) {
     if (!inJaar(tx.datum, jaar)) continue
@@ -193,22 +215,56 @@ export function kindkostenVanJaar(invoer: KindkostenInvoer): Kindkosten {
       continue
     }
     aantalBoekingen += 1
-    const sleutel = `${tx.datum}|${bedrag}`
-    losseBoekingen.set(sleutel, (losseBoekingen.get(sleutel) ?? 0) + 1)
+    const rij = losseBoekingen.get(bedrag)
+    if (rij) rij.push({ datum: tx.datum, gebruikt: false })
+    else losseBoekingen.set(bedrag, [{ datum: tx.datum, gebruikt: false }])
     uitBoekingen.push({ bedrag, persoonIds: tx.persoonIds })
   }
 
-  // Een gedeelde kost zonder koppeling die exact samenvalt met een losse boeking van
-  // dezelfde dag: waarschijnlijk dezelfde uitgave, twee keer ingevoerd.
+  // Een gedeelde kost zonder koppeling die op hetzelfde bedrag uitkomt als een losse
+  // boeking van ONGEVEER dezelfde dag: waarschijnlijk dezelfde uitgave, twee keer
+  // ingevoerd.
+  //
+  // WAAROM "ONGEVEER" (ronde 54). Dit keek eerst op de dag exact. Dat is precies de
+  // vergelijking die in de praktijk mislukt: op je rekeninguittreksel staat de dag
+  // waarop de bank verwerkte, en dat is bij een kaartbetaling of een domiciliëring
+  // vaak één tot drie dagen ná de aankoop. Op de gedeelde kost zet je de datum van
+  // de rekening of van het schoolreisje zelf. Één dag verschil, en de waarschuwing
+  // bleef weg terwijl het bedrag wél te hoog stond — de dubbeltelling die het scherm
+  // moest opvangen, glipte er dan langs op de manier waarop ze meestal ontstaat.
+  //
+  // Een weekend past er ruim in: koop je op vrijdag, dan boekt de bank op maandag.
+  // Ruimer maken heeft een prijs — twee losse boodschappen van hetzelfde bedrag in
+  // dezelfde maand zouden elkaar dan gaan "verklaren" en een waarschuwing opleveren
+  // waar niets aan de hand is. Een waarschuwing die te vaak vals is, wordt genegeerd,
+  // en dan werkt ze ook niet meer wanneer het wél klopt.
   let mogelijkeDubbels = 0
-  for (const kost of kosten) {
-    if (kost.ingetrokken || kost.transactieId || !inJaar(kost.datum, jaar)) continue
-    if (!perDossier.has(kost.dossierId)) continue
-    const sleutel = `${kost.datum}|${kost.bedrag}`
-    const aantal = losseBoekingen.get(sleutel) ?? 0
-    if (aantal > 0) {
+  // ALLES OP DATUM, kosten én boekingen. Anders hangt de uitkomst af van de volgorde
+  // waarin de gegevens toevallig uit de database komen — die is op id gesorteerd, niet
+  // op datum — en dan kunnen twee toestellen met exact dezelfde boekingen een
+  // verschillend aantal tonen. Een cijfer dat van je toestel afhangt, is geen cijfer.
+  for (const rij of losseBoekingen.values()) {
+    rij.sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0))
+  }
+  const kandidaten = dubbelKandidaten
+    .slice()
+    .sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0))
+  for (const kost of kandidaten) {
+    const rij = losseBoekingen.get(kost.bedrag)
+    if (!rij) continue
+    // De VROEGSTE vrije boeking binnen de marge, niet de dichtstbijzijnde. Dat klinkt
+    // slordiger en is het niet: met beide lijsten op datum gesorteerd laat de vroegste
+    // nemen altijd de meeste paren over voor wie erna komt.
+    //
+    // Het tegenvoorbeeld dat "dichtstbijzijnde" onderuit haalt: boekingen op 2 en 5
+    // mei, kosten op 5 en 8 mei. Dichtstbijzijnde geeft de kost van 5 mei de boeking
+    // van 5 mei, en dan vindt de kost van 8 mei alleen nog die van 2 mei — zes dagen,
+    // te ver. Uitkomst: één paar. Vroegste-eerst geeft 5↔2 en 8↔5, allebei precies
+    // drie dagen: twee paren, en dat is wat er werkelijk staat.
+    const vrij = rij.findIndex((b) => !b.gebruikt && dagenTussen(b.datum, kost.datum) <= DUBBEL_SPELING_DAGEN)
+    if (vrij >= 0) {
       mogelijkeDubbels += 1
-      losseBoekingen.set(sleutel, aantal - 1)
+      rij[vrij].gebruikt = true
     }
   }
 

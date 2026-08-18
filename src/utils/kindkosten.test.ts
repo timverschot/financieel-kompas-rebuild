@@ -273,12 +273,114 @@ describe('kindkostenVanJaar — wat de app NIET zeker weet', () => {
     expect(regelVan(o, 'emma')?.bedrag).toBe(5400)
   })
 
-  it('meldt niets bij een ander bedrag of een andere dag', () => {
+  it('meldt niets bij een ander bedrag', () => {
     const o = overzicht({
-      transacties: [tx({ id: 'a', datum: '2026-05-05', bedrag: -9000, persoonIds: ['emma'] })],
+      transacties: [tx({ id: 'a', datum: '2026-05-04', bedrag: -9500, persoonIds: ['emma'] })],
       dossiers: [dossier],
       gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'] })],
     })
+    expect(o.mogelijkeDubbels).toBe(0)
+  })
+
+  it('meldt ook een paar dat een paar dagen uit elkaar ligt (ronde 54)', () => {
+    // Dit is de gewóne vorm van de fout: de bank boekt je kaartbetaling van vrijdag
+    // pas op maandag, terwijl je de gedeelde kost op de datum van de rekening zet.
+    // Keek de app op de dag exact, dan bleef de waarschuwing precies dan weg.
+    for (const datum of ['2026-05-01', '2026-05-03', '2026-05-05', '2026-05-07']) {
+      const o = overzicht({
+        transacties: [tx({ id: 'a', datum, bedrag: -9000, persoonIds: ['emma'] })],
+        dossiers: [dossier],
+        gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'] })],
+      })
+      expect({ datum, dubbels: o.mogelijkeDubbels }).toEqual({ datum, dubbels: 1 })
+    }
+  })
+
+  it('houdt op bij vier dagen verschil', () => {
+    // De marge is drie dagen. Ruimer maken laat twee losse boodschappen van hetzelfde
+    // bedrag in dezelfde week elkaar "verklaren", en een waarschuwing die vaak vals
+    // is, wordt genegeerd.
+    for (const datum of ['2026-04-30', '2026-05-08']) {
+      const o = overzicht({
+        transacties: [tx({ id: 'a', datum, bedrag: -9000, persoonIds: ['emma'] })],
+        dossiers: [dossier],
+        gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'] })],
+      })
+      expect({ datum, dubbels: o.mogelijkeDubbels }).toEqual({ datum, dubbels: 0 })
+    }
+  })
+
+  it('laat één boeking maar één kost verklaren', () => {
+    // Twee gedeelde kosten van € 90 in dezelfde week en maar één losse boeking van
+    // € 90: dan is er hoogstens één dubbel. Zou de boeking twee keer meetellen, dan
+    // stond er een waarschuwing over een uitgave die maar één keer bestaat.
+    const o = overzicht({
+      transacties: [tx({ id: 'a', datum: '2026-05-04', bedrag: -9000, persoonIds: ['emma'] })],
+      dossiers: [dossier],
+      gedeeldeKosten: [
+        kost({ id: 'k1', kindIds: ['emma'], datum: '2026-05-04' }),
+        kost({ id: 'k2', kindIds: ['emma'], datum: '2026-05-05' }),
+      ],
+    })
+    expect(o.mogelijkeDubbels).toBe(1)
+  })
+
+  it('verdeelt de boekingen zo dat er zoveel mogelijk paren overblijven', () => {
+    // Boekingen op 2 en 5 mei, kosten op 5 en 8 mei. Pakt de kost van 5 mei de
+    // boeking van dezelfde dag, dan vindt de kost van 8 mei alleen die van 2 mei
+    // nog — zes dagen, te ver — en telt de app één paar. Er staan er twee, allebei
+    // precies drie dagen uit elkaar.
+    const o = overzicht({
+      transacties: [
+        tx({ id: 'a', datum: '2026-05-02', bedrag: -9000, persoonIds: ['emma'] }),
+        tx({ id: 'b', datum: '2026-05-05', bedrag: -9000, persoonIds: ['emma'] }),
+      ],
+      dossiers: [dossier],
+      gedeeldeKosten: [
+        kost({ id: 'k1', kindIds: ['emma'], datum: '2026-05-05' }),
+        kost({ id: 'k2', kindIds: ['emma'], datum: '2026-05-08' }),
+      ],
+    })
+    expect(o.mogelijkeDubbels).toBe(2)
+  })
+
+  it('geeft hetzelfde getal, welke volgorde de boekingen ook binnenkomen', () => {
+    // De gegevens komen uit de database op id gesorteerd, niet op datum. Zou de
+    // uitkomst daarvan afhangen, dan zag je op je gsm een ander aantal dan op je
+    // laptop, met exact dezelfde boekingen.
+    const a = tx({ id: 'a', datum: '2026-05-02', bedrag: -9000, persoonIds: ['emma'] })
+    const b = tx({ id: 'b', datum: '2026-05-08', bedrag: -9000, persoonIds: ['emma'] })
+    const kosten = [
+      kost({ id: 'k1', kindIds: ['emma'], datum: '2026-05-05' }),
+      kost({ id: 'k2', kindIds: ['emma'], datum: '2026-05-11' }),
+    ]
+    const heen = overzicht({ transacties: [a, b], dossiers: [dossier], gedeeldeKosten: kosten })
+    const terug = overzicht({ transacties: [b, a], dossiers: [dossier], gedeeldeKosten: kosten })
+    expect(heen.mogelijkeDubbels).toBe(terug.mogelijkeDubbels)
+    expect(heen.mogelijkeDubbels).toBe(2)
+  })
+
+  it('zwijgt over een kost die de andere ouder betaalde', () => {
+    // Die staat per definitie niet op jouw rekeninguittreksel, dus ze kan onmogelijk
+    // dezelfde uitgave zijn als een van jouw boekingen. In een dossier is dat ruwweg
+    // de helft van alle kosten; zonder deze regel waarschuwde het scherm over
+    // uitgaven waar niets mis mee was.
+    const o = overzicht({
+      transacties: [tx({ id: 'a', datum: '2026-05-04', bedrag: -9000 })],
+      dossiers: [dossier],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'], betaaldDoor: 'partner' })],
+    })
+    expect(o.mogelijkeDubbels).toBe(0)
+  })
+
+  it('zwijgt over een kost die met 0 % niets bijdraagt', () => {
+    // Die telt hier voor niets mee, dus ze kan dit bedrag ook niet te hoog maken.
+    const o = overzicht({
+      transacties: [tx({ id: 'a', datum: '2026-05-04', bedrag: -9000, persoonIds: ['emma'] })],
+      dossiers: [dossier],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'], aandeelJijOverride: 0 })],
+    })
+    expect(o.aantalDossierkosten).toBe(0)
     expect(o.mogelijkeDubbels).toBe(0)
   })
 })

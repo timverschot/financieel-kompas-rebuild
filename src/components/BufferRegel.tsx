@@ -1,5 +1,6 @@
 import type { Overboeking, Rekening, TerugkerendePost, Transactie, Waardering } from '../data/schema'
 import { bepaalBuffer } from '../utils/buffer'
+import { opmaakLocale } from '../utils/opmaaktaal'
 import { formatEuro } from '../utils/format'
 import { useT } from '../i18n'
 
@@ -44,7 +45,7 @@ export function BufferRegel({
     >
       <span className={krap ? 'badge badge-laat' : 'badge badge-info'}>
         {/* Exact één maand krijgt het enkelvoud; "1 maanden buffer" zou fout staan. */}
-        {maanden === 1 ? t('1 maand buffer') : t('{n} maanden buffer', { n: maanden.toLocaleString('nl-BE') })}
+        {maanden === 1 ? t('1 maand buffer') : t('{n} maanden buffer', { n: maanden.toLocaleString(opmaakLocale()) })}
       </span>
       <span className="rij-meta" style={{ flex: 1, minWidth: 220 }}>
         {t(

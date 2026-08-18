@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
+import { zetOpmaaktaal } from './opmaaktaal'
 import {
   dagKort,
   huidigeMaand,
@@ -13,6 +14,7 @@ import {
   laatsteDagVanPeriode,
   jaarVan,
   maandenVanJaar,
+  dagenTussen,
 } from './datum'
 
 describe('datum', () => {
@@ -139,5 +141,86 @@ describe('maandenVanJaar', () => {
     expect(maanden[0]).toBe('2026-01')
     expect(maanden[8]).toBe('2026-09')
     expect(maanden[11]).toBe('2026-12')
+  })
+})
+
+describe('de datumopmaak volgt de taal (ronde 54)', () => {
+  // Een Franstalige gebruiker kreeg een Frans scherm met "juli 2026" erin. De
+  // opgeslagen sleutels JJJJ-MM-DD en JJJJ-MM mogen NIET meeveranderen: die zijn de
+  // ruggengraat van de hele app.
+  afterEach(() => zetOpmaaktaal('nl'))
+
+  it('vertaalt de maandnaam mee', () => {
+    expect(maandJaarLabel('2026-07-04')).toBe('juli 2026')
+    zetOpmaaktaal('fr')
+    expect(maandJaarLabel('2026-07-04')).toBe('juillet 2026')
+    zetOpmaaktaal('en')
+    expect(maandJaarLabel('2026-07-04')).toBe('July 2026')
+  })
+
+  it('vertaalt ook de korte vormen', () => {
+    zetOpmaaktaal('fr')
+    expect(maandVoluit('2026-07')).toBe('juillet')
+    expect(dagKort('2026-07-04')).toContain('juil')
+  })
+
+  it('laat de opgeslagen sleutels met rust', () => {
+    // Deze twee bouwen hun tekst met padStart, niet met Intl. Zouden ze meevertalen,
+    // dan zou een Franstalig toestel boekingen wegschrijven die een Nederlandstalig
+    // toestel niet meer terugvindt.
+    zetOpmaaktaal('fr')
+    const nu = new Date(2026, 6, 4)
+    expect(vandaag(nu)).toBe('2026-07-04')
+    expect(huidigeMaand(nu)).toBe('2026-07')
+    expect(periodeLabel('2026')).toBe('2026')
+  })
+})
+
+describe('dagenTussen', () => {
+  it('telt de dagen tussen twee datums, in beide richtingen even veel', () => {
+    expect(dagenTussen('2026-05-04', '2026-05-07')).toBe(3)
+    expect(dagenTussen('2026-05-07', '2026-05-04')).toBe(3)
+    expect(dagenTussen('2026-05-04', '2026-05-04')).toBe(0)
+  })
+
+  it('rekent over een maandgrens en over een schrikkeldag heen', () => {
+    expect(dagenTussen('2026-04-30', '2026-05-02')).toBe(2)
+    expect(dagenTussen('2024-02-28', '2024-03-01')).toBe(2)
+  })
+
+  it('houdt hele dagen over de omschakeling van zomer- naar wintertijd', () => {
+    // In België gaat de klok in de nacht van 24 op 25 oktober 2026 een uur terug.
+    // Zou dit met de lokale tijd rekenen, dan gaf dit 1,0417 in plaats van 1 — en
+    // dan glipt een paar er net langs een marge van drie dagen.
+    expect(dagenTussen('2026-10-24', '2026-10-25')).toBe(1)
+    expect(dagenTussen('2026-03-28', '2026-03-29')).toBe(1)
+  })
+
+  it('legt ook een MAANDwaarde buiten elke marge', () => {
+    // '2026-07' wordt door `Date.parse` stilzwijgend als 1 juli gelezen. Zonder de
+    // vormcontrole zou een budgetperiode zich dus als een dag gedragen en op drie
+    // dagen van een boeking kunnen "liggen". In deze app is 'JJJJ-MM' overal in
+    // gebruik, dus dat is geen bedacht geval.
+    expect(dagenTussen('2026-07', '2026-07-04')).toBe(Number.POSITIVE_INFINITY)
+    expect(dagenTussen('2026', '2026-01-02')).toBe(Number.POSITIVE_INFINITY)
+    expect(dagenTussen('2026-07-04T10:00:00', '2026-07-04')).toBe(Number.POSITIVE_INFINITY)
+  })
+
+  it('weigert een dag die niet op de kalender staat', () => {
+    // `Date.parse` weigert '2026-13-45', maar '2026-02-30' NIET: dat rolt stil door
+    // naar 2 maart. Zonder terugrekening zou een boeking van 5 maart op drie dagen
+    // van "30 februari" liggen en als vermoedelijk duplicaat gelden.
+    expect(dagenTussen('2026-02-30', '2026-03-05')).toBe(Number.POSITIVE_INFINITY)
+    expect(dagenTussen('2026-04-31', '2026-05-01')).toBe(Number.POSITIVE_INFINITY)
+    expect(dagenTussen('2026-13-45', '2026-05-01')).toBe(Number.POSITIVE_INFINITY)
+    // 2024 is wél een schrikkeljaar, 2026 niet.
+    expect(dagenTussen('2024-02-29', '2024-03-01')).toBe(1)
+    expect(dagenTussen('2026-02-29', '2026-03-01')).toBe(Number.POSITIVE_INFINITY)
+  })
+
+  it('legt een onleesbare datum buiten elke marge', () => {
+    // Niet 0 en niet NaN: `Infinity` zegt "dit past bij niets", en dat is wat een
+    // vergelijking met een marge ervan moet maken.
+    expect(dagenTussen('geen datum', '2026-05-04')).toBe(Number.POSITIVE_INFINITY)
   })
 })

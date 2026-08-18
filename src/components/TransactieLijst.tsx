@@ -338,18 +338,30 @@ export function TransactieLijst({
    * Geval 1 lossen we op; 2 en 3 niet — daar bestaat geen lijst die precies dat
    * getal oplevert. Dan hoort er geen knop te staan, en dat is wat deze functie
    * afdwingt: ze rekent het doel gewoon uit en vergelijkt.
+   *
+   * `anders` is waarom er geen knop staat: het doel bestaat, maar het zou een ánder
+   * bedrag tonen. Dat verschil is voor jou onzichtbaar — de tegel ziet er hetzelfde
+   * uit als de tegel ernaast die wél klikt — dus zegt het scherm het eronder
+   * met zoveel woorden (ronde 54). Staat het filter al op deze richting, dan is
+   * `anders` onwaar: dat er dan geen knop is, is vanzelfsprekend en hoeft geen zin.
    */
-  function tegelDoorklik(kant: 'in' | 'uit', bedrag: number): { naar: () => void; naam: string } | undefined {
-    if (filter.richting === kant) return undefined
+  function tegelDoorklik(
+    kant: 'in' | 'uit',
+    bedrag: number,
+  ): { knop?: { naar: () => void; naam: string }; anders: boolean } {
+    if (filter.richting === kant) return { anders: false }
     const doel: TxFilter = { ...filter, richting: kant, ...(venster ? { van: grens } : {}) }
     const na = kengetallenVan(filterTransacties(transacties, doel))
-    if ((kant === 'in' ? na.inkomsten : na.uitgaven) !== bedrag) return undefined
+    if ((kant === 'in' ? na.inkomsten : na.uitgaven) !== bedrag) return { anders: true }
     return {
-      naar: () => setFilter(doel),
-      naam:
-        kant === 'in'
-          ? t('Inkomsten {bedrag} — toon alleen deze boekingen', { bedrag: formatEuro(bedrag) })
-          : t('Uitgaven {bedrag} — toon alleen deze boekingen', { bedrag: formatEuro(bedrag) }),
+      anders: false,
+      knop: {
+        naar: () => setFilter(doel),
+        naam:
+          kant === 'in'
+            ? t('Inkomsten {bedrag} — toon alleen deze boekingen', { bedrag: formatEuro(bedrag) })
+            : t('Uitgaven {bedrag} — toon alleen deze boekingen', { bedrag: formatEuro(bedrag) }),
+      },
     }
   }
 
@@ -372,6 +384,8 @@ export function TransactieLijst({
 
   // De kengetallen gaan over precies de rijen die je ziet — zie kengetallenVan().
   const cijfers = kengetallenVan(zichtbaar)
+  const tegelIn = tegelDoorklik('in', cijfers.inkomsten)
+  const tegelUit = tegelDoorklik('uit', cijfers.uitgaven)
 
   // Welke van de aangevinkte rijen staan nog in beeld? Filter je iets weg terwijl
   // er een selectie openstaat, dan mag een actie nooit rijen raken die je niet meer
@@ -426,12 +440,12 @@ export function TransactieLijst({
 
             `tegelDoorklik` beslist per tegel of dat waar is; is het dat niet, dan komt
             er géén knop. Zie de uitleg daar. */}
-        <Kengetal label={t('Inkomsten')} doorklik={tegelDoorklik('in', cijfers.inkomsten)}>
+        <Kengetal label={t('Inkomsten')} doorklik={tegelIn.knop}>
           <span className="bedrag-groot" style={{ color: 'var(--positive-ink)' }}>
             {formatEuro(cijfers.inkomsten)}
           </span>
         </Kengetal>
-        <Kengetal label={t('Uitgaven')} doorklik={tegelDoorklik('uit', cijfers.uitgaven)}>
+        <Kengetal label={t('Uitgaven')} doorklik={tegelUit.knop}>
           <span className="bedrag-groot" style={{ color: 'var(--negative-ink)' }}>
             {formatEuro(cijfers.uitgaven)}
           </span>
@@ -443,6 +457,21 @@ export function TransactieLijst({
           <span className="bedrag-groot">{formatEuro(cijfers.saldo)}</span>
         </Kengetal>
       </div>
+
+      {/* Waarom de ene tegel wél klikt en de andere niet (ronde 54). Zonder deze zin
+          zag je twee tegels die er identiek uitzien, waarvan er één reageert — dat
+          leest als een app die soms hapert. Hij staat er alleen wanneer een tegel
+          een bestemming HAD kunnen hebben maar het bedrag daar anders zou staan;
+          niet wanneer het filter al op die richting staat, want dan is het duidelijk. */}
+      {(tegelIn.anders || tegelUit.anders) && (
+        <p className="rij-meta" data-tegelmelding style={{ margin: 0 }}>
+          {tegelIn.anders && tegelUit.anders
+            ? t('De tegels Inkomsten en Uitgaven klikken nu niet door: met de filters die aanstaan bestaat er geen lijst die precies dat bedrag oplevert. Dat gebeurt bij een gesplitst kassaticket, waar één boeking zowel geld in als geld uit bevat.')
+            : t('De tegel {naam} klikt nu niet door: met de filters die aanstaan bestaat er geen lijst die precies dat bedrag oplevert. Dat gebeurt bij een gesplitst kassaticket, waar één boeking zowel geld in als geld uit bevat.', {
+                naam: tegelIn.anders ? t('Inkomsten') : t('Uitgaven'),
+              })}
+        </p>
+      )}
 
       <Kaart>
         {/* De maandschakelaar én de filterknop op ÉÉN regel (ronde 32). Ze stonden
@@ -1010,6 +1039,9 @@ function TransactieRij({
                 onClick={() => onGaNaarDossier(dossierId)}
               >
                 {t('gedeeld')}
+                <span className="badge-pijl" aria-hidden="true">
+                  ›
+                </span>
               </button>
             ) : (
               <span className="badge badge-info badge-mini" title={t('Gedeeld in een dossier')}>
@@ -1031,6 +1063,9 @@ function TransactieRij({
                 onClick={() => onGaNaarGarantie(garantieId)}
               >
                 {t('garantie')}
+                <span className="badge-pijl" aria-hidden="true">
+                  ›
+                </span>
               </button>
             ) : (
               <span className="badge badge-info badge-mini" title={t('Er hangt een garantiebewijs aan deze boeking')}>
