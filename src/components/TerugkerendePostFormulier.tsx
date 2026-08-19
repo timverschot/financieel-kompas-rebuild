@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Categorie, Frequentie, Rekening, TerugkerendePost } from '../data/schema'
+import { CONTRACTSOORTEN, opzegregelVan, type Contractsoort } from '../data/opzegregels'
 import { FREQUENTIES } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { rekeningLabel } from '../utils/rekening'
@@ -90,6 +91,18 @@ export function TerugkerendePostFormulier({
   // huur of een gestopt abonnement is precies het normale geval.
   const [eindMaand, setEindMaand] = useState('')
   const [opbouwen, setOpbouwen] = useState(BEGIN.opbouwen)
+  // --- Het CONTRACT achter deze vaste last (ronde 57) --------------------------
+  // Leeg = deze post is gewoon een vaste last en gedraagt zich precies zoals
+  // vroeger. Vul je een soort én een datum in, dan rekent de app uit wanneer je
+  // uiterlijk moet beslissen; zie utils/contract.ts.
+  const [contractsoort, setContractsoort] = useState<Contractsoort | ''>('')
+  const [verlengtOp, setVerlengtOp] = useState('')
+  const [verlengtElke, setVerlengtElke] = useState('')
+  const [eigenTermijn, setEigenTermijn] = useState('')
+  // Maanden als vertrekpunt, want zo staat een opzegtermijn in een Belgisch contract
+  // ("drie maanden opzeg"). Dagen blijven mogelijk voor wie een contract heeft dat het
+  // wél in dagen zegt. Zie de uitleg bij `opzegtermijnMaanden` in data/schema.ts.
+  const [eigenEenheid, setEigenEenheid] = useState<'maand' | 'dag'>('maand')
   // Welke van de twee opslaanknoppen ingedrukt werd. Een klik komt altijd vóór de
   // verzending van het formulier, dus dit staat juist op het moment dat we het lezen.
   const blijfOpen = useRef(false)
@@ -105,6 +118,11 @@ export function TerugkerendePostFormulier({
     setStartMaand(huidigeMaand())
     setEindMaand('')
     setOpbouwen(BEGIN.opbouwen)
+    setContractsoort('')
+    setVerlengtOp('')
+    setVerlengtElke('')
+    setEigenTermijn('')
+    setEigenEenheid('maand')
   }, [])
 
   useEffect(() => {
@@ -119,6 +137,21 @@ export function TerugkerendePostFormulier({
       setStartMaand(bewerken.startMaand ?? huidigeMaand())
       setEindMaand(bewerken.eindMaand ?? '')
       setOpbouwen(bewerken.opbouwen ?? false)
+      setContractsoort(bewerken.contractsoort ?? '')
+      setVerlengtOp(bewerken.verlengtOp ?? '')
+      setVerlengtElke(bewerken.verlengtElkeMaanden ? String(bewerken.verlengtElkeMaanden) : '')
+      // Maanden winnen, net als in de rekenkern: een oud logboekbestand kan nog het
+      // dagenveld dragen, en dan hoort er één voorspelbaar antwoord te zijn.
+      if (bewerken.opzegtermijnMaanden !== undefined) {
+        setEigenTermijn(String(bewerken.opzegtermijnMaanden))
+        setEigenEenheid('maand')
+      } else if (bewerken.opzegtermijnDagen !== undefined) {
+        setEigenTermijn(String(bewerken.opzegtermijnDagen))
+        setEigenEenheid('dag')
+      } else {
+        setEigenTermijn('')
+        setEigenEenheid('maand')
+      }
     } else {
       leegmaken()
     }
@@ -126,6 +159,35 @@ export function TerugkerendePostFormulier({
 
   const bedragCenten = invoerNaarCenten(bedrag)
   const dagGetal = Number.parseInt(dag, 10)
+
+  // --- Het contract ------------------------------------------------------------
+  const regel = opzegregelVan(contractsoort || undefined)
+  // Met een regel keuren en niet met `parseInt`: die leest "12abc" als 12 en "3,5" als
+  // 3. Bij een getal dat een OPZEGDATUM bepaalt, is stil iets anders begrijpen dan wat
+  // er staat precies het soort fout dat je een contract kost.
+  const heelGetal = (tekst: string): number | null => {
+    const kaal = tekst.trim()
+    return /^\d{1,3}$/.test(kaal) ? Number(kaal) : null
+  }
+  const verlengtElkeIngevuld = verlengtElke.trim() !== ''
+  const verlengtElkeGetal = (() => {
+    const n = heelGetal(verlengtElke)
+    return n !== null && n > 0 && n <= 120 ? n : 0
+  })()
+  const eigenTermijnIngevuld = eigenTermijn.trim() !== ''
+  const TERMIJN_MAX = eigenEenheid === 'maand' ? 24 : 365
+  const eigenTermijnGetal = (() => {
+    const n = heelGetal(eigenTermijn)
+    return n !== null && n <= TERMIJN_MAX ? n : null
+  })()
+  // Een ingevuld veld dat de app niet kan lezen, mag ze NIET stil laten vallen (fout
+  // uit de nakijkronde van ronde 57). Vroeger sloeg ze dan gewoon niets op en rekende
+  // ze verder met de wettelijke termijn, zonder dat er iets op het scherm veranderde.
+  const termijnGeldig = !contractsoort || !eigenTermijnIngevuld || eigenTermijnGetal !== null
+  const periodeGeldig = !contractsoort || !verlengtElkeIngevuld || verlengtElkeGetal > 0
+  // Stond er contractinfo op de post die je aan het bewerken bent, en zet je de soort
+  // terug op "geen"? Dan gaat die info weg bij het opslaan.
+  const contractsoortWordtGewist = Boolean(bewerken?.contractsoort) && contractsoort === ''
   const periodiek = frequentie !== 'maand'
   // Een lege eindmaand betekent "loopt door" en is dus geldig. Is ze ingevuld, dan
   // moet ze een echte maand zijn én ná de eerste betaling liggen — een post die
@@ -142,7 +204,9 @@ export function TerugkerendePostFormulier({
     dagGetal >= 1 &&
     dagGetal <= 28 &&
     (!periodiek || /^\d{4}-\d{2}$/.test(startMaand)) &&
-    eindeGeldig
+    eindeGeldig &&
+    termijnGeldig &&
+    periodeGeldig
 
   // Wat het per maand zou kosten als je ervoor opzijzet. Meteen tonen, want dat is
   // het bedrag waar je in je maandplan rekening mee houdt — niet het volle bedrag.
@@ -165,6 +229,18 @@ export function TerugkerendePostFormulier({
       ...(periodiek ? { frequentie, startMaand } : {}),
       ...(eindeGeldig && eindMaand ? { eindMaand } : {}),
       ...(periodiek && opbouwen ? { opbouwen: true } : {}),
+      // Het contract. Zonder soort wordt er niets weggeschreven, en dan blijft dit
+      // record byte voor byte wat het vóór ronde 57 was.
+      ...(contractsoort ? { contractsoort } : {}),
+      ...(contractsoort && verlengtOp ? { verlengtOp } : {}),
+      ...(contractsoort && verlengtElkeGetal ? { verlengtElkeMaanden: verlengtElkeGetal } : {}),
+      // Hoogstens één van de twee wordt weggeschreven, zodat er nooit twee eigen
+      // termijnen naast elkaar staan die iets anders zeggen.
+      ...(contractsoort && eigenTermijnGetal !== null
+        ? eigenEenheid === 'maand'
+          ? { opzegtermijnMaanden: eigenTermijnGetal }
+          : { opzegtermijnDagen: eigenTermijnGetal }
+        : {}),
     })
     // Bij een NIEUWE vaste post blijft 'bewerken' null, dus de useEffect hierboven
     // draait niet. Daarom hier leegmaken, anders blijft alles ingevuld staan en
@@ -270,6 +346,139 @@ export function TerugkerendePostFormulier({
         </div>
       )}
 
+      {/* --- Het contract achter deze vaste last (ronde 57) ---------------------
+
+          Waarom dit hier staat en niet in een eigen module: het gaat om drie feiten
+          over een afspraak die al in de app staat. En waarom het ONDERAAN staat en
+          niet bovenaan: negen van de tien vaste lasten zijn geen contract dat je in
+          de gaten moet houden, en dan mag dit blok niet in de weg zitten.
+
+          ⚠ De app WAARSCHUWT, ze BEVEELT NIET AAN. Ze zegt wanneer je moet beslissen;
+          ze zegt nooit bij wie je beter zou zitten. Een leverancier voorstellen tegen
+          vergoeding is gereglementeerde bemiddeling. */}
+      <div className="veldgroep">
+        <label className="label-caps" htmlFor={`${veldId}-contractsoort`}>
+          {t('Zit hier een contract achter? (optioneel)')}
+        </label>
+        <select
+          id={`${veldId}-contractsoort`}
+          value={contractsoort}
+          onChange={(e) => setContractsoort(e.target.value as Contractsoort | '')}
+        >
+          <option value="">{t('Nee, gewoon een vaste last')}</option>
+          {CONTRACTSOORTEN.map((soortNaam) => (
+            <option key={soortNaam} value={soortNaam}>
+              {t(opzegregelVan(soortNaam)?.naam ?? soortNaam)}
+            </option>
+          ))}
+        </select>
+        {/* Zonder soort schrijft het formulier de contractvelden niet weg, en omdat
+            opslaan het hele record vervangt, verdwijnt de verlengdatum dan echt. Het
+            blok van het scherm zien verdwijnen is niet hetzelfde als weten dat je een
+            datum wist — dus staat het er nu bij. */}
+        {contractsoortWordtGewist && (
+          <span className="rij-meta">
+            {t('Sla je zo op, dan wis je de verlengdatum en de opzegtermijn van deze post.')}
+          </span>
+        )}
+      </div>
+
+      {contractsoort && (
+        <>
+          <div className="veldrij">
+            <div className="veldgroep">
+              <label className="label-caps" htmlFor={`${veldId}-verlengt-op`}>
+                {t('Verlengt of loopt af op')}
+              </label>
+              <input
+                id={`${veldId}-verlengt-op`}
+                type="date"
+                value={verlengtOp}
+                onChange={(e) => setVerlengtOp(e.target.value)}
+              />
+            </div>
+            <div className="veldgroep">
+              <label className="label-caps" htmlFor={`${veldId}-verlengt-elke`}>
+                {t('Om de hoeveel maanden? (optioneel)')}
+              </label>
+              <input
+                id={`${veldId}-verlengt-elke`}
+                inputMode="numeric"
+                placeholder="12"
+                value={verlengtElke}
+                onChange={(e) => setVerlengtElke(e.target.value)}
+              />
+            </div>
+          </div>
+          <span className={periodeGeldig ? 'rij-meta' : 'foutregel'} style={{ marginTop: -6 }}>
+            {!periodeGeldig
+              ? t('Vul hier een heel aantal maanden in, van 1 tot 120 — of laat het leeg.')
+              : verlengtElkeGetal
+                ? t('De app schuift deze datum vanzelf op zodra ze voorbij is.')
+                : t('Zonder dit getal schuift de app de datum NIET zelf op: ze vraagt je de nieuwe. Ze kan niet weten voor hoe lang er verlengd is.')}
+          </span>
+
+          <div className="veldgroep">
+            <label className="label-caps" htmlFor={`${veldId}-opzegtermijn`}>
+              {t('Je eigen opzegtermijn (optioneel)')}
+            </label>
+            {/* ⚠ MET EEN EENHEID, en dat is de reparatie uit de tweede nakijkronde van
+                ronde 57. Eerst kon je hier alleen DAGEN invullen, terwijl een Belgisch
+                contract bijna altijd maanden noemt. Wie "3 maanden opzeg" als 90 dagen
+                invulde, kreeg 17 oktober te zien waar 15 oktober de echte laatste dag
+                was — twee dagen te laat, en dus precies de rekenfout die deze ronde in
+                haar eigen kern net weggewerkt had. */}
+            <div className="termijnrij">
+              <input
+                id={`${veldId}-opzegtermijn`}
+                inputMode="numeric"
+                value={eigenTermijn}
+                onChange={(e) => setEigenTermijn(e.target.value)}
+                aria-describedby={`${veldId}-opzeg-uitleg`}
+                aria-invalid={!termijnGeldig}
+              />
+              <select
+                aria-label={t('Eenheid van de opzegtermijn')}
+                value={eigenEenheid}
+                onChange={(e) => setEigenEenheid(e.target.value as 'maand' | 'dag')}
+              >
+                <option value="maand">{t('maanden')}</option>
+                <option value="dag">{t('dagen')}</option>
+              </select>
+            </div>
+            <span className={termijnGeldig ? 'rij-meta' : 'foutregel'} id={`${veldId}-opzeg-uitleg`}>
+              {!termijnGeldig
+                ? eigenEenheid === 'maand'
+                  ? t('Vul een heel aantal maanden in, van 0 tot 24. Zolang dit niet klopt, kan je niet opslaan.')
+                  : t('Vul een heel aantal dagen in, van 0 tot 365. Zolang dit niet klopt, kan je niet opslaan.')
+                : eigenTermijnGetal !== null
+                  ? eigenEenheid === 'maand'
+                    ? t('De app rekent met jouw {n} maand(en).', { n: eigenTermijnGetal })
+                    : t('De app rekent met jouw {n} dagen.', { n: eigenTermijnGetal })
+                  : regel?.standaardTermijnMaanden != null
+                    ? t('De app rekent met de wettelijke {n} maand(en). Staat er in jouw overeenkomst een kortere termijn, vul die dan hier in.', { n: regel.standaardTermijnMaanden })
+                    : t('Zonder termijn toont de app alleen de datum en rekent ze niets uit.')}
+            </span>
+          </div>
+
+          {/* Wat de wet zegt, en wat de app daarover NIET weet, bewust op twee aparte
+              regels: aan elkaar geplakt las het voorbehoud als een voetnoot bij de
+              regel, terwijl het net het stuk is waar jouw contract kan afwijken. */}
+          {regel && regel.uitleg && (
+            <>
+              <p className="rij-meta" style={{ margin: 0 }}>
+                {t(regel.uitleg)}
+              </p>
+              {regel.voorbehoud && (
+                <p className="rij-meta" style={{ margin: 0 }}>
+                  <strong>{t('Let op:')}</strong> {t(regel.voorbehoud)}
+                </p>
+              )}
+            </>
+          )}
+        </>
+      )}
+
       <div className="veldgroep">
         <label className="label-caps" htmlFor={`${veldId}-vaste-rekening`}>
           {t('Vaste rekening')}
@@ -349,10 +558,17 @@ export function TerugkerendePostFormulier({
           </button>
         )}
       </div>
-      {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt. */}
+      {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt.
+          Sinds ronde 57 kan het contractblok de knop óók tegenhouden, en dan mag hier
+          niet "geef een naam en een bedrag" staan terwijl die allebei ingevuld zijn:
+          dan zoek je je blind. "Niet kan gebruiken" en niet "niet kan lezen": zet je
+          een veld van 90 dagen om naar maanden, dan LEEST de app die 90 prima — ze
+          valt alleen buiten het bereik van 0 tot 24. Het veld zelf zegt welk bereik. */}
       {!geldig && (
         <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
-          {t('Geef een naam en een geldig bedrag om op te slaan.')}
+          {!termijnGeldig || !periodeGeldig
+            ? t('In het contractblok staat een getal dat de app niet kan gebruiken. Pas het aan om op te slaan.')
+            : t('Geef een naam en een geldig bedrag om op te slaan.')}
         </p>
       )}
     </form>

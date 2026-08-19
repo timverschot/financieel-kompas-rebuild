@@ -10,6 +10,7 @@ import {
   vandaag,
   dagJaar,
   periodeSoort,
+  verschuifDatumMaanden,
   periodeLabel,
   laatsteDagVanPeriode,
   jaarVan,
@@ -258,5 +259,59 @@ describe('dagenVerschil', () => {
     expect(dagenTussen('2026-05-04', '2026-05-01')).toBe(3)
     expect(dagenTussen('2026-05-01', '2026-05-04')).toBe(3)
     expect(dagenTussen('2026-02-30', '2026-03-05')).toBe(Number.POSITIVE_INFINITY)
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('verschuifDatumMaanden', () => {
+  it('telt hele kalendermaanden op en af', () => {
+    expect(verschuifDatumMaanden('2026-04-15', -1)).toBe('2026-03-15')
+    expect(verschuifDatumMaanden('2026-04-15', -2)).toBe('2026-02-15')
+    expect(verschuifDatumMaanden('2026-04-15', 24)).toBe('2028-04-15')
+  })
+
+  it('is NIET hetzelfde als dertig dagen, en dat is de hele reden dat ze bestaat', () => {
+    // Naast elkaar gezet, met de dagen-som er echt bij gerekend in plaats van
+    // overgeschreven. Twee gevallen waarin dagen rekenen TE LAAT uitkomt:
+    const dagen = (iso: string, n: number) =>
+      new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10)
+    // Eén maand vóór 15 april is 15 maart; dertig dagen terug is 16 maart.
+    expect(verschuifDatumMaanden('2026-04-15', -1)).toBe('2026-03-15')
+    expect(dagen('2026-04-15', -30)).toBe('2026-03-16')
+    // Twee maanden vóór 15 september is 15 juli; zestig dagen terug is 17 juli.
+    expect(verschuifDatumMaanden('2026-09-15', -2)).toBe('2026-07-15')
+    expect(dagen('2026-09-15', -60)).toBe('2026-07-17')
+  })
+
+  it('klemt de dag op de laatste dag van de doelmaand', () => {
+    expect(verschuifDatumMaanden('2025-01-31', 1)).toBe('2025-02-28')
+    expect(verschuifDatumMaanden('2024-01-31', 1)).toBe('2024-02-29')
+    expect(verschuifDatumMaanden('2026-03-31', -1)).toBe('2026-02-28')
+  })
+
+  it('schrijft het jaartal altijd met vier cijfers', () => {
+    // Zonder aanvulling wordt dit '901-06-15', en in een tekstvergelijking is dat
+    // GROTER dan '2026-…' omdat '9' > '2'. Zo gold een datum uit het jaar 900 als
+    // toekomst, en klapte de planpagina om.
+    expect(verschuifDatumMaanden('0900-06-15', 12)).toBe('0901-06-15')
+    expect(verschuifDatumMaanden('0099-12-31', 1)).toBe('0100-01-31')
+  })
+
+  it('kent de schrikkeljaren ook bij een jaartal onder de honderd', () => {
+    // `Date.UTC(jaar, …)` beeldt de jaren 0 tot 99 af op 1900 tot 1999, en 1904 en 4
+    // zijn allebei schrikkeljaren — maar 1900 en 0 niet allebei: het jaar 0 wél,
+    // 1900 niet. Vandaar `setUTCFullYear` in de bron.
+    expect(verschuifDatumMaanden('0000-01-31', 1)).toBe('0000-02-29')
+    expect(verschuifDatumMaanden('0100-01-31', 1)).toBe('0100-02-28')
+  })
+
+  it('geeft null bij een datum die geen echte kalenderdag is', () => {
+    expect(verschuifDatumMaanden('2026-02-30', 1)).toBeNull()
+    expect(verschuifDatumMaanden('2026-04', 1)).toBeNull()
+    expect(verschuifDatumMaanden('', 1)).toBeNull()
+  })
+
+  it('geeft null in plaats van een jaartal vóór het jaar 0', () => {
+    expect(verschuifDatumMaanden('0001-01-15', -24)).toBeNull()
   })
 })

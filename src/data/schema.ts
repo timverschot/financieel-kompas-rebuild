@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CONTRACTSOORTEN } from './opzegregels'
 
 // De schemas zijn de 'poortwachters' van je data. Elk stuk data dat de database
 // in of uit gaat, wordt hiertegen gecontroleerd. De TypeScript-types worden
@@ -347,6 +348,45 @@ export const TerugkerendePostSchema = z.object({
   // dragen? Puur informatief: de app houdt geen echte pot bij, ze rekent uit
   // hoeveel je per maand opzij moet leggen en toont dat in je plan.
   opbouwen: z.boolean().optional(),
+  // --- Het CONTRACT achter deze vaste last (ronde 57) --------------------------
+  //
+  // Alle drie optioneel, dus elke bestaande post blijft geldig en gedraagt zich
+  // exact zoals voorheen: geen migratie. Een vaste last zonder deze velden is
+  // gewoon een vaste last; met deze velden weet de app ook wanneer je moet
+  // beslissen of je hem nog een periode wil laten lopen.
+  //
+  // Waarom hier en niet in een eigen tabel: het gaat om drie feiten over een
+  // afspraak die al in de app staat. Een eigen record zou een migratie, een eigen
+  // logboekgebeurtenis en een tweede plek vragen waar je hetzelfde abonnement
+  // onderhoudt — voor drie velden.
+  contractsoort: z.enum(CONTRACTSOORTEN).optional(),
+  // De eerstvolgende dag waarop dit contract verlengt of afloopt ('JJJJ-MM-DD').
+  verlengtOp: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn').optional(),
+  // Om de hoeveel maanden het contract verlengt. Ontbreekt dit, dan rolt de app de
+  // datum NIET zelf door: ze zegt dat de datum voorbij is en vraagt de nieuwe.
+  // Bewust zo — of een verlopen contract voor één, twee of drie jaar verlengd is,
+  // kan de app niet weten, en een verzonnen datum is erger dan geen datum.
+  verlengtElkeMaanden: z.number().int().positive().optional(),
+  // Jouw eigen opzegtermijn. Ontbreekt die, dan gebruikt de app de wettelijke
+  // termijn van de soort (zie data/opzegregels.ts) — als vertrekpunt, want wat in
+  // JOUW overeenkomst staat kan korter zijn, en soms geldt de wettelijke regel
+  // helemaal niet (een hospitalisatieverzekering, een abonnement in zijn eerste
+  // periode).
+  //
+  // ⚠ TWEE VELDEN, EN DAT IS GEEN SLORDIGHEID (nakijkronde ronde 57). Een Belgisch
+  // contract noemt bijna altijd MAANDEN ("drie maanden opzeg"), en drie maanden is
+  // niet 90 dagen: drie kalendermaanden terug vanaf 15 januari is 15 oktober, terwijl
+  // 90 dagen terug op 17 oktober uitkomt — twee dagen TE LAAT. Zou de app alleen
+  // dagen aanbieden, dan legde ze precies de rekenfout bij de gebruiker die ze in
+  // haar eigen rekenkern net weggewerkt heeft. Wie in dagen denkt (een contract dat
+  // "30 dagen" zegt), gebruikt het andere veld.
+  //
+  // Staan ze allebei ingevuld, dan wint MAANDEN. In de app kan dat niet gebeuren —
+  // het formulier schrijft er altijd hoogstens één weg — maar een ouder toestel of
+  // een oud logboekbestand kan nog het dagenveld dragen, en dan hoort er één
+  // voorspelbaar antwoord te zijn.
+  opzegtermijnDagen: z.number().int().min(0).max(365).optional(),
+  opzegtermijnMaanden: z.number().int().min(0).max(24).optional(),
 })
 export type TerugkerendePost = z.infer<typeof TerugkerendePostSchema>
 

@@ -1,25 +1,20 @@
 // Rekenlaag voor het garantiebeheer. Zuivere, deterministische functies: de
 // "vandaag"-datum wordt altijd meegegeven. Datums zijn ISO-strings (JJJJ-MM-DD).
-import { dagenVerschil, isDagstempel } from './datum'
+import { dagenVerschil, isDagstempel, verschuifDatumMaanden } from './datum'
 
 // De standaard Belgische wettelijke garantie: 2 jaar = 24 maanden.
 export const STANDAARD_GARANTIE_MAANDEN = 24
 
-function ymd(iso: string): { j: number; m: number; d: number } {
-  const [j, m, d] = iso.split('-').map(Number)
-  return { j, m, d }
-}
-
 // De vervaldatum: aankoopdatum + aantal maanden. De dag wordt geklemd op de
 // laatste dag van de doelmaand (bv. 31 jan + 1 maand = 28/29 feb).
+//
+// Sinds ronde 57 rekent deze functie niet meer zelf: dezelfde som stond toen op twee
+// plaatsen, en die in `utils/datum.ts` vult het jaartal netjes aan tot vier tekens —
+// wat hier ontbrak. Wie het antwoord `null` moet kunnen zien, gebruikt
+// `verschuifDatumMaanden` rechtstreeks; hier geeft een onleesbare datum een lege
+// tekst, en `garantieStatus` vangt dat hierboven al af.
 export function vervaldatum(aankoopISO: string, maanden: number): string {
-  const { j, m, d } = ymd(aankoopISO)
-  const totaal = j * 12 + (m - 1) + maanden
-  const nj = Math.floor(totaal / 12)
-  const nm = (totaal % 12) + 1 // 1-gebaseerd
-  const laatsteDag = new Date(Date.UTC(nj, nm, 0)).getUTCDate()
-  const nd = Math.min(d, laatsteDag)
-  return `${nj}-${String(nm).padStart(2, '0')}-${String(nd).padStart(2, '0')}`
+  return verschuifDatumMaanden(aankoopISO, maanden) ?? ''
 }
 
 // Hele dagen tussen twee datums (tot − van). Negatief als 'tot' vóór 'van' ligt,

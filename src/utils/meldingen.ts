@@ -9,6 +9,7 @@ import type {
 } from '../data/schema'
 import { uitgavenInMaand } from './budget'
 import { garantieStatus } from './garantie'
+import { tebeslissenContracten } from './contract'
 import { dagenVerschil } from './datum'
 import { maandVooruitblik } from './vooruitblik'
 import { alsBijdrageInvoer, bouwOpbouw, laatsteAanpassing } from './onderhoudsbijdrage'
@@ -36,6 +37,15 @@ export const BUDGETDREMPELS = [70, 75, 80, 85, 90, 95, 100]
 const GARANTIE_DRINGEND_DAGEN = 14
 
 /**
+ * Een contractbeslissing binnen zoveel dagen wordt dringend.
+ *
+ * Een week, want opzeggen moet meestal schriftelijk: dan moet er deze week iets de
+ * deur uit. Ruimer nemen zou de melding weken lang rood laten staan, en een
+ * waarschuwing die altijd rood is, wordt geen waarschuwing meer.
+ */
+const CONTRACT_DRINGEND_DAGEN = 7
+
+/**
  * Hoe lang een indexatie van een onderhoudsbijdrage in het belletje blijft staan.
  *
  * De indexatie gebeurt in België van rechtswege op de verjaardag van de regeling,
@@ -47,7 +57,14 @@ const BIJDRAGE_VENSTER_DAGEN = 62
 /** Naar welke pagina een melding je brengt. Beide zijn geldige `Pagina`-waarden. */
 export type MeldingPagina = 'budget' | 'dossiers' | 'maandafsluiting'
 
-export type MeldingSoort = 'budget-over' | 'budget-bijna' | 'garantie' | 'vastelast' | 'bijdrage' | 'maand'
+export type MeldingSoort =
+  | 'budget-over'
+  | 'budget-bijna'
+  | 'garantie'
+  | 'vastelast'
+  | 'bijdrage'
+  | 'maand'
+  | 'contract'
 
 export type Melding = {
   /** Stabiele sleutel voor React, en handig om in een test te herkennen. */
@@ -77,6 +94,17 @@ export type Melding = {
    * ronde 21 heeft weggewerkt.
    */
   actie?: { soort: 'boek-vastelast'; postId: string }
+  /**
+   * Volgorde BINNEN dezelfde soort, wanneer alfabetisch op id verkeerd zou zijn.
+   *
+   * Waarvoor (nakijkronde ronde 57): de contractmeldingen worden hierboven al op
+   * dringendheid gesorteerd — eerst wat de app niet meer kan uitrekenen, dan wat het
+   * snelst beslist moet worden. De eindsortering gooide die volgorde weg door op id
+   * te vergelijken, en dan stond "Netflix over 29 dagen" boven "Energie vandaag".
+   * Ontbreekt dit getal, dan blijft alles zoals het was: 0 voor iedereen, en dan
+   * beslist het id.
+   */
+  rang?: number
 }
 
 export type MeldingenInvoer = {
@@ -113,10 +141,14 @@ export type MeldingenInvoer = {
 const SOORT_ORDE: Record<MeldingSoort, number> = {
   'budget-over': 0,
   'maand': 1,
-  'vastelast': 2,
-  'bijdrage': 3,
-  'garantie': 4,
-  'budget-bijna': 5,
+  // Een contract dat verlengt, staat hoog: die datum komt maar één keer per jaar
+  // langs, en wie hem mist, betaalt een jaar aan de nieuwe prijs. Een vaste last die
+  // nog niet ingeboekt is, kan morgen ook nog.
+  'contract': 2,
+  'vastelast': 3,
+  'bijdrage': 4,
+  'garantie': 5,
+  'budget-bijna': 6,
 }
 
 
@@ -202,6 +234,62 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
         actie: { soort: 'boek-vastelast', postId: post.id },
       })
     }
+  }
+
+  // --- Contracten waarover je moet beslissen (ronde 57) ---
+  //
+  // Drie gevallen, en ze vragen iets ANDERS van je:
+  //  - 'beslissen': de datum komt eraan. Beslis of je nog een periode meegaat.
+  //  - 'verlopen': de datum is voorbij en de app kan hem niet doorrollen, want ze
+  //    weet niet voor hoe lang er verlengd is. Ze vraagt jou om de nieuwe datum in
+  //    plaats van er een te verzinnen.
+  //  - 'onleesbaar': er staat een datum die geen echte kalenderdag is. Vroeger zweeg
+  //    de app daarover volledig, en dan lijkt het contract er gewoon niet te zijn.
+  //
+  // ⚠ EN DE ZIN VERSCHILT NAARGELANG WAAR DE TERMIJN VANDAAN KOMT (tweede nakijkronde
+  // van ronde 57). Rekent de app met de WETTELIJKE termijn, dan is dat een vertrekpunt
+  // en geen waarheid over jouw overeenkomst: een hospitalisatieverzekering vraagt drie
+  // maanden, een abonnement in zijn eerste periode volgt gewoon zijn contract. Een
+  // kale "nog 12 dagen" zou dan een zekerheid beweren die de app niet heeft.
+  //
+  // ⚠ Deze meldingen zeggen NOOIT bij welke leverancier je beter zou zitten. Zie
+  // data/opzegregels.ts: waarschuwen mag, aanbevelen is gereglementeerde bemiddeling.
+  const tebeslissen = tebeslissenContracten(invoer.terugkerendePosten, invoer.vandaagISO)
+  for (const [rang, { post, stand }] of tebeslissen.entries()) {
+    if (stand.fase === 'onleesbaar' || stand.fase === 'verlopen') {
+      uit.push({
+        id: `contract-${stand.fase}-${post.id}`,
+        soort: 'contract',
+        sleutel:
+          stand.fase === 'onleesbaar'
+            ? 'De verlengdatum van {naam} is onleesbaar. Zet ze opnieuw, anders kan de app niets uitrekenen.'
+            : 'De verlengdatum van {naam} is voorbij. Zet de nieuwe datum, anders kan de app niets meer uitrekenen.',
+        params: { naam: post.omschrijving },
+        pagina: 'budget',
+        dringend: false,
+        rang,
+      })
+      continue
+    }
+    const dagen = stand.dagenTotBeslissing ?? 0
+    uit.push({
+      id: `contract-${post.id}`,
+      soort: 'contract',
+      sleutel:
+        dagen === 0
+          ? stand.termijnUitWet
+            ? 'Vandaag is volgens de wettelijke termijn de laatste dag om {naam} op te zeggen. Kijk je eigen contract na.'
+            : 'Vandaag is de laatste dag om {naam} op te zeggen vóór de verlenging.'
+          : stand.termijnUitWet
+            ? 'Nog {n} dag(en) om te beslissen over {naam}, gerekend met de wettelijke termijn. Kijk je eigen contract na.'
+            : 'Nog {n} dag(en) om te beslissen over {naam} vóór het verlengt.',
+      params: { naam: post.omschrijving, n: dagen },
+      pagina: 'budget',
+      // Dringend vanaf een week: dan moet er deze week een brief of een mail de deur
+      // uit, en dat is een andere orde dan "denk er eens aan".
+      dringend: dagen <= CONTRACT_DRINGEND_DAGEN,
+      rang,
+    })
   }
 
   // --- Onderhoudsbijdragen die geïndexeerd zijn ---
@@ -331,6 +419,7 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
   return uit.sort((a, b) => {
     if (a.dringend !== b.dringend) return a.dringend ? -1 : 1
     if (SOORT_ORDE[a.soort] !== SOORT_ORDE[b.soort]) return SOORT_ORDE[a.soort] - SOORT_ORDE[b.soort]
+    if ((a.rang ?? 0) !== (b.rang ?? 0)) return (a.rang ?? 0) - (b.rang ?? 0)
     return a.id.localeCompare(b.id)
   })
 }

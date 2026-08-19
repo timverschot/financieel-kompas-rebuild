@@ -168,6 +168,47 @@ export function dagenVerschil(vanISO: string, totISO: string): number | null {
 }
 
 /**
+ * Een datum een aantal KALENDERMAANDEN verschuiven (ronde 57).
+ *
+ * Positief telt op, negatief telt af. De dag wordt geklemd op de laatste dag van de
+ * doelmaand: 31 januari + 1 maand = 28 februari, en 31 maart − 1 maand = 28 februari.
+ *
+ * ⚠ WAAROM DIT NIET MET DAGEN MAG (nakijkronde ronde 57). De wet zegt "één maand" of
+ * "twee maanden", niet "dertig dagen", en die twee lopen uiteen — soms naar de veilige
+ * kant, soms naar de gevaarlijke. Twee gemeten voorbeelden:
+ *
+ *   15 april  − 1 maand  = 15 maart     · − 30 dagen = 16 maart  → één dag TE LAAT
+ *   15 sept.  − 2 maanden = 15 juli     · − 60 dagen = 17 juli   → twee dagen TE LAAT
+ *
+ * (Andersom bestaat ook: 15 april − 60 dagen geeft 14 februari, één dag te vroeg. Dat
+ * is de onschuldige kant.) Bij een opzegdatum is TE LAAT precies het gevaar dat de
+ * hele contractmodule moet wegnemen, dus rekent ze in maanden.
+ *
+ * Geeft `null` wanneer de invoer geen echte kalenderdag is.
+ */
+export function verschuifDatumMaanden(datumISO: string, maanden: number): string | null {
+  if (!isDagstempel(datumISO)) return null
+  const [jaar, maand, dag] = datumISO.split('-').map(Number)
+  const totaal = jaar * 12 + (maand - 1) + maanden
+  if (totaal < 0) return null
+  const nieuwJaar = Math.floor(totaal / 12)
+  const nieuwMaand = (totaal % 12) + 1
+  // Dag 0 van de VOLGENDE maand is de laatste dag van deze — zo hoeven we
+  // schrikkeljaren niet zelf te kennen. Met `setUTCFullYear` en niet met
+  // `Date.UTC(jaar, …)`: die laatste beeldt de jaren 0 tot 99 af op 1900 tot 1999, en
+  // dan zou februari van het jaar 0 (een schrikkeljaar) 28 dagen tellen.
+  const hulp = new Date(0)
+  hulp.setUTCFullYear(nieuwJaar, nieuwMaand, 0)
+  const laatsteDag = hulp.getUTCDate()
+  const nieuwDag = Math.min(dag, laatsteDag)
+  // `padStart` op het JAAR is geen overdaad: een jaartal onder de duizend zou anders
+  // een tekst van drie tekens opleveren, en die vergelijkt in een tekstvergelijking
+  // GROTER dan '2026-…' omdat '9' > '2'. Zo klapte de app in de nakijkronde van ronde
+  // 57 om op een contract met verlengdatum in het jaar 900.
+  return `${String(nieuwJaar).padStart(4, '0')}-${String(nieuwMaand).padStart(2, '0')}-${String(nieuwDag).padStart(2, '0')}`
+}
+
+/**
  * Is dit een ECHTE kalenderdag in de vorm 'JJJJ-MM-DD'? (ronde 55)
  *
  * Nodig omdat een rekensom een onmogelijke datum stil kan rechttrekken. Zo maakt

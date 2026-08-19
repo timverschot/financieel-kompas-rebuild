@@ -438,3 +438,128 @@ describe('bouwMeldingen — een maand die nog niet afgesloten is', () => {
     expect(bel([{ id: '2026-05', afgeslotenOp: '2026-06-08' }], '2026-07-01')).toHaveLength(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Contracten die verlengen (ronde 57)
+//
+// Deze meldingen gaan over een datum die één keer per jaar langskomt en die je een
+// jaar aan de nieuwe prijs kost als je hem mist. Ze staan daarom hoog in de lijst.
+//
+// ⚠ Ze zeggen NOOIT bij welke leverancier je beter zou zitten: waarschuwen mag,
+// aanbevelen is gereglementeerde bemiddeling. Zie data/opzegregels.ts.
+// ---------------------------------------------------------------------------
+describe('bouwMeldingen — contracten', () => {
+  const contract = (over: Partial<TerugkerendePost> = {}): TerugkerendePost => ({
+    id: 'p-energie',
+    omschrijving: 'Energie',
+    bedrag: -8000,
+    rekeningId: 'r1',
+    dag: 5,
+    contractsoort: 'energie',
+    ...over,
+  })
+
+  it('zwijgt zolang de beslisdatum ver weg ligt', () => {
+    const m = basis({ terugkerendePosten: [contract({ verlengtOp: '2027-06-01' })] })
+    expect(m.filter((x) => x.soort === 'contract')).toEqual([])
+  })
+
+  it('meldt het zodra de beslisdatum in zicht komt, met het aantal dagen erbij', () => {
+    // Energie: één KALENDERmaand opzegtermijn. Verlengt 2026-09-01 → beslissen vóór
+    // 2026-08-01. Op 2026-07-15 is dat 17 dagen weg. (Met de oude omrekening naar
+    // 30 dagen stond hier 2026-08-02 en dus 18 — één dag te laat gewaarschuwd.)
+    const m = basis({ terugkerendePosten: [contract({ verlengtOp: '2026-09-01' })] })
+    const c = m.find((x) => x.soort === 'contract')
+    expect(c?.params).toEqual({ naam: 'Energie', n: 17 })
+    expect(c?.dringend).toBe(false)
+    expect(c?.pagina).toBe('budget')
+  })
+
+  it('wordt dringend in de laatste week', () => {
+    // Verlengt 2026-08-20 → beslissen vóór 2026-07-20, dus 5 dagen weg.
+    const m = basis({ terugkerendePosten: [contract({ verlengtOp: '2026-08-20' })] })
+    expect(m.find((x) => x.soort === 'contract')?.dringend).toBe(true)
+  })
+
+  it('heeft een eigen zin voor de laatste dag', () => {
+    // Verlengt 2026-08-15 → beslissen vóór 2026-07-15, en dat is vandaag.
+    const m = basis({ terugkerendePosten: [contract({ verlengtOp: '2026-08-15' })] })
+    expect(m.find((x) => x.soort === 'contract')?.sleutel).toContain('laatste dag')
+  })
+
+  it('zegt erbij wanneer ze met de WETTELIJKE termijn rekent', () => {
+    // Tweede nakijkronde van ronde 57. "Nog 17 dagen" is een zekerheid die de app
+    // niet heeft: een hospitalisatieverzekering vraagt drie maanden en een abonnement
+    // in zijn eerste periode volgt gewoon zijn contract. Vult de gebruiker zelf een
+    // termijn in, dan is het wél zijn eigen getal en verdwijnt het voorbehoud.
+    const m = basis({ terugkerendePosten: [contract({ verlengtOp: '2026-09-01' })] })
+    expect(m.find((x) => x.soort === 'contract')?.sleutel).toContain('wettelijke termijn')
+    const eigen = basis({
+      terugkerendePosten: [contract({ verlengtOp: '2026-09-01', opzegtermijnMaanden: 1 })],
+    })
+    expect(eigen.find((x) => x.soort === 'contract')?.sleutel).not.toContain('wettelijke termijn')
+  })
+
+  it('zegt het wanneer de opgeslagen datum onleesbaar is', () => {
+    // 30 februari bestaat niet. Vroeger zweeg het belletje hier volledig, terwijl er
+    // wél contractgegevens opgeslagen waren.
+    const m = basis({ terugkerendePosten: [contract({ verlengtOp: '2026-02-30' })] })
+    const c = m.find((x) => x.soort === 'contract')
+    expect(c?.sleutel).toContain('onleesbaar')
+    expect(c?.dringend).toBe(false)
+  })
+
+  it('zet een onleesbare datum vóór een verlopen datum', () => {
+    // Allebei kan de app niets uitrekenen, maar bij een onleesbare datum weet ze niet
+    // eens wat er staat.
+    const kapot = contract({ id: 'kapot', omschrijving: 'Alarm', verlengtOp: '2026-02-30' })
+    const oud = contract({ id: 'oud', omschrijving: 'Internet', verlengtOp: '2024-01-01' })
+    const namen = (posten: TerugkerendePost[]) =>
+      basis({ terugkerendePosten: posten })
+        .filter((x) => x.soort === 'contract')
+        .map((x) => x.params?.naam)
+    expect(namen([oud, kapot])).toEqual(['Alarm', 'Internet'])
+    expect(namen([kapot, oud])).toEqual(['Alarm', 'Internet'])
+  })
+
+  it('vraagt de nieuwe datum wanneer de oude voorbij is en niet door te rollen valt', () => {
+    const m = basis({ terugkerendePosten: [contract({ verlengtOp: '2024-01-01' })] })
+    const c = m.find((x) => x.soort === 'contract')
+    expect(c?.sleutel).toContain('is voorbij')
+    // Niet dringend: er is niets te missen, er valt iets bij te werken.
+    expect(c?.dringend).toBe(false)
+  })
+
+  it('zwijgt over een vaste last zonder contractgegevens', () => {
+    const m = basis({ terugkerendePosten: [{ id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 1 }] })
+    expect(m.filter((x) => x.soort === 'contract')).toEqual([])
+  })
+
+  it('zet het dringendste contract bovenaan, ook al zegt het alfabet iets anders', () => {
+    // Uit de nakijkronde van ronde 57. De eindsortering vergeleek binnen dezelfde
+    // soort op id, en gooide zo de volgorde weg die op dringendheid gebouwd was:
+    // "Zwembad over 17 dagen" stond dan boven "Auto over 10 dagen".
+    const snel = contract({ id: 'zwembad', omschrijving: 'Zwembad', verlengtOp: '2026-08-25' })
+    const traag = contract({ id: 'auto', omschrijving: 'Auto', verlengtOp: '2026-09-01' })
+    const namen = (posten: TerugkerendePost[]) =>
+      basis({ terugkerendePosten: posten })
+        .filter((x) => x.soort === 'contract')
+        .map((x) => x.params?.naam)
+    expect(namen([snel, traag])).toEqual(['Zwembad', 'Auto'])
+    // En omgekeerd binnengekomen geeft het hetzelfde antwoord: Dexie levert op id.
+    expect(namen([traag, snel])).toEqual(['Zwembad', 'Auto'])
+  })
+
+  it('zet een contract vóór een vaste last die nog niet ingeboekt is', () => {
+    // Die vaste last kan morgen ook nog; de contractdatum komt één keer per jaar.
+    const m = basis({
+      terugkerendePosten: [contract({ verlengtOp: '2026-09-01' })],
+      transacties: [],
+    })
+    const soorten = m.map((x) => x.soort)
+    const c = soorten.indexOf('contract')
+    const v = soorten.indexOf('vastelast')
+    expect(c).toBeGreaterThanOrEqual(0)
+    if (v >= 0) expect(c).toBeLessThan(v)
+  })
+})

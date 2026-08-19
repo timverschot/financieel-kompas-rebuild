@@ -4,6 +4,7 @@ import { TerugkerendePostFormulier, frequentieNaam } from './TerugkerendePostFor
 import { formatEuro } from '../utils/format'
 import { dagJaar, maandJaarLabel, vandaag } from '../utils/datum'
 import { frequentieVan, isGestopt, maandbedrag, opzijPerMaand, valtInMaand, verschuifMaand, volgendeVervaldag } from '../utils/vastelast'
+import { contractstand, contractTeltNog, type Contractstand } from '../utils/contract'
 import { geboekteVasteLasten, vasteLastTransactieId } from '../utils/vooruitblik'
 import { Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
@@ -28,6 +29,7 @@ export function TerugkerendeSectie({
   onBoek,
   onOngedaan,
   soort = 'uitgave',
+  vandaagISO = vandaag(),
 }: {
   posten: TerugkerendePost[]
   rekeningen: Rekening[]
@@ -35,6 +37,15 @@ export function TerugkerendeSectie({
   transacties: Transactie[]
   maand: string
   maandLabel: string
+  /**
+   * Welke dag het vandaag is, als 'JJJJ-MM-DD'.
+   *
+   * Alleen de contractregel gebruikt hem: die gaat over de ECHTE dag van vandaag en
+   * niet over de maand die je op het scherm bekijkt. Als parameter en niet als
+   * `new Date()` binnenin, zodat een test hem kan vastzetten — precies zoals de
+   * rekenkernen het al overal doen. Zie `claude/Kompal_tijdafhankelijke-tests.md`.
+   */
+  vandaagISO?: string
   onOpslaan: (p: TerugkerendePost) => Promise<void> | void
   onVerwijderen: (id: string) => Promise<void> | void
   onBoek: (p: TerugkerendePost) => Promise<void> | void
@@ -102,8 +113,15 @@ export function TerugkerendeSectie({
             const gestopt = isGestopt(p, maand)
             const dezeMaand = valtInMaand(p, maand)
             const periodiek = frequentieVan(p) !== 'maand'
-            const volgende = periodiek && !gestopt ? volgendeVervaldag(p, vandaag()) : null
+            const volgende = periodiek && !gestopt ? volgendeVervaldag(p, vandaagISO) : null
             const opzij = gestopt ? 0 : opzijPerMaand(p)
+            // Het contract achter deze post (ronde 57). Zonder contractgegevens geeft
+            // dit `fase: 'geen'` en verandert er niets aan de rij. `contractTeltNog`
+            // is dezelfde regel die het belletje gebruikt: zonder haar las je in
+            // december nog "beslissen vóór 1 januari" over een post die eind december
+            // sowieso stopt, terwijl het belletje er terecht over zweeg.
+            const contract = contractstand(p, vandaagISO)
+            const contractTelt = contract.fase !== 'geen' && contractTeltNog(p, contract, vandaagISO)
             return (
               // Bovenaan uitlijnen: bij een niet-maandelijkse post staat er een
               // tweede regel tekst, en met verticaal centreren zweefde de badge
@@ -128,6 +146,36 @@ export function TerugkerendeSectie({
                       {opzij > 0
                         ? t(' · {bedrag} per maand opzij', { bedrag: formatEuro(opzij) })
                         : t(' · {bedrag} per maand omgerekend', { bedrag: formatEuro(-maandbedrag(p)) })}
+                    </span>
+                  )}
+                  {/* Het contract (ronde 57). Bewust op de rij zelf en niet achter
+                      een knop: dit is een datum waarop je moet handelen, en wat je
+                      moet opzoeken, doe je niet. */}
+                  {!gestopt && contractTelt && (
+                    <span className="rij-meta">
+                      {contract.fase === 'onleesbaar'
+                        ? // Er STAAT een datum, maar het is er geen. Vroeger zweeg de
+                          // app hier volledig, en dan lijkt het contractblok gewoon
+                          // leeg terwijl er wel degelijk iets opgeslagen is.
+                          t('⚠ De verlengdatum is onleesbaar. Zet ze opnieuw.')
+                        : contract.fase === 'verlopen'
+                          ? // Mét de oude datum erbij: dan weet je wat er bijgewerkt
+                            // moet worden zonder het formulier te openen.
+                            t('⚠ De verlengdatum ({datum}) is voorbij. Zet de nieuwe.', {
+                              datum: dagJaar(contract.verlengtOp!),
+                            })
+                          : contract.fase === 'zonder-termijn'
+                            ? t('verlengt {datum} · geen opzegtermijn ingevuld', { datum: dagJaar(contract.verlengtOp!) })
+                            : contract.fase === 'verlengd'
+                              ? // ⚠ Bewust GEEN "opzeggen kan nog" meer (tweede
+                                // nakijkronde van ronde 57). Dat klopt voor energie en
+                                // voor een stilzwijgend verlengd dienstencontract, maar
+                                // niet voor een verzekering in haar eerste jaar of een
+                                // abonnement in zijn eerste periode — daar zit je wél
+                                // vast tot de volgende vervaldag. De app stelt nu vast
+                                // wat ze weet en belooft niets wat ze niet kan waarmaken.
+                                termijnZin(t, contract, 'voorbij')
+                              : termijnZin(t, contract, 'beslissen')}
                     </span>
                   )}
                 </div>
@@ -205,4 +253,35 @@ export function TerugkerendeSectie({
       />
     </Kaart>
   )
+}
+
+/**
+ * De contractzin op een rij, in de eenheid waarin de termijn ECHT staat.
+ *
+ * Twee dingen die deze functie bij elkaar houdt. Ten eerste de eenheid: de wet spreekt
+ * in maanden, en "60 dagen" schrijven waar ze "twee maanden" zegt, is een ander getal.
+ * Ten tweede de herkomst: een termijn die uit de WET komt is een vertrekpunt en geen
+ * waarheid over jouw contract — een hospitalisatieverzekering vraagt drie maanden, een
+ * abonnement in zijn eerste periode volgt gewoon zijn overeenkomst. Staat er een kale
+ * datum, dan handel je erop; daarom staat erbij waar ze vandaan komt.
+ *
+ * Kort gehouden, want gemeten op een scherm van 393 px liep de volledige zin
+ * ("kijk je contract na" erbij) uit tot vier regels onder één post. De raad zelf staat
+ * waar er plaats voor is: in het formulier en in de melding van het belletje.
+ */
+function termijnZin(
+  t: (sleutel: string, params?: Record<string, string | number>) => string,
+  contract: Contractstand,
+  soort: 'beslissen' | 'voorbij',
+): string {
+  const datum = dagJaar(contract.verlengtOp!)
+  const n = contract.termijn?.aantal ?? 0
+  const inMaanden = contract.termijn?.eenheid === 'maand'
+  const kern =
+    soort === 'beslissen'
+      ? t('verlengt {datum} · beslissen vóór {beslis}', { datum, beslis: dagJaar(contract.beslisUiterlijk!) })
+      : inMaanden
+        ? t('verlengt {datum} · beslisdatum voorbij, opzegtermijn {n} maand(en)', { datum, n })
+        : t('verlengt {datum} · beslisdatum voorbij, opzegtermijn {n} dag(en)', { datum, n })
+  return contract.termijnUitWet ? `${kern} ${t('(wettelijke termijn)')}` : kern
 }

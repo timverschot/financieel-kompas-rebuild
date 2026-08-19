@@ -1769,6 +1769,30 @@ a:focus-visible {
   min-width: 0;
 }
 
+/* Een getal met zijn eenheid ernaast (ronde 57): "3" + "maanden".
+ *
+ * Eigen regel en niet `.veldrij`, want die geeft elk KIND `flex: 1 1 160px` — maar
+ * alleen wanneer dat kind een `.veldgroep` is. Een kaal invoerveld met een keuzelijst
+ * ernaast kreeg dus zijn natuurlijke breedte, en op een telefoon van 393 px (gemeten)
+ * telde dat samen 334 px in een vak van 327: de eenheid sprong naar de volgende regel
+ * en het veld zag eruit alsof er iets stukging. Het getal rekt nu mee, de eenheid
+ * houdt haar eigen breedte. */
+.termijnrij {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.termijnrij > input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.termijnrij > select {
+  flex: 0 0 auto;
+  width: auto;
+}
+
 /* ---------------------------------------------------------------------------
    Invoervelden — en de belangrijkste regel van dit hele bestand (ronde 34)
 
