@@ -16,7 +16,6 @@
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/ibm-plex-sans": "^5.3.0",
     "@sentry/react": "^8.55.2",
-    "@zxing/browser": "^0.1.5",
     "dexie": "^4.0.8",
     "jspdf": "^4.2.1",
     "react": "^18.3.1",

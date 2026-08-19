@@ -9,6 +9,7 @@ import type {
 } from '../data/schema'
 import { uitgavenInMaand } from './budget'
 import { garantieStatus } from './garantie'
+import { dagenVerschil } from './datum'
 import { maandVooruitblik } from './vooruitblik'
 import { alsBijdrageInvoer, bouwOpbouw, laatsteAanpassing } from './onderhoudsbijdrage'
 import { openMaanden } from './maandafsluiting'
@@ -118,13 +119,6 @@ const SOORT_ORDE: Record<MeldingSoort, number> = {
   'budget-bijna': 5,
 }
 
-/** Het aantal hele dagen tussen twee datums in 'JJJJ-MM-DD'. */
-function dagenTussen(vanISO: string, totISO: string): number {
-  const van = Date.parse(`${vanISO}T00:00:00Z`)
-  const tot = Date.parse(`${totISO}T00:00:00Z`)
-  if (!Number.isFinite(van) || !Number.isFinite(tot)) return 0
-  return Math.round((tot - van) / 86_400_000)
-}
 
 export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
   const drempel = invoer.drempel ?? STANDAARD_BUDGETDREMPEL
@@ -250,8 +244,12 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
 
     const laatsteStap = opbouw.stappen[opbouw.stappen.length - 1]
     if (!laatsteStap) continue
-    const dagenGeleden = dagenTussen(laatsteStap.datum, invoer.vandaagISO)
-    if (dagenGeleden < 0 || dagenGeleden > BIJDRAGE_VENSTER_DAGEN) continue
+    // `null` = de datum van die stap is geen echte kalenderdag. Dan zeggen we
+    // niets (ronde 55). De eigen versie van deze som gaf hier **0** terug, en
+    // `0 <= venster` betekent "vandaag": een onleesbare datum leverde dus élke dag
+    // opnieuw een melding op, over een bedrag dat de app niet kon narekenen.
+    const dagenGeleden = dagenVerschil(laatsteStap.datum, invoer.vandaagISO)
+    if (dagenGeleden === null || dagenGeleden < 0 || dagenGeleden > BIJDRAGE_VENSTER_DAGEN) continue
 
     // Wachten op een indexcijfer is iets anders dan een aanpassing die er is: in het
     // eerste geval kan je zélf iets doen (het cijfer bijzetten), in het tweede moet

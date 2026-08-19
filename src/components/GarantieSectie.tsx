@@ -15,6 +15,10 @@ import { bonVanTransactie } from '../utils/kluis'
 // De statusbadge (klasse + tekst) voor een garantie: vervallen, bijna vervallen
 // of nog geldig.
 function badge(t: Vertaler, s: ReturnType<typeof garantieStatus>): { klasse: string; tekst: string } {
+  // Een onleesbare aankoopdatum (ronde 55). Vroeger rekende de app hier stil door
+  // met NaN en zette ze de badge op "nog NaN maand(en)". Nu zegt ze wat er aan de
+  // hand is, want dit is iets wat je zelf kan rechtzetten.
+  if (s.onbekend) return { klasse: 'badge badge-laat', tekst: t('aankoopdatum onleesbaar') }
   if (s.verlopen) return { klasse: 'badge badge-laat', tekst: t('verlopen') }
   if (s.bijnaVerlopen) return { klasse: 'badge badge-open', tekst: t('nog {n} dag(en)', { n: s.dagenResterend }) }
   return { klasse: 'badge badge-ok', tekst: t('nog {n} maand(en)', { n: s.maandenResterend }) }
@@ -66,6 +70,10 @@ export function GarantieSectie({
   // Sorteer op vervaldatum: wat het eerst vervalt bovenaan; verlopen onderaan.
   const metStatus = garanties.map((g) => ({ g, s: garantieStatus(g.aankoopdatum, g.garantieMaanden, nu) }))
   metStatus.sort((a, b) => {
+    // Een aankoop met een onleesbare datum onderaan (nakijkronde ronde 55). Haar
+    // vervaldatum is een lege tekst, en die is kleiner dan élke datum: zonder deze
+    // regel sprong ze bovenaan de lijst, bóven wat écht bijna vervalt.
+    if (a.s.onbekend !== b.s.onbekend) return a.s.onbekend ? 1 : -1
     if (a.s.verlopen !== b.s.verlopen) return a.s.verlopen ? 1 : -1
     return a.s.vervaldatum < b.s.vervaldatum ? -1 : a.s.vervaldatum > b.s.vervaldatum ? 1 : 0
   })
@@ -82,7 +90,7 @@ export function GarantieSectie({
           {metStatus.map(({ g, s }) => {
             const b = badge(t, s)
             // Hoeveel van de garantieperiode er nog rest, als fractie 0..1.
-            const totaalDagen = dagenTussen(g.aankoopdatum, s.vervaldatum)
+            const totaalDagen = s.onbekend ? 0 : dagenTussen(g.aankoopdatum, s.vervaldatum)
             const restFractie = totaalDagen > 0 ? s.dagenResterend / totaalDagen : 0
             const balkKleur = s.verlopen ? 'var(--text-subtle)' : s.bijnaVerlopen ? 'var(--warn)' : 'var(--positive)'
             return (
@@ -126,7 +134,11 @@ export function GarantieSectie({
                     </span>
                   )}
                   {' · '}
-                  {t('vervalt {datum}', { datum: s.vervaldatum })}
+                  {/* Geen halve zin "· vervalt " wanneer de app de aankoopdatum niet
+                      kan lezen: dan is er niets te zeggen, en zegt ze dat ook. */}
+                  {s.onbekend
+                    ? t('vervaldatum onbekend')
+                    : t('vervalt {datum}', { datum: s.vervaldatum })}
                 </span>
 
                 {/* De boeking waaruit deze aankoop komt (ronde 36).

@@ -2,6 +2,7 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Categorie, Overboeking, Rekening, Transactie, Waardering } from '../data/schema'
+import { ModuleNietGeladen } from '../utils/appVersie'
 
 // De PDF-bouwer wordt vervangen: deze tests gaan over de KNOP — wat ze zegt, dat ze
 // de gekozen maand doorgeeft, dat ze tijdens het werk niet twee keer afgaat en dat
@@ -157,6 +158,28 @@ describe('RapportKaart', () => {
     toon()
     await user.click(screen.getByRole('button', { name: 'maart 2026 als PDF' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Het rapport kon niet gemaakt worden.')
+  })
+
+  it('raadt HERLADEN aan wanneer de PDF-bibliotheek niet geladen raakte', async () => {
+    // Ronde 56, en dit is de kern ervan. De PDF-bibliotheek wordt pas opgehaald op het
+    // moment dat je op deze knop duwt. Raakt ze niet binnen — omdat er intussen
+    // gepubliceerd is, of om welke reden ook — dan is "probeer het opnieuw" een raad
+    // die tot in de eeuwigheid hetzelfde verzoek herhaalt.
+    exporteer.mockRejectedValue(new ModuleNietGeladen('onbekend', null))
+    const user = userEvent.setup()
+    toon()
+    await user.click(screen.getByRole('button', { name: 'maart 2026 als PDF' }))
+    const melding = await screen.findByRole('alert')
+    expect(melding).toHaveTextContent('Herlaad de pagina')
+    expect(melding).not.toHaveTextContent('Probeer het opnieuw')
+  })
+
+  it('raadt WACHTEN aan wanneer je offline bent', async () => {
+    exporteer.mockRejectedValue(new ModuleNietGeladen('offline', null))
+    const user = userEvent.setup()
+    toon()
+    await user.click(screen.getByRole('button', { name: 'maart 2026 als PDF' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('geen verbinding')
   })
 
   it('laat de knoppen weer los na een mislukking', async () => {

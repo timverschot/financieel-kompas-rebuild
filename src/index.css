@@ -2623,6 +2623,8 @@ a {
 }
 
 .dialoog {
+  /* Kader voor `.dialoog-bevestig`, die het paneel afdekt. */
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
@@ -2709,6 +2711,77 @@ a {
   border-top: 1px solid var(--divider);
   background: var(--surface);
   flex-shrink: 0;
+}
+
+/* De balk "er is een nieuwe versie" (ronde 56).
+
+   Ze staat in de gewone stroom, bovenaan de inhoud, en zweeft NIET. De eerste versie
+   zweefde onderaan bij de ongedaan-maken-melding, en dat ging mis: de pagina houdt
+   onderaan 96 px vrij, de balk begon op 120 px en was op een telefoon drie regels
+   hoog — dus dekte ze de onderste rijen van elke lijst af, en dat bleef zo tot je
+   herlaadde. Een mededeling die uren blijft staan, hoort niet te zweven.
+
+   Bewust de gewone accentkleur en geen rood: er is niets stuk en je verliest niets. */
+.versiebalk {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 10px 12px 10px 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  box-shadow: var(--schaduw-kaart, none);
+  font-size: var(--tekst-sm);
+  color: var(--text);
+}
+
+.versiebalk > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.versiebalk .knop {
+  flex-shrink: 0;
+}
+
+/* De vraag "je invoer is nog niet opgeslagen — weggooien?" (ronde 55).
+
+   Ze ligt BOVEN het paneel in plaats van het te vervangen. Dat is geen
+   opmaakkeuze maar de kern: het formulier blijft staan, met alles wat je
+   ingetikt hebt, want dat is precies wat we aan het redden zijn. Zou de vraag
+   het formulier vervangen, dan zou React de velden weggooien en was je invoer
+   weg op het moment dat we je vroegen of dat wel mocht. */
+.dialoog-bevestig {
+  position: absolute;
+  inset: 0;
+  /* Boven ALLES in het paneel. Zonder dit getal won de plakkende knoppenbalk van
+     het formulier (`.formulier-voet`, z-index 2): het donkere vlak lag eronder en
+     "Toevoegen" bleef aanklikbaar, dus je kon je invoer opslaan terwijl de app net
+     vroeg of je ze mocht weggooien (nakijkronde ronde 55). */
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(23, 25, 30, 0.45);
+  border-radius: inherit;
+}
+
+:root[data-theme='dark'] .dialoog-bevestig {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.dialoog-bevestig-kaart {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sheet);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 340px;
 }
 
 @media (min-width: 640px) {

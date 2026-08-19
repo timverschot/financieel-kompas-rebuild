@@ -18,6 +18,7 @@ import { Documentkluis } from './DossierKluis'
 import { UitwisselingKaart } from './UitwisselingKaart'
 import { CategorieKiezer } from './CategorieKiezer'
 import { saldoVerrekeningDossier } from '../utils/dossier'
+import { exportFoutmelding } from '../utils/appVersie'
 import { isOpenKost, kostenVoorAfrekening, type AfrekeningFilter } from '../utils/afrekening'
 import {
   verrekenTekst,
@@ -313,8 +314,10 @@ export function DossierSectie({
     try {
       await exporteerAfrekeningPDF(t, dossier, v, kosten, kinderen, categorieen, new Date(), documenten)
       setBewijsmapKlaar(t('De PDF van {datum} is gedownload.', { datum: v.datum }))
-    } catch {
-      setBewijsmapFout(t('De PDF van {datum} kon niet gemaakt worden. Probeer het opnieuw.', { datum: v.datum }))
+    } catch (e) {
+      setBewijsmapFout(
+        exportFoutmelding(t, e, t('De PDF van {datum} kon niet gemaakt worden. Probeer het opnieuw.', { datum: v.datum })),
+      )
     }
   }
 
@@ -337,8 +340,10 @@ export function DossierSectie({
       // Bij een download gebeurt er op het scherm niets. Zonder deze regel weet wie
       // met een schermlezer werkt niet of het bestand er komt.
       setBewijsmapKlaar(t('De bewijsmap van {datum} is gedownload.', { datum: v.datum }))
-    } catch {
-      setBewijsmapFout(t('De bewijsmap van {datum} kon niet gemaakt worden. Probeer het opnieuw.', { datum: v.datum }))
+    } catch (e) {
+      setBewijsmapFout(
+        exportFoutmelding(t, e, t('De bewijsmap van {datum} kon niet gemaakt worden. Probeer het opnieuw.', { datum: v.datum })),
+      )
     } finally {
       setBewijsmapBezig('')
     }

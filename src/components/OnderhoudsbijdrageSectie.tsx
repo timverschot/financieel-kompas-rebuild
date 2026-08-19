@@ -6,6 +6,7 @@ import { INDEX_BASISJAAR, kentIndexmaand, laatsteIndexmaand } from '../data/gezo
 import { useT, type Vertaler } from '../i18n'
 import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { centenNaarInvoer, formatEuro, invoerNaarCenten } from '../utils/format'
+import { exportFoutmelding } from '../utils/appVersie'
 import { maandJaarLabel, vandaag } from '../utils/datum'
 import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 import {
@@ -141,8 +142,8 @@ export function OnderhoudsbijdrageSectie({
     try {
       await exporteerIndexatiebriefPDF(t, dossier, bijdrage, o, kinderen, vandaagISO)
       setMelding(t('De brief is gedownload.'))
-    } catch {
-      setFout(t('De brief kon niet gemaakt worden. Probeer het opnieuw.'))
+    } catch (e) {
+      setFout(exportFoutmelding(t, e, t('De brief kon niet gemaakt worden. Probeer het opnieuw.')))
     } finally {
       setBriefBezig(false)
     }

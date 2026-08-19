@@ -192,10 +192,25 @@ export function kindkostenVanJaar(invoer: KindkostenInvoer): Kindkosten {
   let aantalBoekingen = 0
   let aantalOvergeslagen = 0
   // De boekingen die dit jaar meetelden, om verdachte duplicaten te herkennen.
-  // Per bedrag de datums waarop zo'n boeking staat; `op` gaat op waar zodra dat
-  // exemplaar aan een gedeelde kost gekoppeld is, zodat één boeking niet twee
-  // kosten kan "verklaren".
-  const losseBoekingen = new Map<number, { datum: string; gebruikt: boolean }[]>()
+  //
+  // WAT ER PER BOEKING IN GAAT (ronde 55). Tot deze ronde stond hier alleen het
+  // TOTAAL van de boeking, en dat is precies waar een gesplitst kassaticket door
+  // de mazen viel: koop je voor € 90 waarvan € 45 school, en staat die € 45 ook als
+  // gedeelde kost in je dossier, dan zocht de app naar een boeking van € 45 en vond
+  // ze een ticket van € 90. Geen enkele waarschuwing, terwijl die € 45 wél dubbel
+  // meetelde. Dat botste met de huisregel dat een gesplitst ticket overal
+  // uitgesplitst hoort te worden.
+  //
+  // Nu draagt een gesplitst ticket ook zijn REGELS aan, naast zijn totaal. Wat
+  // waar blijft: dezelfde euro's mogen maar één keer een kost verklaren. Vandaar
+  // `txId` en `soort` op elke ingang, en de regel hieronder bij het toewijzen.
+  type Ingang = { txId: string; datum: string; soort: 'totaal' | 'regel'; volgnummer: number; gebruikt: boolean }
+  const losseBoekingen = new Map<number, Ingang[]>()
+  function voegIngangToe(bedrag: number, ingang: Ingang) {
+    const rij = losseBoekingen.get(bedrag)
+    if (rij) rij.push(ingang)
+    else losseBoekingen.set(bedrag, [ingang])
+  }
 
   for (const tx of transacties) {
     if (!inJaar(tx.datum, jaar)) continue
@@ -215,9 +230,16 @@ export function kindkostenVanJaar(invoer: KindkostenInvoer): Kindkosten {
       continue
     }
     aantalBoekingen += 1
-    const rij = losseBoekingen.get(bedrag)
-    if (rij) rij.push({ datum: tx.datum, gebruikt: false })
-    else losseBoekingen.set(bedrag, [{ datum: tx.datum, gebruikt: false }])
+    voegIngangToe(bedrag, { txId: tx.id, datum: tx.datum, soort: 'totaal', volgnummer: 0, gebruikt: false })
+    // De uitgaveregels van een gesplitst ticket, elk apart. Alleen wanneer er
+    // méér dan één is: bij één regel is die regel het totaal, en dan zou dezelfde
+    // boeking twee keer in de lijst staan en twee kosten kunnen verklaren.
+    const uitgaveRegels = categorieBedragen(tx).filter((r) => r.bedrag < 0)
+    if (uitgaveRegels.length > 1) {
+      uitgaveRegels.forEach((r, i) => {
+        voegIngangToe(-r.bedrag, { txId: tx.id, datum: tx.datum, soort: 'regel', volgnummer: i + 1, gebruikt: false })
+      })
+    }
     uitBoekingen.push({ bedrag, persoonIds: tx.persoonIds })
   }
 
@@ -238,17 +260,67 @@ export function kindkostenVanJaar(invoer: KindkostenInvoer): Kindkosten {
   // dezelfde maand zouden elkaar dan gaan "verklaren" en een waarschuwing opleveren
   // waar niets aan de hand is. Een waarschuwing die te vaak vals is, wordt genegeerd,
   // en dan werkt ze ook niet meer wanneer het wél klopt.
+  // Eén ingang opgebruiken, en meteen alles wat DEZELFDE euro's beschrijft.
+  //
+  // Zonder deze regel zou een ticket van € 90 met regels van € 45 en € 45 drie
+  // kosten kunnen "verklaren": het totaal en allebei de regels. Dus: gaat het
+  // totaal op, dan gaat de hele boeking op; gaat één regel op, dan kan het totaal
+  // niet meer — de andere regels blijven wél beschikbaar, want dat zijn andere
+  // euro's, en twee regels van hetzelfde ticket kunnen elk apart als gedeelde kost
+  // ingevoerd zijn.
+  function gebruikOp(alles: Map<number, Ingang[]>, gekozen: Ingang) {
+    gekozen.gebruikt = true
+    for (const rij of alles.values()) {
+      for (const i of rij) {
+        if (i.txId !== gekozen.txId || i === gekozen) continue
+        if (gekozen.soort === 'totaal' || i.soort === 'totaal') i.gebruikt = true
+      }
+    }
+  }
+
   let mogelijkeDubbels = 0
   // ALLES OP DATUM, kosten én boekingen. Anders hangt de uitkomst af van de volgorde
   // waarin de gegevens toevallig uit de database komen — die is op id gesorteerd, niet
   // op datum — en dan kunnen twee toestellen met exact dezelfde boekingen een
   // verschillend aantal tonen. Een cijfer dat van je toestel afhangt, is geen cijfer.
+  //
+  // De volgorde binnen één bedrag: eerst op datum, dan het TOTAAL vóór een regel,
+  // en ten slotte op boeking-id en volgnummer. Die laatste twee zijn er alleen om
+  // elke twijfel weg te nemen — twee toestellen met dezelfde gegevens moeten
+  // hetzelfde getal tonen, ook wanneer er twee ingangen op dezelfde dag staan.
+  // Het totaal krijgt voorrang omdat "de hele boeking is deze kost" een sterker
+  // vermoeden is dan "één regel ervan is deze kost".
+  const soortVolgorde = (i: Ingang) => (i.soort === 'totaal' ? 0 : 1)
   for (const rij of losseBoekingen.values()) {
-    rij.sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0))
+    rij.sort(
+      (a, b) =>
+        (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0) ||
+        soortVolgorde(a) - soortVolgorde(b) ||
+        (a.txId < b.txId ? -1 : a.txId > b.txId ? 1 : 0) ||
+        a.volgnummer - b.volgnummer,
+    )
   }
+  //
+  // DE KOSTEN OOK OP BEDRAG EN ID nasorteren, niet alleen op datum (nakijkronde
+  // ronde 55). Alleen op datum sorteren volstond zolang elk bedrag zijn eigen rijtje
+  // had: wat de ene kost opgebruikte, kon een kost van een ánder bedrag toch niet
+  // raken. Sinds een gesplitst ticket ook zijn regels aandraagt, geldt dat niet meer:
+  // gaat het TOTAAL op, dan gaan de regels mee op, en die staan onder een ander
+  // bedrag. Dan bepaalt de volgorde van gelijke datums plots het antwoord — en die
+  // volgorde komt uit de database, op id. Een ticket van € 90 met drie regels van
+  // € 30 en drie kosten (€ 90, € 30, € 30) gaf zo 1 óf 2 vermoedens, afhankelijk van
+  // welk toestel je in handen had.
+  //
+  // Het kleinste bedrag eerst: een kost die op één REGEL past, wijst preciezer aan
+  // wat er dubbel staat dan een kost die toevallig het hele ticket is.
   const kandidaten = dubbelKandidaten
     .slice()
-    .sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0))
+    .sort(
+      (a, b) =>
+        (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0) ||
+        a.bedrag - b.bedrag ||
+        (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+    )
   for (const kost of kandidaten) {
     const rij = losseBoekingen.get(kost.bedrag)
     if (!rij) continue
@@ -264,7 +336,7 @@ export function kindkostenVanJaar(invoer: KindkostenInvoer): Kindkosten {
     const vrij = rij.findIndex((b) => !b.gebruikt && dagenTussen(b.datum, kost.datum) <= DUBBEL_SPELING_DAGEN)
     if (vrij >= 0) {
       mogelijkeDubbels += 1
-      rij[vrij].gebruikt = true
+      gebruikOp(losseBoekingen, rij[vrij])
     }
   }
 

@@ -423,6 +423,11 @@ export async function verwijderDossierMetAanhang(
     kindrekeningpostIds?: string[]
     onderhoudsbijdrageIds?: string[]
     onderhoudsbetalingIds?: string[]
+    // De documenten in de kluis van dit dossier (ronde 55). Bleven ze staan, dan
+    // bleef elke foto en elke scan als data-URL in de database én in ELKE back-up
+    // staan, met een `dossierId` dat nergens meer naar wijst: onzichtbaar, niet meer
+    // te verwijderen, en het zwaarste wat de app bewaart.
+    documentIds?: string[]
   } = {},
 ): Promise<void> {
   await pasGebeurtenissenToe([
@@ -441,6 +446,7 @@ export async function verwijderDossierMetAanhang(
     ...(aanhang.onderhoudsbijdrageIds ?? []).map(
       (b) => ({ type: 'onderhoudsbijdrage.verwijderd', payload: { id: b } }) as const,
     ),
+    ...(aanhang.documentIds ?? []).map((d) => ({ type: 'dossierdocument.verwijderd', payload: { id: d } }) as const),
   ])
 }
 

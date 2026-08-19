@@ -15,7 +15,7 @@ import {
 import { formatEuro } from './format'
 import { vandaag } from './datum'
 import { veiligeBestandsnaam } from './download'
-import { LINKS, RECHTS, maakBlad } from './pdfBlad'
+import { laadJsPdf, LINKS, maakBlad, RECHTS } from './pdfBlad'
 
 // De kolommen van een uitsplitsingstabel. De maatvoering van het blad zelf staat
 // sinds ronde 41 in `pdfBlad.ts`, samen met de paginabreuk en de voettekst — die
@@ -45,7 +45,7 @@ export async function exporteerAfrekeningPDF(
   // documenten over dezelfde afrekening die elkaar tegenspreken.
   documenten: DossierDocument[] = [],
 ): Promise<void> {
-  const { jsPDF } = await import('jspdf')
+  const { jsPDF } = await laadJsPdf()
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const blad = maakBlad(doc)
   const o = bouwAfrekeningOverzicht(dossier, afrekening, kosten, kinderen, gebruikerCategorieen, (k) =>

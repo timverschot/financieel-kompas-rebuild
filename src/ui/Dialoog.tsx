@@ -154,16 +154,60 @@ export function Dialoog({
   children,
   /** Optionele vaste voet, bv. met de opslaan-knoppen. Scrollt niet mee. */
   voet,
+  /**
+   * Zit er een INVULFORMULIER in deze popup? Dan mag ze niet per ongeluk sluiten.
+   *
+   * Wat er misging (melding van Timothy, ronde 55): je vulde de helft van een
+   * boeking in, klikte ergens naast het venster, en alles was weg. Opnieuw op
+   * "Toevoegen" gaf een leeg formulier. Een klik naast het venster is bijna nooit
+   * een beslissing — je mikt op een veld, of je klapt iets weg — en toch was het
+   * de enige handeling in de app die je invoer zonder waarschuwing wiste.
+   *
+   * Met deze vlag aan:
+   *  - een klik NAAST het venster doet niets meer zodra je iets ingevuld hebt;
+   *  - Escape en het kruisje vragen eerst of je je invoer wil weggooien.
+   *
+   * Zonder de vlag blijft alles zoals het was: een popup die alleen iets TOONT
+   * (een bon bijvoorbeeld) mag gewoon dichtklikken.
+   */
+  bewaakInvoer = false,
+  /**
+   * Verhoog dit getal na een geslaagde opslag. Dan telt de popup het formulier
+   * weer als leeg — anders blijft ze na "Opslaan + volgende" bewaken wat al
+   * bewaard is, en moet je bevestigen om een leeg formulier te sluiten.
+   */
+  schoonNa = 0,
 }: {
   titel: string
   open: boolean
   onSluiten: () => void
   children: ReactNode
   voet?: ReactNode
+  bewaakInvoer?: boolean
+  schoonNa?: number
 }) {
   const { t } = useT()
   const paneel = useRef<HTMLDivElement | null>(null)
   const inhoud = useRef<HTMLDivElement | null>(null)
+  const bevestigVak = useRef<HTMLDivElement | null>(null)
+  // Heeft de gebruiker in DEZE popup iets ingetikt of gekozen?
+  //
+  // Bewust gemeten aan de echte `input`- en `change`-gebeurtenissen in het paneel,
+  // en niet door de velden te vergelijken met hun beginwaarde. Die gebeurtenissen
+  // komen alleen van een MENS: een waarde die de app zelf zet, geeft er geen. Zo
+  // hoeft geen enkel formulier iets door te geven, en werkt de bewaking ook voor
+  // velden die pas later verschijnen (achter "Meer opties").
+  //
+  // DE GRENS, en die staat er eerlijk bij: kies je alleen een categorie via de
+  // chips — dat zijn knoppen, geen invoervelden — dan ziet deze meting dat niet.
+  // Opslaan kan dan toch niet: daarvoor heb je op zijn minst een handelaar en een
+  // bedrag nodig, en die tik je wél in.
+  const vuil = useRef(false)
+  const [bevestigen, setBevestigen] = useState(false)
+  const bevestigenRef = useRef(false)
+  bevestigenRef.current = bevestigen
+  const bewaakRef = useRef(bewaakInvoer)
+  bewaakRef.current = bewaakInvoer
   const vorigeFocus = useRef<HTMLElement | null>(null)
   const titelId = useId()
   const zichtbareHoogte = useZichtbareHoogte(open)
@@ -183,6 +227,11 @@ export function Dialoog({
 
   useEffect(() => {
     if (!open) return
+
+    // Elke opening begint schoon. Zonder dit zou een popup die je vorige keer half
+    // invulde en weggooide, meteen weer als "er staat iets in" gelden.
+    vuil.current = false
+    setBevestigen(false)
 
     // Onthoud waar de focus stond, en zet hem in de popup.
     vorigeFocus.current = document.activeElement as HTMLElement | null
@@ -236,14 +285,31 @@ export function Dialoog({
       if (!isBovenste(sleutel)) return
       if (e.key === 'Escape') {
         e.preventDefault()
+        // Staat de vraag "weggooien?" op het scherm, dan betekent Escape: nee,
+        // toch niet. Dat is de veilige kant, en het is ook wat je verwacht van de
+        // toets waarmee je iets wégklikt.
+        if (bevestigenRef.current) {
+          setBevestigen(false)
+          return
+        }
+        if (bewaakRef.current && vuil.current) {
+          setBevestigen(true)
+          return
+        }
         sluitRef.current()
         return
       }
       if (e.key !== 'Tab') return
       // Focus-val: bereken bij elke Tab opnieuw wie er te focussen valt, want de
       // inhoud verandert (een keuzelijst klapt open, een veld verschijnt).
-      if (!paneel.current) return
-      const kandidaten = focusbareElementen(paneel.current)
+      //
+      // Staat de bevestigingsvraag open, dan loopt de tab-toets alleen rond in DIE
+      // twee knoppen. Het formulier eronder blijft staan (anders was je invoer weg
+      // op het moment dat we ze net proberen te redden), maar het is op dat moment
+      // niet bedienbaar, en dus hoort het ook geen tab-stop te zijn.
+      const zone = bevestigVak.current ?? paneel.current
+      if (!zone) return
+      const kandidaten = focusbareElementen(zone)
       if (kandidaten.length === 0) return
       const eerste = kandidaten[0]
       const laatste = kandidaten[kandidaten.length - 1]
@@ -288,11 +354,41 @@ export function Dialoog({
       }, 220)
     }
 
+    // Zie de uitleg bij `vuil`: alleen een MENS veroorzaakt deze gebeurtenis.
+    //
+    // BEWUST ALLEEN `input`, en niet ook `change`. Een tekstveld stuurt `change`
+    // pas wanneer het de focus VERLIEST — en dat gebeurt precies op het moment dat
+    // je ernaast klikt. Met `change` erbij werd een formulier dus opnieuw "vuil"
+    // door de klik waarvan we net moeten beslissen of ze mag sluiten. Alles wat
+    // `change` stuurt (een keuzelijst, een vinkje, een bestandskeuze) stuurt ook
+    // `input`, dus er gaat niets verloren.
+    function opInvoer() {
+      vuil.current = true
+    }
+
+    // EN een klik op een bediening BINNEN een formulier in de popup (nakijkronde
+    // ronde 55). Een categoriechip en een gezinslid kies je met een knop, en een
+    // knop geeft geen `input`: die keuzes verdwenen dus nog altijd bij een klik
+    // ernaast. `closest('form')` is de grens die telt — de vier soortknoppen
+    // bovenaan de boekingspopup staan erbuiten, en die kiezen alleen wélk formulier
+    // je ziet. Ze mogen een leeg venster niet op slot zetten.
+    function opKlik(e: Event) {
+      const doel = e.target
+      if (!(doel instanceof Element)) return
+      if (!doel.closest('form')) return
+      if (doel.closest('button, [role="button"], label, input, select, textarea')) vuil.current = true
+    }
+
     document.addEventListener('keydown', opToets)
     document.addEventListener('focusin', opFocus)
+    paneel.current?.addEventListener('input', opInvoer)
+    paneel.current?.addEventListener('click', opKlik)
+    const paneelBijStart = paneel.current
     return () => {
       document.removeEventListener('keydown', opToets)
       document.removeEventListener('focusin', opFocus)
+      paneelBijStart?.removeEventListener('input', opInvoer)
+      paneelBijStart?.removeEventListener('click', opKlik)
       if (schuifTimer) clearTimeout(schuifTimer)
       const plek = openePopups.lastIndexOf(sleutel)
       if (plek >= 0) openePopups.splice(plek, 1)
@@ -302,11 +398,33 @@ export function Dialoog({
         document.body.style.overflow = oorspronkelijkeOverflow
         oorspronkelijkeOverflow = null
       }
+      // De bevestigingsvraag mag niet blijven staan (nakijkronde ronde 55). Ze werd
+      // alleen bij het OPENEN gewist, en een effect draait ná het tekenen: sloot de
+      // popup terwijl de vraag openstond, dan flitste "Wil je ze weggooien?" bij de
+      // volgende opening één beeld lang over een leeg formulier — en wie snel tikt,
+      // sluit een venster dat hij net opende.
+      setBevestigen(false)
       // Terug naar de knop waarmee de popup geopend werd.
       vorigeFocus.current?.focus?.()
     }
     // Bewust ALLEEN `open`: zie de opmerking bij `sluitRef`.
   }, [open])
+
+  // Na een geslaagde opslag telt het formulier weer als leeg. Anders zou je na
+  // "Opslaan + volgende" moeten bevestigen om een leeg formulier te sluiten.
+  useEffect(() => {
+    vuil.current = false
+  }, [schoonNa])
+
+  // Een poging tot sluiten die NIET van de opslaanknop komt: het kruisje, Escape.
+  // Staat er iets in, dan vragen we het eerst.
+  function probeerSluiten() {
+    if (bewaakInvoer && vuil.current) {
+      setBevestigen(true)
+      return
+    }
+    onSluiten()
+  }
 
   if (!open) return null
 
@@ -326,7 +444,18 @@ export function Dialoog({
   const laag = (
     <div
       className="dialoog-laag"
-      onClick={onSluiten}
+      // Een klik NAAST het venster sluit alleen wanneer er niets te verliezen valt.
+      // Zie `bewaakInvoer`: dit was de handeling die een half ingevulde boeking
+      // zonder één woord wiste. Ze vraagt bewust ook niets — een klik ernaast is
+      // meestal geen beslissing, en dan is een vraag stellen alleen maar ruis.
+      // Bewust een functie die PAS BIJ DE KLIK kijkt. `vuil` is een ref en
+      // veroorzaakt dus geen hertekening; had de keuze hier bij het tekenen
+      // gestaan, dan bleef de oude beslissing hangen tot er toevallig iets anders
+      // hertekende — en dan sloot het venster alsnog.
+      onClick={() => {
+        if (bewaakInvoer && vuil.current) return
+        onSluiten()
+      }}
       // De laag zelf krimpt mee met wat er zichtbaar is. Daardoor blijft het blad
       // met de knoppen bóven het toetsenbord in plaats van erachter.
       style={zichtbareHoogte !== null ? { height: zichtbareHoogte } : undefined}
@@ -344,7 +473,7 @@ export function Dialoog({
           <h2 className="kaart-titel" id={titelId}>
             {titel}
           </h2>
-          <button type="button" className="knop knop-kaal" aria-label={t('Sluiten')} onClick={onSluiten}>
+          <button type="button" className="knop knop-kaal" aria-label={t('Sluiten')} onClick={probeerSluiten}>
             ×
           </button>
         </div>
@@ -356,6 +485,42 @@ export function Dialoog({
         </div>
 
         {voet && <div className="dialoog-voet">{voet}</div>}
+
+        {bevestigen && (
+          <div
+            className="dialoog-bevestig"
+            role="alertdialog"
+            aria-modal="true"
+            aria-label={t('Je invoer is nog niet opgeslagen')}
+            ref={bevestigVak}
+          >
+            <div className="dialoog-bevestig-kaart">
+              <p style={{ margin: 0 }}>{t('Je invoer is nog niet opgeslagen. Wil je ze weggooien?')}</p>
+              <div className="knoprij">
+                {/* "Verder invullen" staat eerst én krijgt de focus: de veilige
+                    keuze hoort de gemakkelijke te zijn. */}
+                <button
+                  type="button"
+                  className="knop"
+                  autoFocus
+                  onClick={() => setBevestigen(false)}
+                >
+                  {t('Verder invullen')}
+                </button>
+                <button
+                  type="button"
+                  className="knop knop-secundair knop-gevaar"
+                  onClick={() => {
+                    setBevestigen(false)
+                    onSluiten()
+                  }}
+                >
+                  {t('Weggooien')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

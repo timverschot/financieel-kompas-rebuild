@@ -4,7 +4,7 @@ import { vandaag } from './datum'
 import { veiligeBestandsnaam } from './download'
 import { formatEuro } from './format'
 import { bouwPeriodeOverzicht } from './periodeOverzicht'
-import { LINKS, RECHTS, maakBlad } from './pdfBlad'
+import { laadJsPdf, LINKS, maakBlad, RECHTS } from './pdfBlad'
 
 // Het maand- of jaarrapport als PDF.
 //
@@ -50,7 +50,7 @@ export async function exporteerPeriodePDF(
   nu: Date = new Date(),
 ): Promise<void> {
   const o = bouwPeriodeOverzicht(periode, transacties, categorieen, rekeningen, overboekingen, waarderingen)
-  const { jsPDF } = await import('jspdf')
+  const { jsPDF } = await laadJsPdf()
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const blad = maakBlad(doc)
 

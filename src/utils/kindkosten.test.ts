@@ -439,3 +439,175 @@ describe('kindkostenVanJaar — de tellingen in de kop', () => {
     expect(o.regels).toHaveLength(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Het gesplitste kassaticket (ronde 55)
+//
+// Het open punt uit ronde 54: de vergelijking gebeurde altijd op het TOTAAL van de
+// boeking. Koop je voor € 90 waarvan € 45 school, en staat die € 45 ook als gedeelde
+// kost, dan telde ze dubbel zonder één waarschuwing — terwijl de huisregel juist zegt
+// dat een gesplitst ticket overal uitgesplitst hoort te worden.
+// ---------------------------------------------------------------------------
+describe('kindkostenVanJaar — een gesplitst kassaticket', () => {
+  // Eén ticket van € 90: € 45 school, € 30 kleren, € 15 eten.
+  const ticket = tx({
+    id: 'ticket',
+    datum: '2026-05-04',
+    bedrag: -9000,
+    persoonIds: ['emma'],
+    regels: [
+      { bedrag: -4500, categorieId: 'school', omschrijving: 'Schoolreis' },
+      { bedrag: -3000, categorieId: 'kleren', omschrijving: 'Trui' },
+      { bedrag: -1500, categorieId: 'eten', omschrijving: 'Brood' },
+    ],
+  })
+
+  it('herkent een gedeelde kost die één REGEL van het ticket is', () => {
+    const o = overzicht({
+      transacties: [ticket],
+      dossiers: [dossier],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'], bedrag: 4500 })],
+    })
+    expect(o.mogelijkeDubbels).toBe(1)
+  })
+
+  it('herkent nog altijd een kost die het hele ticket is', () => {
+    const o = overzicht({
+      transacties: [ticket],
+      dossiers: [dossier],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'], bedrag: 9000 })],
+    })
+    expect(o.mogelijkeDubbels).toBe(1)
+  })
+
+  it('herkent twee regels van hetzelfde ticket als twee aparte kosten', () => {
+    // Dat zijn andere euro's, dus dit zijn er echt twee.
+    const o = overzicht({
+      transacties: [ticket],
+      dossiers: [dossier],
+      gedeeldeKosten: [
+        kost({ id: 'k1', kindIds: ['emma'], bedrag: 4500 }),
+        kost({ id: 'k2', kindIds: ['emma'], bedrag: 3000 }),
+      ],
+    })
+    expect(o.mogelijkeDubbels).toBe(2)
+  })
+
+  it('laat het totaal en een regel van hetzelfde ticket NIET allebei meetellen', () => {
+    // Anders zou één ticket van € 90 twee kosten verklaren met dezelfde euro's.
+    const o = overzicht({
+      transacties: [ticket],
+      dossiers: [dossier],
+      gedeeldeKosten: [
+        kost({ id: 'k1', kindIds: ['emma'], bedrag: 9000 }),
+        kost({ id: 'k2', kindIds: ['emma'], bedrag: 4500 }),
+      ],
+    })
+    expect(o.mogelijkeDubbels).toBe(1)
+  })
+
+  it('telt een boeking met één regel niet twee keer', () => {
+    // Bij één regel ís die regel het totaal. Stond ze er twee keer in, dan zouden
+    // twee kosten van € 50 door één boeking van € 50 "verklaard" worden.
+    const enkel = tx({
+      id: 'enkel',
+      datum: '2026-05-04',
+      bedrag: -5000,
+      persoonIds: ['emma'],
+      regels: [{ bedrag: -5000, categorieId: 'school' }],
+    })
+    const o = overzicht({
+      transacties: [enkel],
+      dossiers: [dossier],
+      gedeeldeKosten: [
+        kost({ id: 'k1', kindIds: ['emma'], bedrag: 5000 }),
+        kost({ id: 'k2', kindIds: ['emma'], bedrag: 5000 }),
+      ],
+    })
+    expect(o.mogelijkeDubbels).toBe(1)
+  })
+
+  it('kijkt naar het uitgavedeel van een regel, niet naar het nettobedrag', () => {
+    // Statiegeld op hetzelfde ticket: die regel is een INKOMST en is dus nooit
+    // dezelfde uitgave als een gedeelde kost.
+    const metStatiegeld = tx({
+      id: 'stat',
+      datum: '2026-05-04',
+      bedrag: -4200,
+      persoonIds: ['emma'],
+      regels: [
+        { bedrag: -4500, categorieId: 'school' },
+        { bedrag: 300, categorieId: 'statiegeld' },
+      ],
+    })
+    const raak = overzicht({
+      transacties: [metStatiegeld],
+      dossiers: [dossier],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'], bedrag: 4500 })],
+    })
+    expect(raak.mogelijkeDubbels).toBe(1)
+
+    const mis = overzicht({
+      transacties: [metStatiegeld],
+      dossiers: [dossier],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'], bedrag: 300 })],
+    })
+    expect(mis.mogelijkeDubbels).toBe(0)
+  })
+
+  it('werkt ook met de speling van drie dagen', () => {
+    const o = overzicht({
+      transacties: [tx({ ...ticket, id: 'ticket2', datum: '2026-05-01' })],
+      dossiers: [dossier],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'], bedrag: 4500 })],
+    })
+    expect(o.mogelijkeDubbels).toBe(1)
+  })
+
+  it('geeft hetzelfde antwoord ongeacht de volgorde waarin de gegevens binnenkomen', () => {
+    // Dexie levert op id, niet op datum. Twee toestellen moeten hetzelfde getal tonen.
+    const kosten = [
+      kost({ id: 'k1', kindIds: ['emma'], bedrag: 4500 }),
+      kost({ id: 'k2', kindIds: ['emma'], bedrag: 3000 }),
+    ]
+    const heen = overzicht({ transacties: [ticket], dossiers: [dossier], gedeeldeKosten: kosten })
+    const terug = overzicht({ transacties: [ticket], dossiers: [dossier], gedeeldeKosten: [...kosten].reverse() })
+    expect(heen.mogelijkeDubbels).toBe(terug.mogelijkeDubbels)
+  })
+})
+
+// Nakijkronde ronde 55: het aantal vermoedens mag niet afhangen van de volgorde
+// waarin de gedeelde kosten uit de database komen. Dexie levert op id.
+describe('kindkostenVanJaar — hetzelfde antwoord op elk toestel', () => {
+  it('geeft hetzelfde aantal bij een ticket waarvan het totaal én twee regels passen', () => {
+    const ticket = tx({
+      id: 'ticket',
+      datum: '2026-05-04',
+      bedrag: -9000,
+      persoonIds: ['emma'],
+      regels: [
+        { bedrag: -3000, categorieId: 'a' },
+        { bedrag: -3000, categorieId: 'b' },
+        { bedrag: -3000, categorieId: 'c' },
+      ],
+    })
+    const kosten = [
+      kost({ id: 'k-groot', kindIds: ['emma'], bedrag: 9000 }),
+      kost({ id: 'k-klein-1', kindIds: ['emma'], bedrag: 3000 }),
+      kost({ id: 'k-klein-2', kindIds: ['emma'], bedrag: 3000 }),
+    ]
+    const volgordes = [
+      [kosten[0], kosten[1], kosten[2]],
+      [kosten[1], kosten[2], kosten[0]],
+      [kosten[2], kosten[0], kosten[1]],
+      [...kosten].reverse(),
+    ]
+    const uitkomsten = volgordes.map(
+      (gedeeldeKosten) => overzicht({ transacties: [ticket], dossiers: [dossier], gedeeldeKosten }).mogelijkeDubbels,
+    )
+    expect(new Set(uitkomsten).size).toBe(1)
+    // De twee regels wegen zwaarder dan het totaal: ze wijzen preciezer aan wat er
+    // dubbel staat.
+    expect(uitkomsten[0]).toBe(2)
+  })
+})

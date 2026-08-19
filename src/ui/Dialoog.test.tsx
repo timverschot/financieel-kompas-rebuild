@@ -347,3 +347,185 @@ describe('Dialoog — een popup in een popup', () => {
     expect(document.body.style.overflow).toBe('')
   })
 })
+
+// ---------------------------------------------------------------------------
+// De bewaking van een half ingevuld formulier (ronde 55)
+//
+// Melding van Timothy: je vult de helft van een boeking in, klikt ergens naast
+// het venster, en alles is weg. Deze tests leggen het nieuwe gedrag vast, én de
+// grens ervan: zonder `bewaakInvoer` blijft alles zoals het was.
+// ---------------------------------------------------------------------------
+describe('Dialoog — een half ingevuld formulier', () => {
+  function toonBewaakt(onSluiten = vi.fn(), schoonNa = 0) {
+    const hulp = render(
+      <Dialoog titel="Uitgave toevoegen" open onSluiten={onSluiten} bewaakInvoer schoonNa={schoonNa}>
+        <input aria-label="Bedrag" />
+      </Dialoog>,
+    )
+    return { onSluiten, hulp }
+  }
+
+  // De laag rond het paneel: een klik daarop is "naast het venster".
+  function laag(): HTMLElement {
+    const el = document.querySelector('.dialoog-laag')
+    if (!(el instanceof HTMLElement)) throw new Error('geen dialoog-laag gevonden')
+    return el
+  }
+
+  it('sluit gewoon bij een klik ernaast zolang je niets ingevuld hebt', async () => {
+    const user = userEvent.setup()
+    const { onSluiten } = toonBewaakt()
+    await user.click(laag())
+    expect(onSluiten).toHaveBeenCalledTimes(1)
+  })
+
+  it('doet niets bij een klik ernaast zodra je iets ingetikt hebt', async () => {
+    const user = userEvent.setup()
+    const { onSluiten } = toonBewaakt()
+    await user.type(screen.getByLabelText('Bedrag'), '12')
+    await user.click(laag())
+    expect(onSluiten).not.toHaveBeenCalled()
+    // En je invoer staat er nog.
+    expect(screen.getByLabelText('Bedrag')).toHaveValue('12')
+  })
+
+  it('vraagt bij het kruisje eerst of je je invoer mag weggooien', async () => {
+    const user = userEvent.setup()
+    const { onSluiten } = toonBewaakt()
+    await user.type(screen.getByLabelText('Bedrag'), '12')
+    await user.click(screen.getByRole('button', { name: 'Sluiten' }))
+    expect(onSluiten).not.toHaveBeenCalled()
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Verder invullen' }))
+    expect(onSluiten).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Bedrag')).toHaveValue('12')
+  })
+
+  it('sluit pas wanneer je "Weggooien" kiest', async () => {
+    const user = userEvent.setup()
+    const { onSluiten } = toonBewaakt()
+    await user.type(screen.getByLabelText('Bedrag'), '12')
+    await user.click(screen.getByRole('button', { name: 'Sluiten' }))
+    await user.click(screen.getByRole('button', { name: 'Weggooien' }))
+    expect(onSluiten).toHaveBeenCalledTimes(1)
+  })
+
+  it('laat Escape de vraag stellen, en een tweede Escape de vraag intrekken', async () => {
+    const user = userEvent.setup()
+    const { onSluiten } = toonBewaakt()
+    await user.type(screen.getByLabelText('Bedrag'), '12')
+    await user.keyboard('{Escape}')
+    expect(onSluiten).not.toHaveBeenCalled()
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+
+    // Escape betekent hier: nee, toch niet weggooien. De veilige kant.
+    await user.keyboard('{Escape}')
+    expect(onSluiten).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  it('telt het formulier na een geslaagde opslag weer als leeg', async () => {
+    // Anders zou je na "Opslaan + volgende" moeten bevestigen dat je een LEEG
+    // formulier mag weggooien.
+    const user = userEvent.setup()
+    const onSluiten = vi.fn()
+    const { hulp } = toonBewaakt(onSluiten, 0)
+    await user.type(screen.getByLabelText('Bedrag'), '12')
+    hulp.rerender(
+      <Dialoog titel="Uitgave toevoegen" open onSluiten={onSluiten} bewaakInvoer schoonNa={1}>
+        <input aria-label="Bedrag" />
+      </Dialoog>,
+    )
+    await user.click(laag())
+    expect(onSluiten).toHaveBeenCalledTimes(1)
+  })
+
+  it('laat een popup ZONDER bewaking gewoon dichtklikken', async () => {
+    // Een popup die alleen iets toont (een bon) heeft niets te verliezen.
+    const user = userEvent.setup()
+    const onSluiten = vi.fn()
+    render(
+      <Dialoog titel="Bon" open onSluiten={onSluiten}>
+        <input aria-label="Bedrag" />
+      </Dialoog>,
+    )
+    await user.type(screen.getByLabelText('Bedrag'), '12')
+    await user.click(laag())
+    expect(onSluiten).toHaveBeenCalledTimes(1)
+  })
+})
+
+// Wat de nakijkronde van ronde 55 boven haalde.
+describe('Dialoog — wat de nakijkronde ving', () => {
+  function laag(): HTMLElement {
+    const el = document.querySelector('.dialoog-laag')
+    if (!(el instanceof HTMLElement)) throw new Error('geen dialoog-laag gevonden')
+    return el
+  }
+
+  it('telt een keuze die je met een KNOP in het formulier maakt ook als invoer', async () => {
+    // Een categoriechip en een gezinslid kies je met een knop, en een knop geeft geen
+    // `input`. Die keuzes verdwenen dus nog altijd bij een klik ernaast.
+    const user = userEvent.setup()
+    const onSluiten = vi.fn()
+    render(
+      <Dialoog titel="Uitgave toevoegen" open onSluiten={onSluiten} bewaakInvoer>
+        <button type="button">Buiten het formulier</button>
+        <form>
+          <button type="button">Voeding</button>
+        </form>
+      </Dialoog>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Voeding' }))
+    await user.click(laag())
+    expect(onSluiten).not.toHaveBeenCalled()
+  })
+
+  it('laat een knop BUITEN het formulier het venster niet op slot zetten', async () => {
+    // De vier soortknoppen bovenaan de boekingspopup kiezen alleen wélk formulier je
+    // ziet. Een leeg venster mag daarna gewoon dichtklikken.
+    const user = userEvent.setup()
+    const onSluiten = vi.fn()
+    render(
+      <Dialoog titel="Uitgave toevoegen" open onSluiten={onSluiten} bewaakInvoer>
+        <button type="button">Inkomst</button>
+        <form>
+          <input aria-label="Bedrag" />
+        </form>
+      </Dialoog>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Inkomst' }))
+    await user.click(laag())
+    expect(onSluiten).toHaveBeenCalledTimes(1)
+  })
+
+  it('laat de vraag niet staan wanneer de popup sluit terwijl ze openstaat', async () => {
+    // Een effect draait ná het tekenen; werd de vraag alleen bij het OPENEN gewist,
+    // dan flitste ze bij de volgende opening over een leeg formulier.
+    const user = userEvent.setup()
+    const onSluiten = vi.fn()
+    const hulp = render(
+      <Dialoog titel="Uitgave toevoegen" open onSluiten={onSluiten} bewaakInvoer>
+        <input aria-label="Bedrag" />
+      </Dialoog>,
+    )
+    await user.type(screen.getByLabelText('Bedrag'), '12')
+    await user.click(screen.getByRole('button', { name: 'Sluiten' }))
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+
+    // Van buitenaf sluiten (bv. een ontsnappingsroute elders in de app).
+    hulp.rerender(
+      <Dialoog titel="Uitgave toevoegen" open={false} onSluiten={onSluiten} bewaakInvoer>
+        <input aria-label="Bedrag" />
+      </Dialoog>,
+    )
+    hulp.rerender(
+      <Dialoog titel="Uitgave toevoegen" open onSluiten={onSluiten} bewaakInvoer>
+        <input aria-label="Bedrag" />
+      </Dialoog>,
+    )
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+})

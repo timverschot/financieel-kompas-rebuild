@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { leegNepPdf, nepJsPdfKlasse, type NepPdf } from '../test/nepPdf'
-import { BOVEN, LINKS, ONDERGRENS, RECHTS, VOETTEKST_Y, maakBlad, plaatsAfbeelding } from './pdfBlad'
+import { BOVEN, LINKS, ONDERGRENS, RECHTS, VOETTEKST_Y, maakBlad, plaatsAfbeelding, winAnsiVeilig } from './pdfBlad'
 import { vertaal } from '../i18n'
 
 // Dit bestand bestaat omdat drie documenten dezelfde maatvoering en paginabreuk
@@ -200,5 +200,61 @@ describe('plaatsAfbeelding', () => {
   it('geeft false terug bij een bon die niet te lezen is, in plaats van te ontploffen', () => {
     expect(plaatsAfbeelding(doc, 'data:image/jpeg;base64,KAPOT', vak)).toBe(false)
     expect(nep.afbeeldingen).toHaveLength(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Wat het lettertype van een PDF wél en niet kan zetten (ronde 55)
+//
+// Ronde 54 herstelde één zo'n teken bij de bron: de smalle vaste spatie die het
+// Frans als duizendtalscheiding gebruikt, waardoor Franse afrekeningen vanaf
+// € 1.000 tekenbrij werden. Dit is dezelfde reparatie, maar op de plek waar ÁLLE
+// PDF-tekst langskomt — ook een naam die de gebruiker zelf getypt heeft.
+// ---------------------------------------------------------------------------
+describe('winAnsiVeilig', () => {
+  it('laat gewone West-Europese tekst ongemoeid', () => {
+    expect(winAnsiVeilig('Café Noël — «citaat» ½ ‰ œ')).toBe('Café Noël — «citaat» ½ ‰ œ')
+    expect(winAnsiVeilig('€ 1.234,56')).toBe('€ 1.234,56')
+  })
+
+  it('zet de smalle vaste spatie om naar een gewone vaste spatie', () => {
+    // Dit is het Franse geval van ronde 54: '1 234,56 €' met U+202F erin.
+    expect(winAnsiVeilig('1 234,56 €')).toBe('1 234,56 €')
+  })
+
+  it('laat een emoji weg in plaats van er een leeg vakje van te maken', () => {
+    expect(winAnsiVeilig('Schoolkosten 🎒')).toBe('Schoolkosten ')
+    expect(winAnsiVeilig('Woning 🏠 Gent')).toBe('Woning  Gent')
+  })
+
+  it('vervangt een pijltje door iets leesbaars', () => {
+    expect(winAnsiVeilig('Zicht → Spaar')).toBe('Zicht -> Spaar')
+  })
+
+  it('haalt de kale letter uit een teken dat het lettertype niet kent', () => {
+    // ā bestaat niet in WinAnsi; de a wel.
+    expect(winAnsiVeilig('Rīga')).toBe('Riga')
+  })
+
+  it('geeft één vraagteken wanneer er van een NIET-lege tekst niets overblijft', () => {
+    // Een dossier dat alleen "🏠" heet. Een lege regel zou doen alsof er niets stond.
+    expect(winAnsiVeilig('🏠')).toBe('?')
+    expect(winAnsiVeilig('')).toBe('')
+  })
+
+  it('beschermt élke schrijfactie op het document, ook de rechtstreekse', () => {
+    // De vijf PDF-bestanden schrijven ook buiten dit blad om op `doc` — kolomkoppen,
+    // bedragen in tabellen. Die moeten evengoed beschermd zijn, anders is dit weer
+    // een regel die je bij elke nieuwe PDF moet onthouden.
+    maakBlad(doc)
+    doc.text('Totaal 🎒', 10, 10)
+    doc.text(['regel 🎒', 'nog een →'], 10, 20)
+    expect(nep.teksten.map((r) => r.tekst)).toEqual(['Totaal ', 'regel ', 'nog een ->'])
+  })
+
+  it('breekt af op de opgeschoonde tekst en schrijft ze ook zo weg', () => {
+    const blad = maakBlad(doc)
+    blad.alinea('Kort 🎒')
+    expect(nep.teksten.map((r) => r.tekst)).toEqual(['Kort '])
   })
 })

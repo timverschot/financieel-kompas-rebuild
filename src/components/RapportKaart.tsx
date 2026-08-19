@@ -3,6 +3,7 @@ import type { Categorie, Overboeking, Rekening, Transactie, Waardering } from '.
 import { Kaart } from '../ui/basis'
 import { useT } from '../i18n'
 import { jaarVan, periodeLabel } from '../utils/datum'
+import { exportFoutmelding } from '../utils/appVersie'
 import { exporteerPeriodePDF } from '../utils/periodePdf'
 
 // De exportknoppen van het maandoverzicht (ronde 41).
@@ -52,10 +53,11 @@ export function RapportKaart({
       // Bij een download gebeurt er op het scherm niets. Zonder deze regel weet wie
       // met een schermlezer werkt niet of het bestand er komt.
       setKlaar(t('Het rapport van {periode} is gedownload.', { periode: periodeLabel(periode) }))
-    } catch {
+    } catch (e) {
       // Bewust zichtbaar. Een stille mislukking laat je in het ongewisse of het
-      // bestand er komt of niet.
-      setFout(t('Het rapport kon niet gemaakt worden. Probeer het opnieuw.'))
+      // bestand er komt of niet. En sinds ronde 56 staat er de JUISTE raad: is de app
+      // intussen opnieuw gepubliceerd, dan helpt opnieuw proberen nooit.
+      setFout(exportFoutmelding(t, e, t('Het rapport kon niet gemaakt worden. Probeer het opnieuw.')))
     } finally {
       setBezig('')
     }

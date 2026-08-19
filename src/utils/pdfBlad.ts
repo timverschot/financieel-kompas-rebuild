@@ -1,4 +1,5 @@
 import type { Vertaler } from '../i18n'
+import { laadOnderdeel } from './appVersie'
 
 // De opmaakgereedschappen voor een A4-blad, één keer.
 //
@@ -83,7 +84,128 @@ export type Blad = {
   breedte: number
 }
 
+/**
+ * De tekens die het standaardlettertype van jsPDF ECHT kan zetten (WinAnsi).
+ *
+ * Dat is Latin-1 (ruwweg West-Europa) plus zesentwintig extra tekens die Windows
+ * ooit in de gaten 0x80–0x9F stopte: het euroteken, de typografische aanhalings-
+ * tekens, de lange streepjes, het beletselteken, œ en Œ, š, ž, Ÿ, ƒ, ‰, ™. Alles
+ * daarbuiten — een emoji, een pijltje, Cyrillisch, en ook de SMALLE vaste spatie
+ * U+202F — komt op papier als een leeg vakje met een schuine streep erin.
+ */
+const WINANSI_EXTRA = '€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ'
+
+function magInPdf(teken: string): boolean {
+  const cp = teken.codePointAt(0) ?? 0
+  if (cp === 10) return true // regeleinde
+  if (cp >= 0x20 && cp <= 0x7e) return true
+  if (cp >= 0xa0 && cp <= 0xff) return true
+  return WINANSI_EXTRA.includes(teken)
+}
+
+/** Tekens waarvoor een betere vervanger bestaat dan "gewoon weglaten". */
+const VERVANGERS: Record<string, string> = {
+  ' ': ' ', // smalle vaste spatie → gewone vaste spatie (ziet er hetzelfde uit)
+  ' ': ' ',
+  ' ': ' ',
+  ' ': ' ',
+  ' ': ' ',
+  ' ': ' ',
+  ' ': ' ',
+  ' ': ' ',
+  ' ': ' ',
+  ' ': ' ',
+  '​': '', // spatie zonder breedte
+  '﻿': '', // byte-volgordemarkering
+  '‑': '-', // vast koppelteken
+  '−': '-', // wiskundig minteken → gewoon streepje
+  '→': '->',
+  '←': '<-',
+  '⇒': '=>',
+  '✓': 'v', // vinkje
+  '✔': 'v',
+}
+
+/**
+ * Maakt een tekst veilig om in een PDF te zetten (ronde 55).
+ *
+ * WAAROM DIT ÉÉN PLEK IS. In ronde 54 werd één zo'n teken hersteld waar het
+ * ontstond: `formatEuro` maakte in het Frans een smalle vaste spatie, en Franse
+ * afrekeningen werden vanaf € 1.000 onleesbaar. Maar bedragen zijn niet de enige
+ * tekst in een PDF. Zet je een emoji of een pijltje in de naam van een eigen
+ * categorie, een dossier of een document, dan komt datzelfde probleem terug — in
+ * een blad dat naar een advocaat of een rechter kan gaan. Daarom staat de
+ * reparatie nu waar ALLE PDF-tekst langskomt, en niet bij één van de bronnen.
+ *
+ * Wat er gebeurt, in volgorde:
+ *  1. een teken met een goede vervanger krijgt die vervanger (zie hierboven);
+ *  2. een teken dat het lettertype kent, blijft;
+ *  3. van de rest proberen we de "kale" vorm (ā → a, ﬁ → fi) via NFKD;
+ *  4. wat dan nog overblijft, verdwijnt — een emoji laat je beter weg dan als een
+ *     vraagteken te zetten.
+ *
+ * Blijft er van een tekst die NIET leeg was helemaal niets over (een dossier dat
+ * alleen "🏠" heet), dan komt er één vraagteken. Een lege regel op een blad zou
+ * doen alsof er niets stond.
+ */
+export function winAnsiVeilig(tekst: string): string {
+  let uit = ''
+  for (const teken of tekst) {
+    const vervanger = VERVANGERS[teken]
+    if (vervanger !== undefined) {
+      uit += vervanger
+      continue
+    }
+    if (magInPdf(teken)) {
+      uit += teken
+      continue
+    }
+    for (const deel of teken.normalize('NFKD')) {
+      if (magInPdf(deel)) uit += deel
+    }
+  }
+  if (uit === '' && tekst !== '') return '?'
+  return uit
+}
+
+/**
+ * Zet de veiligheidsklep op een jsPDF-document.
+ *
+ * Bewust het document ZELF aanpassen en geen kopie teruggeven: de vijf
+ * PDF-bestanden schrijven ook rechtstreeks op `doc` (kolomkoppen, bedragen in
+ * tabellen), niet alleen via dit blad. Een kopie zou die dertig schrijfplekken
+ * onbeschermd laten, en dan is dit weer een regel die je bij elke nieuwe PDF moet
+ * onthouden — precies wat er in ronde 54 misging.
+ */
+function beveilig(doc: Doc): void {
+  const tekstOrigineel = doc.text.bind(doc)
+  const splitsOrigineel = doc.splitTextToSize.bind(doc)
+  doc.text = (tekst, x, y, opties) =>
+    tekstOrigineel(Array.isArray(tekst) ? tekst.map(winAnsiVeilig) : winAnsiVeilig(tekst), x, y, opties)
+  doc.splitTextToSize = (tekst, breedte) => splitsOrigineel(winAnsiVeilig(tekst), breedte)
+}
+
+/**
+ * Haalt de PDF-bibliotheek op (ronde 56).
+ *
+ * Waarom dit hier staat en niet vijf keer apart: de bibliotheek is 390 kB en wordt
+ * daarom pas opgehaald wanneer je écht een document maakt. Dat is de juiste keuze —
+ * bijna niemand maakt bij elk bezoek een PDF — maar ze heeft een keerzijde: het
+ * bestand draagt een code in zijn naam die bij elke publicatie verandert, en na een
+ * publicatie bestaat de oude niet meer. Had jij de app open staan, dan vraagt ze een
+ * bestand op dat weg is.
+ *
+ * `laadOnderdeel` maakt van elke mislukking hier een fout die de app kan uitleggen,
+ * zodat ze niet langer "probeer het opnieuw" adviseert bij het geval waarin opnieuw
+ * proberen nooit kan lukken. Vijf documenten gaan hier langs: de afrekening, de
+ * bewijsmap, het fiscaal overzicht, de indexatiebrief en het maandrapport.
+ */
+export function laadJsPdf() {
+  return laadOnderdeel(() => import('jspdf'))
+}
+
 export function maakBlad(doc: Doc): Blad {
+  beveilig(doc)
   let y = BOVEN
 
   function normaal(klein = false) {

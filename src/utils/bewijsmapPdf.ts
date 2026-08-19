@@ -25,7 +25,7 @@ import { vandaag } from './datum'
 import { veiligeBestandsnaam } from './download'
 import { formatEuro } from './format'
 import { bonnenVanKost, documentenVan, soortNaam } from './kluis'
-import { LINKS, ONDERGRENS, RECHTS, maakBlad, plaatsAfbeelding } from './pdfBlad'
+import { laadJsPdf, LINKS, maakBlad, ONDERGRENS, plaatsAfbeelding, RECHTS } from './pdfBlad'
 
 // De BEWIJSMAP: één PDF met alles erin, klaar om aan een advocaat of bemiddelaar
 // te geven.
@@ -239,7 +239,7 @@ export async function exporteerBewijsmapPDF(
 
   const opmaakdatum = vandaag(nu)
 
-  const { jsPDF } = await import('jspdf')
+  const { jsPDF } = await laadJsPdf()
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const blad = maakBlad(doc)
 

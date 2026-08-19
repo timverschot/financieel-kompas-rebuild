@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { DossierDocument, Onderhoudsbetaling, Onderhoudsbijdrage, Transactie } from '../data/schema'
 import { beschikbareJaren, fiscaalJaaroverzicht, type FiscaleRegel } from '../utils/fiscaal'
+import { exportFoutmelding } from '../utils/appVersie'
 import type { FiscalePost } from '../data/fiscalePosten'
 import { fiscaalCsvBestand, fiscaalCsvBestandsnaam } from '../utils/fiscaalCsv'
 import { exporteerFiscaalPDF } from '../utils/fiscaalPdf'
@@ -87,8 +88,8 @@ export function FiscaalSectie({
     try {
       downloadTekst(fiscaalCsvBestandsnaam(overzicht), fiscaalCsvBestand(t, overzicht))
       setMelding(t('Het bestand is gedownload.'))
-    } catch {
-      setFout(t('Het bestand kon niet gemaakt worden. Probeer het opnieuw.'))
+    } catch (e) {
+      setFout(exportFoutmelding(t, e, t('Het bestand kon niet gemaakt worden. Probeer het opnieuw.')))
     }
   }
 
@@ -102,8 +103,8 @@ export function FiscaalSectie({
     try {
       await exporteerFiscaalPDF(t, overzicht)
       setMelding(t('Het document is gedownload.'))
-    } catch {
-      setFout(t('Het document kon niet gemaakt worden. Probeer het opnieuw.'))
+    } catch (e) {
+      setFout(exportFoutmelding(t, e, t('Het document kon niet gemaakt worden. Probeer het opnieuw.')))
     } finally {
       setBezig(false)
     }

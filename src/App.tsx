@@ -17,7 +17,6 @@ import type {
   Overboeking,
   Rekening,
   Spaardoel,
-  Streepjescode,
   Subcategorie,
   TerugkerendePost,
   Transactie,
@@ -44,7 +43,6 @@ import {
   bewaarRekening,
   bewaarOverboeking,
   bewaarSpaardoel,
-  bewaarStreepjescode,
   bewaarSubcategorie,
   bewaarTerugkerendePost,
   bewaarTransactie,
@@ -66,7 +64,6 @@ import {
   laadOverboekingen,
   laadRekeningen,
   laadSpaardoelen,
-  laadStreepjescodes,
   laadOrdeningen,
   bewaarOrdening,
   laadWaarderingen,
@@ -148,6 +145,7 @@ import { TerugkerendeSectie } from './components/TerugkerendeSectie'
 import { PlanRegels } from './components/PlanRegels'
 import { OverboekingSectie } from './components/OverboekingSectie'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { NieuweVersieBalk } from './components/NieuweVersieBalk'
 import { OnderNavigatie, PAGINAS, type Pagina } from './components/OnderNavigatie'
 import { BoekingDialoog } from './components/BoekingDialoog'
 import { Dialoog } from './ui/Dialoog'
@@ -251,7 +249,6 @@ export function App() {
   const [aflossingen, setAflossingen] = useState<Aflossing[]>([])
   const [garanties, setGaranties] = useState<Garantie[]>([])
   const [dossierdocumenten, setDossierdocumenten] = useState<DossierDocument[]>([])
-  const [streepjescodes, setStreepjescodes] = useState<Streepjescode[]>([])
   const [ordeningen, setOrdeningen] = useState<Ordening[]>([])
   const [waarderingen, setWaarderingen] = useState<Waardering[]>([])
   const [ongeldig, setOngeldig] = useState(0)
@@ -371,7 +368,7 @@ export function App() {
   const { budgetDrempel } = useInstellingen()
 
   async function herlaad() {
-    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd, obd, obt, maf] = await Promise.all([
+    const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, ord, docs, wrd, obd, obt, maf] = await Promise.all([
       laadTransacties(),
       laadRekeningen(),
       laadCategorieen(),
@@ -389,7 +386,6 @@ export function App() {
       laadLeningen(),
       laadAflossingen(),
       laadGaranties(),
-      laadStreepjescodes(),
       laadOrdeningen(),
       laadDossierDocumenten(),
       laadWaarderingen(),
@@ -403,7 +399,7 @@ export function App() {
     // kosten uit een afrekening zonder dat er ergens iets stond — en dan stuur je
     // een bedrag van € 610 door waar € 940 hoorde te staan.
     setOngeldig(
-      [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd, obd, obt, maf].reduce(
+      [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, ord, docs, wrd, obd, obt, maf].reduce(
         (som, r) => som + r.ongeldig,
         0,
       ),
@@ -424,7 +420,6 @@ export function App() {
     setLeningen(ln.geldig)
     setAflossingen(afl.geldig)
     setGaranties(gar.geldig)
-    setStreepjescodes(sc.geldig)
     setOrdeningen(ord.geldig)
     setDossierdocumenten(docs.geldig)
     setWaarderingen(wrd.geldig)
@@ -466,7 +461,7 @@ export function App() {
       // maandafsluiting te zien — en een ongeldige maandafsluiting werd nergens
       // gemeld. Dezelfde soort fout als de vergeten `ordeningen` uit ronde 35;
       // twee handgeschreven lijsten die uit elkaar lopen.
-      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd, obd, obt, maf] = await Promise.all([
+      const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, ord, docs, wrd, obd, obt, maf] = await Promise.all([
         laadTransacties(),
         laadRekeningen(),
         laadCategorieen(),
@@ -484,7 +479,6 @@ export function App() {
         laadLeningen(),
         laadAflossingen(),
         laadGaranties(),
-        laadStreepjescodes(),
         laadOrdeningen(),
         laadDossierDocumenten(),
         laadWaarderingen(),
@@ -512,7 +506,6 @@ export function App() {
       setLeningen(ln.geldig)
       setAflossingen(afl.geldig)
       setGaranties(gar.geldig)
-      setStreepjescodes(sc.geldig)
       setOrdeningen(ord.geldig)
       setDossierdocumenten(docs.geldig)
       setWaarderingen(wrd.geldig)
@@ -522,7 +515,7 @@ export function App() {
       // transacties. Deze regel stond alleen in `herlaad`, dus wie de app opende en
       // niets wijzigde, zag nooit dat er records overgeslagen waren.
       setOngeldig(
-        [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, sc, ord, docs, wrd, obd, obt, maf].reduce(
+        [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, ord, docs, wrd, obd, obt, maf].reduce(
           (som, r) => som + r.ongeldig,
           0,
         ),
@@ -893,6 +886,11 @@ export function App() {
     // In één ondeelbare stap: ofwel verdwijnt alles, ofwel niets. Zie de uitleg
     // bij verwijderDossierMetAanhang — losse stappen lieten bij een onderbreking
     // onzichtbare weeskosten achter die wél meesynchroniseerden.
+    // De documentkluis van dit dossier (ronde 55). Dit is het zwaarste wat de app
+    // bewaart: elke bon en elke scan zit als data-URL in de database, en dus ook in
+    // elke back-up. Bleven ze staan, dan waren ze onzichtbaar — het dossier waar ze
+    // bij hoorden bestond niet meer — en kreeg je ze nooit meer weg.
+    const oudeDocumenten = dossierdocumenten.filter((d) => d.dossierId === id)
     await verwijderDossierMetAanhang(id, {
       gedeeldeKostIds: oudeKosten.map((k) => k.id),
       verrekeningIds: oudeVerrekeningen.map((v) => v.id),
@@ -900,6 +898,7 @@ export function App() {
       kindrekeningpostIds: oudeKindrekeningposten.map((p) => p.id),
       onderhoudsbijdrageIds: oudeBijdragen.map((b) => b.id),
       onderhoudsbetalingIds: oudeBetalingen.map((b) => b.id),
+      documentIds: oudeDocumenten.map((d) => d.id),
     })
     await herlaad()
     if (oud) {
@@ -911,6 +910,9 @@ export function App() {
         for (const p of oudeKindrekeningposten) await bewaarKindrekeningpost(p)
         for (const b of oudeBijdragen) await bewaarOnderhoudsbijdrage(b)
         for (const b of oudeBetalingen) await bewaarOnderhoudsbetaling(b)
+        // De documenten komen terug zoals ze waren, inclusief de aanduiding
+        // "waarop steunt deze verdeling" op het dossier zelf.
+        for (const d of oudeDocumenten) await bewaarDossierDocument(d)
       })
     }
   }
@@ -1303,16 +1305,6 @@ export function App() {
     }
   }
 
-  // Onthoud een gescande streepjescode (barcode -> product). Stil bijwerken; geen
-  // volledige herlaad nodig — de lijst wordt bij een volgende actie meegeladen.
-  async function onthoudStreepjescode(s: Streepjescode) {
-    await bewaarStreepjescode(s)
-    setStreepjescodes((huidig) => {
-      const rest = huidig.filter((x) => x.id !== s.id)
-      return [...rest, s]
-    })
-  }
-
   async function verwijder(id: string) {
     const oud = transacties?.find((t) => t.id === id)
     // Wat aan de transactie hing, gaat mee. Anders blijft een gedeelde kost als
@@ -1612,8 +1604,6 @@ export function App() {
         categorieen={categorieen}
         handelaars={handelaars}
         handelaarIndex={handelaarIndex}
-        streepjescodes={streepjescodes}
-        onOnthoudStreepjescode={onthoudStreepjescode}
         onNieuweSubcategorie={voegSubcategorieToe}
         gezinsleden={kinderen}
         overboekingen={overboekingen}
@@ -1634,6 +1624,9 @@ export function App() {
         titel={t('Transactie bewerken')}
         open={bewerkTransactie !== null}
         onSluiten={() => setBewerkTransactie(null)}
+        // Ook hier: een klik naast het venster mag een half aangepaste boeking
+        // niet wissen. Zie `bewaakInvoer` in ui/Dialoog.tsx.
+        bewaakInvoer
       >
         {bewerkTransactie && (
           <TransactieFormulier
@@ -1644,8 +1637,6 @@ export function App() {
             handelaars={handelaars}
             handelaarIndex={handelaarIndex}
             bewerken={bewerkTransactie}
-            streepjescodes={streepjescodes}
-            onOnthoudStreepjescode={onthoudStreepjescode}
             onNieuweSubcategorie={voegSubcategorieToe}
             gezinsleden={kinderen}
             dossiers={dossiers}
@@ -2690,6 +2681,12 @@ export function App() {
             )}
           </header>
           <div style={{ padding: '1.5rem 1.5rem 3rem' }}>
+            {/* Bovenaan de inhoud en NIET zwevend: zie ui-uitleg in
+                components/NieuweVersieBalk.tsx. Buiten de `key` hieronder, zodat de
+                melding niet bij elke tabwissel opnieuw invliegt. */}
+            <div className="inhoud-breed">
+              <NieuweVersieBalk />
+            </div>
             {/* De `key` is wat de overgang laat werken: bij elke tabwissel is dit
                 voor React een NIEUW vlak, dus begint de animatie opnieuw. Zonder
                 key zou React de inhoud hergebruiken en zou je de eerste keer een
@@ -2734,6 +2731,10 @@ export function App() {
           <div style={{ flex: 1 }} />
           <Meldingenbel meldingen={meldingen} onGaNaar={gaNaarMelding} onBoekVasteLast={boekVasteLastPerId} />
         </div>
+
+        {/* Bovenaan de inhoud en NIET zwevend: zie de uitleg in
+            components/NieuweVersieBalk.tsx. */}
+        <NieuweVersieBalk />
 
         {/* Ronde 35: op een telefoon was dit nergens te zien. Probeerde je een
             rekening te verwijderen die nog boekingen had, dan gebeurde er letterlijk

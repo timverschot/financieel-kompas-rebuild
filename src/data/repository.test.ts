@@ -228,6 +228,36 @@ describe('verwijderen met aanhang', () => {
     expect((await laadKindrekeningposten()).geldig).toHaveLength(0)
   })
 
+  it('haalt ook de DOCUMENTEN van dat dossier weg (ronde 55)', async () => {
+    // Bleven ze staan, dan bleef elke foto en elke scan als data-URL in de database
+    // én in elke back-up staan, met een dossierId dat nergens meer naar wijst:
+    // onzichtbaar in de app, en dus niet meer weg te krijgen.
+    await bewaarDossier({ id: 'd1', naam: 'Co-ouderschap', aandeelJij: 50 })
+    await bewaarDossierDocument({
+      id: 'doc-a',
+      dossierId: 'd1',
+      naam: 'Overeenkomst',
+      soort: 'overeenkomst',
+      bestand: 'data:application/pdf;base64,AAAA',
+      toegevoegdOp: '2026-07-01',
+    })
+    // Een document van een ANDER dossier blijft staan.
+    await bewaarDossier({ id: 'd2', naam: 'Lening', aandeelJij: 50 })
+    await bewaarDossierDocument({
+      id: 'doc-b',
+      dossierId: 'd2',
+      naam: 'Bon',
+      soort: 'bon',
+      bestand: 'data:image/jpeg;base64,AAAA',
+      toegevoegdOp: '2026-07-01',
+    })
+
+    await verwijderDossierMetAanhang('d1', { documentIds: ['doc-a'] })
+
+    const over = (await laadDossierDocumenten()).geldig
+    expect(over.map((d) => d.id)).toEqual(['doc-b'])
+  })
+
   it('schrijft dat alles weg als één blok in het logboek', async () => {
     await bewaarDossier({ id: 'd1', naam: 'Lening', aandeelJij: 50 })
     await bewaarGedeeldeKost({

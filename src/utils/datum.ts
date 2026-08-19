@@ -139,10 +139,44 @@ export function laatsteDagVanPeriode(periode: string): string {
  * veel plaatsen met 'JJJJ-MM' gewerkt, dus dat is geen bedacht geval.
  */
 export function dagenTussen(a: string, b: string): number {
-  const ta = alsDagstempel(a)
-  const tb = alsDagstempel(b)
-  if (Number.isNaN(ta) || Number.isNaN(tb)) return Number.POSITIVE_INFINITY
-  return Math.abs(tb - ta) / 86400000
+  const verschil = dagenVerschil(a, b)
+  return verschil === null ? Number.POSITIVE_INFINITY : Math.abs(verschil)
+}
+
+/**
+ * Hele kalenderdagen VAN de ene datum NAAR de andere, met teken (ronde 55).
+ *
+ * Negatief wanneer `tot` vóór `van` ligt, en `null` wanneer een van beide geen
+ * echte kalenderdag is. Dat `null` is het hele punt van deze functie.
+ *
+ * Waarom ze er komt. Er stonden DRIE eigen versies van "dagen tussen" in de app:
+ * deze, één in `utils/garantie.ts` en één in `utils/meldingen.ts`. Ze verschilden
+ * niet in de rekensom maar in wat ze doen bij een datum die ze niet begrijpen, en
+ * dat is precies waar het misgaat. Die in `meldingen.ts` gaf **0**, en `0 <= venster`
+ * betekent "binnen het venster" — een onleesbare datum leverde dus áltijd een
+ * melding op, en wel de dringendste. Met `null` kan een aanroeper dat geval niet
+ * meer per ongeluk overslaan: hij moet zeggen wat hij ermee doet.
+ *
+ * Zie `dagenTussen` hierboven voor de UTC-uitleg en voor waarom de vormcontrole
+ * (`alsDagstempel`) er echt nodig is.
+ */
+export function dagenVerschil(vanISO: string, totISO: string): number | null {
+  const van = alsDagstempel(vanISO)
+  const tot = alsDagstempel(totISO)
+  if (Number.isNaN(van) || Number.isNaN(tot)) return null
+  return Math.round((tot - van) / 86400000)
+}
+
+/**
+ * Is dit een ECHTE kalenderdag in de vorm 'JJJJ-MM-DD'? (ronde 55)
+ *
+ * Nodig omdat een rekensom een onmogelijke datum stil kan rechttrekken. Zo maakt
+ * `vervaldatum()` van "30 februari 2026 + 24 maanden" gewoon 28 februari 2028: een
+ * geldige dag, uit een datum die nooit bestaan heeft. Wie de INVOER wil keuren,
+ * moet ze dus zelf keuren en niet naar het resultaat kijken.
+ */
+export function isDagstempel(datum: string): boolean {
+  return !Number.isNaN(alsDagstempel(datum))
 }
 
 /**

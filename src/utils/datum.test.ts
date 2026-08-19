@@ -15,6 +15,7 @@ import {
   jaarVan,
   maandenVanJaar,
   dagenTussen,
+  dagenVerschil,
 } from './datum'
 
 describe('datum', () => {
@@ -222,5 +223,40 @@ describe('dagenTussen', () => {
     // Niet 0 en niet NaN: `Infinity` zegt "dit past bij niets", en dat is wat een
     // vergelijking met een marge ervan moet maken.
     expect(dagenTussen('geen datum', '2026-05-04')).toBe(Number.POSITIVE_INFINITY)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// dagenVerschil — de ene som die de drie eigen versies vervangt (ronde 55)
+// ---------------------------------------------------------------------------
+describe('dagenVerschil', () => {
+  it('telt met teken: negatief wanneer "tot" vóór "van" ligt', () => {
+    expect(dagenVerschil('2026-05-01', '2026-05-04')).toBe(3)
+    expect(dagenVerschil('2026-05-04', '2026-05-01')).toBe(-3)
+    expect(dagenVerschil('2026-05-04', '2026-05-04')).toBe(0)
+  })
+
+  it('telt over een maand- en een jaargrens heen', () => {
+    expect(dagenVerschil('2026-02-27', '2026-03-02')).toBe(3)
+    expect(dagenVerschil('2025-12-30', '2026-01-02')).toBe(3)
+    // Schrikkeljaar: 2024 heeft een 29 februari.
+    expect(dagenVerschil('2024-02-28', '2024-03-01')).toBe(2)
+  })
+
+  it('geeft null bij alles wat geen echte kalenderdag is', () => {
+    // Dit is de kern van de ronde: de eigen versie in meldingen.ts gaf hier 0, en
+    // "0 dagen geleden" haalt élk venster — dus kwam er altijd een melding.
+    expect(dagenVerschil('2026-05', '2026-05-04')).toBeNull()
+    expect(dagenVerschil('2026-13-45', '2026-05-04')).toBeNull()
+    // 30 februari bestaat niet, maar Date.parse rolt hem stil door naar 2 maart.
+    expect(dagenVerschil('2026-02-30', '2026-03-05')).toBeNull()
+    expect(dagenVerschil('', '2026-03-05')).toBeNull()
+    expect(dagenVerschil('2026-03-05', 'morgen')).toBeNull()
+  })
+
+  it('is de bron van dagenTussen, dat hetzelfde antwoord zonder teken geeft', () => {
+    expect(dagenTussen('2026-05-04', '2026-05-01')).toBe(3)
+    expect(dagenTussen('2026-05-01', '2026-05-04')).toBe(3)
+    expect(dagenTussen('2026-02-30', '2026-03-05')).toBe(Number.POSITIVE_INFINITY)
   })
 })

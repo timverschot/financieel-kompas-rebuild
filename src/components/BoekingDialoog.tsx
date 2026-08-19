@@ -8,7 +8,6 @@ import type {
   Kind,
   Overboeking,
   Rekening,
-  Streepjescode,
   TerugkerendePost,
   Transactie,
   Waardering,
@@ -62,8 +61,6 @@ export function BoekingDialoog({
   categorieen,
   handelaars,
   handelaarIndex,
-  streepjescodes = [],
-  onOnthoudStreepjescode,
   onNieuweSubcategorie,
   gezinsleden = [],
   overboekingen,
@@ -84,8 +81,6 @@ export function BoekingDialoog({
   categorieen: Categorie[]
   handelaars: string[]
   handelaarIndex?: HandelaarIndex
-  streepjescodes?: Streepjescode[]
-  onOnthoudStreepjescode?: (s: Streepjescode) => Promise<void> | void
   onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
   gezinsleden?: Kind[]
   overboekingen: Overboeking[]
@@ -120,12 +115,17 @@ export function BoekingDialoog({
   // Na het opslaan: sluiten, tenzij je op "Opslaan + volgende" duwde. Dat tweede
   // geval is voor wie een stapel bonnetjes van de week zit in te tikken — dan is
   // elke keer opnieuw de popup openen vier klikken te veel.
+  // Elke geslaagde opslag telt het formulier weer als leeg (zie `schoonNa` in
+  // Dialoog). Zonder dit zou "Opslaan + volgende" je bij het sluiten laten
+  // bevestigen dat je een LEEG formulier mag weggooien.
+  const [opgeslagen, setOpgeslagen] = useState(0)
   const naOpslaan = ({ blijfOpen }: { blijfOpen: boolean }) => {
+    setOpgeslagen((n) => n + 1)
     if (!blijfOpen) onSluiten()
   }
 
   return (
-    <Dialoog titel={t(huidig.titel)} open={open} onSluiten={onSluiten}>
+    <Dialoog titel={t(huidig.titel)} open={open} onSluiten={onSluiten} bewaakInvoer schoonNa={opgeslagen}>
       <div className="soortrij" role="group" aria-label={t('Wat wil je boeken?')}>
         {SOORTEN.map((s) => (
           <button
@@ -152,8 +152,6 @@ export function BoekingDialoog({
           categorieen={categorieen}
           handelaars={handelaars}
           handelaarIndex={handelaarIndex}
-          streepjescodes={streepjescodes}
-          onOnthoudStreepjescode={onOnthoudStreepjescode}
           onNieuweSubcategorie={onNieuweSubcategorie}
           gezinsleden={gezinsleden}
           dossiers={dossiers}

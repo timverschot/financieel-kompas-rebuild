@@ -4,7 +4,7 @@ import { labelVanCategorie } from '../data/categorieen/resolve'
 import { vandaag } from './datum'
 import { veiligeBestandsnaam } from './download'
 import { formatEuro } from './format'
-import { LINKS, RECHTS, maakBlad, type Blad, type Doc } from './pdfBlad'
+import { laadJsPdf, LINKS, maakBlad, RECHTS, type Blad, type Doc } from './pdfBlad'
 
 // Het fiscale jaaroverzicht als PDF — het blad dat naar de boekhouder gaat (ronde 50).
 //
@@ -61,7 +61,7 @@ export async function exporteerFiscaalPDF(
   overzicht: FiscaalOverzicht,
   nu: Date = new Date(),
 ): Promise<void> {
-  const { jsPDF } = await import('jspdf')
+  const { jsPDF } = await laadJsPdf()
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const blad = maakBlad(doc)
 

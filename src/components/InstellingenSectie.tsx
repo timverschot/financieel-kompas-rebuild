@@ -257,7 +257,7 @@ export function InstellingenSectie({
               <span className="rij-titel">{t('Wat er wél het toestel verlaat')}</span>
               <span className="rij-meta">
                 {t(
-                  'Scan je een streepjescode, dan gaat enkel die code naar de open productendatabank Open Food Facts om de productnaam op te halen. Loopt de app vast, dan wordt een technisch foutrapport verstuurd (welke fout, welke browser) — nooit een bedrag of een naam. Verder gaat er niets weg.',
+                  'Loopt de app vast, dan wordt een technisch foutrapport verstuurd (welke fout, welke browser) — nooit een bedrag of een naam. Verder gaat er niets weg.',
                 )}
               </span>
             </span>

@@ -15,7 +15,7 @@ import {
   richtingTekstNeutraal,
   stapUitleg,
 } from './onderhoudsbijdrageTekst'
-import { LINKS, RECHTS, maakBlad } from './pdfBlad'
+import { laadJsPdf, LINKS, maakBlad, RECHTS } from './pdfBlad'
 
 // Het overzicht van de onderhoudsbijdrage als PDF (ronde 42).
 //
@@ -43,7 +43,7 @@ export async function exporteerIndexatiebriefPDF(
   kinderen: Kind[] = [],
   nuISO: string = vandaag(),
 ): Promise<void> {
-  const { jsPDF } = await import('jspdf')
+  const { jsPDF } = await laadJsPdf()
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const blad = maakBlad(doc)
 

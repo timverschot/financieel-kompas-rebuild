@@ -52,3 +52,24 @@ describe('garantieStatus', () => {
     expect(s.bijnaVerlopen).toBe(true)
   })
 })
+
+// Ronde 55: de drie eigen "dagen tussen"-functies zijn er nog één, en een
+// onleesbare aankoopdatum wordt gezegd in plaats van doorgerekend.
+describe('garantieStatus met een onleesbare aankoopdatum', () => {
+  it('zegt dat ze onbekend is, en beweert niets over verlopen of resterend', () => {
+    const s = garantieStatus('2026-02-30', 24, '2026-08-18')
+    expect(s.onbekend).toBe(true)
+    expect(s.verlopen).toBe(false)
+    expect(s.bijnaVerlopen).toBe(false)
+    expect(s.dagenResterend).toBe(0)
+    // Geen verzonnen vervaldatum.
+    expect(s.vervaldatum).toBe('')
+  })
+
+  it('laat een gewone garantie ongemoeid', () => {
+    const s = garantieStatus('2026-01-15', 24, '2026-08-18')
+    expect(s.onbekend).toBe(false)
+    expect(s.vervaldatum).toBe('2028-01-15')
+    expect(s.verlopen).toBe(false)
+  })
+})
