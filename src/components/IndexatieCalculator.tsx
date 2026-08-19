@@ -30,10 +30,15 @@ export const uitkomstBijregel: CSSProperties = { margin: '6px 0 0', fontSize: 'v
  * dezelfde formule (basisbedrag × nieuwe index / aanvangsindex); enkel de uitleg
  * en de gebruikte indexreeks verschillen.
  *
- * Sinds deze ronde is ze geen eiland meer: bij alimentatie kan je de berekening
+ * Sinds ronde 47 is ze geen eiland meer: bij alimentatie kan je de berekening
  * **bewaren als onderhoudsbijdrage** in een dossier. Daar rekent de app ze vanaf
- * dan zélf bij, elk jaar op de verjaardag, met de gezondheidsindex die ze kent —
- * in plaats van dat je hier elk jaar opnieuw twee cijfers moet opzoeken.
+ * dan zélf bij, elk jaar op de verjaardag, in plaats van dat je hier elk jaar
+ * opnieuw twee cijfers moet opzoeken.
+ *
+ * ⚠ Welke reeks (ronde 58): het cijfer dat de app hieronder zelf voorstelt, komt uit
+ * de CONSUMPTIEPRIJSINDEX — de wettelijke reeks voor een onderhoudsbijdrage. Voor
+ * HUUR is de gezondheidsindex de juiste, en daar vult de gebruiker de twee cijfers
+ * zelf in; de rekenhulp zegt dat ook in haar uitleg.
  */
 export function IndexatieCalculator({
   dossiers = [],
@@ -93,7 +98,7 @@ export function IndexatieCalculator({
       <p style={{ margin: '0 0 12px', fontSize: 'var(--tekst-s)', color: 'var(--text-muted)' }}>
         {soort === 'huur'
           ? t('Voor huur gebruik je de gezondheidsindex: de aanvangsindex is die van de maand vóór de ondertekening van het huurcontract.')
-          : t('Voor onderhoudsgeld is de aanvangsindex die van de maand vóór de maand waarin het bedrag werd vastgelegd — dezelfde regel als bij huur. Hou je een lopende regeling bij, gebruik dan de onderhoudsbijdrage in je dossier: die zoekt de indexcijfers zelf op.')}
+          : t('Voor onderhoudsgeld gebruik je de consumptieprijsindex, en is de aanvangsindex die van de maand vóór de maand waarin het bedrag werd vastgelegd. Hou je een lopende regeling bij, gebruik dan de onderhoudsbijdrage in je dossier: die zoekt de indexcijfers zelf op.')}
       </p>
 
       <div className="veldrij">

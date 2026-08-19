@@ -316,6 +316,23 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
       dringend: false,
     }
 
+    // ⚠ Deze regeling dateert van vóór ronde 58 en heeft dus nooit een indexreeks
+    // gekozen. De app rekent er nu de wettelijke reeks bij (consumptieprijzen) waar
+    // ze vroeger de gezondheidsindex nam — en dáárdoor kan het bedrag veranderd zijn
+    // zonder dat de gebruiker iets deed. Een bedrag dat stil verschuift, is precies
+    // wat deze app niet mag doen, dus staat het in het belletje tot hij één keer
+    // bevestigd heeft welke reeks zijn akte noemt.
+    if (bijdrage.indexreeks === undefined) {
+      uit.push({
+        id: `bijdrage-indexreeks-${bijdrage.id}`,
+        soort: 'bijdrage',
+        sleutel:
+          'Kompal rekende de onderhoudsbijdrage van {dossier} vroeger met de gezondheidsindex. De wet noemt de consumptieprijzen, en daar rekent de app nu mee — het bedrag kan daardoor verschillen. Open de regeling en bevestig welke index in je akte staat.',
+        params: { dossier: naam },
+        ...gemeen,
+      })
+    }
+
     // Loopt de berekening vast op twee verschillende indexreeksen, dan staat het
     // bedrag stil. Zonder deze melding zou de bijdrage gewoon uit de lijst
     // verdwijnen — geen nieuws, terwijl er juist iets te doen is.

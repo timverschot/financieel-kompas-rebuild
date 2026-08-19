@@ -20,6 +20,29 @@ export const TALEN: { waarde: Taal; label: string }[] = [
 // Vertaaltabellen: Nederlandse tekst -> vertaling. Wat (nog) ontbreekt, valt
 // automatisch terug op het Nederlands. Plaatshouders zoals {naam} blijven staan.
 const en: Record<string, string> = {
+  // Indexreeksen bij de onderhoudsbijdrage (ronde 58)
+  'Kompal rekende de onderhoudsbijdrage van {dossier} vroeger met de gezondheidsindex. De wet noemt de consumptieprijzen, en daar rekent de app nu mee — het bedrag kan daardoor verschillen. Open de regeling en bevestig welke index in je akte staat.': 'Kompal used to calculate the maintenance contribution for {dossier} with the health index. The law names the consumer price index, which the app now uses — so the amount may differ. Open the arrangement and confirm which index your deed names.',
+  'Gerekend met de {reeks}.': 'Calculated with the {reeks}.',
+  'Gerekend met de {reeks}, de wettelijke reeks. Tot augustus 2026 gebruikte Kompal hier de gezondheidsindex; daardoor kan dit bedrag iets verschillen van vroeger. Noemt je akte uitdrukkelijk de gezondheidsindex, zet ze dan om bij "Wijzig de regeling".': 'Calculated with the {reeks}, the series the law prescribes. Until August 2026 Kompal used the health index here, so this amount may differ slightly from before. If your deed explicitly names the health index, switch it under "Change the arrangement".',
+  'Je eigen indexcijfers stonden in de vorige reeks en zijn verwijderd. Zet ze opnieuw met cijfers uit de {nieuw}.': 'Your own index figures were in the previous series and have been removed. Enter them again using figures from the {nieuw}.',
+  'Je eerdere indexcijfers kwamen uit de {oud} en zijn verwijderd. Zet ze opnieuw met cijfers uit de {nieuw}.': 'Your earlier index figures came from the {oud} and have been removed. Enter them again using figures from the {nieuw}.',
+  'Zodra je bewaart, rekent de app alle bedragen opnieuw met deze reeks. Je eigen indexcijfers stonden in de vorige reeks en worden dan verwijderd.': 'Once you save, the app recalculates every amount with this series. Your own index figures were in the previous series and will be removed.',
+  'Dat cijfer ligt te ver van {laatste} — het laatste dat de app voor de {reeks} kent. Staat het in een ander basisjaar? Statbel publiceert sinds 2026 standaard in basis 2025 = 100; de app rekent in basis {jaar} = 100. Neem het cijfer uit de kolom met basis {jaar}.': 'That figure is too far from {laatste} — the most recent one the app knows for the {reeks}. Is it on a different base year? Since 2026 Statbel publishes on base 2025 = 100 by default; the app works on base {jaar} = 100. Take the figure from the base {jaar} column.',
+  'De app rekent niet met deze regeling. De indexcijfers die je zelf bijzette komen uit de {eigen}, en deze regeling rekent met de {gekozen}. Dat zijn twee verschillende reeksen; ze combineren geeft een bedrag dat niet na te rekenen is. Verwijder je eigen cijfers hieronder en zet ze opnieuw met cijfers uit de {gekozen}.': 'The app is not calculating with this arrangement. The index figures you added yourself come from the {eigen}, while this arrangement uses the {gekozen}. Those are two different series; combining them gives an amount nobody can verify. Remove your own figures below and enter them again using figures from the {gekozen}.',
+  'Consumptieprijsindex': 'Consumer price index',
+  'consumptieprijsindex': 'consumer price index',
+  'Gezondheidsindex': 'Health index',
+  'gezondheidsindex': 'health index',
+  'De wettelijke standaard voor een onderhoudsbijdrage. Artikel 203quater van het oud Burgerlijk Wetboek bindt de bijdrage aan het indexcijfer van de consumptieprijzen.': 'The legal default for a maintenance contribution. Article 203quater of the old Civil Code ties the contribution to the consumer price index.',
+  'Dezelfde korf min tabak, alcohol, benzine en diesel. Kies deze alleen wanneer je akte haar uitdrukkelijk noemt; voor huur is zij wél de juiste.': 'The same basket minus tobacco, alcohol, petrol and diesel. Choose this one only if your deed names it explicitly; for rent it is the correct one.',
+  'Welke index staat er in je akte?': 'Which index does your deed name?',
+  'Zodra je bewaart, rekent de app alle bedragen opnieuw met deze reeks. Het bedrag kan daardoor veranderen.': 'Once you save, the app recalculates every amount with this series. The amount may change as a result.',
+  'Tot augustus 2026 rekende Kompal hier altijd met de gezondheidsindex. Dat was fout: de wet noemt de consumptieprijzen. Staat er in jouw akte uitdrukkelijk "gezondheidsindex", zet ze dan hierboven om.': 'Until August 2026 Kompal always used the health index here. That was wrong: the law names the consumer price index. If your deed explicitly says "health index", switch it above.',
+  'De app rekent met de {reeks} en kent cijfers tot {laatste}, in basis {jaar} = 100.': 'The app uses the {reeks} and knows figures up to {laatste}, on base {jaar} = 100.',
+  'Aanvangsindex {index}: de {reeks} van {maand}, de maand vóór de regeling.': 'Starting index {index}: the {reeks} for {maand}, the month before the arrangement.',
+  'Dit blad is een berekening op basis van wat er in Financieel Kompas is ingevoerd: het bedrag uit de regeling, de datum ervan en de {reeks}.': 'This page is a calculation based on what was entered in Financieel Kompas: the amount from the arrangement, its date and the {reeks}.',
+  'De onderhoudsbijdrage die op {datum} werd vastgelegd, volgt de {reeks}. Die aanpassing gebeurt jaarlijks op de verjaardag van de regeling.': 'The maintenance contribution set on {datum} follows the {reeks}. That adjustment happens yearly on the anniversary of the arrangement.',
+  'De onderhoudsbijdrage volgt de {reeks}. Het nieuwe bedrag is telkens: het bedrag uit de regeling, maal de index van de maand vóór de verjaardag, gedeeld door de aanvangsindex.': 'The maintenance contribution follows the {reeks}. The new amount is always: the amount from the arrangement, times the index of the month before the anniversary, divided by the starting index.',
   // Contract- en opzegdata bij een vaste last (ronde 57)
   'Je eigen opzegtermijn (optioneel)': 'Your own notice period (optional)',
   'Eenheid van de opzegtermijn': 'Unit of the notice period',
@@ -2096,8 +2119,6 @@ const en: Record<string, string> = {
   'index van {maand} nog niet bekend — bedrag ongewijzigd gelaten':
     'index for {maand} not known yet — amount left unchanged',
   'index {index} uit {maand}': 'index {index} from {maand}',
-  'De app kent indexcijfers tot {laatste}, in basis {jaar} = 100.':
-    'The app knows index figures up to {laatste}, base {jaar} = 100.',
   'Vul een bedrag groter dan nul in.': 'Enter an amount greater than zero.',
   'Wat er verschuldigd was en wat er betaald is': 'What was owed and what has been paid',
   'Verschuldigd': 'Owed',
@@ -2126,7 +2147,6 @@ const en: Record<string, string> = {
   'De app kent cijfers tot {laatste}. Loopt je verjaardag daarop vooruit, vul het cijfer dan hier in — je vindt het bij Statbel.':
     'The app knows figures up to {laatste}. If your anniversary is later, enter the figure here — you will find it at Statbel.',
   'Maand': 'Month',
-  'Gezondheidsindex': 'Health index',
   'De app kent deze maand al. Vul je hier iets in, dan gaat jouw cijfer voor.':
     'The app already knows this month. If you enter something here, your figure takes precedence.',
   'Indexcijfer toevoegen': 'Add index figure',
@@ -2138,14 +2158,10 @@ const en: Record<string, string> = {
     'The starting index is unknown: the app has no index figure for {maand}.',
   'Aanvangsindex {index}, zoals ze in de akte staat.':
     'Starting index {index}, as stated in the deed.',
-  'Aanvangsindex {index}: de gezondheidsindex van {maand}, de maand vóór de regeling.':
-    'Starting index {index}: the health index of {maand}, the month before the arrangement.',
   'Let op: de indexcijfers van de app staan in basis {jaar} = 100. Staat er in je vonnis een aanvangsindex uit een ouder basisjaar, vul die dan hier in én gebruik ook voor de nieuwe index een cijfer uit datzelfde basisjaar. Twee cijfers uit verschillende basisjaren geven een bedrag dat er juist uitziet en het niet is.':
     'Note: the app’s index figures use base {jaar} = 100. If your court order states a starting index from an older base year, enter it here and also use a figure from that same base year for the new index. Two figures from different base years produce an amount that looks right and is not.',
   'Per maand geteld vanaf de maand van de regeling, telkens met het bedrag dat op de eerste van die maand gold. Een aanpassing die halverwege een maand ingaat, telt dus vanaf de maand erna.':
     'Counted month by month from the month of the arrangement, each time with the amount that applied on the first of that month. An adjustment taking effect mid-month therefore counts from the following month.',
-  'Dit blad is een berekening op basis van wat er in Financieel Kompas is ingevoerd: het bedrag uit de regeling, de datum ervan en de gezondheidsindex.':
-    'This sheet is a calculation based on what was entered in Financieel Kompas: the amount in the arrangement, its date and the health index.',
   'De indexatie gebeurt in België van rechtswege, jaarlijks op de verjaardag van de regeling — tenzij de akte iets anders bepaalt. Wat er in jouw akte staat, gaat voor op wat hier staat.':
     'In Belgium indexation applies by operation of law, yearly on the anniversary of the arrangement — unless the deed provides otherwise. What your deed says takes precedence over what is stated here.',
   'Dit is geen juridisch advies en geen ingebrekestelling. De app rekent; wat je met het cijfer doet, beslis jij.':
@@ -2165,8 +2181,6 @@ const en: Record<string, string> = {
   'De regeling sluit indexatie uit; het bedrag blijft dus ongewijzigd.':
     'The arrangement excludes indexation; the amount therefore stays unchanged.',
   'Hoe dit berekend is': 'How this was calculated',
-  'De onderhoudsbijdrage volgt de gezondheidsindex. Het nieuwe bedrag is telkens: het bedrag uit de regeling, maal de index van de maand vóór de verjaardag, gedeeld door de aanvangsindex.':
-    'The maintenance contribution follows the health index. The new amount is always: the amount in the arrangement, times the index of the month before the anniversary, divided by the starting index.',
   'De indexcijfers komen van Statbel en staan in basis {jaar} = 100. De app kent cijfers tot {laatste}.':
     'The index figures come from Statbel and use base {jaar} = 100. The app knows figures up to {laatste}.',
   'Per verjaardag': 'Per anniversary',
@@ -2195,15 +2209,13 @@ const en: Record<string, string> = {
   'Betaald aan de ouder die dit overzicht opmaakte':
     'Paid to the parent who produced this overview',
   'Loopt tot': 'Runs until',
-  'Voor onderhoudsgeld is de aanvangsindex die van de maand vóór de maand waarin het bedrag werd vastgelegd — dezelfde regel als bij huur. Hou je een lopende regeling bij, gebruik dan de onderhoudsbijdrage in je dossier: die zoekt de indexcijfers zelf op.':
-    'For maintenance, the starting index is that of the month before the month in which the amount was set — the same rule as for rent. If you are tracking an ongoing arrangement, use the maintenance contribution in your case: it looks the index figures up itself.',
+  'Voor onderhoudsgeld gebruik je de consumptieprijsindex, en is de aanvangsindex die van de maand vóór de maand waarin het bedrag werd vastgelegd. Hou je een lopende regeling bij, gebruik dan de onderhoudsbijdrage in je dossier: die zoekt de indexcijfers zelf op.':
+    'For maintenance you use the consumer price index, and the starting index is that of the month before the month in which the amount was set. If you are tracking an ongoing arrangement, use the maintenance contribution in your case: it looks the index figures up itself.',
   // Onderhoudsbijdrage — de begeleidende brief
   'Betreft: indexatie van de onderhoudsbijdrage voor {namen}':
     'Subject: indexation of the maintenance contribution for {namen}',
   'Betreft: indexatie van de onderhoudsbijdrage':
     'Subject: indexation of the maintenance contribution',
-  'De onderhoudsbijdrage die op {datum} werd vastgelegd, volgt de gezondheidsindex. Die aanpassing gebeurt jaarlijks op de verjaardag van de regeling.':
-    'The maintenance contribution set on {datum} follows the health index. That adjustment takes place annually on the anniversary of the arrangement.',
   'De laatste aanpassing viel op {datum}. Vanaf die datum bedraagt de bijdrage {bedrag} per maand, tegenover {basis} in de regeling zelf.':
     'The most recent adjustment fell on {datum}. From that date the contribution is {bedrag} per month, against {basis} in the arrangement itself.',
   'Volgens deze berekening bedraagt de bijdrage vandaag {bedrag} per maand.':
@@ -2228,6 +2240,29 @@ const en: Record<string, string> = {
     'This letter was produced with Financieel Kompas. It contains a calculation, not a legal position.',
 }
 const fr: Record<string, string> = {
+  // Indexreeksen bij de onderhoudsbijdrage (ronde 58)
+  'Kompal rekende de onderhoudsbijdrage van {dossier} vroeger met de gezondheidsindex. De wet noemt de consumptieprijzen, en daar rekent de app nu mee — het bedrag kan daardoor verschillen. Open de regeling en bevestig welke index in je akte staat.': 'Kompal calculait auparavant la contribution alimentaire de {dossier} avec l’indice santé. La loi vise l’indice des prix à la consommation, que l’app utilise désormais ; le montant peut donc différer. Ouvre l’accord et confirme quel indice figure dans ton acte.',
+  'Gerekend met de {reeks}.': 'Calculé avec l’{reeks}.',
+  'Gerekend met de {reeks}, de wettelijke reeks. Tot augustus 2026 gebruikte Kompal hier de gezondheidsindex; daardoor kan dit bedrag iets verschillen van vroeger. Noemt je akte uitdrukkelijk de gezondheidsindex, zet ze dan om bij "Wijzig de regeling".': 'Calculé avec l’{reeks}, la série prévue par la loi. Jusqu’en août 2026, Kompal utilisait ici l’indice santé ; ce montant peut donc légèrement différer de celui d’avant. Si ton acte mentionne expressément l’indice santé, modifie-le sous « Modifier l’accord ».',
+  'Je eigen indexcijfers stonden in de vorige reeks en zijn verwijderd. Zet ze opnieuw met cijfers uit de {nieuw}.': 'Tes propres indices figuraient dans la série précédente et ont été supprimés. Encode-les à nouveau avec des chiffres de l’{nieuw}.',
+  'Je eerdere indexcijfers kwamen uit de {oud} en zijn verwijderd. Zet ze opnieuw met cijfers uit de {nieuw}.': 'Tes indices précédents provenaient de l’{oud} et ont été supprimés. Encode-les à nouveau avec des chiffres de l’{nieuw}.',
+  'Zodra je bewaart, rekent de app alle bedragen opnieuw met deze reeks. Je eigen indexcijfers stonden in de vorige reeks en worden dan verwijderd.': 'Dès que tu enregistres, l’app recalcule tous les montants avec cette série. Tes propres indices figuraient dans la série précédente et seront supprimés.',
+  'Dat cijfer ligt te ver van {laatste} — het laatste dat de app voor de {reeks} kent. Staat het in een ander basisjaar? Statbel publiceert sinds 2026 standaard in basis 2025 = 100; de app rekent in basis {jaar} = 100. Neem het cijfer uit de kolom met basis {jaar}.': 'Ce chiffre est trop éloigné de {laatste}, le dernier que l’app connaît pour l’{reeks}. Serait-il exprimé dans une autre année de base ? Depuis 2026, Statbel publie par défaut en base 2025 = 100 ; l’app calcule en base {jaar} = 100. Prends le chiffre de la colonne base {jaar}.',
+  'De app rekent niet met deze regeling. De indexcijfers die je zelf bijzette komen uit de {eigen}, en deze regeling rekent met de {gekozen}. Dat zijn twee verschillende reeksen; ze combineren geeft een bedrag dat niet na te rekenen is. Verwijder je eigen cijfers hieronder en zet ze opnieuw met cijfers uit de {gekozen}.': 'L’app ne calcule pas cet accord. Les indices que tu as ajoutés proviennent de l’{eigen}, alors que cet accord utilise l’{gekozen}. Ce sont deux séries différentes ; les combiner donne un montant que personne ne peut vérifier. Supprime tes propres chiffres ci-dessous et encode-les à nouveau avec des chiffres de l’{gekozen}.',
+  'Consumptieprijsindex': 'Indice des prix à la consommation',
+  'consumptieprijsindex': 'indice des prix à la consommation',
+  'Gezondheidsindex': 'Indice santé',
+  'gezondheidsindex': 'indice santé',
+  'De wettelijke standaard voor een onderhoudsbijdrage. Artikel 203quater van het oud Burgerlijk Wetboek bindt de bijdrage aan het indexcijfer van de consumptieprijzen.': 'La règle légale pour une contribution alimentaire. L’article 203quater de l’ancien Code civil lie la contribution à l’indice des prix à la consommation.',
+  'Dezelfde korf min tabak, alcohol, benzine en diesel. Kies deze alleen wanneer je akte haar uitdrukkelijk noemt; voor huur is zij wél de juiste.': 'Le même panier moins le tabac, l’alcool, l’essence et le diesel. Ne choisis celui-ci que si ton acte le mentionne expressément ; pour un loyer, c’est bien lui qui s’applique.',
+  'Welke index staat er in je akte?': 'Quel indice figure dans ton acte ?',
+  'Zodra je bewaart, rekent de app alle bedragen opnieuw met deze reeks. Het bedrag kan daardoor veranderen.': 'Dès que tu enregistres, l’app recalcule tous les montants avec cette série. Le montant peut donc changer.',
+  'Tot augustus 2026 rekende Kompal hier altijd met de gezondheidsindex. Dat was fout: de wet noemt de consumptieprijzen. Staat er in jouw akte uitdrukkelijk "gezondheidsindex", zet ze dan hierboven om.': 'Jusqu’en août 2026, Kompal utilisait toujours l’indice santé ici. C’était une erreur : la loi vise les prix à la consommation. Si ton acte mentionne expressément « indice santé », modifie-le ci-dessus.',
+  'De app rekent met de {reeks} en kent cijfers tot {laatste}, in basis {jaar} = 100.': 'L’app calcule avec l’{reeks} et connaît les chiffres jusqu’à {laatste}, en base {jaar} = 100.',
+  'Aanvangsindex {index}: de {reeks} van {maand}, de maand vóór de regeling.': 'Indice de départ {index} : l’{reeks} de {maand}, le mois précédant l’accord.',
+  'Dit blad is een berekening op basis van wat er in Financieel Kompas is ingevoerd: het bedrag uit de regeling, de datum ervan en de {reeks}.': 'Cette page est un calcul basé sur ce qui a été encodé dans Financieel Kompas : le montant de l’accord, sa date et l’{reeks}.',
+  'De onderhoudsbijdrage die op {datum} werd vastgelegd, volgt de {reeks}. Die aanpassing gebeurt jaarlijks op de verjaardag van de regeling.': 'La contribution alimentaire fixée le {datum} suit l’{reeks}. Cette adaptation a lieu chaque année à la date anniversaire de l’accord.',
+  'De onderhoudsbijdrage volgt de {reeks}. Het nieuwe bedrag is telkens: het bedrag uit de regeling, maal de index van de maand vóór de verjaardag, gedeeld door de aanvangsindex.': 'La contribution alimentaire suit l’{reeks}. Le nouveau montant est chaque fois : le montant de l’accord, multiplié par l’indice du mois précédant la date anniversaire, divisé par l’indice de départ.',
   // Contract- en opzegdata bij een vaste last (ronde 57)
   'Je eigen opzegtermijn (optioneel)': 'Ton propre délai de préavis (facultatif)',
   'Eenheid van de opzegtermijn': 'Unité du délai de préavis',
@@ -4307,8 +4342,6 @@ const fr: Record<string, string> = {
   'index van {maand} nog niet bekend — bedrag ongewijzigd gelaten':
     'indice de {maand} pas encore connu — montant laissé inchangé',
   'index {index} uit {maand}': 'indice {index} de {maand}',
-  'De app kent indexcijfers tot {laatste}, in basis {jaar} = 100.':
-    'L’application connaît les indices jusqu’en {laatste}, base {jaar} = 100.',
   'Vul een bedrag groter dan nul in.': 'Saisis un montant supérieur à zéro.',
   'Wat er verschuldigd was en wat er betaald is': 'Ce qui était dû et ce qui a été payé',
   'Verschuldigd': 'Dû',
@@ -4337,7 +4370,6 @@ const fr: Record<string, string> = {
   'De app kent cijfers tot {laatste}. Loopt je verjaardag daarop vooruit, vul het cijfer dan hier in — je vindt het bij Statbel.':
     'L’application connaît les chiffres jusqu’en {laatste}. Si ton anniversaire est postérieur, saisis le chiffre ici — tu le trouveras chez Statbel.',
   'Maand': 'Mois',
-  'Gezondheidsindex': 'Indice santé',
   'De app kent deze maand al. Vul je hier iets in, dan gaat jouw cijfer voor.':
     'L’application connaît déjà ce mois. Si tu saisis quelque chose ici, ton chiffre prévaut.',
   'Indexcijfer toevoegen': 'Ajouter l’indice',
@@ -4349,14 +4381,10 @@ const fr: Record<string, string> = {
     'L’indice de départ est inconnu : l’application n’a pas d’indice pour {maand}.',
   'Aanvangsindex {index}, zoals ze in de akte staat.':
     'Indice de départ {index}, tel qu’il figure dans l’acte.',
-  'Aanvangsindex {index}: de gezondheidsindex van {maand}, de maand vóór de regeling.':
-    'Indice de départ {index} : l’indice santé de {maand}, le mois précédant l’accord.',
   'Let op: de indexcijfers van de app staan in basis {jaar} = 100. Staat er in je vonnis een aanvangsindex uit een ouder basisjaar, vul die dan hier in én gebruik ook voor de nieuwe index een cijfer uit datzelfde basisjaar. Twee cijfers uit verschillende basisjaren geven een bedrag dat er juist uitziet en het niet is.':
     'Attention : les indices de l’application utilisent la base {jaar} = 100. Si ton jugement mentionne un indice de départ d’une base plus ancienne, saisis-le ici et utilise également un chiffre de cette même base pour le nouvel indice. Deux chiffres de bases différentes donnent un montant qui semble correct sans l’être.',
   'Per maand geteld vanaf de maand van de regeling, telkens met het bedrag dat op de eerste van die maand gold. Een aanpassing die halverwege een maand ingaat, telt dus vanaf de maand erna.':
     'Compté mois par mois à partir du mois de l’accord, chaque fois avec le montant en vigueur le premier de ce mois. Un ajustement prenant effet en cours de mois compte donc à partir du mois suivant.',
-  'Dit blad is een berekening op basis van wat er in Financieel Kompas is ingevoerd: het bedrag uit de regeling, de datum ervan en de gezondheidsindex.':
-    'Cette feuille est un calcul fondé sur ce qui a été saisi dans Financieel Kompas : le montant de l’accord, sa date et l’indice santé.',
   'De indexatie gebeurt in België van rechtswege, jaarlijks op de verjaardag van de regeling — tenzij de akte iets anders bepaalt. Wat er in jouw akte staat, gaat voor op wat hier staat.':
     'En Belgique, l’indexation s’applique de plein droit, chaque année à la date anniversaire de l’accord — sauf disposition contraire de l’acte. Ce que dit ton acte prévaut sur ce qui figure ici.',
   'Dit is geen juridisch advies en geen ingebrekestelling. De app rekent; wat je met het cijfer doet, beslis jij.':
@@ -4373,8 +4401,6 @@ const fr: Record<string, string> = {
   'De regeling sluit indexatie uit; het bedrag blijft dus ongewijzigd.':
     'L’accord exclut l’indexation ; le montant reste donc inchangé.',
   'Hoe dit berekend is': 'Comment ce calcul a été fait',
-  'De onderhoudsbijdrage volgt de gezondheidsindex. Het nieuwe bedrag is telkens: het bedrag uit de regeling, maal de index van de maand vóór de verjaardag, gedeeld door de aanvangsindex.':
-    'La contribution alimentaire suit l’indice santé. Le nouveau montant est toujours : le montant de l’accord, multiplié par l’indice du mois précédant l’anniversaire, divisé par l’indice de départ.',
   'De indexcijfers komen van Statbel en staan in basis {jaar} = 100. De app kent cijfers tot {laatste}.':
     'Les indices proviennent de Statbel et utilisent la base {jaar} = 100. L’application connaît les chiffres jusqu’en {laatste}.',
   'Per verjaardag': 'Par anniversaire',
@@ -4401,14 +4427,12 @@ const fr: Record<string, string> = {
   'Betaald door de ouder die dit overzicht opmaakte': 'Payé par le parent qui a établi cet aperçu',
   'Betaald aan de ouder die dit overzicht opmaakte': 'Payé au parent qui a établi cet aperçu',
   'Loopt tot': 'Court jusqu’au',
-  'Voor onderhoudsgeld is de aanvangsindex die van de maand vóór de maand waarin het bedrag werd vastgelegd — dezelfde regel als bij huur. Hou je een lopende regeling bij, gebruik dan de onderhoudsbijdrage in je dossier: die zoekt de indexcijfers zelf op.':
+  'Voor onderhoudsgeld gebruik je de consumptieprijsindex, en is de aanvangsindex die van de maand vóór de maand waarin het bedrag werd vastgelegd. Hou je een lopende regeling bij, gebruik dan de onderhoudsbijdrage in je dossier: die zoekt de indexcijfers zelf op.':
     'Pour la pension alimentaire, l’indice de départ est celui du mois précédant le mois où le montant a été fixé — la même règle que pour le loyer. Si tu suis un accord en cours, utilise la contribution alimentaire de ton dossier : elle recherche elle-même les indices.',
   // Contribution alimentaire — la lettre d’accompagnement
   'Betreft: indexatie van de onderhoudsbijdrage voor {namen}':
     'Objet : indexation de la contribution alimentaire pour {namen}',
   'Betreft: indexatie van de onderhoudsbijdrage': 'Objet : indexation de la contribution alimentaire',
-  'De onderhoudsbijdrage die op {datum} werd vastgelegd, volgt de gezondheidsindex. Die aanpassing gebeurt jaarlijks op de verjaardag van de regeling.':
-    'La contribution alimentaire fixée le {datum} suit l’indice santé. Cette adaptation a lieu chaque année à la date anniversaire de l’accord.',
   'De laatste aanpassing viel op {datum}. Vanaf die datum bedraagt de bijdrage {bedrag} per maand, tegenover {basis} in de regeling zelf.':
     'La dernière adaptation est intervenue le {datum}. À partir de cette date, la contribution s’élève à {bedrag} par mois, contre {basis} dans l’accord même.',
   'Volgens deze berekening bedraagt de bijdrage vandaag {bedrag} per maand.':

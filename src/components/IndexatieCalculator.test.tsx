@@ -41,7 +41,7 @@ describe('IndexatieCalculator — de uitkomst bewaren', () => {
 
   async function vulIn(user: ReturnType<typeof userEvent.setup>) {
     await user.type(screen.getByLabelText('Basisbedrag (€)'), '250')
-    await user.type(screen.getByLabelText('Aanvangsindex'), '112,74')
+    await user.type(screen.getByLabelText('Aanvangsindex'), '112,83')
     await user.type(screen.getByLabelText('Nieuwe index'), '135,64')
   }
 
@@ -74,7 +74,8 @@ describe('IndexatieCalculator — de uitkomst bewaren', () => {
         richting: 'jij-ontvangt',
       }),
     )
-    // 112,74 is precies wat de app zélf voor augustus 2021 kent. Het dan als
+    // 112,83 is precies wat de app zélf voor augustus 2021 kent (de
+    // consumptieprijsindex, sinds ronde 58 de wettelijke reeks). Het dan als
     // "uit de akte" bewaren bevriest een getal dat ze uit de datum kan afleiden.
     expect(onBewaarBijdrage.mock.calls[0][0].aanvangsindexHandmatig).toBeUndefined()
   })
@@ -91,7 +92,7 @@ describe('IndexatieCalculator — de uitkomst bewaren', () => {
 
     // En het verschil staat op het scherm vóór je bewaart: dat is precies de val
     // van een ouder basisjaar.
-    expect(screen.getByText(/kent de app zelf het cijfer 112,74/)).toBeInTheDocument()
+    expect(screen.getByText(/kent de app zelf het cijfer 112,83/)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Bewaar in dossier' }))
     expect(onBewaarBijdrage).toHaveBeenCalledWith(expect.objectContaining({ aanvangsindexHandmatig: 100 }))

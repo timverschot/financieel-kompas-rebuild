@@ -254,6 +254,9 @@ describe('bouwMeldingen — de onderhoudsbijdrage', () => {
     richting: 'jij-ontvangt',
     basisbedrag: 25000,
     datumRegeling: '2021-09-15',
+    // Expliciet, zodat deze tests niet ook de eenmalige reeks-melding van ronde 58
+    // meekrijgen. Die heeft haar eigen test hieronder.
+    indexreeks: 'consumptieprijzen' as const,
   }
   const dossiers: Dossier[] = [{ id: 'd1', naam: 'Kinderen', aandeelJij: 60 }]
   const bel = (extra: Record<string, unknown> = {}, vandaag = '2025-09-20') =>
@@ -265,9 +268,30 @@ describe('bouwMeldingen — de onderhoudsbijdrage', () => {
     expect(m).toHaveLength(1)
     expect(m[0].params?.dossier).toBe('Kinderen')
     expect(m[0].params?.datum).toBe('2025-09-15')
-    expect(m[0].params?.oud).toBe(formatEuro(29479))
-    expect(m[0].params?.nieuw).toBe(formatEuro(30078))
+    // Consumptieprijzen sinds ronde 58: aug 2024 → aug 2025 in plaats van de
+    // gezondheidsindex. Vandaar andere bedragen dan vóór die ronde.
+    expect(m[0].params?.oud).toBe(formatEuro(29427))
+    expect(m[0].params?.nieuw).toBe(formatEuro(29990))
     expect(m[0].dringend).toBe(false)
+  })
+
+  it('zegt het één keer wanneer de regeling nog geen indexreeks gekozen heeft', () => {
+    // ⚠ Ronde 58. Een regeling van vóór die ronde rekende met de gezondheidsindex;
+    // de wet noemt de consumptieprijzen. De app rekent nu de wettelijke reeks, dus
+    // het bedrag KAN veranderd zijn zonder dat de gebruiker iets deed. Een bedrag dat
+    // stil verschuift is precies wat deze app niet mag doen — vandaar deze melding,
+    // tot hij één keer bevestigt wat er in zijn akte staat.
+    const oud = { ...bijdrage, indexreeks: undefined }
+    const m = bel({ onderhoudsbijdragen: [oud] }).filter((x) => x.soort === 'bijdrage')
+    const reeksmelding = m.find((x) => x.id.includes('indexreeks'))
+    expect(reeksmelding?.sleutel).toContain('gezondheidsindex')
+    expect(reeksmelding?.dringend).toBe(false)
+    expect(reeksmelding?.params?.dossier).toBe('Kinderen')
+  })
+
+  it('zwijgt erover zodra de reeks bevestigd is', () => {
+    const m = bel().filter((x) => x.id.includes('indexreeks'))
+    expect(m).toEqual([])
   })
 
   it('meldt GEEN geïndexeerd bedrag wanneer de indexcijfers uit twee reeksen komen', () => {
@@ -313,8 +337,10 @@ describe('bouwMeldingen — de onderhoudsbijdrage', () => {
   it('zegt het apart wanneer het indexcijfer van die maand nog ontbreekt', () => {
     // Dan kan je zélf iets doen — het cijfer bijzetten — in plaats van je
     // overschrijving aan te passen. Eén melding voor allebei poetst dat verschil weg.
-    const wacht = { ...bijdrage, datumRegeling: '2021-08-10' }
-    const m = bel({ onderhoudsbijdragen: [wacht] }, '2026-08-20').filter((x) => x.soort === 'bijdrage')
+    // September: de verjaardag heeft augustus 2026 nodig, en Statbel publiceert een
+    // maand pas op het einde van die maand.
+    const wacht = { ...bijdrage, datumRegeling: '2021-09-10' }
+    const m = bel({ onderhoudsbijdragen: [wacht] }, '2026-09-20').filter((x) => x.soort === 'bijdrage')
     expect(m).toHaveLength(1)
     expect(m[0].id).toContain('wacht')
     expect(m[0].sleutel).toContain('nog niet bekend')
@@ -333,6 +359,9 @@ describe('bouwMeldingen — de onderhoudsbijdrage, de randgevallen', () => {
     richting: 'jij-ontvangt',
     basisbedrag: 25000,
     datumRegeling: '2021-09-15',
+    // Expliciet, zodat deze tests niet ook de eenmalige reeks-melding van ronde 58
+    // meekrijgen. Die heeft haar eigen test hieronder.
+    indexreeks: 'consumptieprijzen' as const,
     ...extra,
   })
   const bel = (b: Onderhoudsbijdrage, vandaag: string, ds: Dossier[] | undefined = dossiers) =>
@@ -357,11 +386,11 @@ describe('bouwMeldingen — de onderhoudsbijdrage, de randgevallen', () => {
   })
 
   it('noemt bij een ontbrekend cijfer de maand van de INDEX, niet die van de verjaardag', () => {
-    // De verjaardag valt in augustus; het cijfer dat ontbreekt is dat van juli.
-    const m = bel(maak({ datumRegeling: '2021-08-10' }), '2026-08-20')
+    // De verjaardag valt in september; het cijfer dat ontbreekt is dat van augustus.
+    const m = bel(maak({ datumRegeling: '2021-09-10' }), '2026-09-20')
     expect(m).toHaveLength(1)
-    expect(m[0].params?.maand).toBe('2026-07')
-    expect(m[0].params?.datum).toBe('2026-08-10')
+    expect(m[0].params?.maand).toBe('2026-08')
+    expect(m[0].params?.datum).toBe('2026-09-10')
   })
 
   it('zegt het apart wanneer de aanvangsindex zelf onbekend is', () => {

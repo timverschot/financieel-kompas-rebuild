@@ -1,5 +1,5 @@
 import type { Vertaler } from '../i18n'
-import { INDEX_BASISJAAR } from '../data/gezondheidsindex'
+import { basisjaarVan, reeksinfo, type Indexreeks } from '../data/indexreeksen'
 import { formatEuro } from './format'
 import { maandJaarLabel } from './datum'
 import { laatsteAanpassing, type BijdrageOpbouw, type IndexatieStap } from './onderhoudsbijdrage'
@@ -71,8 +71,12 @@ export function aanvangsindexTekst(t: Vertaler, opbouw: BijdrageOpbouw): string 
   if (opbouw.aanvangsindexUitAkte) {
     return t('Aanvangsindex {index}, zoals ze in de akte staat.', { index: getalTekst(opbouw.aanvangsindex) })
   }
-  return t('Aanvangsindex {index}: de gezondheidsindex van {maand}, de maand vóór de regeling.', {
+  // De REEKS erbij, sinds ronde 58. Een kaal indexcijfer zegt niets: dezelfde maand
+  // geeft in de consumptieprijsindex een ander getal dan in de gezondheidsindex, en
+  // wie dit blad naleest, moet kunnen zien uit welke korf het komt.
+  return t('Aanvangsindex {index}: de {reeks} van {maand}, de maand vóór de regeling.', {
     index: getalTekst(opbouw.aanvangsindex),
+    reeks: t(reeksinfo(opbouw.reeks).naamInZin),
     maand: maandJaarLabel(`${opbouw.aanvangsmaand}-01`),
   })
 }
@@ -93,6 +97,19 @@ export function reeksConflictUitleg(t: Vertaler, opbouw: BijdrageOpbouw): string
     return t(
       'De app rekent niet meer met deze regeling. De indexcijfers die je zelf bijzette staan in basis {eigen} = 100, en de tabel in de app staat nu in basis {tabel} = 100. Dat zijn twee verschillende maatstaven; ze combineren geeft een bedrag dat er tientallen procenten naast zit. Verwijder je eigen cijfers hieronder en zet ze opnieuw met de cijfers uit de huidige reeks.',
       { eigen: opbouw.basisjaarEigen, tabel: opbouw.basisjaarTabel },
+    )
+  }
+
+  // De eigen maandcijfers staan in de ándere reeks dan waarmee de regeling rekent.
+  // Gevonden in de nakijkronde van ronde 58: de brief zou dan een reeks noemen en een
+  // getal tonen dat in die reeks niet bestaat.
+  if (opbouw.indexConflict === 'andere-reeks') {
+    return t(
+      'De app rekent niet met deze regeling. De indexcijfers die je zelf bijzette komen uit de {eigen}, en deze regeling rekent met de {gekozen}. Dat zijn twee verschillende reeksen; ze combineren geeft een bedrag dat niet na te rekenen is. Verwijder je eigen cijfers hieronder en zet ze opnieuw met cijfers uit de {gekozen}.',
+      {
+        eigen: t(reeksinfo(opbouw.eigenReeks).naamInZin),
+        gekozen: t(reeksinfo(opbouw.reeks).naamInZin),
+      },
     )
   }
 
@@ -121,10 +138,10 @@ export function reeksConflictUitleg(t: Vertaler, opbouw: BijdrageOpbouw): string
   )
 }
 
-export function basisjaarWaarschuwing(t: Vertaler): string {
+export function basisjaarWaarschuwing(t: Vertaler, reeks?: Indexreeks): string {
   return t(
     'Let op: de indexcijfers van de app staan in basis {jaar} = 100. Staat er in je vonnis een aanvangsindex uit een ouder basisjaar, vul die dan hier in én gebruik ook voor de nieuwe index een cijfer uit datzelfde basisjaar. Twee cijfers uit verschillende basisjaren geven een bedrag dat er juist uitziet en het niet is.',
-    { jaar: INDEX_BASISJAAR },
+    { jaar: basisjaarVan(reeks) },
   )
 }
 
@@ -143,9 +160,11 @@ export function telwijzeTekst(t: Vertaler): string {
  * standpunt gelezen wordt, maakt een gesprek tussen twee ouders erger in plaats van
  * makkelijker.
  */
-export function bijdrageVoorbehoud(t: Vertaler): string[] {
+export function bijdrageVoorbehoud(t: Vertaler, reeks?: Indexreeks): string[] {
   return [
-    t('Dit blad is een berekening op basis van wat er in Financieel Kompas is ingevoerd: het bedrag uit de regeling, de datum ervan en de gezondheidsindex.'),
+    t('Dit blad is een berekening op basis van wat er in Financieel Kompas is ingevoerd: het bedrag uit de regeling, de datum ervan en de {reeks}.', {
+      reeks: t(reeksinfo(reeks).naamInZin),
+    }),
     t('De indexatie gebeurt in België van rechtswege, jaarlijks op de verjaardag van de regeling — tenzij de akte iets anders bepaalt. Wat er in jouw akte staat, gaat voor op wat hier staat.'),
     t('Dit is geen juridisch advies en geen ingebrekestelling. De app rekent; wat je met het cijfer doet, beslis jij.'),
   ]
@@ -217,8 +236,9 @@ export function briefKern(
       ? t('De onderhoudsbijdrage die op {datum} werd vastgelegd, wordt volgens de regeling niet geïndexeerd. Het bedrag blijft daarom ongewijzigd.', {
           datum: datumRegeling,
         })
-      : t('De onderhoudsbijdrage die op {datum} werd vastgelegd, volgt de gezondheidsindex. Die aanpassing gebeurt jaarlijks op de verjaardag van de regeling.', {
+      : t('De onderhoudsbijdrage die op {datum} werd vastgelegd, volgt de {reeks}. Die aanpassing gebeurt jaarlijks op de verjaardag van de regeling.', {
           datum: datumRegeling,
+          reeks: t(reeksinfo(opbouw.reeks).naamInZin),
         }),
   )
 

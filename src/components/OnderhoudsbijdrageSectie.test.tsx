@@ -74,8 +74,9 @@ describe('OnderhoudsbijdrageSectie — nog niets ingesteld', () => {
 describe('OnderhoudsbijdrageSectie — het bedrag van vandaag', () => {
   it('zet het geïndexeerde bedrag bovenaan', () => {
     toon()
-    // € 250,00 x 135,64 (aug 2025) / 112,74 (aug 2021) = € 300,78
-    const verwacht = Math.round((25000 * 135.64) / 112.74)
+    // € 250,00 x 135,35 (aug 2025) / 112,83 (aug 2021) = € 299,90
+    // Consumptieprijzen, niet gezondheidsindex: zie ronde 58.
+    const verwacht = Math.round((25000 * 135.35) / 112.83)
     // `<Bedrag>` verdeelt het bedrag over meerdere elementen; daarom op de tekst
     // van het blok zoeken en niet op één element.
     const stat = document.querySelector('.stat') as HTMLElement
@@ -122,8 +123,8 @@ describe('OnderhoudsbijdrageSectie — de opbouw', () => {
     expect(blok).toBeInTheDocument()
     expect(within(blok).getByText('2022-09-15')).toBeInTheDocument()
     // De formule met beide indexcijfers, zodat het na te rekenen is.
-    expect(blok.textContent).toContain('123,68')
-    expect(blok.textContent).toContain('112,74')
+    expect(blok.textContent).toContain('124,05')
+    expect(blok.textContent).toContain('112,83')
   })
 
   it('zegt waar de aanvangsindex vandaan komt', async () => {
@@ -137,7 +138,9 @@ describe('OnderhoudsbijdrageSectie — de opbouw', () => {
     const user = userEvent.setup()
     toon()
     await user.click(screen.getByRole('button', { name: 'Toon de opbouw' }))
-    expect(document.querySelector('[data-opbouw]')?.textContent).toMatch(/kent indexcijfers tot/)
+    expect(document.querySelector('[data-opbouw]')?.textContent).toMatch(/kent cijfers tot/)
+    // En met welke reeks ze rekent — een kaal indexcijfer zegt niets (ronde 58).
+    expect(document.querySelector('[data-opbouw]')?.textContent).toMatch(/consumptieprijsindex/)
   })
 
   it('zegt wanneer de eerste verjaardag nog moet komen', async () => {
@@ -149,18 +152,20 @@ describe('OnderhoudsbijdrageSectie — de opbouw', () => {
 })
 
 describe('OnderhoudsbijdrageSectie — een ontbrekend indexcijfer', () => {
-  const augustus: Onderhoudsbijdrage = { ...bijdrage, datumRegeling: '2021-08-10' }
+  // Een regeling van september: de verjaardag van 2026 heeft augustus 2026 nodig, en
+  // dat cijfer verschijnt pas op het einde van die maand.
+  const september: Onderhoudsbijdrage = { ...bijdrage, datumRegeling: '2021-09-10' }
 
   it('zegt welke maand ontbreekt in plaats van stil een oud bedrag te tonen', () => {
-    toon({ bijdrage: augustus, vandaagISO: '2026-08-20' })
+    toon({ bijdrage: september, vandaagISO: '2026-09-20' })
     expect(document.body.textContent).toContain('kent nog geen indexcijfer')
-    expect(document.body.textContent).toContain('juli 2026')
+    expect(document.body.textContent).toContain('augustus 2026')
   })
 
   it('verdwijnt zodra het cijfer zelf is bijgezet', () => {
     toon({
-      bijdrage: { ...augustus, eigenIndexcijfers: { '2026-07': 139.5 } },
-      vandaagISO: '2026-08-20',
+      bijdrage: { ...september, eigenIndexcijfers: { '2026-08': 140.5 } },
+      vandaagISO: '2026-09-20',
     })
     expect(document.body.textContent).not.toContain('kent nog geen indexcijfer')
   })
@@ -268,20 +273,79 @@ describe('OnderhoudsbijdrageSectie — de regeling wijzigen', () => {
     const user = userEvent.setup()
     const { onOpslaan } = toon()
     await user.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
-    await user.type(screen.getByLabelText('Maand'), '2026-07')
-    await user.type(screen.getByLabelText('Gezondheidsindex'), '139,50')
+    await user.type(screen.getByLabelText('Maand'), '2026-08')
+    await user.type(screen.getByLabelText('Consumptieprijsindex'), '140,50')
     await user.click(screen.getByRole('button', { name: 'Indexcijfer toevoegen' }))
-    expect(onOpslaan.mock.calls[0][0].eigenIndexcijfers).toEqual({ '2026-07': 139.5 })
+    expect(onOpslaan.mock.calls[0][0].eigenIndexcijfers).toEqual({ '2026-08': 140.5 })
+  })
+
+  it('schrijft de gekozen indexreeks weg', async () => {
+    // ⚠ Niets bewees dit tot de nakijkronde van ronde 58, terwijl het het hele punt
+    // van de ronde is: een akte die de gezondheidsindex noemt, moet die ook krijgen.
+    const user = userEvent.setup()
+    const { onOpslaan } = toon()
+    await user.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
+    await user.selectOptions(screen.getByLabelText('Welke index staat er in je akte?'), 'gezondheid')
+    await user.click(screen.getByRole('button', { name: 'Bewaar de regeling' }))
+    expect(onOpslaan.mock.calls[0][0].indexreeks).toBe('gezondheid')
+  })
+
+  it('stempelt de reeks op een eigen indexcijfer', async () => {
+    // Zonder dat stempel is een eigen cijfer een kaal getal, en dan kan de brief een
+    // reeks noemen met een getal dat er niet in staat.
+    const user = userEvent.setup()
+    const { onOpslaan } = toon()
+    await user.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
+    await user.type(screen.getByLabelText('Maand'), '2026-08')
+    await user.type(screen.getByLabelText('Consumptieprijsindex'), '140,50')
+    await user.click(screen.getByRole('button', { name: 'Indexcijfer toevoegen' }))
+    expect(onOpslaan.mock.calls[0][0].eigenIndexreeks).toBe('consumptieprijzen')
+  })
+
+  it('weigert een eigen indexcijfer dat uit een ander basisjaar lijkt te komen', async () => {
+    // ⚠ Statbel publiceert sinds januari 2026 standaard in basis 2025 = 100, en dit
+    // scherm stuurt je naar Statbel. Wie daar juli 2026 opzoekt, ziet 103,60 in plaats
+    // van 140,17 — een kwart lager. Zonder deze controle rekende de app een bijdrage
+    // van € 383 om naar € 283, met een geloofwaardige brief eronder.
+    const user = userEvent.setup()
+    const { onOpslaan } = toon()
+    await user.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
+    await user.type(screen.getByLabelText('Maand'), '2026-08')
+    await user.type(screen.getByLabelText('Consumptieprijsindex'), '103,60')
+    await user.click(screen.getByRole('button', { name: 'Indexcijfer toevoegen' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('basis 2025')
+    expect(onOpslaan).not.toHaveBeenCalled()
   })
 
   it('weigert een eigen indexcijfer zonder maand', async () => {
     const user = userEvent.setup()
     const { onOpslaan } = toon()
     await user.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
-    await user.type(screen.getByLabelText('Gezondheidsindex'), '139,50')
+    await user.type(screen.getByLabelText('Consumptieprijsindex'), '140,50')
     await user.click(screen.getByRole('button', { name: 'Indexcijfer toevoegen' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Kies een maand')
     expect(onOpslaan).not.toHaveBeenCalled()
+  })
+})
+
+describe('OnderhoudsbijdrageSectie — met welke reeks (ronde 58)', () => {
+  it('zegt op de kaart zelf met welke reeks er gerekend is', () => {
+    // ⚠ Niet alleen achter "Toon de opbouw": dit is het bedrag dat mensen
+    // overschrijven en in een brief zetten. Een kaal getal is niet na te rekenen.
+    toon({ bijdrage: { ...bijdrage, indexreeks: 'consumptieprijzen' } })
+    expect(document.querySelector('[data-reeks]')?.textContent).toContain('consumptieprijsindex')
+  })
+
+  it('waarschuwt bij een regeling die nog geen reeks gekozen heeft', () => {
+    // Vóór ronde 58 rekende de app met de gezondheidsindex. Het bedrag kan dus
+    // veranderd zijn zonder dat de gebruiker iets deed — en dat mag niet stil.
+    toon({ bijdrage: { ...bijdrage, indexreeks: undefined } })
+    expect(document.querySelector('[data-reeks]')?.textContent).toContain('gezondheidsindex')
+  })
+
+  it('zwijgt erover wanneer de akte indexatie uitsluit', () => {
+    toon({ bijdrage: { ...bijdrage, geindexeerd: false } })
+    expect(document.querySelector('[data-reeks]')).toBeNull()
   })
 })
 
@@ -296,7 +360,7 @@ describe('OnderhoudsbijdrageSectie — het overzicht als PDF', () => {
     expect(argumenten[2]).toEqual(bijdrage)
     // De opbouw, niet opnieuw berekend in de PDF: scherm en document horen exact
     // hetzelfde te tonen.
-    expect(argumenten[3]).toMatchObject({ aanvangsindex: 112.74 })
+    expect(argumenten[3]).toMatchObject({ aanvangsindex: 112.83 })
     expect(argumenten[4]).toEqual(kinderen)
   })
 
@@ -403,7 +467,7 @@ describe('OnderhoudsbijdrageSectie — een ongeldige aanvangsindex', () => {
 // ook laat zien. De eerste versie van deze reparatie had de waarschuwing wel, maar
 // toonde er onderaan nog een openstaand bedrag bij en liet de brief gewoon maken.
 describe('OnderhoudsbijdrageSectie — indexcijfers uit twee reeksen', () => {
-  // De aanvangsmaand is augustus 2021; de app kent daarvoor 112,74. Een cijfer dat
+  // De aanvangsmaand is augustus 2021; de app kent daarvoor 112,83. Een cijfer dat
   // daar ver naast ligt, wijst op een oudere reeks.
   const gemengd: Onderhoudsbijdrage = { ...bijdrage, aanvangsindexHandmatig: 88.5 }
 
@@ -411,7 +475,7 @@ describe('OnderhoudsbijdrageSectie — indexcijfers uit twee reeksen', () => {
     toon({ bijdrage: gemengd })
     const waarschuwing = document.querySelector('[data-basisjaar]')
     expect(waarschuwing).not.toBeNull()
-    expect(waarschuwing?.textContent).toContain('112,74')
+    expect(waarschuwing?.textContent).toContain('112,83')
     expect(waarschuwing?.textContent).toContain('88,50')
   })
 
@@ -456,11 +520,11 @@ describe('OnderhoudsbijdrageSectie — indexcijfers uit twee reeksen', () => {
     const gebruiker = userEvent.setup()
     const props = toon()
     await gebruiker.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
-    await gebruiker.type(screen.getByLabelText('Aanvangsindex uit de akte (optioneel)'), '112,74')
+    await gebruiker.type(screen.getByLabelText('Aanvangsindex uit de akte (optioneel)'), '112,83')
     await gebruiker.click(screen.getByRole('button', { name: 'Bewaar de regeling' }))
     expect(props.onOpslaan).toHaveBeenCalled()
     const bewaard = props.onOpslaan.mock.calls[0][0] as Onderhoudsbijdrage
-    expect(bewaard.aanvangsindexHandmatig).toBe(112.74)
+    expect(bewaard.aanvangsindexHandmatig).toBe(112.83)
     expect(bewaard.indexBasisjaar).toBeUndefined()
   })
 })

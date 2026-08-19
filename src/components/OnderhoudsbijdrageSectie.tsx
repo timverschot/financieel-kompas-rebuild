@@ -2,7 +2,16 @@ import { useId, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Dossier, Kind, Onderhoudsbetaling, Onderhoudsbijdrage } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
-import { INDEX_BASISJAAR, kentIndexmaand, laatsteIndexmaand } from '../data/gezondheidsindex'
+import {
+  INDEXREEKS_INFO,
+  basisjaarVan,
+  indexcijfer,
+  kentIndexmaand,
+  laatsteIndexmaand,
+  reeksVan,
+  reeksinfo,
+  type Indexreeks,
+} from '../data/indexreeksen'
 import { useT, type Vertaler } from '../i18n'
 import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { centenNaarInvoer, formatEuro, invoerNaarCenten } from '../utils/format'
@@ -198,6 +207,21 @@ export function OnderhoudsbijdrageSectie({
             })}
           </span>
         )}
+        {/* ⚠ MET WELKE REEKS, hier en niet alleen achter "Toon de opbouw"
+            (nakijkronde ronde 58). Dit is het bedrag dat mensen overschrijven en in
+            een brief zetten; een kaal getal zonder de reeks erbij is niet na te
+            rekenen. En bij een regeling van vóór ronde 58 stáát er iets veranderd:
+            de app rekende toen met de gezondheidsindex, wat fout was. Dat mag ze niet
+            stil bijstellen — dan verandert een bedrag zonder dat iemand weet waarom. */}
+        {bijdrage.geindexeerd !== false && o.indexConflict === null && (
+          <span className="rij-meta" data-reeks>
+            {bijdrage.indexreeks === undefined
+              ? t('Gerekend met de {reeks}, de wettelijke reeks. Tot augustus 2026 gebruikte Kompal hier de gezondheidsindex; daardoor kan dit bedrag iets verschillen van vroeger. Noemt je akte uitdrukkelijk de gezondheidsindex, zet ze dan om bij "Wijzig de regeling".', {
+                  reeks: t(reeksinfo(o.reeks).naamInZin),
+                })
+              : t('Gerekend met de {reeks}.', { reeks: t(reeksinfo(o.reeks).naamInZin) })}
+          </span>
+        )}
       </div>
 
       {/* De aanpassing die al gebeurd is maar die je overschrijving misschien nog
@@ -220,7 +244,7 @@ export function OnderhoudsbijdrageSectie({
           ? ''
           : t('De app kent nog geen indexcijfer voor {maanden}. Ze kent cijfers tot {laatste}. Vul het ontbrekende cijfer hieronder zelf in, dan is de berekening volledig.', {
               maanden: o.ontbrekendeMaanden.map((m) => maandJaarLabel(`${m}-01`)).join(', '),
-              laatste: maandJaarLabel(`${laatsteIndexmaand()}-01`),
+              laatste: maandJaarLabel(`${laatsteIndexmaand(bijdrage.indexreeks)}-01`),
             })}
       </p>
 
@@ -358,9 +382,10 @@ function Opbouw({
         </ul>
       )}
       <p className="rij-meta" style={{ margin: 0 }}>
-        {t('De app kent indexcijfers tot {laatste}, in basis {jaar} = 100.', {
+        {t('De app rekent met de {reeks} en kent cijfers tot {laatste}, in basis {jaar} = 100.', {
+          reeks: t(reeksinfo(opbouw.reeks).naamInZin),
           laatste: maandJaarLabel(`${opbouw.laatsteBekendeMaand}-01`),
-          jaar: INDEX_BASISJAAR,
+          jaar: opbouw.basisjaarTabel,
         })}
       </p>
     </Kaart>
@@ -524,6 +549,7 @@ function Regeling({
   const [datum, setDatum] = useState(bijdrage.datumRegeling)
   const [richting, setRichting] = useState(bijdrage.richting)
   const [indexeren, setIndexeren] = useState(bijdrage.geindexeerd !== false)
+  const [reeks, setReeks] = useState<Indexreeks>(reeksVan(bijdrage.indexreeks))
   const [eind, setEind] = useState(bijdrage.eindDatum ?? '')
   const [aanvang, setAanvang] = useState(
     bijdrage.aanvangsindexHandmatig ? getalTekst(bijdrage.aanvangsindexHandmatig) : '',
@@ -552,12 +578,22 @@ function Regeling({
       return
     }
     setFout('')
+    // Wissel je van reeks terwijl er eigen cijfers bewaard staan, dan zijn die in de
+    // oude reeks ingetikt. Ze meenemen zou een breuk maken met een teller uit de ene
+    // korf en een noemer uit de andere (nakijkronde ronde 58). Ze gaan dus weg, en
+    // het scherm zegt dat — dezelfde behandeling als bij een basisjaarwissel.
+    const reeksGewisseld = reeks !== reeksVan(bijdrage.indexreeks)
+    const eigenWeg = reeksGewisseld && Object.keys(eigen).length > 0
     await onOpslaan({
       ...bijdrage,
       basisbedrag: centen,
       datumRegeling: datum,
       richting,
       geindexeerd: indexeren,
+      indexreeks: reeks,
+      ...(eigenWeg
+        ? { eigenIndexcijfers: undefined, eigenIndexreeks: undefined }
+        : { eigenIndexreeks: Object.keys(eigen).length > 0 ? reeks : undefined }),
       // `undefined` wist het veld — zo raak je een handmatige aanvangsindex weer kwijt.
       //
       // Er wordt hier BEWUST geen basisjaar bij gestempeld. Het cijfer komt uit een
@@ -571,6 +607,14 @@ function Regeling({
       ...(eind ? { eindDatum: eind } : { eindDatum: undefined }),
       ...(gekozenKinderen.length > 0 ? { kindIds: gekozenKinderen } : { kindIds: undefined }),
     })
+    if (eigenWeg) {
+      setRegelingMelding(
+        t('Je eigen indexcijfers stonden in de vorige reeks en zijn verwijderd. Zet ze opnieuw met cijfers uit de {nieuw}.', {
+          nieuw: t(reeksinfo(reeks).naamInZin),
+        }),
+      )
+      return
+    }
     onKlaar()
   }
 
@@ -580,26 +624,63 @@ function Regeling({
       setFout(t('Kies een maand en vul een indexcijfer groter dan nul in.'))
       return
     }
-    setFout('')
-    // Het basisjaar mee vastleggen: zonder dat weet niemand later nog in welke
-    // maatstaf dit cijfer staat, en dan komt de bijdrage er na een herbasering
-    // tientallen procenten naast (ronde 47).
+
+    // ⚠ STAAT DIT CIJFER WEL IN DEZELFDE MAATSTAF? (nakijkronde ronde 58)
     //
-    // Staan de bestaande cijfers nog in een OUDERE basis, dan mag dit nieuwe cijfer
-    // er niet bijgezet worden. Anders draagt het record één basisjaar over cijfers
-    // uit twee reeksen, verdwijnt de waarschuwing na het eerste cijfer, en rekent de
-    // app verder met een mengsel. De reparatie zou zichzelf ontmantelen langs de weg
-    // die ze zelf aanraadt. Dus: de oude cijfers gaan weg, en het scherm zegt dat.
-    const oudeBasis = (bijdrage.indexBasisjaar ?? INDEX_BASISJAAR) !== INDEX_BASISJAAR
+    // Statbel publiceert de consumptieprijsindex sinds januari 2026 standaard in
+    // basis 2025 = 100, en dit scherm stuurt je letterlijk naar Statbel. Wie daar
+    // juli 2026 opzoekt, ziet 103,60 staan in plaats van 140,17 — een kwart lager.
+    // Zonder deze controle slikt de app dat, stempelt ze er haar eigen basisjaar op,
+    // en rekent ze een bijdrage van € 383 om naar € 283. Met een geloofwaardig
+    // ogende brief eronder.
+    //
+    // Tien procent is ruim: de index beweegt in een jaar zelden meer dan vijf
+    // procent, en een herbasering scheelt er meteen vijfentwintig.
+    const laatsteBekend = indexcijfer(reeks, laatsteIndexmaand(reeks))
+    if (laatsteBekend !== undefined && Math.abs(cijfer - laatsteBekend) > laatsteBekend * 0.1) {
+      setFout(
+        t('Dat cijfer ligt te ver van {laatste} — het laatste dat de app voor de {reeks} kent. Staat het in een ander basisjaar? Statbel publiceert sinds 2026 standaard in basis 2025 = 100; de app rekent in basis {jaar} = 100. Neem het cijfer uit de kolom met basis {jaar}.', {
+          laatste: getalTekst(laatsteBekend),
+          reeks: t(reeksinfo(reeks).naamInZin),
+          jaar: basisjaarVan(reeks),
+        }),
+      )
+      return
+    }
+
+    setFout('')
+    // Het basisjaar én de REEKS mee vastleggen: zonder die twee weet niemand later
+    // nog in welke maatstaf dit cijfer staat, en dan komt de bijdrage er naast — na
+    // een herbasering tientallen procenten, na een reekswissel een half procent met
+    // een getal dat niet na te rekenen is (ronde 47 en 58).
+    //
+    // Staan de bestaande cijfers nog in een OUDERE basis of in een ANDERE reeks, dan
+    // mag dit nieuwe cijfer er niet bijgezet worden. Anders draagt het record één
+    // stempel over cijfers uit twee reeksen, verdwijnt de waarschuwing na het eerste
+    // cijfer, en rekent de app verder met een mengsel. De reparatie zou zichzelf
+    // ontmantelen langs de weg die ze zelf aanraadt. Dus: de oude cijfers gaan weg,
+    // en het scherm zegt dat.
+    const basisNu = basisjaarVan(reeks)
+    const oudeBasis = (bijdrage.indexBasisjaar ?? basisNu) !== basisNu
+    const oudeReeks = (bijdrage.eigenIndexreeks ?? reeks) !== reeks
+    const opnieuw = oudeBasis || oudeReeks
     await onOpslaan({
       ...bijdrage,
-      eigenIndexcijfers: oudeBasis ? { [eigenMaand]: cijfer } : { ...eigen, [eigenMaand]: cijfer },
-      indexBasisjaar: INDEX_BASISJAAR,
+      eigenIndexcijfers: opnieuw ? { [eigenMaand]: cijfer } : { ...eigen, [eigenMaand]: cijfer },
+      indexBasisjaar: basisNu,
+      eigenIndexreeks: reeks,
     })
     if (oudeBasis) {
       setRegelingMelding(
         t('Je eerdere indexcijfers stonden in basis {oud} = 100 en zijn verwijderd. Zet ze opnieuw met de cijfers uit de huidige reeks.', {
-          oud: bijdrage.indexBasisjaar ?? INDEX_BASISJAAR,
+          oud: bijdrage.indexBasisjaar ?? basisNu,
+        }),
+      )
+    } else if (oudeReeks) {
+      setRegelingMelding(
+        t('Je eerdere indexcijfers kwamen uit de {oud} en zijn verwijderd. Zet ze opnieuw met cijfers uit de {nieuw}.', {
+          oud: t(reeksinfo(bijdrage.eigenIndexreeks).naamInZin),
+          nieuw: t(reeksinfo(reeks).naamInZin),
         }),
       )
     }
@@ -655,6 +736,50 @@ function Regeling({
           <span className="rij-meta">{t('Jaarlijks indexeren (de wettelijke regel, tenzij de akte iets anders zegt)')}</span>
         </label>
 
+        {/* ⚠ WELKE INDEXREEKS (ronde 58). Tot die ronde rekende de app altijd met de
+            gezondheidsindex, en de brief zei dat ook. Dat is de reeks voor huur en
+            lonen; artikel 203quater oud BW bindt een onderhoudsbijdrage aan de
+            CONSUMPTIEPRIJZEN. Het verschil is echt geld, en het stapelt jaar na jaar op.
+
+            Waarom er dan tóch een keuze staat en niet gewoon de wet: de wet zelf zegt
+            "tenzij anders overeengekomen". Een akte die de gezondheidsindex noemt, is
+            bindend. De app kiest dus niet vóór jou — ze stelt de wettelijke reeks voor
+            en toont welke ze gebruikt. */}
+        {indexeren && (
+          <div className="veldgroep">
+            <label className="label-caps" htmlFor="bijdrage-indexreeks">
+              {t('Welke index staat er in je akte?')}
+            </label>
+            <select
+              id="bijdrage-indexreeks"
+              value={reeks}
+              onChange={(e) => setReeks(e.target.value as Indexreeks)}
+              aria-describedby="bijdrage-indexreeks-uitleg"
+            >
+              {INDEXREEKS_INFO.map((info) => (
+                <option key={info.reeks} value={info.reeks}>
+                  {t(info.naam)}
+                </option>
+              ))}
+            </select>
+            <span className="rij-meta" id="bijdrage-indexreeks-uitleg">
+              {t(reeksinfo(reeks).uitleg)}
+            </span>
+            {reeks !== reeksVan(bijdrage.indexreeks) && (
+              <span className="rij-meta">
+                {Object.keys(eigen).length > 0
+                  ? t('Zodra je bewaart, rekent de app alle bedragen opnieuw met deze reeks. Je eigen indexcijfers stonden in de vorige reeks en worden dan verwijderd.')
+                  : t('Zodra je bewaart, rekent de app alle bedragen opnieuw met deze reeks. Het bedrag kan daardoor veranderen.')}
+              </span>
+            )}
+            {bijdrage.indexreeks === undefined && (
+              <span className="rij-meta">
+                {t('Tot augustus 2026 rekende Kompal hier altijd met de gezondheidsindex. Dat was fout: de wet noemt de consumptieprijzen. Staat er in jouw akte uitdrukkelijk "gezondheidsindex", zet ze dan hierboven om.')}
+              </span>
+            )}
+          </div>
+        )}
+
         {kinderen.length > 0 && (
           <div className="veldgroep">
             <GezinsledenKiezer
@@ -671,7 +796,7 @@ function Regeling({
           <input inputMode="decimal" value={aanvang} onChange={(e) => setAanvang(e.target.value)} placeholder={t('leeg = de app zoekt ze zelf op')} />
         </label>
         <p className="rij-meta" style={{ margin: 0 }}>
-          {basisjaarWaarschuwing(t)}
+          {basisjaarWaarschuwing(t, reeks)}
         </p>
 
         {fout !== '' && (
@@ -696,7 +821,7 @@ function Regeling({
         <span className="label-caps">{t('Zelf een indexcijfer toevoegen')}</span>
         <p className="rij-meta" style={{ margin: 0 }}>
           {t('De app kent cijfers tot {laatste}. Loopt je verjaardag daarop vooruit, vul het cijfer dan hier in — je vindt het bij Statbel.', {
-            laatste: maandJaarLabel(`${laatsteIndexmaand()}-01`),
+            laatste: maandJaarLabel(`${laatsteIndexmaand(reeks)}-01`),
           })}
         </p>
         <div className="veldrij">
@@ -705,11 +830,13 @@ function Regeling({
             <input type="month" value={eigenMaand} onChange={(e) => setEigenMaand(e.target.value)} />
           </label>
           <label className="veldgroep">
-            <span className="label-caps">{t('Gezondheidsindex')}</span>
-            <input inputMode="decimal" value={eigenCijfer} onChange={(e) => setEigenCijfer(e.target.value)} placeholder="139,08" />
+            {/* De naam van de gekozen reeks, niet "Gezondheidsindex": je tikt hier
+                een cijfer over uit een publicatie, en dan moet je weten wélke. */}
+            <span className="label-caps">{t(reeksinfo(reeks).naam)}</span>
+            <input inputMode="decimal" value={eigenCijfer} onChange={(e) => setEigenCijfer(e.target.value)} placeholder="140,17" />
           </label>
         </div>
-        {eigenMaand && kentIndexmaand(eigenMaand) && (
+        {eigenMaand && kentIndexmaand(reeks, eigenMaand) && (
           <p className="rij-meta" style={{ margin: 0 }}>
             {t('De app kent deze maand al. Vul je hier iets in, dan gaat jouw cijfer voor.')}
           </p>

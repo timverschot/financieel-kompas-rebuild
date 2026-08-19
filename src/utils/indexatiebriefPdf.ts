@@ -1,6 +1,6 @@
 import type { Dossier, Kind, Onderhoudsbijdrage } from '../data/schema'
 import type { Vertaler } from '../i18n'
-import { INDEX_BASISJAAR } from '../data/gezondheidsindex'
+import { reeksinfo } from '../data/indexreeksen'
 import { maandJaarLabel, vandaag } from './datum'
 import { veiligeBestandsnaam } from './download'
 import { formatEuro } from './format'
@@ -113,12 +113,14 @@ export async function exporteerIndexatiebriefPDF(
   // ---- Hoe het berekend is ------------------------------------------------
   blad.kop(t('Hoe dit berekend is'))
   blad.alinea(
-    t('De onderhoudsbijdrage volgt de gezondheidsindex. Het nieuwe bedrag is telkens: het bedrag uit de regeling, maal de index van de maand vóór de verjaardag, gedeeld door de aanvangsindex.'),
+    t('De onderhoudsbijdrage volgt de {reeks}. Het nieuwe bedrag is telkens: het bedrag uit de regeling, maal de index van de maand vóór de verjaardag, gedeeld door de aanvangsindex.', {
+      reeks: t(reeksinfo(opbouw.reeks).naamInZin),
+    }),
   )
   blad.alinea(aanvangsindexTekst(t, opbouw))
   blad.alinea(
     t('De indexcijfers komen van Statbel en staan in basis {jaar} = 100. De app kent cijfers tot {laatste}.', {
-      jaar: INDEX_BASISJAAR,
+      jaar: opbouw.basisjaarTabel,
       laatste: maandJaarLabel(`${opbouw.laatsteBekendeMaand}-01`),
     }),
     { klein: true, grijs: true },
@@ -180,7 +182,7 @@ export async function exporteerIndexatiebriefPDF(
 
   // ---- Het voorbehoud -----------------------------------------------------
   blad.kop(t('Wat dit blad is'))
-  for (const regel of bijdrageVoorbehoud(t)) blad.alinea(`• ${regel}`)
+  for (const regel of bijdrageVoorbehoud(t, opbouw.reeks)) blad.alinea(`• ${regel}`)
 
   blad.voettekst(t, `${t('Onderhoudsbijdrage')} — ${dossier.naam} — ${nuISO}`)
   doc.save(`onderhoudsbijdrage-${veiligeBestandsnaam(dossier.naam)}-${nuISO}.pdf`)

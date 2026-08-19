@@ -13,12 +13,19 @@ import {
   volgendeVerjaardag,
   type BijdrageInvoer,
 } from './onderhoudsbijdrage'
-import { gezondheidsindex, laatsteIndexmaand } from '../data/gezondheidsindex'
-import { INDEX_BASISJAAR } from '../data/gezondheidsindex'
+import { gezondheidsindex } from '../data/gezondheidsindex'
+import { consumptieprijsindex } from '../data/consumptieprijsindex'
+import { basisjaarVan, laatsteIndexmaand } from '../data/indexreeksen'
 
 // Ronde 42. Dit zijn bedragen waarover twee ouders het oneens kunnen worden, dus
 // elke regel hieronder is met de hand na te rekenen met de cijfers uit
-// `data/gezondheidsindex.ts`.
+// `data/consumptieprijsindex.ts`.
+//
+// ⚠ RONDE 58: de cijfers in dit bestand zijn veranderd, en niet omdat de rekensom
+// veranderde. De app rekende tot dan met de GEZONDHEIDSINDEX; artikel 203quater oud
+// BW noemt de CONSUMPTIEPRIJZEN. Augustus 2021 gaat daardoor van 112,74 naar 112,83
+// en augustus 2022 van 123,68 naar 124,05. Wie deze getallen ooit terugzet zonder
+// de reeks mee terug te zetten, brengt de fout terug.
 
 const VANDAAG = '2026-07-30'
 
@@ -66,8 +73,18 @@ describe('verjaardag', () => {
 })
 
 describe('indexVan', () => {
-  it('haalt het cijfer uit de meegeleverde tabel', () => {
-    expect(indexVan('2021-08')).toBe(112.74)
+  it('haalt het cijfer uit de meegeleverde tabel, standaard de consumptieprijzen', () => {
+    expect(indexVan('2021-08')).toBe(112.83)
+    expect(indexVan('2021-08')).toBe(consumptieprijsindex('2021-08'))
+  })
+
+  it('geeft een ANDER cijfer wanneer de akte de gezondheidsindex noemt', () => {
+    // Dit is de kern van ronde 58: dezelfde maand, twee korven, twee getallen.
+    expect(indexVan('2021-08', undefined, 'gezondheid')).toBe(112.74)
+    expect(indexVan('2021-08', undefined, 'gezondheid')).toBe(gezondheidsindex('2021-08'))
+    expect(indexVan('2021-08', undefined, 'consumptieprijzen')).not.toBe(
+      indexVan('2021-08', undefined, 'gezondheid'),
+    )
   })
 
   it('laat een eigen cijfer voorgaan op de tabel', () => {
@@ -81,7 +98,7 @@ describe('indexVan', () => {
   })
 
   it('negeert een eigen cijfer van nul of minder', () => {
-    expect(indexVan('2021-08', { '2021-08': 0 })).toBe(112.74)
+    expect(indexVan('2021-08', { '2021-08': 0 })).toBe(112.83)
   })
 })
 
@@ -90,7 +107,7 @@ describe('bouwOpbouw — een regeling van september 2021', () => {
 
   it('neemt de aanvangsindex uit de maand vóór het vonnis', () => {
     expect(o.aanvangsmaand).toBe('2021-08')
-    expect(o.aanvangsindex).toBe(gezondheidsindex('2021-08'))
+    expect(o.aanvangsindex).toBe(consumptieprijsindex('2021-08'))
     expect(o.aanvangsindexUitAkte).toBe(false)
   })
 
@@ -104,17 +121,17 @@ describe('bouwOpbouw — een regeling van september 2021', () => {
   })
 
   it('rekent elk bedrag na te rekenen uit', () => {
-    // € 250,00 x 123,68 / 112,74 = € 274,26
-    const verwacht = Math.round((25000 * 123.68) / 112.74)
+    // € 250,00 x 124,05 / 112,83 = € 274,86
+    const verwacht = Math.round((25000 * 124.05) / 112.83)
     expect(o.stappen[0].bedrag).toBe(verwacht)
-    expect(o.stappen[0].bedrag).toBe(27426)
+    expect(o.stappen[0].bedrag).toBe(27486)
   })
 
   it('rekent elke stap vanaf het BASISBEDRAG, niet vanaf het bedrag van vorig jaar', () => {
     // Jaar na jaar herindexeren stapelt afrondingen op elkaar. De akte zegt
     // "basisbedrag maal nieuwe index gedeeld door aanvangsindex", en dat is wat er
     // moet gebeuren.
-    const aanvang = 112.74
+    const aanvang = 112.83
     for (const stap of o.stappen) {
       expect(stap.bedrag).toBe(Math.round((25000 * (stap.nieuweIndex as number)) / aanvang))
     }
@@ -129,7 +146,97 @@ describe('bouwOpbouw — een regeling van september 2021', () => {
   })
 
   it('zegt tot welke maand de app cijfers kent', () => {
-    expect(o.laatsteBekendeMaand).toBe(laatsteIndexmaand())
+    expect(o.laatsteBekendeMaand).toBe(laatsteIndexmaand('consumptieprijzen'))
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('bouwOpbouw — welke indexreeks (ronde 58)', () => {
+  it('rekent standaard met de CONSUMPTIEPRIJZEN, want dat zegt de wet', () => {
+    // Artikel 203quater oud BW: "het indexcijfer van de consumptieprijzen". Tot
+    // ronde 58 stond hier de gezondheidsindex — de reeks voor huur en lonen.
+    const o = bouwOpbouw(bijdrage(), VANDAAG)
+    expect(o.reeks).toBe('consumptieprijzen')
+    expect(o.aanvangsindex).toBe(consumptieprijsindex('2021-08'))
+  })
+
+  it('volgt de akte wanneer die uitdrukkelijk de gezondheidsindex noemt', () => {
+    // De wet zegt "tenzij anders overeengekomen". Een akte die de gezondheidsindex
+    // oplegt, is bindend — dus mag de app niet de wet opdringen.
+    const o = bouwOpbouw(bijdrage({ indexreeks: 'gezondheid' }), VANDAAG)
+    expect(o.reeks).toBe('gezondheid')
+    expect(o.aanvangsindex).toBe(gezondheidsindex('2021-08'))
+  })
+
+  it('geeft een ANDER bedrag per reeks — dit is geen theoretisch verschil', () => {
+    const cpi = bouwOpbouw(bijdrage(), VANDAAG)
+    const gez = bouwOpbouw(bijdrage({ indexreeks: 'gezondheid' }), VANDAAG)
+    expect(cpi.huidigBedrag).not.toBe(gez.huidigBedrag)
+  })
+
+  it('haalt NOOIT twee reeksen door één breuk', () => {
+    // De aanvangsindex en elke nieuwe index moeten uit dezelfde korf komen. Kwam de
+    // teller uit de ene reeks en de noemer uit de andere, dan zou het bedrag er een
+    // paar procent naast zitten zonder één foutmelding.
+    for (const reeks of ['consumptieprijzen', 'gezondheid'] as const) {
+      const o = bouwOpbouw(bijdrage({ indexreeks: reeks }), VANDAAG)
+      const tabel = reeks === 'gezondheid' ? gezondheidsindex : consumptieprijsindex
+      expect({ reeks, aanvang: o.aanvangsindex }).toEqual({ reeks, aanvang: tabel(o.aanvangsmaand) })
+      for (const stap of o.stappen) {
+        expect({ reeks, maand: stap.indexmaand, index: stap.nieuweIndex }).toEqual({
+          reeks,
+          maand: stap.indexmaand,
+          index: tabel(stap.indexmaand) ?? null,
+        })
+      }
+    }
+  })
+
+  it('weigert te rekenen wanneer je eigen cijfers uit de ÁNDERE reeks komen', () => {
+    // ⚠ De vondst van de nakijkronde van ronde 58, en de gevaarlijkste van de hele
+    // ronde. Tik je 139,22 over (de gezondheidsindex van mei 2026) en staat de
+    // regeling op de consumptieprijzen, dan drukte de brief "volgt de
+    // consumptieprijsindex" af met een getal dat in die reeks niet bestaat. Een
+    // tegenpartij die het natelt, vindt het nergens terug.
+    //
+    // Waarom een stempel en geen slimme controle: de twee reeksen liggen in de meeste
+    // maanden minder dan een half procent uit elkaar. Aan het getal zelf is niet te
+    // zien uit welke korf het komt.
+    const gemengd = bouwOpbouw(
+      bijdrage({ eigenIndexcijfers: { '2026-08': 140.5 }, eigenIndexreeks: 'gezondheid' }),
+      VANDAAG,
+    )
+    expect(gemengd.indexConflict).toBe('andere-reeks')
+    expect(gemengd.eigenReeks).toBe('gezondheid')
+    expect(gemengd.reeks).toBe('consumptieprijzen')
+    // En dan staat er geen bedrag, maar het basisbedrag.
+    expect(gemengd.huidigBedrag).toBe(25000)
+  })
+
+  it('rekent gewoon wanneer de eigen cijfers uit dezelfde reeks komen', () => {
+    const zelfde = bouwOpbouw(
+      bijdrage({ eigenIndexcijfers: { '2026-08': 140.5 }, eigenIndexreeks: 'consumptieprijzen' }),
+      VANDAAG,
+    )
+    expect(zelfde.indexConflict).toBeNull()
+  })
+
+  it('gaat ervan uit dat eigen cijfers zonder stempel in de reeks van de regeling staan', () => {
+    // Elk bestaand record mist het stempel. Die cijfers zijn ingetikt toen de app nog
+    // met de gezondheidsindex rekende — maar ze blokkeren betekent dat élke bestaande
+    // regeling stilvalt. De keuze is bewust: doorrekenen, en het scherm zegt dat de
+    // reeks veranderd is (zie de melding in utils/meldingen.ts).
+    const zonderStempel = bouwOpbouw(bijdrage({ eigenIndexcijfers: { '2026-08': 140.5 } }), VANDAAG)
+    expect(zonderStempel.indexConflict).toBeNull()
+  })
+
+  it('behandelt een regeling zonder gekozen reeks als de wettelijke reeks', () => {
+    // Elk bestaand record mist dit veld. De keuze is bewust: liever de wettelijke
+    // reeks dan de reeks die de app vroeger per vergissing gebruikte. Het scherm
+    // zegt er dan wél bij dat dit veranderd is.
+    const zonder = bouwOpbouw(bijdrage(), VANDAAG)
+    const expliciet = bouwOpbouw(bijdrage({ indexreeks: 'consumptieprijzen' }), VANDAAG)
+    expect(zonder.huidigBedrag).toBe(expliciet.huidigBedrag)
   })
 })
 
@@ -153,36 +260,37 @@ describe('bouwOpbouw — grensgevallen', () => {
     // niet aan te pas en klopt de verhouding weer. Dit is dus de akte-index in
     // gebruik, langs de weg die overblijft.
     const o = bouwOpbouw(
-      bijdrage({ aanvangsindexHandmatig: 100, eigenIndexcijfers: { '2022-08': 123.68 } }),
+      bijdrage({ aanvangsindexHandmatig: 100, eigenIndexcijfers: { '2022-08': 124.05 } }),
       '2023-01-15',
     )
     expect(o.indexConflict).toBeNull()
     expect(o.aanvangsindex).toBe(100)
     expect(o.aanvangsindexUitAkte).toBe(true)
-    // € 250,00 x 123,68 / 100 = € 309,20
-    expect(o.stappen[0].bedrag).toBe(30920)
+    // € 250,00 x 124,05 / 100 = € 310,13
+    expect(o.stappen[0].bedrag).toBe(31013)
   })
 
   it('laat het bedrag staan bij een verjaardag waarvan de index ontbreekt, en zegt welke maand', () => {
-    // Een regeling van augustus: de verjaardag van 2026 heeft de index van juli
-    // 2026 nodig, en die kent de app nog niet.
-    const o = bouwOpbouw(bijdrage({ datumRegeling: '2021-08-10' }), '2026-08-20')
+    // Een regeling van september: de verjaardag van 2026 heeft de index van
+    // augustus 2026 nodig, en die kent de app nog niet (Statbel publiceert een
+    // maand pas op het einde van die maand).
+    const o = bouwOpbouw(bijdrage({ datumRegeling: '2021-09-10' }), '2026-09-20')
     const laatste = o.stappen[o.stappen.length - 1]
-    expect(laatste.indexmaand).toBe('2026-07')
+    expect(laatste.indexmaand).toBe('2026-08')
     expect(laatste.nieuweIndex).toBeNull()
     expect(laatste.berekend).toBe(false)
     // Het bedrag van de vorige verjaardag blijft staan — geen schatting.
     expect(laatste.bedrag).toBe(o.stappen[o.stappen.length - 2].bedrag)
-    expect(o.ontbrekendeMaanden).toContain('2026-07')
+    expect(o.ontbrekendeMaanden).toContain('2026-08')
   })
 
   it('rekent die verjaardag wél uit zodra je het cijfer zelf bijzet', () => {
     const o = bouwOpbouw(
-      bijdrage({ datumRegeling: '2021-08-10', eigenIndexcijfers: { '2026-07': 139.5 } }),
-      '2026-08-20',
+      bijdrage({ datumRegeling: '2021-09-10', eigenIndexcijfers: { '2026-08': 140.5 } }),
+      '2026-09-20',
     )
     const laatste = o.stappen[o.stappen.length - 1]
-    expect(laatste.nieuweIndex).toBe(139.5)
+    expect(laatste.nieuweIndex).toBe(140.5)
     expect(laatste.berekend).toBe(true)
     expect(o.ontbrekendeMaanden).toEqual([])
   })
@@ -439,7 +547,9 @@ describe('bouwOpbouw — cijfers uit twee verschillende indexreeksen', () => {
     datumRegeling: '2020-06-15',
   }
   // De aanvangsmaand van deze regeling is mei 2020; de tabel kent die.
-  const TABEL_MEI_2020 = gezondheidsindex('2020-05') as number
+  // Uit de reeks waarmee de app standaard rekent (de consumptieprijzen), want dat
+  // is wat `bouwOpbouw` hier zonder gekozen reeks raadpleegt.
+  const TABEL_MEI_2020 = consumptieprijsindex('2020-05') as number
 
   it('rekent gewoon wanneer alles uit de tabel van de app komt', () => {
     const o = bouwOpbouw({ ...basis }, '2026-08-16')
@@ -475,11 +585,15 @@ describe('bouwOpbouw — cijfers uit twee verschillende indexreeksen', () => {
     expect(o.huidigBedrag).toBe(30000)
   })
 
-  it('BEDRAG: zonder de blokkade zou hier een fors te hoog bedrag staan', () => {
+  it('BEDRAG: zonder de blokkade zou hier een bedrag staan dat er ver naast zit', () => {
     // De eigenlijke belofte van deze ronde, in centen. Rekent de app door met een
-    // aanvangsindex uit een oudere reeks, dan valt het bedrag ver naast de
-    // werkelijkheid — hier ruim een vijfde te laag, omdat er door een te groot
-    // getal gedeeld wordt. Dat bedrag ziet er geloofwaardig uit.
+    // aanvangsindex uit een oudere reeks, dan valt het bedrag naast de werkelijkheid
+    // omdat er door een te groot getal gedeeld wordt. Dat bedrag ziet er
+    // geloofwaardig uit — en dat is precies het gevaar.
+    //
+    // ⚠ Naam en commentaar spraken hier tot ronde 58 de meting tegen ("fors te hoog"
+    // tegenover "een vijfde te laag", terwijl er 7,6 % te laag uitkomt). Nu meet de
+    // test wat ze beweert: hoeveel het scheelt, met een ondergrens én een bovengrens.
     const zonderBlokkade = bouwOpbouw(
       { ...basis, aanvangsindexHandmatig: TABEL_MEI_2020 * 1.24, eigenIndexcijfers: eigenVoorAlleVerjaardagen() },
       '2026-08-16',
@@ -495,7 +609,13 @@ describe('bouwOpbouw — cijfers uit twee verschillende indexreeksen', () => {
     // Rechts: gemengd, dus geen bedrag. Het verschil tussen die twee is precies
     // wat een gebruiker anders zonder waarschuwing te zien kreeg.
     expect(metBlokkade.huidigBedrag).toBe(30000)
-    expect(Math.abs(zonderBlokkade.huidigBedrag - metBlokkade.huidigBedrag)).toBeGreaterThan(1000)
+    // Het juiste bedrag (alles uit dezelfde reeks) tegenover het bedrag dat je zou
+    // krijgen met een aanvangsindex uit een oudere basis: enkele procenten te laag,
+    // en dat op elke maand van elk jaar.
+    const juist = bouwOpbouw({ ...basis, eigenIndexcijfers: eigenVoorAlleVerjaardagen() }, '2026-08-16')
+    const afwijking = (juist.huidigBedrag - zonderBlokkade.huidigBedrag) / juist.huidigBedrag
+    expect(afwijking).toBeGreaterThan(0.05)
+    expect(afwijking).toBeLessThan(0.2)
   })
 
   it('rekent wél wanneer de gebruiker ELKE verjaardagsmaand zelf invult', () => {
@@ -548,7 +668,7 @@ describe('bouwOpbouw — cijfers uit twee verschillende indexreeksen', () => {
     )
     expect(o.indexConflict).toBe('ander-basisjaar')
     expect(o.basisjaarEigen).toBe(2004)
-    expect(o.basisjaarTabel).toBe(INDEX_BASISJAAR)
+    expect(o.basisjaarTabel).toBe(basisjaarVan('consumptieprijzen'))
     expect(o.huidigBedrag).toBe(30000)
   })
 
@@ -556,7 +676,11 @@ describe('bouwOpbouw — cijfers uit twee verschillende indexreeksen', () => {
     // Elk bestaand record mist dit veld, en die maandcijfers zijn in basis 2013
     // ingetikt — de enige basis die deze app ooit gehad heeft. Zonder deze regel
     // zou de reparatie elke bestaande regeling stilleggen.
-    const o = bouwOpbouw({ ...basis, eigenIndexcijfers: { '2026-05': 139.22 } }, '2026-08-16')
+    // Een cijfer uit de reeks waarmee de regeling rekent (de consumptieprijzen):
+    // mei 2026 = 139,71. Tot de nakijkronde van ronde 58 stond hier 139,22 — het
+    // GEZONDHEIDSINDEXcijfer van diezelfde maand — en legde deze test dus precies de
+    // vermenging vast die de app hoort te weigeren.
+    const o = bouwOpbouw({ ...basis, eigenIndexcijfers: { '2026-05': 139.71 } }, '2026-08-16')
     expect(o.indexConflict).toBeNull()
   })
 

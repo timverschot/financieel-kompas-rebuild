@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { CONTRACTSOORTEN } from './opzegregels'
+import { INDEXREEKSEN } from './indexreeksen'
 
 // De schemas zijn de 'poortwachters' van je data. Elk stuk data dat de database
 // in of uit gaat, wordt hiertegen gecontroleerd. De TypeScript-types worden
@@ -685,6 +686,15 @@ export const OnderhoudsbijdrageSchema = z.object({
   // Wordt er geïndexeerd? Standaard ja — dat is de wettelijke regel. Een akte mag
   // het uitsluiten, en dan hoort de app dat te volgen in plaats van te corrigeren.
   geindexeerd: z.boolean().optional(),
+  // Welke INDEXREEKS geldt (ronde 58). Ontbreekt het veld, dan geldt de wettelijke
+  // standaard: de consumptieprijsindex (art. 203quater oud BW).
+  //
+  // ⚠ Dit veld is er omdat de app het tot ronde 58 FOUT deed: ze rekende altijd met
+  // de gezondheidsindex, en de brief beweerde dat ook. Dat is de reeks voor huur en
+  // lonen, niet voor een onderhoudsbijdrage. Een akte mag wél uitdrukkelijk de
+  // gezondheidsindex opleggen, en dan hoort de app die te volgen — vandaar een keuze
+  // en geen vaste waarde. Zie data/indexreeksen.ts.
+  indexreeks: z.enum(INDEXREEKSEN).optional(),
   // De aanvangsindex zoals ze in de akte staat, voor het geval die afwijkt van wat
   // de app voor die maand kent. Dat gebeurt bij oudere vonnissen: de index is
   // sindsdien herbaseerd, en dan is het getal in de akte in een andere maatstaf
@@ -694,6 +704,15 @@ export const OnderhoudsbijdrageSchema = z.object({
   // omdat de meegeleverde tabel per definitie achterloopt op de werkelijkheid: het
   // cijfer van deze maand verschijnt pas op het einde van deze maand.
   eigenIndexcijfers: z.record(z.string(), z.number().positive()).optional(),
+  // In WELKE REEKS die eigen cijfers staan (nakijkronde ronde 58).
+  //
+  // ⚠ Zonder dit veld is een eigen cijfer een kaal getal. Tik je 140,17 over uit de
+  // consumptieprijsindex en zet je daarna de regeling op de gezondheidsindex, dan
+  // drukt de brief "volgt de gezondheidsindex" af met een getal dat in die reeks
+  // niet bestaat — en dat is precies wat een tegenpartij natelt. Zelfde ziekte als
+  // het basisjaar hieronder, zelfde remedie: het gegeven draagt zijn eigen betekenis.
+  // Ontbreekt het veld, dan staan de cijfers in de reeks van de regeling zelf.
+  eigenIndexreeks: z.enum(INDEXREEKSEN).optional(),
   // Het basisjaar waarin de twee velden hierboven uitgedrukt staan. Een indexcijfer
   // is een kaal getal; wat het betekent hangt af van de basis. Statbel herbaseert om
   // de zoveel jaar, en dan betekent een eerder ingetikt cijfer stil iets anders —

@@ -1,4 +1,10 @@
-import { gezondheidsindex, laatsteIndexmaand, INDEX_BASISJAAR } from '../data/gezondheidsindex'
+import {
+  basisjaarVan,
+  indexcijfer,
+  laatsteIndexmaand,
+  reeksVan,
+  type Indexreeks,
+} from '../data/indexreeksen'
 import { indexeerBedrag } from './indexatie'
 
 /**
@@ -9,6 +15,12 @@ import { indexeerBedrag } from './indexatie'
  * (110,1 in plaats van 110,05). Waarom de speling klein mag blijven: een
  * herbasering schuift de hele reeks met tientallen procenten op, dus die valt er
  * nooit binnen. Een tikfout van een factor tien evenmin.
+ *
+ * ⚠ WAT DEZE TOLERANTIE NIET KAN (nakijkronde ronde 58). Ze kan de twee INDEXREEKSEN
+ * niet uit elkaar houden: in 113 van de 138 gemeenschappelijke maanden liggen de
+ * consumptieprijsindex en de gezondheidsindex minder dan een half procent uit elkaar.
+ * Aan het getal zelf is dus niet te zien uit welke korf het komt. Daarvoor bestaat
+ * `eigenIndexreeks` — een stempel op het gegeven, niet een controle achteraf.
  */
 export const AKTE_TOLERANTIE = 0.005
 
@@ -23,11 +35,17 @@ export const AKTE_TOLERANTIE = 0.005
 //
 //   Nieuw bedrag = basisbedrag x (nieuwe index / aanvangsindex)
 //
-//   * de AANVANGSINDEX is de gezondheidsindex van de maand VÓÓR de maand waarin
-//     het bedrag werd vastgelegd (de datum van het vonnis of de overeenkomst);
+//   * de AANVANGSINDEX is het indexcijfer van de maand VÓÓR de maand waarin het
+//     bedrag werd vastgelegd (de datum van het vonnis of de overeenkomst);
 //   * de NIEUWE INDEX is die van de maand VÓÓR de maand van de aanpassing;
 //   * de aanpassing gebeurt JAARLIJKS, van rechtswege, op de verjaardag van de
 //     regeling — tenzij de akte iets anders bepaalt.
+//
+// ⚠ WELKE INDEXREEKS (ronde 58, en dit was een echte fout). Tot deze ronde rekende
+// de module altijd met de GEZONDHEIDSINDEX. De wet zegt CONSUMPTIEPRIJZEN; de
+// gezondheidsindex is de reeks voor huur en lonen. Een akte mag wél uitdrukkelijk
+// de gezondheidsindex opleggen, dus de reeks reist nu mee als gegeven in plaats van
+// vast te staan in de code. Zie `data/indexreeksen.ts`.
 //
 // Wat deze module bewust NIET doet: iets zeggen over verjaringstermijnen, of over
 // wie gelijk heeft. Ze rekent uit wat er volgens de regeling verschuldigd was en
@@ -61,6 +79,11 @@ export type BijdrageInvoer = {
   datumRegeling: string
   /** Wordt er geïndexeerd? Een akte kan het uitsluiten. */
   geindexeerd?: boolean
+  /**
+   * Welke indexreeks. Ontbreekt ze, dan geldt de wettelijke standaard
+   * (consumptieprijzen). Zie `data/indexreeksen.ts` voor waarom dit een keuze is.
+   */
+  indexreeks?: Indexreeks
   /**
    * De aanvangsindex zoals ze letterlijk in de akte staat.
    *
@@ -101,6 +124,11 @@ export type BijdrageInvoer = {
    */
   indexBasisjaar?: number
   /**
+   * In welke REEKS die eigen cijfers staan. Ontbreekt ze, dan is dat de reeks van
+   * de regeling zelf. Zie `eigenIndexreeks` in `data/schema.ts`.
+   */
+  eigenIndexreeks?: Indexreeks
+  /**
    * De dag waarop de regeling ophoudt (bv. bij het einde van de studies).
    *
    * Vanaf die dag komt er geen indexatie meer bij en telt er geen maand meer mee.
@@ -123,8 +151,10 @@ export function alsBijdrageInvoer(b: {
   basisbedrag: number
   datumRegeling: string
   geindexeerd?: boolean
+  indexreeks?: Indexreeks
   aanvangsindexHandmatig?: number
   eigenIndexcijfers?: Record<string, number>
+  eigenIndexreeks?: Indexreeks
   indexBasisjaar?: number
   eindDatum?: string
 }): BijdrageInvoer {
@@ -132,8 +162,10 @@ export function alsBijdrageInvoer(b: {
     basisbedrag: b.basisbedrag,
     datumRegeling: b.datumRegeling,
     geindexeerd: b.geindexeerd,
+    indexreeks: b.indexreeks,
     aanvangsindexHandmatig: b.aanvangsindexHandmatig,
     eigenIndexcijfers: b.eigenIndexcijfers,
+    eigenIndexreeks: b.eigenIndexreeks,
     indexBasisjaar: b.indexBasisjaar,
     eindDatum: b.eindDatum,
   }
@@ -165,7 +197,7 @@ export type IndexatieStap = {
  * - `ander-basisjaar`: de eigen maandcijfers zijn ingetikt toen de app nog een
  *   andere basis gebruikte dan nu.
  */
-export type IndexConflict = 'akte-met-tabel' | 'ander-basisjaar'
+export type IndexConflict = 'akte-met-tabel' | 'ander-basisjaar' | 'andere-reeks'
 
 export type BijdrageOpbouw = {
   /** De aanvangsindex die gebruikt is, of null wanneer ze onbekend is. */
@@ -199,6 +231,19 @@ export type BijdrageOpbouw = {
   indexConflict: IndexConflict | null
   /** Het basisjaar van de meegeleverde tabel, voor de uitleg op het scherm. */
   basisjaarTabel: number
+  /**
+   * De indexreeks waarmee gerekend is (ronde 58).
+   *
+   * Reist mee met de uitkomst zodat het scherm en de brief kunnen zeggen wélke
+   * reeks gebruikt is. Zonder dat is een bedrag een kaal getal, en dan kan een
+   * tegenpartij niet nakijken of het uit de juiste korf komt.
+   */
+  reeks: Indexreeks
+  /**
+   * De reeks waarin de EIGEN cijfers staan, voor de uitleg bij een conflict.
+   * Gelijk aan `reeks` zolang er niets aan de hand is.
+   */
+  eigenReeks: Indexreeks
   /** Het basisjaar waarin de eigen maandcijfers staan, voor de uitleg op het scherm. */
   basisjaarEigen: number
   /**
@@ -215,12 +260,21 @@ export type BijdrageOpbouw = {
   tabelMaanden: string[]
 }
 
-/** Het indexcijfer van een maand, met de eigen toevoegingen van de gebruiker erbij. */
-export function indexVan(maand: string, eigen?: Record<string, number>): number | undefined {
+/**
+ * Het indexcijfer van een maand, met de eigen toevoegingen van de gebruiker erbij.
+ *
+ * De reeks staat vooraan omdat ze het antwoord bepaalt: dezelfde maand geeft in de
+ * consumptieprijsindex een ander getal dan in de gezondheidsindex.
+ */
+export function indexVan(
+  maand: string,
+  eigen?: Record<string, number>,
+  reeks?: Indexreeks,
+): number | undefined {
   // De eigen invoer gaat vóór: wie een cijfer zelf bijzet, corrigeert bewust.
   const eigenCijfer = eigen?.[maand]
   if (typeof eigenCijfer === 'number' && eigenCijfer > 0) return eigenCijfer
-  return gezondheidsindex(maand)
+  return indexcijfer(reeks, maand)
 }
 
 /** Het aantal volledige jaren tussen twee datums. */
@@ -254,6 +308,7 @@ export function verjaardag(datumRegeling: string, n: number): string {
  * staat.
  */
 export function bouwOpbouw(invoer: BijdrageInvoer, vandaagISO: string): BijdrageOpbouw {
+  const reeks = reeksVan(invoer.indexreeks)
   const aanvangsmaand = maandVoor(invoer.datumRegeling)
   const uitAkte = typeof invoer.aanvangsindexHandmatig === 'number' && invoer.aanvangsindexHandmatig > 0
   const eigen = invoer.eigenIndexcijfers ?? {}
@@ -284,7 +339,7 @@ export function bouwOpbouw(invoer: BijdrageInvoer, vandaagISO: string): Bijdrage
     const maand = maandVoor(verjaardag(invoer.datumRegeling, n))
     const eigenCijfer = eigen[maand]
     if (typeof eigenCijfer === 'number' && eigenCijfer > 0) continue
-    if (gezondheidsindex(maand) === undefined) continue
+    if (indexcijfer(reeks, maand) === undefined) continue
     if (!tabelMaanden.includes(maand)) tabelMaanden.push(maand)
   }
 
@@ -292,7 +347,7 @@ export function bouwOpbouw(invoer: BijdrageInvoer, vandaagISO: string): Bijdrage
   // is bewezen dat de akte in dezelfde reeks staat en is er niets aan de hand — dat
   // is het gewone geval van een recente regeling die de gebruiker letterlijk
   // overtikt.
-  const aanvangsindexTabel = gezondheidsindex(aanvangsmaand) ?? null
+  const aanvangsindexTabel = indexcijfer(reeks, aanvangsmaand) ?? null
   const akteVolgtTabel =
     uitAkte &&
     aanvangsindexTabel !== null &&
@@ -307,23 +362,35 @@ export function bouwOpbouw(invoer: BijdrageInvoer, vandaagISO: string): Bijdrage
   // De tweede vermenging: eigen maandcijfers uit de tijd dat de app een andere basis
   // gebruikte. Dat kan pas gebeuren na een volgende herbasering van de meegeleverde
   // tabel. Wordt er niet geïndexeerd, dan komt er ook geen breuk aan te pas.
-  const basisjaarEigen = invoer.indexBasisjaar ?? INDEX_BASISJAAR
-  const conflictBasisjaar =
-    invoer.geindexeerd !== false &&
-    Object.keys(eigen).length > 0 &&
-    basisjaarEigen !== INDEX_BASISJAAR
+  const basisjaarTabel = basisjaarVan(reeks)
+  const basisjaarEigen = invoer.indexBasisjaar ?? basisjaarTabel
+  const heeftEigen = Object.keys(eigen).length > 0
+  const conflictBasisjaar = invoer.geindexeerd !== false && heeftEigen && basisjaarEigen !== basisjaarTabel
+
+  // De DERDE vermenging, gevonden in de nakijkronde van ronde 58: eigen maandcijfers
+  // die in de ándere reeks staan. Wie 140,17 uit de consumptieprijsindex overtikt en
+  // de regeling daarna op de gezondheidsindex zet, krijgt anders een brief die
+  // "volgt de gezondheidsindex" beweert met een getal dat in die reeks niet bestaat.
+  //
+  // ⚠ Dit kan de tolerantie van `akteVolgtTabel` NIET vangen: de twee reeksen liggen
+  // in de meeste maanden minder dan een half procent uit elkaar. Alleen een stempel
+  // op het gegeven zelf werkt.
+  const conflictReeks =
+    invoer.geindexeerd !== false && heeftEigen && (invoer.eigenIndexreeks ?? reeks) !== reeks
 
   const indexConflict: IndexConflict | null = conflictBasisjaar
     ? 'ander-basisjaar'
-    : conflictAkte
-      ? 'akte-met-tabel'
-      : null
+    : conflictReeks
+      ? 'andere-reeks'
+      : conflictAkte
+        ? 'akte-met-tabel'
+        : null
 
   const aanvangsindex = indexConflict
     ? null
     : uitAkte
       ? (invoer.aanvangsindexHandmatig as number)
-      : (indexVan(aanvangsmaand, invoer.eigenIndexcijfers) ?? null)
+      : (indexVan(aanvangsmaand, invoer.eigenIndexcijfers, reeks) ?? null)
 
   const ontbrekende: string[] = []
   if (aanvangsindex === null && !indexConflict) ontbrekende.push(aanvangsmaand)
@@ -336,7 +403,9 @@ export function bouwOpbouw(invoer: BijdrageInvoer, vandaagISO: string): Bijdrage
   for (let n = 1; n <= jaren; n++) {
     const datum = verjaardag(invoer.datumRegeling, n)
     const indexmaand = maandVoor(datum)
-    const nieuweIndex = indexVan(indexmaand, invoer.eigenIndexcijfers) ?? null
+    // ⚠ Dezelfde reeks als de aanvangsindex, anders staan er twee verschillende
+    // korven in één breuk — precies de fout die deze module elders bewaakt.
+    const nieuweIndex = indexVan(indexmaand, invoer.eigenIndexcijfers, reeks) ?? null
     if (nieuweIndex === null) {
       if (!ontbrekende.includes(indexmaand)) ontbrekende.push(indexmaand)
       // Zonder cijfer geen nieuw bedrag: het vorige blijft staan, en het scherm
@@ -365,9 +434,11 @@ export function bouwOpbouw(invoer: BijdrageInvoer, vandaagISO: string): Bijdrage
     stappen,
     huidigBedrag: bedrag,
     ontbrekendeMaanden: ontbrekende,
-    laatsteBekendeMaand: laatsteIndexmaand(),
+    laatsteBekendeMaand: laatsteIndexmaand(reeks),
     indexConflict,
-    basisjaarTabel: INDEX_BASISJAAR,
+    basisjaarTabel,
+    reeks,
+    eigenReeks: invoer.eigenIndexreeks ?? reeks,
     basisjaarEigen,
     aanvangsindexTabel,
     tabelMaanden,

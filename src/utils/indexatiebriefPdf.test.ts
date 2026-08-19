@@ -56,7 +56,7 @@ describe('exporteerIndexatiebriefPDF', () => {
     // bijlagen meesturen is één handeling te veel: de brief zit in dezelfde PDF.
     const blad1 = tekstVanBlad(nep, 1).replace(/\n/g, ' ')
     expect(blad1).toContain('Betreft: indexatie van de onderhoudsbijdrage voor Kind 1')
-    expect(blad1).toContain('volgt de gezondheidsindex')
+    expect(blad1).toContain('volgt de consumptieprijsindex')
     expect(blad1).toContain('Op het volgende blad staat de volledige berekening')
     expect(blad1).not.toContain('Per verjaardag')
     expect(nep.bladen).toBeGreaterThan(1)
@@ -108,11 +108,11 @@ describe('exporteerIndexatiebriefPDF', () => {
   })
 
   it('schrijft de berekening per verjaardag uit', () => {
-    // "€ 250,00 x 123,68 / 112,74 = € 274,26" — na te rekenen zonder de app.
+    // "€ 250,00 x 124,05 / 112,83 = € 274,86" — na te rekenen zonder de app.
     const doorlopend = alleTekst(nep).replace(/\n/g, ' ')
-    expect(doorlopend).toContain('123,68')
-    expect(doorlopend).toContain('112,74')
-    expect(doorlopend).toContain(formatEuro(27426))
+    expect(doorlopend).toContain('124,05')
+    expect(doorlopend).toContain('112,83')
+    expect(doorlopend).toContain(formatEuro(27486))
   })
 
   it('zegt waar de aanvangsindex vandaan komt', () => {
@@ -181,18 +181,24 @@ describe('exporteerIndexatiebriefPDF — grensgevallen', () => {
   })
 
   it('benoemt de maanden waarvoor er geen cijfer was, in plaats van te schatten', async () => {
-    const augustus = { ...bijdrage, datumRegeling: '2021-08-10' }
+    // September, want de CPI kent juli 2026 al; augustus 2026 is de eerste maand die
+    // nog niet gepubliceerd is (ronde 58).
+    const september = { ...bijdrage, datumRegeling: '2021-09-10' }
     await exporteerIndexatiebriefPDF(
       t,
       dossier,
-      augustus,
-      bouwOpbouw({ basisbedrag: 25000, datumRegeling: '2021-08-10' }, '2026-08-20'),
+      september,
+      bouwOpbouw({ basisbedrag: 25000, datumRegeling: '2021-09-10' }, '2026-09-20'),
       kinderen,
-      '2026-08-20',
+      '2026-09-20',
     )
     const doorlopend = alleTekst(nep).replace(/\n/g, ' ')
     expect(doorlopend).toContain('Wat er nog ontbreekt')
-    expect(doorlopend).toContain('juli 2026')
+    // ⚠ AUGUSTUS, niet juli. Deze test stond op 'juli 2026' en bleef daardoor groen
+    // ook als de lijst met ontbrekende maanden leeg was of de verkeerde maand noemde:
+    // "juli 2026" staat namelijk óók in de kleine regel "de app kent cijfers tot …".
+    // Gevonden in de nakijkronde van ronde 58.
+    expect(doorlopend).toContain('augustus 2026')
     expect(doorlopend).toContain('ongewijzigd gelaten in plaats van geschat')
   })
 
@@ -200,7 +206,7 @@ describe('exporteerIndexatiebriefPDF — grensgevallen', () => {
     // Het cijfer moet overeenkomen met wat de app voor augustus 2021 kent, anders
     // weigert de rekenkern sinds ronde 47 te rekenen: een akte-cijfer uit een
     // andere reeks mag niet met de tabel gecombineerd worden.
-    const uitAkte = { ...bijdrage, aanvangsindexHandmatig: 112.74 }
+    const uitAkte = { ...bijdrage, aanvangsindexHandmatig: 112.83 }
     await exporteerIndexatiebriefPDF(t, dossier, uitAkte, opbouwVan(uitAkte), kinderen, VANDAAG)
     expect(alleTekst(nep).replace(/\n/g, ' ')).toContain('zoals ze in de akte staat')
   })
@@ -273,7 +279,7 @@ describe('exporteerIndexatiebriefPDF — de brief spreekt blad 2 niet tegen', ()
     await exporteerIndexatiebriefPDF(t, dossier, zonder, opbouwVan(zonder), kinderen, VANDAAG)
     const blad1 = blad1Van()
     expect(blad1).toContain('wordt volgens de regeling niet geïndexeerd')
-    expect(blad1).not.toContain('volgt de gezondheidsindex')
+    expect(blad1).not.toContain('volgt de consumptieprijsindex')
     // Ook het onderwerp: "indexatie van..." bij een akte zonder indexatie leest
     // als een standpunt over die akte.
     expect(blad1).not.toContain('Betreft: indexatie')
@@ -304,14 +310,16 @@ describe('exporteerIndexatiebriefPDF — de brief spreekt blad 2 niet tegen', ()
   })
 
   it('meldt op blad 1 dat een verjaardag nog niet toegepast kon worden', async () => {
-    const augustus = { ...bijdrage, datumRegeling: '2021-08-10' }
+    // September, want de CPI kent juli 2026 al; augustus 2026 is de eerste maand die
+    // nog niet gepubliceerd is (ronde 58).
+    const september = { ...bijdrage, datumRegeling: '2021-09-10' }
     await exporteerIndexatiebriefPDF(
       t,
       dossier,
-      augustus,
-      bouwOpbouw({ basisbedrag: 25000, datumRegeling: '2021-08-10' }, '2026-08-20'),
+      september,
+      bouwOpbouw({ basisbedrag: 25000, datumRegeling: '2021-09-10' }, '2026-09-20'),
       kinderen,
-      '2026-08-20',
+      '2026-09-20',
     )
     expect(blad1Van()).toContain('was er nog geen indexcijfer bekend')
   })
