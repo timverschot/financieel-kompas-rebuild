@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { Aflossing, Lening, Rekening, TerugkerendePost, Transactie } from '../data/schema'
-import { OpstellingSectie } from './OpstellingSectie'
+import { OpstellingSectie, type VeiligInvoer } from './OpstellingSectie'
 import { formatEuro } from '../utils/format'
 
 const leeg = {
@@ -527,5 +527,104 @@ describe('OpstellingSectie — de tegels van "Dit is je situatie"', () => {
   it('maakt geen knop van een tegel die een streepje toont', () => {
     toon()
     expect(screen.queryByRole('button', { name: /^Netto vermogen/ })).toBeNull()
+  })
+})
+
+// Ronde 63: het achtste blok. Het bestaat alleen wanneer het scherm de knoppen
+// ook echt kan aansturen — daarom moeten alle tests hierboven, die géén `veilig`
+// meegeven, zeven blokken blijven zien.
+describe('OpstellingSectie — Veilig bewaren', () => {
+  const veilig: VeiligInvoer = {
+    verbonden: false,
+    bezig: false,
+    onVerbind: vi.fn(),
+    onSynchroniseer: vi.fn(),
+    backupTekst: null,
+    onExporteer: vi.fn(),
+    onHerstel: vi.fn(),
+    vandaagISO: '2026-08-20',
+  }
+
+  function toonMetVeilig(over: Partial<typeof veilig> = {}, rest: Partial<typeof leeg> = {}) {
+    return render(
+      <OpstellingSectie
+        {...leeg}
+        {...rest}
+        onRekening={vi.fn()}
+        onLening={vi.fn()}
+        onVastePost={vi.fn()}
+        onKindToevoegen={vi.fn()}
+        onKindWijzigen={vi.fn()}
+        onKindVerwijderen={vi.fn()}
+        onDossier={vi.fn()}
+        onNaarPagina={vi.fn()}
+        veilig={{ ...veilig, ...over }}
+      />,
+    )
+  }
+
+  it('bestaat niet zonder de knoppen erachter', () => {
+    toon()
+    expect(screen.queryByRole('tab', { name: /Veilig bewaren/ })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('tab')).toHaveLength(7)
+  })
+
+  it('komt erbij als achtste blok', () => {
+    toonMetVeilig()
+    expect(screen.getAllByRole('tab')).toHaveLength(8)
+    expect(screen.getByRole('progressbar', { name: 'Ingevulde blokken' })).toHaveAttribute('aria-valuemax', '8')
+  })
+
+  it('zet de drie kaarten bij elkaar, zodat je er niet vijf tikken diep voor moet', async () => {
+    const user = userEvent.setup()
+    toonMetVeilig()
+    await user.click(screen.getByRole('tab', { name: /Veilig bewaren/ }))
+    // Op het beginscherm zetten, Drive, en het back-upbestand — op één plek.
+    expect(screen.getByRole('button', { name: 'Verbind met Google Drive' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Exporteer back-up' })).toBeInTheDocument()
+    expect(screen.getByText('Waar staan je gegevens?')).toBeInTheDocument()
+  })
+
+  // ⚠ Het blok telt VANGNETTEN, geen ingevulde regels. Eén volstaat om het af te
+  // vinken; blijvende opslag telt niet mee, want die houdt je gegevens vast in
+  // déze browser.
+  it('telt niets zolang er geen vangnet is', () => {
+    toonMetVeilig()
+    const tab = screen.getByRole('tab', { name: /Veilig bewaren/ })
+    expect(tab.textContent).not.toMatch(/[12]/)
+    expect(screen.getByRole('progressbar', { name: 'Ingevulde blokken' })).toHaveAttribute('aria-valuenow', '0')
+  })
+
+  // ⚠ Geteld op wat er GEBEURD is, niet op wat er aanstaat (nakijkronde ronde 63).
+  it('telt "verbonden" niet als vangnet zolang er niets vertrok', () => {
+    toonMetVeilig({ verbonden: true })
+    expect(screen.getByRole('progressbar', { name: 'Ingevulde blokken' })).toHaveAttribute('aria-valuenow', '0')
+  })
+
+  it('telt een geslaagde synchronisatie als vangnet', () => {
+    toonMetVeilig({ verbonden: true, laatsteSyncOp: '2026-08-15' })
+    expect(screen.getByRole('progressbar', { name: 'Ingevulde blokken' })).toHaveAttribute('aria-valuenow', '1')
+  })
+
+  it('telt een synchronisatie en een back-upbestand allebei', () => {
+    toonMetVeilig({ verbonden: true, laatsteSyncOp: '2026-08-15', laatsteBackupOp: '2026-08-01' })
+    expect(screen.getByRole('tab', { name: /Veilig bewaren/ })).toHaveTextContent('2')
+  })
+
+  // ⚠ Een vangnet van vorig jaar is geen vangnet. Zou het blok afgevinkt blijven,
+  // dan zegt de opstelling "je hebt alle blokken ingevuld" terwijl het belletje
+  // ernaast roept dat je laatste back-up zevenhonderd dagen oud is.
+  it('telt een oud vangnet niet meer mee', () => {
+    toonMetVeilig({ laatsteBackupOp: '2024-08-01' })
+    expect(screen.getByRole('progressbar', { name: 'Ingevulde blokken' })).toHaveAttribute('aria-valuenow', '0')
+  })
+
+  it('exporteert vanuit de opstelling met dezelfde knop als in Instellingen', async () => {
+    const user = userEvent.setup()
+    const onExporteer = vi.fn()
+    toonMetVeilig({ onExporteer })
+    await user.click(screen.getByRole('tab', { name: /Veilig bewaren/ }))
+    await user.click(screen.getByRole('button', { name: 'Exporteer back-up' }))
+    expect(onExporteer).toHaveBeenCalledTimes(1)
   })
 })

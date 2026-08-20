@@ -7,6 +7,9 @@ import { useThema, THEMAKEUZES } from '../thema'
 import { useInstellingen } from '../instellingen'
 import { BUDGETDREMPELS } from '../utils/meldingen'
 import { InstallerenKaart } from './InstallerenKaart'
+import { DriveKaart } from './DriveKaart'
+import { BackupKaart } from './BackupKaart'
+import type { OpslagToestand } from '../data/opslag'
 
 // Keuzelijsten blijven smal: ze staan alleen, zonder zichtbaar label ernaast.
 const keuzelijst: CSSProperties = { maxWidth: 260, alignSelf: 'flex-start' }
@@ -24,10 +27,10 @@ export function InstellingenSectie({
   zetTaal,
   verbonden,
   bezig,
-  statusTekst,
   onVerbind,
   onSynchroniseer,
   backupTekst,
+  backupIsFout,
   onExporteer,
   onHerstel,
   kinderen,
@@ -35,15 +38,19 @@ export function InstellingenSectie({
   onKindWijzigen,
   onKindVerwijderen,
   onBeginOpnieuw,
+  laatsteBackupOp,
+  laatsteSyncOp,
+  opslag,
 }: {
   taal: Taal
   zetTaal: (t: Taal) => void
   verbonden: boolean
   bezig: boolean
-  statusTekst: string | null
   onVerbind: () => void
   onSynchroniseer: () => void
   backupTekst: string | null
+  /** Of `backupTekst` over een MISLUKKING gaat (ronde 63). */
+  backupIsFout?: boolean
   onExporteer: () => void
   onHerstel: (bestand: File) => void
   kinderen: Kind[]
@@ -56,6 +63,12 @@ export function InstellingenSectie({
    * kaart "Begin opnieuw" verborgen in plaats van een knop te tonen die niets doet.
    */
   onBeginOpnieuw?: () => Promise<BeginOpnieuwResultaat> | BeginOpnieuwResultaat
+  /** De dag van de laatste back-up op dit toestel (ronde 63). */
+  laatsteBackupOp?: string
+  /** De dag van de laatste geslaagde synchronisatie met Drive (ronde 63). */
+  laatsteSyncOp?: string
+  /** Of de browser deze database blijvend bewaart (ronde 63). */
+  opslag?: OpslagToestand
 }) {
   const { t } = useT()
   const { keuze, zetKeuze } = useThema()
@@ -174,54 +187,24 @@ export function InstellingenSectie({
         </p>
       </Kaart>
 
-      {/* Google Drive */}
-      <Kaart
-        titel={t('Synchronisatie (Google Drive)')}
-        bijschrift={t(
-          'Synchroniseer je gegevens veilig tussen je toestellen via je eigen Google Drive. Enkel een back-uplogboek; je data blijft lokaal-eerst.',
-        )}
-      >
-        <div className="knoprij">
-          {!verbonden ? (
-            <button type="button" className="knop knop-secundair" onClick={onVerbind} disabled={bezig}>
-              {bezig ? t('Bezig…') : t('Verbind met Google Drive')}
-            </button>
-          ) : (
-            <button type="button" className="knop knop-secundair" onClick={onSynchroniseer} disabled={bezig}>
-              {bezig ? t('Bezig…') : t('Synchroniseer nu')}
-            </button>
-          )}
-        </div>
-        {statusTekst && <p style={statusRegel}>{statusTekst}</p>}
-      </Kaart>
+      {/* Google Drive en het back-upbestand. Sinds ronde 63 zijn dat gedeelde
+          kaarten: ze staan ook in de opstelling, bij het blok "Veilig bewaren". */}
+      <DriveKaart
+        verbonden={verbonden}
+        bezig={bezig}
+        laatsteSyncOp={laatsteSyncOp}
+        onVerbind={onVerbind}
+        onSynchroniseer={onSynchroniseer}
+      />
 
-      {/* Back-up & herstel */}
-      <Kaart
-        titel={t('Back-up & herstel')}
-        bijschrift={t(
-          'Een los vangnet op je eigen toestel, onafhankelijk van Google Drive. Bewaar het bestand op een veilige plek; herstellen voegt enkel toe en overschrijft nooit.',
-        )}
-      >
-        <div className="knoprij">
-          <button type="button" className="knop knop-secundair" onClick={onExporteer}>
-            {t('Exporteer back-up')}
-          </button>
-          <label className="knop knop-secundair" style={{ cursor: 'pointer' }}>
-            {t('Herstel uit back-up')}
-            <input
-              type="file"
-              accept="application/json"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (f) onHerstel(f)
-                e.target.value = ''
-              }}
-            />
-          </label>
-        </div>
-        {backupTekst && <p style={statusRegel}>{backupTekst}</p>}
-      </Kaart>
+      <BackupKaart
+        backupTekst={backupTekst}
+        backupIsFout={backupIsFout}
+        onExporteer={onExporteer}
+        onHerstel={onHerstel}
+        laatsteBackupOp={laatsteBackupOp}
+        opslag={opslag}
+      />
 
       {/* Privacy — wat er met je gegevens gebeurt, in klare taal.
           Dit is de sterkste eigenschap van de app (alles blijft bij jou), maar tot

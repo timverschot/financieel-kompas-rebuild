@@ -42,7 +42,12 @@ export async function wisAlles(backend?: SyncBackend | null): Promise<HerstartRe
   }
 
   // Alle tabellen, inclusief het logboek (events) en de sleutel/waarde-tabel
-  // (meta, met o.a. het toestel-id en het tijdstip van de laatste sync).
+  // (meta, met o.a. het toestel-id, de dag van je laatste back-up en de dag van
+  // de laatste geslaagde synchronisatie).
+  //
+  // ⚠ Die twee dagen MOETEN mee (ronde 63). Blijven ze staan, dan draagt een lege
+  // app een vangnet-datum mee die over gewiste gegevens ging, en zwijgt het
+  // belletje een maand lang. Er staat een test op.
   await db.transaction('rw', db.tables, async () => {
     for (const tabel of db.tables) await tabel.clear()
   })

@@ -1619,3 +1619,154 @@ describe('App — de navigatie na ronde 60', () => {
     await waitFor(() => expect(window.location.hash).toBe('#/analyse/vooruit'))
   })
 })
+
+// Ronde 63: het belletje herinnert je eraan dat je gegevens alleen hier staan.
+describe('de back-upherinnering', () => {
+  // Het vertrekpunt zetten we zelf in de meta-tabel; de app schrijft het alleen de
+  // allereerste keer, dus daarna blijft dít staan. Zo hoeft er geen klok stilgezet
+  // te worden — neptijd en de nep-IndexedDB gaan niet samen (ronde 61).
+  async function begonOp(dagISO: string) {
+    await db.meta.put({ sleutel: 'eersteGebruikOp', waarde: dagISO })
+  }
+
+  function langGeleden(dagen: number): string {
+    const d = new Date(`${vandaag()}T12:00:00Z`)
+    d.setUTCDate(d.getUTCDate() - dagen)
+    return d.toISOString().slice(0, 10)
+  }
+
+  it('zwijgt zolang je pas begonnen bent', async () => {
+    await begonOp(langGeleden(29))
+    render(<App />)
+    await screen.findByText('Saldo')
+    expect(screen.getByRole('button', { name: 'Meldingen' })).toBeInTheDocument()
+  })
+
+  it('meldt het na dertig dagen zonder vangnet, en brengt je naar Instellingen', async () => {
+    await begonOp(langGeleden(31))
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.click(await screen.findByRole('button', { name: 'Meldingen (1)' }))
+    await user.click(
+      await screen.findByText('Je maakte nog nooit een back-up. Je gegevens staan alleen in deze browser.'),
+    )
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Instellingen' })).toBeInTheDocument()
+  })
+
+  // ⚠ Een geslaagde synchronisatie telt als vangnet: dan staan je gegevens al
+  // ergens anders en is een tweede vraag om een bestand alleen maar ruis.
+  it('zwijgt wanneer er onlangs met Drive gesynchroniseerd is', async () => {
+    await begonOp(langGeleden(400))
+    await db.meta.put({ sleutel: 'laatsteSyncOp', waarde: langGeleden(2) })
+    render(<App />)
+    await screen.findByText('Saldo')
+    expect(screen.getByRole('button', { name: 'Meldingen' })).toBeInTheDocument()
+  })
+
+  // ⚠ Zonder deze regel begint een NIEUWE gebruiker nooit te tellen en komt de
+  // herinnering er nooit. Het lezen was gedekt, het schrijven niet.
+  it('zet bij het opstarten een vertrekpunt wanneer er nog geen is', async () => {
+    await db.meta.delete('eersteGebruikOp')
+    render(<App />)
+    await screen.findByText('Saldo')
+    await waitFor(async () => {
+      expect((await db.meta.get('eersteGebruikOp'))?.waarde).toBe(vandaag())
+    })
+  })
+
+  it('onthoudt de dag zodra je een back-up downloadt', async () => {
+    // jsdom kent `createObjectURL` niet; zonder deze vervanger valt de download om
+    // en test dit geval alleen de foutafhandeling.
+    const echteMaak = URL.createObjectURL
+    const echteVrij = URL.revokeObjectURL
+    URL.createObjectURL = (() => 'blob:test') as unknown as typeof URL.createObjectURL
+    URL.revokeObjectURL = (() => {}) as unknown as typeof URL.revokeObjectURL
+    try {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await user.click(screen.getByRole('button', { name: 'Meer' }))
+    await user.click(await screen.findByRole('button', { name: /Instellingen/ }))
+    await user.click(await screen.findByRole('button', { name: 'Exporteer back-up' }))
+
+    await waitFor(async () => {
+      expect((await db.meta.get('laatsteBackupOp'))?.waarde).toBe(vandaag())
+    })
+    // En je ziet het meteen terug in de kaart.
+    expect(await screen.findByText(/Laatste back-up op dit toestel:/)).toBeInTheDocument()
+    } finally {
+      URL.createObjectURL = echteMaak
+      URL.revokeObjectURL = echteVrij
+    }
+  })
+
+  // ⚠ Zonder deze test kon punt 1 van de ronde stil ongedaan gemaakt worden: de
+  // app deed dan weer de goede vraag en gooide het antwoord weg.
+  it('toont wat de browser met je gegevens mag doen', async () => {
+    Object.defineProperty(navigator, 'storage', {
+      value: { persisted: () => Promise.resolve(false), persist: () => Promise.resolve(false) },
+      configurable: true,
+    })
+    try {
+      const user = userEvent.setup()
+      render(<App />)
+      await screen.findByText('Saldo')
+      await user.click(screen.getByRole('button', { name: 'Meer' }))
+      await user.click(await screen.findByRole('button', { name: /Instellingen/ }))
+      expect(
+        await screen.findByText(/Je browser mag deze gegevens wissen wanneer je toestel plaats nodig heeft/),
+      ).toBeInTheDocument()
+    } finally {
+      Reflect.deleteProperty(navigator as unknown as Record<string, unknown>, 'storage')
+    }
+  })
+
+  // ⚠ Een mislukte back-up moet als ALARM voorgelezen worden, niet als een gewone
+  // statusregel — anders denkt wie de app laat voorlezen dat het gelukt is. jsdom
+  // kent `URL.createObjectURL` niet, dus de download mislukt hier vanzelf.
+  it('meldt een mislukte back-up als alarm', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await user.click(screen.getByRole('button', { name: 'Meer' }))
+    await user.click(await screen.findByRole('button', { name: /Instellingen/ }))
+    await user.click(await screen.findByRole('button', { name: 'Exporteer back-up' }))
+
+    const alarm = await screen.findByRole('alert')
+    expect(alarm).toHaveTextContent('De back-up kon niet gedownload worden. Probeer het opnieuw.')
+    // En de dag wordt dan NIET genoteerd.
+    expect(await db.meta.get('laatsteBackupOp')).toBeUndefined()
+  })
+
+  // ⚠ Na "Begin opnieuw" is de meta-tabel leeg. Wordt het vertrekpunt dan niet
+  // meteen opnieuw gezet, dan begint de app pas bij de volgende herstart te tellen
+  // en komt de herinnering dertig dagen te laat.
+  it('begint na "Begin opnieuw" meteen opnieuw te tellen', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await user.click(screen.getByRole('button', { name: 'Meer' }))
+    await user.click(await screen.findByRole('button', { name: /Instellingen/ }))
+    await user.click(await screen.findByRole('button', { name: 'Begin opnieuw…' }))
+    await user.type(await screen.findByLabelText('Typ WISSEN om te bevestigen'), 'WISSEN')
+    await user.click(screen.getByRole('button', { name: 'Alles wissen' }))
+
+    await waitFor(async () => {
+      expect((await db.meta.get('eersteGebruikOp'))?.waarde).toBe(vandaag())
+    })
+  })
+
+  // ⚠ Een dossiergebruiker heeft geen enkele boeking en toch alles te verliezen:
+  // de foto's van zijn kastickets staan alleen in deze browser.
+  it('waarschuwt ook wie de app alleen voor een dossier gebruikt', async () => {
+    await db.transacties.clear()
+    await db.rekeningen.clear()
+    await bewaarDossier({ id: 'd1', naam: 'Co-ouderschap', aandeelJij: 50 })
+    await begonOp(langGeleden(45))
+    render(<App />)
+    await screen.findByRole('button', { name: 'Meldingen (1)' })
+  })
+})

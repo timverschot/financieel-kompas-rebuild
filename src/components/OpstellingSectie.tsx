@@ -20,6 +20,11 @@ import { RekeningFormulier } from './RekeningFormulier'
 import { LeningFormulier } from './LeningFormulier'
 import { KinderenSectie } from './KinderenSectie'
 import { DossierFormulier } from './DossierFormulier'
+import { InstallerenKaart } from './InstallerenKaart'
+import { DriveKaart } from './DriveKaart'
+import { BackupKaart } from './BackupKaart'
+import type { OpslagToestand } from '../data/opslag'
+import { versVangnet } from '../utils/backupherinnering'
 import { bepaalBuffer } from '../utils/buffer'
 import { nettoVermogen } from '../utils/vermogen'
 import { openstaandKapitaal } from '../utils/lening'
@@ -57,6 +62,32 @@ export type OpstellingBlok =
   | 'sluipend'
   | 'gezin'
   | 'delen'
+  | 'veilig'
+
+/**
+ * Wat het blok "Veilig bewaren" nodig heeft (ronde 63). Eén object in plaats van
+ * tien losse eigenschappen: het gaat om één onderwerp, en zo is het ook één ding
+ * dat er wel of niet is.
+ */
+export type VeiligInvoer = {
+  verbonden: boolean
+  bezig: boolean
+  onVerbind: () => void
+  onSynchroniseer: () => void
+  backupTekst: string | null
+  /** Of `backupTekst` over een MISLUKKING gaat; dan hoort ze voorgelezen te worden. */
+  backupIsFout?: boolean
+  onExporteer: () => void
+  onHerstel: (bestand: File) => void
+  /** De dag van de laatste back-up op dit toestel. */
+  laatsteBackupOp?: string
+  /** De dag van de laatste geslaagde synchronisatie met Drive. */
+  laatsteSyncOp?: string
+  /** Of de browser deze database blijvend bewaart. */
+  opslag?: OpslagToestand
+  /** De dag van vandaag; alleen om te bepalen of een vangnet nog VERS is. */
+  vandaagISO?: string
+}
 
 /** De rekeningtypes die bij elk blok horen. Eén plek, zodat de tellingen kloppen. */
 const TYPES_GELD: Rekening['type'][] = ['betaal', 'spaar', 'cash']
@@ -284,6 +315,7 @@ export function OpstellingSectie({
   onKindVerwijderen,
   onDossier,
   onNaarPagina,
+  veilig,
 }: {
   rekeningen: Rekening[]
   transacties: Transactie[]
@@ -302,6 +334,14 @@ export function OpstellingSectie({
   onKindVerwijderen: (id: string) => void
   onDossier: (d: Dossier) => Promise<void> | void
   onNaarPagina: (p: 'budget' | 'dossiers' | 'overzicht' | 'rekeningen') => void
+  /**
+   * Alles voor het blok "Veilig bewaren" (ronde 63).
+   *
+   * ⚠ Ontbreekt dit, dan is er geen achtste blok. Dat is dezelfde afspraak als bij
+   * "Begin opnieuw" in Instellingen: een scherm dat de knoppen niet kan aansturen,
+   * hoort ze niet te tonen. Zo staat er nooit een verbindknop die niets doet.
+   */
+  veilig?: VeiligInvoer
 }) {
   const { t } = useT()
   const [blok, setBlok] = useState<OpstellingBlok>('rekeningen')
@@ -344,6 +384,19 @@ export function OpstellingSectie({
   // weinig, en dat is precies het soort cijfer dat nageteld wordt.
   const sluipendPerJaar = sluipend.reduce((som, p) => som + (-p.bedrag * 12) / intervalVan(p), 0)
 
+  // Hoeveel vangnetten zijn er, en werken ze nog?
+  //
+  // ⚠ Geteld op wat er GEBEURD is, niet op wat er aanstaat (nakijkronde ronde 63).
+  // De eerste versie telde `verbonden` mee, en dat is een schakelaar: een verbinding
+  // die stilviel bleef het blok afvinken terwijl er al maanden niets vertrok. En een
+  // vangnet dat ouder is dan de herinneringstermijn telt niet meer mee — anders zegt
+  // dit blok "je hebt alles ingevuld" terwijl het belletje ernaast roept dat je
+  // laatste back-up zevenhonderd dagen oud is.
+  const veiligVandaag = veilig?.vandaagISO ?? vandaag()
+  const veiligeNetten = veilig
+    ? [veilig.laatsteSyncOp, veilig.laatsteBackupOp].filter((d) => versVangnet(d, veiligVandaag)).length
+    : 0
+
   const blokken: { id: OpstellingBlok; teken: string; label: string; klaar: boolean; telling: number }[] = [
     { id: 'rekeningen', teken: '🏦', label: t('Je geld'), klaar: geldRekeningen.length > 0, telling: geldRekeningen.length },
     {
@@ -358,6 +411,22 @@ export function OpstellingSectie({
     { id: 'sluipend', teken: '📺', label: t('Sluipende kosten'), klaar: sluipend.length > 0, telling: sluipend.length },
     { id: 'gezin', teken: '👨‍👧', label: t('Je gezin'), klaar: gezinsleden.length > 0, telling: gezinsleden.length },
     { id: 'delen', teken: '🧾', label: t('Delen'), klaar: dossiers.length > 0, telling: dossiers.length },
+    // ⚠ Het achtste blok telt VANGNETTEN, geen ingevulde regels: Drive en een
+    // back-upbestand. Blijvende opslag telt bewust NIET mee — die houdt je gegevens
+    // vast in déze browser, en het hele punt van dit blok is dat er ook ergens
+    // ánders een kopie staat. Eén vangnet volstaat om het blok af te vinken; de
+    // teller laat zien dat er twee mogelijk zijn.
+    ...(veilig
+      ? [
+          {
+            id: 'veilig' as const,
+            teken: '🛟',
+            label: t('Veilig bewaren'),
+            klaar: veiligeNetten > 0,
+            telling: veiligeNetten,
+          },
+        ]
+      : []),
   ]
   const klaar = blokken.filter((b) => b.klaar).length
   const tabs: Subtab<OpstellingBlok>[] = blokken.map((b) => ({
@@ -684,6 +753,41 @@ export function OpstellingSectie({
               </button>
             </p>
           </Kaart>
+        )}
+        {blok === 'veilig' && veilig && (
+          <div className="stapel">
+            <Kaart
+              titel={t('Waar staan je gegevens?')}
+              bijschrift={t('Kompal bewaart alles in deze browser, op dit toestel. Dat is de reden dat je geen account nodig hebt — en meteen ook de reden dat je er zelf een kopie van moet hebben.')}
+            >
+              <p className="rij-meta" style={{ margin: 0 }}>
+                {t(
+                  'Een browser die opgeruimd wordt, een toestel dat stukgaat of verloren raakt: dan is alles weg. Er zijn twee vangnetten, en één ervan volstaat. Google Drive doet het vanzelf; een back-upbestand doe je zelf, en dat werkt ook zonder Google.',
+                )}
+              </p>
+            </Kaart>
+
+            {/* Op het beginscherm zetten staat hier bewust bij: een app die op je
+                beginscherm staat, wordt door de browser veel minder snel opgeruimd. */}
+            <InstallerenKaart />
+
+            <DriveKaart
+              verbonden={veilig.verbonden}
+              bezig={veilig.bezig}
+              laatsteSyncOp={veilig.laatsteSyncOp}
+              onVerbind={veilig.onVerbind}
+              onSynchroniseer={veilig.onSynchroniseer}
+            />
+
+            <BackupKaart
+              backupTekst={veilig.backupTekst}
+              backupIsFout={veilig.backupIsFout}
+              onExporteer={veilig.onExporteer}
+              onHerstel={veilig.onHerstel}
+              laatsteBackupOp={veilig.laatsteBackupOp}
+              opslag={veilig.opslag}
+            />
+          </div>
         )}
       </Subtabs>
 

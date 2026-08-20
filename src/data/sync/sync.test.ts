@@ -3,6 +3,7 @@ import { db } from '../db'
 import { bewaarTransactie, laadTransacties } from '../repository'
 import { GeheugenBackend, type SyncBackend } from './backend'
 import { synchroniseer } from './sync'
+import { voegRegelsToeEnHerbouw } from './lokaal'
 import { LOG_FORMAAT, type Logregel } from './events'
 
 beforeEach(async () => {
@@ -77,12 +78,18 @@ describe('synchroniseer', () => {
 
   it('stuurt bij elke push het volledige eigen logboek (compactie)', async () => {
     const verstuurd: Logregel[][] = []
+    // ⚠ Deze nepback-up geeft terug wat ze bewaarde (ronde 63). Deed ze dat niet,
+    // dan zou `synchroniseer` terecht vaststellen dat het eigen logboek NIET in de
+    // back-up staat en de pushteller terugzetten — en dan meet deze test niet meer
+    // de compactie maar het herstelmechanisme.
+    let bewaard: Logregel[] = []
     const backend: SyncBackend = {
       async haalOp() {
-        return []
+        return bewaard
       },
       async stuur(_toestelId, regels) {
         verstuurd.push(regels)
+        bewaard = regels
       },
       async wisAlles() {},
     }
@@ -258,3 +265,96 @@ describe('synchroniseer — de eenheid van de bedragen', () => {
   })
 })
 
+
+// Ronde 63: het belletje moet weten wanneer je gegevens voor het laatst ergens
+// anders dan in deze browser stonden.
+describe('synchroniseer — de dag van de laatste geslaagde ronde', () => {
+  it('noteert de dag zodra het eigen logboek in de back-up staat', async () => {
+    await bewaarTransactie({ id: 't5', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 2400, rekeningId: 'r1' })
+    const backend = new GeheugenBackend()
+    await synchroniseer(backend, '2026-08-20')
+    expect((await db.meta.get('laatsteSyncOp'))?.waarde).toBe('2026-08-20')
+  })
+
+  it('werkt de dag bij bij een volgende ronde', async () => {
+    await bewaarTransactie({ id: 't6', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 2400, rekeningId: 'r1' })
+    const backend = new GeheugenBackend()
+    await synchroniseer(backend, '2026-08-20')
+    await synchroniseer(backend, '2026-09-02')
+    expect((await db.meta.get('laatsteSyncOp'))?.waarde).toBe('2026-09-02')
+  })
+
+  // ⚠ Dit is het geval waarvoor de controle bestaat (nakijkronde ronde 63).
+  // Hernoem je in Drive de back-upmap, dan maakt de app een nieuwe, lege map aan.
+  // Er valt dan niets meer te pushen — je volgnummer staat al hoog — en er komt
+  // niets terug: een ronde die niets doet en toch niet faalt. Zou die dag genoteerd
+  // worden, dan zwijgt het belletje voorgoed over gegevens die nergens staan.
+  it('noteert niets wanneer het eigen logboek uit de back-up verdwenen is', async () => {
+    await bewaarTransactie({ id: 't7', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 2400, rekeningId: 'r1' })
+    const backend = new GeheugenBackend()
+    await synchroniseer(backend, '2026-08-20')
+    expect((await db.meta.get('laatsteSyncOp'))?.waarde).toBe('2026-08-20')
+
+    // Een verse, lege back-up: precies wat een hernoemde map oplevert.
+    const leeg = new GeheugenBackend()
+    await synchroniseer(leeg, '2026-09-30')
+    expect((await db.meta.get('laatsteSyncOp'))?.waarde).toBe('2026-08-20')
+  })
+
+  // Een toestel dat helemaal niets in zijn logboek heeft, kan ook niets verliezen.
+  it('noteert de dag wel voor een leeg toestel', async () => {
+    const backend = new GeheugenBackend()
+    await synchroniseer(backend, '2026-08-20')
+    expect((await db.meta.get('laatsteSyncOp'))?.waarde).toBe('2026-08-20')
+  })
+
+  // ⚠ Zet je op een nieuw toestel een back-upBESTAND terug, dan draagt je hele
+  // geschiedenis het toestel-id van je oude telefoon. `stuur()` verstuurt alleen je
+  // eigen regels, dus die geschiedenis komt nooit op Drive. Een controle die alleen
+  // naar je eigen volgnummer keek, keurde dat elke ronde goed en liet het belletje
+  // voorgoed zwijgen over een geschiedenis die nergens anders staat.
+  it('noteert niets wanneer alleen regels van een ander toestel lokaal staan', async () => {
+    await voegRegelsToeEnHerbouw([
+      vreemdeRegel('ev-oud', {
+        type: 'transactie.bewaard',
+        payload: { id: 't-oud', datum: '2026-01-02', omschrijving: 'Oud', bedrag: 100, rekeningId: 'r1' },
+      }),
+    ])
+    const backend = new GeheugenBackend()
+    await synchroniseer(backend, '2026-08-20')
+    expect(await db.meta.get('laatsteSyncOp')).toBeUndefined()
+  })
+
+  // ⚠ Vaststellen is niet genoeg: zonder deze reparatie valt er na een verdwenen
+  // back-up nooit meer iets te pushen (het volgnummer staat al hoog) en blijft de
+  // app tot in de eeuwigheid "0 verstuurd, 0 opgehaald" melden.
+  it('duwt na een verdwenen back-up alles opnieuw naar boven', async () => {
+    await bewaarTransactie({ id: 't8', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 2400, rekeningId: 'r1' })
+    const backend = new GeheugenBackend()
+    await synchroniseer(backend, '2026-08-20')
+
+    const leeg = new GeheugenBackend()
+    await synchroniseer(leeg, '2026-09-30')
+    // Eerste ronde tegen de lege back-up: niets te pushen, dus de dag blijft staan
+    // op die van de vorige, geslaagde ronde…
+    expect((await db.meta.get('laatsteSyncOp'))?.waarde).toBe('2026-08-20')
+    // …maar de tweede ronde zet alles er wél weer op, en dán pas telt de dag.
+    const r = await synchroniseer(leeg, '2026-10-01')
+    expect(r.gepusht).toBeGreaterThan(0)
+    expect((await db.meta.get('laatsteSyncOp'))?.waarde).toBe('2026-10-01')
+  })
+
+  // ⚠ De dag is een BEWERING dat je gegevens elders staan. Loopt de ronde vast —
+  // geen internet, een geweigerde map — dan mag die bewering er niet komen, want
+  // dan zwijgt het belletje dertig dagen lang over gegevens die nergens staan.
+  it('noteert niets wanneer de ronde mislukt', async () => {
+    const stuk: SyncBackend = {
+      stuur: () => Promise.reject(new Error('geen internet')),
+      haalOp: () => Promise.reject(new Error('geen internet')),
+      wisAlles: () => Promise.resolve(),
+    }
+    await bewaarTransactie({ id: 't9', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 2400, rekeningId: 'r1' })
+    await expect(synchroniseer(stuk, '2026-08-20')).rejects.toThrow()
+    expect(await db.meta.get('laatsteSyncOp')).toBeUndefined()
+  })
+})

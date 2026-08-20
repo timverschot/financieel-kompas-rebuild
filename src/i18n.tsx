@@ -2283,8 +2283,61 @@ const en: Record<string, string> = {
     'The next page states what this is based on: the amount from the arrangement and the details that go with it. That way everything can be checked without this app.',
   'Deze brief is opgemaakt met Financieel Kompas. Hij bevat een berekening en geen juridisch standpunt.':
     'This letter was produced with Financieel Kompas. It contains a calculation, not a legal position.',
+  // Ronde 63 — je gegevens raken niet kwijt
+  'Laatste synchronisatie: {datum}.': 'Last sync: {datum}.',
+  'Niet verbonden. Laatste synchronisatie: {datum}.': 'Not connected. Last sync: {datum}.',
+  'Verbonden, maar er ging nog niets naar Drive.': 'Connected, but nothing has gone to Drive yet.',
+  'Je browser heeft toegezegd deze gegevens niet zomaar te wissen.':
+    'Your browser has promised not to clear this data on a whim.',
+  'Je browser mag deze gegevens wissen wanneer je toestel plaats nodig heeft. Zet de app op je beginscherm en maak af en toe een back-up.':
+    'Your browser may clear this data when your device needs space. Add the app to your home screen and make a backup now and then.',
+  'Laatste back-up op dit toestel: {datum}.': 'Last backup on this device: {datum}.',
+  'Je maakte op dit toestel nog geen enkele back-up.': 'You have not made a single backup on this device yet.',
+  'Niet verbonden. Je gegevens staan alleen in deze browser, op dit toestel.':
+    'Not connected. Your data lives only in this browser, on this device.',
+  'Veilig bewaren': 'Keeping it safe',
+  'Waar staan je gegevens?': 'Where is your data?',
+  'Kompal bewaart alles in deze browser, op dit toestel. Dat is de reden dat je geen account nodig hebt — en meteen ook de reden dat je er zelf een kopie van moet hebben.':
+    'Kompal keeps everything in this browser, on this device. That is why you need no account — and also why you need a copy of your own.',
+  'Een browser die opgeruimd wordt, een toestel dat stukgaat of verloren raakt: dan is alles weg. Er zijn twee vangnetten, en één ervan volstaat. Google Drive doet het vanzelf; een back-upbestand doe je zelf, en dat werkt ook zonder Google.':
+    'A browser that gets cleaned up, a device that breaks or goes missing: then everything is gone. There are two safety nets, and one of them is enough. Google Drive does it by itself; a backup file you do yourself, and that works without Google too.',
+  // Het belletje (deze drie staan in meldingen.ts en vallen dus buiten de dekkingstest)
+  'Je maakte nog nooit een back-up. Je gegevens staan alleen in deze browser.':
+    'You have never made a backup. Your data lives only in this browser.',
+  'Je laatste back-up is {dagen} dagen geleden. Je gegevens staan alleen op dit toestel.':
+    'Your last backup was {dagen} days ago. Your data lives only on this device.',
+  'Er ging al {dagen} dagen niets meer naar Google Drive. Kijk je verbinding na of maak een back-up.':
+    'Nothing has gone to Google Drive for {dagen} days. Check your connection or make a backup.',
 }
 const fr: Record<string, string> = {
+  // Ronde 63 — tes données ne se perdent pas
+  'Laatste synchronisatie: {datum}.': 'Dernière synchronisation : {datum}.',
+  'Niet verbonden. Laatste synchronisatie: {datum}.':
+    'Non connecté. Dernière synchronisation : {datum}.',
+  'Verbonden, maar er ging nog niets naar Drive.':
+    'Connecté, mais rien n’est encore parti vers Drive.',
+  'Je browser heeft toegezegd deze gegevens niet zomaar te wissen.':
+    'Ton navigateur s’est engagé à ne pas effacer ces données n’importe quand.',
+  'Je browser mag deze gegevens wissen wanneer je toestel plaats nodig heeft. Zet de app op je beginscherm en maak af en toe een back-up.':
+    'Ton navigateur peut effacer ces données quand ton appareil manque de place. Ajoute l’app à ton écran d’accueil et fais une sauvegarde de temps en temps.',
+  'Laatste back-up op dit toestel: {datum}.': 'Dernière sauvegarde sur cet appareil : {datum}.',
+  'Je maakte op dit toestel nog geen enkele back-up.':
+    'Tu n’as encore fait aucune sauvegarde sur cet appareil.',
+  'Niet verbonden. Je gegevens staan alleen in deze browser, op dit toestel.':
+    'Non connecté. Tes données se trouvent uniquement dans ce navigateur, sur cet appareil.',
+  'Veilig bewaren': 'Mettre à l’abri',
+  'Waar staan je gegevens?': 'Où sont tes données ?',
+  'Kompal bewaart alles in deze browser, op dit toestel. Dat is de reden dat je geen account nodig hebt — en meteen ook de reden dat je er zelf een kopie van moet hebben.':
+    'Kompal garde tout dans ce navigateur, sur cet appareil. C’est pour ça que tu n’as besoin d’aucun compte — et aussi pour ça qu’il te faut ta propre copie.',
+  'Een browser die opgeruimd wordt, een toestel dat stukgaat of verloren raakt: dan is alles weg. Er zijn twee vangnetten, en één ervan volstaat. Google Drive doet het vanzelf; een back-upbestand doe je zelf, en dat werkt ook zonder Google.':
+    'Un navigateur qu’on nettoie, un appareil qui casse ou qui se perd : et tout est parti. Il y a deux filets, et un seul suffit. Google Drive le fait tout seul ; un fichier de sauvegarde, c’est toi qui le fais, et ça marche aussi sans Google.',
+  // La cloche (ces trois clés vivent dans meldingen.ts)
+  'Je maakte nog nooit een back-up. Je gegevens staan alleen in deze browser.':
+    'Tu n’as jamais fait de sauvegarde. Tes données se trouvent uniquement dans ce navigateur.',
+  'Je laatste back-up is {dagen} dagen geleden. Je gegevens staan alleen op dit toestel.':
+    'Ta dernière sauvegarde date de {dagen} jours. Tes données se trouvent uniquement sur cet appareil.',
+  'Er ging al {dagen} dagen niets meer naar Google Drive. Kijk je verbinding na of maak een back-up.':
+    'Plus rien n’est parti vers Google Drive depuis {dagen} jours. Vérifie ta connexion ou fais une sauvegarde.',
   // De navigatie en de analysetabs (ronde 60)
   '{onderdeel} staat uit, maar er staat wel iets in.': '{onderdeel} est désactivé, mais il y a quelque chose dedans.',
   'Toon het': 'Afficher',

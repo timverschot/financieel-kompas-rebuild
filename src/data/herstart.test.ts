@@ -4,6 +4,7 @@ import { wisAlles } from './herstart'
 import { GeheugenBackend } from './sync/backend'
 import { bewaarRekening, bewaarTransactie, laadRekeningen, laadTransacties } from './repository'
 import { synchroniseer } from './sync/sync'
+import { leesBackupMoment, noteerBackup, zorgVoorEersteGebruik } from './backupmoment'
 
 beforeEach(async () => {
   for (const tabel of db.tables) await tabel.clear()
@@ -51,5 +52,21 @@ describe('wisAlles', () => {
     expect(res.backupGewist).toBe(false)
     expect(res.backupFout).toBe('geen internet')
     expect((await laadRekeningen()).geldig).toHaveLength(0)
+  })
+})
+
+// Ronde 63: de herinnering om een back-up te maken rekent met twee dagen die in
+// de meta-tabel staan. Blijven die na "Begin opnieuw" staan, dan draagt een lege
+// app een back-updatum van vóór het wissen mee — en zwijgt het belletje een maand
+// lang over gegevens die nergens meer staan.
+describe('wisAlles — het back-upgeheugen', () => {
+  it('wist ook de dagen waarop je voor het laatst bewaarde', async () => {
+    await noteerBackup('2026-08-20')
+    await zorgVoorEersteGebruik('2026-01-01')
+    await db.meta.put({ sleutel: 'laatsteSyncOp', waarde: '2026-08-19' })
+
+    await wisAlles()
+
+    expect(await leesBackupMoment()).toEqual({})
   })
 })

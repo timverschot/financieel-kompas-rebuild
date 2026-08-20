@@ -14,6 +14,7 @@ import { dagenVerschil } from './datum'
 import { maandVooruitblik } from './vooruitblik'
 import { alsBijdrageInvoer, bouwOpbouw, laatsteAanpassing } from './onderhoudsbijdrage'
 import { openMaanden } from './maandafsluiting'
+import { backupHerinnering, type BackupToestand, type VangnetBron } from './backupherinnering'
 import { maandJaarLabel } from './datum'
 import type { DossierSoort } from './dossiersoort'
 
@@ -54,8 +55,8 @@ const CONTRACT_DRINGEND_DAGEN = 7
  */
 const BIJDRAGE_VENSTER_DAGEN = 62
 
-/** Naar welke pagina een melding je brengt. Beide zijn geldige `Pagina`-waarden. */
-export type MeldingPagina = 'budget' | 'dossiers' | 'maandafsluiting'
+/** Naar welke pagina een melding je brengt. Alle vier zijn geldige `Pagina`-waarden. */
+export type MeldingPagina = 'budget' | 'dossiers' | 'maandafsluiting' | 'instellingen'
 
 export type MeldingSoort =
   | 'budget-over'
@@ -65,6 +66,7 @@ export type MeldingSoort =
   | 'bijdrage'
   | 'maand'
   | 'contract'
+  | 'backup'
 
 export type Melding = {
   /** Stabiele sleutel voor React, en handig om in een test te herkennen. */
@@ -127,6 +129,13 @@ export type MeldingenInvoer = {
   /** De maanden die je al afgesloten hebt. Leeg = nog geen enkele. */
   maandafsluitingen?: Maandafsluiting[]
   /**
+   * Alles wat nodig is om te weten of je gegevens ergens anders dan hier staan
+   * (ronde 63). ⚠ Ontbreekt dit veld, dan doet de app die controle NIET — precies
+   * zoals bij `maandafsluitingen`. Een scherm dat de toestand niet kan doorgeven,
+   * hoort geen herinnering te krijgen die op gokwerk steunt.
+   */
+  backup?: Omit<BackupToestand, 'vandaagISO'>
+  /**
    * Hoe een bedrag in centen op het scherm hoort te staan.
    *
    * Meegegeven in plaats van hier `formatEuro` te importeren, omdat deze module
@@ -149,8 +158,30 @@ const SOORT_ORDE: Record<MeldingSoort, number> = {
   'bijdrage': 4,
   'garantie': 5,
   'budget-bijna': 6,
+  // Onderaan, en dat is een keuze (ronde 63). De herinnering om een back-up te
+  // maken gaat over het grootste verlies dat er is, maar ze heeft geen DATUM: ze
+  // geldt vandaag even hard als volgende week. Alles wat wél een dag heeft — een
+  // contract dat maandag verlengt, een maand die afgesloten moet — hoort daarom
+  // eerst. Om dezelfde reden staat ze nooit op dringend: een melding die maanden
+  // rood blijft, leert je het belletje te negeren.
+  'backup': 7,
 }
 
+
+/**
+ * Welke zin bij welk laatste vangnet hoort (ronde 63).
+ *
+ * ⚠ Drie zinnen en niet één, omdat de volgende stap telkens anders is. Wie nooit
+ * iets deed, moet weten dát het kan. Wie een oud bestand heeft, moet een nieuw
+ * bestand maken. En wie op Drive vertrouwde terwijl daar al maanden niets meer
+ * aankomt, heeft een ander probleem dan een vergeten knop — een zin over "maak een
+ * back-up" zou hem de verkeerde kant op sturen.
+ */
+const SLEUTEL_PER_BRON: Record<VangnetBron, string> = {
+  geen: 'Je maakte nog nooit een back-up. Je gegevens staan alleen in deze browser.',
+  backup: 'Je laatste back-up is {dagen} dagen geleden. Je gegevens staan alleen op dit toestel.',
+  drive: 'Er ging al {dagen} dagen niets meer naar Google Drive. Kijk je verbinding na of maak een back-up.',
+}
 
 export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
   const drempel = invoer.drempel ?? STANDAARD_BUDGETDREMPEL
@@ -433,6 +464,25 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
         // lijken te slaan.
         params: { maand: maandJaarLabel(oudste), n: open.length - 1 },
         pagina: 'maandafsluiting',
+        dringend: false,
+      })
+    }
+  }
+
+  // --- Staan je gegevens ergens anders dan in deze browser? (ronde 63) ---
+  //
+  // Alleen wanneer het scherm die toestand meegeeft; zie `MeldingenInvoer.backup`.
+  if (invoer.backup !== undefined) {
+    const herinnering = backupHerinnering({ ...invoer.backup, vandaagISO: invoer.vandaagISO })
+    if (herinnering) {
+      uit.push({
+        // Eén stabiele id: er kan er maar één van deze soort zijn, en zo springt de
+        // regel niet weg en weer terug wanneer de teller een dag verder staat.
+        id: 'backup',
+        soort: 'backup',
+        sleutel: SLEUTEL_PER_BRON[herinnering.bron],
+        ...(herinnering.bron === 'geen' ? {} : { params: { dagen: herinnering.dagen } }),
+        pagina: 'instellingen',
         dringend: false,
       })
     }

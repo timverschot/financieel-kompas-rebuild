@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type {
   Aflossing,
@@ -102,7 +102,8 @@ import {
   verwijderVerrekening,
 } from './data/repository'
 import { exporteerBackup, importeerBackup } from './data/backup'
-import { vraagBlijvendeOpslag } from './data/opslag'
+import { vraagBlijvendeOpslag, type OpslagToestand } from './data/opslag'
+import { leesBackupMoment, noteerBackup, zorgVoorEersteGebruik, type BackupMoment } from './data/backupmoment'
 import { openDatabase } from './data/db'
 import { synchroniseer } from './data/sync/sync'
 import { DriveBackend } from './data/sync/drive/driveBackend'
@@ -400,6 +401,21 @@ export function App() {
   )
   const [verbonden, setVerbonden] = useState(false)
   const [bezig, setBezig] = useState(false)
+  // Ronde 63 — "je gegevens raken niet kwijt".
+  //
+  // `opslag` zegt of de browser deze database blijvend bewaart; `backupMoment`
+  // zegt wanneer je gegevens voor het laatst ergens ANDERS stonden (een
+  // back-upbestand of een geslaagde synchronisatie). Beide worden hier bewaard en
+  // niet in een component, omdat drie plekken ze nodig hebben: Instellingen, het
+  // blok "Veilig bewaren" in de opstelling, en het belletje.
+  const [opslag, setOpslag] = useState<OpslagToestand>('onbekend')
+  const [backupMoment, setBackupMoment] = useState<BackupMoment>({})
+  // Loopt er een synchronisatie? Dan moet "Begin opnieuw" daarop wachten (tweede
+  // nakijkronde ronde 63). Anders kan een ronde die al onderweg was ná het wissen
+  // alsnog haar dag wegschrijven — en dan draagt een leeggemaakte app een
+  // vangnetdatum — of zelfs regels terugzetten die net naar de prullenbak gingen.
+  const syncLoopt = useRef<Promise<unknown> | null>(null)
+  const wisLoopt = useRef(false)
   const [statusTekst, setStatusTekst] = useState<string | null>(null)
   const [bewerkTransactie, setBewerkTransactie] = useState<Transactie | null>(null)
   // Staat de invoerpopup open? Toevoegen gebeurt sinds kort altijd hier, op elke
@@ -456,6 +472,15 @@ export function App() {
   const [txFilter, setTxFilter] = useState<{ filter: TxFilter; nr: number } | null>(null)
   const isDesktop = useIsDesktop()
   const [backupTekst, setBackupTekst] = useState<string | null>(null)
+  // Gaat die tekst over een MISLUKKING? Dan hoort ze als alarm voorgelezen te
+  // worden en niet als een gewone statusregel (nakijkronde ronde 63). Zonder dit
+  // onderscheid las een schermlezer "Herstellen mislukte: …" helemaal niet voor en
+  // dacht de gebruiker dat zijn gegevens terug waren.
+  const [backupIsFout, setBackupIsFout] = useState(false)
+  function meldBackup(tekst: string, soort: 'ok' | 'fout' = 'ok') {
+    setBackupTekst(tekst)
+    setBackupIsFout(soort === 'fout')
+  }
   const [undoInfo, setUndoInfo] = useState<{ boodschap: string; herstel: () => Promise<void> } | null>(null)
   const backendRef = useRef<DriveBackend | null>(null)
   const undoKlok = useRef<UndoKlok>(
@@ -689,9 +714,62 @@ export function App() {
     }
   }, [])
 
-  // Vraag de browser om je gegevens niet zomaar te wissen (belangrijk op iOS).
+  // Vraag de browser om je gegevens niet zomaar te wissen (belangrijk op iOS), en
+  // ⚠ HOUD HET ANTWOORD BIJ (ronde 63). Tot deze ronde verdween het in een `void`:
+  // de app deed de goede vraag en gooide de uitkomst weg, zodat niemand — de
+  // gebruiker noch de app zelf — wist of de browser had toegezegd.
   useEffect(() => {
-    void vraagBlijvendeOpslag()
+    let actief = true
+    void vraagBlijvendeOpslag().then((toestand) => {
+      if (actief) setOpslag(toestand)
+    })
+    return () => {
+      actief = false
+    }
+  }, [])
+
+  // Sinds wanneer telt dit toestel mee, en wanneer stond alles voor het laatst
+  // ergens anders? Het vertrekpunt wordt alleen de allereerste keer geschreven.
+  useEffect(() => {
+    let actief = true
+    void (async () => {
+      await zorgVoorEersteGebruik(vandaag())
+      const moment = await leesBackupMoment()
+      if (actief) setBackupMoment(moment)
+    })().catch(() => {
+      // ⚠ Stil (nakijkronde ronde 63). Gaat de database niet open — een privévenster,
+      // een ander tabblad met een oudere versie — dan toont het hoofdeffect daar al
+      // een scherm voor. Deze vraag is niet noodzakelijk om te kunnen werken, dus ze
+      // hoort er geen tweede fout bovenop te leggen. Zonder deze vangst viel er een
+      // onafgevangen belofte naast, in een ronde die zichzelf oplegt nooit hard te
+      // falen.
+    })
+    return () => {
+      actief = false
+    }
+  }, [])
+
+  /**
+   * Synchroniseren én meteen onthouden wat dat voor je vangnet betekende.
+   *
+   * ⚠ Alle vier de plaatsen die synchroniseren lopen hierlangs (nakijkronde ronde
+   * 63). Deed één ervan dat niet, dan bleef het belletje de rest van je sessie
+   * "er ging al 60 dagen niets naar Drive" roepen terwijl je net op
+   * "Synchroniseer nu" had gedrukt en het gelukt was — en dat is precies hoe je
+   * iemand aanleert een waarschuwing weg te kijken.
+   */
+  const syncEnOnthoud = useCallback(async (backend: Parameters<typeof synchroniseer>[0]) => {
+    const bezig = (async () => {
+      const r = await synchroniseer(backend)
+      setBackupMoment(await leesBackupMoment())
+      return r
+    })()
+    syncLoopt.current = bezig
+    try {
+      return await bezig
+    } finally {
+      if (syncLoopt.current === bezig) syncLoopt.current = null
+    }
   }, [])
 
   // Bij het opstarten: als je ooit verbond, stil (zonder venster) opnieuw
@@ -706,7 +784,7 @@ export function App() {
         if (!actief) return
         if (!backendRef.current) backendRef.current = new DriveBackend()
         setVerbonden(true)
-        const r = await synchroniseer(backendRef.current)
+        const r = await syncEnOnthoud(backendRef.current)
         await herlaad()
         onthoudFormaat(r)
         if (actief) meld(t('Automatisch gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald.', { gepusht: r.gepusht, opgehaald: r.opgehaald }))
@@ -730,9 +808,12 @@ export function App() {
     let bezigMetSync = false
     async function stilleSync() {
       if (bezigMetSync) return
+      // Niet beginnen terwijl er gewist wordt: dan zou deze ronde regels terugzetten
+      // die "Begin opnieuw" net weghaalde.
+      if (wisLoopt.current) return
       bezigMetSync = true
       try {
-        const r = await synchroniseer(backend!)
+        const r = await syncEnOnthoud(backend!)
         onthoudFormaat(r)
         if (r.gepusht > 0 || r.opgehaald > 0) await herlaad()
       } catch {
@@ -753,7 +834,10 @@ export function App() {
       document.removeEventListener('visibilitychange', bijVerlaten)
       window.removeEventListener('pagehide', bijVerlaten)
     }
-  }, [verbonden])
+    // `syncEnOnthoud` is een `useCallback` met een lege dep-lijst en verandert dus
+    // nooit; hij staat erbij zodat de lintregel klopt zonder de klok elke render
+    // opnieuw op te zetten.
+  }, [verbonden, syncEnOnthoud])
 
   // Houd het categorie-register in sync met je aanpassingen, zodat zoeken,
   // weergave en oprollen de toegevoegde/hernoemde subcategorieën meteen tonen.
@@ -769,10 +853,29 @@ export function App() {
     // te slikken.
     try {
       const json = await exporteerBackup()
-      downloadTekst(`financieel-kompas-backup-${vandaag()}.json`, json, 'application/json')
-      setBackupTekst(t('Back-up gedownload.'))
+      const dag = vandaag()
+      downloadTekst(`financieel-kompas-backup-${dag}.json`, json, 'application/json')
+      meldBackup(t('Back-up gedownload.'))
+      // ⚠ Het onthouden staat in een EIGEN try (nakijkronde ronde 63). Zat het in
+      // dezelfde, dan kreeg je bij een volle schijf "de back-up kon niet gedownload
+      // worden — probeer het opnieuw" te lezen terwijl het bestand gewoon in je
+      // map stond, en maakte je er nog drie.
+      //
+      // ⚠ En eerlijk over wat deze dag betekent: `downloadTekst` weet alleen dat de
+      // browser de download AANVAARDDE. Annuleer je het bewaarvenster, dan noteert
+      // de app tóch een back-up. Beter kan de app het niet weten — een webpagina
+      // krijgt geen bevestiging dat een bestand op je schijf staat — maar de zin op
+      // het scherm zegt daarom "laatste back-up op dit toestel" en niet "je gegevens
+      // staan veilig".
+      try {
+        await noteerBackup(dag)
+        setBackupMoment(await leesBackupMoment())
+      } catch {
+        // Het bestand is er wel; alleen het geheugentje niet. Dan komt de
+        // herinnering te vroeg terug — vervelend, maar niet fout.
+      }
     } catch {
-      setBackupTekst(t('De back-up kon niet gedownload worden. Probeer het opnieuw.'))
+      meldBackup(t('De back-up kon niet gedownload worden. Probeer het opnieuw.'), 'fout')
     }
   }
 
@@ -782,7 +885,7 @@ export function App() {
       const r = await importeerBackup(tekst)
       await herlaad()
       onthoudFormaat(r)
-      setBackupTekst(
+      meldBackup(
         r.verouderd > 0
           ? t(
               'Hersteld: {toegevoegd} toegevoegd, {overgeslagen} al aanwezig, {ongeldig} ongeldig, {verouderd} uit een te oude versie (niet ingelezen).',
@@ -800,7 +903,7 @@ export function App() {
             }),
       )
     } catch (e) {
-      setBackupTekst(t('Herstellen mislukte: {fout}', { fout: e instanceof Error ? e.message : t('onbekende fout') }))
+      meldBackup(t('Herstellen mislukte: {fout}', { fout: e instanceof Error ? e.message : t('onbekende fout') }), 'fout')
     }
   }
 
@@ -1541,7 +1644,7 @@ export function App() {
       await vraagToken(true) // opent zo nodig het Google-aanmeldvenster
       setVerbonden(true)
       if (!backendRef.current) backendRef.current = new DriveBackend()
-      const r = await synchroniseer(backendRef.current)
+      const r = await syncEnOnthoud(backendRef.current)
       await herlaad()
       onthoudFormaat(r)
       // Het aantal geweigerde regels hoort IN de statusregel: "0 opgehaald" terwijl
@@ -1566,7 +1669,7 @@ export function App() {
     if (!backendRef.current) return
     setBezig(true)
     try {
-      const r = await synchroniseer(backendRef.current)
+      const r = await syncEnOnthoud(backendRef.current)
       await herlaad()
       onthoudFormaat(r)
       // Het aantal geweigerde regels hoort IN de statusregel: "0 opgehaald" terwijl
@@ -1601,9 +1704,23 @@ export function App() {
   // wanneer die verbonden is. Zonder dat laatste haalt de eerstvolgende sync
   // gewoon alles weer binnen. Daarna herladen we de (nu lege) gegevens.
   async function beginOpnieuw() {
+    wisLoopt.current = true
+    // Een lopende ronde eerst laten uitbollen; haar fout is hier niet van belang.
+    await syncLoopt.current?.catch(() => undefined)
+    try {
     const resultaat = await wisAlles(verbonden ? backendRef.current : null)
     await herlaad()
+    // ⚠ `wisAlles` leegt élke tabel, dus ook het geheugentje met de dag van je
+    // laatste back-up (ronde 63). Dat is precies de bedoeling — een lege app mag
+    // geen vangnet beweren dat over gewiste gegevens ging — maar dan moet het
+    // vertrekpunt hier ook meteen opnieuw gezet worden. Zonder deze twee regels
+    // zou de app pas bij de volgende herstart weer beginnen te tellen.
+    await zorgVoorEersteGebruik(vandaag())
+    setBackupMoment(await leesBackupMoment())
     return resultaat
+    } finally {
+      wisLoopt.current = false
+    }
   }
 
   // Alles wat het belletje moet melden. De logica zit in utils/meldingen.ts, zodat
@@ -1632,6 +1749,26 @@ export function App() {
   // binnen dezelfde dag — hij ververst enkel wanneer de dag echt verandert.
   const meldingVandaagISO = vandaag()
   const meldingMaand = huidigeMaand()
+  // Valt er iets te verliezen?
+  //
+  // ⚠ Niet alleen boekingen en rekeningen (nakijkronde ronde 63). Wie Kompal
+  // uitsluitend voor een dossier gebruikt — gedeelde kosten, kinderen, foto's van
+  // kastickets in de kluis — heeft geen enkele transactie en zou nooit een
+  // herinnering krijgen, terwijl juist die foto's alleen in deze browser bestaan.
+  const heeftIetsTeVerliezen =
+    (transacties ?? []).length > 0 ||
+    rekeningen.length > 0 ||
+    dossiers.length > 0 ||
+    gedeeldeKosten.length > 0 ||
+    kinderen.length > 0 ||
+    terugkerendePosten.length > 0 ||
+    garanties.length > 0 ||
+    leningen.length > 0 ||
+    spaardoelen.length > 0 ||
+    dossierdocumenten.length > 0 ||
+    budgetten.length > 0 ||
+    categorieen.length > 0 ||
+    subcategorieen.length > 0
   const meldingen = useMemo(
     () =>
       bouwMeldingen({
@@ -1647,6 +1784,14 @@ export function App() {
         dossiers,
         formatBedrag: formatEuro,
         maandafsluitingen,
+        // ⚠ "Heeft dit toestel iets te verliezen?" is bewust een TELLING van wat
+        // er staat en niet "is de app ooit gebruikt" (ronde 63). Een lege app die
+        // je één keer opende, hoort geen herinnering te krijgen; één rekening of
+        // één boeking is genoeg om er wel een te verdienen.
+        backup: {
+          ...backupMoment,
+          heeftGegevens: heeftIetsTeVerliezen,
+        },
       }),
     [
       budgetten,
@@ -1664,9 +1809,29 @@ export function App() {
       onderhoudsbijdragen,
       dossiers,
       maandafsluitingen,
+      backupMoment,
+      heeftIetsTeVerliezen,
       t,
     ],
   )
+
+  // Alles wat het blok "Veilig bewaren" in de opstelling nodig heeft (ronde 63).
+  // Dezelfde knoppen en dezelfde toestand als in Instellingen — het zijn letterlijk
+  // dezelfde kaarten, dus er kan geen tweede waarheid ontstaan.
+  const veiligInvoer = {
+    verbonden,
+    bezig,
+    onVerbind: verbindEnSynchroniseer,
+    onSynchroniseer: synchroniseerNu,
+    backupTekst,
+    backupIsFout,
+    onExporteer: exporteerNu,
+    onHerstel: herstelUitBestand,
+    laatsteBackupOp: backupMoment.laatsteBackupOp,
+    laatsteSyncOp: backupMoment.laatsteSyncOp,
+    opslag,
+    vandaagISO: meldingVandaagISO,
+  }
 
   // Eén vooruitblik voor de Plan-pagina: zowel de verwachte als de al geboekte
   // inkomsten komen hieruit, zodat beide cijfers gegarandeerd bij elkaar horen.
@@ -1934,6 +2099,7 @@ export function App() {
             onKindVerwijderen={verwijderKindH}
             onDossier={voegDossierToe}
             onNaarPagina={setPagina}
+            veilig={veiligInvoer}
           />
         </ErrorBoundary>
       )}
@@ -2748,7 +2914,6 @@ export function App() {
               zetTaal={zetTaal}
               verbonden={verbonden}
               bezig={bezig}
-              statusTekst={statusTekst}
               onVerbind={verbindEnSynchroniseer}
               onSynchroniseer={synchroniseerNu}
               backupTekst={backupTekst}
@@ -2759,6 +2924,10 @@ export function App() {
               onKindWijzigen={wijzigKind}
               onKindVerwijderen={verwijderKindH}
               onBeginOpnieuw={beginOpnieuw}
+              backupIsFout={backupIsFout}
+              laatsteBackupOp={backupMoment.laatsteBackupOp}
+              laatsteSyncOp={backupMoment.laatsteSyncOp}
+              opslag={opslag}
             />
           </ErrorBoundary>
 

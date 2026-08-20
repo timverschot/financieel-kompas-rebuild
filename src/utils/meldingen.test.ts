@@ -624,3 +624,75 @@ describe('bouwMeldingen — contracten', () => {
     if (v >= 0) expect(c).toBeLessThan(v)
   })
 })
+
+// Ronde 63: staan je gegevens ergens anders dan in deze browser?
+describe('bouwMeldingen — back-up', () => {
+  const toestand = { heeftGegevens: true, eersteGebruikOp: '2026-05-01' }
+
+  // ⚠ Dit is de belangrijkste test van de reeks. Zonder deze afspraak zou élk
+  // scherm dat de toestand niet kan doorgeven een herinnering krijgen die op
+  // gokwerk steunt — en zouden alle bestaande tellingen hierboven verschuiven.
+  it('doet niets zonder de toestand', () => {
+    expect(basis().filter((m) => m.soort === 'backup')).toHaveLength(0)
+  })
+
+  it('meldt het wanneer je nog nooit een back-up maakte', () => {
+    const m = basis({ backup: toestand }).filter((x) => x.soort === 'backup')
+    expect(m).toHaveLength(1)
+    expect(m[0]?.sleutel).toBe('Je maakte nog nooit een back-up. Je gegevens staan alleen in deze browser.')
+    expect(m[0]?.params).toBeUndefined()
+    expect(m[0]?.pagina).toBe('instellingen')
+    // Nooit rood: ze staat er maanden, en een waarschuwing die altijd rood is,
+    // wordt geen waarschuwing meer.
+    expect(m[0]?.dringend).toBe(false)
+  })
+
+  it('telt de dagen sinds je laatste back-up', () => {
+    const m = basis({ backup: { ...toestand, laatsteBackupOp: '2026-06-10' } }).filter(
+      (x) => x.soort === 'backup',
+    )
+    expect(m[0]?.sleutel).toBe(
+      'Je laatste back-up is {dagen} dagen geleden. Je gegevens staan alleen op dit toestel.',
+    )
+    expect(m[0]?.params).toEqual({ dagen: 35 })
+  })
+
+  it('zwijgt wanneer er onlangs met Drive gesynchroniseerd is', () => {
+    const m = basis({ backup: { ...toestand, laatsteSyncOp: '2026-07-14' } })
+    expect(m.filter((x) => x.soort === 'backup')).toHaveLength(0)
+  })
+
+  // ⚠ Verbonden zijn is niet hetzelfde als bewaard zijn: een verbinding die
+  // stilviel, laat de app zwijgen terwijl er niets meer vertrekt.
+  it('stuurt je naar je verbinding wanneer Drive al lang niets meer doorstuurde', () => {
+    const m = basis({ backup: { ...toestand, laatsteSyncOp: '2026-05-20' } }).filter(
+      (x) => x.soort === 'backup',
+    )
+    expect(m[0]?.sleutel).toBe(
+      'Er ging al {dagen} dagen niets meer naar Google Drive. Kijk je verbinding na of maak een back-up.',
+    )
+    expect(m[0]?.params).toEqual({ dagen: 56 })
+  })
+
+  it('zwijgt in een lege app', () => {
+    const m = basis({ backup: { ...toestand, heeftGegevens: false } })
+    expect(m.filter((x) => x.soort === 'backup')).toHaveLength(0)
+  })
+
+  it('houdt dezelfde id zodat de regel niet rondspringt', () => {
+    const eerst = basis({ backup: toestand }).find((x) => x.soort === 'backup')
+    const later = basis({ backup: toestand, vandaagISO: '2026-07-16' }).find((x) => x.soort === 'backup')
+    expect(eerst?.id).toBe('backup')
+    expect(later?.id).toBe('backup')
+  })
+
+  it('staat onder een melding die wél over vandaag gaat', () => {
+    const soorten = basis({
+      backup: toestand,
+      budgetten: [{ id: 'b1', categorieId: 'ov-voeding', bedrag: 10000 }],
+      transacties: [tx('2026-07-02', -12000, 'ov-voeding')],
+    }).map((x) => x.soort)
+    // Twee meldingen: het overschreden budget en de back-up — in die volgorde.
+    expect(soorten).toEqual(['budget-over', 'backup'])
+  })
+})

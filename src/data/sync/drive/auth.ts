@@ -63,7 +63,12 @@ function laadTokenLokaal(): Token | null {
 // zodat een herlaad of nieuw venster binnen het uur meteen verbonden is.
 huidigToken = laadTokenLokaal()
 
-// True zolang we een geldig, niet-bijna-verlopen token hebben.
+// True zodra er een bewaard token ligt — ⚠ ook een dat intussen verlopen is. De
+// functie zegt dus "deze browser heeft ooit verbinding gemaakt", niet "de
+// verbinding werkt nu". Dat is genoeg voor waar ze voor gebruikt wordt (stil
+// proberen te herverbinden bij het opstarten), maar het is geen bewijs dat je
+// gegevens ook echt op Drive aankomen — daarvoor kijkt de app sinds ronde 63 naar
+// de dag van de laatste GESLAAGDE synchronisatie (`laatsteSyncOp` in `meta`).
 export function heeftOoitVerbonden(): boolean {
   return laadTokenLokaal() !== null
 }

@@ -2,6 +2,8 @@ import { db } from '../db'
 import type { SyncBackend } from './backend'
 import { LogregelSchema, formaatOordeel, type Logregel } from './events'
 import { haalToestelId, leesMeta, schrijfMeta, verwerkOntvangenHlc, voegRegelsToeEnHerbouw } from './lokaal'
+import { SLEUTEL_LAATSTE_SYNC } from '../backupmoment'
+import { vandaag } from '../../utils/datum'
 
 export type SyncResultaat = {
   gepusht: number
@@ -16,7 +18,7 @@ export type SyncResultaat = {
 
 // Eén synchronisatieronde: eerst eigen nieuwe wijzigingen versturen, dan
 // wijzigingen van andere toestellen ophalen, valideren en de staat herbouwen.
-export async function synchroniseer(backend: SyncBackend): Promise<SyncResultaat> {
+export async function synchroniseer(backend: SyncBackend, dagISO: string = vandaag()): Promise<SyncResultaat> {
   const toestelId = await haalToestelId()
 
   // --- PUSH: het volledige eigen logboek versturen zodra er iets nieuw is.
@@ -88,6 +90,46 @@ export async function synchroniseer(backend: SyncBackend): Promise<SyncResultaat
     // de volgende ronde ze gewoon opnieuw op.
     await voegRegelsToeEnHerbouw(nieuw)
     await verwerkOntvangenHlc(nieuw.map((r) => ({ l: r.hlcL ?? r.tijdstip, c: r.hlcC ?? 0 })))
+  }
+
+  // ⚠ De dag van de laatste geslaagde ronde — maar alleen wanneer élke lokale
+  // logregel ook ECHT in de back-up staat (ronde 63, tweemaal aangescherpt).
+  //
+  // Deze dag is het bewijs waarop het belletje zwijgt. Hij mag dus niet betekenen
+  // "de ronde gooide geen fout": een ronde die nul bytes verstuurt en nul regels
+  // ophaalt, gooit ook geen fout. Dat gebeurt bij een hernoemde Drive-map (de app
+  // maakt dan een nieuwe, lege map aan), bij een logbestand dat je zelf weggooide,
+  // en wanneer een ánder toestel "Begin opnieuw" deed — dat gooit álle logbestanden
+  // in de prullenbak, ook de jouwe.
+  //
+  // De controle vergelijkt IDS en niet volgnummers. Een eerdere versie keek alleen
+  // of er een regel van dít toestel met een hoog genoeg volgnummer op stond, en dat
+  // liet een groot gat open: zet je op een nieuwe telefoon een back-upbestand terug,
+  // dan draagt je hele geschiedenis het toestel-id van je OUDE telefoon. `stuur()`
+  // verstuurt alleen je eigen regels, dus die geschiedenis komt nooit op Drive — en
+  // toch keurde de controle elke ronde goed.
+  //
+  // `alle` is opgehaald NA de push, dus ze toont wat er nu werkelijk in de back-up
+  // ligt. Twee dingen dragen die redenering, en allebei staan ze elders vast:
+  // `stuur()` schrijft het VOLLEDIGE logboek van een toestel in één bestand (zie
+  // `SyncBackend`), en `haalOp()` slaat een bestand dat niet te lezen is over in
+  // plaats van het half in te lezen (zie `DriveBackend.haalOp`).
+  //
+  // De dag komt van buiten (met de echte dag als standaard), zodat een test hem
+  // kan vastzetten zonder de klok stil te leggen — neptijd en de nep-IndexedDB
+  // gaan niet samen (ronde 61).
+  const idsInBackup = new Set(alle.map((r) => r.id))
+  const allesStaatErop = [...bestaandeIds].every((id) => idsInBackup.has(id))
+  if (allesStaatErop) {
+    await schrijfMeta(SLEUTEL_LAATSTE_SYNC, dagISO)
+  } else {
+    // ⚠ Niet alleen vaststellen, ook herstellen (tweede nakijkronde ronde 63).
+    // `laatstGepushtVolgnummer` onthoudt hoe ver we al waren; staat die hoog en is
+    // de back-up leeg, dan valt er nooit meer iets te pushen en blijft de app
+    // eeuwig "0 verstuurd, 0 opgehaald" melden. Door de teller terug te zetten,
+    // stuurt de eerstvolgende ronde alles opnieuw — en dan lost het probleem
+    // zichzelf op in plaats van dat je het alleen te horen krijgt.
+    await schrijfMeta('laatstGepushtVolgnummer', 0)
   }
 
   return { gepusht: nieuwEigen.length, opgehaald: nieuw.length, ongeldig, verouderd, teNieuw }
