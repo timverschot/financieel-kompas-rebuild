@@ -71,6 +71,46 @@ describe('vertaaltabellen', () => {
     expect(vertaal('fr', 'Kassaticket gesplitst')).toBe('Ticket ventilé')
   })
 
+  // ---------------------------------------------------------------------------
+  // De Franse spatie vóór ? ! ; en : (ronde 61)
+  //
+  // Het Frans zet daar een VASTE spatie (U+00A0). Ronde 56 heeft dat één keer met de
+  // hand rechtgezet, maar er stond geen test op — en dus waren er sindsdien weer zeven
+  // zinnen met een gewone spatie ingeslopen. Zonder deze test gebeurt dat opnieuw: het
+  // is precies het soort verschil dat je op een scherm niet ziet.
+  //
+  // ⚠ En NOOIT U+202F (de smalle vaste spatie). Die ziet er hetzelfde uit, maar hij
+  // bestaat niet in de tekenset van onze PDF's: sinds ronde 54 weten we dat een Frans
+  // bedrag vanaf € 1.000 daardoor als tekenbrij in een afrekening belandt.
+  const VASTE_SPATIE = '\u00a0'
+  const SMALLE_VASTE_SPATIE = '\u202f'
+
+  it('zet een vaste spatie vóór ? ! ; en : in het Frans', () => {
+    const fout = vertaalSleutels('fr').filter((sleutel) => / [?!;:]/.test(vertaal('fr', sleutel)))
+    expect(fout).toEqual([])
+  })
+
+  it('gebruikt daarvoor U+00A0 en nooit U+202F', () => {
+    const smal = vertaalSleutels('fr').filter((sleutel) => vertaal('fr', sleutel).includes(SMALLE_VASTE_SPATIE))
+    expect(smal).toEqual([])
+    // En de vaste spatie wordt ook écht gebruikt — anders zou de test hierboven ook
+    // slagen op een tabel waarin iemand alle leestekens heeft weggehaald.
+    const met = vertaalSleutels('fr').filter((sleutel) => vertaal('fr', sleutel).includes(VASTE_SPATIE + '?'))
+    expect(met.length).toBeGreaterThan(10)
+  })
+
+  it('past de Franse spatieregel NIET toe op het Engels', () => {
+    // Engels kent die regel niet; een vaste spatie vóór een vraagteken is daar een
+    // slordigheid die meereist uit een kopie van het Frans.
+    //
+    // ⚠ Een vaste spatie op zich mag wél in het Engels: de app zet er één na de €
+    // (zie `formatEuro`), zodat een bedrag nooit over twee regels breekt.
+    const fout = vertaalSleutels('en').filter((sleutel) =>
+      new RegExp(VASTE_SPATIE + '[?!;:]').test(vertaal('en', sleutel)),
+    )
+    expect(fout).toEqual([])
+  })
+
   it('heeft voor elke Engelse sleutel ook een Franse, en omgekeerd', () => {
     const en = new Set(vertaalSleutels('en'))
     const fr = new Set(vertaalSleutels('fr'))

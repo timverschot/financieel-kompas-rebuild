@@ -448,6 +448,64 @@ describe('App', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeNull())
   })
 
+  // Ronde 61. De ongedaan-balk was er in de praktijk alleen voor wie een muis heeft:
+  // ze verdween na acht seconden, en met een toetsenbord moest je eerst tot voorbij de
+  // laatste knop van de pagina tabben om erbij te komen.
+  it('draait een verwijdering terug met Ctrl+Z', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await gaMeer(user, 'Categorieën')
+    await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
+    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
+    await user.click(await screen.findByRole('button', { name: 'Verwijder categorie Vervoer' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeNull())
+
+    await user.keyboard('{Control>}z{/Control}')
+    expect(await screen.findByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeInTheDocument()
+  })
+
+  it('laat Ctrl+Z met rust terwijl je in een veld typt', async () => {
+    // ⚠ Daar betekent Ctrl+Z "maak mijn laatste typwerk ongedaan". Dat is de taak van
+    // de browser, en die mogen we niet afpakken — anders krijg je je categorie terug
+    // terwijl je dacht een letter te wissen.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await gaMeer(user, 'Categorieën')
+    await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
+    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
+    await user.click(await screen.findByRole('button', { name: 'Verwijder categorie Vervoer' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeNull())
+
+    const veld = screen.getByLabelText('Categorienaam')
+    veld.focus()
+    await user.keyboard('{Control>}z{/Control}')
+    expect(screen.queryByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeNull()
+  })
+
+  it('laat je de ongedaan-balk meteen wegdoen', async () => {
+    // Twintig seconden is lang genoeg om er met een toetsenbord bij te raken, maar dan
+    // moet je hem ook meteen weg kunnen als je hem niet nodig hebt.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await gaMeer(user, 'Categorieën')
+    await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
+    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
+    await user.click(await screen.findByRole('button', { name: 'Verwijder categorie Vervoer' }))
+
+    const ongedaan = await screen.findByRole('button', { name: 'Ongedaan maken' })
+    const balk = ongedaan.closest('div') as HTMLElement
+    await user.click(within(balk).getByRole('button', { name: 'Melding sluiten' }))
+    expect(screen.queryByRole('button', { name: 'Ongedaan maken' })).toBeNull()
+    // En de categorie blijft verwijderd: wegklikken is niet hetzelfde als herstellen.
+    expect(screen.queryByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeNull()
+  })
+
   it('hernoemt een bestaande categorie', async () => {
     const user = userEvent.setup()
     render(<App />)

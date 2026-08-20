@@ -149,27 +149,6 @@ export function SpaardoelSectie({
       <PaginaKop titel={t('Spaardoelen')} bijschrift={t('Langetermijndoelen — buffers, grote aankopen, schuldenvrij.')} />
 
       <div className="raster-lijst-formulier">
-      <div className="kolom-formulier stapel">
-        <Kaart
-          titel={bewerk ? t('Doel bewerken') : t('Nieuw doel')}
-          actie={
-            bewerk ? (
-              <button className="knop knop-ghost knop-klein" onClick={() => setBewerk(null)}>
-                + {t('Nieuw doel')}
-              </button>
-            ) : undefined
-          }
-        >
-          <SpaardoelFormulier
-            rekeningen={rekeningen}
-            gezinsleden={gezinsleden}
-            onOpslaan={opslaan}
-            onAnnuleer={() => setBewerk(null)}
-            bewerken={bewerk}
-          />
-        </Kaart>
-      </div>
-
       <div className="kolom-lijst stapel">
       <Kaart>
         {spaardoelen.length === 0 && <Leeg>{t('Nog geen doelen. Voeg je eerste doel toe!')}</Leeg>}
@@ -269,6 +248,27 @@ export function SpaardoelSectie({
         )}
 
       </Kaart>
+      </div>
+
+      <div className="kolom-formulier stapel">
+        <Kaart
+          titel={bewerk ? t('Doel bewerken') : t('Nieuw doel')}
+          actie={
+            bewerk ? (
+              <button className="knop knop-ghost knop-klein" onClick={() => setBewerk(null)}>
+                + {t('Nieuw doel')}
+              </button>
+            ) : undefined
+          }
+        >
+          <SpaardoelFormulier
+            rekeningen={rekeningen}
+            gezinsleden={gezinsleden}
+            onOpslaan={opslaan}
+            onAnnuleer={() => setBewerk(null)}
+            bewerken={bewerk}
+          />
+        </Kaart>
       </div>
       </div>
     </div>

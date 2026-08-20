@@ -131,6 +131,27 @@ describe('BoekingDialoog', () => {
     expect(onSluiten).toHaveBeenCalled()
   })
 
+  it('houdt de popup ook bij een VASTE POST niet open na een mislukte "Opslaan + volgende"', async () => {
+    // ⚠ Ronde 61 gaf dezelfde knop op het vaste-postformulier `aria-disabled` in plaats
+    // van `disabled`. Zijn onClick loopt daardoor ook bij een leeg formulier, en dan
+    // blijft de vlag "houd de popup open" hangen — waarna de volgende, geslaagde opslag
+    // de popup openhoudt met lege velden. Je denkt dan dat het niet gelukt is en boekt
+    // alles een tweede keer. Precies de val die in ronde 47 bij de overboeking zat.
+    const user = userEvent.setup()
+    const { onSluiten, onVastePost } = toon()
+    await user.click(screen.getByRole('button', { name: 'Vaste last' }))
+
+    // Nog niets ingevuld: deze klik hoort niets te doen.
+    await user.click(screen.getByRole('button', { name: 'Opslaan + volgende' }))
+    expect(onVastePost).not.toHaveBeenCalled()
+
+    await user.type(screen.getByLabelText('Vaste omschrijving'), 'Huur')
+    await user.type(screen.getByLabelText('Vast bedrag (€)'), '950')
+    await user.click(screen.getByRole('button', { name: 'Vaste post toevoegen' }))
+    expect(onVastePost).toHaveBeenCalledTimes(1)
+    expect(onSluiten).toHaveBeenCalled()
+  })
+
   it('zegt waarom de knop uitstaat in plaats van enkel niet te reageren', async () => {
     const user = userEvent.setup()
     toon()

@@ -951,7 +951,7 @@ export function TransactieFormulier({
                           de volledige naam van een vinkje in één adem voor, en de
                           uitleg erbij maakt daar een alinea van. Die uitleg hangt er
                           via `aria-describedby` naast. */}
-                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         <input
                           type="checkbox"
                           checked={garantieAan}
@@ -1016,10 +1016,10 @@ export function TransactieFormulier({
           precies hoe je een uitgave als inkomst boekt zonder het te merken. */}
       {soortVanBuiten === undefined && (
         <div className="veldrij" style={{ gap: 18 }}>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <input type="radio" name="soort" checked={soort === 'uitgave'} onChange={() => setEigenSoort('uitgave')} /> {t('Uitgave')}
           </label>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <input type="radio" name="soort" checked={soort === 'inkomst'} onChange={() => setEigenSoort('inkomst')} /> {t('Inkomst')}
           </label>
         </div>

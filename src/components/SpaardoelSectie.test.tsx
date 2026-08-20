@@ -27,6 +27,21 @@ describe('SpaardoelSectie', () => {
     )
   })
 
+  it('zet de lijst vóór het formulier in de leesvolgorde', () => {
+    // ⚠ Ronde 61. Tot die ronde stond de formulierkolom EERST in de code en zette een
+    // CSS-regel (`order`) haar op een smal scherm naar onderen. Wat je ZAG klopte dus,
+    // maar de tab-toets en een schermlezer volgen de code: je zag bovenaan je lijst
+    // spaardoelen, maar Tab landde eerst in "Nieuw spaardoel · naam · bedrag · kleur".
+    render(
+      <SpaardoelSectie spaardoelen={[]} rekeningen={rekeningen} transacties={[]} waarderingen={[]} onOpslaan={vi.fn()} onVerwijderen={vi.fn()} />,
+    )
+    const lijst = document.querySelector('.kolom-lijst') as HTMLElement
+    const formulier = document.querySelector('.kolom-formulier') as HTMLElement
+    expect(lijst).toBeInTheDocument()
+    expect(formulier).toBeInTheDocument()
+    expect(lijst.compareDocumentPosition(formulier) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('toont een voortgangsbalk voor een bestaand doel', () => {
     const doel: Spaardoel = { id: 'd1', naam: 'Buffer', doelbedrag: 300000, huidigBedrag: 150000 }
     render(

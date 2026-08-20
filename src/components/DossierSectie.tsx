@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type {
   Categorie,
   Dossier,
@@ -155,8 +155,8 @@ export function DossierSectie({
   // dossier — alle gedeelde kosten, alle verrekeningen, de kindrekening met haar
   // posten, de onderhoudsbijdrage met al haar betalingen, én de volledige
   // documentkluis met elke scan en elke bon erin — zonder één vraag. De enige
-  // redding was de ongedaan-balk van acht seconden. Ter vergelijking: voor "Begin
-  // opnieuw" moet je het woord WISSEN intikken.
+  // redding was de ongedaan-balk (acht seconden toen, twintig sinds ronde 61). Ter
+  // vergelijking: voor "Begin opnieuw" moet je het woord WISSEN intikken.
   //
   // En het stond naast een KEUZELIJST, waar je juist heen gaat om van dossier te
   // wisselen. Eén mistik op een telefoon en jaren bewijsmateriaal waren weg.
@@ -273,6 +273,11 @@ export function DossierSectie({
   })
   // De chips zelf, om de focus na "Toon het" ergens zinnigs te laten landen.
   const chipKnoppen = useRef<Record<string, HTMLButtonElement | null>>({})
+  // De id's van de regels die zeggen wat er nog ontbreekt. De knoppen wijzen ernaar
+  // met `aria-describedby`, zodat wie erop landt de reden hoort (ronde 61).
+  const splitRedenId = useId()
+  const typeRedenId = useId()
+  const afrekenRedenId = useId()
   useEffect(() => {
     const opgeslagen = dossier?.verborgenOnderdelen ?? []
     // Van dossier gewisseld: altijd overnemen. Wat het vorige dossier bedoelde, heeft
@@ -684,18 +689,26 @@ export function DossierSectie({
                 <CategorieKiezer waarde={splitCat || undefined} onKies={(id) => setSplitCat(id ?? '')} gebruikerCategorieen={categorieen} />
               </div>
               <input aria-label={t('Percentage jij')} style={{ width: 76 }} inputMode="decimal" placeholder="%" value={splitPct} onChange={(e) => setSplitPct(e.target.value)} />
-              <button type="button" className="knop knop-secundair" onClick={voegSplitToe} disabled={!splitGeldig}>
+              <button
+                type="button"
+                className="knop knop-secundair"
+                onClick={voegSplitToe}
+                aria-disabled={!splitGeldig}
+                aria-describedby={splitGeldig ? undefined : splitRedenId}
+              >
                 {t('Toevoegen')}
               </button>
             </div>
-            {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt. */}
-            {!splitGeldig && (
-              <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
-                {!splitCat
+            {/* ⚠ Altijd aanwezig, leeg wanneer er niets te melden is (ronde 61): een
+                `role="status"` die pas MÉT zijn tekst verschijnt, wordt door sommige
+                schermlezers overgeslagen, en de knop hierboven wijst ernaar. */}
+            <p id={splitRedenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+              {splitGeldig
+                ? ''
+                : !splitCat
                   ? t('Kies eerst een categorie en geef een percentage van 0 tot 100.')
                   : t('Geef een percentage van 0 tot 100 om deze verdeling toe te voegen.')}
-              </p>
-            )}
+            </p>
           </Kaart>
           )}
 
@@ -716,15 +729,19 @@ export function DossierSectie({
               </label>
             </div>
             <div className="knoprij">
-              <button type="button" className="knop knop-secundair" onClick={bewaarTypeAandelen} disabled={!typeGeldig}>
+              <button
+                type="button"
+                className="knop knop-secundair"
+                onClick={bewaarTypeAandelen}
+                aria-disabled={!typeGeldig}
+                aria-describedby={typeGeldig ? undefined : typeRedenId}
+              >
                 {t('Bewaar verdeling per kostensoort')}
               </button>
             </div>
-            {!typeGeldig && (
-              <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
-                {t('Geef een percentage van 0 tot 100, of laat het veld leeg.')}
-              </p>
-            )}
+            <p id={typeRedenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+              {typeGeldig ? '' : t('Geef een percentage van 0 tot 100, of laat het veld leeg.')}
+            </p>
           </Kaart>
           )}
 
@@ -814,7 +831,7 @@ export function DossierSectie({
             {/* Enkel zinvol zodra je écht op kinderen filtert: anders zitten alle
                 kosten er sowieso in. */}
             {afrKindIds.length > 0 && (
-              <label style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 6 }}>
+              <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 6 }}>
                 <input type="checkbox" checked={zonderKindMee} onChange={(e) => setZonderKindMee(e.target.checked)} />
                 <span className="rij-meta">
                   {t('Kosten zonder kind ook meetellen')}
@@ -832,10 +849,21 @@ export function DossierSectie({
               </p>
             )}
             <div className="knoprij">
-              <button type="button" className="knop knop-secundair" onClick={genereerNu} disabled={selectie.length === 0}>
+              <button
+                type="button"
+                className="knop knop-secundair"
+                onClick={genereerNu}
+                aria-disabled={selectie.length === 0}
+                aria-describedby={selectie.length === 0 ? afrekenRedenId : undefined}
+              >
                 {t('Genereer afrekening')}
               </button>
             </div>
+            {/* ⚠ Hier stond niets (ronde 61): de knop lag uit en er stond nergens
+                waarom, en met een toetsenbord kwam je hem niet eens tegen. */}
+            <p id={afrekenRedenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+              {selectie.length === 0 ? t('Er staat geen enkele open kost in deze selectie.') : ''}
+            </p>
           </Kaart>
           )}
 

@@ -130,6 +130,21 @@
      knop; de donkere buitenring is wat je tegen de pagina ziet. */
   --focus-ring-sterk: 0 0 0 2px var(--surface), 0 0 0 4px var(--focus-rand);
 
+  /* De rand van iets wat je kan BEDIENEN — een invoerveld, een chip, een tegel,
+     een secundaire knop (ronde 61).
+
+     Waarom een eigen kleur naast `--border`: die laatste tekent ook de rand van
+     een kaart of een lijst, en dat is versiering. Voor versiering mag een rand
+     zacht zijn. Voor iets wat je moet KUNNEN VINDEN geldt 3:1, en daar zaten we
+     ver onder: `--border` haalt 1,41:1 tegen een kaart en 1,16:1 tegen de pagina,
+     `--border-strong` 1,53 en 1,27. Nagemeten, niet geschat. In de praktijk zag je
+     in fel licht simpelweg niet meer wáár het invoerveld begon.
+
+     Deze warme grijsbruin haalt de norm tegen élk vlak waarop een bediening kan
+     staan: een kaart (3,97:1), de pagina (3,28:1), een grijs vlak (3,19 en
+     3,13:1) en een actieve amberen chip (3,21:1). */
+  --rand-bedienbaar: #8a7c69;
+
   /* ---------------------------------------------------------------------
      Typografische schaal. Vóór ronde 20 stonden er tien losse, hardgecodeerde
      lettergroottes in dit bestand (10 t.e.m. 34 px) plus nog inline waarden in
@@ -201,6 +216,9 @@
   --text-subtle: #8e97a3;
   --border: #262e39;
   --border-strong: #313a46;
+  /* Zie de uitleg bij het lichte thema. Tegen de kaart 3,61:1, tegen de pagina
+     3,99:1 en tegen de twee grijze vlakken 3,22 en 3,02:1. */
+  --rand-bedienbaar: #6a7482;
   --divider: #242c36;
   --rij-lijn: #222932;
 
@@ -1110,7 +1128,7 @@ a:focus-visible {
   padding: 13px 22px;
   box-shadow: var(--shadow-knop);
 }@media (hover: hover) and (pointer: fine) {
-  .knop-primair:hover:not(:disabled):not(.knop-uit) {
+  .knop-primair:hover:not(:disabled):not(.knop-uit):not([aria-disabled='true']) {
     background: var(--accent-strong);
     transform: translateY(-1px);
     box-shadow: var(--shadow-zwevend);
@@ -1123,10 +1141,12 @@ a:focus-visible {
 
 .knop-secundair {
   background: var(--surface);
-  border-color: var(--border-strong);
+  /* Ronde 61: `--border-strong` haalde 1,53:1 tegen een kaart — de omtrek van een
+     secundaire knop was in fel licht niet te zien. */
+  border-color: var(--rand-bedienbaar);
   color: var(--text);
 }@media (hover: hover) and (pointer: fine) {
-  .knop-secundair:hover:not(:disabled):not(.knop-uit) {
+  .knop-secundair:hover:not(:disabled):not(.knop-uit):not([aria-disabled='true']) {
     border-color: var(--accent);
     color: var(--accent);
   }
@@ -1136,7 +1156,7 @@ a:focus-visible {
   color: var(--accent-tekst);
   padding: 12px 8px;
 }@media (hover: hover) and (pointer: fine) {
-  .knop-ghost:hover:not(:disabled):not(.knop-uit) {
+  .knop-ghost:hover:not(:disabled):not(.knop-uit):not([aria-disabled='true']) {
     color: var(--accent-strong);
   }
 }
@@ -1203,7 +1223,7 @@ a:focus-visible {
   height: 44px;
   padding: 0;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
+  border: 1px solid var(--rand-bedienbaar);
   background: var(--surface);
   color: var(--text-muted);
   font-size: var(--tekst-m);
@@ -1336,6 +1356,11 @@ a:focus-visible {
   }
 }
 
+/* ⚠ Elke hover-regel sluit ook `[aria-disabled='true']` uit (nakijkronde ronde 61).
+   Sinds ronde 61 dragen negentien opslaanknoppen die vlag in plaats van `disabled`, en
+   zonder deze uitsluiting lichtte zo'n knop op een pc tóch op, sprong hij omhoog en
+   kreeg hij een gloed — alsof hij werkt. */
+
 /* Twee manieren om "kan nu niet" te tonen, met opzet.
    `:disabled` haalt een knop volledig uit de tab-volgorde; dat is juist voor een
    knop die er niet toe doet, maar fout voor een opslaanknop — dan komt wie met
@@ -1383,7 +1408,7 @@ a:focus-visible {
   font-weight: 600;
   padding: 7px 13px;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--border);
+  border: 1px solid var(--rand-bedienbaar);
   background: var(--surface);
   color: var(--text);
   cursor: pointer;
@@ -1616,7 +1641,7 @@ a:focus-visible {
   min-height: 78px;
   padding: 10px 6px;
   background: var(--surface);
-  border: 1.5px solid var(--border);
+  border: 1.5px solid var(--rand-bedienbaar);
   border-radius: var(--radius-md);
   color: var(--text);
   font-family: inherit;
@@ -1816,7 +1841,7 @@ textarea {
   font-size: var(--tekst-veld);
   background: var(--surface);
   color: var(--text);
-  border: 1.5px solid var(--border);
+  border: 1.5px solid var(--rand-bedienbaar);
   border-radius: var(--radius);
   padding: 11px 13px;
 }
@@ -1832,11 +1857,18 @@ textarea::placeholder {
   color: var(--text-subtle);
 }
 
+/* ⚠ `--focus-rand` en niet `--accent` (ronde 61). Knoppen, chips en links kregen in
+   ronde 35 al de donkere focuskleur; invoervelden zijn toen overgeslagen en bleven op
+   `--accent` staan. Nagemeten in het lichte thema: die haalt 3,37:1 tegen een kaart, en
+   de zachte ring eromheen komt op 45 % dekking neer op een effectieve #d7b58e — 1,88:1,
+   dus zo goed als niets. Samen zag je met het toetsenbord nauwelijks in wélk vak je
+   stond. `--focus-rand` haalt daar 7,29:1. De zachte ring blijft er gewoon bij staan:
+   die is de warme gloed die je van een afstand ziet, de rand is het bewijs. */
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--focus-rand);
   box-shadow: var(--focus-ring);
 }
 
@@ -1845,6 +1877,59 @@ a:focus-visible,
 [tabindex]:focus-visible {
   outline: 2px solid var(--focus-rand);
   outline-offset: 2px;
+}
+
+/* ⚠ Het zijpaneel is óók in het LICHTE thema donkerbruin (ronde 61). De donkere
+   focuskleur hierboven is gekozen voor de crème pagina en haalt daar 6 tot 7:1 —
+   maar op #2c211b haalt ze 2,10:1, en op een actieve knop (amber op 18 % over dat
+   bruin, samen ±#4f3921) zelfs 1,45:1. Wie in het lichte thema met het toetsenbord
+   door de zijbalk ging, zag dus niet waar hij stond, drukte Enter en belandde op
+   een pagina die hij niet bedoelde. Dit is de kleur die het donkere thema al
+   gebruikt: 7,63:1 op de zijbalk en 5,27:1 op een actieve knop. */
+.zijbalk button:focus-visible {
+  outline-color: var(--accent-dot);
+}
+
+/* Dezelfde reden als bij het zijpaneel: de ongedaan-balk is ook in het lichte thema
+   donker (#17191e), en de donkere focuskleur haalt daar 2,4:1. Uitgerekend wie met een
+   toetsenbord werkt — voor wie die balk deze ronde van 8 naar 20 seconden ging — zou
+   dan niet zien waar hij staat als hij er eindelijk is (nakijkronde ronde 61). */
+.undo-balk button:focus-visible {
+  outline-color: var(--accent-dot);
+}
+
+/* "Sla de navigatie over" (ronde 61).
+ *
+ * Buiten beeld tot je hem focust — niet `display: none` en niet
+ * `visibility: hidden`, want dan haalt de tab-toets hem ook niet meer op. Zodra hij
+ * de focus krijgt springt hij linksboven tevoorschijn, mét de gewone knopstijl, zodat
+ * duidelijk is dat er iets te doen is. Hij komt boven de plakkende bovenbalk
+ * (z-index 800) en boven de zijbalk uit. */
+.skiplink {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+}
+
+.skiplink:focus {
+  left: 8px;
+  top: 8px;
+  z-index: 1200;
+  padding: 12px 18px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  border: 2px solid var(--focus-rand);
+  box-shadow: var(--shadow-sheet);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* De hoofdinhoud krijgt de focus wanneer je de navigatie overslaat. Zonder deze
+   regel tekent de browser daar een ring rond het HELE inhoudsvlak, en dat leest als
+   een fout in plaats van als een bevestiging. De skiplink zelf is de aanwijzing. */
+main:focus-visible {
+  outline: none;
 }
 
 /* De centrale ➕ in de onderbalk is amber gevuld. Een amberen streepje eromheen
@@ -2013,18 +2098,17 @@ a {
   align-items: start;
 }
 
-/* Op één kolom (telefoon) hoort de LIJST bovenaan te staan en het formulier
-   eronder — je wil eerst zien wat je hebt, dan pas iets toevoegen. In de code
-   staat de formulierkolom eerst, omdat ze op desktop rechts hoort; 'order' zet
-   dat op een smal scherm recht. Vanaf 1024 px krijgen beide kolommen een vaste
-   plek in het raster (grid-column/grid-row), en telt 'order' niet meer mee. */
-.raster-lijst-formulier > .kolom-lijst {
-  order: 1;
-}
+/* ⚠ Ronde 61: hier stonden twee `order`-regels. In de CODE stond de formulierkolom
+   eerst (omdat ze op desktop rechts hoort) en zette `order` haar op een smal scherm
+   naar onderen. Wat je ZAG klopte dus, maar wat de tab-toets en een schermlezer
+   volgden niet: die gaan langs de code. Je zag bovenaan je lijst spaardoelen staan,
+   maar Tab landde eerst in "Nieuw spaardoel · naam · bedrag · kleur" — en wie de app
+   laat voorlezen, hoorde het formulier vóór hij iets over zijn bestaande doelen wist.
 
-.raster-lijst-formulier > .kolom-formulier {
-  order: 2;
-}
+   De lijstkolom staat nu ook in de code eerst, dus de twee volgordes zijn dezelfde en
+   er is geen `order` meer nodig. Op desktop krijgen beide kolommen hieronder een vaste
+   plek in het raster (grid-column/grid-row), dus het formulier staat daar nog altijd
+   rechts. */
 
 /* Zonder dit mag een rasterkolom niet smaller worden dan haar breedste inhoud
    (een rij chips, een lange categorienaam), en loopt het raster buiten het
@@ -2082,8 +2166,10 @@ a {
     grid-template-columns: 1fr 1fr;
   }
 
-  /* Lijst links, formulier rechts. Het formulier staat in de HTML eerst (zodat
-     het op een telefoon bovenaan blijft), en wordt hier naar rechts geplaatst. */
+  /* Lijst links, formulier rechts. Sinds ronde 61 staat de LIJST ook in de code
+     eerst — zie de uitleg bij `.raster-lijst-formulier` hierboven. Allebei de kolommen
+     krijgen hier een vaste plek in het raster, dus de volgorde in de code bepaalt hier
+     niets meer. */
   .raster-lijst-formulier {
     grid-template-columns: 1fr 380px;
   }
@@ -2329,12 +2415,15 @@ a {
 /* Het vakje zelf is 18 px. Nu er een knop ONDER ligt die de hele rij opent,
    betekende een tik van tien pixels ernaast dat de boeking openging in plaats van
    dat je een rij aanvinkte. Vóór ronde 45 gebeurde er bij zo'n misser gewoon
-   niets. Het label eromheen maakt het doel 44 px, zoals overal in de app. */
+   niets. Het label eromheen maakt het doel 44 px, zoals overal in de app.
+   ⚠ Ronde 61: de BREEDTE stond op 34 en de hoogte op 44 — half werk. Aan de
+   linkerrand van de rij tikte je dus nog altijd naast het vakje, en dan ging de
+   boeking open in plaats van dat je haar aanvinkte. */
 .tx-vinkje-vlak {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 34px;
+  min-width: 44px;
   min-height: 44px;
   margin: -12px 0;
   cursor: pointer;
@@ -2601,7 +2690,7 @@ a {
   }
 
   .klikbaar:hover,
-  .knop-primair:hover:not(:disabled):not(.knop-uit) {
+  .knop-primair:hover:not(:disabled):not(.knop-uit):not([aria-disabled='true']) {
     transform: none;
   }
 }
@@ -2843,7 +2932,7 @@ a {
   min-height: 64px;
   padding: 8px 4px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--rand-bedienbaar);
   border-radius: var(--radius-md);
   cursor: pointer;
   font-family: inherit;
@@ -2905,7 +2994,7 @@ a {
   min-height: 44px;
   padding: 8px 14px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--rand-bedienbaar);
   border-radius: var(--radius-md);
   cursor: pointer;
   font-family: inherit;

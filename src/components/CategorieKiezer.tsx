@@ -349,6 +349,9 @@ export function NieuweSubcategoriePaneel({
     return [...eerst, ...rest]
   }, [hoofdIdInBeeld])
 
+  // De id van de regel die zegt wat er nog ontbreekt (ronde 61).
+  const plaatsRedenId = useId()
+
   async function bevestig() {
     if (!categorieId || bezigRef.current) return
     bezigRef.current = true
@@ -402,7 +405,8 @@ export function NieuweSubcategoriePaneel({
         <button
           type="button"
           className="knop knop-secundair knop-klein"
-          disabled={!categorieId}
+          aria-disabled={!categorieId}
+          aria-describedby={categorieId ? undefined : plaatsRedenId}
           onClick={() => void bevestig()}
         >
           {t('Subcategorie toevoegen')}
@@ -411,6 +415,10 @@ export function NieuweSubcategoriePaneel({
           {t('Annuleer')}
         </button>
       </div>
+      {/* ⚠ Hier stond niets (ronde 61): de knop lag uit en er stond nergens waarom. */}
+      <p id={plaatsRedenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+        {categorieId ? '' : t('Kies eerst waar deze subcategorie onder hoort.')}
+      </p>
     </div>
   )
 }

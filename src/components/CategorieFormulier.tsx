@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Categorie } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
@@ -24,6 +24,8 @@ export function CategorieFormulier({
   const [naam, setNaam] = useState('')
   const [icoon, setIcoon] = useState<string | undefined>(undefined)
   const [kleur, setKleur] = useState<string | undefined>(undefined)
+  // De id van de regel die zegt wat er nog ontbreekt (ronde 61).
+  const redenId = useId()
   const geldig = naam.trim().length > 0
 
   // Bij het openen van een bestaande categorie: alle drie de velden invullen.
@@ -75,7 +77,12 @@ export function CategorieFormulier({
       />
 
       <div className="knoprij">
-        <button type="submit" className="knop knop-primair" disabled={!geldig}>
+        <button
+          type="submit"
+          className="knop knop-primair"
+          aria-disabled={!geldig}
+          aria-describedby={geldig ? undefined : redenId}
+        >
           {bewerken ? t('Categorie wijzigen') : t('Categorie toevoegen')}
         </button>
         {bewerken && onAnnuleer && (
@@ -84,6 +91,12 @@ export function CategorieFormulier({
           </button>
         )}
       </div>
+      {/* ⚠ Hier stond niets (ronde 61): de knop lag uit en er stond nergens waarom.
+          Met een toetsenbord kwam je hem bovendien niet eens tegen, want `disabled`
+          haalt een knop uit de tab-volgorde. */}
+      <p id={redenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+        {geldig ? '' : t('Geef een naam om op te slaan.')}
+      </p>
     </form>
   )
 }

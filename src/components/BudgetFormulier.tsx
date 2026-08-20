@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Budget, Categorie } from '../data/schema'
 import { invoerNaarCenten } from '../utils/format'
@@ -31,6 +31,9 @@ export function BudgetFormulier({
   }
 
   const bedragCenten = invoerNaarCenten(bedrag)
+  // De id van de regel die zegt wat er nog ontbreekt. De knop wijst ernaar met
+  // `aria-describedby`, zodat wie erop landt de reden hoort (ronde 61).
+  const redenId = useId()
   const geldig = categorieId.length > 0 && Number.isFinite(bedragCenten) && bedragCenten > 0
 
   async function verzend(e: FormEvent) {
@@ -73,16 +76,23 @@ export function BudgetFormulier({
       </div>
 
       <div className="knoprij">
-        <button type="submit" disabled={!geldig} className="knop knop-primair">
+        <button
+          type="submit"
+          aria-disabled={!geldig}
+          aria-describedby={geldig ? undefined : redenId}
+          className="knop knop-primair"
+        >
           {t('Budget instellen')}
         </button>
       </div>
-      {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt. */}
-      {!geldig && (
-        <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
-          {t('Kies een categorie en geef een bedrag.')}
-        </p>
-      )}
+      {/* ⚠ Deze regel staat er ALTIJD, ook leeg (ronde 61). Twee redenen. Een
+          `role="status"` die pas MÉT zijn tekst in het document verschijnt, wordt door
+          sommige schermlezers overgeslagen — die regel past de app elders al toe. En de
+          knop hiernaast wijst met `aria-describedby` naar deze tekst, dus wie erop landt,
+          hóórt meteen wat er nog ontbreekt in plaats van alleen "niet-beschikbaar". */}
+      <p id={redenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+        {geldig ? '' : t('Kies een categorie en geef een bedrag.')}
+      </p>
     </form>
   )
 }

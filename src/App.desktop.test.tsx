@@ -61,11 +61,15 @@ describe('App op een breed scherm', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    // Het zijpaneel is een <aside> (rol 'complementary'); de onderbalk is een
-    // <nav>. Op een breed scherm hoort enkel het zijpaneel er te staan.
-    expect(screen.getByRole('complementary', { name: 'Hoofdnavigatie' })).toBeInTheDocument()
-    expect(screen.queryByRole('navigation', { name: 'Hoofdnavigatie' })).not.toBeInTheDocument()
-    // De onderbalk heeft een 'Meer'-knop; het zijpaneel toont alle pagina's.
+    // ⚠ Ronde 61: de NAAM "Hoofdnavigatie" hoort bij de <nav> en niet bij de <aside>
+    // eromheen. Vóór die ronde verscheen het zijpaneel in de lijst van een
+    // schermlezer als "aanvullende inhoud: Hoofdnavigatie", met daarnaast een
+    // naamloze navigatie — twee ingangen die geen van beide klopten.
+    const paneel = screen.getByRole('complementary')
+    expect(paneel).not.toHaveAttribute('aria-label')
+    expect(within(paneel).getByRole('navigation', { name: 'Hoofdnavigatie' })).toBeInTheDocument()
+    // De onderbalk heeft een 'Meer'-knop; het zijpaneel toont alle pagina's. Dát is
+    // waaraan we zien dat de smalle balk hier niet staat.
     expect(screen.queryByRole('button', { name: 'Meer' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Instellingen' })).toBeInTheDocument()
   })
@@ -129,6 +133,52 @@ describe('App op een breed scherm', () => {
     expect(within(popup).getByLabelText('Handelaar / winkel')).toBeInTheDocument()
     // We staan nog steeds op het Overzicht — deze knop verplaatste je vroeger.
     expect(screen.getByText('Recente transacties')).toBeInTheDocument()
+  })
+
+  // Ronde 61. Tel eens mee wat je op een pc met het toetsenbord passeert vóór je bij
+  // de inhoud bent: het merkteken, vijftien paginaknoppen en drie weergaveknoppen.
+  it('zet een "ga naar de inhoud"-link vóór het zijpaneel', async () => {
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    const link = screen.getByRole('link', { name: 'Ga naar de inhoud' })
+    expect(link).toHaveAttribute('href', '#inhoud')
+    // Vóór de zijbalk, want anders kom je hem pas tegen ná wat hij moet overslaan.
+    const paneel = screen.getByRole('complementary')
+    expect(link.compareDocumentPosition(paneel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('heeft een echte hoofdinhoud waar die link naartoe wijst', async () => {
+    // ⚠ De smalle weergave had al een <main>; de brede werkte met een kale <div>.
+    // Juist op het toestel waar de zijbalk negentien knoppen vóór de inhoud zet,
+    // ontbrak dus de landmark om erheen te springen.
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    const inhoud = screen.getByRole('main')
+    expect(inhoud).toHaveAttribute('id', 'inhoud')
+    // `tabIndex=-1` is nodig, anders verplaatst de browser de focus niet mee en tabt
+    // je volgende druk weer vanaf de zijbalk verder.
+    expect(inhoud).toHaveAttribute('tabindex', '-1')
+  })
+
+  it('zet op Budget de lijst vóór het formulier in de leesvolgorde', async () => {
+    // ⚠ Ronde 61. Tot die ronde stond de formulierkolom EERST in de code en zette een
+    // CSS-regel (`order`) haar op een smal scherm naar onderen. Wat je ZAG klopte dus,
+    // maar de tab-toets en een schermlezer volgen de code: het formulier kreeg de focus
+    // vóór je iets over je bestaande budgetten hoorde. Op een breed scherm staan de
+    // kolommen nog steeds links en rechts — dat regelt het raster, niet de volgorde.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await user.click(screen.getByRole('button', { name: 'Budget' }))
+    await screen.findByRole('heading', { name: 'Budget' })
+
+    const lijst = document.querySelector('.kolom-lijst') as HTMLElement
+    const formulier = document.querySelector('.kolom-formulier') as HTMLElement
+    expect(lijst).toBeInTheDocument()
+    expect(formulier).toBeInTheDocument()
+    expect(lijst.compareDocumentPosition(formulier) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('valt terug op de mobiele weergave zodra het scherm smal wordt', async () => {

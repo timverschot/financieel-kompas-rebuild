@@ -313,7 +313,7 @@ export function InstellingenSectie({
                 {t('Dit kan niet ongedaan gemaakt worden. Maak eerst een back-up als je je gegevens wil bewaren.')}
               </p>
               <div className="veldgroep">
-                <label className="label-caps" htmlFor="begin-opnieuw-bevestig">
+                <label className="label-caps" id="begin-opnieuw-reden" htmlFor="begin-opnieuw-bevestig">
                   {t('Typ WISSEN om te bevestigen')}
                 </label>
                 <input
@@ -325,11 +325,17 @@ export function InstellingenSectie({
                 />
               </div>
               <div className="knoprij">
+                {/* ⚠ `aria-disabled` en niet `disabled` (ronde 61). Met een echt
+                    uitgeschakelde knop kwam je met een toetsenbord nooit langs deze
+                    knop en hoorde je dus ook nooit dát er een bevestiging nodig is —
+                    je stond in een veld te typen zonder te weten waarheen. De handler
+                    houdt het wissen tegen zolang het woord niet klopt. */}
                 <button
                   type="button"
                   className="knop knop-secundair knop-gevaar"
                   onClick={wisAlles}
-                  disabled={!woordKlopt || wisBezig}
+                  aria-disabled={!woordKlopt || wisBezig}
+                  aria-describedby={woordKlopt ? undefined : 'begin-opnieuw-reden'}
                 >
                   {wisBezig ? t('Bezig…') : t('Alles wissen')}
                 </button>

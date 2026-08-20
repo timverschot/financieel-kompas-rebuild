@@ -22,6 +22,34 @@ describe('CategorieFormulier', () => {
     expect(CategorieSchema.safeParse(opgeslagen).success).toBe(true)
   })
 
+  // Ronde 61. De opslaanknop stond op `disabled`, en dat haalt hem uit de
+  // tab-volgorde: wie met een toetsenbord werkte, kwam hem nooit tegen en hoorde dus
+  // ook nooit waarom er niets gebeurde. Bij dit formulier stond er zelfs niets op het
+  // scherm — geen enkele aanwijzing dat er een naam ontbrak.
+  it('houdt de knop bereikbaar en zegt wat er ontbreekt', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = vi.fn()
+    render(<CategorieFormulier onOpslaan={onOpslaan} />)
+
+    const knop = screen.getByRole('button', { name: 'Categorie toevoegen' })
+    expect(knop).toHaveAttribute('aria-disabled', 'true')
+    expect(knop).not.toBeDisabled()
+
+    // De knop wijst naar de regel die zegt wát er ontbreekt, zodat je die hoort zodra
+    // je erop landt in plaats van alleen "niet-beschikbaar".
+    const redenId = knop.getAttribute('aria-describedby') as string
+    expect(document.getElementById(redenId)).toHaveTextContent('Geef een naam om op te slaan.')
+
+    // En een klik doet niets zolang het formulier niet klopt.
+    await user.click(knop)
+    expect(onOpslaan).not.toHaveBeenCalled()
+
+    // Zodra er een naam staat, verdwijnt de reden en werkt de knop.
+    await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
+    expect(screen.getByRole('button', { name: 'Categorie toevoegen' })).toHaveAttribute('aria-disabled', 'false')
+    expect(document.getElementById(redenId)).toHaveTextContent('')
+  })
+
   it('slaat het gekozen icoon en de gekozen kleur mee op', async () => {
     const user = userEvent.setup()
     const onOpslaan = vi.fn()

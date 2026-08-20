@@ -173,7 +173,11 @@ describe('DossierSectie — de bewijsmap', () => {
     const user = userEvent.setup()
     toon()
     await user.click(bewijsmapKnop())
-    expect(await screen.findByRole('status')).toHaveTextContent('De bewijsmap van 2026-04-01 is gedownload.')
+    // ⚠ Niet meer "de enige status op het scherm" (ronde 61): sinds de redenregels
+    // onder de uitgezette knoppen er altijd staan — ook leeg — zijn er meerdere. We
+    // zoeken de melding nu op haar tekst en controleren dát ze een levend gebied is.
+    const melding = await screen.findByText('De bewijsmap van 2026-04-01 is gedownload.')
+    expect(melding).toHaveAttribute('role', 'status')
   })
 
   it('meldt ook wanneer de gewone PDF mislukt', async () => {

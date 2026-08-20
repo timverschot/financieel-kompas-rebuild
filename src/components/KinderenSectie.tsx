@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { GEZINSROLLEN, type Gezinsrol, type Kind } from '../data/schema'
 import { ROL_SLEUTELS } from '../utils/persoon'
@@ -37,6 +37,9 @@ export function KinderenSectie({
 
   const actief = kinderen.filter((k) => !k.gearchiveerd)
   const gearchiveerd = kinderen.filter((k) => k.gearchiveerd)
+
+  // De id van de regel die zegt wat er nog ontbreekt (ronde 61).
+  const redenId = useId()
 
   function voegToe(e: FormEvent) {
     e.preventDefault()
@@ -175,9 +178,19 @@ export function KinderenSectie({
           onChange={(e) => setNieuw(e.target.value)}
         />
         {rolKeuze(nieuweRol, setNieuweRol, t('Rol'))}
-        <button type="submit" className="knop knop-secundair" disabled={!nieuw.trim()}>
+        <button
+          type="submit"
+          className="knop knop-secundair"
+          aria-disabled={!nieuw.trim()}
+          aria-describedby={nieuw.trim() ? undefined : redenId}
+        >
           {t('Gezinslid toevoegen')}
         </button>
+        {/* ⚠ Hier stond niets (ronde 61): de knop lag uit en er stond nergens waarom.
+            Met een toetsenbord kwam je hem bovendien niet eens tegen. */}
+        <p id={redenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left', width: '100%' }}>
+          {nieuw.trim() ? '' : t('Geef een naam om op te slaan.')}
+        </p>
       </form>
     </Kaart>
   )

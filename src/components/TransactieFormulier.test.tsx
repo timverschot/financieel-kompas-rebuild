@@ -28,6 +28,19 @@ describe('TransactieFormulier', () => {
     )
   })
 
+  it('geeft de keuze uitgave/inkomst een raakdoel van 44 px', () => {
+    // ⚠ Ronde 61. Het rondje zelf is ±13 px en het label werd zo hoog als één regel
+    // tekst. Op een telefoon mik je dus met je duim op een doel van een halve
+    // centimeter — en een misser hier is niet onschuldig: je denkt dat je omschakelde
+    // en boekt een uitgave als inkomst. De klasse `raak-label` (index.css) maakt het
+    // label 44 px hoog op een aanraakscherm, zonder iets te veranderen op een pc.
+    renderForm()
+    for (const naam of ['Uitgave', 'Inkomst']) {
+      const rondje = screen.getByLabelText(naam)
+      expect(rondje.closest('label')).toHaveClass('raak-label')
+    }
+  })
+
   it('maakt de velden leeg na het toevoegen', async () => {
     const user = userEvent.setup()
     renderForm()

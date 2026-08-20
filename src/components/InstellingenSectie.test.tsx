@@ -88,15 +88,25 @@ describe('InstellingenSectie — begin opnieuw', () => {
 
     const knop = screen.getByRole('button', { name: 'Alles wissen' })
     const veld = screen.getByLabelText('Typ WISSEN om te bevestigen')
-    expect(knop).toBeDisabled()
+    // ⚠ `aria-disabled` en niet `disabled` (ronde 61): met een echt uitgeschakelde
+    // knop kwam je met een toetsenbord nooit langs deze knop, en hoorde je dus ook
+    // nooit dát er een bevestiging nodig is. De handler houdt het wissen tegen.
+    expect(knop).toHaveAttribute('aria-disabled', 'true')
+    expect(knop).not.toBeDisabled()
+    expect(knop).toHaveAttribute('aria-describedby', 'begin-opnieuw-reden')
 
     await user.type(veld, 'wis')
-    expect(knop).toBeDisabled()
+    expect(knop).toHaveAttribute('aria-disabled', 'true')
 
     // Kleine letters en spaties eromheen mogen: we vergelijken na trim + hoofdletters.
     await user.clear(veld)
     await user.type(veld, ' wissen ')
-    expect(knop).toBeEnabled()
+    expect(knop).toHaveAttribute('aria-disabled', 'false')
+
+    // En een klik terwijl het woord NIET klopt, wist niets.
+    await user.clear(veld)
+    await user.click(knop)
+    expect(screen.getByRole('button', { name: 'Alles wissen' })).toBeInTheDocument()
   })
 
   it('wist alles na bevestigen en meldt de schone lei', async () => {

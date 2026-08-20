@@ -111,6 +111,31 @@ describe('Meldingenbel — een vaste last meteen inboeken', () => {
   // Ronde 32 — "het alarmbelicoontje moet duidelijker zijn. Nu is het te klein en
   // te onopvallend." Het stipje van 8 px is een tellertje geworden en de knop
   // kleurt amber zodra er iets staat.
+  it('sluit met Escape en geeft de focus terug aan het belletje', async () => {
+    // ⚠ Ronde 61. Escape sloot het paneel wel, maar de focus viel terug naar het begin
+    // van de pagina — je was kwijt waar je was. De 'Meer'-lade doet dit al goed.
+    const user = userEvent.setup()
+    render(<Meldingenbel meldingen={[budgetMelding]} onGaNaar={vi.fn()} />)
+    const bel = screen.getByRole('button', { name: 'Meldingen (1)' })
+    await user.click(bel)
+    expect(screen.getByText('Budget Voeding is 92% verbruikt')).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByText('Budget Voeding is 92% verbruikt')).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Meldingen (1)' }))
+  })
+
+  it('belooft geen venster en geen menu, want wat opengaat is geen van beide', () => {
+    // `aria-haspopup="dialog"` kondigt een venster met een focusval aan, en `"true"` is
+    // volgens de norm hetzelfde als `"menu"`. Dit is bewust een informatief lijstje, dus
+    // allebei zouden een belofte zijn die de app niet nakomt. `aria-expanded` zegt al
+    // wat er gebeurt.
+    render(<Meldingenbel meldingen={[budgetMelding]} onGaNaar={vi.fn()} />)
+    const bel = screen.getByRole('button', { name: 'Meldingen (1)' })
+    expect(bel).not.toHaveAttribute('aria-haspopup')
+    expect(bel).toHaveAttribute('aria-expanded', 'false')
+  })
+
   it('zet het aantal als tellertje op de bel', () => {
     render(<Meldingenbel meldingen={[budgetMelding, garantieMelding]} onGaNaar={vi.fn()} />)
     const knop = screen.getByRole('button', { name: 'Meldingen (2)' })

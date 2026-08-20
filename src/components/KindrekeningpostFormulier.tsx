@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Categorie, Kind, Kindrekeningpost } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
@@ -86,6 +86,9 @@ export function KindrekeningpostFormulier({
   }, [bewerken, leegmaken])
 
   const bedragCenten = invoerNaarCenten(bedrag)
+  // De id van de regel die zegt wat er nog ontbreekt. De knop wijst ernaar met
+  // `aria-describedby`, zodat wie erop landt de reden hoort (ronde 61).
+  const redenId = useId()
   const geldig = Number.isFinite(bedragCenten) && bedragCenten > 0
 
   async function kiesBonnetje(bestand: File) {
@@ -142,10 +145,10 @@ export function KindrekeningpostFormulier({
         <div className="veldgroep">
           <span className="label-caps">{t('Gestort door:')}</span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <input type="radio" name="krp-door" checked={door === 'jij'} onChange={() => setDoor('jij')} /> {t('Jij')}
             </label>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <input type="radio" name="krp-door" checked={door === 'partner'} onChange={() => setDoor('partner')} /> {t('Partner')}
             </label>
           </div>
@@ -203,7 +206,11 @@ export function KindrekeningpostFormulier({
         <input id="krp-datum" type="date" value={datum} onChange={(e) => setDatum(e.target.value)} />
       </div>
       <div className="knoprij">
-        <button type="submit" className="knop knop-secundair" disabled={!geldig}>
+        <button
+          type="submit" className="knop knop-secundair"
+          aria-disabled={!geldig}
+          aria-describedby={geldig ? undefined : redenId}
+        >
           {bewerken ? t('Beweging wijzigen') : t('Beweging toevoegen')}
         </button>
         {bewerken && onAnnuleer && (
@@ -212,12 +219,14 @@ export function KindrekeningpostFormulier({
           </button>
         )}
       </div>
-      {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt. */}
-      {!geldig && (
-        <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
-          {t('Geef een naam en een geldig bedrag om op te slaan.')}
-        </p>
-      )}
+      {/* ⚠ Deze regel staat er ALTIJD, ook leeg (ronde 61). Twee redenen. Een
+          `role="status"` die pas MÉT zijn tekst in het document verschijnt, wordt door
+          sommige schermlezers overgeslagen — die regel past de app elders al toe. En de
+          knop hiernaast wijst met `aria-describedby` naar deze tekst, dus wie erop landt,
+          hóórt meteen wat er nog ontbreekt in plaats van alleen "niet-beschikbaar". */}
+      <p id={redenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+        {geldig ? '' : t('Vul een bedrag groter dan nul in.')}
+      </p>
     </form>
   )
 }

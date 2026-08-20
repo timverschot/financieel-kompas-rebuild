@@ -195,6 +195,8 @@ export function TerugkerendePostFormulier({
   // schema: een strengere zod-regel zou bestaande gegevens ongeldig kunnen maken.
   const eindeGeldig =
     eindMaand === '' || (/^\d{4}-\d{2}$/.test(eindMaand) && (!periodiek || eindMaand > startMaand))
+  // De id van de regel die zegt wat er nog ontbreekt (ronde 61).
+  const redenId = useId()
   const geldig =
     omschrijving.trim().length > 0 &&
     Number.isFinite(bedragCenten) &&
@@ -216,7 +218,15 @@ export function TerugkerendePostFormulier({
 
   async function verzend(e: FormEvent) {
     e.preventDefault()
-    if (!geldig) return
+    if (!geldig) {
+      // ⚠ De vlag WEL wissen (ronde 61). Sinds 'Opslaan + volgende' met `aria-disabled`
+      // werkt in plaats van `disabled`, loopt zijn onClick ook bij een onvolledig
+      // formulier. Bleef de vlag staan, dan hield een latere, gewone opslag de popup
+      // open met lege velden — en dan denk je dat het niet gelukt is en boek je alles
+      // een tweede keer. Dezelfde val als in OverboekingFormulier.
+      blijfOpen.current = false
+      return
+    }
     await onOpslaan({
       id: bewerken ? bewerken.id : nieuwId(),
       omschrijving: omschrijving.trim(),
@@ -334,7 +344,7 @@ export function TerugkerendePostFormulier({
 
       {periodiek && soort === 'uitgave' && (
         <div className="veldgroep">
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <input type="checkbox" checked={opbouwen} onChange={(e) => setOpbouwen(e.target.checked)} />{' '}
             {t('Hier maandelijks voor opzijzetten')}
           </label>
@@ -520,10 +530,10 @@ export function TerugkerendePostFormulier({
         <>
           <span className="label-caps">{t('Komt dit geld binnen of gaat het eruit?')}</span>
           <div className="veldrij" style={{ gap: 18, marginTop: -6 }}>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               <input type="radio" name="vastsoort" checked={soort === 'uitgave'} onChange={() => setEigenSoort('uitgave')} /> {t('Uitgave')}
             </label>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               <input type="radio" name="vastsoort" checked={soort === 'inkomst'} onChange={() => setEigenSoort('inkomst')} /> {t('Inkomst')}
             </label>
           </div>
@@ -533,7 +543,12 @@ export function TerugkerendePostFormulier({
       <div className="knoprij">
         {/* In de popup is dit de hoofdactie van het scherm; in de kaart op de
             budgetpagina is het één actie tussen andere. */}
-        <button type="submit" disabled={!geldig} className={onOpgeslagen ? 'knop knop-primair' : 'knop knop-secundair'}>
+        <button
+          type="submit"
+          aria-disabled={!geldig}
+          aria-describedby={geldig ? undefined : redenId}
+          className={onOpgeslagen ? 'knop knop-primair' : 'knop knop-secundair'}
+        >
           {bewerken
             ? t('Vaste post wijzigen')
             : soortVanBuiten === 'inkomst'
@@ -543,7 +558,8 @@ export function TerugkerendePostFormulier({
         {onOpgeslagen && !bewerken && (
           <button
             type="submit"
-            disabled={!geldig}
+            aria-disabled={!geldig}
+            aria-describedby={geldig ? undefined : redenId}
             className="knop knop-ghost"
             onClick={() => {
               blijfOpen.current = true
@@ -564,13 +580,16 @@ export function TerugkerendePostFormulier({
           dan zoek je je blind. "Niet kan gebruiken" en niet "niet kan lezen": zet je
           een veld van 90 dagen om naar maanden, dan LEEST de app die 90 prima — ze
           valt alleen buiten het bereik van 0 tot 24. Het veld zelf zegt welk bereik. */}
-      {!geldig && (
-        <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
-          {!termijnGeldig || !periodeGeldig
+      {/* ⚠ Altijd aanwezig, leeg wanneer er niets te melden is (ronde 61): een
+          `role="status"` die pas MÉT zijn tekst verschijnt, wordt door sommige
+          schermlezers overgeslagen, en de twee knoppen hierboven wijzen ernaar. */}
+      <p id={redenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+        {geldig
+          ? ''
+          : !termijnGeldig || !periodeGeldig
             ? t('In het contractblok staat een getal dat de app niet kan gebruiken. Pas het aan om op te slaan.')
             : t('Geef een naam en een geldig bedrag om op te slaan.')}
-        </p>
-      )}
+      </p>
     </form>
   )
 }

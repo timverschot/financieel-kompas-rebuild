@@ -15,8 +15,8 @@ import type { Vertaler } from '../i18n'
 // HELE dossier — alle gedeelde kosten, alle verrekeningen, de kindrekening met haar
 // posten, de onderhoudsbijdrage met al haar betalingen, én de volledige
 // documentkluis met elke scan en elke bon erin — zonder één vraag. De enige redding
-// was de ongedaan-balk van acht seconden. Ter vergelijking: voor "Begin opnieuw"
-// moet je het woord WISSEN intikken.
+// was de ongedaan-balk (acht seconden toen, twintig sinds ronde 61). Ter vergelijking:
+// voor "Begin opnieuw" moet je het woord WISSEN intikken.
 //
 // En het stond naast een KEUZELIJST, waar je juist heen gaat om van dossier te
 // wisselen. Eén mistik op een telefoon en jaren bewijsmateriaal waren weg.

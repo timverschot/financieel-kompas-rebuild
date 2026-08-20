@@ -60,16 +60,20 @@ describe('Documentkluis', () => {
   it('houdt de knop uit tot er een naam én een bestand is', async () => {
     const user = userEvent.setup()
     toon()
+    // ⚠ `aria-disabled` en niet `disabled` (ronde 61, huisregel sinds ronde 41): een
+    // écht uitgeschakelde knop valt uit de tab-volgorde, en dan komt wie met een
+    // toetsenbord werkt hem nooit tegen en hoort hij ook nooit wat er nog ontbreekt.
     const knop = screen.getByRole('button', { name: 'Document toevoegen' })
-    expect(knop).toBeDisabled()
+    expect(knop).toHaveAttribute('aria-disabled', 'true')
+    expect(knop).not.toBeDisabled()
 
     // Alleen een naam volstaat niet.
     await user.type(screen.getByLabelText('Naam'), 'Vonnis 2026')
-    expect(knop).toBeDisabled()
+    expect(knop).toHaveAttribute('aria-disabled', 'true')
 
     // Pas met een bestand erbij mag het.
     await user.upload(screen.getByLabelText('Bestand (foto of PDF)'), pdf())
-    expect(await screen.findByRole('button', { name: 'Document toevoegen' })).toBeEnabled()
+    expect(await screen.findByRole('button', { name: 'Document toevoegen' })).toHaveAttribute('aria-disabled', 'false')
   })
 
   it('voegt een document toe met de juiste velden en maakt het formulier leeg', async () => {
@@ -130,7 +134,7 @@ describe('Documentkluis', () => {
     expect(
       await screen.findByText('Dit bestand is te groot (max. 4 MB). Kies een kleinere scan of foto.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Document toevoegen' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Document toevoegen' })).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('vraagt eerst bevestiging voor het verwijderen', async () => {

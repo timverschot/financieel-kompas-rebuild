@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useT } from '../i18n'
 import type { Melding, MeldingPagina } from '../utils/meldingen'
 import type { DossierSoort } from '../utils/dossiersoort'
@@ -70,15 +70,22 @@ export function Meldingenbel({
   const [open, setOpen] = useState(false)
   const aantal = meldingen.length
 
+  const belKnop = useRef<HTMLButtonElement | null>(null)
+
   // Escape sluit het paneel. Overal elders in de app doet die toets dat al (de
   // popups, de 'Meer'-lade); hier deed hij niets, en dan moet je met de muis of je
   // vinger precies naast het paneel mikken om ervan af te raken.
+  //
+  // ⚠ En de focus gaat mee terug naar het belletje (ronde 61). Zonder die regel
+  // sloot Escape het paneel wel, maar viel je focus terug naar het begin van de
+  // pagina — je was kwijt waar je was. De 'Meer'-lade doet dit al zo.
   useEffect(() => {
     if (!open) return
     function opToets(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         e.preventDefault()
         setOpen(false)
+        belKnop.current?.focus()
       }
     }
     document.addEventListener('keydown', opToets)
@@ -108,10 +115,15 @@ export function Meldingenbel({
             - een zachte klop van twee seconden om de aandacht te trekken. Die stopt
               vanzelf (drie keer) en blijft dus niet eeuwig bewegen. */}
       <button
+        ref={belKnop}
         className={aantal > 0 ? 'knop knop-icoon bel bel-actief' : 'knop knop-icoon bel'}
         aria-label={aantal > 0 ? t('Meldingen ({n})', { n: aantal }) : t('Meldingen')}
         aria-expanded={open}
-        aria-haspopup="dialog"
+        // ⚠ GEEN `aria-haspopup` (ronde 61, na de nakijkronde). Er stond `"dialog"`, en
+        // dat belooft een venster met een focusval dat hier bewust niet bestaat — zie
+        // de opmerking bij het paneel hieronder. `"true"` is volgens de norm hetzelfde
+        // als `"menu"`, dus dat ruilt de ene verkeerde belofte in voor de andere: dit
+        // is ook geen menu. `aria-expanded` hieronder zegt al precies wat er gebeurt.
         onClick={() => setOpen((o) => !o)}
       >
         <span aria-hidden className={aantal > 0 && !open ? 'bel-teken bel-klop' : 'bel-teken'}>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { DOCUMENTSOORTEN } from '../data/schema'
 import type { DossierDocument, Documentsoort } from '../data/schema'
@@ -96,6 +96,12 @@ export function Documentkluis({
 
   // Nieuwste eerst; het filteren op eigenaar gebeurt in utils/kluis.ts.
   const gesorteerd = documentenVan(documenten, eigenaar)
+
+  // De id van de regel die zegt wat er nog ontbreekt. De knop wijst ernaar met
+
+  // `aria-describedby`, zodat wie erop landt de reden hoort (ronde 61).
+
+  const redenId = useId()
 
   const geldig = naam.trim().length > 0 && bestand.length > 0
 
@@ -305,17 +311,24 @@ export function Documentkluis({
               per scherm toe, en op Dossiers is "Kost toevoegen" de handeling waar
               je voor komt. Twee gevulde knoppen naast elkaar zeggen allebei "begin
               hier" en dan zegt geen van beide nog iets. */}
-          <button type="submit" disabled={!geldig} className="knop knop-secundair">
+          <button
+            type="submit"
+            aria-disabled={!geldig}
+            aria-describedby={geldig ? undefined : redenId}
+            className="knop knop-secundair"
+          >
             {t('Document toevoegen')}
           </button>
         </div>
 
-        {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt. */}
-        {!geldig && (
-          <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
-            {t('Geef een naam en kies een bestand om op te slaan.')}
-          </p>
-        )}
+        {/* ⚠ Deze regel staat er ALTIJD, ook leeg (ronde 61). Twee redenen. Een
+            `role="status"` die pas MÉT zijn tekst in het document verschijnt, wordt door
+            sommige schermlezers overgeslagen — die regel past de app elders al toe. En de
+            knop hiernaast wijst met `aria-describedby` naar deze tekst, dus wie erop landt,
+            hóórt meteen wat er nog ontbreekt in plaats van alleen "niet-beschikbaar". */}
+        <p id={redenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+          {geldig ? '' : t('Geef een naam en kies een bestand om op te slaan.')}
+        </p>
       </form>
     </>
   )

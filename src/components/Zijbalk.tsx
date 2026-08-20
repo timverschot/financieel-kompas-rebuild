@@ -64,7 +64,12 @@ export function Zijbalk({
         : t('Niet verbonden')
 
   return (
-    <aside style={paneel} aria-label={t('Hoofdnavigatie')}>
+    // ⚠ De NAAM hoort bij de <nav>, niet bij de <aside> (ronde 61). Met het label op
+    // de aside verscheen "Hoofdnavigatie" in de lijst van een schermlezer als
+    // AANVULLENDE inhoud, met daarnaast een naamloze navigatie — twee ingangen die
+    // geen van beide klopten. De klasse `zijbalk` bestaat alleen om de focusring in
+    // index.css te kunnen richten: dit paneel is ook in het lichte thema donker.
+    <aside className="zijbalk" style={paneel}>
       {/* De kop begint bewust op 1,3rem van links, zodat het merkteken optisch
           uitlijnt met de icoontjes in de navigatie eronder. */}
       {/* Ronde 32: het merk is een knop naar Overzicht geworden. Dat is wat een
@@ -103,7 +108,7 @@ export function Zijbalk({
         </span>
       </button>
 
-      <nav style={{ flex: 1, overflowY: 'auto', padding: '0.6rem 0.5rem' }}>
+      <nav aria-label={t('Hoofdnavigatie')} style={{ flex: 1, overflowY: 'auto', padding: '0.6rem 0.5rem' }}>
         {PAGINAS.map((p) => {
           const aan = p.id === actief
           return (
@@ -170,7 +175,10 @@ export function Zijbalk({
                 aria-label={t(k.label)}
                 style={{
                   flex: 1,
-                  minHeight: 30,
+                  // 44 en niet 30 (ronde 61): op een aanraakbaar breed scherm — een
+                  // laptop met tikscherm, een tablet in liggende stand — was dit het
+                  // enige doel in de zijbalk onder de maat. Er is plaats genoeg.
+                  minHeight: 44,
                   borderRadius: 'var(--radius-sm)',
                   border: 'none',
                   cursor: 'pointer',

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Aflossing, DossierDocument, Kind, Lening, LeningRichting, Transactie } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
@@ -40,6 +40,8 @@ function AflossingToevoegen({
   const [bedrag, setBedrag] = useState('')
   const [datum, setDatum] = useState(vandaag())
   const centen = invoerNaarCenten(bedrag)
+  // De id van de regel die zegt wat er nog ontbreekt (ronde 61).
+  const redenId = useId()
   const geldig = Number.isFinite(centen) && centen > 0
   const teVeel = geldig && centen > openstaand
 
@@ -68,10 +70,20 @@ function AflossingToevoegen({
       <div className="knoprij">
         <input aria-label={t('Aflossing (€)')} style={{ width: 130 }} inputMode="decimal" placeholder={t('Aflossing (€)')} value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
         <input aria-label={t('Datum aflossing')} type="date" value={datum} onChange={(e) => setDatum(e.target.value)} />
-        <button type="submit" disabled={!geldig} className="knop knop-secundair knop-klein">
+        <button
+          type="submit"
+          aria-disabled={!geldig}
+          aria-describedby={geldig ? undefined : redenId}
+          className="knop knop-secundair knop-klein"
+        >
           {t('Aflossing toevoegen')}
         </button>
       </div>
+      {/* ⚠ Deze regel ontbrak hier volledig (ronde 61): de knop stond uit en er stond
+          nergens waarom. Met een toetsenbord kwam je hem bovendien niet eens tegen. */}
+      <p id={redenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+        {geldig ? '' : t('Vul een bedrag groter dan nul in.')}
+      </p>
       {vermoedelijk && (
         <div className="knoprij" role="status" style={{ alignItems: 'baseline' }}>
           <span className="rij-meta" style={{ color: 'var(--warn-tekst)' }}>

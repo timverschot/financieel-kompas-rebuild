@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { REKENING_TYPES, type Rekening, type RekeningType } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
@@ -65,6 +65,9 @@ export function RekeningFormulier({
   // saldo bewaard werd. Benoemen is beter dan stil laten staan.
   const toontTegoed = isKrediet && beginsaldo.trim() !== '' && invoerNaarCenten(beginsaldo) < 0
   const naamFout = naam.trim().length === 0
+  // De id van de regel die zegt wat er nog ontbreekt. De knop wijst ernaar met
+  // `aria-describedby`, zodat wie erop landt de reden hoort (ronde 61).
+  const redenId = useId()
   const geldig = !naamFout && !limietFout && !dagFout && !afboekFout
 
   // Zet alle velden terug op hun beginwaarde.
@@ -293,7 +296,11 @@ export function RekeningFormulier({
       </div>
 
       <div className="knoprij">
-        <button type="submit" className="knop knop-primair" disabled={!geldig}>
+        <button
+          type="submit" className="knop knop-primair"
+          aria-disabled={!geldig}
+          aria-describedby={geldig ? undefined : redenId}
+        >
           {bewerken ? t('Rekening wijzigen') : t('Rekening toevoegen')}
         </button>
         {bewerken && onAnnuleer && (
@@ -302,12 +309,18 @@ export function RekeningFormulier({
           </button>
         )}
       </div>
-      {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt. */}
-      {!geldig && (
-        <p className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
-          {t('Geef een naam en een geldig bedrag om op te slaan.')}
-        </p>
-      )}
+      {/* ⚠ Deze regel staat er ALTIJD, ook leeg (ronde 61). Twee redenen. Een
+          `role="status"` die pas MÉT zijn tekst in het document verschijnt, wordt door
+          sommige schermlezers overgeslagen — die regel past de app elders al toe. En de
+          knop hiernaast wijst met `aria-describedby` naar deze tekst, dus wie erop landt,
+          hóórt meteen wat er nog ontbreekt in plaats van alleen "niet-beschikbaar". */}
+      <p id={redenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+        {geldig
+          ? ''
+          : naamFout
+            ? t('Geef een naam om op te slaan.')
+            : t('Er staat een getal bij de kredietkaart dat de app niet kan gebruiken. Pas het aan om op te slaan.')}
+      </p>
     </form>
   )
 }

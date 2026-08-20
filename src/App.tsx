@@ -150,6 +150,7 @@ import { OnderNavigatie } from './components/OnderNavigatie'
 import { PAGINAS, type Pagina } from './components/navigatie'
 import type { AnalyseTab } from './utils/analysetab'
 import { huidigeRoute, volgRoute, zetRoute } from './utils/route'
+import { maakUndoKlok, type UndoKlok } from './utils/undoKlok'
 import { sluitBovenstePopup } from './ui/popupstapel'
 import { BoekingDialoog } from './components/BoekingDialoog'
 import { Dialoog } from './ui/Dialoog'
@@ -457,7 +458,17 @@ export function App() {
   const [backupTekst, setBackupTekst] = useState<string | null>(null)
   const [undoInfo, setUndoInfo] = useState<{ boodschap: string; herstel: () => Promise<void> } | null>(null)
   const backendRef = useRef<DriveBackend | null>(null)
-  const undoTimer = useRef<number | null>(null)
+  const undoKlok = useRef<UndoKlok>(
+    maakUndoKlok(() => setUndoInfo(null), { zet: (fn, ms) => window.setTimeout(fn, ms), wis: (id) => window.clearTimeout(id) }),
+  )
+
+  // Toon een korte "ongedaan maken"-melding na een verwijdering. Herstellen is dankzij
+  // het append-only logboek eenvoudig: we bewaren het verwijderde item gewoon opnieuw
+  // (met dezelfde id), waardoor het weer verschijnt.
+  function toonUndo(boodschap: string, herstel: () => Promise<void>) {
+    setUndoInfo({ boodschap, herstel })
+    undoKlok.current.start()
+  }
   const { t, taal, zetTaal } = useT()
   const { budgetDrempel } = useInstellingen()
 
@@ -525,24 +536,57 @@ export function App() {
   // Toon een korte "ongedaan maken"-melding na een verwijdering. Herstellen is
   // dankzij het append-only logboek eenvoudig: we bewaren het verwijderde item
   // gewoon opnieuw (met dezelfde id), waardoor het weer verschijnt.
-  function toonUndo(boodschap: string, herstel: () => Promise<void>) {
-    if (undoTimer.current) window.clearTimeout(undoTimer.current)
-    setUndoInfo({ boodschap, herstel })
-    undoTimer.current = window.setTimeout(() => setUndoInfo(null), 8000)
+  //
+  // ⚠ De balk blijft TWINTIG seconden staan en pauzeert zolang je erop staat of erin
+  // gefocust bent (ronde 61). Waarom, en waarom die twee vlaggen: zie
+  // `utils/undoKlok.ts`. Daar staat ook de rekenregel, los te toetsen zonder browser.
+  // Verder: een kruisje om hem meteen weg te doen, en Ctrl/Cmd+Z werkt overal.
+  function sluitUndo() {
+    undoKlok.current.stop()
+    setUndoInfo(null)
   }
 
   async function undoNu() {
     if (!undoInfo) return
     const herstel = undoInfo.herstel
     setUndoInfo(null)
-    if (undoTimer.current) window.clearTimeout(undoTimer.current)
+    undoKlok.current.stop()
     await herstel()
     await herlaad()
   }
 
-  useEffect(() => () => {
-    if (undoTimer.current) window.clearTimeout(undoTimer.current)
-  }, [])
+  const klok = undoKlok.current
+  useEffect(() => () => klok.stop(), [klok])
+
+  // Ctrl+Z (⌘Z op een Mac) draait de laatste verwijdering terug, zolang de balk er
+  // staat (ronde 61). Dat is de snelste weg voor iedereen, en voor wie met een
+  // toetsenbord werkt vaak de enige haalbare: de knop in de balk staat helemaal
+  // achteraan de pagina.
+  //
+  // ⚠ NIET terwijl je in een veld typt. Daar betekent Ctrl+Z "maak mijn laatste
+  // typwerk ongedaan" — dat is de browser zijn taak, en die mogen we niet afpakken.
+  useEffect(() => {
+    if (!undoInfo) return
+    function opToets(e: KeyboardEvent) {
+      if (e.key !== 'z' && e.key !== 'Z') return
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return
+      const doel = e.target as HTMLElement | null
+      const tag = doel?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || doel?.isContentEditable) return
+      // ⚠ Ook niet terwijl er een popup openstaat (nakijkronde ronde 61). Die dekt de
+      // balk af — voor voorleessoftware bestaat alles erbuiten dan niet eens — dus je
+      // zou iets terugzetten dat je niet ziet gebeuren.
+      if (document.querySelector('[aria-modal="true"]')) return
+      e.preventDefault()
+      void undoNu()
+    }
+    document.addEventListener('keydown', opToets)
+    return () => document.removeEventListener('keydown', opToets)
+    // `undoNu` wordt bij elke hertekening opnieuw gemaakt; zou hij hier in de lijst
+    // staan, dan werd deze luisteraar tientallen keren per seconde af- en
+    // aangekoppeld. Wat hij doet hangt alleen van `undoInfo` af, en dát staat er wel.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [undoInfo])
 
   useEffect(() => {
     let actief = true
@@ -1388,7 +1432,7 @@ export function App() {
           : t('Document verwijderd'),
         async () => {
           // NIET het hele oude dossier terugschrijven. Tussen het verwijderen en het
-          // ongedaan maken zitten tot acht seconden, en in die tijd kan je op ditzelfde
+          // ongedaan maken zitten tot twintig seconden, en in die tijd kan je op ditzelfde
           // scherm een kaart aan- of uitzetten, of kan er een wijziging van je gsm
           // binnenkomen via de synchronisatie. Het logboek werkt met "de laatste
           // schrijver wint", dus een oude foto terugzetten zou zo'n wijziging stil
@@ -2189,14 +2233,6 @@ export function App() {
           <PaginaKop titel={paginaTitel} actie={maandNav} />
 
           <div className="raster-lijst-formulier">
-          <div className="kolom-formulier">
-            {/* Het formulier biedt zelf alle ingebouwde hoofdcategorieën aan, dus het
-                hoort er ook te staan als je nog geen eigen categorie hebt gemaakt. */}
-            <Kaart titel={t('Budget instellen')}>
-              <BudgetFormulier categorieen={categorieen} onOpslaan={voegBudgetToe} />
-            </Kaart>
-          </div>
-
           <div className="kolom-lijst stapel">
           {/* Bovenaan het plan: wat er van je inkomen al vergeven is, en wat er
               overblijft. Budgetten en vaste lasten beantwoorden dezelfde vraag van
@@ -2303,6 +2339,14 @@ export function App() {
               onOngedaan={maakInboekenOngedaan}
             />
           </ErrorBoundary>
+          </div>
+
+          <div className="kolom-formulier">
+            {/* Het formulier biedt zelf alle ingebouwde hoofdcategorieën aan, dus het
+                hoort er ook te staan als je nog geen eigen categorie hebt gemaakt. */}
+            <Kaart titel={t('Budget instellen')}>
+              <BudgetFormulier categorieen={categorieen} onOpslaan={voegBudgetToe} />
+            </Kaart>
           </div>
           </div>
         </>
@@ -2421,35 +2465,6 @@ export function App() {
           <PaginaKop titel={paginaTitel} />
 
           <div className="raster-lijst-formulier">
-          {/* Rechts staat het detail van de rekening die je aanklikt: haar saldo,
-              wat er deze maand op gebeurde, en haar laatste boekingen. Is er niets
-              gekozen (of ben je aan het bewerken), dan staat daar het formulier. */}
-          <div className="kolom-formulier">
-            {bewerkRekening || !gekozenRekening ? (
-              <Kaart titel={bewerkRekening ? t('Rekening bewerken') : t('Nieuwe rekening')}>
-                <RekeningFormulier onOpslaan={slaRekeningOp} onAnnuleer={() => setBewerkRekening(null)} bewerken={bewerkRekening} />
-              </Kaart>
-            ) : (
-              <RekeningDetail
-                rekening={gekozenRekening}
-                transacties={transacties}
-                overboekingen={overboekingen}
-                waarderingen={waarderingen}
-                categorieen={categorieen}
-                rekeningNaam={(id) => rekeningen.find((r) => r.id === id)?.naam}
-                onBewerk={setBewerkRekening}
-                onArchiveer={archiveerRekening}
-                onVerwijder={verwijderRek}
-                onWaardering={voegWaarderingToe}
-                onWaarderingVerwijderen={verwijderWaarderingH}
-                rekeningen={rekeningen}
-                onOverboeking={voegOverboekingToe}
-                onGaNaarTransacties={gaNaarTransacties}
-                onBewerkTransactie={setBewerkTransactie}
-              />
-            )}
-          </div>
-
           <div className="kolom-lijst stapel">
           <Kaart
             actie={
@@ -2544,6 +2559,35 @@ export function App() {
             />
           </ErrorBoundary>
           </div>
+
+          {/* Rechts staat het detail van de rekening die je aanklikt: haar saldo,
+              wat er deze maand op gebeurde, en haar laatste boekingen. Is er niets
+              gekozen (of ben je aan het bewerken), dan staat daar het formulier. */}
+          <div className="kolom-formulier">
+            {bewerkRekening || !gekozenRekening ? (
+              <Kaart titel={bewerkRekening ? t('Rekening bewerken') : t('Nieuwe rekening')}>
+                <RekeningFormulier onOpslaan={slaRekeningOp} onAnnuleer={() => setBewerkRekening(null)} bewerken={bewerkRekening} />
+              </Kaart>
+            ) : (
+              <RekeningDetail
+                rekening={gekozenRekening}
+                transacties={transacties}
+                overboekingen={overboekingen}
+                waarderingen={waarderingen}
+                categorieen={categorieen}
+                rekeningNaam={(id) => rekeningen.find((r) => r.id === id)?.naam}
+                onBewerk={setBewerkRekening}
+                onArchiveer={archiveerRekening}
+                onVerwijder={verwijderRek}
+                onWaardering={voegWaarderingToe}
+                onWaarderingVerwijderen={verwijderWaarderingH}
+                rekeningen={rekeningen}
+                onOverboeking={voegOverboekingToe}
+                onGaNaarTransacties={gaNaarTransacties}
+                onBewerkTransactie={setBewerkTransactie}
+              />
+            )}
+          </div>
           </div>
         </>
       )}
@@ -2568,12 +2612,6 @@ export function App() {
           <PaginaKop titel={paginaTitel} />
 
           <div className="raster-lijst-formulier">
-          <div className="kolom-formulier stapel">
-            <Kaart titel={bewerkCategorie ? t('Categorie bewerken') : t('Nieuwe categorie')}>
-              <CategorieFormulier onOpslaan={slaCategorieOp} onAnnuleer={() => setBewerkCategorie(null)} bewerken={bewerkCategorie} />
-            </Kaart>
-          </div>
-
           <div className="kolom-lijst stapel">
           <Kaart>
             {categorieen.length === 0 && (
@@ -2621,6 +2659,12 @@ export function App() {
               onVerplaats={verplaatsHoofdcategorie}
             />
           </ErrorBoundary>
+          </div>
+
+          <div className="kolom-formulier stapel">
+            <Kaart titel={bewerkCategorie ? t('Categorie bewerken') : t('Nieuwe categorie')}>
+              <CategorieFormulier onOpslaan={slaCategorieOp} onAnnuleer={() => setBewerkCategorie(null)} bewerken={bewerkCategorie} />
+            </Kaart>
           </div>
           </div>
         </>
@@ -2724,7 +2768,15 @@ export function App() {
 
   const undoBalk = undoInfo && (
     <div
+      // De klasse bestaat om de focusring te kunnen richten: deze balk is ook in het
+      // lichte thema donker, net als het zijpaneel. Zie index.css.
+      className="undo-balk"
       role="status"
+      // De klok staat stil zolang je erop staat of erin gefocust bent.
+      onMouseEnter={() => undoKlok.current.pauzeer('muis')}
+      onMouseLeave={() => undoKlok.current.hervat('muis')}
+      onFocusCapture={() => undoKlok.current.pauzeer('focus')}
+      onBlurCapture={() => undoKlok.current.hervat('focus')}
       style={{
         position: 'fixed',
         left: '50%',
@@ -2753,6 +2805,18 @@ export function App() {
       >
         {t('Ongedaan maken')}
       </button>
+      {/* Een kruisje, zodat je de balk meteen weg kan doen in plaats van twintig
+          seconden te wachten. Dat is ook wat de norm bedoelt met "de gebruiker kan
+          de tijdslimiet uitzetten". */}
+      <button
+        type="button"
+        className="knop knop-kaal"
+        aria-label={t('Melding sluiten')}
+        onClick={sluitUndo}
+        style={{ color: '#fff8ed', minHeight: 44, minWidth: 44 }}
+      >
+        ×
+      </button>
     </div>
   )
 
@@ -2765,6 +2829,28 @@ export function App() {
     return (
       <CategorieVolgordeProvider volgorde={hoofdVolgorde}>
       <div style={{ display: 'flex', minHeight: '100vh' }}>
+        {/* ⚠ "Sla de navigatie over" (ronde 61). Tel eens mee wat je op een pc met het
+            toetsenbord passeert vóór je bij de inhoud bent: het merkteken, vijftien
+            paginaknoppen en drie weergaveknoppen. Negentien keer Tab, op élke pagina,
+            elke keer opnieuw — dat is de klassieke reden waarom mensen het met een
+            toetsenbord opgeven. Deze link staat buiten beeld tot je hem focust, en dan
+            springt hij tevoorschijn. Hij hoort vóór de zijbalk te staan, want anders
+            kom je hem pas tegen ná datgene wat hij moet overslaan. */}
+        <a
+          className="skiplink"
+          href="#inhoud"
+          // ⚠ Zelf de focus verzetten en het ADRES met rust laten (nakijkronde ronde
+          // 61). De pagina staat sinds ronde 59 in het adres (`#/budget`); zou de
+          // browser hier `#inhoud` van maken, dan zet de app dat meteen weer recht —
+          // maar de browser heeft dan al een stap in zijn geschiedenis bijgezet, en dan
+          // doet de terugknop één keer niets.
+          onClick={(e) => {
+            e.preventDefault()
+            document.getElementById('inhoud')?.focus()
+          }}
+        >
+          {t('Ga naar de inhoud')}
+        </a>
         <Zijbalk actief={pagina} onKies={kiesPagina} verbonden={verbonden} bezig={bezig} statusTekst={statusTekst} />
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <header
@@ -2817,7 +2903,13 @@ export function App() {
               </button>
             )}
           </header>
-          <div style={{ padding: '1.5rem 1.5rem 3rem' }}>
+          {/* ⚠ Een echte <main> (ronde 61). De smalle weergave had er al een; de brede
+              werkte met een kale <div>, dus juist op het toestel waar de zijbalk
+              negentien knoppen vóór de inhoud zet, ontbrak de landmark om erheen te
+              springen. `tabIndex={-1}` is nodig omdat de skiplink hierheen springt:
+              zonder dat verplaatst de browser de focus niet mee en tabt je volgende
+              druk weer vanaf de zijbalk verder. */}
+          <main id="inhoud" tabIndex={-1} style={{ padding: '1.5rem 1.5rem 3rem' }}>
             {/* Bovenaan de inhoud en NIET zwevend: zie ui-uitleg in
                 components/NieuweVersieBalk.tsx. Buiten de `key` hieronder, zodat de
                 melding niet bij elke tabwissel opnieuw invliegt. */}
@@ -2831,7 +2923,7 @@ export function App() {
             <div className="inhoud-breed pagina-in" key={pagina}>
               {paginaInhoud}
             </div>
-          </div>
+          </main>
         </div>
         {undoBalk}
         <ErrorBoundary naam="Boeking">{boekingLagen}</ErrorBoundary>
