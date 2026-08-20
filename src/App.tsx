@@ -171,7 +171,7 @@ import { inkomstenUitgavenPerMaand } from './utils/maandverloop'
 import { labelVanCategorie } from './data/categorieen/resolve'
 import { vulCategorieAan } from './utils/transactie'
 import { stelCategorieboomIn } from './data/categorieen/zoek'
-import { budgetKleur, uitgavenInMaand } from './utils/budget'
+import { budgetKleur, geldendeBudgetten, maandenMetEigenBudget, uitgavenInMaand } from './utils/budget'
 import { bouwHandelaarIndex } from './utils/categorieVoorstel'
 import { bonVanTransactie } from './utils/kluis'
 import { formatEuro } from './utils/format'
@@ -1672,6 +1672,18 @@ export function App() {
   // inkomsten komen hieruit, zodat beide cijfers gegarandeerd bij elkaar horen.
   const planBlik = maandVooruitblik(transacties ?? [], terugkerendePosten, maand)
 
+  // Welke budgetten gelden in de maand die je BEKIJKT (ronde 62). Hoogstens één per
+  // categorie: een uitzondering voor deze maand gaat vóór op je standaard. Zie
+  // `geldendeBudgetten` in utils/budget.ts voor waarom alles daarlangs moet.
+  const geldendNu = geldendeBudgetten(budgetten, maand)
+  // Het bedrag van je STANDAARDbudget voor een categorie, of niets wanneer je er
+  // geen hebt. Dient om bij een uitzondering te kunnen zeggen wat er normaal staat.
+  const standaardBedrag = (categorieId: string): number | undefined =>
+    budgetten.find((b) => b.categorieId === categorieId && b.maand === undefined)?.bedrag
+  // Voor welke ANDERE maanden staat er een apart budget klaar? Zonder deze regel zet
+  // je in augustus iets voor december en zie je dat daarna nergens meer terug.
+  const andereBudgetmaanden = maandenMetEigenBudget(budgetten, maand, huidigeMaand())
+
   if (startFout !== null) {
     return (
       <main style={container}>
@@ -1833,6 +1845,12 @@ export function App() {
   // bij de gedeelde kosten.
   function gaNaarMelding(doel: Pagina, subtab?: DossierSoort, dossierId?: string) {
     setPagina(doel)
+    // ⚠ Het belletje gaat over NU (zie de opmerking bij `meldingen` hierboven), dus de
+    // Budget-pagina hoort ook op deze maand te openen (nakijkronde ronde 62). Stond de
+    // schakelaar nog op december en klikte je op "Voeding is overschreden", dan landde
+    // je op december — waar Voeding op 0 % kan staan. Sinds ronde 62 kan het bedrag uit
+    // de melding daar zelfs helemaal niet bestaan.
+    if (doel === 'budget') setMaand(huidigeMaand())
     // Zonder subtab de lade meenemen waar je nu staat: anders zegt het adres
     // `#/dossiers` en land je na een herlaadbeurt in "Gedeelde kosten" in plaats van
     // in de lade die je open had. Voor de Analyse-pagina geldt sinds ronde 60
@@ -2105,7 +2123,7 @@ export function App() {
                 <OverzichtZijkolom
                   transacties={transacties}
                   budgetten={budgetten}
-                  maand={maandJaarLabel(maand)}
+                  maand={maand}
                   categorieNaam={categorieNaam}
                   onGaNaarBudget={() => kiesPagina('budget')}
                   onKies={(categorieId) => gaNaarCategorie(categorieId, { maand })}
@@ -2270,15 +2288,22 @@ export function App() {
 
           <ErrorBoundary naam="Budgetten">
             <Kaart titel={t('Budgetten')} bijschrift={t('voor {maand}', { maand: maandJaarLabel(maand) })}>
+              {/* ⚠ Op de HELE lijst kijken en niet alleen op deze maand (nakijkronde
+                  ronde 62). Had je enkel een budget voor januari en keek je naar
+                  augustus, dan zei de kaart "Nog geen budgetten ingesteld" met daaronder
+                  een knop naar januari — twee zinnen die elkaar tegenspreken. */}
               {budgetten.length === 0 && <Leeg>{t('Nog geen budgetten ingesteld.')}</Leeg>}
-              {budgetten.length > 0 && (
+              {budgetten.length > 0 && geldendNu.length === 0 && (
+                <Leeg>{t('Voor deze maand staat er geen budget. Je budgetten gelden voor een andere maand.')}</Leeg>
+              )}
+              {geldendNu.length > 0 && (
                 <p className="rij-meta" style={{ margin: 0 }}>
                   {t('Een terugbetaling in dezelfde categorie verlaagt het verbruik. Daardoor kan dit cijfer lager liggen dan de uitgaven in de Analyse.')}
                 </p>
               )}
-              {budgetten.length > 0 && (
+              {geldendNu.length > 0 && (
                 <ul className="lijst">
-                  {budgetten.map((b) => {
+                  {geldendNu.map((b) => {
                     const naam = categorieNaam(b.categorieId) ?? '—'
                     const uitgegeven = uitgavenInMaand(transacties, b.categorieId, maand)
                     const fractie = Math.min(uitgegeven / b.bedrag, 1)
@@ -2308,18 +2333,57 @@ export function App() {
                             </span>
                             <button
                               className="knop knop-kaal knop-gevaar"
-                              aria-label={t('Verwijder budget {naam}', { naam })}
+                              aria-label={
+                                b.maand === undefined
+                                  ? t('Verwijder budget {naam}', { naam })
+                                  : t('Verwijder het budget van {naam} voor {maand}', { naam, maand: maandJaarLabel(maand) })
+                              }
                               onClick={() => verwijderBud(b.id)}
                             >
                               ×
                             </button>
                           </span>
                         </div>
+                        {/* ⚠ Een uitzondering ziet er anders uit dan je standaard (ronde 62).
+                            Zonder deze regel zou je in december een ander bedrag zien staan
+                            dan in november, zonder één aanwijzing waarom — en zou je denken
+                            dat je standaardbudget veranderd is. Er staat ook bij wát je
+                            standaard is, zodat het kruisje ernaast geen sprong in het
+                            duister is. */}
+                        {b.maand !== undefined && (
+                          <span className="rij-meta">
+                            {standaardBedrag(b.categorieId) === undefined
+                              ? t('Alleen voor {maand} — je hebt hier geen vast budget voor.', { maand: maandJaarLabel(maand) })
+                              : t('Alleen voor {maand} — normaal is dit {bedrag}.', {
+                                  maand: maandJaarLabel(maand),
+                                  bedrag: formatEuro(standaardBedrag(b.categorieId) as number),
+                                })}
+                          </span>
+                        )}
                         <Balk label={naam} fractie={fractie} kleur={kleur} nu={uitgegeven} max={b.bedrag} />
                       </li>
                     )
                   })}
                 </ul>
+              )}
+              {/* ⚠ Een budget voor september zie je in augustus nergens — en dat hoort
+                  ook zo, want je augustuslijst gaat over augustus. Maar dan weet je ook
+                  niet meer dát je het gezet hebt. Deze regel zegt het, met een knop om
+                  erheen te bladeren (ronde 62). */}
+              {andereBudgetmaanden.length > 0 && (
+                <p className="rij-meta" style={{ margin: 0 }}>
+                  {t('Je hebt ook een apart budget voor:')}{' '}
+                  {andereBudgetmaanden.map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      className="knop knop-ghost knop-klein"
+                      onClick={() => setMaand(m)}
+                    >
+                      {maandJaarLabel(m)}
+                    </button>
+                  ))}
+                </p>
               )}
             </Kaart>
           </ErrorBoundary>
@@ -2345,7 +2409,13 @@ export function App() {
             {/* Het formulier biedt zelf alle ingebouwde hoofdcategorieën aan, dus het
                 hoort er ook te staan als je nog geen eigen categorie hebt gemaakt. */}
             <Kaart titel={t('Budget instellen')}>
-              <BudgetFormulier categorieen={categorieen} onOpslaan={voegBudgetToe} />
+              <BudgetFormulier
+                categorieen={categorieen}
+                budgetten={budgetten}
+                maand={maand}
+                maandLabel={maandJaarLabel(maand)}
+                onOpslaan={voegBudgetToe}
+              />
             </Kaart>
           </div>
           </div>

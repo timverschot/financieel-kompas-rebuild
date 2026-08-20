@@ -2,7 +2,7 @@ import type { Budget, Maandafsluiting, TerugkerendePost, Transactie } from '../d
 import { maandInkomsten, maandUitgaven } from './overzicht'
 import { bepaalBalans, type Balans } from './balans'
 import { mistCategorie } from './transactieFilter'
-import { uitgavenInMaand } from './budget'
+import { geldendeBudgetten, uitgavenInMaand } from './budget'
 import { maandVooruitblik } from './vooruitblik'
 
 // De rekenkern van de maandafsluiting (ronde 43).
@@ -86,7 +86,11 @@ export function maandStand(invoer: MaandStandInvoer): MaandStand {
   const vasteLastenOpen = blik.achterstalligeIds.length
 
   let budgettenOver = 0
-  for (const b of invoer.budgetten) {
+  // ⚠ `geldendeBudgetten` met de maand die je AFSLUIT (ronde 62), niet met de maand
+  // die je bekijkt: dit scherm heeft zijn eigen maandkeuze. Zonder deze functie zou
+  // een categorie met een standaardbudget én een uitzondering hier dubbel geteld
+  // worden — "2 budgetten over" terwijl er één over is.
+  for (const b of geldendeBudgetten(invoer.budgetten, invoer.maand)) {
     if (b.bedrag <= 0) continue
     if (uitgavenInMaand(invoer.transacties, b.categorieId, invoer.maand) > b.bedrag) budgettenOver++
   }

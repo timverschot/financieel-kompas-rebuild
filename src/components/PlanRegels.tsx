@@ -1,6 +1,7 @@
 import type { Budget, TerugkerendePost } from '../data/schema'
 import { formatEuro } from '../utils/format'
 import { plancijfers } from '../utils/vastelast'
+import { geldendeBudgetten } from '../utils/budget'
 import { Kaart } from '../ui/basis'
 import { useT } from '../i18n'
 
@@ -57,7 +58,12 @@ export function PlanRegels({
   const { t } = useT()
   const cijfers = plancijfers(posten, maand)
   const teVerdelen = verwachteInkomsten - cijfers.vastDezeMaand - cijfers.opzij
-  const gebudgetteerd = budgetten.reduce((som, b) => som + b.bedrag, 0)
+  // ⚠ `geldendeBudgetten` en niet de kale lijst (ronde 62). Dit is de ENIGE plek die
+  // budgetten OPTELT. Sinds een budget een eigen maand kan hebben, zou een categorie
+  // met zowel een standaardbudget als een uitzondering hier tweemaal meetellen — en
+  // dan staat er gewoon een te hoog getal in "je budgetten vragen samen …", zonder
+  // dubbele regel die je erop wijst. Precies het soort fout dat maanden meegaat.
+  const gebudgetteerd = geldendeBudgetten(budgetten, maand).reduce((som, b) => som + b.bedrag, 0)
   // Zonder vaste inkomst weet de app niet waarop je plan gebaseerd is. Dan een
   // groot rood negatief bedrag tonen is erger dan niets: het lijkt een oordeel
   // over je situatie, terwijl het gewoon betekent dat er nog niets ingevuld is.

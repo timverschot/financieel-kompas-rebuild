@@ -256,6 +256,45 @@ describe('App (desktop) — doorklikken vanaf de budgetstatus in de zijkolom', (
     expect(screen.getByRole('button', { name: 'Wis filter Voeding' })).toBeInTheDocument()
   })
 
+  // ⚠ Ronde 62. Deze kolom stond ALTIJD op € 0,00 en 0 %, hoeveel je die maand ook
+  // uitgaf: `App.tsx` gaf de maand door als leesbaar label ("augustus 2026") en de
+  // rekenkern vergelijkt met `datum.startsWith(maand)`. Elke balk groen, en niets dat
+  // het verried — de twee tests hierboven klikken alleen op een rij en keken nooit
+  // naar een bedrag. Deze test kijkt wél naar het bedrag.
+  it('toont in de zijkolom wat er ÉCHT uitgegeven is', async () => {
+    await bewaarBudget({ id: 'b1', categorieId: 'cat-voeding', bedrag: 40000 })
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    const zijkolom = screen.getByText('Budgetstatus').closest('section.kaart') as HTMLElement
+    // € 320 boodschappen van een budget van € 400 = 80 %.
+    expect(within(zijkolom).getByRole('progressbar', { name: 'Voeding' })).toHaveAttribute('aria-valuenow', '32000')
+    expect(within(zijkolom).getByRole('button', { name: /^Bekijk de boekingen van Voeding —/ })).toHaveAccessibleName(
+      /320/,
+    )
+  })
+
+  it('toont in de zijkolom één rij per categorie, ook met een uitzondering', async () => {
+    // ⚠ Ronde 62. Van de vijf plaatsen die met budgetten rekenen was dit de enige
+    // zonder één test — terwijl deze kolom op een breed scherm het eerste is wat je
+    // ziet. Zonder `geldendeBudgetten` staat Voeding hier twee keer, en met vier
+    // plaatsen duwen die twee de rest eruit.
+    await bewaarBudget({ id: 'budget-cat-voeding', categorieId: 'cat-voeding', bedrag: 40000 })
+    await bewaarBudget({
+      id: `budget-cat-voeding-${huidigeMaand()}`,
+      categorieId: 'cat-voeding',
+      bedrag: 80000,
+      maand: huidigeMaand(),
+    })
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    const zijkolom = screen.getByText('Budgetstatus').closest('section.kaart') as HTMLElement
+    expect(within(zijkolom).getAllByRole('progressbar', { name: 'Voeding' })).toHaveLength(1)
+    // En de uitzondering telt: € 320 van € 800, niet van € 400.
+    expect(within(zijkolom).getByRole('progressbar', { name: 'Voeding' })).toHaveAttribute('aria-valuemax', '80000')
+  })
+
   it('laat de knop "Alle" gewoon naar de Budget-pagina gaan', async () => {
     const user = userEvent.setup()
     await bewaarBudget({ id: 'b1', categorieId: 'cat-voeding', bedrag: 40000 })

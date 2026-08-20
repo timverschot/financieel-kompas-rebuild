@@ -828,6 +828,19 @@ const en: Record<string, string> = {
   'Hoofdcategorieën': 'Main categories',
   'Eigen categorieën': 'Own categories',
   'Maandbudget (€)': 'Monthly budget (€)',
+  'Voor welke maanden geldt dit?': 'Which months does this apply to?',
+  'Alleen {maand}': 'Only {maand}',
+  'Je vaste budget blijft staan; deze maand geldt dit bedrag.':
+    'Your regular budget stays; this amount applies to this month.',
+  'Dit bedrag geldt elke maand — behalve de maanden waarvoor je een apart budget zette.':
+    'This amount applies every month — except the months you set a separate budget for.',
+  'Alleen voor {maand} — je hebt hier geen vast budget voor.':
+    'For {maand} only — you have no regular budget for this.',
+  'Alleen voor {maand} — normaal is dit {bedrag}.': 'For {maand} only — normally this is {bedrag}.',
+  'Verwijder het budget van {naam} voor {maand}': 'Delete the budget for {naam} for {maand}',
+  'Je hebt ook een apart budget voor:': 'You also have a separate budget for:',
+  'Voor deze maand staat er geen budget. Je budgetten gelden voor een andere maand.':
+    'There is no budget for this month. Your budgets apply to another month.',
   'Budget instellen': 'Set budget',
   // Transactieformulier
   'Handelaar / winkel': 'Merchant / store',
@@ -3081,6 +3094,20 @@ const fr: Record<string, string> = {
   'Hoofdcategorieën': 'Catégories principales',
   'Eigen categorieën': 'Catégories personnelles',
   'Maandbudget (€)': 'Budget mensuel (€)',
+  'Voor welke maanden geldt dit?': 'Pour quels mois cela vaut-il\u00a0?',
+  'Alleen {maand}': 'Uniquement {maand}',
+  'Je vaste budget blijft staan; deze maand geldt dit bedrag.':
+    'Ton budget habituel reste\u00a0; ce montant vaut pour ce mois-ci.',
+  'Dit bedrag geldt elke maand — behalve de maanden waarvoor je een apart budget zette.':
+    'Ce montant vaut chaque mois — sauf les mois pour lesquels tu as défini un budget distinct.',
+  'Alleen voor {maand} — je hebt hier geen vast budget voor.':
+    'Uniquement pour {maand} — tu n’as pas de budget habituel pour cela.',
+  'Alleen voor {maand} — normaal is dit {bedrag}.':
+    'Uniquement pour {maand} — normalement c’est {bedrag}.',
+  'Verwijder het budget van {naam} voor {maand}': 'Supprime le budget de {naam} pour {maand}',
+  'Je hebt ook een apart budget voor:': 'Tu as aussi un budget distinct pour\u00a0:',
+  'Voor deze maand staat er geen budget. Je budgetten gelden voor een andere maand.':
+    'Il n’y a pas de budget pour ce mois-ci. Tes budgets valent pour un autre mois.',
   'Budget instellen': 'Définir le budget',
   // Transactieformulier
   'Handelaar / winkel': 'Commerçant / magasin',

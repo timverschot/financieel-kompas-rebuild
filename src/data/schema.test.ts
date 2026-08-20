@@ -115,6 +115,23 @@ describe('BudgetSchema', () => {
     expect(BudgetSchema.safeParse({ id: 'b1', categorieId: 'c1', bedrag: 0 }).success).toBe(false)
     expect(BudgetSchema.safeParse({ id: 'b1', categorieId: 'c1', bedrag: -5 }).success).toBe(false)
   })
+
+  // Ronde 62: een budget kan voor één maand gelden.
+  it('aanvaardt een budget voor één maand', () => {
+    expect(BudgetSchema.safeParse({ id: 'b1', categorieId: 'c1', bedrag: 400, maand: '2026-12' }).success).toBe(true)
+  })
+
+  it('houdt de maand OPTIONEEL', () => {
+    // ⚠ Geen stijlkeuze maar een noodzaak: de repository keurt elk record bij het
+    // inlezen. Zou `maand` verplicht worden, dan zou élk bestaand budget in één keer
+    // ongeldig zijn en uit beeld verdwijnen.
+    expect(BudgetSchema.safeParse({ id: 'b1', categorieId: 'c1', bedrag: 400 }).success).toBe(true)
+  })
+
+  it('weigert een maand die geen JJJJ-MM is', () => {
+    expect(BudgetSchema.safeParse({ id: 'b1', categorieId: 'c1', bedrag: 400, maand: 'december' }).success).toBe(false)
+    expect(BudgetSchema.safeParse({ id: 'b1', categorieId: 'c1', bedrag: 400, maand: '2026-12-01' }).success).toBe(false)
+  })
 })
 
 // Ronde 22: de twee nieuwe koppelingen zijn allebei OPTIONEEL, precies zodat

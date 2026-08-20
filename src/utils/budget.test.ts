@@ -1,7 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import { budgetKleur, niveauVanBudget, regelHoortBijBudget, uitgavenInMaand } from './budget'
+import {
+  budgetId,
+  budgetKleur,
+  geldendeBudgetten,
+  maandenMetEigenBudget,
+  niveauVanBudget,
+  regelHoortBijBudget,
+  uitgavenInMaand,
+} from './budget'
 import { PLATTE_ITEMS } from '../data/categorieen/zoek'
-import type { Transactie } from '../data/schema'
+import type { Budget, Transactie } from '../data/schema'
 
 const tx = (over: Partial<Transactie>): Transactie => ({
   id: 'x',
@@ -172,5 +180,127 @@ describe('budgetKleur volgt de ingestelde drempel', () => {
 
   it('blijft rustig bij een budget van nul', () => {
     expect(budgetKleur(500, 0, 80)).toBe('var(--positive)')
+  })
+})
+
+// Ronde 62. Een budget kan sinds deze ronde een eigen maand dragen: ontbreekt die,
+// dan is het je standaard en geldt het elke maand; staat er een maand in, dan geldt
+// het alleen dán. Deze functie beslist welk record waar telt — en ze is de ENIGE
+// beveiliging tegen dubbeltelling op de vijf plaatsen die met budgetten rekenen.
+const bud = (over: Partial<Budget>): Budget => ({ id: 'b', categorieId: 'ov-voeding', bedrag: 40000, ...over })
+
+describe('geldendeBudgetten', () => {
+  it('geeft een budget zonder maand in elke maand terug', () => {
+    const standaard = bud({ id: 'budget-ov-voeding' })
+    expect(geldendeBudgetten([standaard], '2026-08')).toEqual([standaard])
+    expect(geldendeBudgetten([standaard], '2027-03')).toEqual([standaard])
+  })
+
+  it('laat de uitzondering vóórgaan in háár maand', () => {
+    const standaard = bud({ id: 'budget-ov-voeding', bedrag: 40000 })
+    const december = bud({ id: 'budget-ov-voeding-2026-12', bedrag: 60000, maand: '2026-12' })
+    expect(geldendeBudgetten([standaard, december], '2026-12')).toEqual([december])
+  })
+
+  it('laat de standaard staan in elke ándere maand', () => {
+    const standaard = bud({ id: 'budget-ov-voeding', bedrag: 40000 })
+    const december = bud({ id: 'budget-ov-voeding-2026-12', bedrag: 60000, maand: '2026-12' })
+    expect(geldendeBudgetten([standaard, december], '2026-11')).toEqual([standaard])
+    expect(geldendeBudgetten([standaard, december], '2027-01')).toEqual([standaard])
+  })
+
+  it('geeft NOOIT twee records voor dezelfde categorie', () => {
+    // ⚠ Dit is de kern. Geen van de vijf rekenplekken kan twee budgetten voor
+    // dezelfde categorie aan: de Budget-pagina zou twee balken tonen, het belletje
+    // twee meldingen, de maandafsluiting zou dubbel tellen — en de planregel TELT OP,
+    // dus die zou je standaard én je uitzondering samen vragen.
+    const lijst = [
+      bud({ id: 'budget-ov-voeding', bedrag: 40000 }),
+      bud({ id: 'budget-ov-voeding-2026-12', bedrag: 60000, maand: '2026-12' }),
+    ]
+    const uit = geldendeBudgetten(lijst, '2026-12')
+    expect(uit).toHaveLength(1)
+    expect(uit[0].bedrag).toBe(60000)
+  })
+
+  it('toont een uitzondering ook zonder standaardbudget', () => {
+    // "Deze ene maand hou ik Kleding in de gaten" mag, zonder dat je er een vast
+    // budget voor moet zetten.
+    const alleen = bud({ id: 'budget-ov-kleding-2026-12', categorieId: 'ov-kleding', bedrag: 15000, maand: '2026-12' })
+    expect(geldendeBudgetten([alleen], '2026-12')).toEqual([alleen])
+    expect(geldendeBudgetten([alleen], '2026-11')).toEqual([])
+  })
+
+  it('houdt de volgorde van de categorie aan, niet die van de id', () => {
+    // Vóór ronde 62 was de volgorde die van de database: alfabetisch op de id, en de
+    // id was `budget-<categorieId>`. Met een maand achter de id zou een categorie van
+    // plaats springen zodra je er een uitzondering voor zet. Sorteren op de categorie
+    // houdt de lijst stil.
+    const lijst = [
+      bud({ id: 'budget-ov-wonen', categorieId: 'ov-wonen', bedrag: 90000 }),
+      bud({ id: 'budget-ov-voeding-2026-12', categorieId: 'ov-voeding', bedrag: 60000, maand: '2026-12' }),
+      bud({ id: 'budget-ov-kleding', categorieId: 'ov-kleding', bedrag: 15000 }),
+    ]
+    expect(geldendeBudgetten(lijst, '2026-12').map((b) => b.categorieId)).toEqual([
+      'ov-kleding',
+      'ov-voeding',
+      'ov-wonen',
+    ])
+  })
+
+  it('laat de lijst waarmee ze rekent ongemoeid', () => {
+    const lijst = [bud({ id: 'budget-ov-voeding' })]
+    geldendeBudgetten(lijst, '2026-12')
+    expect(lijst).toHaveLength(1)
+  })
+})
+
+describe('maandenMetEigenBudget', () => {
+  it('noemt de maanden waarvoor er iets apart klaarstaat, van vroeg naar laat', () => {
+    const lijst = [
+      bud({ id: 'a', bedrag: 40000 }),
+      bud({ id: 'b', bedrag: 60000, maand: '2026-12' }),
+      bud({ id: 'c', categorieId: 'ov-kleding', bedrag: 10000, maand: '2026-09' }),
+      bud({ id: 'd', categorieId: 'ov-wonen', bedrag: 10000, maand: '2026-12' }),
+    ]
+    expect(maandenMetEigenBudget(lijst, '2026-08', '2026-08')).toEqual(['2026-09', '2026-12'])
+  })
+
+  it('laat de maand die je nu bekijkt weg', () => {
+    // Die staat al in de lijst erboven; hem er nog eens bij zetten leest als een
+    // tweede budget.
+    const lijst = [bud({ id: 'b', bedrag: 60000, maand: '2026-12' })]
+    expect(maandenMetEigenBudget(lijst, '2026-12', '2026-08')).toEqual([])
+  })
+
+  it('laat maanden uit het verleden weg', () => {
+    // Zonder deze regel groeit het rijtje knoppen alleen maar aan, en een voorbije
+    // maand kan je toch niet meer bijsturen.
+    const lijst = [
+      bud({ id: 'oud', bedrag: 10000, maand: '2019-03' }),
+      bud({ id: 'nieuw', categorieId: 'ov-kleding', bedrag: 10000, maand: '2026-12' }),
+    ]
+    expect(maandenMetEigenBudget(lijst, '2026-08', '2026-08')).toEqual(['2026-12'])
+  })
+
+  it('zwijgt wanneer er alleen standaardbudgetten zijn', () => {
+    expect(maandenMetEigenBudget([bud({ id: 'a' })], '2026-08', '2026-08')).toEqual([])
+  })
+})
+
+describe('budgetId', () => {
+  it('houdt de id van een standaardbudget exact zoals ze altijd was', () => {
+    // ⚠ Daar hangt aan vast dat opnieuw instellen je bestaande budget BIJWERKT in
+    // plaats van er een tweede naast te zetten. Verandert dit patroon, dan krijgt elk
+    // bestaand budget er stil een tweede naast.
+    expect(budgetId('ov-voeding')).toBe('budget-ov-voeding')
+  })
+
+  it('zet de maand achter de id van een uitzondering', () => {
+    expect(budgetId('ov-voeding', '2026-12')).toBe('budget-ov-voeding-2026-12')
+  })
+
+  it('geeft de twee soorten nooit dezelfde id', () => {
+    expect(budgetId('ov-voeding')).not.toBe(budgetId('ov-voeding', '2026-12'))
   })
 })

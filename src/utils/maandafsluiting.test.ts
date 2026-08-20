@@ -105,6 +105,25 @@ describe('maandStand — het oordeel', () => {
     expect(stand({ transacties, budgetten }).budgettenOver).toBe(1)
   })
 
+  // Ronde 62: dit scherm heeft zijn eigen maandkeuze, en moet dus met het budget van
+  // de maand die je AFSLUIT rekenen.
+  it('telt een categorie niet dubbel wanneer ze een uitzondering heeft', () => {
+    const budgetten: Budget[] = [
+      { id: 'b1', categorieId: 'ov-voeding', bedrag: 5000 },
+      { id: 'b1-maand', categorieId: 'ov-voeding', bedrag: 5000, maand: '2026-06' },
+    ]
+    expect(stand({ transacties, budgetten }).budgettenOver).toBe(1)
+  })
+
+  it('rekent met de uitzondering van de maand die je afsluit', () => {
+    const budgetten: Budget[] = [
+      { id: 'b1', categorieId: 'ov-voeding', bedrag: 5000 },
+      // Deze maand mocht het meer zijn, dus is er niets over.
+      { id: 'b1-maand', categorieId: 'ov-voeding', bedrag: 900000, maand: '2026-06' },
+    ]
+    expect(stand({ transacties, budgetten }).budgettenOver).toBe(0)
+  })
+
   it('telt de vaste lasten die deze maand nog niet geboekt zijn', () => {
     const posten: TerugkerendePost[] = [
       { id: 'p1', omschrijving: 'Netflix', bedrag: -1399, rekeningId: 'r1', dag: 20 },

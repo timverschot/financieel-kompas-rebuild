@@ -391,6 +391,60 @@ describe('App', () => {
     expect(await screen.findByRole('progressbar', { name: 'Voeding' })).toBeInTheDocument()
   })
 
+  // Ronde 62. December mag duurder zijn zonder dat je in januari je gewone bedrag
+  // moet terugzetten — en zonder dat je standaardbudget iets merkt.
+  it('zet een budget voor één maand, en laat je standaard staan', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await ga(user, 'Budget')
+    await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
+    await user.type(screen.getByLabelText('Maandbudget (€)'), '400')
+    await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
+    expect(await screen.findByRole('progressbar', { name: 'Voeding' })).toBeInTheDocument()
+
+    // Eén maand vooruit, en daar een ander bedrag zetten.
+    await user.click(screen.getByRole('button', { name: 'Volgende maand' }))
+    await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
+    await user.click(screen.getByRole('button', { name: /^Alleen / }))
+    const veld = screen.getByLabelText('Maandbudget (€)')
+    await user.clear(veld)
+    await user.type(veld, '600')
+    await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
+
+    // In die maand geldt € 600, en er staat bij dat het een uitzondering is.
+    expect(await screen.findByText(/normaal is dit/)).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'Voeding' }).closest('li')).toHaveTextContent(/600/)
+    // ⚠ En precies ÉÉN balk: twee records voor dezelfde categorie mogen nooit twee
+    // regels opleveren.
+    expect(screen.getAllByRole('progressbar', { name: 'Voeding' })).toHaveLength(1)
+
+    // Terug naar de vorige maand: daar staat je gewone budget nog, ongewijzigd.
+    await user.click(screen.getByRole('button', { name: 'Vorige maand' }))
+    expect((await screen.findByRole('progressbar', { name: 'Voeding' })).closest('li')).toHaveTextContent(/400/)
+    expect(screen.queryByText(/normaal is dit/)).toBeNull()
+  })
+
+  it('zegt op de budgetpagina dat er voor een andere maand iets klaarstaat', async () => {
+    // ⚠ Een budget voor september zie je in augustus nergens — en dat hoort ook zo.
+    // Maar dan weet je ook niet meer dát je het gezet hebt.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await ga(user, 'Budget')
+    await user.click(screen.getByRole('button', { name: 'Volgende maand' }))
+    await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
+    await user.click(screen.getByRole('button', { name: /^Alleen / }))
+    await user.type(screen.getByLabelText('Maandbudget (€)'), '600')
+    await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
+    await screen.findByRole('progressbar', { name: 'Voeding' })
+
+    await user.click(screen.getByRole('button', { name: 'Vorige maand' }))
+    expect(await screen.findByText('Je hebt ook een apart budget voor:')).toBeInTheDocument()
+  })
+
   it('maakt een dossier, voegt een gedeelde kost toe en verrekent (50/50, jij betaalt 100 -> partner 50)', async () => {
     const user = userEvent.setup()
     render(<App />)
@@ -550,6 +604,37 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: 'Verwijder budget Voeding' }))
     await waitFor(() => expect(screen.queryByRole('progressbar', { name: 'Voeding' })).toBeNull())
+  })
+
+  it('wist bij het kruisje de UITZONDERING en laat je standaard staan', async () => {
+    // ⚠ Ronde 62. Het kruisje wist het record dat op de regel staat. Zou het het
+    // verkeerde wissen, dan ben je stil je vaste budget kwijt terwijl het scherm er nog
+    // een toont — en dat merk je pas de maand erna. De nakijkronde heeft aangetoond dat
+    // geen enkele test dit ving.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await ga(user, 'Budget')
+    await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
+    await user.type(screen.getByLabelText('Maandbudget (€)'), '400')
+    await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
+    await screen.findByRole('progressbar', { name: 'Voeding' })
+
+    // Voor deze maand een ander bedrag.
+    await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
+    await user.click(screen.getByRole('button', { name: /^Alleen / }))
+    const veld = screen.getByLabelText('Maandbudget (€)')
+    await user.clear(veld)
+    await user.type(veld, '600')
+    await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
+    expect(await screen.findByText(/normaal is dit/)).toBeInTheDocument()
+
+    // Het kruisje haalt de uitzondering weg…
+    await user.click(screen.getByRole('button', { name: /^Verwijder het budget van Voeding voor/ }))
+    await waitFor(() => expect(screen.queryByText(/normaal is dit/)).toBeNull())
+    // …en je vaste budget van € 400 staat er nog.
+    expect((await screen.findByRole('progressbar', { name: 'Voeding' })).closest('li')).toHaveTextContent(/400/)
   })
 
   it('bewerkt een vaste post', async () => {

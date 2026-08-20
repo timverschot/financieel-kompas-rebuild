@@ -1,9 +1,10 @@
 import type { Budget, Transactie } from '../data/schema'
-import { budgetKleur, uitgavenInMaand } from '../utils/budget'
+import { budgetKleur, geldendeBudgetten, uitgavenInMaand } from '../utils/budget'
 import { Balk, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 import { useInstellingen } from '../instellingen'
 import { formatEuro } from '../utils/format'
+import { maandJaarLabel } from '../utils/datum'
 
 // De zijkolom van het Overzicht op brede schermen: hoe je budgetten ervoor staan.
 //
@@ -24,6 +25,17 @@ export function OverzichtZijkolom({
 }: {
   transacties: Transactie[]
   budgetten: Budget[]
+  /**
+   * De maand die je bekijkt, als 'JJJJ-MM'.
+   *
+   * ⚠ NIET als leesbaar label (ronde 62). Tot deze ronde gaf `App.tsx` hier
+   * `maandJaarLabel(maand)` mee — dus "augustus 2026" — en die tekst ging
+   * rechtstreeks naar `uitgavenInMaand`, dat vergelijkt met `datum.startsWith(maand)`.
+   * Een datum als "2026-08-14" begint nooit met "augustus 2026", dus stond ELKE balk
+   * in deze kolom op € 0,00 en 0 %, hoeveel je die maand ook uitgaf. Alles groen, en
+   * niets dat het verried: de twee tests klikten alleen op een rij en keken nooit naar
+   * een bedrag. Het label maken we hieronder zelf.
+   */
   maand: string
   categorieNaam: (id: string) => string | undefined
   onGaNaarBudget: () => void
@@ -41,7 +53,10 @@ export function OverzichtZijkolom({
   const { budgetDrempel } = useInstellingen()
 
   // De budgetten die het dichtst bij hun grens zitten, want dat is wat je wil zien.
-  const budgetStand = budgetten
+  // ⚠ `geldendeBudgetten` en niet de kale lijst (ronde 62): sinds een budget een
+  // eigen maand kan hebben, zouden dezelfde categorie en haar uitzondering hier
+  // allebei een rij krijgen — en met vier plaatsen duwen ze de rest eruit.
+  const budgetStand = geldendeBudgetten(budgetten, maand)
     .map((b) => {
       const uitgegeven = uitgavenInMaand(transacties, b.categorieId, maand)
       return { budget: b, uitgegeven, fractie: b.bedrag > 0 ? uitgegeven / b.bedrag : 0 }
@@ -53,7 +68,7 @@ export function OverzichtZijkolom({
     <div className="kolom-zij">
       <Kaart
         titel={t('Budgetstatus')}
-        bijschrift={t('voor {maand}', { maand })}
+        bijschrift={t('voor {maand}', { maand: maandJaarLabel(maand) })}
         actie={
           <button className="knop knop-ghost knop-klein" onClick={onGaNaarBudget}>
             {t('Alle')}

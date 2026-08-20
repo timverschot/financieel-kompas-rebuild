@@ -7,7 +7,7 @@ import type {
   TerugkerendePost,
   Transactie,
 } from '../data/schema'
-import { uitgavenInMaand } from './budget'
+import { geldendeBudgetten, uitgavenInMaand } from './budget'
 import { garantieStatus } from './garantie'
 import { tebeslissenContracten } from './contract'
 import { dagenVerschil } from './datum'
@@ -157,7 +157,12 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
   const uit: Melding[] = []
 
   // --- Budgetten ---
-  for (const b of invoer.budgetten) {
+  // ⚠ `geldendeBudgetten` met de maand van NU (ronde 62). Twee dingen tegelijk:
+  // zonder deze functie zou een categorie met een standaardbudget én een uitzondering
+  // twee meldingen krijgen, mogelijk één "bijna op" en één "overschreden" over
+  // hetzelfde geld. En de maand die hier binnenkomt is bewust `huidigeMaand()` en niet
+  // de maandschakelaar: het belletje gaat over NU, niet over wat je toevallig bekijkt.
+  for (const b of geldendeBudgetten(invoer.budgetten, invoer.maand)) {
     if (b.bedrag <= 0) continue
     const verbruikt = uitgavenInMaand(invoer.transacties, b.categorieId, invoer.maand)
     const percent = Math.round((verbruikt / b.bedrag) * 100)

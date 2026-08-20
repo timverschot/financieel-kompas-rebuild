@@ -119,7 +119,30 @@ export type Transactie = z.infer<typeof TransactieSchema>
 export const BudgetSchema = z.object({
   id: z.string().min(1),
   categorieId: z.string().min(1),
-  bedrag: z.number().int().positive(), // maandbudget in centen, altijd positief
+  bedrag: z.number().int().positive(), // budget in centen, altijd positief
+  /**
+   * Voor welke maand dit budget geldt (ronde 62).
+   *
+   * ⚠ ONTBREEKT dit veld, dan is het je STANDAARDbudget: het geldt elke maand.
+   * Staat er een maand in ('JJJJ-MM'), dan geldt dit record ALLEEN voor die ene
+   * maand en laat het je standaardbudget ongemoeid — december mag duurder zijn
+   * zonder dat je in januari je gewone bedrag moet terugzetten.
+   *
+   * ⚠ Het veld is OPTIONEEL, en dat is geen stijlkeuze maar een noodzaak. De
+   * repository keurt elk record bij het inlezen (`valideerLijst`); zou `maand`
+   * verplicht worden, dan zou élk bestaand budget in één keer ongeldig zijn en uit
+   * beeld verdwijnen. Daarom ook geen migratie: een bestaand record blijft byte
+   * voor byte wat het was.
+   *
+   * ⚠ Welk record voor een bepaalde maand geldt, beslist ÉÉN functie:
+   * `geldendeBudgetten` in `utils/budget.ts`. Elke plek die met budgetten rekent,
+   * hoort daarlangs te gaan — anders staat dezelfde categorie er twee keer, of
+   * telt ze dubbel.
+   */
+  maand: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'maand moet JJJJ-MM zijn')
+    .optional(),
 })
 export type Budget = z.infer<typeof BudgetSchema>
 

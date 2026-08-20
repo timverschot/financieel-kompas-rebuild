@@ -64,6 +64,38 @@ describe('bouwMeldingen — budgetten', () => {
     expect(meldingen[0].params).toEqual({ naam: 'Voeding', pct: 120 })
   })
 
+  // Ronde 62. Een budget kan sinds deze ronde voor één maand gelden. Het belletje gaat
+  // over NU, dus het hoort met het budget van de HUIDIGE maand te rekenen.
+  it('rekent met de uitzondering van deze maand in plaats van met je standaard', () => {
+    const meldingen = basis({
+      budgetten: [budget, { id: 'b1-2026-07', categorieId: 'ov-voeding', bedrag: 20000, maand: '2026-07' }],
+      transacties: [tx('2026-07-02', -12000, 'ov-voeding')],
+    })
+    // € 120 van € 200 = 60 %: onder de drempel, dus geen melding. Met het
+    // standaardbudget van € 100 zou hier "overschreden" staan.
+    expect(meldingen).toHaveLength(0)
+  })
+
+  it('geeft NOOIT twee meldingen voor dezelfde categorie', () => {
+    // ⚠ Zonder `geldendeBudgetten` zou hier één "bijna op" en één "overschreden"
+    // staan over exact hetzelfde geld.
+    const meldingen = basis({
+      budgetten: [budget, { id: 'b1-2026-07', categorieId: 'ov-voeding', bedrag: 20000, maand: '2026-07' }],
+      transacties: [tx('2026-07-02', -19000, 'ov-voeding')],
+    })
+    expect(meldingen).toHaveLength(1)
+    expect(meldingen[0].soort).toBe('budget-bijna')
+  })
+
+  it('laat een uitzondering voor een ANDERE maand met rust', () => {
+    const meldingen = basis({
+      budgetten: [budget, { id: 'b1-2026-12', categorieId: 'ov-voeding', bedrag: 50000, maand: '2026-12' }],
+      transacties: [tx('2026-07-02', -12000, 'ov-voeding')],
+    })
+    expect(meldingen).toHaveLength(1)
+    expect(meldingen[0].soort).toBe('budget-over')
+  })
+
   it('telt exact 100% als "bijna op", niet als overschreden', () => {
     const meldingen = basis({ budgetten: [budget], transacties: [tx('2026-07-02', -10000, 'ov-voeding')] })
     expect(meldingen[0].soort).toBe('budget-bijna')

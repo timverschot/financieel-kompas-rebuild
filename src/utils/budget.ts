@@ -1,4 +1,4 @@
-import type { Transactie } from '../data/schema'
+import type { Budget, Transactie } from '../data/schema'
 import { categorieBedragen } from './transactie'
 import { groepVanCategorie } from '../data/categorieen/resolve'
 import { itemPerId, midPerId } from '../data/categorieen/zoek'
@@ -76,6 +76,89 @@ export function uitgavenInMaand(transacties: Transactie[], categorieId: string, 
     }
   }
   return Math.max(0, som)
+}
+
+/**
+ * De id van een budget (ronde 62).
+ *
+ * ⚠ Een STANDAARDbudget houdt exact de id die het altijd al had:
+ * `budget-<categorieId>`. Dat is geen schoonheidsfout maar de reden dat opnieuw
+ * instellen je bestaande budget BIJWERKT in plaats van er een tweede naast te zetten —
+ * en het houdt elk bestaand record precies zoals het is. Een uitzondering voor één
+ * maand krijgt de maand achter die id, dus de twee raken elkaar nooit.
+ */
+export function budgetId(categorieId: string, maand?: string): string {
+  return maand === undefined ? `budget-${categorieId}` : `budget-${categorieId}-${maand}`
+}
+
+/**
+ * Welke budgetten gelden in DEZE maand — hoogstens één per categorie (ronde 62).
+ *
+ * Sinds ronde 62 kan een budget een `maand` dragen. Ontbreekt die, dan is het je
+ * standaardbudget en geldt het elke maand; staat er een maand in, dan geldt het
+ * alleen dán en gaat het vóór op je standaard.
+ *
+ * ⚠ WAAROM ÉÉN FUNCTIE, EN WAAROM ALLES ER LANGS MOET. Er zijn vijf plaatsen die
+ * met budgetten rekenen: de Budget-pagina, de planregel bovenaan die pagina, het
+ * belletje, de maandafsluiting en de zijkolom van het Overzicht. Geen enkele
+ * daarvan kon vóór deze ronde twee records voor dezelfde categorie aan — ze lopen
+ * alle vijf gewoon over de lijst. Zou één plek de kale lijst blijven gebruiken, dan
+ * staat er dáár een dubbele regel, of erger: de planregel TELT budgetten OP, en die
+ * zou je standaardbudget én je uitzondering samen vragen. Dat is een cijfer dat te
+ * hoog staat zonder dat iets het verraadt.
+ *
+ * ⚠ EN ELKE PLEK GEBRUIKT ZIJN EIGEN MAAND. Er zijn er drie tegelijk in omloop: de
+ * maand die je BEKIJKT (de schakelaar bovenaan), de maand van NU (waar het belletje
+ * over gaat) en de maand die je AFSLUIT. Geef je hier de verkeerde mee, dan
+ * waarschuwt het belletje in augustus met je decemberbudget.
+ *
+ * De volgorde is die van de categorie-id, en dus dezelfde als vóór deze ronde: het
+ * oude id was `budget-<categorieId>` en de database gaf ze op id terug. Sorteren op
+ * de categorie in plaats van op de id houdt de lijst stil wanneer er een maand
+ * achter een id komt te staan.
+ */
+export function geldendeBudgetten(budgetten: readonly Budget[], maand: string): Budget[] {
+  const standaard = new Map<string, Budget>()
+  const dezeMaand = new Map<string, Budget>()
+  for (const b of budgetten) {
+    if (b.maand === undefined) standaard.set(b.categorieId, b)
+    else if (b.maand === maand) dezeMaand.set(b.categorieId, b)
+    // Een budget voor een ANDERE maand telt hier niet mee. Het blijft wel gewoon
+    // bestaan; je ziet het zodra je naar die maand bladert.
+  }
+  const uit: Budget[] = []
+  for (const categorieId of new Set([...standaard.keys(), ...dezeMaand.keys()])) {
+    const gekozen = dezeMaand.get(categorieId) ?? standaard.get(categorieId)
+    if (gekozen) uit.push(gekozen)
+  }
+  // ⚠ Een gewone vergelijking en niet `localeCompare` (nakijkronde ronde 62): die
+  // volgt de taalinstelling van het toestel, en dan zou dezelfde lijst op een Frans
+  // toestel in een andere volgorde kunnen staan dan op een Nederlands.
+  return uit.sort((a, b) => (a.categorieId < b.categorieId ? -1 : a.categorieId > b.categorieId ? 1 : 0))
+}
+
+/**
+ * De maanden waarvoor er een apart budget klaarstaat, van vroeg naar laat.
+ *
+ * Waarvoor: een budget voor september zie je in augustus nergens — het hoort ook
+ * niet in je augustuslijst. Maar dan weet je ook niet meer dát je het gezet hebt.
+ * Deze lijst laat de Budget-pagina zeggen "je hebt ook een apart budget voor
+ * september 2026", met een knop om erheen te bladeren.
+ *
+ * De maand die je nu bekijkt hoort er NIET bij: die staat al in de lijst erboven, en
+ * `vanaf` (meestal de huidige maand) houdt het verleden eruit.
+ */
+export function maandenMetEigenBudget(budgetten: readonly Budget[], behalve: string, vanaf: string): string[] {
+  const maanden = new Set<string>()
+  for (const b of budgetten) {
+    if (b.maand === undefined || b.maand === behalve) continue
+    // ⚠ Niets uit het verleden (nakijkronde ronde 62). Zonder deze regel groeit dit
+    // rijtje knoppen alleen maar aan: een uitzondering die je in 2019 zette, zou hier
+    // vandaag nog altijd staan. Een voorbije maand kan je toch niet meer bijsturen.
+    if (b.maand < vanaf) continue
+    maanden.add(b.maand)
+  }
+  return [...maanden].sort()
 }
 
 /**

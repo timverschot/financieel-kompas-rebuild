@@ -74,6 +74,35 @@ describe('PlanRegels', () => {
     expect(screen.queryByText(/meer dan er te verdelen valt/)).not.toBeInTheDocument()
   })
 
+  // Ronde 62. Dit is de ENIGE plek die budgetten optelt, en dus de plek waar een
+  // dubbeltelling het stilst zou zijn: er verschijnt geen dubbele regel, er staat
+  // gewoon een te hoog getal.
+  it('telt een standaardbudget en zijn uitzondering NIET samen', () => {
+    toon(
+      [huur],
+      [
+        { id: 'budget-ov-voeding', categorieId: 'ov-voeding', bedrag: 40000 },
+        { id: 'budget-ov-voeding-2026-07', categorieId: 'ov-voeding', bedrag: 50000, maand: '2026-07' },
+      ],
+      '2026-07',
+    )
+    // Alleen de uitzondering telt: € 500, niet € 900.
+    expect(screen.getByText(/Je budgetten vragen samen/)).toHaveTextContent(/500/)
+    expect(screen.queryByText(/900/)).not.toBeInTheDocument()
+  })
+
+  it('rekent in een andere maand gewoon met je standaardbudget', () => {
+    toon(
+      [huur],
+      [
+        { id: 'budget-ov-voeding', categorieId: 'ov-voeding', bedrag: 40000 },
+        { id: 'budget-ov-voeding-2026-12', categorieId: 'ov-voeding', bedrag: 50000, maand: '2026-12' },
+      ],
+      '2026-07',
+    )
+    expect(screen.getByText(/Je budgetten vragen samen/)).toHaveTextContent(/400/)
+  })
+
   it('toont het jaargemiddelde apart van het bedrag van deze maand', () => {
     toon([huur, premie], [], '2026-07')
     // € 950 + € 100 omgerekende premie = € 1.050 gemiddeld per maand.
