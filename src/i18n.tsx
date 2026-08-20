@@ -20,6 +20,15 @@ export const TALEN: { waarde: Taal; label: string }[] = [
 // Vertaaltabellen: Nederlandse tekst -> vertaling. Wat (nog) ontbreekt, valt
 // automatisch terug op het Nederlands. Plaatshouders zoals {naam} blijven staan.
 const en: Record<string, string> = {
+  // De navigatie en de analysetabs (ronde 60)
+  '{onderdeel} staat uit, maar er staat wel iets in.': '{onderdeel} is switched off, but there is something in it.',
+  'Toon het': 'Show it',
+  'Toon {onderdeel}': 'Show {onderdeel}',
+  'Onderdeel van de analyse': 'Section of the analysis',
+  'Verdeling': 'Breakdown',
+  'Wat verandert': 'What is changing',
+  'Vooruit': 'Ahead',
+  'Af en toe': 'Now and then',
   // Een dossier verwijderen, met de vraag ervóór (ronde 59)
   '{n} kindrekening(en)': '{n} child account(s)',
   'Dit dossier verwijderen?': 'Delete this case?',
@@ -1643,6 +1652,8 @@ const en: Record<string, string> = {
     'This file could not be read. Try another scan or photo.',
   'Opslaan is mislukt. Probeer het opnieuw; je invoer blijft staan.':
     'Saving failed. Please try again; your input is kept.',
+  'Dat is niet bewaard — je scherm staat weer zoals het was.':
+    'That was not saved — your screen is back the way it was.',
   'Document verwijderd': 'Document deleted',
   'Document verwijderd. Het stond in dit dossier als grondslag van de verdeling; die aanduiding is mee weg.': 'Document deleted. It was selected in this case as the basis for the split; that selection is gone with it.',
   'Bewaar de leningovereenkomst en de betalingsbewijzen van deze lening op één plek.':
@@ -2253,6 +2264,15 @@ const en: Record<string, string> = {
     'This letter was produced with Financieel Kompas. It contains a calculation, not a legal position.',
 }
 const fr: Record<string, string> = {
+  // De navigatie en de analysetabs (ronde 60)
+  '{onderdeel} staat uit, maar er staat wel iets in.': '{onderdeel} est désactivé, mais il y a quelque chose dedans.',
+  'Toon het': 'Afficher',
+  'Toon {onderdeel}': 'Afficher {onderdeel}',
+  'Onderdeel van de analyse': 'Partie de l’analyse',
+  'Verdeling': 'Répartition',
+  'Wat verandert': 'Ce qui change',
+  'Vooruit': 'À venir',
+  'Af en toe': 'De temps en temps',
   // Een dossier verwijderen, met de vraag ervóór (ronde 59)
   '{n} kindrekening(en)': '{n} compte(s) d’enfant',
   'Dit dossier verwijderen?': 'Supprimer ce dossier ?',
@@ -3876,6 +3896,8 @@ const fr: Record<string, string> = {
     'Ce fichier n’a pas pu être lu. Essaie un autre scan ou une autre photo.',
   'Opslaan is mislukt. Probeer het opnieuw; je invoer blijft staan.':
     'Échec de l’enregistrement. Réessaie ; ta saisie est conservée.',
+  'Dat is niet bewaard — je scherm staat weer zoals het was.':
+    'Ce changement n’a pas été enregistré — ton écran est revenu comme avant.',
   'Document verwijderd': 'Document supprimé',
   'Document verwijderd. Het stond in dit dossier als grondslag van de verdeling; die aanduiding is mee weg.': 'Document supprimé. Il était désigné dans ce dossier comme la base de la répartition ; cette désignation disparaît avec lui.',
   'Bewaar de leningovereenkomst en de betalingsbewijzen van deze lening op één plek.':

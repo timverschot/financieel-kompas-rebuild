@@ -16,6 +16,7 @@ import {
 } from './data/repository'
 import { huidigeMaand, vandaag } from './utils/datum'
 import { vorigeMaand } from './utils/maandafsluiting'
+import { DOSSIER_ONDERDELEN } from './utils/dossieronderdelen'
 
 beforeEach(async () => {
   await Promise.all([
@@ -83,8 +84,13 @@ async function ga(user: Gebruiker, pagina: string) {
   await user.click(screen.getByRole('button', { name: pagina }))
 }
 
-// Secundaire pagina's (Rekeningen, Budget, Dossiers, Categorieën, ...) zitten op
-// mobiel achter de 'Meer'-knop: eerst de sheet openen, dan de pagina kiezen.
+// Secundaire pagina's (Rekeningen, Dossiers, Categorieën, Analyse, ...) zitten op
+// mobiel achter de 'Meer'-knop: eerst de lade openen, dan de pagina kiezen.
+//
+// ⚠ Niet gebruiken voor Overzicht, Transacties of Budget: die staan sinds ronde 60
+// in de balk zelf. De lade openen en er dan langs klikken werkte toevallig nog wel,
+// maar liep niet meer langs de weg die een gebruiker aflegt — en liet de lade
+// bovendien openstaan.
 async function gaMeer(user: Gebruiker, pagina: string) {
   await user.click(screen.getByRole('button', { name: 'Meer' }))
   await user.click(screen.getByRole('button', { name: pagina }))
@@ -278,7 +284,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await gaMeer(user, 'Budget')
+    await ga(user, 'Budget')
     const lasten = kaart('Vaste lasten')
     await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
     await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
@@ -298,7 +304,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await gaMeer(user, 'Budget')
+    await ga(user, 'Budget')
     const lasten = kaart('Vaste lasten')
     await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
     await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
@@ -323,7 +329,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await gaMeer(user, 'Budget')
+    await ga(user, 'Budget')
     const lasten = kaart('Vaste lasten')
     await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
     await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
@@ -341,7 +347,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await gaMeer(user, 'Budget')
+    await ga(user, 'Budget')
     const inkomsten = kaart('Vaste inkomsten')
     await user.type(within(inkomsten).getByLabelText('Vaste omschrijving'), 'Loon')
     await user.type(within(inkomsten).getByLabelText('Vast bedrag (€)'), '2400')
@@ -363,7 +369,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
 
     // 'Vervoer' verschijnt nu als keuze in het budgetformulier.
-    await gaMeer(user, 'Budget')
+    await ga(user, 'Budget')
     expect((await screen.findAllByRole('option', { name: 'Vervoer' })).length).toBeGreaterThan(0)
   })
 
@@ -377,7 +383,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await gaMeer(user, 'Budget')
+    await ga(user, 'Budget')
     await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
     await user.type(screen.getByLabelText('Maandbudget (€)'), '400')
     await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
@@ -455,7 +461,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Categorie wijzigen' }))
 
     // Beschikbaar als keuze in het budgetformulier onder de nieuwe naam.
-    await gaMeer(user, 'Budget')
+    await ga(user, 'Budget')
     expect((await screen.findAllByRole('option', { name: 'Eten' })).length).toBeGreaterThan(0)
   })
 
@@ -478,7 +484,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await gaMeer(user, 'Budget')
+    await ga(user, 'Budget')
     await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
     await user.type(screen.getByLabelText('Maandbudget (€)'), '400')
     await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
@@ -493,7 +499,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await gaMeer(user, 'Budget')
+    await ga(user, 'Budget')
     const lasten = kaart('Vaste lasten')
     await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
     await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
@@ -839,10 +845,13 @@ describe('App — onderdelen van een dossier aan- en uitzetten', () => {
     await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
     await zetAandeel(user, '50')
     await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
-    await screen.findByRole('heading', { name: 'Verdeling per categorie' })
+    await screen.findByRole('heading', { name: 'Nieuwe afrekening' })
   }
 
-  it('toont standaard alles, zonder dat je eerst iets moet openklappen', async () => {
+  it('begint een nieuw dossier met de kern, niet met acht kaarten tegelijk', async () => {
+    // ⚠ Ronde 60. Vóór die ronde opende een vers dossier met acht lege kaarten onder
+    // elkaar — verdelingen, een kindrekening, een documentkluis, een uitwisseling —
+    // terwijl je net kwam om kosten bij te houden.
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Saldo')
@@ -850,34 +859,33 @@ describe('App — onderdelen van een dossier aan- en uitzetten', () => {
 
     // Op de KAARTKOP kijken, niet op de tekst: de chip om een onderdeel aan of uit
     // te zetten draagt exact dezelfde naam, dus getByText zou altijd iets vinden.
-    expect(kaartkop('Verdeling per kostensoort')).toBeInTheDocument()
-    expect(kaartkop('Kindrekening (gezamenlijke pot)')).toBeInTheDocument()
-    expect(kaartkop('Documentkluis')).toBeInTheDocument()
     expect(kaartkop('Nieuwe afrekening')).toBeInTheDocument()
+    expect(geenKaartkop('Kindrekening (gezamenlijke pot)')).toBe(true)
+    expect(geenKaartkop('Documentkluis')).toBe(true)
+    expect(geenKaartkop('Verdeling per kostensoort')).toBe(true)
 
-    // De vakjes zelf staan meteen open: er is geen knop "Onderdelen" meer om
-    // eerst te vinden.
+    // En je zet ze er met één tik bij: de chips staan meteen open, er is geen knop
+    // "Onderdelen" meer om eerst te vinden.
     expect(screen.queryByRole('button', { name: /^Onderdelen/ })).toBeNull()
-    const groep = screen.getByRole('group', { name: 'Wat toon je in dit dossier?' })
-    expect(groep).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Wat toon je in dit dossier?' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Verrekeningen' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Documentkluis' })).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('verbergt een onderdeel en onthoudt dat, zonder iets weg te gooien', async () => {
+  it('zet een onderdeel erbij en onthoudt dat, zonder iets weg te gooien', async () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Saldo')
     await maakDossier(user)
 
     await user.click(screen.getByRole('button', { name: 'Kindrekening (gezamenlijke pot)' }))
-
-    await waitFor(() => expect(geenKaartkop('Kindrekening (gezamenlijke pot)')).toBe(true))
-    // De rest blijft staan: je zet één kaart uit, geen halve pagina.
-    expect(kaartkop('Verdeling per categorie')).toBeInTheDocument()
+    await waitFor(() => expect(kaartkop('Kindrekening (gezamenlijke pot)')).toBeInTheDocument())
 
     // Het staat op het DOSSIER, niet in localStorage: zo klopt het ook op je gsm.
     const alle = await db.dossiers.toArray()
-    expect(alle[0].verborgenOnderdelen).toEqual(['gezamenlijke-pot'])
+    expect(alle[0].verborgenOnderdelen).not.toContain('gezamenlijke-pot')
+    // En de rest blijft staan zoals ze stond: je zet één kaart aan, geen halve pagina.
+    expect(alle[0].verborgenOnderdelen).toContain('documentkluis')
   })
 
   it('zet het verrekenen uit, inclusief de kaart om er een te maken', async () => {
@@ -889,24 +897,41 @@ describe('App — onderdelen van een dossier aan- en uitzetten', () => {
     await user.click(screen.getByRole('button', { name: 'Verrekeningen' }))
 
     await waitFor(() => expect(geenKaartkop('Nieuwe afrekening')).toBe(true))
-    // De open kosten blijven wél staan: daar bestaat een dossier voor.
-    expect(kaartkop('Verdeling per categorie')).toBeInTheDocument()
     const alle = await db.dossiers.toArray()
-    expect(alle[0].verborgenOnderdelen).toEqual(['verrekeningen'])
+    expect(alle[0].verborgenOnderdelen).toContain('verrekeningen')
   })
 
-  it('zet een verborgen onderdeel weer aan', async () => {
+  it('zet een onderdeel weer uit nadat je het aanzette', async () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Saldo')
     await maakDossier(user)
 
     await user.click(screen.getByRole('button', { name: 'Documentkluis' }))
-    await waitFor(() => expect(geenKaartkop('Documentkluis')).toBe(true))
+    await waitFor(() => expect(geenKaartkop('Documentkluis')).toBe(false))
 
     await user.click(screen.getByRole('button', { name: 'Documentkluis' }))
-    await waitFor(() => expect(geenKaartkop('Documentkluis')).toBe(false))
-    // Niets meer verborgen: het veld verdwijnt weer van het record.
+    await waitFor(() => expect(geenKaartkop('Documentkluis')).toBe(true))
+  })
+
+  it('haalt het veld van het record zodra je álles aanzet', async () => {
+    // Een lege lijst bewaren zou betekenen dat elk dossier voor altijd een veld
+    // meedraagt dat niets zegt.
+    //
+    // ⚠ Deze test klikt zes chips vlak na elkaar aan, en dát legde een echte fout
+    // bloot: elke klik rekende vanaf de OPGESLAGEN lijst, en die loopt achter tot de
+    // app opnieuw geladen heeft. Twee snelle klikken overschreven elkaar dus, en één
+    // van je keuzes verdween spoorloos. Zie `verborgenRef` in DossierSectie.tsx.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await maakDossier(user)
+
+    const uit = await db.dossiers.toArray().then((d) => d[0].verborgenOnderdelen ?? [])
+    for (const id of uit) {
+      const label = DOSSIER_ONDERDELEN.find((o) => o.id === id)?.label
+      if (label) await user.click(screen.getByRole('button', { name: label }))
+    }
     await waitFor(async () => {
       const alle = await db.dossiers.toArray()
       expect(alle[0].verborgenOnderdelen).toBeUndefined()
@@ -1093,7 +1118,7 @@ describe('App — doorklikken van een cijfer naar zijn boekingen', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await gaMeer(user, 'Budget')
+    await ga(user, 'Budget')
     await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
     await user.type(screen.getByLabelText('Maandbudget (€)'), '400')
     await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
@@ -1138,7 +1163,7 @@ describe('App — doorklikken van een cijfer naar zijn boekingen', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await gaMeer(user, 'Budget')
+    await ga(user, 'Budget')
     await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
     await user.type(screen.getByLabelText('Maandbudget (€)'), '400')
     await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
@@ -1223,7 +1248,7 @@ describe('App — de opbouw van een afrekening', () => {
     // De kaart om een afrekening te maken blijft wél staan: de sleutel hangt niet
     // aan de vlag 'verrekeningen'.
     expect(screen.getByRole('heading', { name: 'Nieuwe afrekening' })).toBeInTheDocument()
-    expect(await db.dossiers.toArray().then((d) => d[0].verborgenOnderdelen)).toEqual(['afrekening-detail'])
+    expect(await db.dossiers.toArray().then((d) => d[0].verborgenOnderdelen)).toContain('afrekening-detail')
   })
 })
 
@@ -1342,7 +1367,7 @@ describe('App — de terugknop en het adres', () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Saldo')
-    await gaMeer(user, 'Transacties')
+    await ga(user, 'Transacties')
     await user.click(await screen.findByRole('button', { name: 'Nieuwe transactie' }))
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Sluiten' }))
@@ -1376,5 +1401,78 @@ describe('App — de terugknop en het adres', () => {
     // En de pagina eronder is niet verschoven.
     expect(window.location.hash).toBe('#/overzicht')
     expect(screen.getByText('Saldo')).toBeInTheDocument()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// DE NAVIGATIE SCHAALT MEE (ronde 60)
+//
+// Uit de evaluatie van augustus 2026: twaalf van de vijftien pagina's zaten achter
+// één ⋯, en de Analyse-pagina zette negen kaarten onder elkaar. Deze tests bewaken
+// het gedrag, niet de opmaak.
+// ---------------------------------------------------------------------------
+describe('App — de navigatie na ronde 60', () => {
+  beforeEach(async () => {
+    for (const tabel of db.tables) await tabel.clear()
+    await bewaarRekening({ id: 'r1', naam: 'Zicht', beginsaldo: 100000 })
+  })
+
+  it('brengt je met één tik naar Budget, zonder de lade te openen', async () => {
+    // Budget is de reden dat iemand een budget-app installeert; het zat op de vierde
+    // regel van een lade met twaalf pagina's.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.click(screen.getByRole('button', { name: 'Budget' }))
+    expect(await screen.findByRole('heading', { name: 'Budget' })).toBeInTheDocument()
+    await waitFor(() => expect(window.location.hash).toBe('#/budget'))
+  })
+
+  it('splitst de Analyse-pagina in drie vragen', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Analyse')
+
+    const strook = await screen.findByRole('tablist', { name: 'Onderdeel van de analyse' })
+    expect(within(strook).getByRole('tab', { name: /Verdeling/ })).toHaveAttribute('aria-selected', 'true')
+    expect(within(strook).getByRole('tab', { name: /Wat verandert/ })).toBeInTheDocument()
+    expect(within(strook).getByRole('tab', { name: /Vooruit/ })).toBeInTheDocument()
+  })
+
+  it('zet het gekozen onderdeel van de analyse in het adres', async () => {
+    // Zodat een herlaadbeurt je op hetzelfde tabblad terugzet — dezelfde afspraak als
+    // bij de lade van de Dossiers-pagina.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Analyse')
+
+    await user.click(await screen.findByRole('tab', { name: /Vooruit/ }))
+    await waitFor(() => expect(window.location.hash).toBe('#/analyse/vooruit'))
+  })
+
+  it('opent de analyse op het onderdeel uit het adres', async () => {
+    window.history.replaceState(null, '', '#/analyse/verandering')
+    render(<App />)
+    const strook = await screen.findByRole('tablist', { name: 'Onderdeel van de analyse' })
+    expect(within(strook).getByRole('tab', { name: /Wat verandert/ })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('houdt het gekozen onderdeel vast wanneer het adres onzin wordt', async () => {
+    // ⚠ Een zelf ingetikt of oud adres zet de app het adres recht. Vergat ze daarbij
+    // het tabblad, dan bleef het scherm op "Vooruit" staan terwijl het adres alleen
+    // nog `#/analyse` zei — en landde je na een herlaadbeurt op "Verdeling", zonder
+    // te begrijpen waarom (nakijkronde ronde 60).
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Analyse')
+    await user.click(await screen.findByRole('tab', { name: /Vooruit/ }))
+    await waitFor(() => expect(window.location.hash).toBe('#/analyse/vooruit'))
+
+    window.location.hash = '#/bestaatnietmeer'
+    await waitFor(() => expect(window.location.hash).toBe('#/analyse/vooruit'))
   })
 })

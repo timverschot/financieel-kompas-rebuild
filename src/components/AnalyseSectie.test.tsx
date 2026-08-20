@@ -545,3 +545,107 @@ describe('AnalyseSectie — "Zonder categorie" in de drilldown', () => {
     expect(naarTransacties).toHaveBeenCalledWith(expect.objectContaining({ zonderCategorie: true }))
   })
 })
+
+// Ronde 60. De negen kaarten van deze pagina stonden onder elkaar op één scroll.
+// Ze zitten nu achter drie tabbladen met een vraag als naam. Deze tests bewaken
+// WELKE kaart op WELK tabblad hoort — zonder dat zou een kaart stilletjes van
+// tabblad kunnen verhuizen zonder dat iemand het merkt.
+describe('AnalyseSectie — de drie tabbladen', () => {
+  it('opent op Verdeling en zet de verdelingskaart daar', () => {
+    toon([boodschappen, tanken])
+    expect(screen.getByRole('tab', { name: 'Verdeling' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByText('Verdeling uitgaven')).toBeInTheDocument()
+  })
+
+  it('haalt de verdelingskaart weg zodra je naar Vooruit gaat', async () => {
+    const gebruiker = userEvent.setup()
+    toon([boodschappen, tanken])
+    await gebruiker.click(screen.getByRole('tab', { name: 'Vooruit' }))
+    expect(screen.queryByText('Verdeling uitgaven')).toBeNull()
+  })
+
+  it('verbergt de knoppen Uitgaven/Inkomsten op Vooruit', async () => {
+    // ⚠ Ze deden daar niets: wat op dat tabblad staat — je vermogen en de vaste
+    // lasten die eraan komen — kijkt niet naar de richting. Een knop die van kleur
+    // verandert zonder dat er iets gebeurt, laat je twijfelen of je scherm nog werkt.
+    const gebruiker = userEvent.setup()
+    toon([boodschappen, tanken])
+    expect(screen.getByRole('button', { name: 'Uitgaven' })).toBeInTheDocument()
+    await gebruiker.click(screen.getByRole('tab', { name: 'Vooruit' }))
+    expect(screen.queryByRole('button', { name: 'Uitgaven' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Inkomsten' })).toBeNull()
+  })
+
+  it('zegt naar buiten welk tabblad je koos, zodat het in het webadres kan', async () => {
+    const gebruiker = userEvent.setup()
+    const gewisseld = vi.fn()
+    toonMet([boodschappen], { onTabWissel: gewisseld })
+    await gebruiker.click(screen.getByRole('tab', { name: 'Wat verandert' }))
+    expect(gewisseld).toHaveBeenCalledWith('verandering')
+  })
+
+  it('volgt het webadres ook wanneer de pagina al openstaat', () => {
+    // ⚠ Een beginwaarde wordt maar één keer gelezen. Kwam je daarna via de terugknop
+    // of een snelkoppeling op een ander tabblad uit, dan veranderde het adres wél en
+    // het scherm niet.
+    const { rerender } = render(
+      <AnalyseSectie
+        transacties={[boodschappen]}
+        categorieen={[]}
+        rekeningen={rekeningen}
+        overboekingen={[]}
+        waarderingen={[]}
+        terugkerendePosten={[]}
+        beginTab="verdeling"
+      />,
+    )
+    expect(screen.getByRole('tab', { name: 'Verdeling' })).toHaveAttribute('aria-selected', 'true')
+    rerender(
+      <AnalyseSectie
+        transacties={[boodschappen]}
+        categorieen={[]}
+        rekeningen={rekeningen}
+        overboekingen={[]}
+        waarderingen={[]}
+        terugkerendePosten={[]}
+        beginTab="vooruit"
+      />,
+    )
+    expect(screen.getByRole('tab', { name: 'Vooruit' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  // ⚠ WELKE KAART OP WELK TABBLAD. Zonder deze drie tests kan een kaart bij een
+  // volgende wijziging uit álle tabbladen verdwijnen zonder dat iets rood wordt: de
+  // gebruiker mist dan een grafiek die hij gisteren nog had. Ze noemen elke kaart bij
+  // haar kop, want dat is wat je op het scherm ziet staan.
+  const KOP_PER_TAB: Record<string, string[]> = {
+    Verdeling: ['Verdeling uitgaven', 'Verdeling per product/dienst', 'Uitgaven per winkel'],
+    'Wat verandert': ['Waar loopt het op?', 'Wat werd er duurder?', 'Verloop per categorie'],
+    Vooruit: ['Vermogensevolutie', 'Vooruitblik & spaarquote'],
+  }
+
+  for (const [tabnaam, koppen] of Object.entries(KOP_PER_TAB)) {
+    it(`zet op ${tabnaam} de kaarten die daar horen, en die van de andere tabbladen niet`, async () => {
+      const gebruiker = userEvent.setup()
+      toon([boodschappen, tanken])
+      await gebruiker.click(screen.getByRole('tab', { name: tabnaam }))
+
+      for (const kop of koppen) {
+        expect(screen.getByRole('heading', { name: kop })).toBeInTheDocument()
+      }
+      const elders = Object.entries(KOP_PER_TAB)
+        .filter(([naam]) => naam !== tabnaam)
+        .flatMap(([, k]) => k)
+      for (const kop of elders) {
+        expect(screen.queryByRole('heading', { name: kop })).toBeNull()
+      }
+    })
+  }
+
+  it('zegt bij de periodekaartjes welke gekozen is, niet alleen met kleur', () => {
+    toon([boodschappen])
+    const dezeMaand = screen.getByRole('button', { name: 'Deze maand' })
+    expect(dezeMaand).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Alles' })).toHaveAttribute('aria-pressed', 'false')
+  })
+})

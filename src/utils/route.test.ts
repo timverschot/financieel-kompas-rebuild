@@ -44,6 +44,22 @@ describe('hashNaarRoute', () => {
     expect(hashNaarRoute('#/transacties/garantie')).toEqual({ pagina: 'transacties' })
     expect(hashNaarRoute('#/dossiers/nieuw')).toEqual({ pagina: 'dossiers' })
   })
+
+  // Ronde 60: de Analyse-pagina kreeg drie tabbladen, en het gekozen tabblad staat in
+  // het adres. Dezelfde drie proeven als bij de dossierlade hierboven — anders is dit
+  // alleen indirect gedekt via de test van de hele app.
+  it('leest het tabblad van de analysepagina', () => {
+    expect(hashNaarRoute('#/analyse/vooruit')).toEqual({ pagina: 'analyse', analyse: 'vooruit' })
+    expect(hashNaarRoute('#/analyse/verandering')).toEqual({ pagina: 'analyse', analyse: 'verandering' })
+  })
+
+  it('negeert een onbekend tabblad in plaats van de pagina weg te gooien', () => {
+    expect(hashNaarRoute('#/analyse/onzin')).toEqual({ pagina: 'analyse' })
+  })
+
+  it('laat een analysetabblad alleen toe op de analysepagina', () => {
+    expect(hashNaarRoute('#/budget/vooruit')).toEqual({ pagina: 'budget' })
+  })
 })
 
 describe('routeNaarHash', () => {
@@ -56,6 +72,11 @@ describe('routeNaarHash', () => {
   it('laat een subtab weg waar hij niet hoort', () => {
     expect(routeNaarHash({ pagina: 'budget', subtab: 'lening' })).toBe('#/budget')
     expect(routeNaarHash({ pagina: 'dossiers', actie: 'nieuw' })).toBe('#/dossiers')
+  })
+
+  it('schrijft en leest het analysetabblad heen en terug', () => {
+    expect(routeNaarHash({ pagina: 'analyse', analyse: 'vooruit' })).toBe('#/analyse/vooruit')
+    expect(routeNaarHash({ pagina: 'budget', analyse: 'vooruit' })).toBe('#/budget')
   })
 })
 

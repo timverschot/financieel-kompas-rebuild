@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { PAGINAS, type Pagina } from './OnderNavigatie'
+import { PAGINAS, type Pagina } from './navigatie'
 import { Merkteken } from './Merkteken'
 import { VERSIE } from '../config'
 import { THEMAKEUZES, useThema } from '../thema'

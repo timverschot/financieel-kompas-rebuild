@@ -1,57 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useT } from '../i18n'
-
-// De pagina's van de app. De interne id blijft taal-onafhankelijk; enkel het label
-// wordt vertaald. Sinds de layout-herwerking (V1-logica) is elk onderdeel een
-// aparte pagina i.p.v. één lange 'Meer'-scroll.
-export type Pagina =
-  | 'opstelling'
-  | 'overzicht'
-  | 'transacties'
-  | 'rekeningen'
-  | 'spaardoelen'
-  | 'budget'
-  | 'dossiers'
-  | 'analyse'
-  | 'categorieen'
-  | 'rekenhulpen'
-  | 'importeren'
-  | 'maandafsluiting'
-  | 'fiscaal'
-  | 'kindkosten'
-  | 'instellingen'
-
-// Alle pagina's met icoon + label, in de volgorde van het desktop-zijpaneel.
-export const PAGINAS: { id: Pagina; icoon: string; label: string }[] = [
-  { id: 'overzicht', icoon: '🏠', label: 'Overzicht' },
-  { id: 'opstelling', icoon: '🧭', label: 'Je situatie' },
-  { id: 'transacties', icoon: '💳', label: 'Transacties' },
-  { id: 'rekeningen', icoon: '🏦', label: 'Rekeningen' },
-  { id: 'spaardoelen', icoon: '💰', label: 'Spaardoelen' },
-  { id: 'budget', icoon: '🎯', label: 'Budget' },
-  // Eén ingang voor alle dossiers. Leningen en garanties stonden vroeger op een
-  // eigen pagina 'leningen' die niets meer was dan twee secties onder elkaar; ze
-  // zitten nu als subtab op déze pagina. Zie `ui/Subtabs.tsx`.
-  { id: 'dossiers', icoon: '👨‍👧', label: 'Dossiers' },
-  { id: 'analyse', icoon: '📊', label: 'Analyse' },
-  { id: 'categorieen', icoon: '🏷️', label: 'Categorieën' },
-  { id: 'rekenhulpen', icoon: '🧮', label: 'Rekenhulpen' },
-  { id: 'importeren', icoon: '📥', label: 'Inlezen' },
-  // De maandafsluiting staat bewust NA Inlezen: dat is ook de volgorde waarin je
-  // ze gebruikt — eerst je uittreksel erin, dan de maand rondmaken.
-  { id: 'maandafsluiting', icoon: '✅', label: 'Maandafsluiting' },
-  // Eén keer per jaar, dus in de lade en niet in de balk.
-  { id: 'fiscaal', icoon: '🧾', label: 'Fiscaal jaaroverzicht' },
-  { id: 'kindkosten', icoon: '👶', label: 'Wat kost elk gezinslid?' },
-  { id: 'instellingen', icoon: '⚙️', label: 'Instellingen' },
-]
-
-// Op mobiel: vier tabs + een centrale ➕ (V1-patroon). Links van de knop Overzicht
-// en Transacties, rechts Analyse, en dan Meer. De rest zit onder 'Meer'.
-const PRIMAIR_LINKS: Pagina[] = ['overzicht', 'transacties']
-const PRIMAIR_RECHTS: Pagina[] = ['analyse']
-const SECUNDAIR: Pagina[] = ['opstelling', 'rekeningen', 'spaardoelen', 'budget', 'dossiers', 'categorieen', 'rekenhulpen', 'importeren', 'maandafsluiting', 'fiscaal', 'kindkosten', 'instellingen']
+import { LADE_GROEPEN, PAGINAS, PRIMAIR_LINKS, PRIMAIR_RECHTS, SECUNDAIR, type Pagina } from './navigatie'
 
 const balk: CSSProperties = {
   position: 'fixed',
@@ -178,6 +128,12 @@ const sheet: CSSProperties = {
   borderTop: '1px solid var(--border)',
   borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
   boxShadow: 'var(--shadow-sheet)',
+  // ⚠ De lade mag nooit hoger worden dan het scherm (ronde 60). Met twaalf pagina's
+  // en twee koppen erboven is ze op een telefoon in liggende stand hoger dan wat er
+  // in beeld past: de onderste pagina's stonden dan onder de rand, en omdat de lade
+  // zelf niet schoof kon je er ook niet bij. Nu scrollt ze binnenin.
+  maxHeight: '60vh',
+  overflowY: 'auto',
 }
 
 function Tab({
@@ -265,7 +221,8 @@ export function OnderNavigatie({
   //
   // De lade staat in de pagina vóór de knoppenrij, terwijl de knop 'Meer' de
   // laatste knop van de balk is. Wie met een toetsenbord werkt, opende de lade en
-  // moest daarna zes keer terugtabben om bij de zeven pagina's te komen — of hij
+  // moest daarna terugtabben langs de hele balk om bij de pagina's in de lade te
+  // komen — of hij
   // tabde er meteen voorbij naar buiten. Nu land je op de eerste pagina in de
   // lade; Escape brengt je terug naar de knop.
   useEffect(() => {
@@ -307,7 +264,20 @@ export function OnderNavigatie({
       >
         {meerOpen && (
           <div ref={lade} style={sheet} id="meer-lade" role="group" aria-label={t('Meer pagina\'s')}>
-            {SECUNDAIR.map((id) => {
+            {LADE_GROEPEN.map((groep, nr) => (
+              // De kop die je ZIET is ook de naam van de groep voor hulpsoftware
+              // (`aria-labelledby` in plaats van een eigen `aria-label`). Met allebei
+              // las een schermlezer "Elke maand" twee keer na elkaar — één keer als
+              // naam van de groep, één keer als tekst erin (ronde 60).
+              <div key={groep.titel} role="group" aria-labelledby={`lade-groep-${nr}`}>
+                <span
+                  id={`lade-groep-${nr}`}
+                  className="label-caps"
+                  style={{ display: 'block', padding: nr === 0 ? '0.35rem 0.9rem 0.2rem' : '0.7rem 0.9rem 0.2rem' }}
+                >
+                  {t(groep.titel)}
+                </span>
+                {groep.paginas.map((id) => {
               const p = PAGINAS.find((x) => x.id === id)!
               const aan = id === actief
               return (
@@ -315,6 +285,10 @@ export function OnderNavigatie({
                   key={id}
                   type="button"
                   onClick={() => kies(id)}
+                  // Waar sta je? De knop kleurt op, maar kleur alleen zegt een
+                  // schermlezer niets — en sinds ronde 60 staan hier twaalf knoppen
+                  // onder elkaar. Het zijpaneel op een breed scherm doet dit al zo.
+                  aria-current={aan ? 'page' : undefined}
                   aria-label={t(p.label)}
                   style={{
                     display: 'flex',
@@ -339,7 +313,9 @@ export function OnderNavigatie({
                   {t(p.label)}
                 </button>
               )
-            })}
+                })}
+              </div>
+            ))}
           </div>
         )}
 
@@ -391,7 +367,11 @@ export function OnderNavigatie({
             icoon="⋯"
             label={t('Meer')}
             aan={meerAan}
-            gemarkeerd={SECUNDAIR.includes(actief)}
+            // Zolang de lade DICHT is, is deze markering het enige spoor van "je
+            // staat op een pagina die hierachter zit". Staat ze open, dan draagt de
+            // pagina zelf de markering al — twee keer "huidige pagina" horen is
+            // verwarrend, en 'Meer' is een lade, geen pagina (nakijkronde ronde 60).
+            gemarkeerd={SECUNDAIR.includes(actief) && !meerOpen}
             uitgeklapt={meerOpen}
             bedient={meerOpen ? 'meer-lade' : undefined}
             knopRef={meerKnop}

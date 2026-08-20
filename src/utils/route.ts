@@ -1,5 +1,6 @@
-import { PAGINAS, type Pagina } from '../components/OnderNavigatie'
+import { PAGINAS, type Pagina } from '../components/navigatie'
 import { DOSSIER_SOORTEN, type DossierSoort } from './dossiersoort'
+import { ANALYSE_TABS, type AnalyseTab } from './analysetab'
 
 // Waar sta ik, en hoe kom ik terug? (ronde 59)
 //
@@ -35,6 +36,8 @@ export type Route = {
   pagina: Pagina
   /** Alleen zinvol op de Dossiers-pagina. */
   subtab?: DossierSoort
+  /** Alleen zinvol op de Analyse-pagina (ronde 60). */
+  analyse?: AnalyseTab
   /**
    * Iets wat meteen moet opengaan. `nieuw` op Transacties opent de boekingspopup;
    * dat is wat de snelkoppeling "Uitgave toevoegen" op je beginscherm gebruikt.
@@ -44,6 +47,7 @@ export type Route = {
 
 const GELDIGE_PAGINAS = new Set<string>(PAGINAS.map((p) => p.id))
 const GELDIGE_SUBTABS = new Set<string>(DOSSIER_SOORTEN)
+const GELDIGE_ANALYSETABS = new Set<string>(ANALYSE_TABS)
 
 /**
  * Een adres omzetten naar een route, of `null` wanneer het er geen is.
@@ -62,6 +66,7 @@ export function hashNaarRoute(hash: string): Route | null {
   const tweede = delen[1]
   if (tweede !== undefined) {
     if (pagina === 'dossiers' && GELDIGE_SUBTABS.has(tweede)) route.subtab = tweede as DossierSoort
+    else if (pagina === 'analyse' && GELDIGE_ANALYSETABS.has(tweede)) route.analyse = tweede as AnalyseTab
     else if (pagina === 'transacties' && tweede === 'nieuw') route.actie = 'nieuw'
     // Een tweede deel dat we niet kennen, negeren we. De pagina zelf klopt, en dat
     // is het enige wat telt; een onbekende subtab is geen reden om iemand op het
@@ -73,6 +78,7 @@ export function hashNaarRoute(hash: string): Route | null {
 /** Een route omzetten naar het adres dat erbij hoort. */
 export function routeNaarHash(route: Route): string {
   if (route.pagina === 'dossiers' && route.subtab) return `#/dossiers/${route.subtab}`
+  if (route.pagina === 'analyse' && route.analyse) return `#/analyse/${route.analyse}`
   if (route.pagina === 'transacties' && route.actie === 'nieuw') return '#/transacties/nieuw'
   return `#/${route.pagina}`
 }

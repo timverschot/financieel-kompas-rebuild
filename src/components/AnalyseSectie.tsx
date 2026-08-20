@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { Categorie, Kind, Overboeking, Rekening, TerugkerendePost, Transactie, Waardering } from '../data/schema'
 import { Vermogensevolutie } from './Vermogensevolutie'
 import { TrendsSectie } from './TrendsSectie'
@@ -23,6 +23,8 @@ import { Donut } from './Donut'
 import { afgerondePercentages } from '../utils/donut'
 import { formatEuro } from '../utils/format'
 import { Kaart, PaginaKop, Leeg, Bedrag, Stat, Balk } from '../ui/basis'
+import { Subtabs } from '../ui/Subtabs'
+import { type AnalyseTab } from '../utils/analysetab'
 import { useT } from '../i18n'
 import { naarDatumTekst, huidigeMaand, maandJaarLabel } from '../utils/datum'
 import { verschuifMaand } from '../utils/maandverloop'
@@ -243,6 +245,8 @@ export function AnalyseSectie({
   terugkerendePosten,
   gezinsleden = [],
   beginRichting = 'uitgave',
+  beginTab,
+  onTabWissel,
   ankerMaand,
   maandNav,
   onGaNaarTransacties,
@@ -265,6 +269,14 @@ export function AnalyseSectie({
    * is enkel de BEGINstand.
    */
   beginRichting?: Richting
+  /**
+   * Welk onderdeel opengaat. Komt uit het adres (`#/analyse/verandering`), zodat een
+   * herlaadbeurt je op hetzelfde tabblad terugzet. Verandert het adres later — met de
+   * terugknop of een snelkoppeling — dan volgt het scherm mee.
+   */
+  beginTab?: AnalyseTab
+  /** Meldt een tabwissel, zodat het adres mee kan (ronde 60). */
+  onTabWissel?: (tab: AnalyseTab) => void
   /**
    * De maand waar deze pagina op ankert ('JJJJ-MM'), uit de maandschakelaar.
    *
@@ -294,6 +306,14 @@ export function AnalyseSectie({
   const [van, setVan] = useState('')
   const [tot, setTot] = useState('')
   const [drill, setDrill] = useState<{ sleutel: string; naam: string } | null>(null)
+  const [tab, setTab] = useState<AnalyseTab>(beginTab ?? 'verdeling')
+  // De tab uit het webadres blijft gelden zolang de pagina openstaat (ronde 60).
+  // Een beginwaarde wordt maar één keer gelezen; kwam je daarna via de terugknop of
+  // een snelkoppeling op `#/analyse/vooruit`, dan veranderde het adres wél en het
+  // scherm niet.
+  useEffect(() => {
+    if (beginTab) setTab(beginTab)
+  }, [beginTab])
 
   // Een aangepast bereik waarvan de einddatum vóór de begindatum ligt, levert
   // nergens resultaten op. Vroeger bleef het scherm dan zwijgend leeg (en werd het
@@ -481,9 +501,16 @@ export function AnalyseSectie({
           knoppen die je op deze pagina toch al gebruikt. */}
       <PaginaKop titel={drill ? drill.naam : t('Analyse')} actie={maandNav} />
 
-      {/* Richting: uitgaven of inkomsten */}
+      {/* Richting: uitgaven of inkomsten.
+          ⚠ NIET op de tab "Vooruit" (ronde 60). Wat daar staat — je vermogen en de
+          vaste lasten die eraan komen — kijkt niet naar de richting. De knoppen
+          verschoven wel van kleur, maar er gebeurde niets: een knop die niets doet
+          laat je twijfelen of je scherm nog werkt. */}
+      {!(tab === 'vooruit' && !drill) && (
       <div className="knoprij" style={{ gap: 8 }}>
         <button
+          type="button"
+          aria-pressed={richting === 'uitgave'}
           className={richting === 'uitgave' ? 'chip chip-actief' : 'chip'}
           onClick={() => {
             setRichting('uitgave')
@@ -493,6 +520,8 @@ export function AnalyseSectie({
           {t('Uitgaven')}
         </button>
         <button
+          type="button"
+          aria-pressed={richting === 'inkomst'}
           className={richting === 'inkomst' ? 'chip chip-actief' : 'chip'}
           onClick={() => {
             setRichting('inkomst')
@@ -502,11 +531,20 @@ export function AnalyseSectie({
           {t('Inkomsten')}
         </button>
       </div>
+      )}
 
       {/* Periode */}
       <div className="knoprij" style={{ gap: 8, alignItems: 'center' }}>
         {perioden.map(([k, label]) => (
-          <button key={k} className={keuze === k ? 'chip chip-actief' : 'chip'} onClick={() => setKeuze(k)}>
+          <button
+            key={k}
+            type="button"
+            // Hulpsoftware hoort te horen WELKE periode gekozen is; de blauwe kleur
+            // alleen zegt haar niets (ronde 60).
+            aria-pressed={keuze === k}
+            className={keuze === k ? 'chip chip-actief' : 'chip'}
+            onClick={() => setKeuze(k)}
+          >
             {label}
           </button>
         ))}
@@ -541,12 +579,28 @@ export function AnalyseSectie({
         </Kaart>
       )}
 
+      {/* De drie vragen als tabbladen (ronde 60). Buiten de drilldown: die vervangt
+          de hele pagina, en een tabstrook boven een detailweergave zou beloven dat
+          je erin kan blijven navigeren. */}
       {!drill && !bereikOmgekeerd && (
-        <>
+        <Subtabs
+          naam="analyse"
+          label={t('Onderdeel van de analyse')}
+          actief={tab}
+          onKies={(id) => {
+            setTab(id)
+            onTabWissel?.(id)
+          }}
+          tabs={[
+            { id: 'verdeling' as AnalyseTab, teken: '🍩', label: t('Verdeling') },
+            { id: 'verandering' as AnalyseTab, teken: '📈', label: t('Wat verandert') },
+            { id: 'vooruit' as AnalyseTab, teken: '🔭', label: t('Vooruit') },
+          ]}
+        >
           {/* Waar loopt het op? Bovenaan maar INGEKLAPT: het is een signaal, geen
               hoofdgerecht. Enkel bij uitgaven — bij inkomsten is de vraag zinloos.
               Ze stond eerder middenin de pagina en brak daar de leesvolgorde. */}
-          {richting === 'uitgave' && (
+          {tab === 'verandering' && richting === 'uitgave' && (
             <BesparenKaart
               transacties={transacties}
               periode={periode}
@@ -565,7 +619,7 @@ export function AnalyseSectie({
               vroeger zonder dat ik iets anders deed". Ook ingeklapt, en ook alleen
               bij uitgaven. Ze kijkt bewust NIET naar de gekozen periode: een
               prijsverhoging van maart zie je niet door één maand te bekijken. */}
-          {richting === 'uitgave' && (
+          {tab === 'verandering' && richting === 'uitgave' && (
             <PrijsstijgingenKaart
               transacties={transacties}
               terugkerendePosten={terugkerendePosten}
@@ -583,7 +637,7 @@ export function AnalyseSectie({
               inconsistent: het is één grafiek met haar eigen cijfers, en overal
               elders op deze pagina horen die in dezelfde kaart. De rijen blijven
               aanklikbaar voor de details erachter. */}
-          {byOv.length === 0 ? (
+          {tab === 'verdeling' && (byOv.length === 0 ? (
             <Kaart
               titel={richting === 'uitgave' ? t('Verdeling uitgaven') : t('Verdeling inkomsten')}
               bijschrift={t('Per hoofdcategorie')}
@@ -649,9 +703,9 @@ export function AnalyseSectie({
                 <Stat label={t('Totaal')}>{formatEuro(totaal)}</Stat>
               </div>
             </Kaart>
-          )}
+          ))}
 
-          {byItem.length > 0 && (
+          {tab === 'verdeling' && byItem.length > 0 && (
             <DonutKaart
               titel={t('Verdeling per product/dienst')}
               subtitel={t('Subcategorieën — brood, koffiekoeken, elektriciteit… Klik je door, dan zie je de volledige boeking, dus een gesplitst kassaticket komt in zijn geheel in beeld.')}
@@ -679,7 +733,7 @@ export function AnalyseSectie({
               }
             />
           )}
-          {byWinkel.length > 0 && (
+          {tab === 'verdeling' && byWinkel.length > 0 && (
             <DonutKaart
               titel={richting === 'uitgave' ? t('Uitgaven per winkel') : t('Inkomsten per bron')}
               subtitel={t('Gebaseerd op de omschrijving bij elke transactie')}
@@ -697,7 +751,7 @@ export function AnalyseSectie({
             />
           )}
 
-          {perPersoonGekleurd.length > 0 && (
+          {tab === 'verdeling' && perPersoonGekleurd.length > 0 && (
             <DonutKaart
               titel={richting === 'uitgave' ? t('Uitgaven per gezinslid') : t('Inkomsten per gezinslid')}
               subtitel={t('Wat aan niemand persoonlijk hangt, staat bij "Het gezin". Een kost voor meerdere gezinsleden wordt gelijk verdeeld; zo\u2019n aandeel bestaat niet als aparte boeking, dus die rij klikt niet door.')}
@@ -732,6 +786,7 @@ export function AnalyseSectie({
             />
           )}
 
+          {tab === 'verandering' && (
           <TrendsSectie
             transacties={transacties}
             categorieen={categorieen}
@@ -742,7 +797,9 @@ export function AnalyseSectie({
             ankerMaand={anker}
             onKies={onGaNaarTransacties ? (sleutel) => naarCategorie(sleutel) : undefined}
           />
+          )}
 
+          {tab === 'vooruit' && (
           <Vermogensevolutie
             rekeningen={rekeningen}
             transacties={transacties}
@@ -750,7 +807,9 @@ export function AnalyseSectie({
             waarderingen={waarderingen}
             ankerMaand={anker}
           />
+          )}
 
+          {tab === 'vooruit' && (
           <VooruitblikSectie
             transacties={transacties}
             terugkerendePosten={terugkerendePosten}
@@ -759,7 +818,8 @@ export function AnalyseSectie({
             maand={anker}
             onBoekVasteLast={onBoekVasteLast}
           />
-        </>
+          )}
+        </Subtabs>
       )}
 
       {drill && !bereikOmgekeerd && (

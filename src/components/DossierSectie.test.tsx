@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -45,33 +46,40 @@ const documenten: DossierDocument[] = [
   { id: 'doc1', dossierId: 'd1', naam: 'Overeenkomst', soort: 'overeenkomst', bestand: 'data:image/jpeg;base64,AAAA', toegevoegdOp: '2026-01-15' },
 ]
 
-function toon(extra: Partial<Parameters<typeof DossierSectie>[0]> = {}) {
-  render(
-    <DossierSectie
-      dossiers={[dossier]}
-      kosten={kosten}
-      verrekeningen={[afrekening]}
-      kinderen={kinderen}
-      categorieen={categorieen}
-      kindrekeningen={[]}
-      kindrekeningposten={[]}
-      documenten={documenten}
-      onDossierOpslaan={vi.fn()}
-      onDossierVerwijderen={vi.fn()}
-      onKostOpslaan={vi.fn()}
-      onKostVerwijderen={vi.fn()}
-      onGenereer={vi.fn()}
-      onMarkeerOvergemaakt={vi.fn()}
-      onVerwijderAfrekening={vi.fn()}
-      onKindrekeningOpslaan={vi.fn()}
-      onKindrekeningVerwijderen={vi.fn()}
-      onKindrekeningPostOpslaan={vi.fn()}
-      onKindrekeningPostVerwijderen={vi.fn()}
-      onDocumentOpslaan={vi.fn()}
-      onDocumentVerwijderen={vi.fn()}
-      {...extra}
-    />,
-  )
+type Eigenschappen = Parameters<typeof DossierSectie>[0]
+
+// De vaste eigenschappen op één plek, zodat een test die zelf `render`/`rerender`
+// nodig heeft (om iets van buitenaf te laten veranderen) niet de hele lijst hoeft
+// over te tikken.
+function eigenschappen(extra: Partial<Eigenschappen> = {}): Eigenschappen {
+  return {
+    dossiers: [dossier],
+    kosten,
+    verrekeningen: [afrekening],
+    kinderen,
+    categorieen,
+    kindrekeningen: [],
+    kindrekeningposten: [],
+    documenten,
+    onDossierOpslaan: vi.fn(),
+    onDossierVerwijderen: vi.fn(),
+    onKostOpslaan: vi.fn(),
+    onKostVerwijderen: vi.fn(),
+    onGenereer: vi.fn(),
+    onMarkeerOvergemaakt: vi.fn(),
+    onVerwijderAfrekening: vi.fn(),
+    onKindrekeningOpslaan: vi.fn(),
+    onKindrekeningVerwijderen: vi.fn(),
+    onKindrekeningPostOpslaan: vi.fn(),
+    onKindrekeningPostVerwijderen: vi.fn(),
+    onDocumentOpslaan: vi.fn(),
+    onDocumentVerwijderen: vi.fn(),
+    ...extra,
+  }
+}
+
+function toon(extra: Partial<Eigenschappen> = {}) {
+  render(<DossierSectie {...eigenschappen(extra)} />)
 }
 
 const bewijsmapKnop = () => screen.getByRole('button', { name: /Bewijsmap met bonnen/ })
@@ -282,5 +290,171 @@ describe('DossierSectie — de grondslagkaart en de chips', () => {
     // meer bestaat.
     toon({ dossiers: [{ ...dossier, verborgenOnderdelen: ['documentkluis'] }] })
     expect(screen.queryByLabelText('Document')).toBeNull()
+  })
+})
+
+describe('DossierSectie — de chips voor de onderdelen', () => {
+  it('toont je tik meteen, zonder op het opslaan te wachten', async () => {
+    // Een chip die pas van kleur verandert nadat het dossier weggeschreven is, laat
+    // je op een trage telefoon twijfelen of je tik wel aankwam (ronde 60).
+    const user = userEvent.setup()
+    let laatOpslaanDoorgaan = () => {}
+    const opslaan = vi.fn(() => new Promise<void>((res) => { laatOpslaanDoorgaan = res }))
+    toon({ onDossierOpslaan: opslaan })
+
+    const kluis = screen.getByRole('button', { name: 'Documentkluis' })
+    expect(kluis).toHaveAttribute('aria-pressed', 'true')
+    await user.click(kluis)
+    expect(screen.getByRole('button', { name: 'Documentkluis' })).toHaveAttribute('aria-pressed', 'false')
+
+    await act(async () => { laatOpslaanDoorgaan() })
+  })
+
+  it('zet je tik terug wanneer het opslaan mislukt', async () => {
+    // Anders blijft de bedoeling hangen: het scherm zegt "uit", het dossier zegt
+    // "aan", en de volgende geslaagde tik zet er twee tegelijk om (ronde 60).
+    const user = userEvent.setup()
+    const opslaan = vi.fn().mockRejectedValue(new Error('schijf vol'))
+    // De fout mag de test niet doen omvallen; we kijken naar wat het scherm doet.
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    toon({ onDossierOpslaan: opslaan })
+
+    await user.click(screen.getByRole('button', { name: 'Documentkluis' }))
+    expect(opslaan).toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Documentkluis' })).toHaveAttribute('aria-pressed', 'true')
+    // En het zegt het ook: een chip die stil terugspringt lijkt een haperend scherm.
+    expect(screen.getByText(/Dat is niet bewaard/)).toBeInTheDocument()
+  })
+
+  it('zwijgt over een mislukte opslag waarvan de wijziging al meelift op een latere', async () => {
+    // ⚠ Mislukt tik 1 terwijl tik 2 al onderweg is, dan draagt tik 2 de wijziging van
+    // tik 1 al mee: er gaat niets verloren. Zou de app dan tóch "Dat is niet bewaard"
+    // zeggen, dan tik je nog eens — en zet je juist iets om dat goed stond.
+    const user = userEvent.setup()
+    const doorgaan: { ok: () => void; fout: () => void }[] = []
+    const opslaan = vi.fn(() => new Promise<void>((res, rej) => {
+      doorgaan.push({ ok: () => res(), fout: () => rej(new Error('schijf vol')) })
+    }))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    toon({ onDossierOpslaan: opslaan })
+
+    await user.click(screen.getByRole('button', { name: 'Documentkluis' }))
+    await user.click(screen.getByRole('button', { name: 'Uitwisselen met de andere ouder' }))
+    // Tik 1 mislukt, tik 2 lukt.
+    await act(async () => { doorgaan[0].fout() })
+    await act(async () => { doorgaan[1].ok() })
+
+    expect(screen.queryByText(/Dat is niet bewaard/)).toBeNull()
+  })
+
+  it('zet de focus na "Toon het" op de chip van datzelfde onderdeel', async () => {
+    // Anders verdwijnt de regel mét de knop erin en valt de focus terug naar het begin
+    // van de pagina. De knop draagt ook de naam van het onderdeel: staan er twee van
+    // die regels, dan heten ze anders allebei enkel "Toon het".
+    const user = userEvent.setup()
+    toon({
+      dossiers: [{ ...dossier, verborgenOnderdelen: ['verdeling-kostensoort'], typeAandelen: { gewoon: 70 } }],
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Toon Verdeling per kostensoort' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Verdeling per kostensoort' }))
+  })
+
+  it('rekent bij twee snelle tikken door op de vorige tik, niet op het dossier', async () => {
+    // ⚠ De fout die dit voorkomt: elke tik schrijft het dossier weg en de app leest
+    // daarna opnieuw. Rekende de tweede tik vanaf het dossier zoals het NU op het
+    // scherm staat, dan zou hij de eerste wijziging spoorloos overschrijven.
+    const user = userEvent.setup()
+    const laatDoorgaan: (() => void)[] = []
+    const bewaard: Dossier[] = []
+    const opslaan = vi.fn((d: Dossier) => new Promise<void>((res) => {
+      bewaard.push(d)
+      laatDoorgaan.push(res)
+    }))
+    toon({ onDossierOpslaan: opslaan })
+
+    await user.click(screen.getByRole('button', { name: 'Documentkluis' }))
+    await user.click(screen.getByRole('button', { name: 'Uitwisselen met de andere ouder' }))
+
+    expect(bewaard[1].verborgenOnderdelen).toEqual(['documentkluis', 'uitwisseling'])
+
+    await act(async () => { laatDoorgaan.forEach((f) => f()) })
+  })
+
+  it('neemt een wijziging over die van een ander toestel binnenkomt', async () => {
+    // ⚠ Het scherm houdt tijdens een opslag zijn eigen lijst vast. Zonder de teller
+    // die bijhoudt of er nog iets onderweg is, zou het die lijst blijven vasthouden
+    // tot je van dossier wisselt — en draaide je eerstvolgende tik de wijziging van je
+    // gsm gewoon terug.
+    const { rerender } = render(
+      <DossierSectie {...eigenschappen({ dossiers: [dossier] })} />,
+    )
+    expect(screen.getByRole('button', { name: 'Documentkluis' })).toHaveAttribute('aria-pressed', 'true')
+
+    const opslaan = vi.fn()
+    const vanGsm = { ...dossier, verborgenOnderdelen: ['documentkluis'] }
+    rerender(<DossierSectie {...eigenschappen({ dossiers: [vanGsm], onDossierOpslaan: opslaan })} />)
+    expect(screen.getByRole('button', { name: 'Documentkluis' })).toHaveAttribute('aria-pressed', 'false')
+
+    // En — dit is het punt — de eerstvolgende tik op een ándere chip mag die
+    // wijziging niet terugdraaien: ze hoort er gewoon bij te komen.
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Uitwisselen met de andere ouder' }))
+    expect(opslaan.mock.calls[0][0].verborgenOnderdelen).toEqual(['documentkluis', 'uitwisseling'])
+  })
+
+  it('waarschuwt wanneer een uitgezette verdeling nog een sleutel bevat', () => {
+    // Een verdeelsleutel die uitstaat, deelt je geld gewoon verder. Zonder deze regel
+    // zie je een afrekening waarvan de cijfers niet kloppen met het scherm.
+    toon({
+      dossiers: [{ ...dossier, verborgenOnderdelen: ['verdeling-kostensoort'], typeAandelen: { gewoon: 70 } }],
+    })
+    expect(screen.getByText(/Verdeling per kostensoort staat uit, maar er staat wel iets in/)).toBeInTheDocument()
+  })
+})
+
+describe('DossierSectie — een nieuw dossier', () => {
+  it('kiest het nieuwe dossier meteen', async () => {
+    // ⚠ Vóór ronde 60 bleef de keuzelijst op het vorige dossier staan. De chips en
+    // de kaarten eronder gingen dus nog over dat oude dossier, terwijl je net iets
+    // nieuws had aangemaakt — en wie dan een onderdeel aanzette, zette het bij het
+    // verkeerde dossier aan.
+    const user = userEvent.setup()
+
+    function Proef() {
+      const [lijst, setLijst] = useState<Dossier[]>([dossier])
+      return (
+        <DossierSectie
+          dossiers={lijst}
+          kosten={[]}
+          verrekeningen={[]}
+          kinderen={kinderen}
+          categorieen={categorieen}
+          kindrekeningen={[]}
+          kindrekeningposten={[]}
+          documenten={[]}
+          onDossierOpslaan={(d: Dossier) => { setLijst((v) => [...v.filter((x) => x.id !== d.id), d]) }}
+          onDossierVerwijderen={vi.fn()}
+          onKostOpslaan={vi.fn()}
+          onKostVerwijderen={vi.fn()}
+          onGenereer={vi.fn()}
+          onMarkeerOvergemaakt={vi.fn()}
+          onVerwijderAfrekening={vi.fn()}
+          onKindrekeningOpslaan={vi.fn()}
+          onKindrekeningVerwijderen={vi.fn()}
+          onKindrekeningPostOpslaan={vi.fn()}
+          onKindrekeningPostVerwijderen={vi.fn()}
+          onDocumentOpslaan={vi.fn()}
+          onDocumentVerwijderen={vi.fn()}
+        />
+      )
+    }
+    render(<Proef />)
+
+    await user.type(screen.getByLabelText('Dossiernaam'), 'Dossier Emma')
+    await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
+
+    const keuze = screen.getByLabelText('Gekozen dossier') as HTMLSelectElement
+    expect(keuze.selectedOptions[0].textContent).toContain('Dossier Emma')
   })
 })

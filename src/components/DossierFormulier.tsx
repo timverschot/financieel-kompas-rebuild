@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import type { Dossier } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { useT } from '../i18n'
+import { verborgenBijNieuwDossier } from '../utils/dossieronderdelen'
 
 // De beginwaarden van het formulier staan op één plek. Zo krijgt het formulier na
 // het opslaan exact dezelfde begintoestand als bij het openen en kunnen begin en
@@ -31,7 +32,17 @@ export function DossierFormulier({ onOpslaan }: { onOpslaan: (d: Dossier) => Pro
   async function verzend(e: FormEvent) {
     e.preventDefault()
     if (!geldig) return
-    await onOpslaan({ id: nieuwId(), naam: naam.trim(), aandeelJij: aandeelGetal })
+    // ⚠ Een NIEUW dossier begint bewust met minder (ronde 60). Vóór die ronde
+    // opende het met acht kaarten onder elkaar — verdelingen, een kindrekening, een
+    // documentkluis, een uitwisseling — allemaal leeg, terwijl je net kwam om kosten
+    // bij te houden. Nu staat de kern open en zet je erbij wat je nodig hebt; de
+    // chips daarvoor staan meteen boven het formulier. Zie `DOSSIER_ONDERDELEN`.
+    await onOpslaan({
+      id: nieuwId(),
+      naam: naam.trim(),
+      aandeelJij: aandeelGetal,
+      verborgenOnderdelen: verborgenBijNieuwDossier(),
+    })
     // Pas ná een geslaagde opslag leegmaken: zo staat het formulier klaar voor een
     // volgend dossier en levert een tweede klik niet nog eens hetzelfde dossier op.
     leegmaken()

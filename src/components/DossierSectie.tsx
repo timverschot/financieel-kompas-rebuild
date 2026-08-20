@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type {
   Categorie,
   Dossier,
@@ -19,6 +19,12 @@ import { UitwisselingKaart } from './UitwisselingKaart'
 import { CategorieKiezer } from './CategorieKiezer'
 import { Dialoog } from '../ui/Dialoog'
 import { telVoorVerwijderen } from '../utils/dossierverwijdering'
+import {
+  DOSSIER_ONDERDELEN,
+  verborgenMetInhoud,
+  volgendeVerborgenLijst,
+  type DossierOnderdeel,
+} from '../utils/dossieronderdelen'
 import { saldoVerrekeningDossier } from '../utils/dossier'
 import { exportFoutmelding } from '../utils/appVersie'
 import { isOpenKost, kostenVoorAfrekening, type AfrekeningFilter } from '../utils/afrekening'
@@ -47,38 +53,6 @@ import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 import { Bonknop } from '../ui/Bonknop'
 import { formatEuro } from '../utils/format'
 import { dagJaar } from '../utils/datum'
-
-// De onderdelen van een dossier die je kan wegklikken.
-//
-// Niet elk dossier gebruikt alles. De ene co-ouder rekent alles fiftyfifty af en
-// heeft nooit een verdeelsleutel per categorie nodig; de andere heeft geen
-// gezamenlijke pot en bewaart de papieren elders. Die kaarten scrollen dan eeuwig
-// mee zonder ooit iets te doen.
-//
-// Wat er BEWUST niet in staat: de lijst met open kosten. Dat is waar een dossier
-// voor bestaat — verberg je die, dan blijft er een lege pagina over. De keuze zit
-// op het dossier (`Dossier.verborgenOnderdelen`), dus ze klopt ook op je gsm.
-//
-// 'verrekeningen' kwam er in ronde 36 bij: wie zijn kosten gewoon bijhoudt en pas
-// op het einde van het jaar afrekent, scrolt anders elke keer voorbij twee kaarten
-// die hij nooit gebruikt.
-export const DOSSIER_ONDERDELEN = [
-  { id: 'verdeling-categorie', label: 'Verdeling per categorie' },
-  { id: 'verdeling-kostensoort', label: 'Verdeling per kostensoort' },
-  { id: 'verrekeningen', label: 'Verrekeningen' },
-  // Ronde 40: een eigen sleutel, bewust NIET aan 'verrekeningen' gehangen. Die
-  // vlag dekt al twee kaarten; er een derde bij zetten zou betekenen dat wie de
-  // opbouw niet wil zien ook de knop kwijtraakt om een afrekening te maken.
-  { id: 'afrekening-detail', label: 'Opbouw van een afrekening' },
-  { id: 'onderhoudsbijdrage', label: 'Onderhoudsbijdrage' },
-  { id: 'gezamenlijke-pot', label: 'Kindrekening (gezamenlijke pot)' },
-  { id: 'documentkluis', label: 'Documentkluis' },
-  // Ronde 44. Wie zijn dossier alleen bijhoudt, wisselt niets uit en hoort deze
-  // kaart niet elke keer voorbij te scrollen.
-  { id: 'uitwisseling', label: 'Uitwisselen met de andere ouder' },
-] as const
-
-export type DossierOnderdeel = (typeof DOSSIER_ONDERDELEN)[number]['id']
 
 // Leest een percentageveld: leeg betekent 'niet ingesteld', een getal van 0 tot en
 // met 100 is geldig, al de rest is ongeldig (dan blijft de knop uit).
@@ -255,20 +229,125 @@ export function DossierSectie({
   }
 
   // Welke onderdelen zijn zichtbaar? We bewaren wat VERBORGEN is, dus een dossier
-  // zonder dat veld toont gewoon alles — precies zoals vóór deze ronde.
-  const verborgen = dossier?.verborgenOnderdelen ?? []
+  // zonder dat veld toont gewoon alles — precies zoals vóór ronde 60.
+  //
+  // ⚠ ZOLANG ER EEN OPSLAG ONDERWEG IS, TOONT HET SCHERM WAT JE TIK BEDOELDE.
+  // Elke tik schrijft het dossier weg en de app leest daarna opnieuw; tot dat rond
+  // is, draagt het dossier hieronder nog de OUDE lijst. Zonder `bedoeling` springt de
+  // chip pas ná de opslag terug — op een trage telefoon een zichtbare hapering — en
+  // rekent een tweede tik vlak erna vanaf diezelfde oude lijst, waardoor de eerste
+  // wijziging spoorloos verdwijnt. Dat laatste viel op doordat een test die zes chips
+  // na elkaar aanklikte ongeveer één keer op de drie omviel.
+  //
+  // `null` betekent: niets onderweg, het dossier heeft gelijk. Belangrijk dat dit de
+  // beginwaarde is én dat we er meteen naar terugvallen zodra de opslag klaar is —
+  // anders loopt het scherm één hertekening achter op het dossier, en dat zie je bij
+  // het wisselen van dossier als een flits met de kaarten van daarnet.
+  const [bedoeling, setBedoeling] = useState<string[] | null>(null)
+  // Wat er misging bij het laatste tikje op een chip (ronde 60). Leeg = niets aan de hand.
+  const [chipFout, setChipFout] = useState('')
+  const opgeslagenVerborgen = dossier?.verborgenOnderdelen ?? []
+  // Dezelfde lijst, maar om mee te REKENEN: een ref is meteen bij, ook binnen
+  // dezelfde tik, terwijl een toestand dat pas is na de hertekening.
+  const verborgenRef = useRef<string[]>(opgeslagenVerborgen)
+  const gezienDossier = useRef<string | undefined>(dossier?.id)
+  // ⚠ De bedoeling geldt alleen voor het dossier waarin ze uitgesproken is. Het
+  // opruimen bij een dossierwissel gebeurt in een effect, en dat loopt pas nádat het
+  // beeld getekend is; wissel je van dossier terwijl er nog een opslag onderweg is,
+  // dan zou er anders één beeldframe zijn waarin het nieuwe dossier de lijst van het
+  // oude draagt.
+  const verborgen = bedoeling !== null && gezienDossier.current === dossier?.id ? bedoeling : opgeslagenVerborgen
   const toont = (id: DossierOnderdeel) => !verborgen.includes(id)
+  // Hoeveel opslagbeurten er op dit ogenblik onderweg zijn. Zolang dat er nul zijn,
+  // is wat er in het dossier staat de waarheid — ook als die van een ÁNDER toestel
+  // komt (ronde 60). Zonder deze teller hield het scherm zijn eigen lijst vast tot je
+  // van dossier wisselde, en draaide de eerstvolgende tik de wijziging van dat
+  // andere toestel gewoon terug.
+  const opslagBezig = useRef(0)
+  // Wat er op dit ogenblik ECHT in het dossier staat. Nodig omdat de waarde in een
+  // opslagbeurt uit een oudere hertekening komt: tegen de tijd dat die klaar is, kan
+  // het dossier al iets anders zeggen.
+  const opgeslagenRef = useRef<string[]>(opgeslagenVerborgen)
+  useEffect(() => {
+    opgeslagenRef.current = dossier?.verborgenOnderdelen ?? []
+  })
+  // De chips zelf, om de focus na "Toon het" ergens zinnigs te laten landen.
+  const chipKnoppen = useRef<Record<string, HTMLButtonElement | null>>({})
+  useEffect(() => {
+    const opgeslagen = dossier?.verborgenOnderdelen ?? []
+    // Van dossier gewisseld: altijd overnemen. Wat het vorige dossier bedoelde, heeft
+    // hier niets te zoeken.
+    if (gezienDossier.current !== dossier?.id) {
+      gezienDossier.current = dossier?.id
+      verborgenRef.current = opgeslagen
+      setBedoeling(null)
+      setChipFout('')
+      return
+    }
+    // Zelfde dossier, en niets meer onderweg: het dossier heeft gelijk.
+    if (opslagBezig.current === 0) verborgenRef.current = opgeslagen
+  }, [dossier?.id, dossier?.verborgenOnderdelen])
+
+  // Een nieuw dossier bewaren en het meteen kiezen. Mislukt het bewaren, dan
+  // wisselen we niet van dossier — anders stond je naar een leeg scherm te kijken
+  // van iets dat niet bestaat.
+  async function maakDossier(nieuwDossier: Dossier) {
+    await onDossierOpslaan(nieuwDossier)
+    setGeselecteerd(nieuwDossier.id)
+  }
 
   async function zetOnderdeel(id: DossierOnderdeel, zichtbaar: boolean) {
     if (!dossier) return
-    const nieuw = zichtbaar ? verborgen.filter((v) => v !== id) : [...verborgen, id]
+    const vanDossier = dossier.id
+    const basis = verborgenRef.current
+    // De rekensom staat in `utils/dossieronderdelen.ts`, zodat een test ze los kan
+    // narekenen. Ze ontdubbelt ook: twee tikken vlak na elkaar op dezelfde chip
+    // schreven de sleutel anders twee keer weg, en de tweede tik deed dan het
+    // omgekeerde van wat je bedoelde (ronde 60).
+    const nieuw = volgendeVerborgenLijst(basis, id, zichtbaar)
+    verborgenRef.current = nieuw
+    // Meteen tonen, niet pas na de opslag: een chip die een halve seconde blijft
+    // staan waar hij stond, laat je twijfelen of je tik wel aankwam.
+    setBedoeling(nieuw)
+    setChipFout('')
     const bijgewerkt: Dossier = { ...dossier }
     // Niets verborgen? Dan halen we het veld helemaal weg in plaats van een lege
     // lijst weg te schrijven. Zo blijft een dossier dat nooit iets verborg exact
     // hetzelfde record als voorheen.
     if (nieuw.length > 0) bijgewerkt.verborgenOnderdelen = nieuw
     else delete bijgewerkt.verborgenOnderdelen
-    await onDossierOpslaan(bijgewerkt)
+    opslagBezig.current += 1
+    try {
+      await onDossierOpslaan(bijgewerkt)
+    } catch {
+      // We laten de fout hier NIET door. Niemand vangt hem verderop, en dan blijft er
+      // enkel een rode regel in de ontwikkelaarsconsole over — die de gebruiker nooit
+      // ziet. Hij hoort op het scherm te staan, naast de chip die terugsprong.
+      //
+      // ⚠ Alleen wanneer deze tik ook écht verloren gaat. Kwam er ná deze tik nog een
+      // andere, dan draagt die de wijziging al mee en is er niets kwijt — de melding
+      // zou je dan aanzetten om nóg eens te tikken en juist iets om te zetten dat
+      // goed stond. En ze hoort bij het dossier waarin je tikte: ben je intussen naar
+      // een ander dossier gewisseld, dan zou ze daar staan zonder dat je daar iets
+      // gedaan hebt.
+      if (verborgenRef.current === nieuw && gezienDossier.current === vanDossier) {
+        setChipFout(t('Dat is niet bewaard — je scherm staat weer zoals het was.'))
+      }
+    } finally {
+      opslagBezig.current -= 1
+      // Terug naar het dossier als bron van waarheid — geslaagd of niet, maar pas
+      // wanneer er niets meer onderweg is. Zit er nog een tik in de wacht, dan houdt
+      // die de bedoeling vast.
+      //
+      // ⚠ De lijst komt uit het DOSSIER en niet uit `basis` (nakijkronde ronde 60).
+      // Mislukken er twee opslagbeurten na elkaar, dan is `basis` van de tweede tik
+      // een lijst die nooit bewaard is; de eerstvolgende tik zou daar dan op
+      // doorrekenen en iets wegschrijven dat op je scherm net aan stond.
+      if (opslagBezig.current === 0) {
+        verborgenRef.current = opgeslagenRef.current
+        setBedoeling(null)
+      }
+    }
   }
 
   // Welk document legt de verdeling vast (ronde 52)?
@@ -453,6 +532,9 @@ export function DossierSectie({
                     key={o.id}
                     type="button"
                     aria-pressed={aan}
+                    ref={(el) => {
+                      chipKnoppen.current[o.id] = el
+                    }}
                     className={aan ? 'chip chip-actief' : 'chip'}
                     onClick={() => zetOnderdeel(o.id, !aan)}
                   >
@@ -464,10 +546,66 @@ export function DossierSectie({
             <p className="rij-meta" style={{ margin: 0 }}>
               {t('Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren.')}
             </p>
+            {/* `role="alert"` en niet `role="status"`: dit is een mislukking meteen ná
+                iets wat je zelf deed, en dan mag een schermlezer het niet overslaan —
+                dezelfde keuze als bij de veertien andere foutregels in de app. */}
+            {chipFout !== '' && (
+              <p className="foutregel" role="alert" style={{ margin: 0 }}>
+                {chipFout}
+              </p>
+            )}
+            {/* ⚠ Een uitgezet onderdeel waar tóch iets in staat (ronde 60). Dat kan
+                echt gebeuren: de rekenhulp "Indexatie" bewaart een onderhoudsbijdrage
+                rechtstreeks in een dossier. Zonder deze regel zou je die gegevens
+                nergens meer zien, zonder dat iets je dat vertelt.
+
+                Bewust GEEN `role="alert"` of `role="status"`: deze regel staat er al
+                zodra je het dossier opent, ze is geen antwoord op een handeling. Een
+                schermlezer die je bij elke dossierwissel onderbreekt om iets voor te
+                lezen dat gewoon in de leesvolgorde staat, is luider dan nuttig. De
+                melding hieronder over een MISLUKTE opslag is dat wél, en draagt
+                daarom `role="alert"`. */}
+            {verborgenMetInhoud(dossier.id, verborgen, {
+              verrekeningen,
+              kindrekeningen,
+              onderhoudsbijdragen,
+              documenten: dossierDocumenten,
+              categorieAandelen: dossier.categorieAandelen,
+              typeAandelen: dossier.typeAandelen,
+            }).map((id) => {
+              const naam = t(DOSSIER_ONDERDELEN.find((o) => o.id === id)?.label ?? id)
+              return (
+                <p key={id} className="foutregel" style={{ margin: 0 }}>
+                  {t('{onderdeel} staat uit, maar er staat wel iets in.', { onderdeel: naam })}{' '}
+                  {/* De knop draagt de naam van het onderdeel, niet alleen "Toon het":
+                      staan er twee van deze regels, dan hoor je anders twee keer
+                      exact hetzelfde en weet je niet welke bij welke hoort. En na de
+                      klik verdwijnt de regel — mét de knop erin — dus zetten we de
+                      focus op de chip van datzelfde onderdeel in plaats van hem naar
+                      het begin van de pagina te laten terugvallen. */}
+                  <button
+                    type="button"
+                    className="knop knop-ghost knop-klein"
+                    aria-label={t('Toon {onderdeel}', { onderdeel: naam })}
+                    onClick={() => {
+                      chipKnoppen.current[id]?.focus()
+                      void zetOnderdeel(id, true)
+                    }}
+                  >
+                    {t('Toon het')}
+                  </button>
+                </p>
+              )
+            })}
           </div>
         )}
 
-        <DossierFormulier onOpslaan={onDossierOpslaan} />
+        {/* Een nieuw dossier wordt meteen het gekozen dossier (ronde 60). Vóór die
+            ronde bleef de keuzelijst op het vorige dossier staan: je maakte "Dossier
+            Emma" aan, en de chips en kaarten eronder gingen nog altijd over het
+            dossier daarvoor. Wie dan een onderdeel aanzette, zette het bij het
+            verkeerde dossier aan. */}
+        <DossierFormulier onOpslaan={maakDossier} />
       </Kaart>
 
       {dossier && (

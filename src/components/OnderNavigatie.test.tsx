@@ -1,7 +1,8 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { OnderNavigatie } from './OnderNavigatie'
+import { LADE_GROEPEN, PAGINAS, PRIMAIR_LINKS, PRIMAIR_RECHTS } from './navigatie'
 
 // Ronde 34. Twee dingen die op een echte iPhone misgingen en die je in jsdom wél
 // kan vastleggen: de balk die tijdens het scrollen verdween en niet terugkwam, en
@@ -161,5 +162,124 @@ describe('OnderNavigatie — de Meer-lade', () => {
     await user.click(screen.getByRole('button', { name: 'Spaardoelen' }))
     expect(onKies).toHaveBeenCalledWith('spaardoelen')
     expect(screen.queryByRole('button', { name: 'Rekeningen' })).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// DE INDELING VAN DE NAVIGATIE (ronde 60)
+//
+// Twaalf pagina's onder één ⋯, ongesorteerd en alleen te onderscheiden aan een
+// emoji: dat was de zwaarste bevinding over overzichtelijkheid uit de evaluatie van
+// augustus 2026. Deze tests bewaken de indeling zelf, niet de opmaak.
+// ---------------------------------------------------------------------------
+describe('OnderNavigatie — de indeling', () => {
+  it('geeft élke pagina precies één plek', () => {
+    // ⚠ De lade wordt afgeleid uit de groepen. Zou een nieuwe pagina in geen enkele
+    // groep staan, dan is ze nergens meer te bereiken — en dat merk je pas wanneer
+    // iemand ze zoekt.
+    const inLade = LADE_GROEPEN.flatMap((g) => g.paginas)
+    const overal = [...PRIMAIR_LINKS, ...PRIMAIR_RECHTS, ...inLade]
+    expect(new Set(overal).size).toBe(overal.length)
+    expect(new Set(overal)).toEqual(new Set(PAGINAS.map((p) => p.id)))
+  })
+
+  it('zet Budget in de balk en Analyse in de lade', () => {
+    // Budget is de reden dat iemand een budget-app installeert; Analyse is een
+    // verdiepingspagina. Die twee stonden omgekeerd.
+    expect(PRIMAIR_RECHTS).toContain('budget')
+    expect(LADE_GROEPEN.flatMap((g) => g.paginas)).toContain('analyse')
+    expect(PRIMAIR_LINKS).not.toContain('analyse')
+    expect(PRIMAIR_RECHTS).not.toContain('analyse')
+  })
+
+  it('zet Dossiers vooraan in de lade', () => {
+    // Het onderdeel dat deze app onderscheidt, stond op de vijfde regel.
+    expect(LADE_GROEPEN[0].paginas[0]).toBe('dossiers')
+  })
+
+  it('toont de twee groepen met hun kop', async () => {
+    const user = userEvent.setup()
+    render(<OnderNavigatie actief="overzicht" onKies={vi.fn()} onNieuweTransactie={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Meer' }))
+
+    for (const groep of LADE_GROEPEN) {
+      expect(screen.getByRole('group', { name: groep.titel })).toBeInTheDocument()
+    }
+  })
+
+  it('gebruikt de kop die je ZIET als naam van de groep', async () => {
+    // ⚠ Met een eigen `aria-label` naast de zichtbare kop las een schermlezer
+    // "Elke maand" twee keer na elkaar (ronde 60). De naam van de groep hangt nu aan
+    // de kop zelf, dus wat je ziet en wat je hoort kunnen niet meer uit elkaar lopen.
+    const user = userEvent.setup()
+    render(<OnderNavigatie actief="overzicht" onKies={vi.fn()} onNieuweTransactie={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Meer' }))
+
+    const groep = screen.getByRole('group', { name: 'Elke maand' })
+    const kop = screen.getByText('Elke maand')
+    expect(groep).toHaveAttribute('aria-labelledby', kop.id)
+    expect(groep).not.toHaveAttribute('aria-label')
+  })
+
+  it('laat de lade binnenin scrollen in plaats van buiten beeld te lopen', async () => {
+    // ⚠ Op een telefoon in liggende stand is de lade hoger dan wat er in beeld past.
+    // Ze schoof zelf niet, dus de onderste pagina's waren onbereikbaar (ronde 60).
+    const user = userEvent.setup()
+    render(<OnderNavigatie actief="overzicht" onKies={vi.fn()} onNieuweTransactie={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Meer' }))
+
+    const lade = document.getElementById('meer-lade') as HTMLElement
+    expect(lade).toHaveStyle({ maxHeight: '60vh', overflowY: 'auto' })
+  })
+
+  it('zegt in de lade op welke pagina je staat', async () => {
+    // Kleur alleen zegt een schermlezer niets, en sinds ronde 60 staan hier twaalf
+    // knoppen onder elkaar.
+    const user = userEvent.setup()
+    render(<OnderNavigatie actief="rekeningen" onKies={vi.fn()} onNieuweTransactie={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Meer' }))
+
+    expect(screen.getByRole('button', { name: 'Rekeningen' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('button', { name: 'Dossiers' })).not.toHaveAttribute('aria-current')
+  })
+
+  it('markeert Meer alleen zolang de lade dicht is', async () => {
+    // Dicht is de markering het enige spoor van "je staat op een pagina die
+    // hierachter zit". Open draagt de pagina zelf die markering al, en twee keer
+    // "huidige pagina" horen is verwarrend — 'Meer' is een lade, geen pagina.
+    const user = userEvent.setup()
+    render(<OnderNavigatie actief="rekeningen" onKies={vi.fn()} onNieuweTransactie={vi.fn()} />)
+    const meer = screen.getByRole('button', { name: 'Meer' })
+    expect(meer).toHaveAttribute('aria-current', 'page')
+
+    await user.click(meer)
+    expect(screen.getByRole('button', { name: 'Meer' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('button', { name: 'Rekeningen' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('zet de focus in de lade en met Escape weer terug op Meer', async () => {
+    // Zonder dit moest wie met een toetsenbord werkt langs de hele balk terugtabben
+    // om bij de pagina's in de lade te komen — of tabde er meteen voorbij naar buiten.
+    const user = userEvent.setup()
+    render(<OnderNavigatie actief="overzicht" onKies={vi.fn()} onNieuweTransactie={vi.fn()} />)
+    const meer = screen.getByRole('button', { name: 'Meer' })
+    await user.click(meer)
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Dossiers' }))
+
+    await user.keyboard('{Escape}')
+    expect(document.getElementById('meer-lade')).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Meer' }))
+  })
+
+  it('houdt de paginas van een groep bij die groep', async () => {
+    // Een kop die niet bij zijn lijst hoort, is erger dan geen kop.
+    const user = userEvent.setup()
+    render(<OnderNavigatie actief="overzicht" onKies={vi.fn()} onNieuweTransactie={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Meer' }))
+
+    const elkeMaand = screen.getByRole('group', { name: 'Elke maand' })
+    expect(within(elkeMaand).getByRole('button', { name: 'Dossiers' })).toBeInTheDocument()
+    expect(within(elkeMaand).queryByRole('button', { name: 'Instellingen' })).toBeNull()
   })
 })

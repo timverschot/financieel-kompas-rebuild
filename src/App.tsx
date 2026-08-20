@@ -146,7 +146,9 @@ import { PlanRegels } from './components/PlanRegels'
 import { OverboekingSectie } from './components/OverboekingSectie'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { NieuweVersieBalk } from './components/NieuweVersieBalk'
-import { OnderNavigatie, PAGINAS, type Pagina } from './components/OnderNavigatie'
+import { OnderNavigatie } from './components/OnderNavigatie'
+import { PAGINAS, type Pagina } from './components/navigatie'
+import type { AnalyseTab } from './utils/analysetab'
 import { huidigeRoute, volgRoute, zetRoute } from './utils/route'
 import { sluitBovenstePopup } from './ui/popupstapel'
 import { BoekingDialoog } from './components/BoekingDialoog'
@@ -299,7 +301,13 @@ export function App() {
       const popup = sluitBovenstePopup()
       if (popup !== 'geen') {
         setPagina((nu) => {
-          if (nu) zetRoute({ pagina: nu, subtab: nu === 'dossiers' ? dossierTabRef.current : undefined })
+          if (nu) {
+            zetRoute({
+              pagina: nu,
+              subtab: nu === 'dossiers' ? dossierTabRef.current : undefined,
+              analyse: nu === 'analyse' ? analyseTabRef.current : undefined,
+            })
+          }
           return nu
         })
         return
@@ -310,7 +318,20 @@ export function App() {
       // Overzicht zonder te weten waarom.
       if (route === null) {
         setPagina((nu) => {
-          if (nu) zetRoute({ pagina: nu }, true)
+          // Mét de lade van Dossiers en het tabblad van Analyse erbij (nakijkronde
+          // ronde 60): zonder die twee stond het scherm nog op "Vooruit" terwijl het
+          // adres alleen `#/analyse` zei, en landde je na een herlaadbeurt op
+          // "Verdeling" zonder te begrijpen waarom.
+          if (nu) {
+            zetRoute(
+              {
+                pagina: nu,
+                subtab: nu === 'dossiers' ? dossierTabRef.current : undefined,
+                analyse: nu === 'analyse' ? analyseTabRef.current : undefined,
+              },
+              true,
+            )
+          }
           return nu
         })
         return
@@ -326,6 +347,7 @@ export function App() {
         return route.pagina
       })
       if (route.subtab) setDossierTab(route.subtab)
+      if (route.analyse) setAnalyseTab(route.analyse)
       // De snelkoppeling van het beginscherm werkt ook wanneer de app al open staat.
       // Zonder deze regel landde je dan op Transacties zónder formulier — terwijl de
       // belofte van die snelkoppeling juist "één tik en je staat in het formulier" is.
@@ -416,6 +438,12 @@ export function App() {
   // Overzicht zet die mee: klik je bij "Inkomsten per categorie" op "Bekijk in
   // Analyse", dan hoor je daar niet op de uitgaven te landen.
   const [analyseRichting, setAnalyseRichting] = useState<'uitgave' | 'inkomst'>('uitgave')
+  // Welk onderdeel van de Analyse-pagina open staat (ronde 60). Staat in het adres,
+  // zodat een herlaadbeurt je op hetzelfde tabblad terugzet — dezelfde afspraak als
+  // bij de lade van de Dossiers-pagina.
+  const [analyseTab, setAnalyseTab] = useState<AnalyseTab>('verdeling')
+  const analyseTabRef = useRef(analyseTab)
+  analyseTabRef.current = analyseTab
   /**
    * Met welk filter de Transacties-pagina opent (ronde 40).
    *
@@ -569,8 +597,9 @@ export function App() {
       const beginpagina = start?.pagina ?? (rk.geldig.length === 0 ? 'opstelling' : 'overzicht')
       setPagina(beginpagina)
       if (start?.subtab) setDossierTab(start.subtab)
+      if (start?.analyse) setAnalyseTab(start.analyse)
       if (start?.actie === 'nieuw') setBoekingOpen(true)
-      zetRoute({ pagina: beginpagina, subtab: start?.subtab }, true)
+      zetRoute({ pagina: beginpagina, subtab: start?.subtab, analyse: start?.analyse }, true)
       setRekeningen(rk.geldig)
       setCategorieen(cat.geldig)
       setBudgetten(bud.geldig)
@@ -1762,8 +1791,14 @@ export function App() {
     setPagina(doel)
     // Zonder subtab de lade meenemen waar je nu staat: anders zegt het adres
     // `#/dossiers` en land je na een herlaadbeurt in "Gedeelde kosten" in plaats van
-    // in de lade die je open had.
-    zetRoute({ pagina: doel, subtab: subtab ?? (doel === 'dossiers' ? dossierTab : undefined) })
+    // in de lade die je open had. Voor de Analyse-pagina geldt sinds ronde 60
+    // hetzelfde met haar tabblad. Vandaag wijst nog geen enkele melding daarheen,
+    // maar de dag dat er één bijkomt hoort ze niet stil het verkeerde te doen.
+    zetRoute({
+      pagina: doel,
+      subtab: subtab ?? (doel === 'dossiers' ? dossierTab : undefined),
+      analyse: doel === 'analyse' ? analyseTab : undefined,
+    })
     if (subtab) setDossierTab(subtab)
     // Zonder deze regel belandde je op de dossierpagina met een ánder dossier open
     // dan het dossier waarover de melding ging.
@@ -1773,7 +1808,9 @@ export function App() {
   function gaNaarAnalyse(richting: 'uitgave' | 'inkomst') {
     setAnalyseRichting(richting)
     setPagina('analyse')
-    zetRoute({ pagina: 'analyse' })
+    // De donut op het Overzicht vraagt om een verdeling, dus daar landt hij ook.
+    setAnalyseTab('verdeling')
+    zetRoute({ pagina: 'analyse', analyse: 'verdeling' })
   }
 
   /**
@@ -1798,7 +1835,11 @@ export function App() {
   function kiesPagina(doel: Pagina) {
     setTxFilter(null)
     setPagina(doel)
-    zetRoute({ pagina: doel, subtab: doel === 'dossiers' ? dossierTab : undefined })
+    zetRoute({
+      pagina: doel,
+      subtab: doel === 'dossiers' ? dossierTab : undefined,
+      analyse: doel === 'analyse' ? analyseTab : undefined,
+    })
   }
 
   // Doorklikken vanaf een cijfer dat over één categorie gaat, op welk niveau ook.
@@ -2122,6 +2163,13 @@ export function App() {
           <ErrorBoundary naam="Analyse">
             <AnalyseSectie
               beginRichting={analyseRichting}
+              beginTab={analyseTab}
+              onTabWissel={(tb) => {
+                setAnalyseTab(tb)
+                // VERVANGEN: terug hoort je een pagina terug te brengen, niet door
+                // drie tabbladen te laten lopen die je net even aanklikte.
+                zetRoute({ pagina: 'analyse', analyse: tb }, true)
+              }}
               ankerMaand={maand}
               // De maandschakelaar staat sinds ronde 40 ook op deze pagina. De
               // periodekaartjes ankeren erop; zonder de schakelaar zou de Analyse
