@@ -2,6 +2,7 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Dialoog } from './Dialoog'
+import { sluitBovenstePopup } from './popupstapel'
 
 // Het scrollslot staat op `document.body`, en dat overleeft een test. Zonder deze
 // reset lekt de waarde uit de ene test in de verwachting van de volgende.
@@ -326,6 +327,19 @@ describe('Dialoog — een popup in een popup', () => {
     expect(onBuiten).not.toHaveBeenCalled()
   })
 
+  it('laat de terugknop alleen de bovenste popup sluiten', () => {
+    // Dezelfde regel als bij Escape, want het is hetzelfde gebaar met een andere
+    // knop: op een telefoon klik je iets weg met terug. Sloot één terugdruk ze
+    // allebei, dan was je halve boeking weg.
+    const onBuiten = vi.fn()
+    const onBinnen = vi.fn()
+    render(<Genest onBuiten={onBuiten} onBinnen={onBinnen} />)
+
+    expect(sluitBovenstePopup()).toBe('gesloten')
+    expect(onBinnen).toHaveBeenCalledTimes(1)
+    expect(onBuiten).not.toHaveBeenCalled()
+  })
+
   it('houdt het scrollslot vast zolang er nog een popup openstaat', () => {
     const { rerender } = render(<Genest onBuiten={vi.fn()} onBinnen={vi.fn()} />)
     expect(document.body.style.overflow).toBe('hidden')
@@ -527,5 +541,80 @@ describe('Dialoog — wat de nakijkronde ving', () => {
       </Dialoog>,
     )
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// DE TERUGKNOP (ronde 59)
+//
+// `sluitBovenstePopup` is wat de app aanroept wanneer je op terug drukt. Wat ze
+// TERUGGEEFT bepaalt of de app de route herstelt, dus die uitkomsten zijn geen
+// bijzaak: zeggen dat er gesloten is terwijl de popup blijft staan, betekent dat de
+// pagina áchter een open venster verschuift.
+// ---------------------------------------------------------------------------
+describe('sluitBovenstePopup', () => {
+  it('zegt "geen" wanneer er niets openstaat', () => {
+    expect(sluitBovenstePopup()).toBe('geen')
+  })
+
+  it('sluit een gewone popup', () => {
+    const onSluiten = vi.fn()
+    render(
+      <Dialoog titel="Bon" open onSluiten={onSluiten}>
+        <p>foto</p>
+      </Dialoog>,
+    )
+    expect(sluitBovenstePopup()).toBe('gesloten')
+    expect(onSluiten).toHaveBeenCalledTimes(1)
+  })
+
+  it('sluit NIET wanneer er invoer in staat, maar vraagt het eerst', async () => {
+    // De bewaking uit ronde 55 geldt ook voor de terugknop. Eén onbedoelde terugdruk
+    // mag je halve boeking niet kosten.
+    const user = userEvent.setup()
+    const onSluiten = vi.fn()
+    render(
+      <Dialoog titel="Nieuwe boeking" open bewaakInvoer onSluiten={onSluiten}>
+        <form>
+          <input aria-label="Bedrag" />
+        </form>
+      </Dialoog>,
+    )
+    await user.type(screen.getByLabelText('Bedrag'), '12')
+
+    // `act` omdat deze functie buiten React om aangeroepen wordt — net zoals de
+    // echte terugknop dat doet.
+    let uitkomst: string | undefined
+    act(() => {
+      uitkomst = sluitBovenstePopup()
+    })
+    expect(uitkomst).toBe('vraagt')
+    expect(onSluiten).not.toHaveBeenCalled()
+    expect(screen.getByText(/Wil je ze weggooien/)).toBeInTheDocument()
+
+    // Nog een terugdruk trekt de vraag in; de popup blijft staan met je invoer.
+    act(() => {
+      uitkomst = sluitBovenstePopup()
+    })
+    expect(uitkomst).toBe('ingetrokken')
+    expect(onSluiten).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('Bedrag')).toHaveValue('12')
+  })
+
+  it('vergeet een popup die gesloten is', () => {
+    // Bleef de wegklikfunctie achter, dan kon een terugdruk een popup "sluiten" die
+    // al dicht was — en dan zou de app de route herstellen zonder reden.
+    const onSluiten = vi.fn()
+    const { rerender } = render(
+      <Dialoog titel="Bon" open onSluiten={onSluiten}>
+        <p>foto</p>
+      </Dialoog>,
+    )
+    rerender(
+      <Dialoog titel="Bon" open={false} onSluiten={onSluiten}>
+        <p>foto</p>
+      </Dialoog>,
+    )
+    expect(sluitBovenstePopup()).toBe('geen')
   })
 })

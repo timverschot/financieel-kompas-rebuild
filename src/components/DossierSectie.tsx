@@ -17,6 +17,8 @@ import { KindrekeningSectie } from './KindrekeningSectie'
 import { Documentkluis } from './DossierKluis'
 import { UitwisselingKaart } from './UitwisselingKaart'
 import { CategorieKiezer } from './CategorieKiezer'
+import { Dialoog } from '../ui/Dialoog'
+import { telVoorVerwijderen } from '../utils/dossierverwijdering'
 import { saldoVerrekeningDossier } from '../utils/dossier'
 import { exportFoutmelding } from '../utils/appVersie'
 import { isOpenKost, kostenVoorAfrekening, type AfrekeningFilter } from '../utils/afrekening'
@@ -173,6 +175,18 @@ export function DossierSectie({
   beginDossierId?: string | null
 }) {
   const { t } = useT()
+  // Welk dossier staat op het punt verwijderd te worden? (ronde 59)
+  //
+  // ⚠ WAAROM DIT ER MOET ZIJN. Het kruisje naast de keuzelijst wiste het HELE
+  // dossier — alle gedeelde kosten, alle verrekeningen, de kindrekening met haar
+  // posten, de onderhoudsbijdrage met al haar betalingen, én de volledige
+  // documentkluis met elke scan en elke bon erin — zonder één vraag. De enige
+  // redding was de ongedaan-balk van acht seconden. Ter vergelijking: voor "Begin
+  // opnieuw" moet je het woord WISSEN intikken.
+  //
+  // En het stond naast een KEUZELIJST, waar je juist heen gaat om van dossier te
+  // wisselen. Eén mistik op een telefoon en jaren bewijsmateriaal waren weg.
+  const [teVerwijderen, setTeVerwijderen] = useState<Dossier | null>(null)
   const [geselecteerd, setGeselecteerd] = useState(beginDossierId ?? '')
   const [bewerkKost, setBewerkKost] = useState<GedeeldeKost | null>(null)
   const [splitCat, setSplitCat] = useState('')
@@ -407,9 +421,10 @@ export function DossierSectie({
               </select>
               {dossier && (
                 <button
+                  type="button"
                   className="knop knop-kaal knop-gevaar"
                   aria-label={t('Verwijder dossier {naam}', { naam: dossier.naam })}
-                  onClick={() => onDossierVerwijderen(dossier.id)}
+                  onClick={() => setTeVerwijderen(dossier)}
                 >
                   ×
                 </button>
@@ -859,9 +874,72 @@ export function DossierSectie({
           )}
         </div>
       )}
+
+      {/* De vraag vóór het verwijderen (ronde 59).
+          Ze TELT wat er weg gaat in plaats van "weet je het zeker?" te vragen: het
+          verschil tussen een leeg dossier en een dossier met zestig kosten en
+          twaalf documenten is precies wat je op dat moment moet weten. */}
+      <Dialoog
+        titel={t('Dit dossier verwijderen?')}
+        open={teVerwijderen !== null}
+        onSluiten={() => setTeVerwijderen(null)}
+        voet={
+          <div className="knoprij">
+            <button type="button" className="knop knop-secundair" onClick={() => setTeVerwijderen(null)}>
+              {t('Nee, behouden')}
+            </button>
+            <button
+              type="button"
+              // `knop-secundair` erbij, net als bij de weggooivraag in ui/Dialoog.tsx:
+              // een kale `knop-gevaar` is alleen rode tekst zonder vlak of rand, en dan
+              // ziet de gevaarlijke keuze er mínder uit als een knop dan de veilige
+              // ernaast. Op een aanraakscherm is dat het verkeerde signaal.
+              className="knop knop-secundair knop-gevaar"
+              onClick={() => {
+                const doel = teVerwijderen
+                setTeVerwijderen(null)
+                if (doel) onDossierVerwijderen(doel.id)
+              }}
+            >
+              {t('Ja, verwijder')}
+            </button>
+          </div>
+        }
+      >
+        {teVerwijderen && (
+          <div className="stapel" style={{ gap: 10 }}>
+            <p style={{ margin: 0 }}>
+              {t('Je staat op het punt {naam} te verwijderen, met alles wat eraan hangt:', {
+                naam: teVerwijderen.naam,
+              })}
+            </p>
+            <ul className="lijst">
+              {telVoorVerwijderen(t, teVerwijderen.id, {
+                kosten,
+                verrekeningen,
+                kindrekeningen,
+                kindrekeningposten,
+                onderhoudsbijdragen,
+                onderhoudsbetalingen,
+                documenten,
+              }).map((regel) => (
+                <li key={regel} className="rij">
+                  <span className="rij-midden">
+                    <span className="rij-titel">{regel}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="rij-meta" style={{ margin: 0 }}>
+              {t('Je kan dit meteen daarna nog ongedaan maken met de balk onderaan, maar die blijft niet lang staan.')}
+            </p>
+          </div>
+        )}
+      </Dialoog>
     </>
   )
 }
+
 
 /**
  * De opbouw van één afrekening, op het scherm (ronde 40).

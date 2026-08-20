@@ -19,3 +19,15 @@ import 'fake-indexeddb/auto'
 // wijzigen met zetSchermbreedte() uit test/schermbreedte.
 import { installeerMatchMedia } from './test/schermbreedte'
 installeerMatchMedia()
+
+// Elke test begint op een schoon ADRES (ronde 59).
+//
+// Sinds de app haar pagina in het adres zet (`#/budget`), sleept een test die op
+// Dossiers eindigde dat adres mee naar de volgende test — die dan op Dossiers
+// begint in plaats van op het Overzicht. In één testbestand draaien alle tests in
+// hetzelfde venster, dus dat gebeurt écht: 52 tests vielen erdoor om, terwijl elke
+// test apart gewoon slaagde. Een verse app hoort een vers adres te hebben.
+import { beforeEach } from 'vitest'
+beforeEach(() => {
+  window.history.replaceState(null, '', '#')
+})

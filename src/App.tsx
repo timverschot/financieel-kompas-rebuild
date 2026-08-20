@@ -147,6 +147,8 @@ import { OverboekingSectie } from './components/OverboekingSectie'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { NieuweVersieBalk } from './components/NieuweVersieBalk'
 import { OnderNavigatie, PAGINAS, type Pagina } from './components/OnderNavigatie'
+import { huidigeRoute, volgRoute, zetRoute } from './utils/route'
+import { sluitBovenstePopup } from './ui/popupstapel'
 import { BoekingDialoog } from './components/BoekingDialoog'
 import { Dialoog } from './ui/Dialoog'
 import { Meldingenbel } from './components/Meldingenbel'
@@ -274,6 +276,66 @@ export function App() {
       setFormaatMeldingWeg(false)
     }
   }
+  // De terugknop (ronde 59).
+  //
+  // Eén luisteraar voor de hele app. Hij zet alleen de pagina: het filter en de
+  // gekozen richting horen bij een klik van dat moment, niet bij een plek, en die
+  // wil je na een druk op terug niet terugkrijgen alsof je ze net gekozen had.
+  //
+  // ⚠ Een popup vangt de terugknop zélf op (zie `ui/Dialoog.tsx`): die zet bij het
+  // openen een stap op dezelfde plek, zodat terug haar sluit zonder van pagina te
+  // wisselen. Deze luisteraar krijgt dan dezelfde route binnen als waar hij al
+  // stond, en doet dus niets. Zo bijten de twee elkaar niet.
+  useEffect(() => {
+    return volgRoute((route) => {
+      // ⚠ EERST DE POPUPS. Staat er een popup open, dan is een druk op terug bedoeld
+      // om DIE weg te klikken en niet om van pagina te wisselen — anders wissel je de
+      // pagina áchter een open venster. We zetten de route dan meteen terug, zodat de
+      // terugdruk niets kost: je staat waar je stond, met één venster minder open.
+      //
+      // Blijft de popup staan (er stond invoer in, dus de vraag "weggooien?"
+      // verschijnt — de bewaking uit ronde 55), dan geldt hetzelfde: route terug, en
+      // een tweede terugdruk komt hier gewoon opnieuw langs.
+      const popup = sluitBovenstePopup()
+      if (popup !== 'geen') {
+        setPagina((nu) => {
+          if (nu) zetRoute({ pagina: nu, subtab: nu === 'dossiers' ? dossierTabRef.current : undefined })
+          return nu
+        })
+        return
+      }
+      // Een adres dat we niet kennen (zelf ingetikt, of een oude bladwijzer naar een
+      // pagina die niet meer bestaat): het scherm blijft staan, maar het ADRES
+      // rechtzetten, anders val je bij de volgende herlaadbeurt alsnog terug op het
+      // Overzicht zonder te weten waarom.
+      if (route === null) {
+        setPagina((nu) => {
+          if (nu) zetRoute({ pagina: nu }, true)
+          return nu
+        })
+        return
+      }
+      setPagina((nu) => {
+        // ⚠ Alleen opruimen wanneer je ECHT van pagina wisselt (nakijkronde ronde
+        // 59). Een popup zet bij het openen een stap naar dezelfde plek, en bij het
+        // sluiten komt die stap hier langs. Wiste deze luisteraar dan het
+        // doorklik-filter, dan verdween je filter telkens wanneer je op de
+        // transactiepagina een boeking opende en weer sloot — precies de handeling
+        // waarvoor het doorklikken uit ronde 40 gemaakt is.
+        if (nu !== route.pagina) setTxFilter(null)
+        return route.pagina
+      })
+      if (route.subtab) setDossierTab(route.subtab)
+      // De snelkoppeling van het beginscherm werkt ook wanneer de app al open staat.
+      // Zonder deze regel landde je dan op Transacties zónder formulier — terwijl de
+      // belofte van die snelkoppeling juist "één tik en je staat in het formulier" is.
+      if (route.actie === 'nieuw') {
+        setBewerkTransactie(null)
+        setBoekingOpen(true)
+      }
+    })
+  }, [])
+
   // Ging de database helemaal niet open? Dan is 'Laden…' geen eerlijk antwoord.
   const [startFout, setStartFout] = useState<string | null>(null)
   // Of de statusmelding een fout is. `role="status"` is beleefd — een schermlezer
@@ -342,6 +404,10 @@ export function App() {
   // ronde 29 een eigen pagina die niets meer was dan twee secties onder elkaar;
   // ze zijn nu subtabs naast de gedeelde kosten.
   const [dossierTab, setDossierTab] = useState<DossierSoort>('coouderschap')
+  // De lade als ref erbij: de luisteraar op de terugknop wordt één keer opgezet en
+  // ziet anders voor altijd de lade van bij het opstarten.
+  const dossierTabRef = useRef(dossierTab)
+  dossierTabRef.current = dossierTab
   // Welk dossier de Dossiers-pagina opent (ronde 40). Klik je in de
   // transactielijst op de badge "gedeeld", dan hoor je in dát dossier te landen
   // en niet in het eerste uit de lijst.
@@ -489,7 +555,22 @@ export function App() {
       if (!actief) return
       setMaandafsluitingen(maf.geldig)
       setTransacties(tx.geldig)
-      setPagina(rk.geldig.length === 0 ? 'opstelling' : 'overzicht')
+      // Waar landen we? (ronde 59)
+      //
+      // Staat er een pagina in het adres — na een herlaadbeurt, via een bladwijzer
+      // of via een snelkoppeling op het beginscherm — dan gaan we dáárheen. Anders
+      // het gewone startgedrag: een nieuwe gebruiker hoort in De Opstelling en niet
+      // op een leeg Overzicht.
+      //
+      // De route wordt daarna VERVANGEN en niet toegevoegd: de eerste stap in de
+      // geschiedenis hoort de pagina te zijn waar je begint, niet een leeg adres.
+      // Anders kost je eerste druk op terug niets zichtbaars.
+      const start = huidigeRoute()
+      const beginpagina = start?.pagina ?? (rk.geldig.length === 0 ? 'opstelling' : 'overzicht')
+      setPagina(beginpagina)
+      if (start?.subtab) setDossierTab(start.subtab)
+      if (start?.actie === 'nieuw') setBoekingOpen(true)
+      zetRoute({ pagina: beginpagina, subtab: start?.subtab }, true)
       setRekeningen(rk.geldig)
       setCategorieen(cat.geldig)
       setBudgetten(bud.geldig)
@@ -1671,6 +1752,7 @@ export function App() {
     await herlaad()
   }
 
+
   const paginaTitel = t(PAGINAS.find((p) => p.id === pagina)?.label ?? 'Overzicht')
 
   // Een melding brengt je naar een pagina, en bij de Dossiers-pagina ook naar de
@@ -1678,6 +1760,10 @@ export function App() {
   // bij de gedeelde kosten.
   function gaNaarMelding(doel: Pagina, subtab?: DossierSoort, dossierId?: string) {
     setPagina(doel)
+    // Zonder subtab de lade meenemen waar je nu staat: anders zegt het adres
+    // `#/dossiers` en land je na een herlaadbeurt in "Gedeelde kosten" in plaats van
+    // in de lade die je open had.
+    zetRoute({ pagina: doel, subtab: subtab ?? (doel === 'dossiers' ? dossierTab : undefined) })
     if (subtab) setDossierTab(subtab)
     // Zonder deze regel belandde je op de dossierpagina met een ánder dossier open
     // dan het dossier waarover de melding ging.
@@ -1687,6 +1773,7 @@ export function App() {
   function gaNaarAnalyse(richting: 'uitgave' | 'inkomst') {
     setAnalyseRichting(richting)
     setPagina('analyse')
+    zetRoute({ pagina: 'analyse' })
   }
 
   /**
@@ -1699,6 +1786,10 @@ export function App() {
   function gaNaarTransacties(filter: TxFilter) {
     setTxFilter((vorig) => ({ filter, nr: (vorig?.nr ?? 0) + 1 }))
     setPagina('transacties')
+    // Het FILTER zelf staat bewust niet in het adres. Het is een keuze van dit
+    // moment, geen plek; en een adres met een categorie-id erin is een gegeven dat
+    // in een bladwijzer of een screenshot belandt.
+    zetRoute({ pagina: 'transacties' })
   }
 
   // Gewoon navigeren (onderbalk, zijbalk) wist het doorklik-filter. Anders opent
@@ -1707,6 +1798,7 @@ export function App() {
   function kiesPagina(doel: Pagina) {
     setTxFilter(null)
     setPagina(doel)
+    zetRoute({ pagina: doel, subtab: doel === 'dossiers' ? dossierTab : undefined })
   }
 
   // Doorklikken vanaf een cijfer dat over één categorie gaat, op welk niveau ook.
@@ -1790,7 +1882,7 @@ export function App() {
 
           {/* Een gloednieuwe (of net gewiste) app is helemaal leeg. Dan is één
               ding belangrijker dan alle cijfers: weten wat je eerst moet doen. */}
-          {rekeningen.length === 0 && <EersteStap onNaarRekeningen={() => setPagina('opstelling')} />}
+          {rekeningen.length === 0 && <EersteStap onNaarRekeningen={() => kiesPagina('opstelling')} />}
 
           {/* Eén blok met alles over deze maand.
               Dit waren drie losse kaarten onder elkaar — de kengetallen, de
@@ -1930,7 +2022,7 @@ export function App() {
                   budgetten={budgetten}
                   maand={maandJaarLabel(maand)}
                   categorieNaam={categorieNaam}
-                  onGaNaarBudget={() => setPagina('budget')}
+                  onGaNaarBudget={() => kiesPagina('budget')}
                   onKies={(categorieId) => gaNaarCategorie(categorieId, { maand })}
                 />
               )}
@@ -1992,7 +2084,7 @@ export function App() {
           <PaginaKop
             titel={paginaTitel}
             actie={
-              <button type="button" className="knop knop-secundair knop-klein" onClick={() => setPagina('importeren')}>
+              <button type="button" className="knop knop-secundair knop-klein" onClick={() => kiesPagina('importeren')}>
                 {t('Uittreksel inlezen')}
               </button>
             }
@@ -2018,15 +2110,8 @@ export function App() {
               onBewerk={setBewerkTransactie}
               onVerwijder={verwijder}
               onVerwijderMeerdere={verwijderMeerdere}
-              onGaNaarDossier={(dossierId) => {
-                setDossierTab('coouderschap')
-                setGekozenDossierId(dossierId)
-                setPagina('dossiers')
-              }}
-              onGaNaarGarantie={() => {
-                setDossierTab('garantie')
-                setPagina('dossiers')
-              }}
+              onGaNaarDossier={(dossierId) => gaNaarMelding('dossiers', 'coouderschap', dossierId)}
+              onGaNaarGarantie={() => gaNaarMelding('dossiers', 'garantie')}
             />
           </ErrorBoundary>
         </>
@@ -2198,6 +2283,10 @@ export function App() {
             onKies={(soort) => {
               setGekozenDossierId(null)
               setDossierTab(soort)
+              // VERVANGEN en niet toevoegen: terug hoort je een pagina terug te
+              // brengen, niet door drie lades te laten lopen die je net even
+              // opengeklikt hebt.
+              zetRoute({ pagina: 'dossiers', subtab: soort }, true)
             }}
             tabs={[
               { id: 'coouderschap', teken: '👨‍👧', label: t('Gedeelde kosten'), telling: dossiers.length },
@@ -2333,7 +2422,7 @@ export function App() {
               <Leeg>
                 <>
                   {t('Nog geen rekeningen. Vul het formulier in, of begin bij je situatie.')}{' '}
-                  <button type="button" className="knop knop-ghost knop-klein" onClick={() => setPagina('opstelling')}>
+                  <button type="button" className="knop knop-ghost knop-klein" onClick={() => kiesPagina('opstelling')}>
                     {t('Je situatie')}
                   </button>
                 </>
@@ -2536,7 +2625,7 @@ export function App() {
             onCategoriseer={geefCategorie}
             onAfsluiten={maandAfsluiten}
             onHeropen={maandHeropenen}
-            onGaNaarInlezen={() => setPagina('importeren')}
+            onGaNaarInlezen={() => kiesPagina('importeren')}
             onToonBoekingen={(maand) => gaNaarTransacties({ maand })}
             onToonZonderCategorie={(maand) => gaNaarTransacties({ maand, zonderCategorie: true })}
           />
@@ -2721,7 +2810,7 @@ export function App() {
             type="button"
             className="merkknop"
             aria-label={t('Naar Overzicht')}
-            onClick={() => setPagina('overzicht')}
+            onClick={() => kiesPagina('overzicht')}
           >
             <Merkteken grootte={30} />
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--tekst-xl)', letterSpacing: '-0.03em' }}>Kompal</span>

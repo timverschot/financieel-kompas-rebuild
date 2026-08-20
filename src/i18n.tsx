@@ -20,6 +20,19 @@ export const TALEN: { waarde: Taal; label: string }[] = [
 // Vertaaltabellen: Nederlandse tekst -> vertaling. Wat (nog) ontbreekt, valt
 // automatisch terug op het Nederlands. Plaatshouders zoals {naam} blijven staan.
 const en: Record<string, string> = {
+  // Een dossier verwijderen, met de vraag ervóór (ronde 59)
+  '{n} kindrekening(en)': '{n} child account(s)',
+  'Dit dossier verwijderen?': 'Delete this case?',
+  'Nee, behouden': 'No, keep it',
+  'Je staat op het punt {naam} te verwijderen, met alles wat eraan hangt:': 'You are about to delete {naam}, along with everything attached to it:',
+  'Je kan dit meteen daarna nog ongedaan maken met de balk onderaan, maar die blijft niet lang staan.': 'You can still undo this right afterwards with the bar at the bottom, but it does not stay for long.',
+  'Er staat nog niets in dit dossier.': 'There is nothing in this case yet.',
+  '{n} gedeelde kost(en)': '{n} shared cost(s)',
+  '{n} verrekening(en)': '{n} settlement(s)',
+  '{n} post(en) op de kindrekening': '{n} entry/entries on the child account',
+  '{n} regeling(en) voor de onderhoudsbijdrage': '{n} maintenance arrangement(s)',
+  '{n} betaling(en) van de onderhoudsbijdrage': '{n} maintenance payment(s)',
+  '{n} bewaard(e) document(en) — bonnen, scans, overeenkomsten': '{n} stored document(s) — receipts, scans, agreements',
   // Indexreeksen bij de onderhoudsbijdrage (ronde 58)
   'Kompal rekende de onderhoudsbijdrage van {dossier} vroeger met de gezondheidsindex. De wet noemt de consumptieprijzen, en daar rekent de app nu mee — het bedrag kan daardoor verschillen. Open de regeling en bevestig welke index in je akte staat.': 'Kompal used to calculate the maintenance contribution for {dossier} with the health index. The law names the consumer price index, which the app now uses — so the amount may differ. Open the arrangement and confirm which index your deed names.',
   'Gerekend met de {reeks}.': 'Calculated with the {reeks}.',
@@ -2240,6 +2253,19 @@ const en: Record<string, string> = {
     'This letter was produced with Financieel Kompas. It contains a calculation, not a legal position.',
 }
 const fr: Record<string, string> = {
+  // Een dossier verwijderen, met de vraag ervóór (ronde 59)
+  '{n} kindrekening(en)': '{n} compte(s) d’enfant',
+  'Dit dossier verwijderen?': 'Supprimer ce dossier ?',
+  'Nee, behouden': 'Non, le garder',
+  'Je staat op het punt {naam} te verwijderen, met alles wat eraan hangt:': 'Tu es sur le point de supprimer {naam}, avec tout ce qui y est rattaché :',
+  'Je kan dit meteen daarna nog ongedaan maken met de balk onderaan, maar die blijft niet lang staan.': 'Tu peux encore annuler juste après avec la barre en bas, mais elle ne reste pas longtemps.',
+  'Er staat nog niets in dit dossier.': 'Il n’y a encore rien dans ce dossier.',
+  '{n} gedeelde kost(en)': '{n} frais partagé(s)',
+  '{n} verrekening(en)': '{n} décompte(s)',
+  '{n} post(en) op de kindrekening': '{n} écriture(s) sur le compte de l’enfant',
+  '{n} regeling(en) voor de onderhoudsbijdrage': '{n} accord(s) de contribution alimentaire',
+  '{n} betaling(en) van de onderhoudsbijdrage': '{n} paiement(s) de la contribution alimentaire',
+  '{n} bewaard(e) document(en) — bonnen, scans, overeenkomsten': '{n} document(s) conservé(s) — tickets, scans, conventions',
   // Indexreeksen bij de onderhoudsbijdrage (ronde 58)
   'Kompal rekende de onderhoudsbijdrage van {dossier} vroeger met de gezondheidsindex. De wet noemt de consumptieprijzen, en daar rekent de app nu mee — het bedrag kan daardoor verschillen. Open de regeling en bevestig welke index in je akte staat.': 'Kompal calculait auparavant la contribution alimentaire de {dossier} avec l’indice santé. La loi vise l’indice des prix à la consommation, que l’app utilise désormais ; le montant peut donc différer. Ouvre l’accord et confirme quel indice figure dans ton acte.',
   'Gerekend met de {reeks}.': 'Calculé avec l’{reeks}.',

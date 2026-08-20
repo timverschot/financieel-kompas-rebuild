@@ -31,6 +31,44 @@ export default defineConfig({
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
           { src: 'pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
+        // Snelkoppelingen op het beginscherm (ronde 59).
+        //
+        // Houd je het pictogram van Kompal ingedrukt, dan verschijnen deze drie.
+        // De eerste is de reden dat ze bestaan: de kernhandeling van deze app is
+        // "een bon inboeken", en dat kostte tot nu toe drie tikken vanaf het
+        // beginscherm (app openen, wachten tot ze geladen is, op ➕ tikken). Nu is
+        // het er één, en je landt meteen in het formulier.
+        //
+        // ⚠ Ze werken alleen omdat de app sinds deze ronde een ADRES per pagina
+        // heeft (zie `utils/route.ts`). Zonder dat is er niets om naar te wijzen.
+        //
+        // ⚠ En ze staan hier in het NEDERLANDS, in alle talen. Een manifest wordt
+        // door het besturingssysteem gelezen op het moment dat je de app
+        // installeert, niet door de app zelf; er is geen `t()` die hier bij kan.
+        // Meertalige snelkoppelingen zouden een tweede manifest per taal vragen.
+        shortcuts: [
+          {
+            name: 'Transactie toevoegen',
+            short_name: 'Toevoegen',
+            description: 'Meteen een uitgave of inkomst inboeken',
+            url: './#/transacties/nieuw',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' }],
+          },
+          {
+            name: 'Dossiers',
+            short_name: 'Dossiers',
+            description: 'Gedeelde kosten, leningen en garanties',
+            url: './#/dossiers',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' }],
+          },
+          {
+            name: 'Rekeninguittreksel inlezen',
+            short_name: 'Inlezen',
+            description: 'Een CSV-bestand van je bank inlezen',
+            url: './#/importeren',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' }],
+          },
+        ],
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],

@@ -1,6 +1,8 @@
-import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useT } from '../i18n'
+import { zetExtraStap } from '../utils/route'
+import { PopupContext, isBovenste, openePopups, type Knoop } from './popupstapel'
 
 // Dé popup van de app. Er bestond nog geen enkele: de enige `role="dialog"` in de
 // codebase zat hardgecodeerd in de barcodescanner, en de invoer van een transactie
@@ -105,47 +107,8 @@ function useZichtbareHoogte(actief: boolean): number | null {
  * Met deze stapel geldt: alleen de bovenste popup luistert naar Escape, en het
  * scrollslot gaat pas los wanneer de laatste popup dicht is.
  */
-type Knoop = { ouder: Knoop | null }
-const openePopups: Knoop[] = []
-
-/**
- * Wie is de popup waar je NU in staat? Elke popup geeft zichzelf door, zodat een
- * popup die binnenin getekend wordt weet wie haar ouder is.
- *
- * Waarom niet gewoon kijken wie wie bevat, zoals eerst (ronde 35): sinds elke
- * popup rechtstreeks aan de pagina gehangen wordt (zie de `createPortal` onderaan)
- * staan ze in de HTML naast elkaar in plaats van in elkaar. De familieband moeten
- * we dus zelf bijhouden. Een `useRef`-voorwerp is per popup uniek en blijft
- * bestaan zolang de component leeft; dat is genoeg om ze uit elkaar te houden.
- */
-const PopupContext = createContext<Knoop | null>(null)
-
 /** Wat `body.style.overflow` was vóór de eerste popup het scrollen op slot deed. */
 let oorspronkelijkeOverflow: string | null = null
-
-function isAfstammeling(kind: Knoop, van: Knoop): boolean {
-  for (let k = kind.ouder; k; k = k.ouder) if (k === van) return true
-  return false
-}
-
-/**
- * Is DEZE popup de bovenste — dus degene die op Escape mag reageren?
- *
- * Twee regels, in deze volgorde:
- *  1. een popup met een open popup ín zich is nooit de bovenste;
- *  2. van wie overblijft, wint de laatst geopende.
- *
- * Regel 1 is er omdat je anders met één druk op Escape ook het formulier eronder
- * sluit — met je halve boeking erin. En bewust niet "de laatst aangemelde wint":
- * React voert de effecten van een KIND uit vóór die van de ouder, dus de binnenste
- * popup meldt zich als eerste aan. Regel 2 vangt het geval van twee popups die
- * naast elkaar staan; zonder die regel voelden ze zich allebei de bovenste en sloot
- * één druk op Escape ze allebei.
- */
-function isBovenste(mij: Knoop): boolean {
-  const zonderKinderen = openePopups.filter((p) => !openePopups.some((q) => isAfstammeling(q, p)))
-  return zonderKinderen[zonderKinderen.length - 1] === mij
-}
 
 export function Dialoog({
   titel,
@@ -261,6 +224,10 @@ export function Dialoog({
     // hij hier uit de ref gelezen wordt en niet van buiten meekomt.
     const sleutel = knoopRef.current
     openePopups.push(sleutel)
+    // Eén stap in de geschiedenis om een druk op terug op te vangen. Zonder die stap
+    // verlaat de browser de app wanneer je een popup opent en meteen terug drukt —
+    // met je halve boeking erin. Zie `zetExtraStap` in utils/route.ts.
+    zetExtraStap()
 
     // De pagina eronder mag niet meescrollen. Alleen de EERSTE popup onthoudt de
     // oorspronkelijke waarde; de rest zou 'hidden' onthouden en die bij het sluiten
@@ -279,24 +246,38 @@ export function Dialoog({
       document.body.style.overflow = 'hidden'
     }
 
+    /**
+     * Een poging om deze popup te sluiten met een WEGKLIK-gebaar (Escape of de
+     * terugknop van de telefoon). Geeft terug wat er gebeurd is.
+     *
+     * Eén functie voor allebei, sinds ronde 59. Escape en terug zijn hetzelfde
+     * gebaar met een andere knop, en twee kopieën van deze regels zouden vroeg of
+     * laat uit elkaar lopen — precies op het punt waar je halve boeking hangt.
+     */
+    function probeerWegklikken(): 'gesloten' | 'vraagt' | 'ingetrokken' {
+      // Staat de vraag "weggooien?" op het scherm, dan betekent wegklikken: nee,
+      // toch niet. Dat is de veilige kant, en het is ook wat je verwacht van het
+      // gebaar waarmee je iets wégklikt.
+      if (bevestigenRef.current) {
+        setBevestigen(false)
+        return 'ingetrokken'
+      }
+      if (bewaakRef.current && vuil.current) {
+        setBevestigen(true)
+        return 'vraagt'
+      }
+      sluitRef.current()
+      return 'gesloten'
+    }
+    sleutel.wegklikken = probeerWegklikken
+
     function opToets(e: KeyboardEvent) {
       // Alleen de bovenste popup mag op Escape reageren. Anders sluit één druk
       // ook de popup eronder — met je halve boeking erin.
       if (!isBovenste(sleutel)) return
       if (e.key === 'Escape') {
         e.preventDefault()
-        // Staat de vraag "weggooien?" op het scherm, dan betekent Escape: nee,
-        // toch niet. Dat is de veilige kant, en het is ook wat je verwacht van de
-        // toets waarmee je iets wégklikt.
-        if (bevestigenRef.current) {
-          setBevestigen(false)
-          return
-        }
-        if (bewaakRef.current && vuil.current) {
-          setBevestigen(true)
-          return
-        }
-        sluitRef.current()
+        probeerWegklikken()
         return
       }
       if (e.key !== 'Tab') return
@@ -392,6 +373,9 @@ export function Dialoog({
       if (schuifTimer) clearTimeout(schuifTimer)
       const plek = openePopups.lastIndexOf(sleutel)
       if (plek >= 0) openePopups.splice(plek, 1)
+      // De wegklikfunctie hoort bij een ÓPEN popup. Bleef ze staan, dan kon een
+      // terugdruk een popup "sluiten" die al dicht was.
+      delete sleutel.wegklikken
       // Pas losmaken wanneer er geen enkele popup meer openstaat — door wie dan
       // ook als laatste opruimt.
       if (openePopups.length === 0 && oorspronkelijkeOverflow !== null) {
@@ -415,6 +399,7 @@ export function Dialoog({
   useEffect(() => {
     vuil.current = false
   }, [schoonNa])
+
 
   // Een poging tot sluiten die NIET van de opslaanknop komt: het kruisje, Escape.
   // Staat er iets in, dan vragen we het eerst.
@@ -441,6 +426,7 @@ export function Dialoog({
   // Aan `body` hangen haalt de popup onder élke transform vandaan, nu en in de
   // toekomst. De prijs is dat geneste popups niet meer ín elkaar staan; daarvoor is
   // PopupContext hierboven.
+
   const laag = (
     <div
       className="dialoog-laag"

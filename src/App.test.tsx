@@ -543,7 +543,54 @@ describe('App', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Verwijder dossier Kinderen' }))
 
+    // ⚠ Sinds ronde 59 wist dat kruisje niet meer meteen. Het stond naast een
+    // KEUZELIJST — waar je juist heen gaat om van dossier te wisselen — en wiste
+    // het hele dossier met alle kosten, verrekeningen én de documentkluis, zonder
+    // één vraag. Nu telt de app eerst op wat er weg gaat.
+    expect(await screen.findByText('Dit dossier verwijderen?')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Ja, verwijder' }))
+
     expect(await screen.findByText(/Nog geen dossiers/)).toBeInTheDocument()
+  })
+
+  it('toont in de vraag wát er precies weg gaat', async () => {
+    // ⚠ `telVoorVerwijderen` is los getest, maar niets legde vast dat de juiste
+    // lijsten er ook echt aan doorgegeven worden. Dat is precies het soort gat
+    // waardoor een venster "er staat nog niets in dit dossier" zegt over een dossier
+    // vol bewijsmateriaal.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await gaMeer(user, 'Dossiers')
+    await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
+    await zetAandeel(user, '50')
+    await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
+
+    await user.type(await screen.findByLabelText('Kostomschrijving'), 'Schoolreis')
+    await user.type(screen.getByLabelText('Kostbedrag (€)'), '100')
+    await user.click(screen.getByRole('button', { name: 'Kost toevoegen' }))
+    await screen.findByText('Schoolreis')
+
+    await user.click(screen.getByRole('button', { name: 'Verwijder dossier Kinderen' }))
+    expect(await screen.findByText('1 gedeelde kost(en)')).toBeInTheDocument()
+  })
+
+  it('laat een dossier staan wanneer je de vraag met nee beantwoordt', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await gaMeer(user, 'Dossiers')
+    await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
+    await zetAandeel(user, '50')
+    await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
+
+    await user.click(await screen.findByRole('button', { name: 'Verwijder dossier Kinderen' }))
+    await user.click(await screen.findByRole('button', { name: 'Nee, behouden' }))
+
+    expect(screen.queryByText(/Nog geen dossiers/)).toBeNull()
+    expect(await screen.findByRole('button', { name: 'Verwijder dossier Kinderen' })).toBeInTheDocument()
   })
 
   it('laat een gloednieuwe app in De Opstelling landen in plaats van op een leeg Overzicht', async () => {
@@ -741,6 +788,9 @@ describe('App — Dossiers met subtabs', () => {
 
     unmount()
     await bewaarGarantie({ id: 'g1', product: 'Koffiezet', aankoopdatum: vandaag(), garantieMaanden: 24 })
+    // Sinds ronde 59 komt de app terug waar ze stond, dus zou ze hier meteen op
+    // Dossiers openen. Deze test wil het gewone startgedrag zien: adres leeg.
+    window.history.replaceState(null, '', '#')
     render(<App />)
     await screen.findByText('Saldo')
     await gaMeer(user, 'Dossiers')
@@ -902,6 +952,7 @@ describe('App — volgorde van de hoofdcategorieën', () => {
     expect(bewaard?.ids.length).toBeGreaterThan(2)
 
     unmount()
+    window.history.replaceState(null, '', '#')
     render(<App />)
     await screen.findByText('Saldo')
     await gaMeer(user, 'Categorieën')
@@ -1173,5 +1224,157 @@ describe('App — de opbouw van een afrekening', () => {
     // aan de vlag 'verrekeningen'.
     expect(screen.getByRole('heading', { name: 'Nieuwe afrekening' })).toBeInTheDocument()
     expect(await db.dossiers.toArray().then((d) => d[0].verborgenOnderdelen)).toEqual(['afrekening-detail'])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// DE APP GEDRAAGT ZICH ALS EEN APP (ronde 59)
+//
+// Vóór deze ronde zat de pagina alleen in het geheugen van het scherm. Gevolg op
+// een telefoon: de terugknop van Android SLOOT DE APP in plaats van een scherm
+// terug te gaan, en herladen bracht je altijd op het begin — ook na een publicatie,
+// precies wanneer je net ergens mee bezig was.
+// ---------------------------------------------------------------------------
+describe('App — de terugknop en het adres', () => {
+  beforeEach(async () => {
+    for (const tabel of db.tables) await tabel.clear()
+    await bewaarRekening({ id: 'r1', naam: 'Zicht', beginsaldo: 100000 })
+  })
+
+  it('zet de pagina in het adres zodra je navigeert', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    expect(window.location.hash).toBe('#/overzicht')
+
+    await gaMeer(user, 'Spaardoelen')
+    await waitFor(() => expect(window.location.hash).toBe('#/spaardoelen'))
+  })
+
+  it('brengt de terugknop je naar de vorige pagina in plaats van de app te sluiten', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Spaardoelen')
+    await waitFor(() => expect(window.location.hash).toBe('#/spaardoelen'))
+
+    window.history.back()
+
+    await waitFor(() => expect(window.location.hash).toBe('#/overzicht'))
+    expect(await screen.findByText('Saldo')).toBeInTheDocument()
+  })
+
+  it('opent na een herlaadbeurt de pagina waar je stond', async () => {
+    // Dit is het geval dat het vaakst pijn deed: na een publicatie of een hapering
+    // herlaad je, en dan sta je weer helemaal vooraan.
+    const user = userEvent.setup()
+    const { unmount } = render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Spaardoelen')
+    await waitFor(() => expect(window.location.hash).toBe('#/spaardoelen'))
+
+    unmount()
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'Spaardoelen' })).toBeInTheDocument()
+  })
+
+  it('opent de juiste lade van de dossierpagina uit het adres', async () => {
+    window.history.replaceState(null, '', '#/dossiers/garantie')
+    render(<App />)
+    expect(await screen.findByRole('tab', { name: /Facturen & garantiebewijzen/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
+  it('opent de boekingspopup vanaf de snelkoppeling op het beginscherm', async () => {
+    // Dit is wat `shortcuts` in het manifest aanroept: één tik op het beginscherm
+    // van je telefoon en je staat meteen in het invoerformulier.
+    window.history.replaceState(null, '', '#/transacties/nieuw')
+    render(<App />)
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('laat na een gesloten popup hoogstens ÉÉN stap liggen, en hergebruikt die', async () => {
+    // ⚠ Eerlijk over wat deze ronde NIET oplost. Een popup zet een stap in de
+    // geschiedenis zodat de terugknop iets heeft om op te landen — anders verlaat de
+    // browser de app met je halve boeking erin (gemeten in een echte browser; jsdom
+    // liet dat niet zien). Sluit je de popup met het kruisje, dan blijft die stap
+    // liggen: één druk op terug doet dan niets zichtbaars.
+    //
+    // Wat wél gegarandeerd is, en wat deze test bewaakt: er ligt er hooguit ÉÉN. De
+    // volgende popup hergebruikt hem, en de eerste echte navigatie ook.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    for (let i = 0; i < 3; i++) {
+      await user.click(screen.getByRole('button', { name: 'Nieuwe transactie' }))
+      await screen.findByRole('dialog')
+      await user.click(screen.getByRole('button', { name: 'Sluiten' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    }
+
+    // Drie keer openen en sluiten, en dan navigeren: de navigatie gebruikt de
+    // liggende stap, dus je staat na één druk op terug gewoon weer op Overzicht.
+    await gaMeer(user, 'Spaardoelen')
+    await waitFor(() => expect(window.location.hash).toBe('#/spaardoelen'))
+    window.history.back()
+    await waitFor(() => expect(window.location.hash).toBe('#/overzicht'))
+  })
+
+
+  it('houdt het doorklik-filter vast wanneer je een popup opent en weer sluit', async () => {
+    // ⚠ De zwaarste vondst van de nakijkronde. De luisteraar op de terugknop wiste
+    // het filter bij élke routewissel — en een popup die sluit ziet er voor die
+    // luisteraar uit als een routewissel. Je filterde op een categorie, opende een
+    // boeking, sloot ze, en stond weer naar álle boekingen te kijken zonder dat er
+    // iets gezegd werd.
+    await bewaarTransactie({
+      id: 'tx-voeding',
+      datum: vandaag(),
+      omschrijving: 'Bakker',
+      bedrag: -1500,
+      rekeningId: 'r1',
+      categorieId: 'ov-voeding',
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Transacties')
+    await user.click(await screen.findByRole('button', { name: 'Nieuwe transactie' }))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Sluiten' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    // De pagina is niet verschoven en de lijst is niet opnieuw opgebouwd.
+    expect(window.location.hash).toBe('#/transacties')
+    expect(await screen.findByText('Bakker')).toBeInTheDocument()
+  })
+
+  it('valt terug op het gewone startgedrag bij een adres dat niet bestaat', async () => {
+    window.history.replaceState(null, '', '#/bestaatniet')
+    render(<App />)
+    expect(await screen.findByText('Saldo')).toBeInTheDocument()
+    await waitFor(() => expect(window.location.hash).toBe('#/overzicht'))
+  })
+
+  it('laat de terugknop een popup sluiten in plaats van de pagina eronder te verwisselen', async () => {
+    // ⚠ Zonder deze regel zou terug de PAGINA ACHTER de popup verwisselen terwijl
+    // de popup gewoon open blijft staan — je kijkt dan naar een boekingsformulier
+    // met een andere pagina eronder.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await user.click(screen.getByRole('button', { name: 'Nieuwe transactie' }))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+
+    window.history.back()
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    // En de pagina eronder is niet verschoven.
+    expect(window.location.hash).toBe('#/overzicht')
+    expect(screen.getByText('Saldo')).toBeInTheDocument()
   })
 })
