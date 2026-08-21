@@ -133,6 +133,21 @@ describe('downloadBlob', () => {
     expect(vrijgeven).toHaveBeenCalledWith('blob:nep')
   })
 
+  it('laat geen anker achter wanneer de klik weigert', () => {
+    // ⚠ Anders blijft er bij elke mislukte poging een onzichtbaar anker in de pagina
+    // hangen — onzichtbaar, maar wel bereikbaar met een toetsenbord.
+    const echteClick = HTMLAnchorElement.prototype.click
+    HTMLAnchorElement.prototype.click = () => {
+      throw new Error('geweigerd')
+    }
+    try {
+      expect(() => downloadBlob('a.csv', new Blob(['x']))).toThrow('geweigerd')
+    } finally {
+      HTMLAnchorElement.prototype.click = echteClick
+    }
+    expect(document.querySelectorAll('a[download]')).toHaveLength(0)
+  })
+
   it('gooit de fout door wanneer de browser de klik weigert, en ruimt het adres op', () => {
     const echteClick = HTMLAnchorElement.prototype.click
     HTMLAnchorElement.prototype.click = () => {
@@ -144,5 +159,42 @@ describe('downloadBlob', () => {
       HTMLAnchorElement.prototype.click = echteClick
     }
     expect(vrijgeven).toHaveBeenCalledWith('blob:nep')
+  })
+
+  // ⚠ RONDE 65. Het opruimen loopt tien seconden later in een timer. Gaat het daar
+  // stuk — bijvoorbeeld omdat de pagina intussen weg is — dan komt die fout nergens
+  // meer terecht: ze wordt een onafgevangen fout, lang nadat de gebruiker al iets
+  // anders doet. Opruimen mag nooit harder stukgaan dan wat het opruimt.
+  it('blijft overeind wanneer het vrijgeven zelf stukgaat', () => {
+    vrijgeven.mockImplementation(() => {
+      throw new TypeError('URL.revokeObjectURL is not a function')
+    })
+    const echteClick = HTMLAnchorElement.prototype.click
+    HTMLAnchorElement.prototype.click = () => {}
+    try {
+      downloadTekst('a.csv', 'x')
+      expect(() => vi.advanceTimersByTime(10_000)).not.toThrow()
+    } finally {
+      HTMLAnchorElement.prototype.click = echteClick
+      vrijgeven.mockImplementation(() => undefined)
+    }
+  })
+
+  it('laat de échte fout staan wanneer óók het opruimen stukgaat', () => {
+    // Anders zie je "revokeObjectURL is not a function" in plaats van waarom de
+    // download mislukte — en zoek je de fout op de verkeerde plek.
+    vrijgeven.mockImplementation(() => {
+      throw new TypeError('URL.revokeObjectURL is not a function')
+    })
+    const echteClick = HTMLAnchorElement.prototype.click
+    HTMLAnchorElement.prototype.click = () => {
+      throw new Error('geweigerd')
+    }
+    try {
+      expect(() => downloadBlob('a.csv', new Blob(['x']))).toThrow('geweigerd')
+    } finally {
+      HTMLAnchorElement.prototype.click = echteClick
+      vrijgeven.mockImplementation(() => undefined)
+    }
   })
 })

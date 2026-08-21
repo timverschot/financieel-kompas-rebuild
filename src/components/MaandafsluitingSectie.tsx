@@ -216,7 +216,9 @@ export function MaandafsluitingSectie({
         bijschrift={t('Wat geen categorie heeft, telt nergens mee — niet in je budget en niet in je analyse.')}
         actie={<StapMerk klaar={stapKlaar('categorieen')} />}
       >
-        {stand.zonderCategorie === 0 ? (
+        {stand.boekingen === 0 ? (
+          <p style={{ margin: 0 }}>{t('Er is deze maand nog niets geboekt, dus valt er ook niets te categoriseren.')}</p>
+        ) : stand.zonderCategorie === 0 ? (
           <p style={{ margin: 0 }}>{t('Alles heeft een categorie. Niets te doen.')}</p>
         ) : (
           <>
@@ -267,12 +269,23 @@ export function MaandafsluitingSectie({
             <Bedrag centen={stand.inkomsten - stand.uitgaven} />
           </Stat>
         </div>
+        {/* ⚠ RONDE 65. `balans.leeg` bestond al in utils/balans.ts en werd hier
+            nergens gelezen. Op een maand zonder één boeking stond hier "Je kwam
+            precies uit." boven drie keer € 0,00 — een oordeel over niets, dat als
+            geruststelling leest. BalansRegel zwijgt in datzelfde geval al. */}
         <p style={{ margin: '10px 0 0' }}>
-          {stand.balans.stand === 'overschot'
-            ? t('Je hield {bedrag} over.', { bedrag: formatEuro(stand.inkomsten - stand.uitgaven) })
-            : stand.balans.stand === 'tekort'
-              ? t('Je kwam {bedrag} tekort.', { bedrag: formatEuro(stand.uitgaven - stand.inkomsten) })
-              : t('Je kwam precies uit.')}
+          {/* ⚠ Op `stand.boekingen`, niet op `balans.leeg`. Die laatste betekent
+              "inkomsten én uitgaven zijn nul", en dat kan óók waar zijn in een maand
+              mét boekingen die toevallig op nul uitkomen — dan zou hier "nog niets
+              geboekt" staan terwijl stap 1 erboven drie boekingen telt. Stap 2
+              gebruikt dezelfde maatstaf. */}
+          {stand.boekingen === 0
+            ? t('Er is deze maand nog niets geboekt, dus valt er nog niets te zeggen over hoe ze geweest is.')
+            : stand.balans.stand === 'overschot'
+              ? t('Je hield {bedrag} over.', { bedrag: formatEuro(stand.inkomsten - stand.uitgaven) })
+              : stand.balans.stand === 'tekort'
+                ? t('Je kwam {bedrag} tekort.', { bedrag: formatEuro(stand.uitgaven - stand.inkomsten) })
+                : t('Je kwam precies uit.')}
         </p>
         {/* Wat er duurder werd staat hier bewust ALS ZIN en niet als lijst: de
             volledige uitleg hoort op Analyse, maar de maandafsluiting is het moment

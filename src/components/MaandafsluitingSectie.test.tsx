@@ -302,3 +302,32 @@ describe('MaandafsluitingSectie — de punten uit de review', () => {
     expect(rij.className.split(' ')).toContain('rij-kost')
   })
 })
+
+// Ronde 65: op een maand zonder één boeking stond hier een groen vinkje bij stap 2
+// en "Je kwam precies uit." bij stap 3 — twee geruststellingen over niets.
+describe('MaandafsluitingSectie — een lege maand', () => {
+  it('zet geen vinkje op stap 2 wanneer er niets geboekt is', () => {
+    toon()
+    const kaart = screen.getByText(/Waar hoort het bij\?/).closest('.kaart') as HTMLElement
+    expect(within(kaart).queryByText('rond')).toBeNull()
+    expect(within(kaart).getByText('open')).toBeInTheDocument()
+  })
+
+  it('zegt bij stap 2 dat er nog niets te categoriseren valt', () => {
+    const { container } = toon()
+    expect(container.textContent).toContain('niets te categoriseren')
+    expect(container.textContent).not.toContain('Alles heeft een categorie')
+  })
+
+  it('velt geen oordeel over een maand waarin niets gebeurd is', () => {
+    const { container } = toon()
+    // ⚠ "Je kwam precies uit." boven drie keer € 0,00 leest als een geruststelling.
+    expect(container.textContent).not.toContain('Je kwam precies uit')
+    expect(container.textContent).toContain('nog niets te zeggen')
+  })
+
+  it('velt wél een oordeel zodra er iets geboekt is', () => {
+    const { container } = toon({ transacties: juni })
+    expect(container.textContent).not.toContain('nog niets te zeggen')
+  })
+})

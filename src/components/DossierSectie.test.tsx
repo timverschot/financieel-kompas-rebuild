@@ -462,3 +462,75 @@ describe('DossierSectie — een nieuw dossier', () => {
     expect(keuze.selectedOptions[0].textContent).toContain('Dossier Emma')
   })
 })
+
+describe('DossierSectie — een afrekening verwijderen', () => {
+  // De datum staat voluit, net als in de venstertitel: dezelfde afrekening hoort
+  // niet op twee manieren te klinken (ronde 65).
+  const kruisje = () => screen.getByRole('button', { name: 'Verwijder afrekening 1 apr 2026' })
+
+  it('wist niet meteen, maar vraagt eerst', async () => {
+    const user = userEvent.setup()
+    const onVerwijderAfrekening = vi.fn()
+    toon({ onVerwijderAfrekening })
+    await user.click(kruisje())
+    // ⚠ Dit is de kern: één tik op het kruisje mag géén afrekening wissen.
+    expect(onVerwijderAfrekening).not.toHaveBeenCalled()
+    expect(await screen.findByText('De afrekening van 1 apr 2026 verwijderen?')).toBeInTheDocument()
+  })
+
+  it('telt in de vraag wat er weg gaat, in plaats van "weet je het zeker?"', async () => {
+    const user = userEvent.setup()
+    toon()
+    await user.click(kruisje())
+    expect(await screen.findByText(/Het bedrag van/)).toHaveTextContent('€ 72,00')
+    expect(screen.getByText(/1 gedeelde kost\(en\) blijven bestaan/)).toBeInTheDocument()
+  })
+
+  it('zegt erbij welke kosten weer op "nog niet afgerekend" komen', async () => {
+    const user = userEvent.setup()
+    toon({
+      verrekeningen: [{ ...afrekening, overgemaakt: true }],
+      kosten: [{ ...kosten[0], afgerekend: true }],
+    })
+    await user.click(kruisje())
+    expect(await screen.findByText(/1 kost\(en\) komen weer op/)).toBeInTheDocument()
+  })
+
+  it('zwijgt over heropenen zolang de afrekening niets dichtzette', async () => {
+    const user = userEvent.setup()
+    // Zonder de oude `verrekeningId`-koppeling en zonder 'overgemaakt' heeft deze
+    // afrekening geen enkele kost dichtgezet.
+    toon({ kosten: [{ ...kosten[0], verrekeningId: undefined }] })
+    await user.click(kruisje())
+    await screen.findByText(/Het bedrag van/)
+    expect(screen.queryByText(/komen weer op/)).not.toBeInTheDocument()
+  })
+
+  it('meldt ook de oude verrekeningId-koppeling als heropening', async () => {
+    // ⚠ Dossiers van vóór het niet-blokkerende model koppelden kosten met
+    // `verrekeningId`. Die telt even zwaar als 'afgerekend': bleef ze staan, dan
+    // bleef die kost voorgoed buiten je saldo.
+    const user = userEvent.setup()
+    toon()
+    await user.click(kruisje())
+    expect(await screen.findByText(/1 kost\(en\) komen weer op/)).toBeInTheDocument()
+  })
+
+  it('laat de afrekening staan wanneer je de vraag met nee beantwoordt', async () => {
+    const user = userEvent.setup()
+    const onVerwijderAfrekening = vi.fn()
+    toon({ onVerwijderAfrekening })
+    await user.click(kruisje())
+    await user.click(await screen.findByRole('button', { name: 'Nee, behouden' }))
+    expect(onVerwijderAfrekening).not.toHaveBeenCalled()
+  })
+
+  it('verwijdert pas na "Ja, verwijder"', async () => {
+    const user = userEvent.setup()
+    const onVerwijderAfrekening = vi.fn()
+    toon({ onVerwijderAfrekening })
+    await user.click(kruisje())
+    await user.click(await screen.findByRole('button', { name: 'Ja, verwijder' }))
+    expect(onVerwijderAfrekening).toHaveBeenCalledWith('v1')
+  })
+})

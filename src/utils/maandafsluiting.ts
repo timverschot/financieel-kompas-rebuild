@@ -102,7 +102,11 @@ export function maandStand(invoer: MaandStandInvoer): MaandStand {
     // Stap 1 is klaar zodra er íets geboekt is. Meer kan de app niet weten: of jouw
     // uittreksel volledig is, weet alleen jij.
     { sleutel: 'boekingen', klaar: vanDeMaand.length > 0, aantal: vanDeMaand.length },
-    { sleutel: 'categorieen', klaar: zonder.length === 0, aantal: zonder.length },
+    // ⚠ RONDE 65. Dit was `zonder.length === 0`, en op een LEGE maand is dat waar.
+    // Stap 2 kreeg dan een groen "rond" met "Alles heeft een categorie. Niets te
+    // doen." — over nul boekingen. Een vinkje voor werk dat je niet gedaan hebt is
+    // erger dan geen vinkje: het zegt je dat je klaar bent.
+    { sleutel: 'categorieen', klaar: vanDeMaand.length > 0 && zonder.length === 0, aantal: zonder.length },
     // Stap 3 heeft geen eigen voorwaarde: kijken is de handeling. Ze staat er als
     // stap omdat het scherm anders na twee vinkjes ophoudt zonder je de cijfers te
     // tonen waarvoor je het allemaal deed.

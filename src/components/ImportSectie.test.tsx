@@ -258,3 +258,63 @@ describe('ImportSectie', () => {
   })
 })
 
+// Ronde 65: op dit scherm zet de verkeerde rekening kiezen de dubbelherkenning
+// zelf uit — ze kijkt immers alleen binnen de gekozen rekening.
+describe('ImportSectie — de juiste rekening kiezen', () => {
+  it('toont rekeningen met hun volledige label, niet alleen hun naam', async () => {
+    const onImporteer = vi.fn()
+    render(
+      <ImportSectie
+        rekeningen={[
+          { id: 'r1', naam: 'Betaalrekening', beginsaldo: 0, rubriek: 'Samen', rekeningnummer: 'BE68 5390 0754 7034' },
+          { id: 'r2', naam: 'Betaalrekening', beginsaldo: 0, rubriek: 'Ik' },
+        ]}
+        transacties={[]}
+        categorieen={[]}
+        handelaarIndex={bouwHandelaarIndex([])}
+        onImporteer={onImporteer}
+      />,
+    )
+    // ⚠ Twee rekeningen die allebei "Betaalrekening" heten waren hier niet uit
+    // elkaar te houden: dit was het enige keuzemenu zonder rekeningLabel.
+    expect(screen.getByRole('option', { name: 'Betaalrekening · Samen · …7034' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Betaalrekening · Ik' })).toBeInTheDocument()
+  })
+
+  it('waarschuwt wanneer deze regels al op een andere rekening staan', async () => {
+    const user = userEvent.setup()
+    toon([
+      { id: 't1', datum: '2026-02-01', omschrijving: 'Colruyt', bedrag: -1250, rekeningId: 'r2' },
+      { id: 't2', datum: '2026-02-02', omschrijving: 'Delhaize', bedrag: -820, rekeningId: 'r2' },
+    ])
+    await user.upload(screen.getByLabelText('Bestand'), bestand(UITTREKSEL))
+    await screen.findByText('COLRUYT HALLE')
+
+    expect(screen.getByText(/2 van deze regels staan al op Spaarrekening/)).toBeInTheDocument()
+    // De waarschuwing hangt aan het keuzemenu zelf, zodat wie er later opnieuw in
+    // belandt ze nog steeds hoort.
+    expect(screen.getByLabelText('Op welke rekening?')).toHaveAttribute('aria-describedby', 'imp-elders')
+  })
+
+  it('zwijgt zodra je de rekening corrigeert', async () => {
+    const user = userEvent.setup()
+    toon([
+      { id: 't1', datum: '2026-02-01', omschrijving: 'Colruyt', bedrag: -1250, rekeningId: 'r2' },
+      { id: 't2', datum: '2026-02-02', omschrijving: 'Delhaize', bedrag: -820, rekeningId: 'r2' },
+    ])
+    await user.upload(screen.getByLabelText('Bestand'), bestand(UITTREKSEL))
+    await screen.findByText('COLRUYT HALLE')
+    await user.selectOptions(screen.getByLabelText('Op welke rekening?'), 'r2')
+
+    await waitFor(() => expect(screen.queryByText(/staan al op/)).toBeNull())
+  })
+
+  it('zwijgt wanneer er nergens anders iets op lijkt', async () => {
+    const user = userEvent.setup()
+    toon()
+    await user.upload(screen.getByLabelText('Bestand'), bestand(UITTREKSEL))
+    await screen.findByText('COLRUYT HALLE')
+
+    expect(screen.queryByText(/staan al op/)).toBeNull()
+  })
+})

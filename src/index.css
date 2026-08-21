@@ -558,6 +558,14 @@ h4 {
   max-width: 160px;
 }
 
+/* De periode naast het bedragveld (ronde 65). Ze mag niet meekrimpen: net dat
+   woord — "per jaar" of "per maand" — is het verschil tussen een juiste post en
+   een die twaalf keer te klein is. */
+.kost-periode {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 @media (min-width: 560px) {
   .rij-kost > .rij-midden {
     flex: 1 1 0;
@@ -1896,6 +1904,24 @@ a:focus-visible,
    dan niet zien waar hij staat als hij er eindelijk is (nakijkronde ronde 61). */
 .undo-balk button:focus-visible {
   outline-color: var(--accent-dot);
+}
+
+/* Alleen voor een schermlezer (ronde 65).
+   Voor een melding die altijd in de pagina moet staan — een `role="status"` die
+   pas MÉT zijn tekst verschijnt, wordt door sommige schermlezers overgeslagen —
+   maar die geen plaats mag innemen. `display: none` en `visibility: hidden` kunnen
+   hier niet: dan leest de schermlezer hem ook niet. */
+.alleen-voorlezen {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* "Sla de navigatie over" (ronde 61).

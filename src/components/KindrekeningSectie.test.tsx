@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { KindrekeningSectie } from './KindrekeningSectie'
+import { indexcijfer, laatsteIndexmaand } from '../data/indexreeksen'
 import type { Dossier, Kindrekening, Kindrekeningpost } from '../data/schema'
 
 const dossier: Dossier = { id: 'd1', naam: 'Co-ouderschap', aandeelJij: 52 }
@@ -83,6 +84,98 @@ describe('KindrekeningSectie', () => {
     await user.click(screen.getByRole('button', { name: 'Beweging toevoegen' }))
     expect(onPostOpslaan).toHaveBeenCalledWith(
       expect.objectContaining({ kindrekeningId: 'kr1', soort: 'storting', bedrag: 5000, door: 'jij' }),
+    )
+  })
+})
+
+// Ronde 65: deze twee velden slikten élk getal, terwijl de onderhoudsbijdrage één
+// kaart hoger hetzelfde soort getal tegen reeks, basisjaar en een marge van tien
+// procent houdt.
+describe('KindrekeningSectie — de indexcijfers', () => {
+  const kr: Kindrekening = { id: 'kr1', dossierId: 'd1', naam: 'Pot', beginsaldo: 0 }
+
+  async function openAfspraak(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('button', { name: 'Maandbijdrage-afspraak instellen' }))
+  }
+
+  it('waarschuwt over basisjaren, net als bij de onderhoudsbijdrage', async () => {
+    const user = userEvent.setup()
+    toon(kr)
+    await openAfspraak(user)
+    expect(screen.getByText(/basis .* = 100/)).toBeInTheDocument()
+  })
+
+  it('merkt een huidige index uit een ander basisjaar op, maar houdt niets tegen', async () => {
+    const user = userEvent.setup()
+    const { onOpslaan } = toon(kr)
+    await openAfspraak(user)
+    // Statbel publiceert sinds 2026 standaard in basis 2025 = 100; de app rekent in
+    // basis 2013 = 100. Dit is het cijfer dat je vandaag opzoekt en overtikt.
+    await user.type(screen.getByLabelText('Aanvangsindex (optioneel)'), '110')
+    await user.type(screen.getByLabelText('Huidige index (optioneel)'), '103,60')
+
+    // ⚠ Een OPMERKING, geen weigering: een paar dat volledig in basis 2025 staat is
+    // even juist, en wie zijn eigen afspraak van jaren geleden niet meer kan
+    // bewaren, is slechter af dan wie een waarschuwing leest.
+    expect(screen.getByText(/Ter controle/)).toHaveTextContent('2025 = 100')
+    await user.click(screen.getByRole('button', { name: 'Afspraak bewaren' }))
+    expect(onOpslaan).toHaveBeenCalled()
+  })
+
+  it('zwijgt over een huidig cijfer dat gewoon bij de tabel van de app past', async () => {
+    const user = userEvent.setup()
+    toon(kr)
+    await openAfspraak(user)
+    const nu = indexcijfer(undefined, laatsteIndexmaand(undefined)) as number
+    await user.type(screen.getByLabelText('Huidige index (optioneel)'), String(nu).replace('.', ','))
+    expect(screen.queryByText(/Ter controle/)).toBeNull()
+  })
+
+  it('weigert onleesbare invoer in plaats van ze stil weg te gooien', async () => {
+    const user = userEvent.setup()
+    const { onOpslaan } = toon(kr)
+    await openAfspraak(user)
+    await user.type(screen.getByLabelText('Aanvangsindex (optioneel)'), 'honderd')
+    await user.click(screen.getByRole('button', { name: 'Afspraak bewaren' }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent('geen indexcijfer')
+    expect(onOpslaan).not.toHaveBeenCalled()
+  })
+
+  it('vraagt allebei de cijfers wanneer je er maar één invult', async () => {
+    const user = userEvent.setup()
+    const { onOpslaan } = toon(kr)
+    await openAfspraak(user)
+    await user.type(screen.getByLabelText('Aanvangsindex (optioneel)'), '110')
+    await user.click(screen.getByRole('button', { name: 'Afspraak bewaren' }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent('allebei de cijfers')
+    expect(onOpslaan).not.toHaveBeenCalled()
+  })
+
+  it('bewaart twee geldige cijfers gewoon', async () => {
+    const user = userEvent.setup()
+    const { onOpslaan } = toon(kr)
+    await openAfspraak(user)
+    const nu = indexcijfer(undefined, laatsteIndexmaand(undefined)) as number
+    await user.type(screen.getByLabelText('Aanvangsindex (optioneel)'), '110')
+    await user.type(screen.getByLabelText('Huidige index (optioneel)'), String(nu).replace('.', ','))
+    await user.click(screen.getByRole('button', { name: 'Afspraak bewaren' }))
+
+    expect(onOpslaan).toHaveBeenCalledWith(
+      expect.objectContaining({ aanvangsindex: 110, huidigeIndex: nu }),
+    )
+  })
+
+  it('bewaart zonder index wanneer je beide velden leeg laat', async () => {
+    const user = userEvent.setup()
+    const { onOpslaan } = toon(kr)
+    await openAfspraak(user)
+    await user.type(screen.getByLabelText('Bijdrage jij (€/maand)'), '200')
+    await user.click(screen.getByRole('button', { name: 'Afspraak bewaren' }))
+
+    expect(onOpslaan).toHaveBeenCalledWith(
+      expect.objectContaining({ maandbijdrageJij: 20000, aanvangsindex: undefined, huidigeIndex: undefined }),
     )
   })
 })

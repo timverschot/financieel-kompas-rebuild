@@ -24,8 +24,18 @@ import {
   bewaarWaardering,
   laadWaarderingen,
   verwijderWaardering,
+  bewaarCategorie,
+  bewaarSubcategorie,
+  laadCategorieen,
+  laadSubcategorieen,
+  verwijderVerrekeningMetHeropening,
+  herstelVerrekeningMetKosten,
+  markeerVerrekeningOvergemaakt,
+  verwijderCategorieMetAanhang,
+  herstelCategorieMetAanhang,
+  herstelDossierMetAanhang,
 } from './repository'
-import type { Transactie } from './schema'
+import type { GedeeldeKost, Transactie, Verrekening } from './schema'
 
 beforeEach(async () => {
   await db.transacties.clear()
@@ -40,6 +50,8 @@ beforeEach(async () => {
   await db.dossierdocumenten.clear()
   await db.garanties.clear()
   await db.waarderingen.clear()
+  await db.categorieen.clear()
+  await db.subcategorieen.clear()
 })
 
 const t1: Transactie = { id: 't1', datum: '2026-07-01', omschrijving: 'Loon', bedrag: 2400, rekeningId: 'r1' }
@@ -368,5 +380,137 @@ describe('waarderingen (ronde 38)', () => {
     const uit = await laadWaarderingen()
     expect(uit.geldig).toEqual([])
     expect(uit.ongeldig).toBe(1)
+  })
+})
+
+// Ronde 65: vier nieuwe bundels. Ze bestaan precies omdat een reeks losse
+// schrijfacties halverwege kan afbreken — dus toetsen we niet alleen de uitkomst,
+// maar ook dat er bij een onderbreking niets half achterblijft.
+describe('ondeelbare stappen rond een afrekening en een categorie (ronde 65)', () => {
+  const kost = (id: string, extra: Partial<GedeeldeKost> = {}): GedeeldeKost => ({
+    id,
+    dossierId: 'd1',
+    omschrijving: 'Schoolrekening',
+    bedrag: 12000,
+    datum: '2026-07-01',
+    betaaldDoor: 'jij',
+    kostenType: 'gewoon',
+    ...extra,
+  })
+  const afrekening: Verrekening = {
+    id: 'v1',
+    dossierId: 'd1',
+    datum: '2026-07-05',
+    bedrag: 6000,
+    kostIds: ['k1'],
+    overgemaakt: true,
+  }
+
+  it('verwijdert de afrekening en zet de kosten weer open', async () => {
+    await bewaarGedeeldeKost(kost('k1', { afgerekend: true, verrekeningId: 'v1' }))
+    await bewaarVerrekening(afrekening)
+
+    await verwijderVerrekeningMetHeropening('v1', [kost('k1', { afgerekend: true, verrekeningId: 'v1' })])
+
+    expect((await laadVerrekeningen()).geldig).toHaveLength(0)
+    const k = (await laadGedeeldeKosten()).geldig[0]
+    expect(k.afgerekend).toBe(false)
+    // ⚠ Ook de oude koppeling moet weg: die telt even zwaar als 'afgerekend'.
+    expect(k.verrekeningId).toBeUndefined()
+  })
+
+  it('laat de afrekening staan wanneer het heropenen halverwege mislukt', async () => {
+    await bewaarGedeeldeKost(kost('k1', { afgerekend: true }))
+    await bewaarVerrekening(afrekening)
+    const logboekVoor = await db.events.count()
+
+    const stuk = vi.spyOn(db.gedeeldeKosten, 'put').mockImplementation(() => {
+      throw new Error('opslag vol')
+    })
+    await expect(
+      verwijderVerrekeningMetHeropening('v1', [kost('k1', { afgerekend: true })]),
+    ).rejects.toThrow()
+    stuk.mockRestore()
+
+    // Zonder de gedeelde transactie was de afrekening weg en stond de kost nog op
+    // 'afgerekend' — geld buiten je saldo zonder dat iets uitlegt waarom.
+    expect((await laadVerrekeningen()).geldig.map((v) => v.id)).toEqual(['v1'])
+    expect((await laadGedeeldeKosten()).geldig[0].afgerekend).toBe(true)
+    expect(await db.events.count()).toBe(logboekVoor)
+  })
+
+  it('markeert de afrekening en haar kosten in één stap als overgemaakt', async () => {
+    await bewaarGedeeldeKost(kost('k1'))
+    await bewaarVerrekening({ ...afrekening, overgemaakt: false })
+
+    await markeerVerrekeningOvergemaakt({ ...afrekening, overgemaakt: false }, [kost('k1')], true)
+
+    expect((await laadVerrekeningen()).geldig[0].overgemaakt).toBe(true)
+    expect((await laadGedeeldeKosten()).geldig[0].afgerekend).toBe(true)
+  })
+
+  it('zet de afrekening met haar kostenvlaggen in één keer terug', async () => {
+    await herstelVerrekeningMetKosten(afrekening, [kost('k1', { afgerekend: true })])
+    expect((await laadVerrekeningen()).geldig.map((v) => v.id)).toEqual(['v1'])
+    expect((await laadGedeeldeKosten()).geldig[0].afgerekend).toBe(true)
+  })
+
+  it('verwijdert een categorietak met alles eronder, en zet ze in één keer terug', async () => {
+    await bewaarCategorie({ id: 'c1', naam: 'Hobby' })
+    await bewaarCategorie({ id: 'c2', naam: 'Muziek', ouderId: 'c1' })
+    await bewaarSubcategorie({ id: 's1', naam: 'Gitaarles', categorieId: 'c2' })
+
+    await verwijderCategorieMetAanhang('c1', { categorieIds: ['c2'], subcategorieIds: ['s1'] })
+    expect((await laadCategorieen()).geldig).toHaveLength(0)
+    expect((await laadSubcategorieen()).geldig).toHaveLength(0)
+
+    await herstelCategorieMetAanhang(
+      [{ id: 'c1', naam: 'Hobby' }, { id: 'c2', naam: 'Muziek', ouderId: 'c1' }],
+      [{ id: 's1', naam: 'Gitaarles', categorieId: 'c2' }],
+    )
+    expect((await laadCategorieen()).geldig.map((c) => c.id).sort()).toEqual(['c1', 'c2'])
+    expect((await laadSubcategorieen()).geldig.map((s) => s.id)).toEqual(['s1'])
+  })
+
+  it('laat geen weesitems achter wanneer het verwijderen halverwege mislukt', async () => {
+    await bewaarCategorie({ id: 'c1', naam: 'Hobby' })
+    await bewaarSubcategorie({ id: 's1', naam: 'Gitaarles', categorieId: 'c1' })
+
+    const stuk = vi.spyOn(db.categorieen, 'delete').mockImplementation(() => {
+      throw new Error('geweigerd')
+    })
+    await expect(verwijderCategorieMetAanhang('c1', { subcategorieIds: ['s1'] })).rejects.toThrow()
+    stuk.mockRestore()
+
+    expect((await laadCategorieen()).geldig.map((c) => c.id)).toEqual(['c1'])
+    expect((await laadSubcategorieen()).geldig.map((s) => s.id)).toEqual(['s1'])
+  })
+
+  it('zet een dossier met alles eraan in één keer terug', async () => {
+    await herstelDossierMetAanhang(
+      { id: 'd1', naam: 'Co-ouderschap', aandeelJij: 50 },
+      { gedeeldeKosten: [kost('k1')], verrekeningen: [afrekening] },
+    )
+    expect((await laadDossiers()).geldig.map((d) => d.id)).toEqual(['d1'])
+    expect((await laadGedeeldeKosten()).geldig.map((k) => k.id)).toEqual(['k1'])
+    expect((await laadVerrekeningen()).geldig.map((v) => v.id)).toEqual(['v1'])
+  })
+
+  it('zet geen half dossier terug wanneer het halverwege mislukt', async () => {
+    // ⚠ Een half bewijsstuk is erger dan geen: je ziet een dossier staan en denkt
+    // dat het compleet is.
+    const stuk = vi.spyOn(db.gedeeldeKosten, 'put').mockImplementation(() => {
+      throw new Error('opslag vol')
+    })
+    await expect(
+      herstelDossierMetAanhang(
+        { id: 'd1', naam: 'Co-ouderschap', aandeelJij: 50 },
+        { gedeeldeKosten: [kost('k1')], verrekeningen: [afrekening] },
+      ),
+    ).rejects.toThrow()
+    stuk.mockRestore()
+
+    expect((await laadDossiers()).geldig).toHaveLength(0)
+    expect((await laadVerrekeningen()).geldig).toHaveLength(0)
   })
 })

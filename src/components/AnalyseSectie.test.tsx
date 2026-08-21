@@ -649,3 +649,21 @@ describe('AnalyseSectie — de drie tabbladen', () => {
     expect(screen.getByRole('button', { name: 'Alles' })).toHaveAttribute('aria-pressed', 'false')
   })
 })
+
+// Ronde 65 — kleine dingen die stil misleiden.
+describe('AnalyseSectie — de ringen en de periodekaartjes', () => {
+  it('zegt op "Vooruit" waarvoor de periodekaartjes wél gelden', async () => {
+    const gebruiker = userEvent.setup()
+    toon([tx('t1', 'i-brood--wit-9238', -2000)])
+    await gebruiker.click(screen.getByRole('tab', { name: /Vooruit/ }))
+    // ⚠ Ze veranderden alleen de spaarquote; de rest volgt de maandschakelaar.
+    // Knoppen die reageren zonder iets te veranderen laten je twijfelen of je
+    // scherm nog werkt.
+    expect(screen.getByText(/alleen voor je spaarquote/)).toBeInTheDocument()
+  })
+
+  it('zwijgt daarover op de andere tabs, waar de periode wél alles stuurt', () => {
+    toon([tx('t1', 'i-brood--wit-9238', -2000)])
+    expect(screen.queryByText(/alleen voor je spaarquote/)).toBeNull()
+  })
+})

@@ -37,6 +37,7 @@ export function InstellingenSectie({
   onKindToevoegen,
   onKindWijzigen,
   onKindVerwijderen,
+  telGezinslidGebruik,
   onBeginOpnieuw,
   laatsteBackupOp,
   laatsteSyncOp,
@@ -57,6 +58,7 @@ export function InstellingenSectie({
   onKindToevoegen: (naam: string, rol?: Gezinsrol) => void
   onKindWijzigen: (lid: Kind) => void
   onKindVerwijderen: (id: string) => void
+  telGezinslidGebruik?: (id: string) => string[]
   /**
    * Wist alles. Geeft terug of de back-up mee opgeruimd raakte.
    * Optioneel: zolang het scherm de datalaag nog niet doorgeeft, blijft de
@@ -262,6 +264,7 @@ export function InstellingenSectie({
         onToevoegen={onKindToevoegen}
         onWijzigen={onKindWijzigen}
         onVerwijderen={onKindVerwijderen}
+        telGebruik={telGezinslidGebruik}
       />
 
       {/* Begin opnieuw — helemaal onderaan, want het is de zwaarste actie. */}
@@ -296,8 +299,13 @@ export function InstellingenSectie({
                 {t('Dit kan niet ongedaan gemaakt worden. Maak eerst een back-up als je je gegevens wil bewaren.')}
               </p>
               <div className="veldgroep">
+                {/* ⚠ RONDE 65. Het woord stond hardgecodeerd IN deze zin, terwijl
+                    de vergelijking een aparte sleutel las. Twee sleutels die
+                    hetzelfde woord moeten dragen, kunnen uit elkaar lopen — en dan
+                    vraagt het label een woord dat de app niet aanvaardt. Nu komt het
+                    woord uit dezelfde bron als de vergelijking. */}
                 <label className="label-caps" id="begin-opnieuw-reden" htmlFor="begin-opnieuw-bevestig">
-                  {t('Typ WISSEN om te bevestigen')}
+                  {t('Typ {woord} om te bevestigen', { woord: BEVESTIGWOORD })}
                 </label>
                 <input
                   id="begin-opnieuw-bevestig"

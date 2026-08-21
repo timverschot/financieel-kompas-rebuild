@@ -32,6 +32,21 @@ export const INTERVAL_MAANDEN: Record<Frequentie, number> = {
   jaar: 12,
 }
 
+/**
+ * Het woord dat achter een bedrag hoort: "per maand", "per kwartaal", ...
+ *
+ * ⚠ RONDE 65. Het scherm "Je situatie" splitste op `frequentie === 'jaar'` en gaf
+ * alles wat níet 'jaar' was het woord "per maand" — óók een kwartaal- of
+ * semesterpost. Dat is dezelfde factorfout die deze ronde wegneemt, alleen met een
+ * andere factor. Eén tabel, en elke plek die een periode moet benoemen leest ervan.
+ */
+export const PERIODE_SLEUTELS: Record<Frequentie, string> = {
+  maand: 'per maand',
+  kwartaal: 'per kwartaal',
+  semester: 'per half jaar',
+  jaar: 'per jaar',
+}
+
 export { FREQUENTIES }
 export type { Frequentie }
 

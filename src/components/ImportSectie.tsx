@@ -4,6 +4,7 @@ import { nieuwId } from '../data/sync/id'
 import { leesTekstbestand, lijktOpCsv, raadScheider, splitsCsv, zonderRommelregels, type Scheider } from '../utils/csv'
 import {
   bouwKandidaten,
+  dubbelsElders,
   formaatSleutel,
   heeftKoprij,
   markeerDubbels,
@@ -19,7 +20,7 @@ import { formatEuro } from '../utils/format'
 import { dagKort } from '../utils/datum'
 import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { useT, type Vertaler } from '../i18n'
-import { standaardRekening } from '../utils/rekening'
+import { rekeningLabel, standaardRekening } from '../utils/rekening'
 
 // Je bankuittreksel inlezen.
 //
@@ -254,6 +255,21 @@ export function ImportSectie({
   const bruikbaar = kandidaten.filter((k) => !k.probleem)
   const stuk = kandidaten.filter((k) => k.probleem)
 
+  // Staan deze regels misschien al op een ándere rekening? De gewone
+  // dubbelherkenning kijkt alleen binnen de gekozen rekening en is dus blind voor
+  // precies de fout die ze zou moeten vangen (ronde 65).
+  const elders = useMemo(
+    () => dubbelsElders(kandidaten, transacties, rekeningId),
+    [kandidaten, transacties, rekeningId],
+  )
+  // Hetzelfde volledige label als in het keuzemenu erboven: twee rekeningen die
+  // allebei "Betaalrekening" heten zijn met de kale naam niet uit elkaar te houden,
+  // en dan wijst deze zin naar geen van beide. Staat de dubbel op een GEARCHIVEERDE
+  // rekening, dan zit die niet in deze lijst en kennen we haar naam niet — dan
+  // liever "een andere rekening" dan een zin met een gat erin.
+  const eldersRekening = elders ? rekeningen.find((r) => r.id === elders.rekeningId) : undefined
+  const eldersNaam = elders ? (eldersRekening ? rekeningLabel(eldersRekening) : t('een andere rekening')) : ''
+
   // Standaard staat alles aan behálve wat al geboekt lijkt. `keuze` bevat alleen
   // wat de gebruiker ZELF anders gezet heeft — zo blijft zijn beslissing staan
   // wanneer de lijst opnieuw berekend wordt (bv. omdat hij een kolom corrigeert),
@@ -392,13 +408,37 @@ export function ImportSectie({
             </details>
             <div className="veldgroep">
               <label className="label-caps" htmlFor="imp-rekening">{t('Op welke rekening?')}</label>
-              <select id="imp-rekening" value={rekeningId} onChange={(e) => setRekeningId(e.target.value)}>
+              {/* ⚠ RONDE 65. Hier stond kaal {r.naam}. Dit was het ENIGE
+                  keuzemenu in de app dat `rekeningLabel` niet gebruikte, dus twee
+                  rekeningen die allebei "Betaalrekening" heten waren hier niet uit
+                  elkaar te houden — op precies het scherm waar een misgreep een
+                  heel uittreksel op het verkeerde boekje zet. */}
+              <select
+                id="imp-rekening"
+                value={rekeningId}
+                onChange={(e) => setRekeningId(e.target.value)}
+                // Zo hoort wie later opnieuw in dit menu belandt de waarschuwing
+                // nog steeds; een losse `role="alert"` spreekt maar één keer.
+                aria-describedby={elders ? 'imp-elders' : undefined}
+              >
                 {rekeningen.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.naam}
+                    {rekeningLabel(r)}
                   </option>
                 ))}
               </select>
+              {/* Altijd aanwezig, leeg wanneer er niets te melden is: een
+                  `role="status"` die pas MÉT zijn tekst verschijnt, wordt door
+                  sommige schermlezers overgeslagen. En het is een vermoeden, geen
+                  fout — dus geen `foutregel` en geen `alert`. */}
+              <p id="imp-elders" role="status" className="rij-meta" style={{ margin: 0, color: 'var(--negative)' }}>
+                {elders
+                  ? t('Let op: {n} van deze regels staan al op {rekening}. Staat hierboven wel de juiste rekening?', {
+                      n: elders.aantal,
+                      rekening: eldersNaam,
+                    })
+                  : ''}
+              </p>
             </div>
             {fout && (
               <p role="alert" className="rij-meta" style={{ color: 'var(--negative)' }}>
@@ -540,7 +580,7 @@ export function ImportSectie({
               )}
               <p className="rij-meta" style={{ margin: 0 }}>
                 {t('Ze komen op {rekening} te staan. Categorieën worden voorgesteld op basis van wat je eerder boekte bij dezelfde winkel.', {
-                  rekening: rekening?.naam ?? '',
+                  rekening: rekening ? rekeningLabel(rekening) : '',
                 })}
               </p>
 

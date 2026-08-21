@@ -14,7 +14,7 @@ import {
   type Rekenfout,
 } from '../utils/rekenhulp'
 import { formatEuro, invoerNaarCenten } from '../utils/format'
-import { vandaag } from '../utils/datum'
+import { dagJaar, vandaag } from '../utils/datum'
 import { Kaart, PaginaKop, Stat } from '../ui/basis'
 import { IndexatieCalculator, uitkomstVlak, uitkomstBijregel } from './IndexatieCalculator'
 import type { Dossier, Onderhoudsbijdrage } from '../data/schema'
@@ -227,7 +227,8 @@ function SpaardoelRekenhulp() {
                 {t('{maanden} stortingen van {bedrag} tot {datum}.', {
                   maanden: plan.waarde.maanden,
                   bedrag: formatEuro(plan.waarde.perMaandCenten),
-                  datum: streefdatum,
+                  // ⚠ RONDE 65: hier stond de ruwe ISO-datum (2026-11-04).
+                  datum: dagJaar(streefdatum),
                 })}
               </p>
             </>
@@ -242,13 +243,13 @@ function SpaardoelRekenhulp() {
           ) : (
             <>
               <div className="stat-rij">
-                <Stat label={t('Klaar op')}>{duur.waarde.datumISO}</Stat>
+                <Stat label={t('Klaar op')}>{dagJaar(duur.waarde.datumISO)}</Stat>
                 <Stat label={t('Aantal maanden')}>{duur.waarde.maanden}</Stat>
                 <Stat label={t('Nog nodig')}>{formatEuro(duur.waarde.resterendCenten)}</Stat>
               </div>
               <p style={uitkomstBijregel}>
                 {t('Vanaf vandaag ({vandaag}) duurt dat nog {maanden} maanden.', {
-                  vandaag: nu,
+                  vandaag: dagJaar(nu),
                   maanden: duur.waarde.maanden,
                 })}
               </p>

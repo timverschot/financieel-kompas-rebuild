@@ -10,6 +10,7 @@ import {
   bewaarDossierDocument,
   bewaarGarantie,
   bewaarGedeeldeKost,
+  bewaarKind,
   bewaarLening,
   bewaarRekening,
   bewaarTerugkerendePost,
@@ -508,6 +509,7 @@ describe('App', () => {
     expect(await screen.findByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Verwijder categorie Vervoer' }))
+    await user.click(await screen.findByRole('button', { name: 'Ja, verwijder' }))
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeNull())
   })
 
@@ -523,6 +525,7 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
     await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
     await user.click(await screen.findByRole('button', { name: 'Verwijder categorie Vervoer' }))
+    await user.click(await screen.findByRole('button', { name: 'Ja, verwijder' }))
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeNull())
 
     await user.keyboard('{Control>}z{/Control}')
@@ -541,6 +544,7 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
     await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
     await user.click(await screen.findByRole('button', { name: 'Verwijder categorie Vervoer' }))
+    await user.click(await screen.findByRole('button', { name: 'Ja, verwijder' }))
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeNull())
 
     const veld = screen.getByLabelText('Categorienaam')
@@ -560,6 +564,7 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
     await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
     await user.click(await screen.findByRole('button', { name: 'Verwijder categorie Vervoer' }))
+    await user.click(await screen.findByRole('button', { name: 'Ja, verwijder' }))
 
     const ongedaan = await screen.findByRole('button', { name: 'Ongedaan maken' })
     const balk = ongedaan.closest('div') as HTMLElement
@@ -2218,5 +2223,234 @@ describe('de Budget-pagina na ronde 64', () => {
 
     expect(await screen.findByText('Geboekt ✓')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Boek in' })).not.toBeInTheDocument()
+  })
+})
+
+// Ronde 65 — niets kan stil kapotgaan.
+describe('vangnetten bij verwijderen en verbergen', () => {
+  it('vraagt vóór het verwijderen van een eigen categorie, en telt wat er meegaat', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await gaMeer(user, 'Categorieën')
+    await user.type(screen.getByLabelText('Categorienaam'), 'Hobby')
+    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
+    await user.click(await screen.findByRole('button', { name: 'Verwijder categorie Hobby' }))
+
+    // ⚠ De kern: één tik wist niets meer.
+    expect(await screen.findByText('Hobby verwijderen?')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Verwijder categorie Hobby' })).toBeInTheDocument()
+    // Een lege categorie krijgt geen lijst met vier keer "0".
+    expect(screen.getByText('Er hangt niets aan deze categorie.')).toBeInTheDocument()
+  })
+
+  it('laat de categorie staan wanneer je de vraag met nee beantwoordt', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await gaMeer(user, 'Categorieën')
+    await user.type(screen.getByLabelText('Categorienaam'), 'Hobby')
+    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
+    await user.click(await screen.findByRole('button', { name: 'Verwijder categorie Hobby' }))
+    await user.click(await screen.findByRole('button', { name: 'Nee, behouden' }))
+
+    expect(screen.getByRole('button', { name: 'Verwijder categorie Hobby' })).toBeInTheDocument()
+  })
+
+  it('zegt op de ongedaan-balk hoeveel er met de categorie meeging', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await gaMeer(user, 'Categorieën')
+    await user.type(screen.getByLabelText('Categorienaam'), 'Hobby')
+    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
+    await user.click(await screen.findByRole('button', { name: 'Verwijder categorie Hobby' }))
+    await user.click(await screen.findByRole('button', { name: 'Ja, verwijder' }))
+
+    // ⚠ "Categorie verwijderd" zei niet WELKE. Bij een tak met items zegt de balk
+    // nu ook hoeveel er meeging.
+    // Twee keer: de zichtbare balk én de regel die een schermlezer voorleest.
+    expect(await screen.findAllByText('Hobby verwijderd')).toHaveLength(2)
+  })
+
+  it('geeft een hernoemd item een weg terug', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await gaMeer(user, 'Categorieën')
+    // Openvouwen tot bij de items: hoofdcategorie → categorie → item.
+    // De testgegevens bevatten óók een eigen categorie "Voeding"; we willen de
+    // ingebouwde tak, die als enige geen "eigen" in haar regel heeft staan.
+    const voeding = screen
+      .getAllByRole('button', { name: /Voeding.*cat\./ })
+      .filter((b) => !(b.textContent ?? '').includes('eigen'))[0]
+    await user.click(voeding)
+    // "Broodwaren" en "Broodwaren (zoet)" staan allebei in de boom; we willen de eerste.
+    const brood = (await screen.findAllByRole('button', { name: /Broodwaren/ })).find(
+      (b) => !(b.textContent ?? '').includes('zoet'),
+    ) as HTMLElement
+    await user.click(brood)
+    await user.click(await screen.findByRole('button', { name: 'Wijzig Stokbrood' }))
+    const veld = screen.getByLabelText('Nieuwe naam voor Stokbrood')
+    await user.clear(veld)
+    await user.type(veld, 'Frans brood')
+    await user.click(screen.getByRole('button', { name: 'Bewaar' }))
+
+    // ⚠ Hernoemen was de enige categoriewijziging zónder ongedaan-balk.
+    expect((await screen.findAllByText('Stokbrood heet nu Frans brood')).length).toBeGreaterThan(0)
+
+    // ⚠ En de zoekwoorden van het ingebouwde item gaan mee. Zonder deze regel verloor
+    // élk van de driehonderd ingebouwde items met synoniemen die bij zijn eerste
+    // hernoeming: je hernoemt "Stokbrood" en vindt het daarna niet meer via
+    // "baguette".
+    await waitFor(async () => {
+      const bewaard = await db.subcategorieen.get('i-x-stokbrood')
+      expect(bewaard?.naam).toBe('Frans brood')
+      expect(bewaard?.synoniemen).toEqual(['baguette'])
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Ongedaan maken' }))
+    expect(await screen.findByRole('button', { name: 'Wijzig Stokbrood' })).toBeInTheDocument()
+  })
+
+  it('zegt het wanneer een rekening uit de keuzelijsten verdwijnt, en biedt de weg terug', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await gaMeer(user, 'Rekeningen')
+    await user.type(screen.getByLabelText('Rekeningnaam'), 'Vakantiepot')
+    await user.click(screen.getByRole('button', { name: 'Rekening toevoegen' }))
+    expect((await screen.findAllByRole('option', { name: /Vakantiepot/ })).length).toBeGreaterThan(0)
+
+    await user.click(await screen.findByRole('button', { name: 'Archiveer rekening Vakantiepot' }))
+
+    // ⚠ Archiveren haalde de rekening uit zeven keuzelijsten zonder één woord.
+    expect((await screen.findAllByText(/Vakantiepot gearchiveerd/)).length).toBeGreaterThan(0)
+    await user.click(screen.getByRole('button', { name: 'Ongedaan maken' }))
+    await waitFor(() => expect(screen.getAllByRole('option', { name: /Vakantiepot/ }).length).toBeGreaterThan(0))
+  })
+})
+
+// Ronde 65 — de reparatie zelf, niet alleen het venster ervoor.
+describe('een overgemaakte afrekening verwijderen', () => {
+  async function maakAfrekeningEnMaakOver(user: Gebruiker) {
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Dossiers')
+    await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
+    await zetAandeel(user, '50')
+    await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
+
+    await user.type(await screen.findByLabelText('Kostomschrijving'), 'Schoolreis')
+    await user.type(screen.getByLabelText('Kostbedrag (€)'), '100')
+    await user.click(screen.getByRole('button', { name: 'Kost toevoegen' }))
+    await screen.findAllByText(/Partner is jou/)
+
+    await user.click(screen.getByRole('button', { name: 'Genereer afrekening' }))
+    await screen.findByText('Afrekeningen')
+    await user.click(screen.getByRole('checkbox', { name: 'Overgemaakt' }))
+    await waitFor(() => expect(screen.getAllByText(/Niets te verrekenen/).length).toBeGreaterThan(0))
+  }
+
+  it('zet de kosten weer open in plaats van ze stil buiten je saldo te laten vallen', async () => {
+    const user = userEvent.setup()
+    await maakAfrekeningEnMaakOver(user)
+
+    await user.click(screen.getByRole('button', { name: /^Verwijder afrekening/ }))
+    await user.click(await screen.findByRole('button', { name: 'Ja, verwijder' }))
+
+    // ⚠ Dit is de kern van de ronde. Bleef de kost op "afgerekend" staan, dan viel
+    // dat geld uit het saldo terwijl er niets meer bestond dat uitlegde waarom.
+    // De kaart "Openstaand" is de plek waar het geld staat of niet staat.
+    await waitFor(() => {
+      const openstaand = screen.getByText('Openstaand').closest('.kaart') as HTMLElement
+      expect(openstaand).toHaveTextContent('Partner is jou')
+      expect(openstaand).not.toHaveTextContent('Niets te verrekenen')
+    })
+  })
+
+  it('zet met ongedaan maken zowel de afrekening als de kosten terug', async () => {
+    const user = userEvent.setup()
+    await maakAfrekeningEnMaakOver(user)
+
+    await user.click(screen.getByRole('button', { name: /^Verwijder afrekening/ }))
+    await user.click(await screen.findByRole('button', { name: 'Ja, verwijder' }))
+    await screen.findAllByText('Afrekening verwijderd')
+
+    await user.click(screen.getByRole('button', { name: 'Ongedaan maken' }))
+    expect(await screen.findByRole('button', { name: /^Verwijder afrekening/ })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getAllByText(/Niets te verrekenen/).length).toBeGreaterThan(0))
+  })
+
+  it('biedt een weg terug na het aanvinken van "Overgemaakt"', async () => {
+    const user = userEvent.setup()
+    await maakAfrekeningEnMaakOver(user)
+
+    // ⚠ Dit vinkje verschuift geld: de gedekte kosten vallen erdoor uit je
+    // openstaande saldo. Tot deze ronde gebeurde dat zonder weg terug.
+    await screen.findAllByText('Afrekening gemarkeerd als overgemaakt')
+    await user.click(screen.getByRole('button', { name: 'Ongedaan maken' }))
+
+    await waitFor(() => {
+      const openstaand = screen.getByText('Openstaand').closest('.kaart') as HTMLElement
+      expect(openstaand).toHaveTextContent('Partner is jou')
+    })
+    expect((screen.getByRole('checkbox', { name: 'Overgemaakt' }) as HTMLInputElement).checked).toBe(false)
+  })
+
+  it('verwijdert niets wanneer je het venster wegklikt met Escape', async () => {
+    const user = userEvent.setup()
+    await maakAfrekeningEnMaakOver(user)
+
+    await user.click(screen.getByRole('button', { name: /^Verwijder afrekening/ }))
+    await screen.findByText(/verwijderen\?/)
+    await user.keyboard('{Escape}')
+
+    // ⚠ Wegklikken mag NOOIT de gevaarlijke keuze uitvoeren.
+    expect(screen.getByRole('button', { name: /^Verwijder afrekening/ })).toBeInTheDocument()
+    expect(screen.queryAllByText('Afrekening verwijderd')).toHaveLength(0)
+  })
+})
+
+describe('een gezinslid verwijderen vanuit de app', () => {
+  it('toont in de vraag waar de naam nog gebruikt wordt', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await gaMeer(user, 'Instellingen')
+    await user.type(await screen.findByLabelText('Naam gezinslid'), 'Ella')
+    await user.click(screen.getByRole('button', { name: 'Gezinslid toevoegen' }))
+    await user.click(await screen.findByRole('button', { name: 'Verwijder gezinslid Ella' }))
+
+    // ⚠ Zonder de bedrading in App zou hier "Dit gezinslid wordt nergens gebruikt"
+    // staan terwijl de app het simpelweg niet nakeek.
+    expect(await screen.findByText('Ella verwijderen?')).toBeInTheDocument()
+    expect(screen.getByText('Dit gezinslid wordt nergens gebruikt.')).toBeInTheDocument()
+    expect(screen.queryByText(/kan hier niet nakijken/)).toBeNull()
+  })
+
+  it('telt de boekingen waar het lid aan hangt', async () => {
+    await bewaarKind({ id: 'lid-1', naam: 'Ella', rol: 'kind' })
+    await bewaarTransactie({
+      id: 't-ella',
+      datum: `${MAAND}-${dag(4)}`,
+      omschrijving: 'Zwemles',
+      bedrag: -1200,
+      rekeningId: 'r1',
+      persoonIds: ['lid-1'],
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await gaMeer(user, 'Instellingen')
+    await user.click(await screen.findByRole('button', { name: 'Verwijder gezinslid Ella' }))
+    expect(await screen.findByText('1 boeking(en)')).toBeInTheDocument()
   })
 })

@@ -402,6 +402,146 @@ export async function verwijderDossier(id: string): Promise<void> {
 }
 
 /**
+ * Een afrekening als (niet) overgemaakt markeren, samen met de kosten die ze dekt —
+ * in ÉÉN ondeelbare stap (ronde 65).
+ *
+ * Dezelfde reden als bij het verwijderen hieronder, en het spiegelbeeld ervan: brak
+ * dit halverwege af, dan stonden er kosten op 'afgerekend' terwijl de afrekening
+ * niet als overgemaakt gemarkeerd was. Dat geld valt dan uit je saldo, en het
+ * verwijderen van die afrekening zet het niet terug — dat kijkt immers naar het
+ * vinkje 'overgemaakt'.
+ */
+export async function markeerVerrekeningOvergemaakt(
+  verrekening: Verrekening,
+  kosten: GedeeldeKost[],
+  overgemaakt: boolean,
+): Promise<void> {
+  await pasGebeurtenissenToe([
+    ...kosten.map(
+      (k) => ({ type: 'gedeeldekost.bewaard', payload: GedeeldeKostSchema.parse({ ...k, afgerekend: overgemaakt }) }) as const,
+    ),
+    { type: 'verrekening.bewaard', payload: VerrekeningSchema.parse({ ...verrekening, overgemaakt }) },
+  ])
+}
+
+/**
+ * Een afrekening verwijderen én de kosten die zij dichtzette weer openen — in ÉÉN
+ * ondeelbare stap (ronde 65).
+ *
+ * ⚠ WAAROM DIT NIET IN TWEE STAPPEN MAG. Is een afrekening als 'overgemaakt'
+ * gemarkeerd, dan staan de kosten die zij dekt op `afgerekend` en tellen ze niet
+ * mee in het openstaande saldo. Verdwijnt de afrekening maar blijven die vlaggen
+ * staan — omdat het halverwege afbrak: opslag vol, tabblad dicht, geweigerde
+ * schrijfactie — dan valt dat geld uit je saldo terwijl er niets meer bestaat dat
+ * uitlegt waarom. Dat is precies de stille fout die deze ronde wil uitroeien, dus
+ * ze mag hier niet zelf ontstaan. Nu gaat alles door, of niets.
+ *
+ * Ook de oude `verrekeningId`-koppeling gaat mee: die telt in `isOpenKost` net zo
+ * hard als `afgerekend`, en een kost met een verwijzing naar een afrekening die
+ * niet meer bestaat, komt anders nooit meer terug in een saldo.
+ */
+export async function verwijderVerrekeningMetHeropening(
+  id: string,
+  heropenen: GedeeldeKost[],
+): Promise<void> {
+  await pasGebeurtenissenToe([
+    { type: 'verrekening.verwijderd', payload: { id } },
+    ...heropenen.map((k) => {
+      // ⚠ De oude koppeling alleen wissen wanneer ze naar DEZE afrekening wijst. Een
+      // kost kan via de andere weg in deze lijst zitten (overgemaakt + afgerekend)
+      // en tegelijk een `verrekeningId` naar een ándere afrekening dragen; die
+      // koppeling mag hier niet sneuvelen.
+      const vanDeze = k.verrekeningId === id
+      const { verrekeningId: _oud, ...rest } = k
+      return {
+        type: 'gedeeldekost.bewaard',
+        payload: GedeeldeKostSchema.parse({
+          ...rest,
+          afgerekend: false,
+          ...(vanDeze ? {} : k.verrekeningId ? { verrekeningId: k.verrekeningId } : {}),
+        }),
+      } as const
+    }),
+  ])
+}
+
+/**
+ * Een eigen categorie met alles eronder verwijderen, in ÉÉN ondeelbare stap
+ * (ronde 65).
+ *
+ * Dezelfde reden als hierboven en als bij het dossier: brak het halverwege af, dan
+ * bleven de middencategorieën of de items als onzichtbare weesrecords staan — niet
+ * meer te zien, niet meer te verwijderen, en wél mee gesynchroniseerd naar je
+ * andere toestellen.
+ */
+export async function verwijderCategorieMetAanhang(
+  id: string,
+  aanhang: { categorieIds?: string[]; subcategorieIds?: string[] } = {},
+): Promise<void> {
+  await pasGebeurtenissenToe([
+    // De items eerst, dan de middencategorieën, dan de hoofdcategorie. Binnen deze
+    // ene transactie maakt dat voor de uitkomst niets uit; het is de volgorde
+    // waarin het logboek zich láát lezen — en waarin een ander toestel de regels
+    // afspeelt, van blad naar tak naar stam.
+    ...(aanhang.subcategorieIds ?? []).map((s) => ({ type: 'subcategorie.verwijderd', payload: { id: s } }) as const),
+    ...(aanhang.categorieIds ?? []).map((c) => ({ type: 'categorie.verwijderd', payload: { id: c } }) as const),
+    { type: 'categorie.verwijderd', payload: { id } },
+  ])
+}
+
+/** Een verwijderde categorietak in één keer terugzetten (de ongedaan-balk). */
+export async function herstelCategorieMetAanhang(
+  categorieen: Categorie[],
+  subcategorieen: Subcategorie[],
+): Promise<void> {
+  await pasGebeurtenissenToe([
+    ...categorieen.map((c) => ({ type: 'categorie.bewaard', payload: CategorieSchema.parse(c) }) as const),
+    ...subcategorieen.map((s) => ({ type: 'subcategorie.bewaard', payload: SubcategorieSchema.parse(s) }) as const),
+  ])
+}
+
+/** Een verwijderde afrekening met haar kostenvlaggen in één keer terugzetten. */
+export async function herstelVerrekeningMetKosten(
+  verrekening: Verrekening,
+  kosten: GedeeldeKost[],
+): Promise<void> {
+  await pasGebeurtenissenToe([
+    { type: 'verrekening.bewaard', payload: VerrekeningSchema.parse(verrekening) },
+    ...kosten.map((k) => ({ type: 'gedeeldekost.bewaard', payload: GedeeldeKostSchema.parse(k) }) as const),
+  ])
+}
+
+/**
+ * Een verwijderd dossier met alles eraan in één keer terugzetten (ronde 65).
+ *
+ * ⚠ Het verwijderen was al ondeelbaar; het terugzetten was dat niet. Brak dát
+ * halverwege af, dan kreeg je een dossier terug met de helft van zijn kosten,
+ * afrekeningen en documenten — en een half bewijsstuk is erger dan geen.
+ */
+export async function herstelDossierMetAanhang(dossier: Dossier, aanhang: {
+  gedeeldeKosten?: GedeeldeKost[]
+  verrekeningen?: Verrekening[]
+  kindrekeningen?: Kindrekening[]
+  kindrekeningposten?: Kindrekeningpost[]
+  onderhoudsbijdragen?: Onderhoudsbijdrage[]
+  onderhoudsbetalingen?: Onderhoudsbetaling[]
+  documenten?: DossierDocument[]
+} = {}): Promise<void> {
+  await pasGebeurtenissenToe([
+    // Het dossier eerst, dan wat eraan hangt: zo leest het logboek zich van stam
+    // naar tak, en speelt een ander toestel de regels in die volgorde af.
+    { type: 'dossier.bewaard', payload: DossierSchema.parse(dossier) },
+    ...(aanhang.gedeeldeKosten ?? []).map((k) => ({ type: 'gedeeldekost.bewaard', payload: GedeeldeKostSchema.parse(k) }) as const),
+    ...(aanhang.verrekeningen ?? []).map((v) => ({ type: 'verrekening.bewaard', payload: VerrekeningSchema.parse(v) }) as const),
+    ...(aanhang.kindrekeningen ?? []).map((k) => ({ type: 'kindrekening.bewaard', payload: KindrekeningSchema.parse(k) }) as const),
+    ...(aanhang.kindrekeningposten ?? []).map((p) => ({ type: 'kindrekeningpost.bewaard', payload: KindrekeningpostSchema.parse(p) }) as const),
+    ...(aanhang.onderhoudsbijdragen ?? []).map((b) => ({ type: 'onderhoudsbijdrage.bewaard', payload: OnderhoudsbijdrageSchema.parse(b) }) as const),
+    ...(aanhang.onderhoudsbetalingen ?? []).map((b) => ({ type: 'onderhoudsbetaling.bewaard', payload: OnderhoudsbetalingSchema.parse(b) }) as const),
+    ...(aanhang.documenten ?? []).map((d) => ({ type: 'dossierdocument.bewaard', payload: DossierDocumentSchema.parse(d) }) as const),
+  ])
+}
+
+/**
  * Een dossier verwijderen SAMEN MET alles wat eraan hangt, als één ondeelbare stap.
  *
  * Waarom (ronde 35): dit gebeurde als vijf losse reeksen schrijfacties na elkaar —
@@ -414,6 +554,7 @@ export async function verwijderDossier(id: string): Promise<void> {
  * soort stille fout dat later een verkeerde afrekening met de andere ouder
  * oplevert. Nu gaat alles door, of niets.
  */
+
 export async function verwijderDossierMetAanhang(
   id: string,
   aanhang: {
@@ -438,8 +579,8 @@ export async function verwijderDossierMetAanhang(
       (p) => ({ type: 'kindrekeningpost.verwijderd', payload: { id: p } }) as const,
     ),
     ...(aanhang.kindrekeningIds ?? []).map((k) => ({ type: 'kindrekening.verwijderd', payload: { id: k } }) as const),
-    // De betalingen vóór de bijdrage: een betaling hangt aan een bijdrage, dus de
-    // omgekeerde volgorde zou halverwege een onderbreking weesbetalingen achterlaten.
+    // De betalingen vóór de bijdrage: een betaling hangt aan een bijdrage, dus zo
+    // leest het logboek zich van blad naar tak.
     ...(aanhang.onderhoudsbetalingIds ?? []).map(
       (b) => ({ type: 'onderhoudsbetaling.verwijderd', payload: { id: b } }) as const,
     ),

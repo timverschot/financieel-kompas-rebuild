@@ -20,7 +20,7 @@ import {
 import { categorieBedragen } from '../utils/transactie'
 import { uitgavenPerPersoon } from '../utils/persoon'
 import { Donut } from './Donut'
-import { afgerondePercentages } from '../utils/donut'
+import { afgerondePercentages, type DonutInvoer } from '../utils/donut'
 import { formatEuro } from '../utils/format'
 import { Kaart, PaginaKop, Leeg, Bedrag, Stat, Balk } from '../ui/basis'
 import { Subtabs } from '../ui/Subtabs'
@@ -136,7 +136,26 @@ function DonutKaart({
   const getoond = new Set(inDeRing)
   const rest = posten.filter((_, i) => !getoond.has(i))
   const restTotaal = totaalVan(rest)
-  const ring = inDeRing.map((i) => ({ naam: posten[i].naam, bedrag: posten[i].bedrag, kleur: posten[i].kleur }))
+  // De sleutel bevat de PLAATS in de volledige lijst plus de naam. Daarmee komt een
+  // tik op een schijf bij dezelfde post — en dus bij dezelfde doorklik — als de
+  // legenderij ernaast (ronde 65).
+  //
+  // ⚠ De naam moet erin. Donut gebruikt de sleutels als vingerafdruk om een keuze
+  // te vergeten zodra de lijst iets ánders bevat; met kale plaatsen ("0|1|2") ziet
+  // elke lijst van dezelfde lengte er identiek uit en blijft er een schijf
+  // uitgeschoven staan wanneer je van periode wisselt.
+  //
+  // ⚠ En alleen posten die ECHT ergens heen gaan krijgen een sleutel. Donut zet zijn
+  // doorklikknop op het bestaan van een sleutel; `onKiesPost` mag bewust niets
+  // teruggeven ("liever geen doorklik dan een verkeerde"), en dan zou er een knop
+  // staan die zichtbaar niets doet. De restschijf krijgt er om dezelfde reden geen:
+  // die staat voor meerdere posten tegelijk.
+  const ring: DonutInvoer[] = inDeRing.map((i) => ({
+    naam: posten[i].naam,
+    bedrag: posten[i].bedrag,
+    kleur: posten[i].kleur,
+    ...(onKiesPost?.(posten[i], i) ? { sleutel: `${i}|${posten[i].naam}` } : {}),
+  }))
   if (restTotaal > 0) ring.push({ naam: t('Overige ({n})', { n: rest.length }), bedrag: restTotaal, kleur: OVERIGE_KLEUR })
 
   // Alleen de LIJST klapt uit, de ring niet. Zou de ring meegroeien, dan krijg je bij
@@ -155,7 +174,23 @@ function DonutKaart({
           breed scherm — dan sleep je je ogen van boven naar onder om een schijf
           bij haar bedrag te zoeken. */}
       <div className="donut-naast">
-        <Donut items={ring} toonLegende={false} grootte={DONUT_GROOTTE} middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'} />
+        {/* ⚠ RONDE 65. Deze ring was dood: alleen de donut van "Verdeling
+            uitgaven" hierboven kreeg `interactief` en `onKies`. De legenderijen
+            ernaast klikten wél door, dus in dezelfde kaart deed de helft iets en de
+            andere helft niets — en niets op het scherm zei welke helft. */}
+        <Donut
+          items={ring}
+          toonLegende={false}
+          grootte={DONUT_GROOTTE}
+          interactief
+          middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'}
+          onKies={(seg) => {
+            if (seg.sleutel === undefined) return
+            const i = Number(seg.sleutel.split('|')[0])
+            if (!Number.isInteger(i) || i < 0 || i >= posten.length) return
+            onKiesPost?.(posten[i], i)?.()
+          }}
+        />
         {/* Bewust GEEN maxHeight op deze lijst.
             Ze had er een van 260 px zodra je uitklapte, met een eigen schuifbalk.
             Gevolg: ingeklapt zag je tien rijen volledig, en na "Toon alle 19" werden
@@ -573,6 +608,19 @@ export function AnalyseSectie({
         )}
       </div>
 
+      {/* ⚠ RONDE 65. Op de tab "Vooruit" veranderde er van de periodekaartjes bijna
+          niets: je vermogensgrafiek staat vast op twaalf maanden en de vooruitblik
+          volgt de maandschakelaar. Alleen de spaarquote luistert. De knoppen bleven
+          gewoon reageren, dus je dacht dat je iets veranderd had — en de cijfers
+          bleven staan. De rij hoort niet weg (ze doet wél iets); ze hoort te zeggen
+          wát ze doet. Dezelfde gedachte als bij de richtingknoppen hierboven, die
+          op deze tab helemaal verborgen zijn omdat ze daar níets doen. */}
+      {tab === 'vooruit' && !drill && (
+        <p className="rij-meta" style={{ margin: '-4px 0 0' }}>
+          {t('De periode hierboven geldt op deze tab alleen voor je spaarquote. De rest volgt de maand die je bovenaan koos.')}
+        </p>
+      )}
+
       {bereikOmgekeerd && (
         <Kaart>
           <Leeg>{t('De einddatum ligt vóór de begindatum.')}</Leeg>
@@ -858,10 +906,31 @@ export function AnalyseSectie({
               {/* Zelfde vorm als de kaarten op de hoofdpagina: donut links, lijst
                   rechts op een breed scherm, aandeel als eigen kolom. */}
               <div className="donut-naast">
+                {/* Ook hier gaf de ring haar sleutels al mee, maar zonder
+                    `interactief`/`onKies` gebeurde er niets (ronde 65). De schijf
+                    doet nu precies wat haar rij in de lijst ernaast doet — inclusief
+                    de rij "Zonder categorie", die geen categorie-id draagt maar wel
+                    haar eigen filter heeft, en exclusief de rijen die nergens heen
+                    gaan (die krijgen geen sleutel en dus geen knop). */}
                 <Donut
-                  items={drillSub.map((p) => ({ naam: p.naam, bedrag: p.bedrag, kleur: p.kleur, sleutel: p.sleutel }))}
+                  items={drillSub.map((p, i) => ({
+                    naam: p.naam,
+                    bedrag: p.bedrag,
+                    kleur: p.kleur,
+                    ...(onGaNaarTransacties && (p.zonderCategorie || (p.sleutel && itemPerId(p.sleutel)))
+                      ? { sleutel: `${i}|${p.sleutel ?? ''}` }
+                      : {}),
+                  }))}
                   toonLegende={false}
+                  interactief
                   middenLabel={richting === 'uitgave' ? 'uitgaven' : 'inkomsten'}
+                  onKies={(seg) => {
+                    if (seg.sleutel === undefined || !onGaNaarTransacties) return
+                    const post = drillSub[Number(seg.sleutel.split('|')[0])]
+                    if (!post) return
+                    if (post.zonderCategorie) onGaNaarTransacties(metRichting({ zonderCategorie: true }))
+                    else if (post.sleutel) naarItem(post.sleutel)
+                  }}
                 />
                 <ul className="lijst">
                   {drillSub.map((p, i) => {

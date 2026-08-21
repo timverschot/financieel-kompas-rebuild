@@ -41,7 +41,7 @@ export function OverboekingSectie({
   const gesorteerd = gesorteerdNieuwsteEerst(overboekingen)
 
   return (
-    <Kaart titel={t('Overboekingen')} bijschrift={t('Geld verschuiven tussen je eigen rekeningen (geen inkomst of uitgave).')}>
+    <Kaart titel={t('Alle overboekingen')} bijschrift={t('Geld verschuiven tussen je eigen rekeningen (geen inkomst of uitgave).')}>
       {rekeningen.length < 2 ? (
         <Leeg>{t('Je hebt minstens twee rekeningen nodig om over te boeken.')}</Leeg>
       ) : (

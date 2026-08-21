@@ -33,13 +33,37 @@ export function downloadBlob(bestandsnaam: string, blob: Blob): void {
     // In het document hangen vóór de klik: Firefox negeert een klik op een anker
     // dat nergens staat.
     document.body.appendChild(a)
-    a.click()
-    a.remove()
+    try {
+      a.click()
+    } finally {
+      // Ook opruimen wanneer de klik gooit: anders blijft er bij elke mislukte poging
+      // een onzichtbaar anker in de pagina achter.
+      a.remove()
+    }
   } catch (fout) {
-    URL.revokeObjectURL(url)
+    // Ook hier eerst opruimen, maar het mag de échte fout niet overschrijven: gaat
+    // het vrijgeven óók stuk, dan zou de aanroeper "revokeObjectURL is not a
+    // function" te zien krijgen in plaats van waarom de download mislukte.
+    try {
+      URL.revokeObjectURL(url)
+    } catch {
+      // bewust stil: de fout hieronder is de fout die telt
+    }
     throw fout
   }
-  window.setTimeout(() => URL.revokeObjectURL(url), VRIJGEVEN_NA)
+  // ⚠ RONDE 65. Dit is OPRUIMEN, tien seconden na de klik. Mislukt het, dan is er
+  // niets verloren: de download is al gebeurd. Maar het loopt in een timer, dus een
+  // fout hier komt nergens meer terecht — ze wordt een onafgevangen fout die de
+  // pagina in de foutafhandeling van de browser gooit (en in de testrun de hele
+  // opdracht rood zet), lang nadat de gebruiker al iets anders doet. Opruimen mag
+  // nooit harder stukgaan dan wat het opruimt.
+  window.setTimeout(() => {
+    try {
+      URL.revokeObjectURL(url)
+    } catch {
+      // Niets te doen: het adres wordt sowieso vrijgegeven wanneer de pagina sluit.
+    }
+  }, VRIJGEVEN_NA)
 }
 
 /**

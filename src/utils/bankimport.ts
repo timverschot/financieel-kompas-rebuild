@@ -557,6 +557,70 @@ export function bouwKandidaten(gegevens: string[][], kolommen: Kolommen): Kandid
  * beide regels gemarkeerd. Staat er één keer € 12,50 in de app en twee keer in het
  * bestand, dan wordt er precies één gemarkeerd.
  */
+/**
+ * Op welke ANDERE rekening lijken deze regels al te staan? (ronde 65)
+ *
+ * ⚠ WAAROM DIT BESTAAT. `markeerDubbels` kijkt alleen binnen de gekozen rekening.
+ * Dat is juist — maar het maakt de dubbelherkenning blind voor de fout die ze het
+ * hardst zou moeten vangen: de verkeerde rekening kiezen. Kies je per ongeluk je
+ * spaarrekening, dan vindt de controle daar niets, staat élke regel aangevinkt, en
+ * boek je een heel uittreksel op het verkeerde boekje — zonder één waarschuwing.
+ * De controle zette dus zichzelf uit.
+ *
+ * Deze functie kijkt de andere kant op: staan deze regels misschien al ergens
+ * ánders? Ze geeft de rekening terug met de meeste treffers, en alleen wanneer dat
+ * er meer zijn dan op de gekozen rekening — anders is het geen aanwijzing.
+ */
+export function dubbelsElders(
+  kandidaten: Kandidaat[],
+  bestaande: Transactie[],
+  gekozenRekeningId: string,
+): { rekeningId: string; aantal: number } | null {
+  // ⚠ Deze functie telt ZELF, op datum en bedrag, en kijkt bewust niet naar de
+  // `lijktOp` die er al op staat. De component geeft hier immers de lijst door die
+  // `markeerDubbels` al voor de gekozen rekening bewerkt heeft; namen we die
+  // markering over, dan telde elke andere rekening haar eigen treffers plus die van
+  // de gekozen rekening, stond de rem `aantal > hier` altijd open, en waarschuwde de
+  // app terwijl je juist de goede rekening koos.
+  const schoon = kandidaten.filter((k) => !k.probleem)
+  if (schoon.length === 0) return null
+
+  // Eén doorloop over de boekingen in plaats van één per rekening: bij tweehonderd
+  // regels, acht rekeningen en twintigduizend boekingen scheelt dat een factor acht.
+  const perRekening = new Map<string, Map<string, number>>()
+  for (const t of bestaande) {
+    const sleutels = perRekening.get(t.rekeningId) ?? new Map<string, number>()
+    const s = `${t.datum}|${t.bedrag}`
+    sleutels.set(s, (sleutels.get(s) ?? 0) + 1)
+    perRekening.set(t.rekeningId, sleutels)
+  }
+
+  // Elke bestaande boeking kan maar één regel verklaren — dezelfde regel als in
+  // `markeerDubbels`, dus een teller per sleutel en niet zomaar "komt voor".
+  const tel = (rekeningId: string) => {
+    const beschikbaar = new Map(perRekening.get(rekeningId) ?? [])
+    let n = 0
+    for (const k of schoon) {
+      const s = `${k.datum}|${k.bedrag}`
+      const over = beschikbaar.get(s) ?? 0
+      if (over > 0) {
+        beschikbaar.set(s, over - 1)
+        n++
+      }
+    }
+    return n
+  }
+
+  const hier = tel(gekozenRekeningId)
+  let beste: { rekeningId: string; aantal: number } | null = null
+  for (const id of perRekening.keys()) {
+    if (id === gekozenRekeningId) continue
+    const aantal = tel(id)
+    if (aantal > hier && (beste === null || aantal > beste.aantal)) beste = { rekeningId: id, aantal }
+  }
+  return beste
+}
+
 export function markeerDubbels(
   kandidaten: Kandidaat[],
   bestaande: Transactie[],

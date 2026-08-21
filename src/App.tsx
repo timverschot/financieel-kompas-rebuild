@@ -82,8 +82,13 @@ import {
   laadTerugkerendePosten,
   laadTransacties,
   laadVerrekeningen,
+  verwijderVerrekeningMetHeropening,
+  markeerVerrekeningOvergemaakt,
+  herstelDossierMetAanhang,
+  herstelVerrekeningMetKosten,
+  verwijderCategorieMetAanhang,
+  herstelCategorieMetAanhang,
   verwijderBudget,
-  verwijderCategorie,
   verwijderGedeeldeKost,
   verwijderAflossing,
   herstelDossierDocument,
@@ -99,7 +104,6 @@ import {
   verwijderTransactie,
   verwijderTransactieMetAanhang,
   verwijderTransactiesMetAanhang,
-  verwijderVerrekening,
 } from './data/repository'
 import { exporteerBackup, importeerBackup } from './data/backup'
 import { vraagBlijvendeOpslag, type OpslagToestand } from './data/opslag'
@@ -168,6 +172,9 @@ import { Zijbalk } from './components/Zijbalk'
 import { Merkteken } from './components/Merkteken'
 import { saldoVerrekeningDossier } from './utils/dossier'
 import { kostenVoorAfrekening, type AfrekeningFilter } from './utils/afrekening'
+import { kostenOmTeHeropenen, kostenVanAfrekening } from './utils/afrekeningverwijdering'
+import { telGezinslidGebruik } from './utils/gezinslidverwijdering'
+import { categorieUndoTekst, telCategorieVerwijderen } from './utils/categorieverwijdering'
 import { nieuwId } from './data/sync/id'
 import { inkomstenPerCategorie, maandInkomsten, maandUitgaven, uitgavenPerCategorie, type CategorieUitgave } from './utils/overzicht'
 import type { DonutInvoer } from './utils/donut'
@@ -175,7 +182,7 @@ import { filterVoorCategorie, type TxFilter } from './utils/transactieFilter'
 import { inkomstenUitgavenPerMaand } from './utils/maandverloop'
 import { labelVanCategorie } from './data/categorieen/resolve'
 import { vulCategorieAan } from './utils/transactie'
-import { stelCategorieboomIn } from './data/categorieen/zoek'
+import { ingebouwdeItemNaam, itemPerId, stelCategorieboomIn } from './data/categorieen/zoek'
 import { budgetKleur, geldendeBudgetten, maandenMetEigenBudget, uitgavenInMaand } from './utils/budget'
 import { bouwHandelaarIndex } from './utils/categorieVoorstel'
 import { bonVanTransactie } from './utils/kluis'
@@ -430,6 +437,11 @@ export function App() {
   // navigeren en daar het juiste formulier te zoeken.
   const [boekingOpen, setBoekingOpen] = useState(false)
   const [bewerkCategorie, setBewerkCategorie] = useState<Categorie | null>(null)
+  // Ronde 65: het venster dat toont wat er met een eigen categorie meegaat. Een ID
+  // en geen kopie: zo loopt het venster mee wanneer de tak intussen verandert, en
+  // sluit het vanzelf wanneer de categorie er niet meer is.
+  const [catWegId, setCatWegId] = useState<string | null>(null)
+  const catWeg = categorieen.find((c) => c.id === catWegId) ?? null
   const [bewerkRekening, setBewerkRekening] = useState<Rekening | null>(null)
   // Welke rekening staat rechts open? null = het formulier voor een nieuwe rekening.
   const [gekozenRekeningId, setGekozenRekeningId] = useState<string | null>(null)
@@ -512,6 +524,10 @@ export function App() {
     setBackupIsFout(soort === 'fout')
   }
   const [undoInfo, setUndoInfo] = useState<{ boodschap: string; herstel: () => Promise<void> } | null>(null)
+  // ⚠ Twee keer dezelfde melding na elkaar ("Kost verwijderd", "Kost verwijderd")
+  // laat de DOM ongemoeid, en een live region kondigt alleen een VERANDERING aan —
+  // de tweede verwijdering zou dus stil blijven. Deze teller vernieuwt het element.
+  const [undoTeller, setUndoTeller] = useState(0)
   const backendRef = useRef<DriveBackend | null>(null)
   const undoKlok = useRef<UndoKlok>(
     maakUndoKlok(() => setUndoInfo(null), { zet: (fn, ms) => window.setTimeout(fn, ms), wis: (id) => window.clearTimeout(id) }),
@@ -522,6 +538,7 @@ export function App() {
   // (met dezelfde id), waardoor het weer verschijnt.
   function toonUndo(boodschap: string, herstel: () => Promise<void>) {
     setUndoInfo({ boodschap, herstel })
+    setUndoTeller((n) => n + 1)
     undoKlok.current.start()
   }
   const { t, taal, zetTaal } = useT()
@@ -603,11 +620,39 @@ export function App() {
 
   async function undoNu() {
     if (!undoInfo) return
-    const herstel = undoInfo.herstel
-    setUndoInfo(null)
-    undoKlok.current.stop()
-    await herstel()
-    await herlaad()
+    const bezig = undoInfo
+    // ⚠ De balk blijft staan tot het terugzetten GELUKT is (ronde 65). Wisten we
+    // hem meteen, dan verdween bij een mislukking de knop waarop je net drukte —
+    // je focus viel terug naar het begin van de pagina en je moest binnen twintig
+    // seconden opnieuw tot achteraan tabben. En de klok zou weer lopen terwijl je
+    // muis er nog op staat, want een nieuw element krijgt geen `onMouseEnter`
+    // zonder dat je beweegt.
+    undoKlok.current.pauzeerVoorPoging()
+    try {
+      await bezig.herstel()
+      await herlaad()
+      // ⚠ Alleen déze balk wegdoen. Het herstellen en het herladen kunnen even
+      // duren; verwijder je in die tijd iets anders, dan staat er intussen een
+      // NIEUWE balk, en die mag hier niet mee sneuvelen — dan was die tweede weg
+      // terug verdwenen zonder dat je iets deed.
+      let zelfdeBalk = false
+      setUndoInfo((huidig) => {
+        zelfdeBalk = huidig === bezig
+        return zelfdeBalk ? null : huidig
+      })
+      if (zelfdeBalk) undoKlok.current.stop()
+    } catch {
+      // Mislukt het, dan mag dat niet geruisloos gebeuren: zonder deze vangst kwam
+      // er niets terug en stond er nergens iets. `hervatNaPoging` en niet `start`,
+      // zodat de klok stil blijft staan zolang je muis nog op de balk staat.
+      meld(t('Het terugzetten is niet gelukt. Probeer het opnieuw.'), 'fout')
+      // Ook hier: staat er intussen een nieuwe balk, dan loopt díe klok al en mag
+      // deze mislukking er niet aan zitten.
+      setUndoInfo((huidig) => {
+        if (huidig === bezig) undoKlok.current.hervatNaPoging()
+        return huidig
+      })
+    }
   }
 
   const klok = undoKlok.current
@@ -1095,9 +1140,21 @@ export function App() {
     if (oud) toonUndo(t('Rekening verwijderd'), () => bewaarRekening(oud))
   }
 
+  // Archiveren verwijdert niets, maar het haalt de rekening wél uit élke keuzelijst
+  // (boeken, bewerken, overboeken, vaste posten, spaardoelen) en uit de buffer — en
+  // dat gebeurde zonder één woord (ronde 65). In het saldo-overzicht blijft ze wél
+  // staan, met verminderde dekking.
+  // De balk zegt nu wat er veranderde en biedt de weg terug, zoals bij elke andere
+  // handeling die iets uit beeld haalt.
   async function archiveerRekening(r: Rekening, archiveer: boolean) {
     await bewaarRekening({ ...r, gearchiveerd: archiveer })
     await herlaad()
+    toonUndo(
+      archiveer
+        ? t('{naam} gearchiveerd — ze staat niet meer in de keuzelijsten', { naam: r.naam })
+        : t('{naam} heropend', { naam: r.naam }),
+      () => bewaarRekening(r),
+    )
   }
 
   async function voegOverboekingToe(o: Overboeking) {
@@ -1141,7 +1198,23 @@ export function App() {
     const oud = kinderen.find((k) => k.id === id)
     await verwijderKind(id)
     await herlaad()
-    if (oud) toonUndo(t('Kind verwijderd'), () => bewaarKind(oud))
+    if (oud) toonUndo(t('{naam} verwijderd', { naam: oud.naam }), () => bewaarKind(oud))
+  }
+
+  // Waar hangt dit gezinslid nog aan? Het vraagvenster in KinderenSectie toont
+  // deze regels, zodat je vóór het verwijderen ziet wat er een naamloze
+  // verwijzing wordt (ronde 65).
+  function gezinslidGebruik(id: string): string[] {
+    return telGezinslidGebruik(t, id, {
+      kosten: gedeeldeKosten,
+      verrekeningen,
+      kindrekeningposten,
+      onderhoudsbijdragen,
+      transacties: transacties ?? [],
+      spaardoelen,
+      leningen,
+      garanties,
+    })
   }
 
   // Een eigen MIDDENcategorie maken onder een hoofdcategorie (eigen óf ingebouwd).
@@ -1151,7 +1224,14 @@ export function App() {
     await herlaad()
   }
 
-  async function verwijderCat(id: string) {
+  // Vraagt eerst (ronde 65). Er ging tot nu toe een hele tak in één tik weg —
+  // middencategorieën, items, en de naam onder elke boeking die eraan hing —
+  // met alleen "Categorie verwijderd" achteraf.
+  function verwijderCat(id: string) {
+    setCatWegId(id)
+  }
+
+  async function verwijderCatEcht(id: string) {
     const oud = categorieen.find((c) => c.id === id)
     // Alles wat eronder hangt gaat mee: de eigen middencategorieën en de
     // subcategorieën daarin. Bleven die staan, dan zouden het weesrecords zijn die
@@ -1161,17 +1241,19 @@ export function App() {
     const onderliggendeIds = new Set([id, ...kinderen.map((c) => c.id)])
     const oudeSubs = subcategorieen.filter((sub) => onderliggendeIds.has(sub.categorieId))
 
-    await verwijderCategorie(id)
-    for (const k of kinderen) await verwijderCategorie(k.id)
-    for (const sub of oudeSubs) await verwijderSubcategorie(sub.id)
+    // Eén ondeelbare stap. Brak dit halverwege af, dan bleven er weesrecords staan
+    // die nergens meer verschijnen maar wél mee gesynchroniseerd worden — precies
+    // wat het commentaar hierboven belooft te voorkomen (ronde 65).
+    await verwijderCategorieMetAanhang(id, {
+      categorieIds: kinderen.map((k) => k.id),
+      subcategorieIds: oudeSubs.map((s) => s.id),
+    })
     await herlaad()
 
     if (oud) {
-      toonUndo(t('Categorie verwijderd'), async () => {
-        await bewaarCategorie(oud)
-        for (const k of kinderen) await bewaarCategorie(k)
-        for (const sub of oudeSubs) await bewaarSubcategorie(sub)
-      })
+      toonUndo(categorieUndoTekst(t, oud.naam, kinderen.length, oudeSubs.length), () =>
+        herstelCategorieMetAanhang([oud, ...kinderen], oudeSubs),
+      )
     }
   }
 
@@ -1244,18 +1326,24 @@ export function App() {
     })
     await herlaad()
     if (oud) {
-      toonUndo(t('Dossier verwijderd'), async () => {
-        await bewaarDossier(oud)
-        for (const k of oudeKosten) await bewaarGedeeldeKost(k)
-        for (const v of oudeVerrekeningen) await bewaarVerrekening(v)
-        for (const k of oudeKindrekeningen) await bewaarKindrekening(k)
-        for (const p of oudeKindrekeningposten) await bewaarKindrekeningpost(p)
-        for (const b of oudeBijdragen) await bewaarOnderhoudsbijdrage(b)
-        for (const b of oudeBetalingen) await bewaarOnderhoudsbetaling(b)
-        // De documenten komen terug zoals ze waren, inclusief de aanduiding
-        // "waarop steunt deze verdeling" op het dossier zelf.
-        for (const d of oudeDocumenten) await bewaarDossierDocument(d)
-      })
+      // ⚠ In ÉÉN ondeelbare stap (ronde 65). Het verwijderen was dat al; dit was een
+      // reeks losse schrijfacties, en brak die halverwege af, dan kreeg je een
+      // dossier terug met de helft van zijn kosten, afrekeningen en documenten. Een
+      // half bewijsstuk is erger dan geen.
+      //
+      // De documenten komen terug zoals ze waren, inclusief de aanduiding "waarop
+      // steunt deze verdeling" op het dossier zelf.
+      toonUndo(t('Dossier verwijderd'), () =>
+        herstelDossierMetAanhang(oud, {
+          gedeeldeKosten: oudeKosten,
+          verrekeningen: oudeVerrekeningen,
+          kindrekeningen: oudeKindrekeningen,
+          kindrekeningposten: oudeKindrekeningposten,
+          onderhoudsbijdragen: oudeBijdragen,
+          onderhoudsbetalingen: oudeBetalingen,
+          documenten: oudeDocumenten,
+        }),
+      )
     }
   }
 
@@ -1287,9 +1375,34 @@ export function App() {
     return id
   }
 
+  // Hernoemen had als enige categoriewijziging géén weg terug (ronde 65). En het
+  // schreef een KAAL record terug: een eigen item met synoniemen verloor die stil,
+  // want `{ id, naam, categorieId }` overschrijft het hele object. Nu bewaren we
+  // wat er al stond en kan je de oude naam in één tik terughalen.
   async function wijzigSubcategorie(id: string, categorieId: string, naam: string) {
-    await bewaarSubcategorie({ id, naam, categorieId })
+    const oud = subcategorieen.find((s) => s.id === id)
+    // ⚠ Hernoem je een INGEBOUWD item voor het eerst, dan is er nog geen record om
+    // naar terug te keren: de oude naam staat alleen in de ingebouwde boom. Terug
+    // betekent dan de aanpassing wéghalen, niet een oude aanpassing terugzetten.
+    const ingebouwd = itemPerId(id)
+    const oudeNaam = oud?.naam ?? ingebouwdeItemNaam(id)
+    // ⚠ En de SYNONIEMEN van een ingebouwd item gaan mee. Zonder deze regel verloor
+    // elk ingebouwd item bij zijn eerste hernoeming zijn zoekwoorden: het
+    // aanpassingsrecord vervangt het ingebouwde item volledig, en de synoniemen
+    // stonden alleen in de ingebouwde boom. Je hernoemt "Eieren" naar "Bio-eieren"
+    // en vindt het daarna niet meer terug via "ei".
+    // ⚠ Ook wanneer er al een aanpassingsrecord bestaat: hernoemde je dit item vóór
+    // ronde 65, dan zijn de synoniemen destijds stil verdwenen en staat er niets in
+    // `oud`. Dan halen we ze alsnog uit de ingebouwde boom terug.
+    const uitBoom = ingebouwd && ingebouwd.synoniemen.length > 0 ? ingebouwd.synoniemen : undefined
+    const synoniemen = oud?.synoniemen && oud.synoniemen.length > 0 ? oud.synoniemen : uitBoom
+    await bewaarSubcategorie({ ...(oud ?? {}), id, naam, categorieId, ...(synoniemen ? { synoniemen } : {}) })
     await herlaad()
+    if (oudeNaam === undefined || oudeNaam === naam) return
+    toonUndo(t('{oud} heet nu {nieuw}', { oud: oudeNaam, nieuw: naam }), async () => {
+      if (oud) await bewaarSubcategorie(oud)
+      else await verwijderSubcategorie(id)
+    })
   }
 
   async function verwijderSubcategorieH(id: string) {
@@ -1463,17 +1576,82 @@ export function App() {
   // Markeer een afrekening als (niet) overgemaakt. De gedekte kosten worden mee
   // afgerekend (of terug opengezet), zodat het openstaande saldo klopt.
   async function markeerOvergemaakt(v: Verrekening, overgemaakt: boolean) {
-    for (const id of v.kostIds ?? []) {
-      const k = gedeeldeKosten.find((x) => x.id === id)
-      if (k) await bewaarGedeeldeKost({ ...k, afgerekend: overgemaakt })
-    }
-    await bewaarVerrekening({ ...v, overgemaakt })
+    // Eén ondeelbare stap (ronde 65). Brak dit halverwege af, dan stonden er kosten
+    // op 'afgerekend' terwijl de afrekening niet als overgemaakt gemarkeerd stond —
+    // en dan zet zelfs het verwijderen van die afrekening het niet meer recht, want
+    // dat kijkt naar precies dat vinkje.
+    const gedekt = kostenVanAfrekening(v, gedeeldeKosten)
+    await markeerVerrekeningOvergemaakt(v, gedekt, overgemaakt)
     await herlaad()
+    // Dit vinkje verschuift geld: gedekte kosten vallen erdoor uit (of terug in) je
+    // openstaande saldo. Dan hoort er ook een weg terug te zijn, net als bij elke
+    // andere handeling in de app (ronde 65).
+    const idsGedekt = gedekt.map((k) => k.id)
+    toonUndo(
+      overgemaakt ? t('Afrekening gemarkeerd als overgemaakt') : t('Afrekening weer opengezet'),
+      async () => {
+        // ⚠ Dezelfde twee voorzorgen als bij het verwijderen van een afrekening.
+        // (1) We schrijven de VERSE kostrecords terug, niet de momentopname van
+        // twintig seconden geleden: een kost die intussen opengezet én gecorrigeerd
+        // werd, mag haar correctie niet stil verliezen.
+        // (2) Zetten we hem weer op 'overgemaakt', dan slaan we kosten over die
+        // intussen in een ándere, nog open afrekening zitten — anders claimen twee
+        // afrekeningen hetzelfde geld.
+        const verseKosten = (await laadGedeeldeKosten()).geldig.filter((k) => idsGedekt.includes(k.id))
+        const vastInAndere = new Set<string>()
+        if (!overgemaakt) {
+          for (const ander of (await laadVerrekeningen()).geldig) {
+            if (ander.id === v.id || ander.overgemaakt) continue
+            for (const kostId of ander.kostIds ?? []) vastInAndere.add(kostId)
+          }
+        }
+        await markeerVerrekeningOvergemaakt(
+          v,
+          verseKosten.filter((k) => !vastInAndere.has(k.id)),
+          !overgemaakt,
+        )
+      },
+    )
   }
 
+  // Een afrekening verwijderen laat de kosten zelf staan, maar zet ze wél terug op
+  // "nog niet afgerekend" wanneer déze afrekening ze had dichtgezet (ronde 65).
+  // Anders vallen die kosten uit het openstaande saldo terwijl er niets meer
+  // bestaat dat uitlegt waarom — en dat is precies wat een dossier onbruikbaar
+  // maakt als bewijs. Ongedaan maken zet allebei terug.
   async function verwijderAfrekening(id: string) {
-    await verwijderVerrekening(id)
+    const oud = verrekeningen.find((v) => v.id === id)
+    if (!oud) return
+    const heropend = kostenOmTeHeropenen(oud, gedeeldeKosten)
+    // Eén ondeelbare stap: de afrekening weg én de kosten open, of geen van beide.
+    await verwijderVerrekeningMetHeropening(id, heropend)
     await herlaad()
+
+    toonUndo(t('Afrekening verwijderd'), async () => {
+      // ⚠ Terugzetten kijkt naar de VERSE toestand, niet naar wat er twintig
+      // seconden geleden stond. Maakte je intussen een nieuwe afrekening over
+      // dezelfde kosten, dan zou blind terugzetten diezelfde euro's in twee
+      // afrekeningen tegelijk zetten. Zulke kosten laten we open staan; de oude
+      // afrekening komt wel gewoon terug als document.
+      const verseVerrekeningen = (await laadVerrekeningen()).geldig
+      const vastInAndere = new Set<string>()
+      for (const v of verseVerrekeningen) {
+        if (v.id === id) continue
+        for (const kostId of v.kostIds ?? []) vastInAndere.add(kostId)
+      }
+      // ⚠ En we schrijven het VERSE record terug met alleen de twee vlaggen
+      // hersteld, niet de momentopname van twintig seconden geleden. Wie in die
+      // twintig seconden het bedrag of de omschrijving van zo'n kost corrigeert,
+      // zou anders zien hoe zijn correctie stil verdween.
+      const verseKosten = new Map((await laadGedeeldeKosten()).geldig.map((k) => [k.id, k]))
+      const terug = heropend
+        .filter((k) => !vastInAndere.has(k.id))
+        .map((k) => {
+          const vers = verseKosten.get(k.id) ?? k
+          return { ...vers, afgerekend: k.afgerekend, ...(k.verrekeningId ? { verrekeningId: k.verrekeningId } : {}) }
+        })
+      await herstelVerrekeningMetKosten(oud, terug)
+    })
   }
 
   // --- Kindrekening (gezamenlijke pot) ---
@@ -2086,6 +2264,60 @@ export function App() {
         )}
       </Dialoog>
 
+      {/* De vraag vóór het verwijderen van een eigen categorie (ronde 65). Zelfde
+          vorm als bij een dossier en een afrekening: ze telt wat er meegaat in
+          plaats van "weet je het zeker?" te vragen. */}
+      <Dialoog
+        titel={catWeg ? t('{naam} verwijderen?', { naam: catWeg.naam }) : t('Categorie verwijderen?')}
+        open={catWeg !== null}
+        onSluiten={() => setCatWegId(null)}
+        voet={
+          <div className="knoprij">
+            <button type="button" className="knop knop-secundair" onClick={() => setCatWegId(null)}>
+              {t('Nee, behouden')}
+            </button>
+            <button
+              type="button"
+              className="knop knop-secundair knop-gevaar"
+              onClick={() => {
+                const doel = catWegId
+                setCatWegId(null)
+                if (doel) void verwijderCatEcht(doel)
+              }}
+            >
+              {t('Ja, verwijder')}
+            </button>
+          </div>
+        }
+      >
+        {catWeg && (
+          <div className="stapel" style={{ gap: 10 }}>
+            <p style={{ margin: 0 }}>{t('Dit verandert er:')}</p>
+            <ul className="lijst">
+              {telCategorieVerwijderen(t, catWeg.id, {
+                categorieen,
+                subcategorieen,
+                transacties: transacties ?? [],
+                budgetten,
+                terugkerendePosten,
+                gedeeldeKosten,
+                kindrekeningposten,
+                dossiers,
+              }).map((regel) => (
+                <li key={regel} className="rij">
+                  <span className="rij-midden">
+                    <span className="rij-titel">{regel}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="rij-meta" style={{ margin: 0 }}>
+              {t('Je kan dit meteen daarna nog ongedaan maken met de balk onderaan, maar die blijft niet lang staan.')}
+            </p>
+          </div>
+        )}
+      </Dialoog>
+
       {/* "Is dit je vaste last Water?" (ronde 64). Staat bij de boekingslagen, want
           de vraag kan overal opduiken: na een boeking in de popup, en na een tik op
           "Boek in" — en dat laatste kan ook vanuit het meldingenpaneel. */}
@@ -2256,6 +2488,7 @@ export function App() {
             onKindToevoegen={voegKindToe}
             onKindWijzigen={wijzigKind}
             onKindVerwijderen={verwijderKindH}
+            telGezinslidGebruik={gezinslidGebruik}
             onDossier={voegDossierToe}
             onNaarPagina={setPagina}
             onNaarBudget={gaNaarBudget}
@@ -3175,6 +3408,7 @@ export function App() {
               onKindToevoegen={voegKindToe}
               onKindWijzigen={wijzigKind}
               onKindVerwijderen={verwijderKindH}
+              telGezinslidGebruik={gezinslidGebruik}
               onBeginOpnieuw={beginOpnieuw}
               backupIsFout={backupIsFout}
               laatsteBackupOp={backupMoment.laatsteBackupOp}
@@ -3257,12 +3491,22 @@ export function App() {
     </div>
   )
 
+  // ⚠ RONDE 65. De aankondiging staat LOS van de balk, en is er altijd — leeg
+  // wanneer er niets te melden is. Een `role="status"` die pas samen met zijn tekst
+  // in de pagina verschijnt, wordt door sommige schermlezers overgeslagen; dan
+  // verdwijnt er iets, hoor je niets, en weet je niet dat er een weg terug is. De
+  // balk zelf draagt daarom géén rol meer.
+  const undoAankondiging = (
+    <p className="alleen-voorlezen" role="status">
+      <span key={undoTeller}>{undoInfo ? undoInfo.boodschap : ''}</span>
+    </p>
+  )
+
   const undoBalk = undoInfo && (
     <div
       // De klasse bestaat om de focusring te kunnen richten: deze balk is ook in het
       // lichte thema donker, net als het zijpaneel. Zie index.css.
       className="undo-balk"
-      role="status"
       // De klok staat stil zolang je erop staat of erin gefocust bent.
       onMouseEnter={() => undoKlok.current.pauzeer('muis')}
       onMouseLeave={() => undoKlok.current.hervat('muis')}
@@ -3416,6 +3660,7 @@ export function App() {
             </div>
           </main>
         </div>
+        {undoAankondiging}
         {undoBalk}
         <ErrorBoundary naam="Boeking">{boekingLagen}</ErrorBoundary>
       </div>
@@ -3483,6 +3728,7 @@ export function App() {
           {paginaInhoud}
         </div>
       </main>
+      {undoAankondiging}
       {undoBalk}
       {/* De popup stond buiten elke foutvang: één fout in het invoerformulier
           legde daardoor de HELE app plat in plaats van alleen de popup. */}

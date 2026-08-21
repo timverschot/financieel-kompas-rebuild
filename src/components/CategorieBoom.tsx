@@ -442,18 +442,13 @@ export function CategorieBoom({
                                   >
                                     {t('+ subcategorie')}
                                   </button>
-                                  {/* Een eigen middencategorie mag je weer weghalen;
-                                      een ingebouwde niet — die is de referentie. */}
-                                  {c.eigen && onCategorieVerwijderen && (
-                                    <button
-                                      type="button"
-                                      className="knop knop-ghost knop-klein knop-gevaar"
-                                      aria-label={t('Verwijder categorie {naam}', { naam: c.naam })}
-                                      onClick={() => onCategorieVerwijderen(c.id)}
-                                    >
-                                      {t('Verwijderen')}
-                                    </button>
-                                  )}
+                                  {/* ⚠ RONDE 65. Hier stond een TWEEDE knop
+                                      "Verwijderen", met exact hetzelfde label als
+                                      die onderaan de lijst. Ronde 36 verplaatste
+                                      hem naar beneden — weg van "+ subcategorie" —
+                                      maar haalde het origineel niet weg. Zo stonden
+                                      er twee identieke gevaarknoppen bij elke eigen
+                                      categorie. Alleen die onderaan blijft. */}
                                 </>
                               )}
                             </li>

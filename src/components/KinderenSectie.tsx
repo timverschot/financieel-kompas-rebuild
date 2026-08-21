@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { GEZINSROLLEN, type Gezinsrol, type Kind } from '../data/schema'
 import { ROL_SLEUTELS } from '../utils/persoon'
 import { Kaart, Leeg } from '../ui/basis'
+import { Dialoog } from '../ui/Dialoog'
 import { useT } from '../i18n'
 
 // Beheer van de globale lijst gezinsleden (kinderen, partner, jezelf, iemand
@@ -22,11 +23,16 @@ export function KinderenSectie({
   onToevoegen,
   onWijzigen,
   onVerwijderen,
+  telGebruik,
 }: {
   kinderen: Kind[]
   onToevoegen: (naam: string, rol?: Gezinsrol) => void
   onWijzigen: (lid: Kind) => void
   onVerwijderen: (id: string) => void
+  // Wat hangt er nog aan dit lid? Optioneel, zodat de kaart ook zonder de rest
+  // van de app te renderen is; ontbreekt ze, dan vraagt het venster gewoon
+  // zonder telling.
+  telGebruik?: (id: string) => string[]
 }) {
   const { t } = useT()
   const [nieuw, setNieuw] = useState('')
@@ -34,6 +40,14 @@ export function KinderenSectie({
   const [bewerkId, setBewerkId] = useState<string | null>(null)
   const [bewerkTekst, setBewerkTekst] = useState('')
   const [bewerkRol, setBewerkRol] = useState<Gezinsrol>('kind')
+  // Ronde 65: het kruisje wist niet langer meteen. Het opent een venster dat toont
+  // waar dit lid nog aan hangt, en dat naar archiveren wijst.
+  //
+  // ⚠ Een ID en geen KOPIE: zo werkt "Liever archiveren" op het lid zoals het NU is
+  // (een naamswijziging die van een ander toestel binnenkwam wordt niet stil
+  // teruggedraaid), en sluit het venster vanzelf wanneer het lid intussen weg is.
+  const [lidWegId, setLidWegId] = useState<string | null>(null)
+  const lidWeg = kinderen.find((k) => k.id === lidWegId) ?? null
 
   const actief = kinderen.filter((k) => !k.gearchiveerd)
   const gearchiveerd = kinderen.filter((k) => k.gearchiveerd)
@@ -137,7 +151,7 @@ export function KinderenSectie({
                 type="button"
                 className="knop knop-kaal knop-gevaar"
                 aria-label={t('Verwijder gezinslid {naam}', { naam: k.naam })}
-                onClick={() => onVerwijderen(k.id)}
+                onClick={() => setLidWegId(k.id)}
               >
                 ×
               </button>
@@ -192,6 +206,87 @@ export function KinderenSectie({
           {nieuw.trim() ? '' : t('Geef een naam om op te slaan.')}
         </p>
       </form>
+
+      {/* De vraag vóór het verwijderen (ronde 65). Ze telt waar het lid nog aan
+          hangt, en zet de zachte weg — archiveren — als eerste keuze. Verwijderen
+          laat immers ruwe id's achter in kosten en afrekeningen; archiveren laat
+          alles staan en haalt het lid enkel uit de keuzelijsten. */}
+      <Dialoog
+        titel={lidWeg ? t('{naam} verwijderen?', { naam: lidWeg.naam }) : t('Gezinslid verwijderen?')}
+        open={lidWeg !== null}
+        onSluiten={() => setLidWegId(null)}
+        voet={
+          <div className="knoprij">
+            <button type="button" className="knop knop-secundair" onClick={() => setLidWegId(null)}>
+              {t('Nee, behouden')}
+            </button>
+            {/* Alleen zinvol voor een lid dat nog NIET gearchiveerd is; anders is
+                het een knop die zichtbaar niets doet. */}
+            {!lidWeg?.gearchiveerd && (
+              <button
+                type="button"
+                className="knop knop-secundair"
+                onClick={() => {
+                  const doel = lidWeg
+                  setLidWegId(null)
+                  if (doel) zetArchief(doel, true)
+                }}
+              >
+                {t('Liever archiveren')}
+              </button>
+            )}
+            <button
+              type="button"
+              className="knop knop-secundair knop-gevaar"
+              onClick={() => {
+                const doel = lidWegId
+                setLidWegId(null)
+                if (doel) onVerwijderen(doel)
+              }}
+            >
+              {t('Ja, verwijder')}
+            </button>
+          </div>
+        }
+      >
+        {lidWeg && (
+          <div className="stapel" style={{ gap: 10 }}>
+            {/* ⚠ Zonder telfunctie mag hier geen "wordt nergens gebruikt" staan: dat
+                is een bewering, en de kaart weet het dan niet. Niet weten en niets
+                vinden zijn twee verschillende dingen, en juist in dít venster is het
+                verschil de hele reden van bestaan. */}
+            {(() => {
+              if (!telGebruik) {
+                return <p style={{ margin: 0 }}>{t('De app kan hier niet nakijken waar deze naam nog gebruikt wordt.')}</p>
+              }
+              const regels = telGebruik(lidWeg.id)
+              // ⚠ De kop wisselt mee. Stond hij vast, dan las het scherm bij een net
+              // toegevoegd lid: "Deze naam wordt nu nog gebruikt in: • Dit gezinslid
+              // wordt nergens gebruikt."
+              if (regels.length === 0) {
+                return <p style={{ margin: 0 }}>{t('Dit gezinslid wordt nergens gebruikt.')}</p>
+              }
+              return (
+                <>
+                  <p style={{ margin: 0 }}>{t('Deze naam wordt nu nog gebruikt in:')}</p>
+                  <ul className="lijst">
+                    {regels.map((regel) => (
+                      <li key={regel} className="rij">
+                        <span className="rij-midden">
+                          <span className="rij-titel">{regel}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )
+            })()}
+            <p className="rij-meta" style={{ margin: 0 }}>
+              {t('Verwijder je het lid, dan blijft het overal waar het al gebruikt is als naamloze verwijzing staan. Archiveren haalt het alleen uit de keuzelijsten en laat elke naam staan.')}
+            </p>
+          </div>
+        )}
+      </Dialoog>
     </Kaart>
   )
 }

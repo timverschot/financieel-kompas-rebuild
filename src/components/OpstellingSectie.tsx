@@ -30,7 +30,7 @@ import { bepaalBuffer } from '../utils/buffer'
 import { nettoVermogen } from '../utils/vermogen'
 import { openstaandKapitaal } from '../utils/lening'
 import { saldoVanRekening, totaalSaldoVan } from '../utils/saldo'
-import { isGestopt, maandbedrag, verschuifMaand, intervalVan } from '../utils/vastelast'
+import { isGestopt, maandbedrag, verschuifMaand, intervalVan, INTERVAL_MAANDEN, PERIODE_SLEUTELS } from '../utils/vastelast'
 import { kaartbedragUitOpslag } from '../utils/kredietkaart'
 import { formatEuro, invoerNaarCenten } from '../utils/format'
 import { standaardRekening } from '../utils/rekening'
@@ -131,6 +131,9 @@ function KostRegel({
   const centen = invoerNaarCenten(bedrag)
   const geldig = bedrag.trim().length > 0 && Number.isFinite(centen) && centen > 0
   const veldId = `opstelling-${voorstel.sleutel}`
+  // Niet 'jaar of maand': het type kent vier frequenties, en kwartaal/semester
+  // kregen anders stil het woord "per maand" te zien (ronde 65).
+  const periode = t(PERIODE_SLEUTELS[voorstel.frequentie ?? 'maand'])
 
   async function verzend() {
     if (!geldig || bezig) return
@@ -178,7 +181,14 @@ function KostRegel({
             velden.current[voorstel.sleutel] = el
           }}
           inputMode="decimal"
-          placeholder={t('bedrag')}
+          // ⚠ RONDE 65. Hier stond alleen "bedrag". Tien van de voorstellen op dit
+          // scherm zijn JAARposten (brandverzekering, onroerende voorheffing, ...);
+          // wie daar zijn maandbedrag intikte, kreeg een post die twaalf keer te
+          // klein was — in de tegels, in de buffer, in de vooruitblik. En nergens
+          // stond een woord dat je dat kon vertellen. Nu staat de periode in het
+          // veld zelf, in de naam die een schermlezer voorleest, én ernaast.
+          placeholder={t('bedrag {periode}', { periode })}
+          aria-label={t('{naam} — bedrag {periode}', { naam: t(voorstel.naam), periode })}
           className="kost-bedrag"
           disabled={alToegevoegd}
           value={bedrag}
@@ -192,6 +202,7 @@ function KostRegel({
             }
           }}
         />
+        <span className="rij-meta kost-periode">{periode}</span>
         {alToegevoegd ? (
           <span className="badge badge-ok">{t('toegevoegd')}</span>
         ) : (
@@ -317,6 +328,7 @@ export function OpstellingSectie({
   onKindToevoegen,
   onKindWijzigen,
   onKindVerwijderen,
+  telGezinslidGebruik,
   onDossier,
   onNaarPagina,
   onNaarBudget,
@@ -337,6 +349,7 @@ export function OpstellingSectie({
   onKindToevoegen: (naam: string, rol?: Gezinsrol) => void
   onKindWijzigen: (lid: Kind) => void
   onKindVerwijderen: (id: string) => void
+  telGezinslidGebruik?: (id: string) => string[]
   onDossier: (d: Dossier) => Promise<void> | void
   onNaarPagina: (p: 'budget' | 'dossiers' | 'overzicht' | 'rekeningen') => void
   /**
@@ -502,12 +515,27 @@ export function OpstellingSectie({
       // De rekening staat erbij: dit scherm vraagt ze bewust niet, dus zonder deze
       // regel wist je niet waar de app je vaste last aan gehangen heeft.
       const rekeningNaam = actieveRekeningen.find((r) => r.id === rekeningId)?.naam ?? ''
+      // ⚠ De periode staat er ook hier bij, met bij een jaarpost het maandbedrag
+      // erachter: dat is het getal dat straks in je tegels en je buffer opduikt.
+      // Klopt het niet, dan zie je het hier meteen in plaats van pas over een maand.
       setMelding(
-        t('{naam} toegevoegd: {bedrag}, van {rekening}.', {
-          naam: t(voorstel.naam),
-          bedrag: formatEuro(centen),
-          rekening: rekeningNaam,
-        }),
+        frequentie === 'maand'
+          ? t('{naam} toegevoegd: {bedrag} per maand, van {rekening}.', {
+              naam: t(voorstel.naam),
+              bedrag: formatEuro(centen),
+              rekening: rekeningNaam,
+            })
+          : t('{naam} toegevoegd: {bedrag} {periode} — dat is {permaand} per maand, van {rekening}.', {
+              naam: t(voorstel.naam),
+              bedrag: formatEuro(centen),
+              periode: t(PERIODE_SLEUTELS[frequentie]),
+              // Delen door het EIGEN interval, niet altijd door twaalf. En op het
+              // NEGATIEVE bedrag, want zo staat het straks in de database: `Math.round`
+              // rondt naar +∞, dus op een halve cent zou de melding er anders één cent
+              // naast zitten ten opzichte van `maandbedrag()` in de tegels en de buffer.
+              permaand: formatEuro(-Math.round(-centen / INTERVAL_MAANDEN[frequentie])),
+              rekening: rekeningNaam,
+            }),
       )
       return true
     } catch {
@@ -707,7 +735,7 @@ export function OpstellingSectie({
         {blok === 'vast' && (
           <KostenLijst
             titel={t('Je vaste kosten')}
-            uitleg={t('Vink aan wat je betaalt en tik het bedrag in. Herkennen gaat sneller dan bedenken.')}
+            uitleg={t('Vink aan wat je betaalt en tik het bedrag in. Achter elk veld staat of het om een bedrag per maand of per jaar gaat — tik het bedrag van die periode.')}
             voorstellen={KLASSIEKE_VASTE_KOSTEN}
             posten={lasten}
             t={t}
@@ -721,7 +749,7 @@ export function OpstellingSectie({
         {blok === 'sluipend' && (
           <KostenLijst
             titel={t('Je sluipende kosten')}
-            uitleg={t('De kleine abonnementen waar je nooit meer naar omkijkt. Samen zijn ze vaak groter dan je denkt.')}
+            uitleg={t('De kleine abonnementen waar je nooit meer naar omkijkt. Samen zijn ze vaak groter dan je denkt. Achter elk veld staat of het per maand of per jaar is.')}
             voorstellen={SLUIPENDE_KOSTEN}
             posten={lasten}
             t={t}
@@ -738,6 +766,7 @@ export function OpstellingSectie({
             onToevoegen={onKindToevoegen}
             onWijzigen={onKindWijzigen}
             onVerwijderen={onKindVerwijderen}
+            telGebruik={telGezinslidGebruik}
           />
         )}
 

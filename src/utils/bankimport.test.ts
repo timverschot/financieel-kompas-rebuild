@@ -6,6 +6,7 @@ import {
   heeftKoprij,
   bouwKandidaten,
   markeerDubbels,
+  dubbelsElders,
   formaatSleutel,
   raadDatumvolgorde,
   type Kolommen,
@@ -385,5 +386,59 @@ describe('bouwKandidaten — de omschrijving blijft een winkelnaam', () => {
     )
     expect(k.probleem).toBeUndefined()
     expect(k.omschrijving.length).toBeGreaterThan(0)
+  })
+})
+
+// Ronde 65: de dubbelherkenning kijkt binnen de gekozen rekening, en zette
+// daarmee zichzelf uit zodra je de verkeerde rekening koos. Deze controle kijkt
+// de andere kant op.
+describe('dubbelsElders', () => {
+  const tx = (id: string, datum: string, bedrag: number, rekeningId: string): Transactie => ({
+    id,
+    datum,
+    omschrijving: 'bestaand',
+    bedrag,
+    rekeningId,
+  })
+  const regels = () =>
+    bouwKandidaten(
+      [
+        ['01/02/2026', 'Colruyt', '', '-12,50'],
+        ['02/02/2026', 'Q8', '', '-40,00'],
+      ],
+      ['datum', 'tegenpartij', 'mededeling', 'bedrag'],
+    )
+
+  it('wijst de rekening aan waar deze regels al op staan', () => {
+    const bestaand = [tx('t1', '2026-02-01', -1250, 'r2'), tx('t2', '2026-02-02', -4000, 'r2')]
+    expect(dubbelsElders(regels(), bestaand, 'r1')).toEqual({ rekeningId: 'r2', aantal: 2 })
+  })
+
+  it('zwijgt wanneer de gekozen rekening zelf evenveel treffers heeft', () => {
+    // Dan is het geen aanwijzing dat je de verkeerde koos — de gewone
+    // dubbelherkenning heeft het al gezien en zet die regels uit.
+    const bestaand = [tx('t1', '2026-02-01', -1250, 'r1'), tx('t2', '2026-02-01', -1250, 'r2')]
+    expect(dubbelsElders(regels(), bestaand, 'r1')).toBeNull()
+  })
+
+  it('zwijgt wanneer er nergens iets op lijkt', () => {
+    expect(dubbelsElders(regels(), [tx('t1', '2020-01-01', -999, 'r2')], 'r1')).toBeNull()
+  })
+
+  it('kiest de rekening met de meeste treffers wanneer er meerdere zijn', () => {
+    const bestaand = [
+      tx('t1', '2026-02-01', -1250, 'r2'),
+      tx('t2', '2026-02-01', -1250, 'r3'),
+      tx('t3', '2026-02-02', -4000, 'r3'),
+    ]
+    expect(dubbelsElders(regels(), bestaand, 'r1')).toEqual({ rekeningId: 'r3', aantal: 2 })
+  })
+
+  it('telt onbruikbare regels niet mee', () => {
+    const kandidaten = bouwKandidaten(
+      [['', 'Colruyt', '', '-12,50']],
+      ['datum', 'tegenpartij', 'mededeling', 'bedrag'],
+    )
+    expect(dubbelsElders(kandidaten, [tx('t1', '2026-02-01', -1250, 'r2')], 'r1')).toBeNull()
   })
 })

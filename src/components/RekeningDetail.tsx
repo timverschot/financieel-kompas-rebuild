@@ -782,7 +782,12 @@ export function RekeningDetail({
       )}
 
       {!nogNiets && eigenOverboekingen.length > 0 && (
-        <Kaart titel={t('Overboekingen')}>
+        // ⚠ RONDE 65. Deze kaart heette óók "Overboekingen", net als de kaart in
+        // de kolom ernaast — twee koppen met dezelfde naam op één scherm, terwijl
+        // ze verschillende dingen doen: die daar toont ze allemaal en laat je ze
+        // aanpassen, deze toont alleen wat déze rekening raakt en is enkel om te
+        // lezen. De titel zegt dat nu.
+        <Kaart titel={t('Overboekingen van deze rekening')}>
           <ul className="lijst">
             {zichtbareOverboekingen.map((o) => {
               // Komt het geld binnen of gaat het weg? Dat bepaalt het teken, de

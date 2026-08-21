@@ -126,4 +126,49 @@ describe('undoKlok', () => {
     laatAflopen()
     expect(n).toBe(0)
   })
+
+  // Ronde 65: mislukt een ongedaan-poging, dan blijft de balk staan en moet de klok
+  // verder — maar niet terwijl je muis er nog op staat.
+  it('staat stil zolang er een poging loopt', () => {
+    const { planner, laatAflopen } = nepPlanner()
+    let n = 0
+    const klok = maakUndoKlok(() => n++, planner)
+    klok.start()
+    klok.pauzeerVoorPoging()
+    expect(klok.loopt()).toBe(false)
+    laatAflopen()
+    expect(n).toBe(0)
+  })
+
+  it('hervat na een mislukte poging, met een volle twintig seconden', () => {
+    const { planner, laatsteWachttijd, laatAflopen } = nepPlanner()
+    let n = 0
+    const klok = maakUndoKlok(() => n++, planner)
+    klok.start()
+    klok.pauzeerVoorPoging()
+    klok.hervatNaPoging()
+    expect(laatsteWachttijd()).toBe(UNDO_MS)
+    laatAflopen()
+    expect(n).toBe(1)
+  })
+
+  it('blijft stilstaan wanneer je muis nog op de balk staat', () => {
+    // ⚠ Dit is de kern. Na een mislukte poging staat je muis nog op de balk en je
+    // focus nog in de knop waarop je drukte. Een gewone herstart zou die vlaggen
+    // wissen en de balk twintig seconden later onder je vinger laten verdwijnen.
+    const { planner, laatAflopen } = nepPlanner()
+    let n = 0
+    const klok = maakUndoKlok(() => n++, planner)
+    klok.start()
+    klok.pauzeer('muis')
+    klok.pauzeerVoorPoging()
+    klok.hervatNaPoging()
+    expect(klok.loopt()).toBe(false)
+    laatAflopen()
+    expect(n).toBe(0)
+
+    // En zodra de muis weggaat, loopt ze gewoon weer.
+    klok.hervat('muis')
+    expect(klok.loopt()).toBe(true)
+  })
 })

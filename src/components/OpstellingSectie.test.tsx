@@ -161,6 +161,53 @@ describe('OpstellingSectie — de aanvinklijsten', () => {
     expect(onVastePost.mock.calls[0][0].frequentie).toBeUndefined()
   })
 
+  // ⚠ RONDE 65. Tien van de voorstellen op dit scherm zijn jaarposten. Het veld
+  // vroeg alleen om "bedrag": wie daar zijn maandbedrag intikte, kreeg een post die
+  // twaalf keer te klein was, zonder één woord van waarschuwing.
+  it('zegt bij elk veld of het om een bedrag per maand of per jaar gaat', async () => {
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] })
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+
+    expect(screen.getByRole('textbox', { name: 'Autoverzekering — bedrag per jaar' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Huur — bedrag per maand' })).toBeInTheDocument()
+  })
+
+  it('zet de periode ook in het veld zelf, voor wie geen schermlezer gebruikt', async () => {
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] })
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+
+    expect(screen.getByLabelText('Autoverzekering')).toHaveAttribute('placeholder', 'bedrag per jaar')
+    expect(screen.getByLabelText('Huur')).toHaveAttribute('placeholder', 'bedrag per maand')
+  })
+
+  it('rekent een jaarbedrag in de bevestiging om naar per maand', async () => {
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] })
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+    await gebruiker.type(screen.getByLabelText('Autoverzekering'), '620')
+    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Autoverzekering toe' }))
+
+    // € 620 per jaar wordt € 51,67 per maand in de tegels en de buffer. Staat dat
+    // getal er niet bij, dan ontdek je een factor-12-vergissing pas maanden later.
+    const melding = await screen.findByText(/Autoverzekering toegevoegd/)
+    expect(melding).toHaveTextContent('per jaar')
+    expect(melding).toHaveTextContent('51,67')
+  })
+
+  it('zegt bij een maandpost gewoon "per maand", zonder omrekening', async () => {
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] })
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+    await gebruiker.type(screen.getByLabelText('Huur'), '950')
+    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
+
+    const melding = await screen.findByText(/Huur toegevoegd/)
+    expect(melding).toHaveTextContent('per maand')
+    expect(melding).not.toHaveTextContent('per jaar')
+  })
+
   it('zet een jaarlijkse post met haar frequentie en startmaand weg', async () => {
     const gebruiker = userEvent.setup()
     const onVastePost = vi.fn()

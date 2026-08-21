@@ -178,6 +178,21 @@ export function stelSubcategorieenIn(aanpassingen: Subcategorie[]): void {
 }
 
 // Zoekt een item op zijn id (inclusief gebruikersaanpassingen).
+/**
+ * De naam die dit item in de INGEBOUWDE boom draagt, los van elke hernoeming
+ * (ronde 65).
+ *
+ * ⚠ Nodig om een hernoeming ongedaan te kunnen maken. Hernoem je een ingebouwd
+ * item voor het eerst, dan bestaat er nog geen aanpassingsrecord om naar terug te
+ * keren — de oude naam staat alleen hier. Zonder deze functie kon de app de eerste
+ * hernoeming van elk ingebouwd item niet terugdraaien.
+ */
+export function ingebouwdeItemNaam(id: string): string | undefined {
+  return BASIS_NAAM.get(id)
+}
+
+const BASIS_NAAM = new Map(PLATTE_ITEMS.map((it) => [it.id, it.naam]))
+
 export function itemPerId(id: string): PlatItem | undefined {
   return perIdRegister.get(id)
 }

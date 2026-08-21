@@ -19,6 +19,7 @@ import { UitwisselingKaart } from './UitwisselingKaart'
 import { CategorieKiezer } from './CategorieKiezer'
 import { Dialoog } from '../ui/Dialoog'
 import { telVoorVerwijderen } from '../utils/dossierverwijdering'
+import { afrekeningTitel, telAfrekeningVerwijderen } from '../utils/afrekeningverwijdering'
 import {
   DOSSIER_ONDERDELEN,
   verborgenMetInhoud,
@@ -161,6 +162,16 @@ export function DossierSectie({
   // En het stond naast een KEUZELIJST, waar je juist heen gaat om van dossier te
   // wisselen. Eén mistik op een telefoon en jaren bewijsmateriaal waren weg.
   const [teVerwijderen, setTeVerwijderen] = useState<Dossier | null>(null)
+  // Ronde 65: hetzelfde vangnet voor een AFREKENING. Het kruisje ernaast wiste
+  // haar zonder vraag en zonder ongedaan-balk, terwijl de opbouw erachter — welke
+  // kosten, welke periode, welk aandeel — nergens anders bewaard is.
+  // ⚠ Een ID en geen KOPIE van de afrekening. Er loopt elke drie kwartier een
+  // stille sync; werd de afrekening intussen op een ander toestel als overgemaakt
+  // gemarkeerd, dan zou een kopie iets anders beloven dan wat er straks gebeurt.
+  // Verdwijnt ze helemaal, dan sluit het venster vanzelf in plaats van te blijven
+  // staan met een knop die niets meer heeft om te verwijderen.
+  const [afrekeningWegId, setAfrekeningWegId] = useState<string | null>(null)
+  const afrekeningWeg = verrekeningen.find((v) => v.id === afrekeningWegId) ?? null
   const [geselecteerd, setGeselecteerd] = useState(beginDossierId ?? '')
   const [bewerkKost, setBewerkKost] = useState<GedeeldeKost | null>(null)
   const [splitCat, setSplitCat] = useState('')
@@ -948,7 +959,7 @@ export function DossierSectie({
                             {opbouwVan === v.id ? t('Verberg opbouw') : t('Toon opbouw')}
                           </button>
                         )}
-                        <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder afrekening {datum}', { datum: v.datum })} onClick={() => onVerwijderAfrekening(v.id)}>
+                        <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder afrekening {datum}', { datum: dagJaar(v.datum) })} onClick={() => setAfrekeningWegId(v.id)}>
                           ×
                         </button>
                       </span>
@@ -1089,6 +1100,52 @@ export function DossierSectie({
                 onderhoudsbetalingen,
                 documenten,
               }).map((regel) => (
+                <li key={regel} className="rij">
+                  <span className="rij-midden">
+                    <span className="rij-titel">{regel}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="rij-meta" style={{ margin: 0 }}>
+              {t('Je kan dit meteen daarna nog ongedaan maken met de balk onderaan, maar die blijft niet lang staan.')}
+            </p>
+          </div>
+        )}
+      </Dialoog>
+
+      {/* De vraag vóór het verwijderen van een AFREKENING (ronde 65). Dezelfde
+          vorm als bij het dossier: ze telt wat er weg gaat in plaats van "weet je
+          het zeker?" te vragen, en ze zegt er expliciet bij welke kosten weer
+          openkomen. */}
+      <Dialoog
+        titel={afrekeningWeg ? afrekeningTitel(t, afrekeningWeg) : t('Deze afrekening verwijderen?')}
+        open={afrekeningWeg !== null}
+        onSluiten={() => setAfrekeningWegId(null)}
+        voet={
+          <div className="knoprij">
+            <button type="button" className="knop knop-secundair" onClick={() => setAfrekeningWegId(null)}>
+              {t('Nee, behouden')}
+            </button>
+            <button
+              type="button"
+              className="knop knop-secundair knop-gevaar"
+              onClick={() => {
+                const doel = afrekeningWegId
+                setAfrekeningWegId(null)
+                if (doel) void onVerwijderAfrekening(doel)
+              }}
+            >
+              {t('Ja, verwijder')}
+            </button>
+          </div>
+        }
+      >
+        {afrekeningWeg && (
+          <div className="stapel" style={{ gap: 10 }}>
+            <p style={{ margin: 0 }}>{t('Dit verandert er:')}</p>
+            <ul className="lijst">
+              {telAfrekeningVerwijderen(t, afrekeningWeg, kosten).map((regel) => (
                 <li key={regel} className="rij">
                   <span className="rij-midden">
                     <span className="rij-titel">{regel}</span>

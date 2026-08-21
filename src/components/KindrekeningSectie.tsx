@@ -11,11 +11,9 @@ import type { Vertaler } from '../i18n'
 import { vandaag } from '../utils/datum'
 import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 import { Bonknop } from '../ui/Bonknop'
+import { indexOpmerking, keurIndexcijfer, keurIndexpaar } from '../utils/indexinvoer'
+import { basisjaarWaarschuwing } from '../utils/onderhoudsbijdrageTekst'
 
-
-function getal(waarde: string): number {
-  return Number.parseFloat(waarde.replace(',', '.'))
-}
 
 // Leesbare tekst voor het verschil tussen gestort en verwacht.
 function standTekst(t: Vertaler, stand: OuderStand): string {
@@ -62,6 +60,11 @@ export function KindrekeningSectie({
   const [start, setStart] = useState('')
   const [aanvang, setAanvang] = useState('')
   const [huidig, setHuidig] = useState('')
+  // Ronde 65: de twee indexvelden slikten élk getal, en gooiden onleesbare invoer
+  // stil weg. Nu weigeren ze wat rekenkundig onmogelijk is, en MERKEN ze een cijfer
+  // OP dat uit een ander basisjaar lijkt te komen — weigeren kan niet, want een paar
+  // dat volledig in een andere basis staat, is even juist.
+  const [indexFout, setIndexFout] = useState('')
 
   useEffect(() => {
     if (!kindrekening) return
@@ -80,15 +83,26 @@ export function KindrekeningSectie({
     if (!kindrekening) return
     const jij = invoerNaarCenten(bijJij)
     const partner = invoerNaarCenten(bijPartner)
-    const a = getal(aanvang)
-    const n = getal(huidig)
+
+    // ⚠ Eerst keuren, dan pas bewaren. Tot deze ronde werd onleesbare invoer stil
+    // weggegooid: het veld bleef staan, de afspraak werd bewaard zónder index, en
+    // je dacht dat je geïndexeerd had.
+    const keurAanvang = keurIndexcijfer(t, aanvang)
+    const keurHuidig = keurIndexcijfer(t, huidig)
+    const fout = keurIndexpaar(t, keurAanvang, keurHuidig)
+    if (fout !== null) {
+      setIndexFout(fout)
+      return
+    }
+    setIndexFout('')
+
     await onOpslaan({
       ...kindrekening,
       ...(Number.isFinite(jij) && jij > 0 ? { maandbijdrageJij: jij } : { maandbijdrageJij: undefined }),
       ...(Number.isFinite(partner) && partner > 0 ? { maandbijdragePartner: partner } : { maandbijdragePartner: undefined }),
       ...(start ? { bijdrageStart: start } : { bijdrageStart: undefined }),
-      ...(Number.isFinite(a) && a > 0 ? { aanvangsindex: a } : { aanvangsindex: undefined }),
-      ...(Number.isFinite(n) && n > 0 ? { huidigeIndex: n } : { huidigeIndex: undefined }),
+      ...(keurAanvang.soort === 'goed' ? { aanvangsindex: keurAanvang.waarde } : { aanvangsindex: undefined }),
+      ...(keurHuidig.soort === 'goed' ? { huidigeIndex: keurHuidig.waarde } : { huidigeIndex: undefined }),
     })
     setToonAfspraak(false)
   }
@@ -123,14 +137,19 @@ export function KindrekeningSectie({
   const geindexeerdPartner = geindexeerdeBijdrage(kindrekening, kindrekening.maandbijdragePartner)
   const heeftIndex = !!(kindrekening.aanvangsindex && kindrekening.huidigeIndex)
 
+  // De opmerking bij het huidige cijfer, live terwijl je typt.
+  const opmerking = indexOpmerking(t, keurIndexcijfer(t, huidig))
+
   // Live voorbeeld van de geïndexeerde bijdrage terwijl je de afspraak bewerkt.
   const voorbeeldJij = (() => {
     const basis = invoerNaarCenten(bijJij)
     if (!Number.isFinite(basis) || basis <= 0) return null
-    const a = getal(aanvang)
-    const n = getal(huidig)
-    if (!(a > 0 && n > 0)) return null
-    return geindexeerdeBijdrage({ ...kindrekening, aanvangsindex: a, huidigeIndex: n }, basis)
+    // ⚠ Door DEZELFDE keuring als het opslaan. Anders toonde het voorbeeld een
+    // keurig bedrag op grond van invoer die "Afspraak bewaren" vervolgens afwijst.
+    const a = keurIndexcijfer(t, aanvang)
+    const n = keurIndexcijfer(t, huidig)
+    if (a.soort !== 'goed' || n.soort !== 'goed') return null
+    return geindexeerdeBijdrage({ ...kindrekening, aanvangsindex: a.waarde, huidigeIndex: n.waarde }, basis)
   })()
 
   return (
@@ -208,16 +227,54 @@ export function KindrekeningSectie({
             <span className="label-caps">{t('Startdatum afspraak')}</span>
             <input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
           </label>
+          {/* ⚠ RONDE 65. Deze twee velden hadden geen enkele controle, terwijl de
+              onderhoudsbijdrage één kaart hoger hetzelfde soort getal tegen de
+              reeks, het basisjaar én een marge van tien procent houdt. Nu dragen ze
+              dezelfde uitleg en dezelfde marge — maar daar weigert ze, hier merkt ze
+              alleen op. Zie `utils/indexinvoer.ts` voor waarom. */}
           <div className="veldrij">
             <label className="veldgroep">
               <span className="label-caps">{t('Aanvangsindex (optioneel)')}</span>
-              <input inputMode="decimal" value={aanvang} onChange={(e) => setAanvang(e.target.value)} />
+              <input
+                inputMode="decimal"
+                placeholder={t('het cijfer uit je akte')}
+                value={aanvang}
+                onChange={(e) => {
+                  setAanvang(e.target.value)
+                  setIndexFout('')
+                }}
+              />
             </label>
             <label className="veldgroep">
               <span className="label-caps">{t('Huidige index (optioneel)')}</span>
-              <input inputMode="decimal" value={huidig} onChange={(e) => setHuidig(e.target.value)} />
+              <input
+                inputMode="decimal"
+                placeholder={t('het cijfer van nu')}
+                value={huidig}
+                onChange={(e) => {
+                  setHuidig(e.target.value)
+                  setIndexFout('')
+                }}
+              />
             </label>
           </div>
+          <p className="rij-meta" style={{ margin: 0 }}>
+            {basisjaarWaarschuwing(t)}
+          </p>
+          {/* Altijd aanwezig, leeg wanneer er niets op te merken valt: een
+              `role="status"` die pas MÉT zijn tekst verschijnt, wordt door sommige
+              schermlezers overgeslagen. Dit is een OPMERKING, geen weigering — de
+              app kan een consistent paar uit een ander basisjaar niet van een
+              verwisseld paar onderscheiden, dus ze zegt wat ze ziet en laat jou
+              beslissen. */}
+          <p className="rij-meta" role="status" style={{ margin: 0, color: opmerking ? 'var(--negative)' : undefined }}>
+            {opmerking ?? ''}
+          </p>
+          {indexFout !== '' && (
+            <p className="foutregel" role="alert" style={{ margin: 0 }}>
+              {indexFout}
+            </p>
+          )}
           {voorbeeldJij !== null && (
             <p className="rij-meta" style={{ margin: 0 }}>
               {t('Geïndexeerde bijdrage jij: {bedrag}', { bedrag: formatEuro(voorbeeldJij) })}
