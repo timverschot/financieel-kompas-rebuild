@@ -150,6 +150,10 @@ import { NieuweVersieBalk } from './components/NieuweVersieBalk'
 import { OnderNavigatie } from './components/OnderNavigatie'
 import { PAGINAS, type Pagina } from './components/navigatie'
 import type { AnalyseTab } from './utils/analysetab'
+import type { BudgetTab } from './utils/budgettab'
+import { UitlegBlok } from './components/UitlegBlok'
+import { VasteLastVraag, type VasteLastVraagInhoud } from './components/VasteLastVraag'
+import { boekingVoorVasteLast, vasteLastVoorBoeking } from './utils/vastelastkoppeling'
 import { huidigeRoute, volgRoute, zetRoute } from './utils/route'
 import { maakUndoKlok, type UndoKlok } from './utils/undoKlok'
 import { sluitBovenstePopup } from './ui/popupstapel'
@@ -308,6 +312,7 @@ export function App() {
               pagina: nu,
               subtab: nu === 'dossiers' ? dossierTabRef.current : undefined,
               analyse: nu === 'analyse' ? analyseTabRef.current : undefined,
+              budget: nu === 'budget' ? budgetTabRef.current : undefined,
             })
           }
           return nu
@@ -330,6 +335,7 @@ export function App() {
                 pagina: nu,
                 subtab: nu === 'dossiers' ? dossierTabRef.current : undefined,
                 analyse: nu === 'analyse' ? analyseTabRef.current : undefined,
+                budget: nu === 'budget' ? budgetTabRef.current : undefined,
               },
               true,
             )
@@ -350,6 +356,7 @@ export function App() {
       })
       if (route.subtab) setDossierTab(route.subtab)
       if (route.analyse) setAnalyseTab(route.analyse)
+      if (route.budget) setBudgetTab(route.budget)
       // De snelkoppeling van het beginscherm werkt ook wanneer de app al open staat.
       // Zonder deze regel landde je dan op Transacties zónder formulier — terwijl de
       // belofte van die snelkoppeling juist "één tik en je staat in het formulier" is.
@@ -461,6 +468,29 @@ export function App() {
   const [analyseTab, setAnalyseTab] = useState<AnalyseTab>('verdeling')
   const analyseTabRef = useRef(analyseTab)
   analyseTabRef.current = analyseTab
+  // Het tabblad van de Budget-pagina (ronde 64), op dezelfde manier: in het adres,
+  // en in een ref omdat de luisteraar op de terugknop buiten React om draait.
+  // De vraag "is dit je vaste last?" (ronde 64). `maand` staat erbij zodat "nee"
+  // bij het inboeken alsnog de juiste maand boekt.
+  const [vasteLastVraag, setVasteLastVraag] = useState<(VasteLastVraagInhoud & { maand: string }) | null>(null)
+  // Boekingen waarover we het deze sessie al gevraagd hebben.
+  //
+  // ⚠ Bewust NIET bewaard (ronde 64). Een "nee" opslaan zou een tweede veld op de
+  // transactie vragen, en het is de vraag of dat het waard is: zeg je nee, dan is
+  // het een gewone uitgave, en de vaste last blijft gewoon openstaan tot je hem
+  // boekt. Het enige gevolg van deze keuze is dat de vraag na een herstart één keer
+  // opnieuw kan komen wanneer je diezelfde boeking opnieuw bewerkt.
+  const gevraagdOverBoeking = useRef(new Set<string>())
+  const [budgetTab, setBudgetTab] = useState<BudgetTab>('plan')
+  const budgetTabRef = useRef(budgetTab)
+  budgetTabRef.current = budgetTab
+  function kiesBudgetTab(tb: BudgetTab) {
+    setBudgetTab(tb)
+    // VERVANGEN: terug hoort je een pagina terug te brengen, niet door drie
+    // tabbladen te laten lopen die je net even aanklikte. Zelfde afspraak als bij
+    // de Analyse-tabbladen in ronde 60.
+    zetRoute({ pagina: 'budget', budget: tb }, true)
+  }
   /**
    * Met welk filter de Transacties-pagina opent (ronde 40).
    *
@@ -667,8 +697,16 @@ export function App() {
       setPagina(beginpagina)
       if (start?.subtab) setDossierTab(start.subtab)
       if (start?.analyse) setAnalyseTab(start.analyse)
+      if (start?.budget) setBudgetTab(start.budget)
       if (start?.actie === 'nieuw') setBoekingOpen(true)
-      zetRoute({ pagina: beginpagina, subtab: start?.subtab, analyse: start?.analyse }, true)
+      // ⚠ Mét het budgettabblad (nakijkronde ronde 64). Zonder dat veld zette deze
+      // regel het adres meteen terug op `#/budget`, terwijl het scherm wél op het
+      // juiste tabblad stond: je bladwijzer naar `#/budget/vast` werkte één keer en
+      // landde daarna voorgoed op "Te verdelen".
+      zetRoute(
+        { pagina: beginpagina, subtab: start?.subtab, analyse: start?.analyse, budget: start?.budget },
+        true,
+      )
       setRekeningen(rk.geldig)
       setCategorieen(cat.geldig)
       setBudgetten(bud.geldig)
@@ -916,8 +954,55 @@ export function App() {
   // staat er nog" in een venster dat er niet meer was: je bon was stil verdwenen
   // en je zag alleen een gesloten popup. Het formulier zegt nu zélf wanneer
   // alles gelukt is (`onOpgeslagen`), en pas dán gaat het venster dicht.
-  async function slaTransactieOp(t: Transactie) {
-    await bewaarTransactie(t)
+  async function slaTransactieOp(tx: Transactie) {
+    await bewaarTransactie(tx)
+    await herlaad()
+    // ⚠ Lijkt deze boeking op een vaste last die deze maand nog openstaat, dan
+    // VRAAGT de app het (ronde 64). Zie `utils/vastelastkoppeling.ts` voor waarom
+    // dit een vraag is en geen automatische koppeling.
+    //
+    // De lijst wordt hier zelf samengesteld en niet uit de state gehaald: `herlaad`
+    // zet die pas bij de volgende hertekening, en dan zou deze boeking er nog niet
+    // in staan.
+    if (tx.vasteLastId !== undefined) return
+    if (gevraagdOverBoeking.current.has(tx.id)) return
+    const lijst = [...(transacties ?? []).filter((x) => x.id !== tx.id), tx]
+    const post = vasteLastVoorBoeking(tx, terugkerendePosten, lijst, tx.datum.slice(0, 7))
+    if (post) setVasteLastVraag({ soort: 'na-boeking', post, boeking: tx, maand: tx.datum.slice(0, 7) })
+  }
+
+  /**
+   * "Ja, dit is die betaling": de boeking krijgt de vaste last erbij.
+   *
+   * ⚠ Het ANTWOORD komt op de transactie te staan (`vasteLastId`) en niet in een
+   * lijstje ergens apart. Zo reist het mee naar je andere toestellen, overleeft het
+   * een herstel uit een back-up, en kan geen enkel scherm er iets anders van maken.
+   */
+  async function koppelAanVasteLast(boeking: Transactie, post: TerugkerendePost) {
+    const gekoppeld = { ...boeking, vasteLastId: post.id }
+    await bewaarTransactie(gekoppeld)
+    await herlaad()
+    // Een weg terug, zoals bij elke andere handeling in de app: zei je per ongeluk
+    // ja, dan hoef je niet te zoeken hoe je dat rechtzet.
+    //
+    // ⚠ De BOEKING gaat mee in de sluiting, we zoeken hem niet opnieuw op (tweede
+    // nakijkronde ronde 64). De vorige versie zocht in `transacties`, en dat is de
+    // state van de render waarin deze melding gemaakt werd — daarin staat de
+    // koppeling nog niet. "Ongedaan maken" deed dus aantoonbaar niets, en zei daar
+    // ook niets over. Bovendien zocht ze op de maand van de maandSCHAKELAAR, terwijl
+    // de vraag over de maand van de BOEKING gaat; die twee kunnen verschillen.
+    toonUndo(t('{naam} staat nu als betaald voor deze maand.', { naam: post.omschrijving }), async () => {
+      await ontkoppelBoeking(gekoppeld)
+    })
+  }
+
+  /** De koppeling weer weghalen: de boeking wordt weer een gewone boeking. */
+  async function ontkoppelBoeking(boeking: Transactie) {
+    // ⚠ Het veld echt WEGHALEN en niet op `undefined` zetten in een spread: een
+    // `undefined` waarde in het logboek is iets anders dan een ontbrekend veld.
+    const { vasteLastId: _weg, ...zonder } = boeking
+    void _weg
+    await bewaarTransactie(zonder)
     await herlaad()
   }
 
@@ -1303,6 +1388,22 @@ export function App() {
       return
     }
 
+    // ⚠ Eerst VRAGEN wanneer er iets in de buurt staat (ronde 64). De controle
+    // hierboven vangt alleen het exacte bedrag af. Timothy's geval — vaste last
+    // Water € 30, boeking € 32 — glipte daar doorheen, en dan maakte deze functie er
+    // vrolijk een tweede boeking van € 30 bij: € 62 op Water terwijl er € 32 van de
+    // rekening ging. Nu legt de app de twee naast elkaar en laat ze jou beslissen.
+    const lijkterop = boekingVoorVasteLast(post, transacties ?? [], terugkerendePosten, doelMaand)
+    if (lijkterop) {
+      setVasteLastVraag({ soort: 'voor-inboeken', post, boeking: lijkterop, maand: doelMaand })
+      return
+    }
+
+    await boekTerugkerendEcht(post, doelMaand)
+  }
+
+  /** Het eigenlijke inboeken, zonder controles: de weg na een uitgesproken "nee". */
+  async function boekTerugkerendEcht(post: TerugkerendePost, doelMaand: string) {
     const dag = String(post.dag).padStart(2, '0')
     // Bewust 'tx' en niet 't': 't' is in dit bestand de vertaalfunctie, en die
     // hebben we hieronder nodig voor de ongedaan-maken-melding.
@@ -1984,6 +2085,39 @@ export function App() {
           />
         )}
       </Dialoog>
+
+      {/* "Is dit je vaste last Water?" (ronde 64). Staat bij de boekingslagen, want
+          de vraag kan overal opduiken: na een boeking in de popup, en na een tik op
+          "Boek in" — en dat laatste kan ook vanuit het meldingenpaneel. */}
+      <VasteLastVraag
+        inhoud={vasteLastVraag}
+        onJa={() => {
+          const vraag = vasteLastVraag
+          setVasteLastVraag(null)
+          if (!vraag) return
+          gevraagdOverBoeking.current.add(vraag.boeking.id)
+          void koppelAanVasteLast(vraag.boeking, vraag.post)
+        }}
+        onAnnuleer={() => {
+          const vraag = vasteLastVraag
+          setVasteLastVraag(null)
+          // Wegklikken is geen antwoord: er wordt niets gekoppeld en niets geboekt.
+          // Wel onthouden dat we het gevraagd hebben, anders komt dezelfde vraag bij
+          // de volgende bewerking meteen terug.
+          if (vraag) gevraagdOverBoeking.current.add(vraag.boeking.id)
+        }}
+        onNee={() => {
+          const vraag = vasteLastVraag
+          setVasteLastVraag(null)
+          if (!vraag) return
+          gevraagdOverBoeking.current.add(vraag.boeking.id)
+          // ⚠ "Nee" betekent iets ANDERS per vraag. Na een boeking: laat maar, het
+          // is een gewone uitgave. Vóór het inboeken: je wilde die vaste last
+          // boeken, dus dan gebeurt dat alsnog — anders zou de knop "Boek in" na
+          // een "nee" gewoon niets gedaan hebben.
+          if (vraag.soort === 'voor-inboeken') void boekTerugkerendEcht(vraag.post, vraag.maand)
+        }}
+      />
     </>
   )
 
@@ -2008,7 +2142,7 @@ export function App() {
   // Een melding brengt je naar een pagina, en bij de Dossiers-pagina ook naar de
   // juiste lade: een aflopende garantie hoort je bij de garanties te zetten, niet
   // bij de gedeelde kosten.
-  function gaNaarMelding(doel: Pagina, subtab?: DossierSoort, dossierId?: string) {
+  function gaNaarMelding(doel: Pagina, subtab?: DossierSoort, dossierId?: string, budgettab?: BudgetTab) {
     setPagina(doel)
     // ⚠ Het belletje gaat over NU (zie de opmerking bij `meldingen` hierboven), dus de
     // Budget-pagina hoort ook op deze maand te openen (nakijkronde ronde 62). Stond de
@@ -2025,8 +2159,15 @@ export function App() {
       pagina: doel,
       subtab: subtab ?? (doel === 'dossiers' ? dossierTab : undefined),
       analyse: doel === 'analyse' ? analyseTab : undefined,
+      budget: doel === 'budget' ? (budgettab ?? budgetTab) : undefined,
     })
     if (subtab) setDossierTab(subtab)
+    // ⚠ Naar het juiste TABBLAD (ronde 64). Sinds de Budget-pagina uit drie
+    // tabbladen bestaat, is "naar Budget" niet meer genoeg: een melding over een
+    // overschreden budget hoort bij de budgetten, een vaste last die nog niet
+    // geboekt is bij "Vast". Zonder dit landde je op "Te verdelen" en moest je zelf
+    // zoeken waar de melding over ging.
+    if (budgettab) setBudgetTab(budgettab)
     // Zonder deze regel belandde je op de dossierpagina met een ánder dossier open
     // dan het dossier waarover de melding ging.
     if (dossierId) setGekozenDossierId(dossierId)
@@ -2066,7 +2207,25 @@ export function App() {
       pagina: doel,
       subtab: doel === 'dossiers' ? dossierTab : undefined,
       analyse: doel === 'analyse' ? analyseTab : undefined,
+      budget: doel === 'budget' ? budgetTab : undefined,
     })
+  }
+
+  /**
+   * Vanuit een ander scherm naar een bepaald tabblad van Budget (ronde 64).
+   *
+   * ⚠ Bestaat omdat de knop "Naar Budget" in "Je situatie" je bovenaan de pagina
+   * zette, terwijl het formulier dat je zocht — een vaste last toevoegen — het
+   * vijfde blok naar beneden was. Timothy: "het tabblad Je situatie verwijst er een
+   * paar keer naar, maar ik zie niet waar ik dan iets moet invullen." Nu land je
+   * met het formulier in beeld. Deze weg zet ook het ADRES, wat `setPagina` alleen
+   * niet deed.
+   */
+  function gaNaarBudget(tb: BudgetTab) {
+    setTxFilter(null)
+    setBudgetTab(tb)
+    setPagina('budget')
+    zetRoute({ pagina: 'budget', budget: tb })
   }
 
   // Doorklikken vanaf een cijfer dat over één categorie gaat, op welk niveau ook.
@@ -2099,6 +2258,7 @@ export function App() {
             onKindVerwijderen={verwijderKindH}
             onDossier={voegDossierToe}
             onNaarPagina={setPagina}
+            onNaarBudget={gaNaarBudget}
             veilig={veiligInvoer}
           />
         </ErrorBoundary>
@@ -2291,7 +2451,10 @@ export function App() {
                   budgetten={budgetten}
                   maand={maand}
                   categorieNaam={categorieNaam}
-                  onGaNaarBudget={() => kiesPagina('budget')}
+                  // Naar de BUDGETTEN zelf (ronde 64), niet naar het eerste tabblad:
+                  // de knop staat in de kaart "Budgetstatus" en belooft "alle
+                  // budgetten", niet "de pagina waar budgetten ergens op staan".
+                  onGaNaarBudget={() => gaNaarBudget('budgetten')}
                   onKies={(categorieId) => gaNaarCategorie(categorieId, { maand })}
                 />
               )}
@@ -2414,177 +2577,266 @@ export function App() {
 
       {pagina === 'budget' && (
         <>
-          <PaginaKop titel={paginaTitel} actie={maandNav} />
+          {/* ⚠ RONDE 64 — deze pagina droeg DRIE TAKEN in één scroll.
+              Timothy, na echt gebruik: "ik begrijp niet goed hoe het tabblad Budget
+              in elkaar zit; alles staat wat bij elkaar, weinig uitleg erbij hoe alles
+              werkt en wat er verwacht wordt." Er stonden vijf kaarten onder elkaar —
+              het plan, je vaste inkomsten, je budgetten, je vaste lasten, en helemaal
+              onderaan het formulier om een budget in te stellen — zonder één regel die
+              zei waarvoor de pagina dient. Nu stelt elk tabblad één vraag, staat elk
+              formulier bij zijn eigen lijst, en legt een uitklapblok per tabblad uit
+              hoe het samenhangt. Zie `utils/budgettab.ts`. */}
+          <PaginaKop
+            titel={paginaTitel}
+            bijschrift={t('Je plan voor deze maand: wat er binnenkomt, wat vastligt, en waar je zelf een grens op zet.')}
+            actie={maandNav}
+          />
 
-          <div className="raster-lijst-formulier">
-          <div className="kolom-lijst stapel">
-          {/* Bovenaan het plan: wat er van je inkomen al vergeven is, en wat er
-              overblijft. Budgetten en vaste lasten beantwoorden dezelfde vraag van
-              twee kanten; ze stonden hier als twee losse lijstjes zonder dat er
-              ooit één cijfer uit kwam. */}
-          <ErrorBoundary naam="Plan">
-            <PlanRegels
-              posten={terugkerendePosten}
-              budgetten={budgetten}
-              maand={maand}
-              verwachteInkomsten={planBlik.verwachteInkomsten}
-              geboekteInkomsten={planBlik.geboekt.inkomsten}
-              onGaNaarTransacties={gaNaarTransacties}
-            />
-          </ErrorBoundary>
+          <Subtabs
+            naam="budget"
+            label={t('Onderdeel van je budget')}
+            actief={budgetTab}
+            onKies={kiesBudgetTab}
+            tabs={[
+              { id: 'plan' as BudgetTab, teken: '💶', label: t('Te verdelen') },
+              {
+                id: 'vast' as BudgetTab,
+                teken: '🏠',
+                label: t('Vast'),
+                // ⚠ Zonder de opgezegde posten (nakijkronde ronde 64): de teller
+                // op "Budgetten" volgt de maandschakelaar, dus deze hoort dat ook te
+                // doen. Anders staan er twee tellingen naast elkaar met twee regels.
+                telling: terugkerendePosten.filter((p) => !isGestopt(p, maand)).length,
+              },
+              { id: 'budgetten' as BudgetTab, teken: '🎯', label: t('Budgetten'), telling: geldendNu.length },
+            ]}
+          >
+            {budgetTab === 'plan' && (
+              <div className="stapel">
+                <UitlegBlok titel={t('Wat blijft er over? — zo werkt dit')}>
+                  <p>
+                    {t('Kompal telt op wat er deze maand al binnenkwam plus je vaste inkomsten die nog moeten komen, trekt daar je vaste lasten van af en ook wat je maandelijks opzijzet, en wat overblijft is wat je vrij te verdelen hebt.')}
+                  </p>
+                  <p>
+                    {t('Klopt dit cijfer niet? Kijk dan bij "Vast" of je loon en al je vaste lasten erin staan. Deze tab rekent alleen; invullen doe je daar.')}
+                  </p>
+                </UitlegBlok>
 
-          {/* Eerst wat binnenkomt, dan wat eruit gaat — in die volgorde lees je je
-              plan. De vaste inkomsten stonden tot ronde 25 verstopt in dezelfde
-              lijst als de lasten, met de keuze onderaan het formulier. */}
-          <ErrorBoundary naam="Vaste inkomsten">
-            <TerugkerendeSectie
-              soort="inkomst"
-              posten={terugkerendePosten}
-              rekeningen={actieveRekeningen}
-              categorieen={categorieen}
-              transacties={transacties}
-              maand={maand}
-              maandLabel={maandJaarLabel(maand)}
-              onOpslaan={voegTerugkerendToe}
-              onVerwijderen={verwijderTerugkerend}
-              onBoek={(post) => boekTerugkerend(post, maand)}
-              onOngedaan={maakInboekenOngedaan}
-            />
-          </ErrorBoundary>
+                {/* ⚠ Zonder dit is dit tabblad op een verse app helemaal leeg
+                    (nakijkronde ronde 64): `PlanRegels` toont niets zolang er geen
+                    inkomsten en geen vaste lasten zijn, en dan is het standaardtabblad
+                    van de pagina die begrijpelijker moest worden precies dát niet. */}
+                {terugkerendePosten.length === 0 && (
+                  <Kaart titel={t('Nog niets om te verdelen')}>
+                    <p className="rij-meta" style={{ margin: 0 }}>
+                      {t('Deze tab rekent uit wat er overblijft van je inkomen. Daarvoor moet ze weten wat er binnenkomt en wat er elke maand vastligt — dat vul je in bij "Vast".')}
+                    </p>
+                    <div className="knoprij">
+                      <button type="button" className="knop knop-primair" onClick={() => kiesBudgetTab('vast')}>
+                        {t('Naar je vaste inkomsten en lasten')}
+                      </button>
+                    </div>
+                  </Kaart>
+                )}
 
-          <ErrorBoundary naam="Budgetten">
-            <Kaart titel={t('Budgetten')} bijschrift={t('voor {maand}', { maand: maandJaarLabel(maand) })}>
-              {/* ⚠ Op de HELE lijst kijken en niet alleen op deze maand (nakijkronde
-                  ronde 62). Had je enkel een budget voor januari en keek je naar
-                  augustus, dan zei de kaart "Nog geen budgetten ingesteld" met daaronder
-                  een knop naar januari — twee zinnen die elkaar tegenspreken. */}
-              {budgetten.length === 0 && <Leeg>{t('Nog geen budgetten ingesteld.')}</Leeg>}
-              {budgetten.length > 0 && geldendNu.length === 0 && (
-                <Leeg>{t('Voor deze maand staat er geen budget. Je budgetten gelden voor een andere maand.')}</Leeg>
-              )}
-              {geldendNu.length > 0 && (
-                <p className="rij-meta" style={{ margin: 0 }}>
-                  {t('Een terugbetaling in dezelfde categorie verlaagt het verbruik. Daardoor kan dit cijfer lager liggen dan de uitgaven in de Analyse.')}
-                </p>
-              )}
-              {geldendNu.length > 0 && (
-                <ul className="lijst">
-                  {geldendNu.map((b) => {
-                    const naam = categorieNaam(b.categorieId) ?? '—'
-                    const uitgegeven = uitgavenInMaand(transacties, b.categorieId, maand)
-                    const fractie = Math.min(uitgegeven / b.bedrag, 1)
-                    // De drempel die de gebruiker zelf koos, niet een vast getal:
-                    // stond die op 95 %, dan kleurde de balk toch al oranje bij 80 %.
-                    const kleur = budgetKleur(uitgegeven, b.bedrag, budgetDrempel)
-                    return (
-                      <li key={b.id} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-                          {/* De naam is sinds ronde 40 een knop: een budgetregel
-                              zegt "€ 212 van € 300 verbruikt" en daar bleef het
-                              bij — welke boekingen die € 212 vormen zag je nergens. */}
-                          <button
-                            type="button"
-                            className="rij-titel tekstknop"
-                            aria-label={t('Bekijk de boekingen van {naam} — {bedrag}', {
-                              naam,
-                              bedrag: formatEuro(uitgegeven),
-                            })}
-                            onClick={() => gaNaarCategorie(b.categorieId, { maand })}
-                          >
-                            {naam}
-                          </button>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span className="bedrag" style={{ color: 'var(--text-muted)' }}>
-                              {formatEuro(uitgegeven)} / {formatEuro(b.bedrag)}
-                            </span>
+                <ErrorBoundary naam="Plan">
+                  <PlanRegels
+                    posten={terugkerendePosten}
+                    budgetten={budgetten}
+                    maand={maand}
+                    verwachteInkomsten={planBlik.verwachteInkomsten}
+                    geboekteInkomsten={planBlik.geboekt.inkomsten}
+                    onGaNaarTransacties={gaNaarTransacties}
+                  />
+                </ErrorBoundary>
+              </div>
+            )}
+
+            {budgetTab === 'vast' && (
+              <div className="stapel">
+                <UitlegBlok titel={t('Wat ligt vast? — zo werkt dit')}>
+                  <p>
+                    {t('Hier zet je alles wat elke maand terugkomt: je loon, je huur, je abonnementen. Je geeft het één keer in, en Kompal weet er daarna elke maand van.')}
+                  </p>
+                  <p>
+                    {t('Zo’n vaste last is nog geen boeking. Betaal je hem, dan tik je die betaling gewoon in zoals elke andere uitgave — herkent Kompal ze als deze vaste last, dan vraagt ze of die betaling erbij hoort. Of je drukt hier op "Boek in" en dan maakt ze de boeking voor je.')}
+                  </p>
+                  <p>
+                    {t('Pas als er een boeking is, telt het bedrag mee in je budgetten en in de analyse.')}
+                  </p>
+                </UitlegBlok>
+
+                <ErrorBoundary naam="Vaste inkomsten">
+                  <TerugkerendeSectie
+                    soort="inkomst"
+                    posten={terugkerendePosten}
+                    rekeningen={actieveRekeningen}
+                    categorieen={categorieen}
+                    transacties={transacties}
+                    maand={maand}
+                    maandLabel={maandJaarLabel(maand)}
+                    onOpslaan={voegTerugkerendToe}
+                    onVerwijderen={verwijderTerugkerend}
+                    onBoek={(post) => boekTerugkerend(post, maand)}
+                    onOngedaan={maakInboekenOngedaan}
+                  />
+                </ErrorBoundary>
+
+                <ErrorBoundary naam="Vaste lasten">
+                  <TerugkerendeSectie
+                    soort="uitgave"
+                    posten={terugkerendePosten}
+                    rekeningen={actieveRekeningen}
+                    categorieen={categorieen}
+                    transacties={transacties}
+                    maand={maand}
+                    maandLabel={maandJaarLabel(maand)}
+                    onOpslaan={voegTerugkerendToe}
+                    onVerwijderen={verwijderTerugkerend}
+                    onBoek={(post) => boekTerugkerend(post, maand)}
+                    onOngedaan={maakInboekenOngedaan}
+                    onLosmaken={ontkoppelBoeking}
+                  />
+                </ErrorBoundary>
+              </div>
+            )}
+
+            {budgetTab === 'budgetten' && (
+              <div className="raster-lijst-formulier">
+                <div className="kolom-lijst stapel">
+                  <UitlegBlok titel={t('Wat wil je beperken? — zo werkt dit')}>
+                    <p>
+                      {t('Een budget is een grens die je zelf op een categorie zet: "aan Voeding wil ik deze maand niet meer dan € 400 uitgeven". Kompal telt er alle boekingen van die categorie in deze maand bij op en laat de balk meelopen.')}
+                    </p>
+                    <p>
+                      {t('Zet je een budget op een hoofdcategorie, dan telt alles eronder mee. Zet je het op één product, dan telt alleen dat product.')}
+                    </p>
+                    <p>
+                      {t('Een vaste last verbruikt je budget zodra ze geboekt is — precies zoals elke andere uitgave in die categorie.')}
+                    </p>
+                  </UitlegBlok>
+
+                  <ErrorBoundary naam="Budgetten">
+                    <Kaart titel={t('Budgetten')} bijschrift={t('voor {maand}', { maand: maandJaarLabel(maand) })}>
+                      {/* ⚠ Op de HELE lijst kijken en niet alleen op deze maand (nakijkronde
+                          ronde 62). Had je enkel een budget voor januari en keek je naar
+                          augustus, dan zei de kaart "Nog geen budgetten ingesteld" met daaronder
+                          een knop naar januari — twee zinnen die elkaar tegenspreken. */}
+                      {budgetten.length === 0 && <Leeg>{t('Nog geen budgetten ingesteld.')}</Leeg>}
+                      {budgetten.length > 0 && geldendNu.length === 0 && (
+                        <Leeg>{t('Voor deze maand staat er geen budget. Je budgetten gelden voor een andere maand.')}</Leeg>
+                      )}
+                      {geldendNu.length > 0 && (
+                        <p className="rij-meta" style={{ margin: 0 }}>
+                          {t('Een terugbetaling in dezelfde categorie verlaagt het verbruik. Daardoor kan dit cijfer lager liggen dan de uitgaven in de Analyse.')}
+                        </p>
+                      )}
+                      {geldendNu.length > 0 && (
+                        <ul className="lijst">
+                          {geldendNu.map((b) => {
+                            const naam = categorieNaam(b.categorieId) ?? '—'
+                            const uitgegeven = uitgavenInMaand(transacties, b.categorieId, maand)
+                            const fractie = Math.min(uitgegeven / b.bedrag, 1)
+                            // De drempel die de gebruiker zelf koos, niet een vast getal:
+                            // stond die op 95 %, dan kleurde de balk toch al oranje bij 80 %.
+                            const kleur = budgetKleur(uitgegeven, b.bedrag, budgetDrempel)
+                            return (
+                              <li key={b.id} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                                  {/* De naam is sinds ronde 40 een knop: een budgetregel
+                                      zegt "€ 212 van € 300 verbruikt" en daar bleef het
+                                      bij — welke boekingen die € 212 vormen zag je nergens. */}
+                                  <button
+                                    type="button"
+                                    className="rij-titel tekstknop"
+                                    aria-label={t('Bekijk de boekingen van {naam} — {bedrag}', {
+                                      naam,
+                                      bedrag: formatEuro(uitgegeven),
+                                    })}
+                                    onClick={() => gaNaarCategorie(b.categorieId, { maand })}
+                                  >
+                                    {naam}
+                                  </button>
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span className="bedrag" style={{ color: 'var(--text-muted)' }}>
+                                      {formatEuro(uitgegeven)} / {formatEuro(b.bedrag)}
+                                    </span>
+                                    <button
+                                      className="knop knop-kaal knop-gevaar"
+                                      aria-label={
+                                        b.maand === undefined
+                                          ? t('Verwijder budget {naam}', { naam })
+                                          : t('Verwijder het budget van {naam} voor {maand}', { naam, maand: maandJaarLabel(maand) })
+                                      }
+                                      onClick={() => verwijderBud(b.id)}
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                </div>
+                                {/* ⚠ Een uitzondering ziet er anders uit dan je standaard (ronde 62).
+                                    Zonder deze regel zou je in december een ander bedrag zien staan
+                                    dan in november, zonder één aanwijzing waarom — en zou je denken
+                                    dat je standaardbudget veranderd is. Er staat ook bij wát je
+                                    standaard is, zodat het kruisje ernaast geen sprong in het
+                                    duister is. */}
+                                {b.maand !== undefined && (
+                                  <span className="rij-meta">
+                                    {standaardBedrag(b.categorieId) === undefined
+                                      ? t('Alleen voor {maand} — je hebt hier geen vast budget voor.', { maand: maandJaarLabel(maand) })
+                                      : t('Alleen voor {maand} — normaal is dit {bedrag}.', {
+                                          maand: maandJaarLabel(maand),
+                                          bedrag: formatEuro(standaardBedrag(b.categorieId) as number),
+                                        })}
+                                  </span>
+                                )}
+                                <Balk label={naam} fractie={fractie} kleur={kleur} nu={uitgegeven} max={b.bedrag} />
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      )}
+                      {/* ⚠ Een budget voor september zie je in augustus nergens — en dat hoort
+                          ook zo, want je augustuslijst gaat over augustus. Maar dan weet je ook
+                          niet meer dát je het gezet hebt. Deze regel zegt het, met een knop om
+                          erheen te bladeren (ronde 62). */}
+                      {andereBudgetmaanden.length > 0 && (
+                        <p className="rij-meta" style={{ margin: 0 }}>
+                          {t('Je hebt ook een apart budget voor:')}{' '}
+                          {andereBudgetmaanden.map((m) => (
                             <button
-                              className="knop knop-kaal knop-gevaar"
-                              aria-label={
-                                b.maand === undefined
-                                  ? t('Verwijder budget {naam}', { naam })
-                                  : t('Verwijder het budget van {naam} voor {maand}', { naam, maand: maandJaarLabel(maand) })
-                              }
-                              onClick={() => verwijderBud(b.id)}
+                              key={m}
+                              type="button"
+                              className="knop knop-ghost knop-klein"
+                              onClick={() => setMaand(m)}
                             >
-                              ×
+                              {maandJaarLabel(m)}
                             </button>
-                          </span>
-                        </div>
-                        {/* ⚠ Een uitzondering ziet er anders uit dan je standaard (ronde 62).
-                            Zonder deze regel zou je in december een ander bedrag zien staan
-                            dan in november, zonder één aanwijzing waarom — en zou je denken
-                            dat je standaardbudget veranderd is. Er staat ook bij wát je
-                            standaard is, zodat het kruisje ernaast geen sprong in het
-                            duister is. */}
-                        {b.maand !== undefined && (
-                          <span className="rij-meta">
-                            {standaardBedrag(b.categorieId) === undefined
-                              ? t('Alleen voor {maand} — je hebt hier geen vast budget voor.', { maand: maandJaarLabel(maand) })
-                              : t('Alleen voor {maand} — normaal is dit {bedrag}.', {
-                                  maand: maandJaarLabel(maand),
-                                  bedrag: formatEuro(standaardBedrag(b.categorieId) as number),
-                                })}
-                          </span>
-                        )}
-                        <Balk label={naam} fractie={fractie} kleur={kleur} nu={uitgegeven} max={b.bedrag} />
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-              {/* ⚠ Een budget voor september zie je in augustus nergens — en dat hoort
-                  ook zo, want je augustuslijst gaat over augustus. Maar dan weet je ook
-                  niet meer dát je het gezet hebt. Deze regel zegt het, met een knop om
-                  erheen te bladeren (ronde 62). */}
-              {andereBudgetmaanden.length > 0 && (
-                <p className="rij-meta" style={{ margin: 0 }}>
-                  {t('Je hebt ook een apart budget voor:')}{' '}
-                  {andereBudgetmaanden.map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      className="knop knop-ghost knop-klein"
-                      onClick={() => setMaand(m)}
-                    >
-                      {maandJaarLabel(m)}
-                    </button>
-                  ))}
-                </p>
-              )}
-            </Kaart>
-          </ErrorBoundary>
+                          ))}
+                        </p>
+                      )}
+                    </Kaart>
+                  </ErrorBoundary>
+                </div>
 
-          <ErrorBoundary naam="Vaste lasten">
-            <TerugkerendeSectie
-              soort="uitgave"
-              posten={terugkerendePosten}
-              rekeningen={actieveRekeningen}
-              categorieen={categorieen}
-              transacties={transacties}
-              maand={maand}
-              maandLabel={maandJaarLabel(maand)}
-              onOpslaan={voegTerugkerendToe}
-              onVerwijderen={verwijderTerugkerend}
-              onBoek={(post) => boekTerugkerend(post, maand)}
-              onOngedaan={maakInboekenOngedaan}
-            />
-          </ErrorBoundary>
-          </div>
-
-          <div className="kolom-formulier">
-            {/* Het formulier biedt zelf alle ingebouwde hoofdcategorieën aan, dus het
-                hoort er ook te staan als je nog geen eigen categorie hebt gemaakt. */}
-            <Kaart titel={t('Budget instellen')}>
-              <BudgetFormulier
-                categorieen={categorieen}
-                budgetten={budgetten}
-                maand={maand}
-                maandLabel={maandJaarLabel(maand)}
-                onOpslaan={voegBudgetToe}
-              />
-            </Kaart>
-          </div>
-          </div>
+                <div className="kolom-formulier">
+                  {/* Het formulier biedt zelf alle ingebouwde hoofdcategorieën aan, dus het
+                      hoort er ook te staan als je nog geen eigen categorie hebt gemaakt. */}
+                  <ErrorBoundary naam="Budget instellen">
+                    <Kaart titel={t('Budget instellen')}>
+                      <BudgetFormulier
+                        categorieen={categorieen}
+                        budgetten={budgetten}
+                        maand={maand}
+                        maandLabel={maandJaarLabel(maand)}
+                        onOpslaan={voegBudgetToe}
+                      />
+                    </Kaart>
+                  </ErrorBoundary>
+                </div>
+              </div>
+            )}
+          </Subtabs>
         </>
       )}
 

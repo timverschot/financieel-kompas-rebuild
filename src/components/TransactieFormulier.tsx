@@ -36,6 +36,32 @@ import { Bonknop } from '../ui/Bonknop'
  * veld zegt "wanneer heb je dit ingevoerd", niet "wanneer heb je dit laatst
  * aangeraakt".
  */
+/**
+ * Velden die dit formulier NIET beheert en die een bewerking moeten overleven.
+ *
+ * ⚠ Waarom dit bestaat (nakijkronde ronde 64). Dit formulier bouwt de transactie
+ * elke keer van nul op. Alles wat het niet zelf kent, verdwijnt dus zodra je een
+ * boeking opent en op "Wijzigen" drukt — ook al veranderde je alleen een letter in
+ * de handelaarsnaam. Voor `vasteLastId` is dat erger dan een verloren veld: dat is
+ * het ANTWOORD dat de gebruiker gaf op de vraag "is dit je vaste last Water?", en
+ * de app belooft hem dat dat antwoord blijft staan. Zonder deze regel sprong die
+ * vaste last na de kleinste correctie terug naar "nog te boeken", zonder één woord
+ * uitleg.
+ *
+ * ⚠ Maar ALLEEN zolang de boeking blijft wat ze was (tweede nakijkronde ronde 64).
+ * Zet je diezelfde boeking om naar een inkomst of naar een gesplitst kassaticket,
+ * dan is ze niet meer de betaling van die vaste last: een kassaticket van € 120 bij
+ * Colruyt bleef anders de vaste last Water van € 30 afdekken, en een omgezette
+ * inkomst haalde de € 30 uit je verwachte uitgaven én zette er € 32 inkomsten bij.
+ * De koppeling valt dan gewoon weg; de vraag komt vanzelf terug als ze weer past.
+ *
+ * Komt er ooit nog zo'n veld bij, dan hoort het hier.
+ */
+function bewaardVeld(bewerken: Transactie | null | undefined, blijftUitgave: boolean): { vasteLastId?: string } {
+  if (!blijftUitgave) return {}
+  return bewerken?.vasteLastId ? { vasteLastId: bewerken.vasteLastId } : {}
+}
+
 function invoertijdstip(bewerken?: Transactie | null): { ingevoerdOp?: string } {
   if (bewerken) return bewerken.ingevoerdOp ? { ingevoerdOp: bewerken.ingevoerdOp } : {}
   return { ingevoerdOp: new Date().toISOString() }
@@ -426,6 +452,8 @@ export function TransactieFormulier({
         ...(regels.length > 0 ? { regels } : {}),
         ...(persoonIds.length > 0 ? { persoonIds } : {}),
         ...invoertijdstip(bewerken),
+        // Een gesplitst kassaticket is nooit een vaste last.
+        ...bewaardVeld(bewerken, false),
       }
     } else {
       t = {
@@ -437,6 +465,7 @@ export function TransactieFormulier({
         ...(categorieId ? { categorieId } : {}),
         ...(persoonIds.length > 0 ? { persoonIds } : {}),
         ...invoertijdstip(bewerken),
+        ...bewaardVeld(bewerken, teken < 0),
       }
     }
 

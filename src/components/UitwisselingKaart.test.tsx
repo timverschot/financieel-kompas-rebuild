@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { UitwisselingKaart } from './UitwisselingKaart'
@@ -52,6 +52,31 @@ function bestandVanAndereOuder(kosten: GedeeldeKost[], keuze = {}): File {
   return new File([JSON.stringify(bestand)], 'uitwisseling.json', { type: 'application/json' })
 }
 
+/**
+ * Een bestand kiezen ÉN wachten tot de kaart het gelezen heeft.
+ *
+ * ⚠ WAAROM DIT MOET (ronde 64, na een rode bouwstraat). `upload()` stuurt alleen de
+ * change-gebeurtenis; het lezen zelf loopt daarna asynchroon (`leesTekstbestand`
+ * gebruikt een `FileReader`, en de kaart roept hem aan met `void kiesBestand(b)`).
+ * Pas wanneer dat rond is, hertekent de kaart en verschijnt "Neem over" of een
+ * foutmelding.
+ *
+ * Elke assertie meteen ná `upload()` was dus een RACE. Op een rustige machine win je
+ * die altijd, op een drukke bouwmachine niet: de CI-run van ronde 63 viel om met
+ * "Unable to find an accessible element with the role button and name Neem over",
+ * terwijl dezelfde reeks hier vijf keer na elkaar groen stond. Er was niets mis met
+ * de app — alleen met de manier waarop deze tests wachtten.
+ *
+ * We wachten op een DOM die veranderd is en niet op één bepaalde tekst: elk bestand
+ * dat hier ingelezen wordt levert iets op — een voorstel, een waarschuwing of een
+ * fout — en zo werkt dit hulpje voor alle drie.
+ */
+async function leesIn(gebruiker: ReturnType<typeof userEvent.setup>, bestand: File) {
+  const voor = document.body.textContent ?? ''
+  await gebruiker.upload(bestandInvoer(), bestand)
+  await waitFor(() => expect(document.body.textContent).not.toBe(voor))
+}
+
 let download: ReturnType<typeof vi.fn>
 
 beforeEach(() => {
@@ -99,7 +124,7 @@ describe('UitwisselingKaart — inlezen', () => {
     const gebruiker = userEvent.setup()
     const { onKostenBewaren, container } = toon([])
     await gebruiker.click(screen.getByRole('button', { name: 'Toon' }))
-    await gebruiker.upload(bestandInvoer(), bestandVanAndereOuder([kost({ id: 'a-1' })]))
+    await leesIn(gebruiker, bestandVanAndereOuder([kost({ id: 'a-1' })]))
 
     expect(container.textContent).toContain('Nieuw voor jou')
     expect(onKostenBewaren).not.toHaveBeenCalled()
@@ -110,7 +135,7 @@ describe('UitwisselingKaart — inlezen', () => {
     const gebruiker = userEvent.setup()
     const { onKostenBewaren } = toon([])
     await gebruiker.click(screen.getByRole('button', { name: 'Toon' }))
-    await gebruiker.upload(bestandInvoer(), bestandVanAndereOuder([kost({ id: 'a-1' })]))
+    await leesIn(gebruiker, bestandVanAndereOuder([kost({ id: 'a-1' })]))
     await gebruiker.click(screen.getByRole('button', { name: 'Neem over' }))
 
     const bewaard: GedeeldeKost[] = onKostenBewaren.mock.calls[0][0]
@@ -126,7 +151,7 @@ describe('UitwisselingKaart — inlezen', () => {
     const gebruiker = userEvent.setup()
     const { onKostenBewaren, container } = toon([kost({ id: 'eigen', betaaldDoor: 'partner' })])
     await gebruiker.click(screen.getByRole('button', { name: 'Toon' }))
-    await gebruiker.upload(bestandInvoer(), bestandVanAndereOuder([kost({ id: 'a-1' })]))
+    await leesIn(gebruiker, bestandVanAndereOuder([kost({ id: 'a-1' })]))
 
     expect(container.textContent).toContain('Lijkt op een kost die je al hebt')
     await gebruiker.click(screen.getByRole('button', { name: 'Neem over' }))
@@ -137,7 +162,7 @@ describe('UitwisselingKaart — inlezen', () => {
     const gebruiker = userEvent.setup()
     const { container } = toon([])
     await gebruiker.click(screen.getByRole('button', { name: 'Toon' }))
-    await gebruiker.upload(bestandInvoer(), bestandVanAndereOuder([kost({ id: 'a-1', bedrag: 2501 })]))
+    await leesIn(gebruiker, bestandVanAndereOuder([kost({ id: 'a-1', bedrag: 2501 })]))
     expect(container.textContent).toContain('Eén cent verschil')
   })
 
@@ -146,7 +171,7 @@ describe('UitwisselingKaart — inlezen', () => {
     const { container } = toon([])
     await gebruiker.click(screen.getByRole('button', { name: 'Toon' }))
     const rommel = new File(['{"app":"iets anders"}'], 'x.json', { type: 'application/json' })
-    await gebruiker.upload(bestandInvoer(), rommel)
+    await leesIn(gebruiker, rommel)
     expect(container.textContent).toContain('geen uitwisselbestand')
     expect(screen.queryByRole('button', { name: 'Neem over' })).not.toBeInTheDocument()
   })
@@ -163,10 +188,7 @@ describe('UitwisselingKaart — inlezen', () => {
     )
     const { container } = toon([])
     await gebruiker.click(screen.getByRole('button', { name: 'Toon' }))
-    await gebruiker.upload(
-      bestandInvoer(),
-      new File([JSON.stringify(bestand)], 'u.json', { type: 'application/json' }),
-    )
+    await leesIn(gebruiker, new File([JSON.stringify(bestand)], 'u.json', { type: 'application/json' }))
     expect(container.textContent).toContain('andere verdeelsleutel')
   })
 })
@@ -257,10 +279,7 @@ describe('UitwisselingKaart — intrekkingen en antwoorden komen altijd mee', ()
 
     const { onKostenBewaren, container } = toon([eigen])
     await gebruiker.click(screen.getByRole('button', { name: 'Toon' }))
-    await gebruiker.upload(
-      bestandInvoer(),
-      new File([JSON.stringify(bestand)], 'u.json', { type: 'application/json' }),
-    )
+    await leesIn(gebruiker, new File([JSON.stringify(bestand)], 'u.json', { type: 'application/json' }))
     expect(container.textContent).toContain('1 antwoord(en) op jouw kosten')
 
     await gebruiker.click(screen.getByRole('button', { name: 'Neem over' }))
@@ -282,7 +301,7 @@ describe('UitwisselingKaart — één gevulde knop', () => {
     const gebruiker = userEvent.setup()
     const { container } = toon([kost()])
     await gebruiker.click(screen.getByRole('button', { name: 'Toon' }))
-    await gebruiker.upload(bestandInvoer(), bestandVanAndereOuder([kost({ id: 'a-1' })]))
+    await leesIn(gebruiker, bestandVanAndereOuder([kost({ id: 'a-1' })]))
     expect(screen.getByRole('button', { name: 'Neem over' })).toBeInTheDocument()
     expect(within(container).queryAllByRole('button').filter((b) => b.className.includes('knop-primair'))).toHaveLength(0)
   })
@@ -325,10 +344,7 @@ describe('UitwisselingKaart — wat de review na het bouwen ving', () => {
 
     const { onKostenBewaren } = toon([eigen])
     await gebruiker.click(screen.getByRole('button', { name: 'Toon' }))
-    await gebruiker.upload(
-      bestandInvoer(),
-      new File([JSON.stringify(bestand)], 'u.json', { type: 'application/json' }),
-    )
+    await leesIn(gebruiker, new File([JSON.stringify(bestand)], 'u.json', { type: 'application/json' }))
     await gebruiker.click(screen.getByRole('button', { name: 'Neem over' }))
 
     const bewaard: GedeeldeKost[] = onKostenBewaren.mock.calls[0][0]
@@ -354,10 +370,7 @@ describe('UitwisselingKaart — wat de review na het bouwen ving', () => {
     )
     const { onKostenBewaren, container } = toon([eigen])
     await gebruiker.click(screen.getByRole('button', { name: 'Toon' }))
-    await gebruiker.upload(
-      bestandInvoer(),
-      new File([JSON.stringify(bestand)], 'u.json', { type: 'application/json' }),
-    )
+    await leesIn(gebruiker, new File([JSON.stringify(bestand)], 'u.json', { type: 'application/json' }))
     expect(container.textContent).toContain('Gewijzigd door de andere ouder')
     await gebruiker.click(screen.getByRole('button', { name: 'Neem over' }))
     expect(onKostenBewaren).not.toHaveBeenCalled()
@@ -368,7 +381,7 @@ describe('UitwisselingKaart — wat de review na het bouwen ving', () => {
     const eigen = kost({ id: 'b-eigen', betaaldDoor: 'partner' })
     const { onKostenBewaren } = toon([eigen])
     await gebruiker.click(screen.getByRole('button', { name: 'Toon' }))
-    await gebruiker.upload(bestandInvoer(), bestandVanAndereOuder([kost({ id: 'a-1' })]))
+    await leesIn(gebruiker, bestandVanAndereOuder([kost({ id: 'a-1' })]))
     await gebruiker.click(screen.getByRole('button', { name: 'Dit is dezelfde' }))
     await gebruiker.click(screen.getByRole('button', { name: 'Neem over' }))
 
@@ -407,7 +420,7 @@ describe('UitwisselingKaart — wat de review na het bouwen ving', () => {
     const gebruiker = userEvent.setup()
     const { container } = toon([])
     await gebruiker.click(screen.getByRole('button', { name: 'Toon' }))
-    await gebruiker.upload(bestandInvoer(), bestandVanAndereOuder([kost({ id: 'a-1' })]))
+    await leesIn(gebruiker, bestandVanAndereOuder([kost({ id: 'a-1' })]))
     expect(container.textContent).toContain('Je eigen kosten zitten er niet in')
   })
 })

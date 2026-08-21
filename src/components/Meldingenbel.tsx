@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useT } from '../i18n'
 import type { Melding, MeldingPagina } from '../utils/meldingen'
+import type { BudgetTab } from '../utils/budgettab'
 import type { DossierSoort } from '../utils/dossiersoort'
 
 // Het belletje in de bovenbalk, mét een echt paneel eronder.
@@ -57,9 +58,10 @@ export function Meldingenbel({
   meldingen: Melding[]
   /**
    * De tweede parameter zegt welke lade op die pagina open moet (de Dossiers-pagina
-   * heeft er drie). Ontbreekt ze, dan verandert er niets aan de lade.
+   * heeft er drie). Ontbreekt ze, dan verandert er niets aan de lade. De vierde doet
+   * hetzelfde voor de drie tabbladen van de Budget-pagina (ronde 64).
    */
-  onGaNaar: (pagina: MeldingPagina, subtab?: DossierSoort, dossierId?: string) => void
+  onGaNaar: (pagina: MeldingPagina, subtab?: DossierSoort, dossierId?: string, budgettab?: BudgetTab) => void
   /**
    * Een vaste last meteen inboeken vanuit het paneel. Zonder deze prop gedraagt de
    * bel zich zoals voorheen: elke melding brengt je enkel naar een pagina.
@@ -82,6 +84,11 @@ export function Meldingenbel({
   useEffect(() => {
     if (!open) return
     function opToets(e: KeyboardEvent) {
+      // ⚠ Niet reageren wanneer er een popup bovenop staat (tweede nakijkronde
+      // ronde 64). Boek je vanuit dit paneel een vaste last in en stelt de app dan
+      // een vraag, dan sloot één druk op Escape allebei tegelijk — het paneel klapte
+      // dicht en je zag niet meer wat er met de vraag gebeurd was.
+      if (document.querySelector('[aria-modal="true"]')) return
       if (e.key === 'Escape') {
         e.preventDefault()
         setOpen(false)
@@ -92,9 +99,9 @@ export function Meldingenbel({
     return () => document.removeEventListener('keydown', opToets)
   }, [open])
 
-  function kies(pagina: MeldingPagina, subtab?: DossierSoort, dossierId?: string) {
+  function kies(pagina: MeldingPagina, subtab?: DossierSoort, dossierId?: string, budgettab?: BudgetTab) {
     setOpen(false)
-    onGaNaar(pagina, subtab, dossierId)
+    onGaNaar(pagina, subtab, dossierId, budgettab)
   }
 
   function boek(postId: string) {
@@ -178,7 +185,7 @@ export function Meldingenbel({
                           knop in een knop bestaat niet in HTML. */}
                       <button
                         type="button"
-                        onClick={() => kies(m.pagina, m.subtab, m.dossierId)}
+                        onClick={() => kies(m.pagina, m.subtab, m.dossierId, m.budgettab)}
                         style={{ ...meldingKnop, borderBottom: 'none', flex: 1, minWidth: 0 }}
                       >
                         <span

@@ -25,6 +25,7 @@ import { DriveKaart } from './DriveKaart'
 import { BackupKaart } from './BackupKaart'
 import type { OpslagToestand } from '../data/opslag'
 import { versVangnet } from '../utils/backupherinnering'
+import type { BudgetTab } from '../utils/budgettab'
 import { bepaalBuffer } from '../utils/buffer'
 import { nettoVermogen } from '../utils/vermogen'
 import { openstaandKapitaal } from '../utils/lening'
@@ -288,9 +289,12 @@ function KostenLijst({
         })}
       </ul>
       <p className="rij-meta" style={{ margin: 0 }}>
-        {t('Staat het er niet bij? Je kan altijd zelf iets toevoegen op de Budget-pagina.')}{' '}
+        {/* ⚠ Deze zin wees naar een pagina en niet naar een plek (ronde 64). De knop
+            brengt je nu naar het tabblad "Vast" van Budget, met het formulier in beeld
+            waarin je die kost toevoegt. */}
+        {t('Staat het er niet bij? Voeg het zelf toe bij je vaste lasten.')}{' '}
         <button type="button" className="knop knop-ghost knop-klein" onClick={onNaarBudget}>
-          {t('Naar Budget')}
+          {t('Naar je vaste lasten')}
         </button>
       </p>
     </Kaart>
@@ -315,6 +319,7 @@ export function OpstellingSectie({
   onKindVerwijderen,
   onDossier,
   onNaarPagina,
+  onNaarBudget,
   veilig,
 }: {
   rekeningen: Rekening[]
@@ -334,6 +339,15 @@ export function OpstellingSectie({
   onKindVerwijderen: (id: string) => void
   onDossier: (d: Dossier) => Promise<void> | void
   onNaarPagina: (p: 'budget' | 'dossiers' | 'overzicht' | 'rekeningen') => void
+  /**
+   * Naar een bepaald tabblad van de Budget-pagina (ronde 64).
+   *
+   * ⚠ Waarom náást `onNaarPagina`: die zette je bovenaan Budget, terwijl het
+   * formulier dat de zin ernaast belooft — "je kan altijd zelf iets toevoegen" —
+   * pas het vijfde blok naar beneden stond. Timothy zag daardoor niet waar hij iets
+   * moest invullen. Ontbreekt deze prop, dan valt de knop terug op `onNaarPagina`.
+   */
+  onNaarBudget?: (tab: BudgetTab) => void
   /**
    * Alles voor het blok "Veilig bewaren" (ronde 63).
    *
@@ -700,7 +714,7 @@ export function OpstellingSectie({
             bezig={bezig}
             fout={fout}
             onToevoegen={voegKostToe}
-            onNaarBudget={() => onNaarPagina('budget')}
+            onNaarBudget={() => (onNaarBudget ? onNaarBudget('vast') : onNaarPagina('budget'))}
           />
         )}
 
@@ -714,7 +728,7 @@ export function OpstellingSectie({
             bezig={bezig}
             fout={fout}
             onToevoegen={voegKostToe}
-            onNaarBudget={() => onNaarPagina('budget')}
+            onNaarBudget={() => (onNaarBudget ? onNaarBudget('vast') : onNaarPagina('budget'))}
           />
         )}
 

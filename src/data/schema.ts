@@ -113,6 +113,21 @@ export const TransactieSchema = z.object({
   // Dit is een tijdstip, geen kalenderdatum — hier mag `toISOString()` dus wél
   // (zie de waarschuwing in utils/datum.ts, die over datums gaat).
   ingevoerdOp: z.string().datetime().optional(),
+  // Deze boeking IS de betaling van die vaste last (ronde 64).
+  //
+  // ⚠ Waarom dit veld er komt. De app herkende een zelf ingetikte betaling alleen
+  // bij een EXACTE match: zelfde maand, zelfde rekening, exact hetzelfde bedrag tot
+  // de cent, exact dezelfde categorie. Timothy's voorbeeld: vaste last Water € 30,
+  // en jij tikt € 32 in. Dan bleef de vaste last "nog te boeken", meldde het
+  // belletje hem, en maakte "Boek in" er een tweede boeking van € 30 bij — je maand
+  // telde € 62 op Water terwijl er € 32 van je rekening ging. Precies het soort
+  // stille fout waardoor de logica van de app onvindbaar aanvoelt.
+  //
+  // Nu vraagt de app het, en jouw antwoord staat hier. Een boeking met dit veld
+  // dekt die vaste last af, wélk bedrag er ook op staat — en dekt geen enkele
+  // ándere post af. Optioneel, dus geen migratie: elke bestaande boeking blijft
+  // geldig en gedraagt zich zoals voorheen.
+  vasteLastId: z.string().min(1).optional(),
 })
 export type Transactie = z.infer<typeof TransactieSchema>
 

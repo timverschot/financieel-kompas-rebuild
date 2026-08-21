@@ -484,3 +484,25 @@ describe('vooruitblik — komendeIds', () => {
     expect(vb.achterstalligeIds.length).toBe(vb.aantalAchterstallig)
   })
 })
+
+// Ronde 64 (tweede nakijkronde): een boeking die aan post A gekoppeld is, mag post
+// B niet blokkeren. Zonder die regel weigerde "Boek in" voor B met de melding dat B
+// "al geboekt lijkt", terwijl die boeking aantoonbaar bij A hoort.
+describe('een gekoppelde boeking hoort bij één post', () => {
+  const rek = 'r1'
+  const postA: TerugkerendePost = { id: 'a', omschrijving: 'A', bedrag: -3000, rekeningId: rek, dag: 5 }
+  const postB: TerugkerendePost = { id: 'b', omschrijving: 'B', bedrag: -3000, rekeningId: rek, dag: 5 }
+
+  it('blokkeert "Boek in" van een andere post niet', () => {
+    const t: Transactie = {
+      id: 't1',
+      datum: '2026-08-06',
+      omschrijving: 'Betaling',
+      bedrag: -3000,
+      rekeningId: rek,
+      vasteLastId: 'a',
+    }
+    expect(boekingDieDezePostAfdekt([t], [postA, postB], postA, '2026-08')?.id).toBe('t1')
+    expect(boekingDieDezePostAfdekt([t], [postA, postB], postB, '2026-08')).toBeUndefined()
+  })
+})

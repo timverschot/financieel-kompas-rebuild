@@ -625,6 +625,33 @@ describe('bouwMeldingen — contracten', () => {
   })
 })
 
+// Ronde 64: elke melding wijst naar het tabblad waar je haar kan oplossen.
+describe('bouwMeldingen — het tabblad van de Budget-pagina', () => {
+  const budget: Budget = { id: 'b1', categorieId: 'ov-voeding', bedrag: 10000 }
+
+  it('stuurt een overschreden budget naar de budgetten', () => {
+    const m = basis({ budgetten: [budget], transacties: [tx('2026-07-02', -12000, 'ov-voeding')] })
+    expect(m.find((x) => x.soort === 'budget-over')?.budgettab).toBe('budgetten')
+  })
+
+  it('stuurt een budget dat bijna op is naar de budgetten', () => {
+    const m = basis({ budgetten: [budget], transacties: [tx('2026-07-02', -9500, 'ov-voeding')] })
+    expect(m.find((x) => x.soort === 'budget-bijna')?.budgettab).toBe('budgetten')
+  })
+
+  it('stuurt een vaste last die nog niet geboekt is naar "Vast"', () => {
+    const post: TerugkerendePost = {
+      id: 'p1',
+      omschrijving: 'Netflix',
+      bedrag: -999,
+      rekeningId: 'r1',
+      dag: 3,
+    }
+    const m = basis({ terugkerendePosten: [post] })
+    expect(m.find((x) => x.soort === 'vastelast')?.budgettab).toBe('vast')
+  })
+})
+
 // Ronde 63: staan je gegevens ergens anders dan in deze browser?
 describe('bouwMeldingen — back-up', () => {
   const toestand = { heeftGegevens: true, eersteGebruikOp: '2026-05-01' }

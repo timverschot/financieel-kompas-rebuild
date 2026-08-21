@@ -499,7 +499,7 @@ describe('OpstellingSectie — de blokken', () => {
     toon({ rekeningen: [rekening] }, { onNaarPagina })
 
     await gebruiker.click(screen.getByRole('tab', { name: /Sluipende kosten/ }))
-    await gebruiker.click(screen.getByRole('button', { name: 'Naar Budget' }))
+    await gebruiker.click(screen.getByRole('button', { name: 'Naar je vaste lasten' }))
     expect(onNaarPagina).toHaveBeenCalledWith('budget')
   })
 })

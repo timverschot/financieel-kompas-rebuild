@@ -3327,3 +3327,77 @@ a {
     display: none !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   UITLEGBLOK — "Zo werkt dit" (ronde 64)
+
+   Een <details> dat op elk scherm mag staan om uit te leggen hoe het in elkaar
+   zit. Dicht is het één rustige regel; open leest het als een alinea.
+
+   ⚠ De rand gebruikt `--rand-bedienbaar` en niet `--border`: je kan er op
+   klikken, en dan geldt de 3:1-regel van ronde 61. Het driehoekje is bewust
+   zelfgetekend, want de standaardmarkering van de browser is in Safari nauwelijks
+   te zien en verspringt tussen browsers.
+--------------------------------------------------------------------------- */
+.uitleg {
+  border: 1px solid var(--rand-bedienbaar);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  padding: 0;
+}
+
+.uitleg > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 10px 14px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--tekst-s);
+  font-weight: 600;
+  color: var(--text);
+  border-radius: var(--radius-md);
+}
+
+.uitleg > summary::-webkit-details-marker {
+  display: none;
+}
+
+.uitleg > summary::before {
+  content: '▸';
+  /* ⚠ De KLEUR VAN DE TEKST (nakijkronde ronde 64). Hier stond eerst
+     `--accent-dot`, en dat is de amber die voor DONKERE vlakken bedoeld is: op het
+     crèmekleurige `--surface-2` haalde ze 1,61:1, terwijl dit driehoekje de
+     open/dicht-toestand draagt en dus onder de 3:1-regel van 1.4.11 valt.
+     `currentColor` volgt de tekst ernaast en klopt daardoor in beide thema's. */
+  color: currentColor;
+  transition: transform var(--overgang);
+  display: inline-block;
+}
+
+.uitleg[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.uitleg > summary:focus-visible {
+  outline: 2px solid var(--focus-rand);
+  outline-offset: 2px;
+}
+
+.uitleg-inhoud {
+  padding: 0 14px 12px;
+  font-size: var(--tekst-s);
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.uitleg-inhoud p {
+  margin: 0;
+}
+
+.uitleg-inhoud strong {
+  color: var(--text);
+}

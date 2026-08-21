@@ -28,6 +28,7 @@ export function TerugkerendeSectie({
   onVerwijderen,
   onBoek,
   onOngedaan,
+  onLosmaken,
   soort = 'uitgave',
   vandaagISO = vandaag(),
 }: {
@@ -58,6 +59,13 @@ export function TerugkerendeSectie({
    * staan zonder dat iemand kon zien waarom.
    */
   soort?: 'uitgave' | 'inkomst'
+  /**
+   * De koppeling losmaken die je met "ja" gelegd hebt (ronde 64). De BOEKING gaat
+   * mee, niet de post: deze lijst weet precies welke boeking eraan hangt, en dan kan
+   * de oproeper er geen andere kiezen. Zonder deze prop blijft alles zoals voorheen:
+   * dan zie je alleen het vinkje.
+   */
+  onLosmaken?: (boeking: Transactie) => void
 }) {
   const { t } = useT()
   const [bewerken, setBewerken] = useState<TerugkerendePost | null>(null)
@@ -74,11 +82,26 @@ export function TerugkerendeSectie({
     transacties,
     eigen.filter((p) => valtInMaand(p, maand)),
     maand,
+    // ⚠ Álle posten voor de weescontrole (tweede nakijkronde ronde 64): een
+    // koppeling naar een post die buiten dit filter valt, is geen wees.
+    posten,
   )
   // Welke posten zijn geboekt via de knop "Boek in"? Alleen dié kan de app weer
   // uitboeken, want alleen dan bestaat het vaste transactie-id.
   const metVastId = new Set(
     eigen.filter((p) => transacties.some((tx) => tx.id === vasteLastTransactieId(p.id, maand))).map((p) => p.id),
+  )
+  // Welke posten zijn afgepunt doordat de gebruiker "ja" zei op de vraag "is dit je
+  // vaste last?" (ronde 64)? Die kan hij hier weer LOSMAKEN.
+  //
+  // ⚠ Zonder deze knop was een verkeerd antwoord onherroepelijk: "Uitboeken" bestaat
+  // alleen voor een boeking met het vaste id van "Boek in", en de gekoppelde boeking
+  // is een gewone boeking die je zelf intikte. Dan stond je vaste last voor die maand
+  // als betaald zonder één weg terug.
+  const gekoppeld = new Map(
+    eigen
+      .map((p) => [p.id, transacties.find((tx) => tx.vasteLastId === p.id && tx.datum.startsWith(maand))] as const)
+      .filter((paar): paar is readonly [string, typeof transacties[number]] => paar[1] !== undefined),
   )
 
   async function opslaan(p: TerugkerendePost) {
@@ -212,6 +235,17 @@ export function TerugkerendeSectie({
                           onClick={() => onOngedaan(p)}
                         >
                           {t('Uitboeken')}
+                        </button>
+                      </>
+                    ) : onLosmaken && gekoppeld.has(p.id) ? (
+                      <>
+                        <span className="badge badge-ok">{t('Geboekt ✓')}</span>
+                        <button
+                          className="knop knop-ghost knop-klein"
+                          aria-label={t('Losmaken: {naam} telt dan weer als niet geboekt', { naam: p.omschrijving })}
+                          onClick={() => onLosmaken(gekoppeld.get(p.id) as Transactie)}
+                        >
+                          {t('Losmaken')}
                         </button>
                       </>
                     ) : (

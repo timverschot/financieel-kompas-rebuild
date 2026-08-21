@@ -98,8 +98,23 @@ export type Vooruitblik = {
 // herkennen (ze blijft dan als "nog te komen" staan, wat hoogstens irritant is)
 // dan een echte, aparte uitgave onterecht wegmoffelen (wat je te rooskleurig
 // voorspelt).
-function isMogelijkeBoeking(t: Transactie, p: TerugkerendePost, maand: string): boolean {
+function isMogelijkeBoeking(t: Transactie, p: TerugkerendePost, maand: string, bekend: Set<string>): boolean {
+  // ⚠ De MAAND eerst, en dan pas het antwoord (nakijkronde ronde 64). Andersom
+  // dekte één gekoppelde augustusbetaling die vaste last in élke volgende maand af:
+  // de vooruitblik telde de € 30 water nooit meer mee, het belletje zweeg voorgoed,
+  // de maandafsluiting zei elke maand "niets open", en "Boek in" weigerde met "lijkt
+  // al geboekt op 7 augustus". Een boeking is de betaling van HAAR maand.
   if (!t.datum.startsWith(maand)) return false
+  // Heeft de gebruiker gezegd dat deze boeking die vaste last is, dan geldt dat —
+  // welk bedrag er ook op staat. En omgekeerd: een boeking die aan een ándere post
+  // hangt, dekt deze niet af. Zonder die tweede regel zou een gekoppelde betaling
+  // van € 32 alsnog een tweede post van € 32 kunnen afdekken.
+  //
+  // ⚠ Een WEES telt niet mee: wijst het antwoord naar een post die niet meer
+  // bestaat (je verwijderde de vaste last en maakte een nieuwe), dan gedraagt de
+  // boeking zich weer als een gewone boeking. Anders was ze voor de hele app
+  // onzichtbaar en maakte "Boek in" er zonder waarschuwing een tweede bij.
+  if (t.vasteLastId !== undefined && bekend.has(t.vasteLastId)) return t.vasteLastId === p.id
   if (t.rekeningId !== p.rekeningId) return false
   if (t.bedrag !== p.bedrag) return false
   if (t.regels && t.regels.length > 0) return false
@@ -140,8 +155,9 @@ export function geboekteVasteLasten(
   transacties: Transactie[],
   posten: TerugkerendePost[],
   maand: string,
+  allePosten?: TerugkerendePost[],
 ): Set<string> {
-  return new Set(geboekteVasteLastenMet(transacties, posten, maand).keys())
+  return new Set(geboekteVasteLastenMet(transacties, posten, maand, allePosten).keys())
 }
 
 /**
@@ -179,7 +195,8 @@ export function boekingDieDezePostAfdekt(
   const vanIemandAnders = new Set(
     posten.filter((p) => p.id !== post.id).map((p) => vasteLastTransactieId(p.id, maand)),
   )
-  return transacties.find((t) => !vanIemandAnders.has(t.id) && lijktOpDezeBetaling(t, post, maand))
+  const bekend = new Set(posten.map((p) => p.id))
+  return transacties.find((t) => !vanIemandAnders.has(t.id) && lijktOpDezeBetaling(t, post, maand, bekend))
 }
 
 /**
@@ -198,8 +215,11 @@ export function boekingDieDezePostAfdekt(
  * "nog niet ingeboekt", je klikte "Boek in", en je maand telde € 1.800 uitgaven
  * terwijl er € 900 van je rekening ging.
  */
-function lijktOpDezeBetaling(t: Transactie, p: TerugkerendePost, maand: string): boolean {
+function lijktOpDezeBetaling(t: Transactie, p: TerugkerendePost, maand: string, bekend: Set<string>): boolean {
   if (!t.datum.startsWith(maand)) return false
+  // Ook hier telt een uitgesproken antwoord, en ook hier telt een wees niet mee
+  // (ronde 64 en haar nakijkronde).
+  if (t.vasteLastId !== undefined && bekend.has(t.vasteLastId)) return t.vasteLastId === p.id
   if (t.rekeningId !== p.rekeningId) return false
   if (t.bedrag !== p.bedrag) return false
   if (t.regels && t.regels.length > 0) return false
@@ -211,9 +231,25 @@ export function geboekteVasteLastenMet(
   transacties: Transactie[],
   posten: TerugkerendePost[],
   maand: string,
+  /**
+   * ⚠ ÁLLE posten, ook die niet in `posten` staan (tweede nakijkronde ronde 64).
+   *
+   * Waarvoor: `bekend` bepaalt of een koppeling naar een bestaande post wijst dan
+   * wel een wees is. De aanroepers geven vaak een GEFILTERDE lijst mee — alleen wat
+   * deze maand vervalt, of alleen de uitgaven. Bouwden we `bekend` daaruit, dan gold
+   * een geldige koppeling naar een post die toevallig buiten dat filter viel als een
+   * wees, en dan dekte die boeking ineens een ÁNDERE post af. Bewezen geval: een
+   * opgezegde Fitness met een gekoppelde betaling zette de nog openstaande Water op
+   * "Geboekt ✓", waarna het belletje en de maandafsluiting er allebei over zwegen.
+   *
+   * Ontbreekt dit, dan valt de app terug op `posten` — het gedrag van vóór deze
+   * reparatie, en veilig zolang de aanroeper niet filtert.
+   */
+  allePosten?: TerugkerendePost[],
 ): Map<string, Transactie> {
   const perId = new Map<string, Transactie>()
   for (const t of transacties) perId.set(t.id, t)
+  const bekend = new Set((allePosten ?? posten).map((p) => p.id))
   const gebruikt = new Set<string>() // transactie-id's die al een vaste last afdekken
   const geboekt = new Map<string, Transactie>() // post-id → de boeking die hem afdekt
 
@@ -226,7 +262,7 @@ export function geboekteVasteLastenMet(
   }
   for (const p of posten) {
     if (geboekt.has(p.id)) continue
-    const treffer = transacties.find((t) => !gebruikt.has(t.id) && isMogelijkeBoeking(t, p, maand))
+    const treffer = transacties.find((t) => !gebruikt.has(t.id) && isMogelijkeBoeking(t, p, maand, bekend))
     if (treffer) {
       gebruikt.add(treffer.id)
       geboekt.set(p.id, treffer)
@@ -249,7 +285,7 @@ export function maandVooruitblik(
   const geboekt = telInUit(transacties, (d) => d.startsWith(maand))
 
   // Welke posten al geboekt zijn — dezelfde bepaling als op de Plan-pagina.
-  const geboekteposten = geboekteVasteLasten(transacties, posten, maand)
+  const geboekteposten = geboekteVasteLasten(transacties, posten, maand, alleposten)
 
   // Is de dag van de maand al voorbij? Dan is een niet-geboekte post niet "nog te
   // komen" maar achterstallig. Voor een maand in het verleden is alles voorbij,

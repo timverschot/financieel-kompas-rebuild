@@ -17,6 +17,7 @@ import { openMaanden } from './maandafsluiting'
 import { backupHerinnering, type BackupToestand, type VangnetBron } from './backupherinnering'
 import { maandJaarLabel } from './datum'
 import type { DossierSoort } from './dossiersoort'
+import type { BudgetTab } from './budgettab'
 
 // De rekenkern achter het belletje in de bovenbalk.
 //
@@ -82,6 +83,12 @@ export type Melding = {
    * staan waar hij stond.
    */
   subtab?: DossierSoort
+  /**
+   * Welk tabblad van de Budget-pagina open moet (ronde 64). Sinds die pagina uit
+   * drie tabbladen bestaat, is "naar Budget" niet genoeg: een overschreden budget
+   * hoort bij de budgetten, een vaste last die nog niet geboekt is bij "Vast".
+   */
+  budgettab?: BudgetTab
   /**
    * Welk dossier geopend moet worden. Zonder dit belandde je op de dossierpagina
    * met een ánder dossier open dan het dossier waarover de melding gaat.
@@ -211,6 +218,7 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
         sleutel: 'Budget {naam} is overschreden ({pct}%)',
         params: { naam, pct: percent },
         pagina: 'budget',
+        budgettab: 'budgetten',
         dringend: true,
       })
       // Ook de drempelgrens op centen. Met het afgeronde percentage waarschuwde het
@@ -224,6 +232,7 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
         sleutel: 'Budget {naam} is {pct}% verbruikt',
         params: { naam, pct: percent },
         pagina: 'budget',
+        budgettab: 'budgetten',
         dringend: false,
       })
     }
@@ -266,6 +275,7 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
         sleutel: '{naam} staat nog niet ingeboekt deze maand',
         params: { naam: post.omschrijving },
         pagina: 'budget',
+        budgettab: 'vast',
         dringend: false,
         actie: { soort: 'boek-vastelast', postId: post.id },
       })
@@ -302,6 +312,7 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
             : 'De verlengdatum van {naam} is voorbij. Zet de nieuwe datum, anders kan de app niets meer uitrekenen.',
         params: { naam: post.omschrijving },
         pagina: 'budget',
+        budgettab: 'vast',
         dringend: false,
         rang,
       })
@@ -321,6 +332,7 @@ export function bouwMeldingen(invoer: MeldingenInvoer): Melding[] {
             : 'Nog {n} dag(en) om te beslissen over {naam} vóór het verlengt.',
       params: { naam: post.omschrijving, n: dagen },
       pagina: 'budget',
+      budgettab: 'vast',
       // Dringend vanaf een week: dan moet er deze week een brief of een mail de deur
       // uit, en dat is een andere orde dan "denk er eens aan".
       dringend: dagen <= CONTRACT_DRINGEND_DAGEN,

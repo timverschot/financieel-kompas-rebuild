@@ -57,6 +57,20 @@ describe('hashNaarRoute', () => {
     expect(hashNaarRoute('#/analyse/onzin')).toEqual({ pagina: 'analyse' })
   })
 
+  // Ronde 64: dezelfde afspraak voor de Budget-pagina.
+  it('leest het tabblad van de budgetpagina', () => {
+    expect(hashNaarRoute('#/budget/vast')).toEqual({ pagina: 'budget', budget: 'vast' })
+    expect(hashNaarRoute('#/budget/budgetten')).toEqual({ pagina: 'budget', budget: 'budgetten' })
+  })
+
+  it('negeert een onbekend budgettabblad zonder de pagina te verliezen', () => {
+    expect(hashNaarRoute('#/budget/onzin')).toEqual({ pagina: 'budget' })
+  })
+
+  it('laat een budgettabblad alleen toe op de budgetpagina', () => {
+    expect(hashNaarRoute('#/analyse/vast')).toEqual({ pagina: 'analyse' })
+  })
+
   it('laat een analysetabblad alleen toe op de analysepagina', () => {
     expect(hashNaarRoute('#/budget/vooruit')).toEqual({ pagina: 'budget' })
   })
@@ -72,6 +86,13 @@ describe('routeNaarHash', () => {
   it('laat een subtab weg waar hij niet hoort', () => {
     expect(routeNaarHash({ pagina: 'budget', subtab: 'lening' })).toBe('#/budget')
     expect(routeNaarHash({ pagina: 'dossiers', actie: 'nieuw' })).toBe('#/dossiers')
+  })
+
+  it('schrijft en leest het budgettabblad heen en terug', () => {
+    expect(routeNaarHash({ pagina: 'budget', budget: 'vast' })).toBe('#/budget/vast')
+    expect(hashNaarRoute('#/budget/vast')).toEqual({ pagina: 'budget', budget: 'vast' })
+    // Een budgettabblad op een andere pagina laat geen spoor na in het adres.
+    expect(routeNaarHash({ pagina: 'analyse', budget: 'vast' })).toBe('#/analyse')
   })
 
   it('schrijft en leest het analysetabblad heen en terug', () => {

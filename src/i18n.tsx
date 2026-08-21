@@ -247,7 +247,6 @@ const en: Record<string, string> = {
   'Je sluipende kosten': 'Your small subscriptions',
   'De kleine abonnementen waar je nooit meer naar omkijkt. Samen zijn ze vaak groter dan je denkt.': 'The small subscriptions you never look at again. Together they are often bigger than you think.',
   'Staat het er niet bij? Je kan altijd zelf iets toevoegen op de Budget-pagina.': 'Not in the list? You can always add something yourself on the Budget page.',
-  'Naar Budget': 'To Budget',
   'Naar Dossiers': 'To Cases',
   'Deel je kosten met iemand?': 'Do you share costs with someone?',
   'Bijvoorbeeld met de andere ouder van je kinderen. Kompal houdt dan bij wie wat betaalde en rekent het voor je af.': 'With the other parent of your children, for instance. Kompal then tracks who paid what and settles it for you.',
@@ -2283,6 +2282,53 @@ const en: Record<string, string> = {
     'The next page states what this is based on: the amount from the arrangement and the details that go with it. That way everything can be checked without this app.',
   'Deze brief is opgemaakt met Financieel Kompas. Hij bevat een berekening en geen juridisch standpunt.':
     'This letter was produced with Financieel Kompas. It contains a calculation, not a legal position.',
+  // Ronde 64 — de Budget-pagina legt zichzelf uit
+  'Nog niets om te verdelen': 'Nothing to divide yet',
+  'Deze tab rekent uit wat er overblijft van je inkomen. Daarvoor moet ze weten wat er binnenkomt en wat er elke maand vastligt — dat vul je in bij "Vast".':
+    'This tab works out what is left of your income. For that it needs to know what comes in and what is fixed each month — you enter that under "Fixed".',
+  'Naar je vaste inkomsten en lasten': 'To your fixed income and costs',
+  'Losmaken': 'Unlink',
+  'Losmaken: {naam} telt dan weer als niet geboekt': 'Unlink: {naam} counts as not booked again',
+  'Je plan voor deze maand: wat er binnenkomt, wat vastligt, en waar je zelf een grens op zet.':
+    'Your plan for this month: what comes in, what is fixed, and where you set your own limit.',
+  'Onderdeel van je budget': 'Part of your budget',
+  'Vast': 'Fixed',
+  'Zo werkt dit': 'How this works',
+  'Wat blijft er over? — zo werkt dit': 'What is left? — how this works',
+  'Kompal telt op wat er deze maand al binnenkwam plus je vaste inkomsten die nog moeten komen, trekt daar je vaste lasten van af en ook wat je maandelijks opzijzet, en wat overblijft is wat je vrij te verdelen hebt.':
+    'Kompal adds up what already came in this month plus the fixed income still to come, subtracts your fixed costs and what you set aside each month, and what remains is yours to divide freely.',
+  'Klopt dit cijfer niet? Kijk dan bij "Vast" of je loon en al je vaste lasten erin staan. Deze tab rekent alleen; invullen doe je daar.':
+    'Does this figure look wrong? Check under "Fixed" whether your salary and all your fixed costs are in there. This tab only calculates; you enter things there.',
+  'Wat ligt vast? — zo werkt dit': 'What is fixed? — how this works',
+  'Hier zet je alles wat elke maand terugkomt: je loon, je huur, je abonnementen. Je geeft het één keer in, en Kompal weet er daarna elke maand van.':
+    'This is where you put everything that comes back every month: your salary, your rent, your subscriptions. You enter it once, and Kompal knows about it every month after that.',
+  'Zo’n vaste last is nog geen boeking. Betaal je hem, dan tik je die betaling gewoon in zoals elke andere uitgave — herkent Kompal ze als deze vaste last, dan vraagt ze of die betaling erbij hoort. Of je drukt hier op "Boek in" en dan maakt ze de boeking voor je.':
+    'A fixed cost is not a transaction yet. When you pay it, you enter that payment like any other expense — if Kompal recognises it as this fixed cost, it asks whether it may join the two. Or you press "Book" here and it creates the transaction for you.',
+  'Pas als er een boeking is, telt het bedrag mee in je budgetten en in de analyse.':
+    'Only once there is a transaction does the amount count towards your budgets and your analysis.',
+  'Wat wil je beperken? — zo werkt dit': 'What do you want to limit? — how this works',
+  'Een budget is een grens die je zelf op een categorie zet: "aan Voeding wil ik deze maand niet meer dan € 400 uitgeven". Kompal telt er alle boekingen van die categorie in deze maand bij op en laat de balk meelopen.':
+    'A budget is a limit you set on a category yourself: "this month I do not want to spend more than € 400 on Groceries". Kompal adds up every transaction in that category this month and moves the bar along.',
+  'Zet je een budget op een hoofdcategorie, dan telt alles eronder mee. Zet je het op één product, dan telt alleen dat product.':
+    'Put a budget on a main category and everything below it counts. Put it on a single product and only that product counts.',
+  'Een vaste last verbruikt je budget zodra ze geboekt is — precies zoals elke andere uitgave in die categorie.':
+    'A fixed cost uses up your budget as soon as it is booked — exactly like any other expense in that category.',
+  'Staat het er niet bij? Voeg het zelf toe bij je vaste lasten.':
+    'Not in the list? Add it yourself under your fixed costs.',
+  'Naar je vaste lasten': 'To your fixed costs',
+  // De vraag "is dit je vaste last?"
+  'Hoort dit bij een vaste last?': 'Does this belong to a fixed cost?',
+  'Is dit al betaald?': 'Has this already been paid?',
+  'Je boekte {bedrag} en dat lijkt op je vaste last {naam} ({vast} per maand) — zelfde rekening, zelfde categorie, en die is deze maand nog niet afgepunt.':
+    'You booked {bedrag}, and that looks like your fixed cost {naam} ({vast} per month) — same account, same category, and it has not been ticked off this month.',
+  'Er staat deze maand al een boeking van {bedrag} op {datum} ({omschrijving}) die op {naam} lijkt. Je vaste last staat op {vast}.':
+    'There is already a transaction of {bedrag} on {datum} ({omschrijving}) this month that looks like {naam}. Your fixed cost is set to {vast}.',
+  'Zeg je ja, dan telt deze boeking als je vaste last van deze maand: ze verdwijnt uit "nog te boeken" en het belletje zwijgt erover. Er wordt niets bijgemaakt en je bedrag verandert niet.':
+    'If you say yes, this transaction counts as your fixed cost for this month: it disappears from "still to book" and the bell goes quiet about it. Nothing is added and your amount does not change.',
+  'Ja, dit is die betaling': 'Yes, this is that payment',
+  'Nee, aparte uitgave': 'No, separate expense',
+  'Nee, boek {vast} bij': 'No, add {vast}',
+  '{naam} staat nu als betaald voor deze maand.': '{naam} now counts as paid for this month.',
   // Ronde 63 — je gegevens raken niet kwijt
   'Laatste synchronisatie: {datum}.': 'Last sync: {datum}.',
   'Niet verbonden. Laatste synchronisatie: {datum}.': 'Not connected. Last sync: {datum}.',
@@ -2310,6 +2356,53 @@ const en: Record<string, string> = {
     'Nothing has gone to Google Drive for {dagen} days. Check your connection or make a backup.',
 }
 const fr: Record<string, string> = {
+  // Ronde 64 — la page Budget s’explique elle-même
+  'Nog niets om te verdelen': 'Rien à répartir pour l’instant',
+  'Deze tab rekent uit wat er overblijft van je inkomen. Daarvoor moet ze weten wat er binnenkomt en wat er elke maand vastligt — dat vul je in bij "Vast".':
+    'Cet onglet calcule ce qu’il te reste de tes revenus. Pour ça, il doit savoir ce qui rentre et ce qui est fixe chaque mois — tu encodes ça dans « Fixe ».',
+  'Naar je vaste inkomsten en lasten': 'Vers tes revenus et charges fixes',
+  'Losmaken': 'Détacher',
+  'Losmaken: {naam} telt dan weer als niet geboekt': 'Détacher : {naam} compte à nouveau comme non encodé',
+  'Je plan voor deze maand: wat er binnenkomt, wat vastligt, en waar je zelf een grens op zet.':
+    'Ton plan pour ce mois : ce qui rentre, ce qui est fixe, et là où tu poses toi-même une limite.',
+  'Onderdeel van je budget': 'Partie de ton budget',
+  'Vast': 'Fixe',
+  'Zo werkt dit': 'Comment ça marche',
+  'Wat blijft er over? — zo werkt dit': 'Que reste-t-il ? — comment ça marche',
+  'Kompal telt op wat er deze maand al binnenkwam plus je vaste inkomsten die nog moeten komen, trekt daar je vaste lasten van af en ook wat je maandelijks opzijzet, en wat overblijft is wat je vrij te verdelen hebt.':
+    'Kompal additionne ce qui est déjà rentré ce mois-ci plus les revenus fixes encore à venir, en retire tes charges fixes ainsi que ce que tu mets de côté chaque mois, et ce qui reste est ce que tu peux répartir librement.',
+  'Klopt dit cijfer niet? Kijk dan bij "Vast" of je loon en al je vaste lasten erin staan. Deze tab rekent alleen; invullen doe je daar.':
+    'Ce chiffre te semble faux ? Alors il manque quelque chose dans « Fixe » — ton salaire, ou une charge fixe que tu n’as pas encore encodée. Cet onglet ne fait que calculer ; c’est là que tu encodes.',
+  'Wat ligt vast? — zo werkt dit': 'Qu’est-ce qui est fixe ? — comment ça marche',
+  'Hier zet je alles wat elke maand terugkomt: je loon, je huur, je abonnementen. Je geeft het één keer in, en Kompal weet er daarna elke maand van.':
+    'Ici tu mets tout ce qui revient chaque mois : ton salaire, ton loyer, tes abonnements. Tu l’encodes une fois, et Kompal s’en souvient ensuite chaque mois.',
+  'Zo’n vaste last is nog geen boeking. Betaal je hem, dan tik je die betaling gewoon in zoals elke andere uitgave — herkent Kompal ze als deze vaste last, dan vraagt ze of die betaling erbij hoort. Of je drukt hier op "Boek in" en dan maakt ze de boeking voor je.':
+    'Une charge fixe n’est pas encore une écriture. Quand tu la paies, tu encodes ce paiement comme n’importe quelle autre dépense — si Kompal y reconnaît cette charge fixe, elle te demande si elle peut relier les deux. Ou tu cliques ici sur « Comptabiliser » et elle crée l’écriture pour toi.',
+  'Pas als er een boeking is, telt het bedrag mee in je budgetten en in de analyse.':
+    'Ce n’est qu’une fois l’écriture faite que le montant compte dans tes budgets et dans l’analyse.',
+  'Wat wil je beperken? — zo werkt dit': 'Que veux-tu limiter ? — comment ça marche',
+  'Een budget is een grens die je zelf op een categorie zet: "aan Voeding wil ik deze maand niet meer dan € 400 uitgeven". Kompal telt er alle boekingen van die categorie in deze maand bij op en laat de balk meelopen.':
+    'Un budget est une limite que tu poses toi-même sur une catégorie : « ce mois-ci, je ne veux pas dépenser plus de 400 € en Alimentation ». Kompal additionne toutes les écritures de cette catégorie ce mois-ci et fait avancer la barre.',
+  'Zet je een budget op een hoofdcategorie, dan telt alles eronder mee. Zet je het op één product, dan telt alleen dat product.':
+    'Si tu poses un budget sur une catégorie principale, tout ce qui est en dessous compte. Si tu le poses sur un seul produit, seul ce produit compte.',
+  'Een vaste last verbruikt je budget zodra ze geboekt is — precies zoals elke andere uitgave in die categorie.':
+    'Une charge fixe consomme ton budget dès qu’elle est encodée — exactement comme n’importe quelle autre dépense de cette catégorie.',
+  'Staat het er niet bij? Voeg het zelf toe bij je vaste lasten.':
+    'Pas dans la liste ? Ajoute-le toi-même à tes charges fixes.',
+  'Naar je vaste lasten': 'Vers tes charges fixes',
+  // De vraag "is dit je vaste last?"
+  'Hoort dit bij een vaste last?': 'Est-ce que ça correspond à une charge fixe ?',
+  'Is dit al betaald?': 'Est-ce déjà payé ?',
+  'Je boekte {bedrag} en dat lijkt op je vaste last {naam} ({vast} per maand) — zelfde rekening, zelfde categorie, en die is deze maand nog niet afgepunt.':
+    'Tu as encodé {bedrag}, et ça ressemble à ta charge fixe {naam} ({vast} par mois) — même compte, même catégorie, et elle n’a pas encore été pointée ce mois-ci.',
+  'Er staat deze maand al een boeking van {bedrag} op {datum} ({omschrijving}) die op {naam} lijkt. Je vaste last staat op {vast}.':
+    'Il y a déjà ce mois-ci une écriture de {bedrag} le {datum} ({omschrijving}) qui ressemble à {naam}. Ta charge fixe est fixée à {vast}.',
+  'Zeg je ja, dan telt deze boeking als je vaste last van deze maand: ze verdwijnt uit "nog te boeken" en het belletje zwijgt erover. Er wordt niets bijgemaakt en je bedrag verandert niet.':
+    'Si tu dis oui, cette écriture compte comme ta charge fixe du mois : elle disparaît de « encore à encoder » et la cloche se tait à son sujet. Rien n’est ajouté et ton montant ne change pas.',
+  'Ja, dit is die betaling': 'Oui, c’est ce paiement',
+  'Nee, aparte uitgave': 'Non, dépense distincte',
+  'Nee, boek {vast} bij': 'Non, ajoute {vast}',
+  '{naam} staat nu als betaald voor deze maand.': '{naam} compte maintenant comme payé pour ce mois.',
   // Ronde 63 — tes données ne se perdent pas
   'Laatste synchronisatie: {datum}.': 'Dernière synchronisation : {datum}.',
   'Niet verbonden. Laatste synchronisatie: {datum}.':
@@ -2565,7 +2658,6 @@ const fr: Record<string, string> = {
   'Je sluipende kosten': 'Tes dépenses discrètes',
   'De kleine abonnementen waar je nooit meer naar omkijkt. Samen zijn ze vaak groter dan je denkt.': 'Les petits abonnements que tu ne regardes plus jamais. Ensemble, ils pèsent souvent plus que tu ne crois.',
   'Staat het er niet bij? Je kan altijd zelf iets toevoegen op de Budget-pagina.': 'Pas dans la liste ? Tu peux toujours ajouter quelque chose toi-même sur la page Budget.',
-  'Naar Budget': 'Vers Budget',
   'Naar Dossiers': 'Vers Dossiers',
   'Deel je kosten met iemand?': 'Partages-tu des frais avec quelqu’un ?',
   'Bijvoorbeeld met de andere ouder van je kinderen. Kompal houdt dan bij wie wat betaalde en rekent het voor je af.': 'Par exemple avec l’autre parent de tes enfants. Kompal note alors qui a payé quoi et fait le décompte pour toi.',

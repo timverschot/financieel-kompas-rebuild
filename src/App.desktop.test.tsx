@@ -173,6 +173,9 @@ describe('App op een breed scherm', () => {
     await screen.findByText('Saldo')
     await user.click(screen.getByRole('button', { name: 'Budget' }))
     await screen.findByRole('heading', { name: 'Budget' })
+    // Sinds ronde 64 staan de budgetten op hun eigen tabblad, samen met het
+    // formulier waarmee je er een instelt.
+    await user.click(await screen.findByRole('tab', { name: /Budgetten/ }))
 
     const lijst = document.querySelector('.kolom-lijst') as HTMLElement
     const formulier = document.querySelector('.kolom-formulier') as HTMLElement
@@ -304,5 +307,20 @@ describe('App (desktop) — doorklikken vanaf de budgetstatus in de zijkolom', (
     const zijkolom = screen.getByText('Budgetstatus').closest('section.kaart') as HTMLElement
     await user.click(within(zijkolom).getByRole('button', { name: 'Alle' }))
     expect(await screen.findByRole('heading', { name: 'Budget instellen' })).toBeInTheDocument()
+  })
+})
+
+// Ronde 64: een bladwijzer naar een tabblad van Budget moet blijven werken.
+describe('het adres van de Budget-tabbladen', () => {
+  it('houdt het tabblad in het adres na een herstart', async () => {
+    window.location.hash = '#/budget/vast'
+    render(<App />)
+    await screen.findByRole('heading', { level: 1, name: 'Budget' })
+
+    // Het scherm staat op "Vast"...
+    expect(await screen.findByText('Vaste lasten')).toBeInTheDocument()
+    // ...en het ADRES ook. Zonder dat laatste landde de volgende herlaadbeurt of
+    // een bladwijzer voorgoed op "Te verdelen".
+    await waitFor(() => expect(window.location.hash).toBe('#/budget/vast'))
   })
 })

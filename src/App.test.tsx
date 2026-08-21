@@ -12,6 +12,7 @@ import {
   bewaarGedeeldeKost,
   bewaarLening,
   bewaarRekening,
+  bewaarTerugkerendePost,
   bewaarTransactie,
 } from './data/repository'
 import { huidigeMaand, vandaag } from './utils/datum'
@@ -91,6 +92,14 @@ async function ga(user: Gebruiker, pagina: string) {
 // in de balk zelf. De lade openen en er dan langs klikken werkte toevallig nog wel,
 // maar liep niet meer langs de weg die een gebruiker aflegt — en liet de lade
 // bovendien openstaan.
+// De Budget-pagina heeft sinds ronde 64 drie tabbladen. Deze hulpjes brengen je
+// naar het tabblad waar het onderdeel staat waarover de test gaat, langs dezelfde
+// weg als een gebruiker: eerst de pagina, dan het tabblad.
+async function gaBudget(user: Gebruiker, tab: 'Te verdelen' | 'Vast' | 'Budgetten') {
+  await ga(user, 'Budget')
+  await user.click(await screen.findByRole('tab', { name: new RegExp(tab) }))
+}
+
 async function gaMeer(user: Gebruiker, pagina: string) {
   await user.click(screen.getByRole('button', { name: 'Meer' }))
   await user.click(screen.getByRole('button', { name: pagina }))
@@ -284,7 +293,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Budget')
+    await gaBudget(user, 'Vast')
     const lasten = kaart('Vaste lasten')
     await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
     await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
@@ -304,7 +313,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Budget')
+    await gaBudget(user, 'Vast')
     const lasten = kaart('Vaste lasten')
     await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
     await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
@@ -329,7 +338,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Budget')
+    await gaBudget(user, 'Vast')
     const lasten = kaart('Vaste lasten')
     await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
     await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
@@ -347,7 +356,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Budget')
+    await gaBudget(user, 'Vast')
     const inkomsten = kaart('Vaste inkomsten')
     await user.type(within(inkomsten).getByLabelText('Vaste omschrijving'), 'Loon')
     await user.type(within(inkomsten).getByLabelText('Vast bedrag (€)'), '2400')
@@ -369,7 +378,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
 
     // 'Vervoer' verschijnt nu als keuze in het budgetformulier.
-    await ga(user, 'Budget')
+    await gaBudget(user, 'Budgetten')
     expect((await screen.findAllByRole('option', { name: 'Vervoer' })).length).toBeGreaterThan(0)
   })
 
@@ -383,7 +392,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Budget')
+    await gaBudget(user, 'Budgetten')
     await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
     await user.type(screen.getByLabelText('Maandbudget (€)'), '400')
     await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
@@ -398,7 +407,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Budget')
+    await gaBudget(user, 'Budgetten')
     await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
     await user.type(screen.getByLabelText('Maandbudget (€)'), '400')
     await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
@@ -433,7 +442,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Budget')
+    await gaBudget(user, 'Budgetten')
     await user.click(screen.getByRole('button', { name: 'Volgende maand' }))
     await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
     await user.click(screen.getByRole('button', { name: /^Alleen / }))
@@ -573,7 +582,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Categorie wijzigen' }))
 
     // Beschikbaar als keuze in het budgetformulier onder de nieuwe naam.
-    await ga(user, 'Budget')
+    await gaBudget(user, 'Budgetten')
     expect((await screen.findAllByRole('option', { name: 'Eten' })).length).toBeGreaterThan(0)
   })
 
@@ -596,7 +605,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Budget')
+    await gaBudget(user, 'Budgetten')
     await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
     await user.type(screen.getByLabelText('Maandbudget (€)'), '400')
     await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
@@ -615,7 +624,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Budget')
+    await gaBudget(user, 'Budgetten')
     await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
     await user.type(screen.getByLabelText('Maandbudget (€)'), '400')
     await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
@@ -642,7 +651,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Budget')
+    await gaBudget(user, 'Vast')
     const lasten = kaart('Vaste lasten')
     await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
     await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
@@ -1261,7 +1270,7 @@ describe('App — doorklikken van een cijfer naar zijn boekingen', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Budget')
+    await gaBudget(user, 'Budgetten')
     await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
     await user.type(screen.getByLabelText('Maandbudget (€)'), '400')
     await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
@@ -1306,7 +1315,7 @@ describe('App — doorklikken van een cijfer naar zijn boekingen', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Budget')
+    await gaBudget(user, 'Budgetten')
     await user.selectOptions(screen.getByLabelText('Budgetcategorie'), 'cat-voeding')
     await user.type(screen.getByLabelText('Maandbudget (€)'), '400')
     await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
@@ -1569,7 +1578,9 @@ describe('App — de navigatie na ronde 60', () => {
 
     await user.click(screen.getByRole('button', { name: 'Budget' }))
     expect(await screen.findByRole('heading', { name: 'Budget' })).toBeInTheDocument()
-    await waitFor(() => expect(window.location.hash).toBe('#/budget'))
+    // Sinds ronde 64 draagt het adres ook het tabblad, net als bij Analyse: zo open
+    // je na een herlaadbeurt weer waar je stond.
+    await waitFor(() => expect(window.location.hash).toBe('#/budget/plan'))
   })
 
   it('splitst de Analyse-pagina in drie vragen', async () => {
@@ -1768,5 +1779,444 @@ describe('de back-upherinnering', () => {
     await begonOp(langGeleden(45))
     render(<App />)
     await screen.findByRole('button', { name: 'Meldingen (1)' })
+  })
+})
+
+// Ronde 64 — de Budget-pagina legt zichzelf uit, en het afpunten van een vaste
+// last is een vraag geworden in plaats van een stille (verkeerde) beslissing.
+describe('de Budget-pagina na ronde 64', () => {
+  it('splitst de pagina in drie vragen, met het tabblad in het adres', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await ga(user, 'Budget')
+    expect(await screen.findByRole('tab', { name: /Te verdelen/ })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Vast/ })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Budgetten/ })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: /Budgetten/ }))
+    await waitFor(() => expect(window.location.hash).toBe('#/budget/budgetten'))
+    // En het formulier staat op hetzelfde tabblad als de lijst waar het bij hoort —
+    // niet vijf blokken lager, zoals vóór deze ronde.
+    expect(screen.getByLabelText('Budgetcategorie')).toBeInTheDocument()
+  })
+
+  // ⚠ De teller op "Budgetten" volgt de maandschakelaar; deze hoort dat ook te doen,
+  // anders staan er twee tellingen naast elkaar met twee verschillende regels.
+  it('telt opgezegde vaste lasten niet mee op de tab', async () => {
+    await bewaarTerugkerendePost({
+      id: 'p-actief',
+      omschrijving: 'Netflix',
+      bedrag: -1500,
+      rekeningId: 'r1',
+      dag: 3,
+    })
+    await bewaarTerugkerendePost({
+      id: 'p-gestopt',
+      omschrijving: 'Oude sportclub',
+      bedrag: -3000,
+      rekeningId: 'r1',
+      dag: 3,
+      eindMaand: vorigeMaand(MAAND),
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await ga(user, 'Budget')
+
+    const tab = await screen.findByRole('tab', { name: /Vast/ })
+    expect(tab).toHaveTextContent('1')
+    expect(tab).not.toHaveTextContent('2')
+  })
+
+  it('legt op elk tabblad uit hoe het werkt', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await ga(user, 'Budget')
+    expect(await screen.findByText('Wat blijft er over? — zo werkt dit')).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: /Vast/ }))
+    expect(await screen.findByText('Wat ligt vast? — zo werkt dit')).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: /Budgetten/ }))
+    expect(await screen.findByText('Wat wil je beperken? — zo werkt dit')).toBeInTheDocument()
+  })
+
+  // ⚠ Dít is het geval uit de feedback van Timothy: vaste last Water € 30, en jij
+  // tikt € 32 in. Vóór deze ronde gebeurde er niets — en maakte "Boek in" er
+  // daarna een tweede boeking van € 30 bij, zodat je maand € 62 op Water telde
+  // terwijl er € 32 van je rekening ging.
+  async function waterMetAfwijkendeBoeking() {
+    await bewaarTerugkerendePost({
+      id: 'p-water',
+      omschrijving: 'Water',
+      bedrag: -3000,
+      rekeningId: 'r1',
+      dag: 5,
+      categorieId: 'cat-wonen',
+    })
+    await bewaarTransactie({
+      id: 't-water',
+      datum: `${MAAND}-${dag(6)}`,
+      omschrijving: 'De Watergroep',
+      bedrag: -3200,
+      rekeningId: 'r1',
+      categorieId: 'cat-wonen',
+    })
+  }
+
+  it('vraagt bij "Boek in" of de bestaande boeking je vaste last is, en punt hem af bij ja', async () => {
+    await waterMetAfwijkendeBoeking()
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+
+    await user.click(await screen.findByRole('button', { name: 'Boek in' }))
+
+    // De app maakt niets bij, maar legt de twee naast elkaar.
+    const vraag = await screen.findByRole('dialog')
+    expect(within(vraag).getByText(/Er staat deze maand al een boeking van/)).toBeInTheDocument()
+    await user.click(within(vraag).getByRole('button', { name: 'Ja, dit is die betaling' }))
+
+    // De vaste last staat nu afgepunt, en er is GEEN tweede boeking bijgekomen.
+    expect(await screen.findByText('Geboekt ✓')).toBeInTheDocument()
+    expect(await db.transacties.count()).toBe(4)
+    expect((await db.transacties.get('t-water'))?.vasteLastId).toBe('p-water')
+  })
+
+  it('boekt alsnog in wanneer je zegt dat het een aparte uitgave is', async () => {
+    await waterMetAfwijkendeBoeking()
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+
+    await user.click(await screen.findByRole('button', { name: 'Boek in' }))
+    const vraag = await screen.findByRole('dialog')
+    await user.click(within(vraag).getByRole('button', { name: /^Nee, boek/ }))
+
+    // Nu is er wél een boeking bijgemaakt — want dat is wat je vroeg.
+    await waitFor(async () => expect(await db.transacties.count()).toBe(5))
+    expect((await db.transacties.get('t-water'))?.vasteLastId).toBeUndefined()
+  })
+
+  // De andere richting: je tikt de betaling zélf in en de app vraagt achteraf of
+  // ze bij een openstaande vaste last hoort. Zonder deze vraag bleef de vaste last
+  // eeuwig "nog te boeken" — het gedrag waar Timothy over viel.
+  it('vraagt na een boeking of ze bij een openstaande vaste last hoort', async () => {
+    await bewaarTerugkerendePost({
+      id: 'p-boodschappen',
+      omschrijving: 'Voedselpakket',
+      bedrag: -30000,
+      rekeningId: 'r1',
+      dag: 5,
+      categorieId: 'cat-voeding',
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    // 't3' staat op € 320 in dezelfde categorie: dat is binnen de marge van € 300.
+    await ga(user, 'Transacties')
+    await screen.findByText('Boodschappen')
+    await user.click(screen.getByRole('button', { name: /^Bewerk Boodschappen/ }))
+    await user.click(screen.getByRole('button', { name: 'Wijzigen' }))
+
+    expect(await screen.findByText(/lijkt op je vaste last Voedselpakket/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Ja, dit is die betaling' }))
+
+    await waitFor(async () => expect((await db.transacties.get('t3'))?.vasteLastId).toBe('p-boodschappen'))
+    // En er is niets bijgemaakt.
+    expect(await db.transacties.count()).toBe(3)
+  })
+
+  it('laat de boeking met rust wanneer je zegt dat het een aparte uitgave is', async () => {
+    await bewaarTerugkerendePost({
+      id: 'p-boodschappen',
+      omschrijving: 'Voedselpakket',
+      bedrag: -30000,
+      rekeningId: 'r1',
+      dag: 5,
+      categorieId: 'cat-voeding',
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await ga(user, 'Transacties')
+    await screen.findByText('Boodschappen')
+    await user.click(screen.getByRole('button', { name: /^Bewerk Boodschappen/ }))
+    await user.click(screen.getByRole('button', { name: 'Wijzigen' }))
+
+    await user.click(await screen.findByRole('button', { name: 'Nee, aparte uitgave' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect((await db.transacties.get('t3'))?.vasteLastId).toBeUndefined()
+    expect(await db.transacties.count()).toBe(3)
+  })
+
+  // ⚠ De knop in "Je situatie" wees naar een PAGINA en niet naar een plek: je
+  // landde bovenaan Budget terwijl het formulier dat de zin belooft het vijfde blok
+  // naar beneden stond. Timothy: "ik zie niet waar ik dan iets moet invullen."
+  it('brengt je vanuit Je situatie op het tabblad waar je een vaste kost toevoegt', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await gaMeer(user, 'Je situatie')
+    await user.click(await screen.findByRole('tab', { name: /Vaste kosten/ }))
+    await user.click(await screen.findByRole('button', { name: 'Naar je vaste lasten' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Budget' })).toBeInTheDocument()
+    // Met het formulier van je vaste LASTEN in beeld, niet vijf blokken lager.
+    const lasten = (await screen.findByText('Vaste lasten')).closest('section, .kaart') as HTMLElement
+    expect(within(lasten).getByLabelText('Vaste omschrijving')).toBeInTheDocument()
+    await waitFor(() => expect(window.location.hash).toBe('#/budget/vast'))
+  })
+
+  // ⚠ De zwaarste fout uit de nakijkronde: een koppeling gold in élke volgende
+  // maand. Eén "ja" in augustus en het water verdween voorgoed uit je plan.
+  it('laat een koppeling alleen in haar eigen maand gelden', async () => {
+    await bewaarTerugkerendePost({
+      id: 'p-water',
+      omschrijving: 'Water',
+      bedrag: -3000,
+      rekeningId: 'r1',
+      dag: 5,
+      categorieId: 'cat-wonen',
+    })
+    // Een gekoppelde betaling in de VORIGE maand.
+    await bewaarTransactie({
+      id: 't-water-oud',
+      datum: `${vorigeMaand(MAAND)}-05`,
+      omschrijving: 'De Watergroep',
+      bedrag: -3200,
+      rekeningId: 'r1',
+      categorieId: 'cat-wonen',
+      vasteLastId: 'p-water',
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+
+    // Deze maand staat Water gewoon weer open.
+    expect(await screen.findByRole('button', { name: 'Boek in' })).toBeInTheDocument()
+    expect(screen.queryByText('Geboekt ✓')).not.toBeInTheDocument()
+  })
+
+  // ⚠ Het antwoord van de gebruiker moet een bewerking overleven. Zonder deze test
+  // wist elke correctie van een typfout de koppeling stil uit.
+  it('houdt de koppeling wanneer je de boeking daarna bewerkt', async () => {
+    await bewaarTerugkerendePost({
+      id: 'p-boodschappen',
+      omschrijving: 'Voedselpakket',
+      bedrag: -30000,
+      rekeningId: 'r1',
+      dag: 5,
+      categorieId: 'cat-voeding',
+    })
+    await db.transacties.update('t3', { vasteLastId: 'p-boodschappen' })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await ga(user, 'Transacties')
+    await screen.findByText('Boodschappen')
+    await user.click(screen.getByRole('button', { name: /^Bewerk Boodschappen/ }))
+    const veld = screen.getByLabelText('Handelaar / winkel')
+    await user.clear(veld)
+    await user.type(veld, 'Colruyt')
+    await user.click(screen.getByRole('button', { name: 'Wijzigen' }))
+
+    await waitFor(async () => expect((await db.transacties.get('t3'))?.omschrijving).toBe('Colruyt'))
+    expect((await db.transacties.get('t3'))?.vasteLastId).toBe('p-boodschappen')
+  })
+
+  // Een verkeerd antwoord moet je kunnen rechtzetten. "Uitboeken" kan dat niet: dat
+  // wist een transactie, en deze boeking tikte je zelf in.
+  it('laat je een koppeling weer losmaken', async () => {
+    await bewaarTerugkerendePost({
+      id: 'p-water',
+      omschrijving: 'Water',
+      bedrag: -3000,
+      rekeningId: 'r1',
+      dag: 5,
+      categorieId: 'cat-wonen',
+    })
+    await bewaarTransactie({
+      id: 't-water',
+      datum: `${MAAND}-${dag(6)}`,
+      omschrijving: 'De Watergroep',
+      bedrag: -3200,
+      rekeningId: 'r1',
+      categorieId: 'cat-wonen',
+      vasteLastId: 'p-water',
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+
+    await user.click(await screen.findByRole('button', { name: /^Losmaken/ }))
+
+    await waitFor(async () => expect((await db.transacties.get('t-water'))?.vasteLastId).toBeUndefined())
+    // De boeking zelf blijft staan — losmaken is geen wissen.
+    expect(await db.transacties.get('t-water')).toBeDefined()
+    expect(await screen.findByRole('button', { name: 'Boek in' })).toBeInTheDocument()
+  })
+
+  // ⚠ De hele wegwijzer-belofte hing aan één ongeteste regel in App.
+  it('zet een melding over een budget op het tabblad Budgetten af', async () => {
+    await bewaarBudget({ id: 'b-voeding', categorieId: 'cat-voeding', bedrag: 30000 })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await user.click(await screen.findByRole('button', { name: /^Meldingen \(/ }))
+    await user.click(await screen.findByText(/^Budget Voeding is/))
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Budget' })).toBeInTheDocument()
+    await waitFor(() => expect(window.location.hash).toBe('#/budget/budgetten'))
+    expect(screen.getByLabelText('Budgetcategorie')).toBeInTheDocument()
+  })
+
+  // ⚠ Zonder dit is het standaardtabblad van de pagina op een verse app helemaal
+  // leeg — uitgerekend de pagina die begrijpelijker moest worden.
+  it('wijst de weg wanneer er nog niets te verdelen valt', async () => {
+    await db.transacties.clear()
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await ga(user, 'Budget')
+
+    expect(await screen.findByText('Nog niets om te verdelen')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Naar je vaste inkomsten en lasten' }))
+    expect(await screen.findByText('Vaste lasten')).toBeInTheDocument()
+  })
+
+  // ⚠ Wegklikken is geen antwoord (tweede nakijkronde ronde 64). "Nee" betekent bij
+  // "Boek in" *boek die vaste last alsnog bij* — en dat hing aan dezelfde weg als
+  // Escape en het kruisje. Wie de vraag wegklikte, kreeg dus een boeking van € 30
+  // bovenop zijn betaling van € 32: precies de fout die deze ronde wegneemt.
+  it('boekt niets bij wanneer je de vraag wegklikt', async () => {
+    await bewaarTerugkerendePost({
+      id: 'p-water',
+      omschrijving: 'Water',
+      bedrag: -3000,
+      rekeningId: 'r1',
+      dag: 5,
+      categorieId: 'cat-wonen',
+    })
+    await bewaarTransactie({
+      id: 't-water',
+      datum: `${MAAND}-${dag(6)}`,
+      omschrijving: 'De Watergroep',
+      bedrag: -3200,
+      rekeningId: 'r1',
+      categorieId: 'cat-wonen',
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+
+    await user.click(await screen.findByRole('button', { name: 'Boek in' }))
+    await screen.findByText(/Er staat deze maand al een boeking van/)
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => expect(screen.queryByText(/Er staat deze maand al een boeking van/)).not.toBeInTheDocument())
+    // Niets bijgemaakt en niets gekoppeld: de vier startboekingen plus deze ene.
+    expect(await db.transacties.count()).toBe(4)
+    expect((await db.transacties.get('t-water'))?.vasteLastId).toBeUndefined()
+  })
+
+  // ⚠ De ongedaan-maken-knop van "Ja" zocht de boeking opnieuw op in een lijst die
+  // haar nog niet kende, en deed daardoor aantoonbaar niets.
+  it('maakt het koppelen echt ongedaan', async () => {
+    await bewaarTerugkerendePost({
+      id: 'p-water',
+      omschrijving: 'Water',
+      bedrag: -3000,
+      rekeningId: 'r1',
+      dag: 5,
+      categorieId: 'cat-wonen',
+    })
+    await bewaarTransactie({
+      id: 't-water',
+      datum: `${MAAND}-${dag(6)}`,
+      omschrijving: 'De Watergroep',
+      bedrag: -3200,
+      rekeningId: 'r1',
+      categorieId: 'cat-wonen',
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+
+    await user.click(await screen.findByRole('button', { name: 'Boek in' }))
+    await user.click(await screen.findByRole('button', { name: 'Ja, dit is die betaling' }))
+    await waitFor(async () => expect((await db.transacties.get('t-water'))?.vasteLastId).toBe('p-water'))
+
+    await user.click(await screen.findByRole('button', { name: 'Ongedaan maken' }))
+    await waitFor(async () => expect((await db.transacties.get('t-water'))?.vasteLastId).toBeUndefined())
+  })
+
+  // ⚠ Een gekoppelde boeking die je omzet naar een gesplitst kassaticket of naar een
+  // inkomst, is niet meer de betaling van die vaste last.
+  it('laat de koppeling los wanneer de boeking een inkomst wordt', async () => {
+    await bewaarTerugkerendePost({
+      id: 'p-boodschappen',
+      omschrijving: 'Voedselpakket',
+      bedrag: -30000,
+      rekeningId: 'r1',
+      dag: 5,
+      categorieId: 'cat-voeding',
+    })
+    await db.transacties.update('t3', { vasteLastId: 'p-boodschappen' })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await ga(user, 'Transacties')
+    await screen.findByText('Boodschappen')
+    await user.click(screen.getByRole('button', { name: /^Bewerk Boodschappen/ }))
+    await user.click(screen.getByLabelText('Inkomst'))
+    await user.click(screen.getByRole('button', { name: 'Wijzigen' }))
+
+    await waitFor(async () => expect((await db.transacties.get('t3'))?.bedrag).toBeGreaterThan(0))
+    expect((await db.transacties.get('t3'))?.vasteLastId).toBeUndefined()
+  })
+
+  // Zonder deze test kan de koppeling stil verdwijnen: dan staat de vaste last
+  // opnieuw als "nog te boeken" en meldt het belletje hem alsnog.
+  it('houdt een afgepunte vaste last afgepunt', async () => {
+    await bewaarTerugkerendePost({
+      id: 'p-water',
+      omschrijving: 'Water',
+      bedrag: -3000,
+      rekeningId: 'r1',
+      dag: 5,
+      categorieId: 'cat-wonen',
+    })
+    await bewaarTransactie({
+      id: 't-water',
+      datum: `${MAAND}-${dag(6)}`,
+      omschrijving: 'De Watergroep',
+      bedrag: -3200,
+      rekeningId: 'r1',
+      categorieId: 'cat-wonen',
+      vasteLastId: 'p-water',
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+
+    expect(await screen.findByText('Geboekt ✓')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Boek in' })).not.toBeInTheDocument()
   })
 })

@@ -51,6 +51,23 @@ describe('Meldingenbel', () => {
     expect(screen.getByText('Niets om te melden. Al je budgetten en garanties zijn in orde.')).toBeInTheDocument()
   })
 
+  // Ronde 64: de Budget-pagina heeft drie tabbladen, dus "naar Budget" is niet
+  // genoeg meer. Zonder deze doorgifte land je op "Te verdelen" en mag je zelf gaan
+  // zoeken waar de melding over ging.
+  it('geeft het tabblad van de Budget-pagina mee', async () => {
+    const user = userEvent.setup()
+    const onGaNaar = vi.fn()
+    render(
+      <Meldingenbel
+        meldingen={[{ ...budgetMelding, budgettab: 'budgetten' }]}
+        onGaNaar={onGaNaar}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Meldingen (1)' }))
+    await user.click(screen.getByText('Budget Voeding is 92% verbruikt'))
+    expect(onGaNaar).toHaveBeenCalledWith('budget', undefined, undefined, 'budgetten')
+  })
+
   it('brengt je naar de pagina van de melding waarop je klikt, niet altijd naar Budget', async () => {
     const user = userEvent.setup()
     const onGaNaar = vi.fn()
@@ -61,8 +78,9 @@ describe('Meldingenbel', () => {
     // Niet alleen de pagina, ook de lade: anders land je op de gedeelde kosten en
     // mag je zelf gaan zoeken waar die aflopende garantie staat.
     // De derde parameter is het dossier dat geopend moet worden; een garantie
-    // hangt niet aan één dossier, dus die blijft leeg.
-    expect(onGaNaar).toHaveBeenCalledWith('dossiers', 'garantie', undefined)
+    // hangt niet aan één dossier, dus die blijft leeg. De vierde is sinds ronde 64
+    // het tabblad van de Budget-pagina, en dat zegt hier niets.
+    expect(onGaNaar).toHaveBeenCalledWith('dossiers', 'garantie', undefined, undefined)
   })
 
   it('sluit het paneel na een keuze', async () => {
@@ -179,6 +197,6 @@ describe('Meldingenbel — een melding met een dossier', () => {
     )
     await user.click(screen.getByRole('button', { name: /Meldingen/ }))
     await user.click(screen.getByText('De bijdrage is geïndexeerd'))
-    expect(onGaNaar).toHaveBeenCalledWith('dossiers', 'coouderschap', 'd7')
+    expect(onGaNaar).toHaveBeenCalledWith('dossiers', 'coouderschap', 'd7', undefined)
   })
 })
