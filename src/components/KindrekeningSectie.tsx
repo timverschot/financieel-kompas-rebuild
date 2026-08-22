@@ -7,6 +7,7 @@ import { labelVanCategorie } from '../data/categorieen/resolve'
 import { KindrekeningpostFormulier } from './KindrekeningpostFormulier'
 import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
+import type { NieuweTak } from '../utils/categorietak'
 import type { Vertaler } from '../i18n'
 import { dagKort, vandaag } from '../utils/datum'
 import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
@@ -48,7 +49,7 @@ export function KindrekeningSectie({
   onPostOpslaan: (p: Kindrekeningpost) => Promise<void> | void
   onPostVerwijderen: (id: string) => Promise<void> | void
   /** Maakt ter plekke een nieuwe subcategorie aan en geeft het nieuwe id terug. */
-  onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
+  onNieuweSubcategorie?: (plan: NieuweTak) => Promise<string>
 }) {
   const { t } = useT()
   const [bewerkPost, setBewerkPost] = useState<Kindrekeningpost | null>(null)

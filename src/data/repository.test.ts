@@ -28,6 +28,7 @@ import {
   bewaarSubcategorie,
   laadCategorieen,
   laadSubcategorieen,
+  bewaarNieuweTak,
   verwijderVerrekeningMetHeropening,
   herstelVerrekeningMetKosten,
   markeerVerrekeningOvergemaakt,
@@ -512,5 +513,51 @@ describe('ondeelbare stappen rond een afrekening en een categorie (ronde 65)', (
 
     expect((await laadDossiers()).geldig).toHaveLength(0)
     expect((await laadVerrekeningen()).geldig).toHaveLength(0)
+  })
+})
+
+// --- Ronde 67: een nieuwe categorietak in één ondeelbare stap ---
+describe('een nieuwe tak aanmaken (ronde 67)', () => {
+  it('zet hoofdcategorie, categorie en subcategorie samen weg', async () => {
+    await bewaarNieuweTak(
+      [
+        { id: 'h1', naam: 'Huisraad' },
+        { id: 'c1', naam: 'Meubels en toestellen', ouderId: 'h1' },
+      ],
+      { id: 's1', naam: 'televisietoestel', categorieId: 'c1' },
+    )
+
+    expect((await laadCategorieen()).geldig.map((c) => c.id).sort()).toEqual(['c1', 'h1'])
+    expect((await laadSubcategorieen()).geldig.map((s) => s.id)).toEqual(['s1'])
+  })
+
+  it('laat niets half achter wanneer het schrijven halverwege stukloopt', async () => {
+    // ⚠ Dit is waarom het één stap is. Drie losse schrijfacties zouden je bij een
+    // volle opslag een lege hoofdcategorie bezorgen waar je nooit om vroeg,
+    // terwijl je boeking nog altijd geen categorie heeft.
+    const logboekVoor = await db.events.count()
+    const stuk = vi.spyOn(db.subcategorieen, 'put').mockImplementation(() => {
+      throw new Error('opslag vol')
+    })
+    await expect(
+      bewaarNieuweTak(
+        [
+          { id: 'h2', naam: 'Huisraad' },
+          { id: 'c2', naam: 'Meubels', ouderId: 'h2' },
+        ],
+        { id: 's2', naam: 'televisietoestel', categorieId: 'c2' },
+      ),
+    ).rejects.toThrow()
+    stuk.mockRestore()
+
+    expect((await laadCategorieen()).geldig).toHaveLength(0)
+    expect((await laadSubcategorieen()).geldig).toHaveLength(0)
+    expect(await db.events.count()).toBe(logboekVoor)
+  })
+
+  it('werkt ook zonder nieuwe categorieën', async () => {
+    await bewaarNieuweTak([], { id: 's3', naam: 'Kefir', categorieId: 'cat-zuivel-en-kaas' })
+    expect((await laadCategorieen()).geldig).toHaveLength(0)
+    expect((await laadSubcategorieen()).geldig.map((s) => s.naam)).toEqual(['Kefir'])
   })
 })

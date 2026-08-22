@@ -101,6 +101,28 @@ const en: Record<string, string> = {
   'beweging': 'movement',
   'Deelbedrag {n}': 'Part amount {n}',
   'Je hebt minstens twee rekeningen nodig om over te boeken.': 'You need at least two accounts to transfer between them.',
+  // Ronde 67 — een nieuwe tak aanmaken vanuit het boekingsvenster
+  'Kies eerst een hoofdcategorie.': 'Pick a main category first.',
+  'Geef je nieuwe hoofdcategorie een naam.': 'Give your new main category a name.',
+  'Kies eerst een categorie.': 'Pick a category first.',
+  'Geef je nieuwe categorie een naam.': 'Give your new category a name.',
+  'Toevoegen is niet gelukt. Je invoer staat er nog — probeer het opnieuw.':
+    'Adding it did not work. What you typed is still there — please try again.',
+  '+ Nieuwe hoofdcategorie…': '+ New main category…',
+  'Naam van de nieuwe hoofdcategorie': 'Name of the new main category',
+  'bv. Huisraad': 'e.g. Household goods',
+  '+ Nieuwe categorie…': '+ New category…',
+  'Naam van de nieuwe categorie': 'Name of the new category',
+  'bv. Meubels en toestellen': 'e.g. Furniture and appliances',
+  'Bezig met toevoegen…': 'Adding…',
+  'Nieuwe subcategorie': 'New subcategory',
+  'Typ hierboven een naam voor je nieuwe subcategorie.': 'Type a name for your new subcategory above.',
+  'Rond eerst je nieuwe categorie af, of annuleer ze.': 'Finish your new category first, or cancel it.',
+  '“{naam}” is toegevoegd en staat nu op deze boeking.': '“{naam}” has been added and is now on this entry.',
+  'Er bestaat al een hoofdcategorie “{naam}”.': 'A main category “{naam}” already exists.',
+  'Er bestaat hier al een categorie “{naam}”.': 'A category “{naam}” already exists here.',
+  'Er bestaat hier al een subcategorie “{naam}”. Annuleer en kies ze uit de lijst.':
+    'A subcategory “{naam}” already exists here. Cancel and pick it from the list.',
   // Ronde 66 — teksten die via een tabel bij t() komen en daardoor nooit vertaald raakten
   'Overboekingen': 'Transfers',
   'Vul een bedrag in.': 'Enter an amount.',
@@ -1215,7 +1237,6 @@ const en: Record<string, string> = {
   'Wis filter {naam}': 'Clear filter {naam}',
   '+ “{naam}” toevoegen aan …': '+ Add “{naam}” to …',
   'Nieuwe subcategorie “{naam}”': 'New subcategory “{naam}”',
-  'Onder welke categorie': 'Under which category',
   'Subcategorie toevoegen': 'Add subcategory',
   // Ronde 9: desktoplayout
   'Budgetstatus': 'Budget status',
@@ -2305,7 +2326,6 @@ const en: Record<string, string> = {
   'Vul een bedrag groter dan nul in.': 'Enter an amount greater than zero.',
   'Er staat geen enkele open kost in deze selectie.': 'There is no open cost in this selection.',
   'Geef een naam om op te slaan.': 'Enter a name to save.',
-  'Kies eerst waar deze subcategorie onder hoort.': 'First choose where this subcategory belongs.',
   'Geef een productnaam en een garantieduur in maanden om op te slaan.':
     'Enter a product name and a warranty period in months to save.',
   'Er staat een getal bij de kredietkaart dat de app niet kan gebruiken. Pas het aan om op te slaan.':
@@ -2555,7 +2575,7 @@ const fr: Record<string, string> = {
   'Een lening bijhouden': 'Suivre un prêt',
   'Een aankoop met garantie bijhouden': 'Suivre un achat sous garantie',
   'De app kent nog geen indexcijfer voor {maanden}. Ze kent cijfers tot {laatste}. Vul het ontbrekende cijfer zelf in via "Wijzig de regeling", dan is de berekening volledig.':
-    'L’app ne connaît pas encore d’indice pour {maanden}. Elle connaît les indices jusqu’à {laatste}. Encode toi-même l’indice manquant via « Modifier l’accord » et le calcul sera complet.',
+    'L’app ne connaît pas encore d’indice pour {maanden}. Elle connaît les indices jusqu’à {laatste}. Encode toi-même l’indice manquant via « Modifier l’accord » et le calcul sera complet.',
   'Vul het indexcijfer in': 'Encode l’indice',
   'Nog geen vaste inkomsten. Zodra je een rekening hebt, vul je hier je loon in.':
     'Pas encore de revenus fixes. Dès que tu as un compte, tu encodes ton salaire ici.',
@@ -2575,6 +2595,28 @@ const fr: Record<string, string> = {
   'beweging': 'mouvement',
   'Deelbedrag {n}': 'Montant partiel {n}',
   'Je hebt minstens twee rekeningen nodig om over te boeken.': 'Il te faut au moins deux comptes pour faire un virement.',
+  // Ronde 67 — créer une nouvelle branche depuis la fenêtre d’écriture
+  'Kies eerst een hoofdcategorie.': 'Choisis d’abord une catégorie principale.',
+  'Geef je nieuwe hoofdcategorie een naam.': 'Donne un nom à ta nouvelle catégorie principale.',
+  'Kies eerst een categorie.': 'Choisis d’abord une catégorie.',
+  'Geef je nieuwe categorie een naam.': 'Donne un nom à ta nouvelle catégorie.',
+  'Toevoegen is niet gelukt. Je invoer staat er nog — probeer het opnieuw.':
+    'L’ajout n’a pas fonctionné. Ce que tu as encodé est toujours là — réessaie.',
+  '+ Nieuwe hoofdcategorie…': '+ Nouvelle catégorie principale…',
+  'Naam van de nieuwe hoofdcategorie': 'Nom de la nouvelle catégorie principale',
+  'bv. Huisraad': 'p. ex. Biens ménagers',
+  '+ Nieuwe categorie…': '+ Nouvelle catégorie…',
+  'Naam van de nieuwe categorie': 'Nom de la nouvelle catégorie',
+  'bv. Meubels en toestellen': 'p. ex. Meubles et appareils',
+  'Bezig met toevoegen…': 'Ajout en cours…',
+  'Nieuwe subcategorie': 'Nouvelle sous-catégorie',
+  'Typ hierboven een naam voor je nieuwe subcategorie.': 'Encode ci-dessus un nom pour ta nouvelle sous-catégorie.',
+  'Rond eerst je nieuwe categorie af, of annuleer ze.': 'Termine d’abord ta nouvelle catégorie, ou annule-la.',
+  '“{naam}” is toegevoegd en staat nu op deze boeking.': '“{naam}” a été ajoutée et figure maintenant sur cette écriture.',
+  'Er bestaat al een hoofdcategorie “{naam}”.': 'Une catégorie principale « {naam} » existe déjà.',
+  'Er bestaat hier al een categorie “{naam}”.': 'Une catégorie « {naam} » existe déjà ici.',
+  'Er bestaat hier al een subcategorie “{naam}”. Annuleer en kies ze uit de lijst.':
+    'Une sous-catégorie « {naam} » existe déjà ici. Annule et choisis-la dans la liste.',
   // Ronde 66 — des textes qui passent par une table et n'étaient donc jamais traduits
   'Overboekingen': 'Virements',
   'Vul een bedrag in.': 'Encode un montant.',
@@ -3765,7 +3807,6 @@ const fr: Record<string, string> = {
   'Wis filter {naam}': 'Effacer le filtre {naam}',
   '+ “{naam}” toevoegen aan …': '+ Ajouter « {naam} » à …',
   'Nieuwe subcategorie “{naam}”': 'Nouvelle sous-catégorie « {naam} »',
-  'Onder welke categorie': 'Sous quelle catégorie',
   'Subcategorie toevoegen': 'Ajouter une sous-catégorie',
   // Ronde 9 : mise en page bureau
   'Budgetstatus': 'État des budgets',
@@ -4857,7 +4898,6 @@ const fr: Record<string, string> = {
   'Vul een bedrag groter dan nul in.': 'Saisis un montant supérieur à zéro.',
   'Er staat geen enkele open kost in deze selectie.': 'Il n’y a aucun frais ouvert dans cette sélection.',
   'Geef een naam om op te slaan.': 'Saisis un nom pour enregistrer.',
-  'Kies eerst waar deze subcategorie onder hoort.': 'Choisis d’abord où va cette sous-catégorie.',
   'Geef een productnaam en een garantieduur in maanden om op te slaan.':
     'Saisis un nom de produit et une durée de garantie en mois pour enregistrer.',
   'Er staat een getal bij de kredietkaart dat de app niet kan gebruiken. Pas het aan om op te slaan.':

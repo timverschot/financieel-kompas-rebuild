@@ -24,6 +24,7 @@ import { Kaart } from '../ui/basis'
 import { GezinsledenKiezer } from './GezinslidKiezer'
 import { verkleinAfbeelding } from '../utils/afbeelding'
 import { useT } from '../i18n'
+import type { NieuweTak } from '../utils/categorietak'
 import { vandaag } from '../utils/datum'
 import { Bonknop } from '../ui/Bonknop'
 
@@ -120,7 +121,7 @@ export function TransactieFormulier({
   bewerken?: Transactie | null
   // Bewaart een nieuwe subcategorie onder een bestaande (midden)categorie en
   // geeft het nieuwe id terug, zodat de regel er meteen op getagd kan worden.
-  onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
+  onNieuweSubcategorie?: (plan: NieuweTak) => Promise<string>
   // Optioneel: voor of door welke gezinsleden was deze uitgave?
   gezinsleden?: Kind[]
   // Optioneel: welke categorie deze handelaar de vorige keer kreeg. Zonder deze
@@ -413,15 +414,21 @@ export function TransactieFormulier({
 
   async function verzend(e: FormEvent) {
     e.preventDefault()
-    if (!geldig) {
-      // De vlag "blijf open na opslaan" hoort bij DEZE poging. Wisten we haar hier
-      // niet, dan bleef ze aan staan: tikte je per ongeluk op "Opslaan + volgende"
-      // terwijl het formulier nog niet klopte, dan bleef de popup daarna óók open
-      // wanneer je later gewoon op "Toevoegen" duwde. Je zag een leeg formulier,
-      // dacht dat het niet gelukt was, en boekte alles een tweede keer.
-      blijfOpen.current = false
-      return
-    }
+    // ⚠ WELKE KNOP ER GEDUWD IS, LEZEN WE HIER — niet in een `onClick` op de knop.
+    //
+    // De vlag "blijf open na opslaan" hoort bij DEZE poging. Zat ze in een `onClick`,
+    // dan bleef ze hangen zodra de verzending daarna niet doorging: de klik gebeurt
+    // namelijk vóór het verzenden. Tikte je op "Opslaan + volgende" terwijl het
+    // formulier nog niet klopte — of terwijl er nog een nieuwe categorie openstond,
+    // want die houdt het verzenden tegen — dan bleef de popup daarna óók open wanneer
+    // je later gewoon op "Toevoegen" duwde. Je zag een leeg formulier, dacht dat het
+    // niet gelukt was, en boekte alles een tweede keer.
+    //
+    // `submitter` zegt welke knop de verzending in gang zette. Zo hoort de vlag bij de
+    // poging en niet bij de klik, en kan ze niet blijven staan.
+    const knop = (e.nativeEvent as SubmitEvent).submitter as HTMLElement | null
+    blijfOpen.current = knop?.dataset.blijfOpen === '1'
+    if (!geldig) return
     // Twee keer tikken mag nooit twee boekingen maken. Op een telefoon duurt het
     // bewaren merkbaar lang (schrijven én alle lijsten opnieuw laden), en zonder
     // deze grendel draaide een tweede tik de hele functie nog eens — mét een nieuw
@@ -1089,9 +1096,7 @@ export function TransactieFormulier({
               className="knop knop-ghost"
               aria-disabled={!geldig || bezig}
               aria-describedby={!geldig ? redenId : undefined}
-              onClick={() => {
-                blijfOpen.current = true
-              }}
+              data-blijf-open="1"
             >
               {t('Opslaan + volgende')}
             </button>

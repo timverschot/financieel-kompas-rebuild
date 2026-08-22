@@ -8,6 +8,7 @@ import { GezinsledenKiezer } from './GezinslidKiezer'
 import { verkleinAfbeelding } from '../utils/afbeelding'
 import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
+import type { NieuweTak } from '../utils/categorietak'
 import { Bonknop } from '../ui/Bonknop'
 import { voorstelKostensoort, KOSTENSOORT_BRON } from '../utils/kostensoort'
 
@@ -47,7 +48,7 @@ export function GedeeldeKostFormulier({
   onAnnuleer?: () => void
   bewerken?: GedeeldeKost | null
   /** Maakt ter plekke een nieuwe subcategorie aan en geeft het nieuwe id terug. */
-  onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
+  onNieuweSubcategorie?: (plan: NieuweTak) => Promise<string>
 }) {
   const { t } = useT()
   const [omschrijving, setOmschrijving] = useState(() => beginwaarden().omschrijving)

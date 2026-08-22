@@ -8,6 +8,7 @@ import { GezinsledenKiezer } from './GezinslidKiezer'
 import { verkleinAfbeelding } from '../utils/afbeelding'
 import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
+import type { NieuweTak } from '../utils/categorietak'
 import { Bonknop } from '../ui/Bonknop'
 
 // De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
@@ -44,7 +45,7 @@ export function KindrekeningpostFormulier({
   onAnnuleer?: () => void
   bewerken?: Kindrekeningpost | null
   /** Maakt ter plekke een nieuwe subcategorie aan en geeft het nieuwe id terug. */
-  onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
+  onNieuweSubcategorie?: (plan: NieuweTak) => Promise<string>
 }) {
   const { t } = useT()
   const [soort, setSoort] = useState<'storting' | 'uitgave'>(() => beginwaarden().soort)

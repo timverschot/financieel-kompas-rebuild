@@ -54,6 +54,7 @@ import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 import { Bonknop } from '../ui/Bonknop'
 import { formatEuro } from '../utils/format'
 import { dagJaar } from '../utils/datum'
+import type { NieuweTak } from '../utils/categorietak'
 
 // Leest een percentageveld: leeg betekent 'niet ingesteld', een getal van 0 tot en
 // met 100 is geldig, al de rest is ongeldig (dan blijft de knop uit).
@@ -140,7 +141,7 @@ export function DossierSectie({
    * pot geen ontbrekend item kon toevoegen — terwijl dat in het transactieformulier
    * wél kon. Dezelfde handeling hoorde overal hetzelfde te werken.
    */
-  onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
+  onNieuweSubcategorie?: (plan: NieuweTak) => Promise<string>
   /**
    * Welk dossier meteen open moet staan (ronde 40). Klik je in de transactielijst
    * op de badge "gedeeld", dan hoor je in dát dossier te landen en niet in het

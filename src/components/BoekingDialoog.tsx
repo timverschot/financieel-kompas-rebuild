@@ -19,6 +19,7 @@ import { TerugkerendePostFormulier } from './TerugkerendePostFormulier'
 import { OverboekingFormulier } from './OverboekingFormulier'
 import type { HandelaarIndex } from '../utils/categorieVoorstel'
 import { useT } from '../i18n'
+import type { NieuweTak } from '../utils/categorietak'
 
 // Eén plek om iets in te boeken, waar je ook staat in de app.
 //
@@ -93,7 +94,7 @@ export function BoekingDialoog({
   categorieen: Categorie[]
   handelaars: string[]
   handelaarIndex?: HandelaarIndex
-  onNieuweSubcategorie?: (categorieId: string, naam: string) => Promise<string>
+  onNieuweSubcategorie?: (plan: NieuweTak) => Promise<string>
   gezinsleden?: Kind[]
   overboekingen: Overboeking[]
   transacties: Transactie[]

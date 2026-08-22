@@ -489,6 +489,23 @@ export async function verwijderCategorieMetAanhang(
   ])
 }
 
+/**
+ * Een NIEUWE categorietak in één ondeelbare stap: de hoofdcategorie die er nog
+ * niet was, de categorie die er nog niet was, en de subcategorie zelf.
+ *
+ * ⚠ Waarom niet drie losse schrijfacties (ronde 67). Breekt het halverwege af — de
+ * opslag zit vol, je sluit het tabblad — dan houd je een lege eigen hoofdcategorie
+ * over waar je nooit om vroeg, terwijl je boeking nog altijd geen categorie heeft.
+ * Dat is precies de half-af toestand die ronde 65 overal weggewerkt heeft. Nu gaat
+ * alles door, of niets.
+ */
+export async function bewaarNieuweTak(categorieen: Categorie[], subcategorie: Subcategorie): Promise<void> {
+  await pasGebeurtenissenToe([
+    ...categorieen.map((c) => ({ type: 'categorie.bewaard', payload: CategorieSchema.parse(c) }) as const),
+    { type: 'subcategorie.bewaard', payload: SubcategorieSchema.parse(subcategorie) },
+  ])
+}
+
 /** Een verwijderde categorietak in één keer terugzetten (de ongedaan-balk). */
 export async function herstelCategorieMetAanhang(
   categorieen: Categorie[],

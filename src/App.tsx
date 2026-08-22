@@ -44,6 +44,7 @@ import {
   bewaarOverboeking,
   bewaarSpaardoel,
   bewaarSubcategorie,
+  bewaarNieuweTak,
   bewaarTerugkerendePost,
   bewaarTransactie,
   bewaarVerrekening,
@@ -183,6 +184,7 @@ import { inkomstenUitgavenPerMaand } from './utils/maandverloop'
 import { labelVanCategorie } from './data/categorieen/resolve'
 import { vulCategorieAan } from './utils/transactie'
 import { ingebouwdeItemNaam, itemPerId, stelCategorieboomIn } from './data/categorieen/zoek'
+import { bouwTak, type NieuweTak } from './utils/categorietak'
 import { budgetKleur, geldendeBudgetten, maandenMetEigenBudget, uitgavenInMaand } from './utils/budget'
 import { bouwHandelaarIndex } from './utils/categorieVoorstel'
 import { bonVanTransactie } from './utils/kluis'
@@ -1377,13 +1379,35 @@ export function App() {
     if (oud) toonUndo(t('Spaardoel verwijderd'), () => bewaarSpaardoel(oud))
   }
 
-  // Geeft het nieuwe id terug, zodat een formulier de zopas gemaakte subcategorie
-  // meteen kan selecteren zonder ze opnieuw te moeten opzoeken.
-  async function voegSubcategorieToe(categorieId: string, naam: string): Promise<string> {
-    const id = nieuwId()
-    await bewaarSubcategorie({ id, naam, categorieId })
-    await herlaad()
-    return id
+  /**
+   * Een nieuwe subcategorie, en desnoods de categorie en de hoofdcategorie eronder.
+   *
+   * Geeft het nieuwe id terug, zodat een formulier de zopas gemaakte subcategorie
+   * meteen kan selecteren zonder ze opnieuw te moeten opzoeken.
+   *
+   * ⚠ RONDE 67. Tot nu toe kon je hier alleen iets bijzetten onder een categorie
+   * die al bestond, en dan nog alleen onder een INGEBOUWDE. Wie een televisie
+   * kocht en daar een eigen hoofdcategorie "Huisraad" voor wilde, moest zijn
+   * boeking verlaten. Het plan zegt nu wat er allemaal nog gemaakt moet worden, en
+   * dat gaat in ÉÉN ondeelbare stap naar de database: anders houd je bij een
+   * mislukking een lege hoofdcategorie over waar je nooit om vroeg.
+   */
+  async function voegSubcategorieToe(plan: NieuweTak): Promise<string> {
+    const { categorieen: nieuweCategorieen, subcategorie } = bouwTak(plan, nieuwId)
+    await bewaarNieuweTak(nieuweCategorieen, subcategorie)
+    // ⚠ Het opnieuw inlezen mag deze oproep niet doen mislukken. Het WEGSCHRIJVEN is
+    // op dit punt al gelukt en ondeelbaar gebeurd; struikelt daarna het inlezen, dan
+    // kreeg het scherm "Toevoegen is niet gelukt — probeer het opnieuw" te zien en
+    // maakte een tweede poging een tweede hoofdcategorie, een tweede categorie en een
+    // tweede subcategorie met dezelfde namen aan. De melding stuurde de gebruiker dus
+    // recht naar de schade. Loopt het inlezen mis, dan is het scherm even niet bij —
+    // de eerstvolgende herlaadbeurt zet dat recht.
+    try {
+      await herlaad()
+    } catch {
+      // stil: de tak staat in de database, alleen het beeld loopt achter.
+    }
+    return subcategorie.id
   }
 
   // Hernoemen had als enige categoriewijziging géén weg terug (ronde 65). En het
@@ -3574,7 +3598,7 @@ export function App() {
             <CategorieBoom
               aanpassingen={subcategorieen}
               eigenCategorieen={categorieen}
-              onToevoegen={voegSubcategorieToe}
+              onToevoegen={(categorieId, naam) => void voegSubcategorieToe({ subnaam: naam, categorie: { id: categorieId } })}
               onWijzigen={wijzigSubcategorie}
               onVerwijderen={verwijderSubcategorieH}
               onCategorieToevoegen={voegCategorieOnderToe}

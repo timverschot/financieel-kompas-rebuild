@@ -152,11 +152,14 @@ describe('TransactieFormulier', () => {
 
     await user.type(screen.getAllByLabelText('Subcategorie zoeken')[0], 'Kefir')
     await user.click(await screen.findByRole('option', { name: /Kefir.*toevoegen/ }))
-    await user.selectOptions(screen.getByLabelText('Onder welke categorie'), 'cat-zuivel-en-kaas')
+    await user.selectOptions(screen.getByLabelText('Hoofdcategorie'), 'ov-voeding')
+    await user.selectOptions(screen.getByLabelText('Categorie'), 'cat-zuivel-en-kaas')
     await user.click(screen.getByRole('button', { name: 'Subcategorie toevoegen' }))
 
     // Het bewaren is asynchroon; pas daarna wordt de regel op het nieuwe id getagd.
-    await waitFor(() => expect(onNieuweSubcategorie).toHaveBeenCalledWith('cat-zuivel-en-kaas', 'Kefir'))
+    await waitFor(() =>
+      expect(onNieuweSubcategorie).toHaveBeenCalledWith({ subnaam: 'Kefir', categorie: { id: 'cat-zuivel-en-kaas' } }),
+    )
 
     await user.type(screen.getAllByLabelText(/^Deelbedrag /)[0], '3')
     await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
@@ -166,6 +169,33 @@ describe('TransactieFormulier', () => {
         regels: [expect.objectContaining({ categorieId: 'sub-kefir-9', omschrijving: 'Kefir', bedrag: -300 })],
       }),
     )
+  })
+
+  it('haalt de chiprij weg zolang het toevoegpaneeltje openstaat', async () => {
+    // ⚠ Het paneeltje zweefde over de chips heen, maar zwevend is niet weg: één tik
+    // op een chip die je niet meer zag koos een hoofdcategorie, sloot het paneeltje
+    // en gooide je invoer weg — zonder een woord.
+    const user = userEvent.setup()
+    render(
+      <TransactieFormulier
+        onOpslaan={vi.fn()}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        handelaars={[]}
+        onNieuweSubcategorie={vi.fn()}
+      />,
+    )
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Colruyt')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '3')
+    await user.click(screen.getByLabelText(/Kassaticket splitsen/))
+
+    expect(screen.getAllByRole('button', { name: /hoofdcategorie/i }).length).toBeGreaterThan(0)
+
+    await user.type(screen.getAllByLabelText('Subcategorie zoeken')[0], 'Kefir')
+    await user.click(await screen.findByRole('option', { name: /Kefir.*toevoegen/ }))
+
+    expect(screen.queryByRole('button', { name: /Selecteer hoofdcategorie/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Hoofdcategorie: / })).toBeNull()
   })
 })
 
