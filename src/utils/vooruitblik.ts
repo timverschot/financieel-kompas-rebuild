@@ -60,6 +60,17 @@ export type Vooruitblik = {
   aantalKomend: number
   aantalAchterstallig: number
   /**
+   * Hoeveel vaste posten vervallen er déze maand? (ronde 66, slotronde)
+   *
+   * ⚠ Nodig om een zin als "alle vaste lasten voor augustus zijn al ingeboekt" te
+   * mogen zeggen. Die zin hing aan de TOTALE lijst posten, terwijl de tellers
+   * hierboven alleen gaan over wat deze maand vervalt. Heb je enkel een jaarlijkse
+   * verzekering die in december valt, dan stonden beide tellers in augustus op nul
+   * en bevestigde de app iets wat ze niet gekeken had — er viel die maand gewoon
+   * niets te boeken.
+   */
+  aantalDezeMaand: number
+  /**
    * De id's van de posten die deze maand vervallen zijn maar nog niet geboekt.
    * Het belletje gebruikt ze om per post een "boek in"-knop te tonen: inboeken is
    * een maandelijkse handeling en mag geen navigatie naar een andere pagina kosten.
@@ -336,6 +347,7 @@ export function maandVooruitblik(
     achterstallig: { inkomsten: achterstalligeInkomsten, uitgaven: achterstalligeUitgaven },
     aantalKomend,
     aantalAchterstallig,
+    aantalDezeMaand: posten.length,
     achterstalligeIds,
     komendeIds,
     verwachteInkomsten,

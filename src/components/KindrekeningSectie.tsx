@@ -5,10 +5,10 @@ import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { potSaldo, standPerOuder, geindexeerdeBijdrage, teltVerledenZonderIndex, type OuderStand } from '../utils/kindrekening'
 import { labelVanCategorie } from '../data/categorieen/resolve'
 import { KindrekeningpostFormulier } from './KindrekeningpostFormulier'
-import { Bedrag, Kaart } from '../ui/basis'
+import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 import type { Vertaler } from '../i18n'
-import { vandaag } from '../utils/datum'
+import { dagKort, vandaag } from '../utils/datum'
 import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 import { Bonknop } from '../ui/Bonknop'
 import { indexOpmerking, keurIndexcijfer, keurIndexpaar } from '../utils/indexinvoer'
@@ -289,6 +289,13 @@ export function KindrekeningSectie({
       )}
 
       {/* Bewegingen */}
+      {/* ⚠ RONDE 66, slotronde: ook hier een lege toestand. Zette je de kindrekening
+          aan, dan zag je saldo € 0,00, twee keer "gestort: € 0,00" en meteen daarna het
+          invoerformulier — zonder één woord dat er nog niets in staat. Elke andere
+          lijst in de app zegt dat wél. */}
+      {bewegingen.length === 0 && (
+        <Leeg>{t('Nog geen bewegingen op deze rekening. Voeg er hieronder een toe.')}</Leeg>
+      )}
       {bewegingen.length > 0 && (
         <ul className="lijst">
           {bewegingen.map((p) => (
@@ -314,10 +321,23 @@ export function KindrekeningSectie({
                 {p.bonnetje && (
                   <Bonknop bestand={p.bonnetje} naam={p.omschrijving} label={t('bon')} />
                 )}
-                <button className="knop knop-kaal" aria-label={t('Bewerk beweging')} onClick={() => setBewerkPost(p)}>
+                {/* ⚠ RONDE 66, slotronde: de omschrijving en de datum in de naam. Deze
+                    twee knoppen staan er één paar per beweging en heetten allemaal
+                    "Bewerk beweging" / "Verwijder beweging" — geen enkel verschil, in
+                    een lijst die een gezamenlijke pot bijhoudt. Eén verkeerde × wist
+                    dan een storting van de andere ouder. */}
+                <button
+                  className="knop knop-kaal"
+                  aria-label={t('Bewerk beweging {naam} van {datum}', { naam: p.omschrijving ?? t('beweging'), datum: dagKort(p.datum) })}
+                  onClick={() => setBewerkPost(p)}
+                >
                   ✎
                 </button>
-                <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder beweging')} onClick={() => onPostVerwijderen(p.id)}>
+                <button
+                  className="knop knop-kaal knop-gevaar"
+                  aria-label={t('Verwijder beweging {naam} van {datum}', { naam: p.omschrijving ?? t('beweging'), datum: dagKort(p.datum) })}
+                  onClick={() => onPostVerwijderen(p.id)}
+                >
                   ×
                 </button>
               </span>

@@ -164,7 +164,16 @@ export function Meldingenbel({
             </p>
             {aantal === 0 ? (
               <p className="leeg" style={{ margin: 0 }}>
-                {t('Niets om te melden. Al je budgetten en garanties zijn in orde.')}
+                {/* ⚠ RONDE 66, slotronde — DEZE ZIN MAG NIETS BEVESTIGEN EN NIETS
+                    BELOVEN. Ze zei eerst "Al je budgetten en garanties zijn in orde":
+                    een oordeel over nul garanties zodra je één budget had, en stil
+                    over de zes andere dingen die deze bel bekijkt (vaste lasten,
+                    contracten, onderhoudsbijdragen, de maandafsluiting, de back-up).
+                    Mijn eerste herstel wisselde tussen twee zinnen op basis van wat er
+                    ingesteld was — maar dan belooft de ene zin stilte over dingen die
+                    de bel wél in de gaten houdt. Eén zin die alleen zegt wat er ís,
+                    plus een voorbeeld van wat er kán komen, is het enige eerlijke. */}
+                {t('Niets om te melden. Zodra er iets je aandacht nodig heeft — een budget dat vol raakt, een garantie die afloopt, een vaste last die nog niet geboekt is — zie je het hier.')}
               </p>
             ) : (
               <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>

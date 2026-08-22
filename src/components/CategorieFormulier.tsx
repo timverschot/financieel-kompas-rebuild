@@ -62,7 +62,7 @@ export function CategorieFormulier({
     <form onSubmit={verzend} className="stapel" style={{ gap: 14 }}>
       <div className="veldgroep">
         <label className="label-caps" htmlFor="categorienaam">
-          {t('Categorienaam')}
+          {t('Naam hoofdcategorie')}
         </label>
         <input id="categorienaam" value={naam} onChange={(e) => setNaam(e.target.value)} />
       </div>
@@ -83,7 +83,7 @@ export function CategorieFormulier({
           aria-disabled={!geldig}
           aria-describedby={geldig ? undefined : redenId}
         >
-          {bewerken ? t('Categorie wijzigen') : t('Categorie toevoegen')}
+          {bewerken ? t('Hoofdcategorie wijzigen') : t('Hoofdcategorie toevoegen')}
         </button>
         {bewerken && onAnnuleer && (
           <button type="button" className="knop knop-ghost" onClick={onAnnuleer}>

@@ -116,7 +116,7 @@ export function IcoonKleurKiezer({
           <span className="rij-teken" aria-hidden="true" style={{ backgroundColor: zachteTint(kleur) }}>
             {voorbeeldTeken(icoon, naam)}
           </span>
-          <span className="rij-meta">{voorbeeldTekst ?? t('Zo verschijnt ze straks in de transactielijst.')}</span>
+          <span className="rij-meta">{voorbeeldTekst ?? t('Zo verschijnt ze straks in je lijst met boekingen.')}</span>
         </div>
       </div>
 

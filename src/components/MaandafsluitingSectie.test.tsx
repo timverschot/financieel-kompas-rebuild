@@ -24,6 +24,7 @@ function toon(
     terugkerendePosten?: TerugkerendePost[]
     afsluitingen?: Maandafsluiting[]
   } = {},
+  extra: { heeftRekening?: boolean; onNaarRekeningen?: () => void } = {},
 ) {
   const onCategoriseer = vi.fn()
   const onAfsluiten = vi.fn()
@@ -47,6 +48,7 @@ function toon(
       onToonBoekingen={onToonBoekingen}
       onToonZonderCategorie={onToonZonderCategorie}
       vandaagISO={VANDAAG}
+      {...extra}
     />,
   )
   return {
@@ -329,5 +331,57 @@ describe('MaandafsluitingSectie — een lege maand', () => {
   it('velt wél een oordeel zodra er iets geboekt is', () => {
     const { container } = toon({ transacties: juni })
     expect(container.textContent).not.toContain('nog niets te zeggen')
+  })
+})
+
+// --- Ronde 66, slotronde: de gevulde knop is dé hoofdactie van het scherm ---
+describe('MaandafsluitingSectie — een maand zonder één boeking', () => {
+  it('zet "Uittreksel inlezen" vooraan en afsluiten opzij', async () => {
+    // ⚠ DESIGN.md laat één gevulde knop per scherm toe, en die hoort het
+    // belangrijkste te zijn wat je er kan doen. Op een lege maand was dat "Maand
+    // afsluiten": het dichtklappen van een leeg dossier, terwijl het echte werk —
+    // je uittreksel inlezen — een klein secundair knopje in stap 1 was.
+    const gebruiker = userEvent.setup()
+    const { onGaNaarInlezen, onAfsluiten } = toon({ transacties: [] })
+
+    // ⚠ Precies ÉÉN knop met die naam: de kleine in stap 1 verdwijnt zodra de grote
+    // onderaan er staat. Twee knoppen met exact dezelfde naam op één scherm zijn voor
+    // een schermlezer niet uit elkaar te houden.
+    const inlezen = screen.getByRole('button', { name: 'Uittreksel inlezen' })
+    expect(inlezen).toHaveClass('knop-primair')
+    const afsluiten = screen.getByRole('button', { name: 'Toch afsluiten' })
+    expect(afsluiten).not.toHaveClass('knop-primair')
+    expect(screen.queryByRole('button', { name: 'Maand afsluiten' })).toBeNull()
+    expect(screen.getByText(/er valt dan niets na te kijken/)).toBeInTheDocument()
+
+    // Allebei doen nog gewoon wat ze beloven.
+    await gebruiker.click(inlezen)
+    expect(onGaNaarInlezen).toHaveBeenCalled()
+    await gebruiker.click(afsluiten)
+    expect(onAfsluiten).toHaveBeenCalled()
+  })
+
+  it('stuurt je zonder rekening niet naar het inleesscherm, dat dan zelf op slot zit', async () => {
+    // ⚠ RONDE 66, slotronde. Zonder rekening zegt de Inlezen-pagina "Maak eerst een
+    // rekening aan". De gevulde knop van dít scherm bracht je daar dus van het ene
+    // lege scherm naar het andere. Overzicht en Boekingen schermen die knop al af;
+    // deze pagina kreeg de rekeningen niet eens binnen en kón het niet weten.
+    const gebruiker = userEvent.setup()
+    const onNaarRekeningen = vi.fn()
+    const { onGaNaarInlezen } = toon({ transacties: [] }, { heeftRekening: false, onNaarRekeningen })
+
+    expect(screen.queryByRole('button', { name: 'Uittreksel inlezen' })).toBeNull()
+    await gebruiker.click(screen.getByRole('button', { name: 'Maak een rekening aan' }))
+    expect(onNaarRekeningen).toHaveBeenCalledTimes(1)
+    expect(onGaNaarInlezen).not.toHaveBeenCalled()
+  })
+
+  it('houdt "Maand afsluiten" als hoofdknop zodra er wél geboekt is', () => {
+    // `juni` is de maand die dit scherm bij VANDAAG = 10 juli nakijkt.
+    toon({ transacties: juni })
+    expect(screen.getByRole('button', { name: 'Maand afsluiten' })).toHaveClass('knop-primair')
+    expect(screen.queryByRole('button', { name: 'Toch afsluiten' })).toBeNull()
+    // En dán staat de kleine knop van stap 1 er weer, precies één keer.
+    expect(screen.getByRole('button', { name: 'Uittreksel inlezen' })).not.toHaveClass('knop-primair')
   })
 })

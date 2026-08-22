@@ -22,7 +22,7 @@ import { uitgavenPerPersoon } from '../utils/persoon'
 import { Donut } from './Donut'
 import { afgerondePercentages, type DonutInvoer } from '../utils/donut'
 import { formatEuro } from '../utils/format'
-import { Kaart, PaginaKop, Leeg, Bedrag, Stat, Balk } from '../ui/basis'
+import { Balk, Bedrag, EersteStapKnop, Kaart, Leeg, PaginaKop, Stat } from '../ui/basis'
 import { Subtabs } from '../ui/Subtabs'
 import { type AnalyseTab } from '../utils/analysetab'
 import { useT } from '../i18n'
@@ -285,8 +285,11 @@ export function AnalyseSectie({
   ankerMaand,
   maandNav,
   onGaNaarTransacties,
+  onNaarOpstelling,
+  onNaarVasteLasten,
   onBewerkTransactie,
   onBoekVasteLast,
+  onNaarBoekingen,
 }: {
   transacties: Transactie[]
   categorieen: Categorie[]
@@ -330,10 +333,15 @@ export function AnalyseSectie({
   maandNav?: ReactNode
   /** Doorklikken naar de Transacties-pagina met een filter (ronde 40). */
   onGaNaarTransacties?: (filter: TxFilter) => void
+  /** De eerste stappen in de lege toestanden op deze pagina (ronde 66). Optioneel. */
+  onNaarOpstelling?: () => void
+  onNaarVasteLasten?: () => void
   /** Een boeking openen vanaf de drilldown (ronde 40). */
   onBewerkTransactie?: (tx: Transactie) => void
   /** Een vaste last inboeken vanaf de vooruitblik (ronde 40). */
   onBoekVasteLast?: (postId: string, maand: string) => void
+  /** De eerste stap wanneer er in de hele app nog niets geboekt is (ronde 66). */
+  onNaarBoekingen?: () => void
 }) {
   const { t } = useT()
   const [richting, setRichting] = useState<Richting>(beginRichting)
@@ -475,6 +483,29 @@ export function AnalyseSectie({
     ['aangepast', t('Aangepast')],
   ]
   const leegTekst = richting === 'uitgave' ? t('Geen uitgaven in deze periode') : t('Geen inkomsten in deze periode')
+  /**
+   * De lege toestand van deze pagina, in twee smaken (ronde 66, slotronde).
+   *
+   * ⚠ "Geen uitgaven in deze periode" is het JUISTE antwoord zodra er boekingen
+   * bestaan: de periodekiezer staat erboven, dus je weet wat je eraan doet. Maar op
+   * een app waarin nog niets geboekt is, helpt geen enkele periode — en dan stond er
+   * op twee van de drie tabbladen een doodlopende zin, terwijl het derde tabblad van
+   * diezelfde pagina wél een eerste stap toont.
+   */
+  const nogNietsGeboekt = transacties.length === 0
+  const leegVlak = (
+    <Leeg
+      actie={
+        nogNietsGeboekt && onNaarBoekingen ? (
+          <EersteStapKnop onClick={onNaarBoekingen}>{t('Boeking toevoegen')}</EersteStapKnop>
+        ) : undefined
+      }
+    >
+      {nogNietsGeboekt
+        ? t('Er staat nog geen enkele boeking in de app. Zodra je er een ingeeft — zelf of via een uittreksel — zie je hier waar je geld naartoe gaat.')
+        : leegTekst}
+    </Leeg>
+  )
   const donutInvoer = byOv.map((g) => ({ naam: g.naam, bedrag: g.bedrag, kleur: g.kleur, sleutel: g.sleutel }))
   const periodeLabel = perioden.find(([k]) => k === keuze)?.[1] ?? ''
 
@@ -534,7 +565,13 @@ export function AnalyseSectie({
           boven de rest — je moest telkens helemaal naar boven om terug te gaan.
           Ze staat nu rechts op de rij met de periodekaartjes, op ooghoogte met de
           knoppen die je op deze pagina toch al gebruikt. */}
-      <PaginaKop titel={drill ? drill.naam : t('Analyse')} actie={maandNav} />
+      {/* Ronde 66: een zin die zegt wat deze pagina is — maar niet in de drilldown,
+          want die vervangt de pagina en heeft haar eigen titel. */}
+      <PaginaKop
+        titel={drill ? drill.naam : t('Analyse')}
+        bijschrift={drill ? undefined : t('Waar je geld naartoe ging, wat er duurder werd, en wat er nog aankomt. Kies bovenaan wat je bekijkt en over welke periode, en daaronder je vraag.')}
+        actie={maandNav}
+      />
 
       {/* Richting: uitgaven of inkomsten.
           ⚠ NIET op de tab "Vooruit" (ronde 60). Wat daar staat — je vermogen en de
@@ -690,7 +727,7 @@ export function AnalyseSectie({
               titel={richting === 'uitgave' ? t('Verdeling uitgaven') : t('Verdeling inkomsten')}
               bijschrift={t('Per hoofdcategorie')}
             >
-              <Leeg>{leegTekst}</Leeg>
+              {leegVlak}
             </Kaart>
           ) : (
             <Kaart
@@ -755,7 +792,7 @@ export function AnalyseSectie({
 
           {tab === 'verdeling' && byItem.length > 0 && (
             <DonutKaart
-              titel={t('Verdeling per product/dienst')}
+              titel={t('Verdeling per subcategorie')}
               subtitel={t('Subcategorieën — brood, koffiekoeken, elektriciteit… Klik je door, dan zie je de volledige boeking, dus een gesplitst kassaticket komt in zijn geheel in beeld.')}
               posten={byItem}
               richting={richting}
@@ -784,7 +821,7 @@ export function AnalyseSectie({
           {tab === 'verdeling' && byWinkel.length > 0 && (
             <DonutKaart
               titel={richting === 'uitgave' ? t('Uitgaven per winkel') : t('Inkomsten per bron')}
-              subtitel={t('Gebaseerd op de omschrijving bij elke transactie')}
+              subtitel={t('Gebaseerd op de omschrijving bij elke boeking')}
               posten={byWinkel}
               richting={richting}
               // `perWinkel` groepeert op de letterlijke omschrijving, dus de naam
@@ -844,6 +881,7 @@ export function AnalyseSectie({
             periodeLabel={periodeLabel}
             ankerMaand={anker}
             onKies={onGaNaarTransacties ? (sleutel) => naarCategorie(sleutel) : undefined}
+            onNaarBoekingen={onNaarBoekingen}
           />
           )}
 
@@ -854,6 +892,7 @@ export function AnalyseSectie({
             overboekingen={overboekingen}
             waarderingen={waarderingen}
             ankerMaand={anker}
+            onNaarRekeningen={onNaarOpstelling}
           />
           )}
 
@@ -865,6 +904,7 @@ export function AnalyseSectie({
             periodeLabel={periodeLabel}
             maand={anker}
             onBoekVasteLast={onBoekVasteLast}
+            onNaarVast={onNaarVasteLasten}
           />
           )}
         </Subtabs>
@@ -878,7 +918,7 @@ export function AnalyseSectie({
                 <span className="rij-titel" style={{ fontSize: 'var(--tekst-l)' }}>
                   {drill.naam}
                 </span>
-                <span className="rij-meta">{t('{n} transacties in de periode', { n: drillTxs.length })}</span>
+                <span className="rij-meta">{t('{n} boekingen in de periode', { n: drillTxs.length })}</span>
               </span>
               <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
                 <Bedrag centen={drillTotaal} groot />
@@ -895,7 +935,7 @@ export function AnalyseSectie({
             {onGaNaarTransacties && (
               <div className="knoprij">
                 <button type="button" className="knop knop-ghost knop-klein" onClick={() => naarCategorie(drill.sleutel)}>
-                  {t('Bekijk in Transacties ›')}
+                  {t('Bekijk bij Boekingen ›')}
                 </button>
               </div>
             )}
@@ -998,9 +1038,9 @@ export function AnalyseSectie({
             </Kaart>
           )}
 
-          <Kaart titel={t('Alle transacties')}>
+          <Kaart titel={t('Alle boekingen')}>
             {drillTxs.length === 0 ? (
-              <Leeg>{leegTekst}</Leeg>
+              leegVlak
             ) : (
               <ul className="lijst">
                 {drillTxs.map((d, i) => {

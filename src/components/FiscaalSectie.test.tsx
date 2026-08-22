@@ -310,3 +310,32 @@ describe('FiscaalSectie — het document voor de boekhouder', () => {
     expect(document.querySelectorAll('.knop-primair')).toHaveLength(1)
   })
 })
+
+// --- Ronde 66, slotronde: de opvallendste knop moet zinvol zijn ---
+describe('FiscaalSectie — een app zonder één boeking', () => {
+  it('biedt geen leeg blad voor de boekhouder aan, maar een eerste stap', async () => {
+    // ⚠ De exportkaart stond er onvoorwaardelijk, dus op een lege app was de enige
+    // gevulde knop van het scherm "maak een PDF voor je boekhouder" — van niets.
+    const gebruiker = userEvent.setup()
+    const onNaarBoekingen = vi.fn()
+    render(<FiscaalSectie transacties={[]} onNaarBoekingen={onNaarBoekingen} />)
+
+    expect(screen.queryByRole('button', { name: /PDF voor je boekhouder/ })).toBeNull()
+    expect(screen.getByText(/nog geen enkele boeking in de app/)).toBeInTheDocument()
+    await gebruiker.click(screen.getByRole('button', { name: 'Boeking toevoegen' }))
+    expect(onNaarBoekingen).toHaveBeenCalledTimes(1)
+  })
+
+  it('zegt iets ánders wanneer er wél geboekt is maar niets fiscaal is', () => {
+    // Dan is "voeg een boeking toe" het verkeerde antwoord: je boekingen bestaan,
+    // ze staan alleen onder een andere categorie.
+    render(
+      <FiscaalSectie
+        transacties={[{ id: 't1', datum: '2026-03-02', omschrijving: 'Winkel', bedrag: -2500, rekeningId: 'r1' }]}
+        onNaarBoekingen={vi.fn()}
+      />,
+    )
+    expect(screen.getByText(/geen boekingen onder een fiscale post/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Boeking toevoegen' })).toBeNull()
+  })
+})

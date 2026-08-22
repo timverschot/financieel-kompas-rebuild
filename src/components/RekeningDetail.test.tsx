@@ -120,9 +120,9 @@ describe('RekeningDetail', () => {
       ],
     })
 
-    expect(kengetal('Binnengekomen')).toBe(formatEuro(200000))
-    expect(kengetal('Eraf gegaan')).toBe(formatEuro(50000))
-    expect(kengetal('Verschil')).toBe(formatEuro(150000))
+    expect(kengetal('Inkomsten')).toBe(formatEuro(200000))
+    expect(kengetal('Uitgaven')).toBe(formatEuro(50000))
+    expect(kengetal('Netto')).toBe(formatEuro(150000))
     expect(
       screen.getByText('Overboekingen tellen hier niet mee: die verschuiven enkel geld tussen je eigen rekeningen.'),
     ).toBeInTheDocument()
@@ -143,7 +143,7 @@ describe('RekeningDetail', () => {
       ],
     })
     // Het volledige ticketbedrag, niet één van de deelregels.
-    expect(kengetal('Eraf gegaan')).toBe(formatEuro(5000))
+    expect(kengetal('Uitgaven')).toBe(formatEuro(5000))
   })
 
   it('toont de laatste transacties nieuwste eerst en meldt de rest', () => {
@@ -207,7 +207,7 @@ describe('RekeningDetail', () => {
   it('toont één lege-toestandzin zonder transacties en zonder overboekingen', () => {
     const { container } = toon()
 
-    expect(screen.getByText('Nog geen boekingen op deze rekening.')).toBeInTheDocument()
+    expect(screen.getByText(/Nog geen boekingen op deze rekening/)).toBeInTheDocument()
     expect(container.querySelectorAll('li.rij')).toHaveLength(0)
     // Het saldo blijft wel gewoon staan: het startbedrag.
     expect(grootSaldo(container)).toBe(formatEuro(100000))
@@ -458,23 +458,23 @@ describe('RekeningDetail — de punten uit de review (ronde 43)', () => {
 // --- Ronde 48: van een cijfer naar de boekingen --------------------------------
 
 describe('RekeningDetail — doorklikken', () => {
-  it('laat alleen Verschil doorklikken, niet Binnengekomen of Eraf gegaan', () => {
+  it('laat alleen Netto doorklikken, niet Inkomsten of Uitgaven', () => {
     // Die twee tellen op TRANSACTIEniveau, terwijl het richting-filter van de lijst
     // op regelniveau werkt. Een kassaticket van € 47 met een regel statiegeld van
     // + € 3 staat hier volledig onder "eraf", maar de gefilterde lijst zou er € 50
     // uitgaven boven zetten — en bij "in" zou je op € 0,00 klikken en tóch een
     // boeking krijgen. Verschil telt in beide berekeningen hetzelfde op.
     toon({ onGaNaarTransacties: vi.fn() })
-    expect(screen.getByRole('button', { name: /^Verschil / })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Netto / })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Binnengekomen / })).toBeNull()
     expect(screen.queryByRole('button', { name: /^Eraf gegaan / })).toBeNull()
   })
 
-  it('geeft bij Verschil de rekening én de maand mee', async () => {
+  it('geeft bij Netto de rekening én de maand mee', async () => {
     const gebruiker = userEvent.setup()
     const onGaNaarTransacties = vi.fn()
     toon({ onGaNaarTransacties })
-    await gebruiker.click(screen.getByRole('button', { name: /^Verschil / }))
+    await gebruiker.click(screen.getByRole('button', { name: /^Netto / }))
     const filter = onGaNaarTransacties.mock.calls[0][0]
     expect(filter.rekeningId).toBe('r1')
     // De maand van dit scherm, niet die van de maandschakelaar elders in de app:
@@ -484,7 +484,7 @@ describe('RekeningDetail — doorklikken', () => {
 
   it('maakt van de kengetallen geen knoppen zonder bestemming', () => {
     toon()
-    expect(screen.queryByRole('button', { name: /^Verschil / })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Netto / })).toBeNull()
   })
 
   it('opent een boeking vanaf haar rij', async () => {

@@ -776,7 +776,9 @@ export function TransactieFormulier({
                 />
               </div>
               <input
-                aria-label={t('Deelbedrag')}
+                // ⚠ Met het nummer erbij: dit veld staat er één per deelregel, en het
+                // kruisje ernaast draagt dat nummer al.
+                aria-label={t('Deelbedrag {n}', { n: i + 1 })}
                 style={{ width: 96, textAlign: 'right', fontFamily: 'var(--font-mono)' }}
                 inputMode="decimal"
                 placeholder="0,00"
@@ -1123,7 +1125,7 @@ export function TransactieFormulier({
         {!geldig && (
           <p id={redenId} role="status" className="leeg" style={{ padding: '4px 0 0', textAlign: 'left', margin: 0 }}>
             {rekeningen.length === 0
-              ? t('Maak eerst een rekening aan — een transactie moet ergens op geboekt worden.')
+              ? t('Maak eerst een rekening aan — een boeking moet ergens op staan.')
               : teveelVerdeeld
                 ? t('De regels verdelen meer dan het totaalbedrag. Pas een regel of het totaal aan.')
                 : t('Geef een handelaar en een bedrag om op te slaan.')}

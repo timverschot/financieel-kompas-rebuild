@@ -34,6 +34,7 @@ export function TerugkerendeSectie({
 }: {
   posten: TerugkerendePost[]
   rekeningen: Rekening[]
+
   categorieen: Categorie[]
   transacties: Transactie[]
   maand: string
@@ -68,6 +69,8 @@ export function TerugkerendeSectie({
   onLosmaken?: (boeking: Transactie) => void
 }) {
   const { t } = useT()
+  // Invullen en bewerken kan pas zodra er een rekening bestaat om het aan te hangen.
+  const kanBewerken = rekeningen.length > 0
   const [bewerken, setBewerken] = useState<TerugkerendePost | null>(null)
   // Elke sectie toont enkel haar eigen soort.
   const eigen = posten.filter((p) => (soort === 'inkomst' ? p.bedrag > 0 : p.bedrag < 0))
@@ -120,8 +123,13 @@ export function TerugkerendeSectie({
     >
       {eigen.length === 0 && (
         <Leeg>
+          {/* ⚠ "Vul hieronder in" mag alleen wanneer daar ook écht een formulier staat.
+              Zonder rekening is dat er niet (zie `kanBewerken` verderop), en dan wees
+              deze zin naar een leegte. */}
           {isInkomst
-            ? t('Nog geen vaste inkomsten. Vul hieronder je loon in, anders weet je plan niet wat er te verdelen valt.')
+            ? kanBewerken
+              ? t('Nog geen vaste inkomsten. Vul hieronder je loon in, anders weet je plan niet wat er te verdelen valt.')
+              : t('Nog geen vaste inkomsten. Zodra je een rekening hebt, vul je hier je loon in.')
             : t('Nog geen vaste lasten.')}
         </Leeg>
       )}
@@ -231,7 +239,7 @@ export function TerugkerendeSectie({
                             'Uitboeken' is bovendien het spiegelbeeld van 'Boek in'. */}
                         <button
                           className="knop knop-ghost knop-klein"
-                          aria-label={t('Uitboeken: wis de transactie van {naam}', { naam: p.omschrijving })}
+                          aria-label={t('Uitboeken: wis de boeking van {naam}', { naam: p.omschrijving })}
                           onClick={() => onOngedaan(p)}
                         >
                           {t('Uitboeken')}
@@ -256,13 +264,17 @@ export function TerugkerendeSectie({
                       {t('Boek in')}
                     </button>
                   )}
-                  <button
-                    className="knop knop-kaal"
-                    aria-label={t('Bewerk vaste post {naam}', { naam: p.omschrijving })}
-                    onClick={() => setBewerken(p)}
-                  >
-                    ✎
-                  </button>
+                  {/* Geen potloodje zonder rekening: het formulier eronder staat er
+                      dan niet, dus de knop zou nergens toe leiden. */}
+                  {kanBewerken && (
+                    <button
+                      className="knop knop-kaal"
+                      aria-label={t('Bewerk vaste post {naam}', { naam: p.omschrijving })}
+                      onClick={() => setBewerken(p)}
+                    >
+                      ✎
+                    </button>
+                  )}
                   <button
                     className="knop knop-kaal knop-gevaar"
                     aria-label={t('Verwijder vaste post {naam}', { naam: p.omschrijving })}
@@ -277,14 +289,24 @@ export function TerugkerendeSectie({
         </ul>
       )}
 
-      <TerugkerendePostFormulier
-        rekeningen={rekeningen}
-        categorieen={categorieen}
-        onOpslaan={opslaan}
-        onAnnuleer={() => setBewerken(null)}
-        bewerken={bewerken}
-        soort={soort}
-      />
+      {/* ⚠ RONDE 66, slotronde — GEEN FORMULIER ZONDER REKENING, MAAR WÉL DE LIJST.
+          Een vaste last moet ergens vanaf gaan; zonder rekening bleef de opslaanknop
+          voor altijd uit, met een reden die niet klopte. Maar de posten zelf mogen
+          niet verdwijnen: wie zijn laatste rekening archiveert, moet ze nog kunnen
+          zien en verwijderen. Alleen invullen en bewerken kan even niet. De weg naar
+          een nieuwe rekening staat één keer bovenaan dit tabblad, niet twee keer hier
+          — twee knoppen met exact dezelfde naam op één scherm is voor een schermlezer
+          niet uit elkaar te houden. */}
+      {kanBewerken && (
+        <TerugkerendePostFormulier
+          rekeningen={rekeningen}
+          categorieen={categorieen}
+          onOpslaan={opslaan}
+          onAnnuleer={() => setBewerken(null)}
+          bewerken={bewerken}
+          soort={soort}
+        />
+      )}
     </Kaart>
   )
 }

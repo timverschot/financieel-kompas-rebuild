@@ -339,3 +339,77 @@ describe('TerugkerendeSectie — het contractformulier', () => {
     expect(screen.getByText('Let op:')).toBeInTheDocument()
   })
 })
+
+// --- Ronde 66, slotronde: zonder rekening geen formulier, maar wél je posten ---
+describe('TerugkerendeSectie — zonder rekening', () => {
+  const huurpost: TerugkerendePost = { id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'oud', dag: 3 }
+
+  function toonZonderRekening() {
+    render(
+      <TerugkerendeSectie
+        soort="uitgave"
+        posten={[huurpost]}
+        rekeningen={[]}
+        categorieen={[]}
+        transacties={[]}
+        maand="2026-08"
+        maandLabel="augustus 2026"
+        onOpslaan={vi.fn()}
+        onVerwijderen={vi.fn()}
+        onBoek={vi.fn()}
+      />,
+    )
+  }
+
+  it('laat het formulier weg — het kon toch niet opgeslagen worden', () => {
+    // ⚠ WAT HIER MIS WAS. Zonder rekening had de keuzelijst "Vaste rekening" geen
+    // enkele optie, bleef `rekeningId` leeg, en stond de opslaanknop dus voor altijd
+    // uit — met als reden "Geef een naam en een geldig bedrag om op te slaan.", ook
+    // nadat je naam én bedrag had ingevuld. Je zocht je blind naar iets wat je niet
+    // kon zien. De weg naar een rekening staat één keer bovenaan het tabblad.
+    toonZonderRekening()
+    expect(screen.queryByLabelText('Vaste omschrijving')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Bewerk vaste post Huur' })).toBeNull()
+  })
+
+  it('houdt je bestaande posten wél zichtbaar en verwijderbaar', () => {
+    // ⚠ Wie zijn laatste rekening archiveert, mag zijn twaalf vaste lasten niet
+    // kwijtspelen: de teller op het tabblad telt ze nog, dus er moet een scherm zijn
+    // waar je ze ziet staan. Alleen invullen en bewerken kan even niet.
+    toonZonderRekening()
+    expect(screen.getByText('Huur')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Verwijder vaste post Huur' })).toBeInTheDocument()
+  })
+})
+
+// --- Ronde 66, slotronde: geen zin die naar een formulier wijst dat er niet is ---
+describe('TerugkerendeSectie — de lege tekst volgt het formulier', () => {
+  function toonInkomsten(rekeningen: { id: string; naam: string; beginsaldo: number }[]) {
+    render(
+      <TerugkerendeSectie
+        soort="inkomst"
+        posten={[]}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        transacties={[]}
+        maand="2026-08"
+        maandLabel="augustus 2026"
+        onOpslaan={vi.fn()}
+        onVerwijderen={vi.fn()}
+        onBoek={vi.fn()}
+      />,
+    )
+  }
+
+  it('zegt "hieronder" alleen wanneer daar ook echt een formulier staat', () => {
+    toonInkomsten([])
+    expect(screen.queryByText(/Vul hieronder je loon in/)).toBeNull()
+    expect(screen.getByText(/Zodra je een rekening hebt, vul je hier je loon in/)).toBeInTheDocument()
+  })
+
+  it('wijst mét rekening wél naar het formulier eronder', () => {
+    toonInkomsten(rekeningen)
+    expect(screen.getByText(/Vul hieronder je loon in/)).toBeInTheDocument()
+    expect(screen.getByLabelText('Vaste omschrijving')).toBeInTheDocument()
+  })
+})

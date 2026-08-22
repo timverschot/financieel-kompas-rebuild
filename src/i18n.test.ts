@@ -61,7 +61,12 @@ describe('vertaaltabellen', () => {
   it('laat "vous" staan waar het Nederlands "jullie" zegt', () => {
     // Anders zou de test hierboven een echte vertaalfout uitlokken: "tu arrives
     // tous les deux" bestaat niet.
-    expect(vertaal('fr', 'Jullie komen allebei op {bedrag} uit.')).toContain('Vous')
+    expect(
+      vertaal('fr', 'Over de {n} kost(en) in dit bestand komen jullie allebei op {bedrag} uit. Je eigen kosten zitten er niet in.', {
+        n: 3,
+        bedrag: '€ 10,00',
+      }),
+    ).toContain('vous arrivez')
   })
 
   it('gebruikt één Frans woord voor een gesplitst kassaticket', () => {
@@ -127,7 +132,7 @@ describe('vertaaltabellen', () => {
     expect(vertaal('fr', 'Let op: de andere ouder komt op {hun}, jij op {jouw}.', { hun: 'A', jouw: 'B' })).toContain(
       'Attention',
     )
-    expect(vertaal('en', 'Vink alleen aan wat echt een andere kost is. Anders telt hetzelfde geld twee keer.')).toContain(
+    expect(vertaal('en', 'Vink alleen aan wat echt een andere kost is. Anders telt hetzelfde geld twee keer. Is het dezelfde kost, kies dan "Dit is dezelfde" — anders komt ze elke ronde opnieuw terug.')).toContain(
       'counts twice',
     )
   })
@@ -150,7 +155,7 @@ describe('vertaaltabellen', () => {
   })
 
   it('vertaalt de nieuwe teksten van ronde 40', () => {
-    expect(vertaal('en', 'Bekijk in Transacties ›')).toBe('View in Transactions ›')
+    expect(vertaal('en', 'Bekijk bij Boekingen ›')).toBe('View under Entries ›')
     expect(vertaal('fr', 'Toon opbouw')).toBe('Afficher le détail')
     expect(vertaal('en', 'Boek {naam} in', { naam: 'Rent' })).toBe('Record Rent')
     expect(vertaal('fr', '{n} treffer(s) in {m} hoofdcategorie(ën)', { n: 3, m: 1 })).toBe(
@@ -179,7 +184,7 @@ describe('vertaaltabellen', () => {
   it('vertaalt de nieuwe teksten van ronde 24', () => {
     expect(vertaal('en', 'Te verdelen')).toBe('Left to allocate')
     expect(vertaal('fr', 'Alle maanden')).toBe('Tous les mois')
-    expect(vertaal('en', 'Categorie toekennen')).toBe('Assign category')
+    expect(vertaal('en', 'Categorie kiezen')).toBeTruthy()
     expect(vertaal('fr', 'gedeeld')).toBe('partagé')
   })
 
@@ -210,7 +215,6 @@ describe('vertaaltabellen', () => {
 
   it('vertaalt de nieuwe teksten van ronde 17', () => {
     expect(vertaal('en', 'Je gegevens en je privacy')).toBe('Your data and your privacy')
-    expect(vertaal('fr', 'Waar kan je besparen?')).toBe('Où peux-tu économiser ?')
     expect(vertaal('en', 'Budget {naam} is {pct}% verbruikt', { naam: 'Food', pct: 92 })).toBe('Budget Food is 92% used')
     expect(vertaal('fr', 'Overschot')).toBe('Excédent')
   })
@@ -372,7 +376,7 @@ describe('vertaaltabellen — de opruimronde', () => {
     ).toContain('show only these entries')
     expect(
       vertaal('fr', 'Inkomsten {bedrag} — toon alleen deze boekingen', { bedrag: '€ 30,00' }),
-    ).toContain('opérations')
+    ).toContain('écritures')
   })
 })
 

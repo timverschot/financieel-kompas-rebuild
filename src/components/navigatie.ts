@@ -29,7 +29,10 @@ export type Pagina =
 export const PAGINAS: { id: Pagina; icoon: string; label: string }[] = [
   { id: 'overzicht', icoon: '🏠', label: 'Overzicht' },
   { id: 'opstelling', icoon: '🧭', label: 'Je situatie' },
-  { id: 'transacties', icoon: '💳', label: 'Transacties' },
+  // ⚠ RONDE 66. De pagina heette "Transacties" terwijl de rest van de app over
+  // "boekingen" spreekt — vier woorden voor één ding maakten de app onleerbaar. De
+  // ID blijft `transacties`: die staat in het adres en in bewaarde routes.
+  { id: 'transacties', icoon: '💳', label: 'Boekingen' },
   { id: 'rekeningen', icoon: '🏦', label: 'Rekeningen' },
   { id: 'spaardoelen', icoon: '💰', label: 'Spaardoelen' },
   { id: 'budget', icoon: '🎯', label: 'Budget' },

@@ -81,8 +81,8 @@ describe('filterDelen', () => {
 })
 
 describe('filterBeschrijving', () => {
-  it('zegt "alle transacties" wanneer er niets gefilterd is', () => {
-    expect(filterBeschrijving(t, {})).toBe('alle transacties')
+  it('zegt "alle boekingen" wanneer er niets gefilterd is', () => {
+    expect(filterBeschrijving(t, {})).toBe('alle boekingen')
   })
 
   it('rijgt de delen aan elkaar', () => {

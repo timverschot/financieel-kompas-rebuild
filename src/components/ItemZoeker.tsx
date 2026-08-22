@@ -166,7 +166,7 @@ export function ItemZoeker({
   return (
     <div style={{ position: 'relative' }}>
       <input
-        aria-label={t('Item zoeken')}
+        aria-label={t('Subcategorie zoeken')}
         ref={registerInput}
         // Zie CategorieKiezer: zonder deze koppelingen hoort wie de app laat
         // voorlezen niet wat er onder de markering staat.
@@ -177,7 +177,7 @@ export function ItemZoeker({
         aria-activedescendant={aantalRegels > 0 && nieuweNaam === null ? `${lijstId}-${gemarkeerd}` : undefined}
         style={{ display: 'block', width: '100%' }}
         autoComplete="off"
-        placeholder={t('Zoek een product (vanaf 2 letters)…')}
+        placeholder={t('Zoek een subcategorie (vanaf 2 letters)…')}
         value={waarde}
         onChange={(e) => {
           onTekst(e.target.value)

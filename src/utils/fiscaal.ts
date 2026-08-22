@@ -57,7 +57,7 @@ export type FiscaleRegel = {
 }
 
 /** Eén boeking onder een post. Los van `Transactie`, want een betaling op een
- *  onderhoudsregeling is geen transactie maar telt hier wel mee. */
+ *  onderhoudsbijdrage is geen boeking maar telt hier wel mee. */
 export type FiscaleBoeking = {
   id: string
   datum: string
@@ -145,7 +145,7 @@ function boekingenVoorPost(
 }
 
 /**
- * De betalingen op onderhoudsregelingen waarbij JIJ betaalt.
+ * De betalingen op onderhoudsbijdragen waarbij JIJ betaalt.
  *
  * Alleen die zijn aftrekbaar; wat je ONTVANGT is aan de andere kant belastbaar en
  * hoort dus niet in deze lijst thuis.

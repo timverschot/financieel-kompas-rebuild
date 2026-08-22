@@ -80,6 +80,13 @@ export function TerugkerendePostFormulier({
   // Van buiten gezet heeft voorrang; anders houdt het formulier zijn eigen keuze bij.
   const soort = soortVanBuiten ?? eigenSoort
   const [rekeningId, setRekeningId] = useState(rekeningen[0]?.id ?? '')
+  // ⚠ NIET afleiden uit de lijst. Ik heb dat in ronde 66 geprobeerd — "val terug op
+  // de eerste rekening zodra de gekozene niet meer in de lijst staat" — en dat is
+  // erger dan het gaatje dat het dichtte: bewerk je een vaste last die op een
+  // intussen GEARCHIVEERDE rekening staat, dan schoof zo'n afleiding hem stil naar
+  // een andere rekening zodra je alleen het bedrag aanpaste. Een koppeling mag nooit
+  // stil verdwijnen; dat is elders in deze app een harde regel (zie het spaardoel-,
+  // garantie- en leningformulier), en ze geldt hier ook.
   const [categorieId, setCategorieId] = useState(BEGIN.categorieId)
   const [dag, setDag] = useState(BEGIN.dag)
   const [frequentie, setFrequentie] = useState<Frequentie>(BEGIN.frequentie)

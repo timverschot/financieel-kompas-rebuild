@@ -26,9 +26,18 @@ export function TopDrie({
   posten,
   onAlles,
   onKies,
+  richting = 'uitgave',
 }: {
   posten: CategorieUitgave[]
   onAlles: () => void
+  /**
+   * Gaat dit lijstje over uitgaven of over inkomsten? (ronde 66, slotronde)
+   *
+   * ⚠ Alleen om de knop onderaan een eigen naam te geven. Op het Overzicht staan er
+   * twee van deze lijstjes onder elkaar, en hun knoppen heetten allebei "Bekijk in
+   * Analyse ›" terwijl ze naar een ánder scherm gaan.
+   */
+  richting?: 'uitgave' | 'inkomst'
   /**
    * Doorklikken naar de boekingen van één categorie (ronde 40).
    *
@@ -82,7 +91,16 @@ export function TopDrie({
       </ul>
       <div className="knoprij">
         <button type="button" className="knop knop-ghost knop-klein" onClick={onAlles}>
-          {rest > 0 ? t('Bekijk alle {n} in Analyse ›', { n: posten.length }) : t('Bekijk in Analyse ›')}
+          {/* ⚠ De richting staat erin. Op het Overzicht staan twee van deze lijstjes
+              onder elkaar — uitgaven en inkomsten — en zonder dat verschil heten hun
+              knoppen allebei "Bekijk in Analyse ›". */}
+          {rest > 0
+            ? richting === 'inkomst'
+              ? t('Bekijk alle {n} inkomsten in Analyse ›', { n: posten.length })
+              : t('Bekijk alle {n} uitgaven in Analyse ›', { n: posten.length })
+            : richting === 'inkomst'
+              ? t('Bekijk je inkomsten in Analyse ›')
+              : t('Bekijk je uitgaven in Analyse ›')}
         </button>
       </div>
     </>

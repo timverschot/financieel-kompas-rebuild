@@ -422,11 +422,14 @@ export function RekenhulpenSectie({
   dossiers,
   onderhoudsbijdragen,
   onBewaarBijdrage,
+  onNaarDossiers,
 }: {
   /** Alleen voor de indexatiehulp: waarin mag ze een regeling bewaren? */
   dossiers?: Dossier[]
   onderhoudsbijdragen?: Onderhoudsbijdrage[]
   onBewaarBijdrage?: (b: Onderhoudsbijdrage) => Promise<void> | void
+  /** Doorgegeven aan de indexatiehulp: de weg naar Dossiers. */
+  onNaarDossiers?: () => void
 } = {}) {
   const { t } = useT()
   return (
@@ -441,6 +444,7 @@ export function RekenhulpenSectie({
         dossiers={dossiers}
         bestaandeBijdragen={onderhoudsbijdragen}
         onBewaarBijdrage={onBewaarBijdrage}
+        onNaarDossiers={onNaarDossiers}
       />
       <LeningRekenhulp />
       <SpaardoelRekenhulp />

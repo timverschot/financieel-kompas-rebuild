@@ -2,7 +2,7 @@ import type { Budget, TerugkerendePost } from '../data/schema'
 import { formatEuro } from '../utils/format'
 import { plancijfers } from '../utils/vastelast'
 import { geldendeBudgetten } from '../utils/budget'
-import { Kaart } from '../ui/basis'
+import { EersteStapKnop, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 
 // "Wat ligt al vast, en wat blijft er over om te verdelen?"
@@ -35,6 +35,7 @@ export function PlanRegels({
   verwachteInkomsten,
   geboekteInkomsten,
   onGaNaarTransacties,
+  onNaarVast,
 }: {
   posten: TerugkerendePost[]
   budgetten: Budget[]
@@ -54,6 +55,15 @@ export function PlanRegels({
    * telt regel voor regel exact hetzelfde op als de lijst zelf.
    */
   onGaNaarTransacties?: (filter: { maand: string; richting: 'in' }) => void
+  /**
+   * Naar het tabblad "Vast", waar je je inkomsten invult (ronde 66, slotronde).
+   *
+   * ⚠ De zin hieronder zei "Vul HIERONDER je vaste inkomsten in", maar deze kaart
+   * staat op het tabblad "Te verdelen" en het inkomstenformulier op "Vast". Onder
+   * deze regel stond dus niets. Wie alleen vaste lasten had ingevuld — en dus niet
+   * de welkomstkaart van dit tabblad kreeg — bleef daar staan.
+   */
+  onNaarVast?: () => void
 }) {
   const { t } = useT()
   const cijfers = plancijfers(posten, maand)
@@ -99,9 +109,13 @@ export function PlanRegels({
           </strong>
         </div>
       ) : (
-        <p className="leeg" style={{ padding: 0, textAlign: 'left' }} data-geen-inkomsten>
-          {t('Vul hieronder je vaste inkomsten in — je loon bijvoorbeeld — dan berekent de app wat er te verdelen valt.')}
-        </p>
+        <div data-geen-inkomsten>
+          <Leeg
+            actie={onNaarVast ? <EersteStapKnop onClick={onNaarVast}>{t('Vul je vaste inkomsten in')}</EersteStapKnop> : undefined}
+          >
+            {t('De app kent je vaste inkomsten nog niet — je loon bijvoorbeeld. Vul je die in bij "Vast", dan berekent ze wat er te verdelen valt.')}
+          </Leeg>
+        </div>
       )}
 
       {/* Wat er werkelijk binnenkwam tegenover wat je verwachtte. Nuttig zodra er

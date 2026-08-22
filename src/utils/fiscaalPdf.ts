@@ -41,7 +41,7 @@ function codeRegel(t: Vertaler, regel: FiscaleRegel, vervallen: boolean): string
 /** Waar de app voor deze post gekeken heeft, met de NAMEN van de categorieën. */
 export function kijktInRegel(t: Vertaler, regel: FiscaleRegel): string {
   if (regel.post.uitOnderhoudsbetalingen) {
-    return t('Kijkt in: je betalingen op een onderhoudsregeling in Dossiers.')
+    return t('Kijkt in: je betalingen op een onderhoudsbijdrage in Dossiers.')
   }
   const namen = regel.post.categorieIds
     .map((id) => labelVanCategorie(id, []))

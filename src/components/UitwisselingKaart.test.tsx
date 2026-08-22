@@ -398,7 +398,7 @@ describe('UitwisselingKaart — wat de review na het bouwen ving', () => {
     const ingetrokken: GedeeldeKost = { ...kost({ id: 'k1' }), uitwisselId: 'a-1', ingetrokken: true }
     const { onKostenBewaren, container } = toon([ingetrokken])
     await gebruiker.click(screen.getByRole('button', { name: 'Toon' }))
-    expect(container.textContent).toContain('telt niet mee in het saldo')
+    expect(container.textContent).toContain('telt niet mee in wat er te verrekenen valt')
     await gebruiker.click(screen.getByRole('button', { name: 'Terugdraaien' }))
     expect(onKostenBewaren.mock.calls[0][0][0].ingetrokken).toBeUndefined()
   })

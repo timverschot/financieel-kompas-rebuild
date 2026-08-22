@@ -167,7 +167,9 @@ export function KinderenSectie({
       titel={t('Gezinsleden')}
       bijschrift={t('Stel je gezinsleden één keer in; je kan er kosten, doelen, leningen en garanties aan koppelen.')}
     >
-      {kinderen.length === 0 && <Leeg>{t('Nog geen gezinsleden ingesteld.')}</Leeg>}
+      {kinderen.length === 0 && (
+        <Leeg>{t('Nog geen gezinsleden ingesteld. Vul hieronder een naam in; daarna kan je er kosten, doelen en garanties aan koppelen.')}</Leeg>
+      )}
 
       {actief.length > 0 && <ul className="lijst">{actief.map(rij)}</ul>}
 

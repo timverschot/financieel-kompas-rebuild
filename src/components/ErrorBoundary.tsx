@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { meldFout } from '../sentry'
-import { useT } from '../i18n'
+import { useT, vertaal } from '../i18n'
+import { opmaaktaal } from '../utils/opmaaktaal'
 
 /**
  * Het schermpje dat je ziet wanneer een onderdeel vastloopt.
@@ -12,7 +13,20 @@ import { useT } from '../i18n'
  * gebruikt wordt: een Franstalige gebruiker kreeg bij een crash Nederlands.
  */
 function Foutscherm({ naam, onHerstel }: { naam?: string; onHerstel: () => void }) {
-  const { t } = useT()
+  // ⚠ RONDE 66, slotronde — DIT SCHERM MOET OOK ZONDER PROVIDER VERTALEN. De
+  // buitenste ErrorBoundary in main.tsx staat met opzet buiten TaalProvider: valt
+  // die provider zélf om, dan moet er nog iets zijn dat het opvangt. Daar viel dit
+  // scherm terug op de standaardcontext, en las een Franstalige juist bij de
+  // zwaarste crash Nederlands — zonder dat een test dat kon zien, want elke test
+  // wikkelt haar boom wél in een provider.
+  //
+  // Staat er wél een provider boven, dan gebruiken we die: alleen zo verandert dit
+  // scherm mee wanneer je tijdens dezelfde sessie van taal wisselt. Zo niet, dan is
+  // `opmaaktaal()` de bewaarde keuze van de gebruiker.
+  const context = useT()
+  const t = context.heeftProvider
+    ? context.t
+    : (sleutel: string, params?: Record<string, string | number>) => vertaal(opmaaktaal(), sleutel, params)
   return (
     <div
       role="alert"
@@ -26,8 +40,14 @@ function Foutscherm({ naam, onHerstel }: { naam?: string; onHerstel: () => void 
     >
       <p style={{ margin: 0 }}>
         {naam
-          ? t('Er ging iets mis in {naam}, maar je gegevens zijn veilig. De rest van de app blijft gewoon werken.', {
-              naam,
+          ? // ⚠ RONDE 66 — SLOTRONDE. `naam` ging hier RAUW naar binnen. De zin eromheen
+            // werd keurig vertaald, maar het onderdeel erin bleef in elke taal Nederlands:
+            // een Franstalige las "Er ging iets mis in Instellingen" met de rest in het
+            // Frans. Dat woord is schermtekst en hoort dus ook door t() te gaan; staat er
+            // geen vertaling, dan valt het vanzelf terug op het Nederlands — precies zoals
+            // het nu al deed.
+            t('Er ging iets mis in {naam}, maar je gegevens zijn veilig. De rest van de app blijft gewoon werken.', {
+              naam: t(naam),
             })
           : t('Er ging iets mis, maar je gegevens zijn veilig. De rest van de app blijft gewoon werken.')}
       </p>

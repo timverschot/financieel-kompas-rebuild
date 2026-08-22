@@ -165,7 +165,7 @@ import { BoekingDialoog } from './components/BoekingDialoog'
 import { Dialoog } from './ui/Dialoog'
 import { Meldingenbel } from './components/Meldingenbel'
 import { BalansRegel } from './components/BalansRegel'
-import { OpstellingSectie } from './components/OpstellingSectie'
+import { OpstellingSectie, type OpstellingBlok } from './components/OpstellingSectie'
 import { VermogenRegel } from './components/VermogenRegel'
 import { BufferRegel } from './components/BufferRegel'
 import { Zijbalk } from './components/Zijbalk'
@@ -193,7 +193,7 @@ import { boekingDieDezePostAfdekt, maandVooruitblik, vasteLastTransactieId } fro
 import { useInstellingen } from './instellingen'
 import { huidigeMaand, maandJaarLabel, vandaag } from './utils/datum'
 import { saldoVanRekening, totaalSaldoVan } from './utils/saldo'
-import { Balk, Bedrag, Kaart, Kengetal, Leeg, PaginaKop } from './ui/basis'
+import { Balk, Bedrag, EersteStapKnop, Kaart, Kengetal, Leeg, PaginaKop } from './ui/basis'
 import { useT } from './i18n'
 
 const container: CSSProperties = {
@@ -494,6 +494,17 @@ export function App() {
   // opnieuw kan komen wanneer je diezelfde boeking opnieuw bewerkt.
   const gevraagdOverBoeking = useRef(new Set<string>())
   const [budgetTab, setBudgetTab] = useState<BudgetTab>('plan')
+  // Naar welk blok van "Je situatie" wijst de volgende doorklik? `nr` loopt op zodat
+  // dezelfde bestemming twee keer na elkaar ook werkt (zie de `key` hieronder).
+  const [opstellingDoel, setOpstellingDoel] = useState<{ blok: OpstellingBlok; nr: number }>({
+    blok: 'rekeningen',
+    nr: 0,
+  })
+
+  function gaNaarOpstelling(blok: OpstellingBlok = 'rekeningen') {
+    setOpstellingDoel((vorig) => ({ blok, nr: vorig.nr + 1 }))
+    kiesPagina('opstelling')
+  }
   const budgetTabRef = useRef(budgetTab)
   budgetTabRef.current = budgetTab
   function kiesBudgetTab(tb: BudgetTab) {
@@ -1491,7 +1502,7 @@ export function App() {
     const gelijkaardig = boekingDieDezePostAfdekt(transacties ?? [], terugkerendePosten, post, doelMaand)
     if (gelijkaardig) {
       meld(
-        t('{naam} lijkt al geboekt op {datum} ({bedrag}). Er is niets bijgemaakt — controleer je transacties.', {
+        t('{naam} lijkt al geboekt op {datum} ({bedrag}). Er is niets bijgemaakt — kijk het na in je boekingen.', {
           naam: post.omschrijving,
           datum: gelijkaardig.datum,
           bedrag: formatEuro(Math.abs(gelijkaardig.bedrag)),
@@ -1859,7 +1870,7 @@ export function App() {
     })
     await herlaad()
     if (oud) {
-      toonUndo(t('Transactie verwijderd'), async () => {
+      toonUndo(t('Boeking verwijderd'), async () => {
         await bewaarTransactie(oud)
         if (oudeKost) await bewaarGedeeldeKost(oudeKost)
         if (oudeBon) await bewaarDossierDocument(oudeBon)
@@ -1886,7 +1897,7 @@ export function App() {
       garantieIds: oudeGaranties.map((g) => g.id),
     })
     await herlaad()
-    toonUndo(t('{n} transactie(s) verwijderd', { n: ids.length }), async () => {
+    toonUndo(t('{n} boeking(en) verwijderd', { n: ids.length }), async () => {
       for (const o of oude) await bewaarTransactie(o)
       for (const k of oudeKosten) await bewaarGedeeldeKost(k)
       for (const d of oudeBonnen) await bewaarDossierDocument(d)
@@ -2211,6 +2222,7 @@ export function App() {
         open={boekingOpen}
         onSluiten={() => setBoekingOpen(false)}
         rekeningen={actieveRekeningen}
+        onNaarRekeningen={() => gaNaarOpstelling('rekeningen')}
         categorieen={categorieen}
         handelaars={handelaars}
         handelaarIndex={handelaarIndex}
@@ -2231,7 +2243,7 @@ export function App() {
       {/* Bewerken krijgt dezelfde popup-vorm als toevoegen. Anders zou je een
           boeking in het ene scherm invullen en in het andere aanpassen. */}
       <Dialoog
-        titel={t('Transactie bewerken')}
+        titel={t('Boeking bewerken')}
         open={bewerkTransactie !== null}
         onSluiten={() => setBewerkTransactie(null)}
         // Ook hier: een klik naast het venster mag een half aangepaste boeking
@@ -2471,8 +2483,16 @@ export function App() {
     <div className="stapel">
 
       {pagina === 'opstelling' && (
-        <ErrorBoundary naam="Opstelling">
+        <ErrorBoundary naam="Je situatie">
           <OpstellingSectie
+            // ⚠ GEEN `key` hier. Dat was mijn eerste opzet — een oplopende sleutel om
+            // het gevraagde blok ook de tweede keer te laten opengaan — maar dat
+            // hermonteert het hele scherm, en dan is alles weg wat je net had
+            // ingetikt: je rekeningnaam, je bedragen in de aanvinklijst. En dat kán
+            // gebeuren, want de ➕ staat op élke pagina en zijn eerste stap wijst
+            // hierheen. De component synchroniseert nu zelf op `naarBlokNr`.
+            naarBlok={opstellingDoel.blok}
+            naarBlokNr={opstellingDoel.nr}
             rekeningen={rekeningen}
             transacties={transacties ?? []}
             overboekingen={overboekingen}
@@ -2540,11 +2560,22 @@ export function App() {
             </p>
           )}
 
-          <PaginaKop titel={paginaTitel} actie={maandNav} />
+          {/* ⚠ RONDE 66. Acht van de vijftien pagina's droegen geen enkele zin die
+              zei wát ze waren — en dit is het startscherm. `PaginaKop` kón die zin
+              al dragen; ze werd alleen op zeven pagina's meegegeven. */}
+          <PaginaKop
+            titel={paginaTitel}
+            bijschrift={t('Hoe je er deze maand voor staat: wat er binnenkwam, wat eraf ging, en wat er op je rekeningen staat.')}
+            actie={maandNav}
+          />
 
           {/* Een gloednieuwe (of net gewiste) app is helemaal leeg. Dan is één
               ding belangrijker dan alle cijfers: weten wat je eerst moet doen. */}
-          {rekeningen.length === 0 && <EersteStap onNaarRekeningen={() => kiesPagina('opstelling')} />}
+          {/* ⚠ `actieveRekeningen` en niet de kale lijst (ronde 66, slotronde). Wie al
+              zijn rekeningen archiveert, heeft er geen enkele meer om op te boeken —
+              maar kreeg dan géén welkomstkaart, terwijl de app verder wél overal zei
+              dat er eerst een rekening moet zijn. */}
+          {actieveRekeningen.length === 0 && <EersteStap onNaarRekeningen={() => gaNaarOpstelling('rekeningen')} />}
 
           {/* Eén blok met alles over deze maand.
               Dit waren drie losse kaarten onder elkaar — de kengetallen, de
@@ -2616,9 +2647,23 @@ export function App() {
               vandaagISO={vandaag()}
               kaal
             />
+
+            {/* ⚠ RONDE 66. Hier stonden vier bedragen naast elkaar zonder dat ergens
+                stond wat ze van elkaar onderscheidt — en twee ervan lijken sterk op
+                elkaar. "Saldo" is een STAND (wat er nu op je rekeningen staat),
+                "Netto" is een VERSCHIL over deze maand. De PDF van het
+                periodeoverzicht legde dat verschil al uit; op het scherm nergens. */}
+            <UitlegBlok titel={t('Wat betekenen deze vier cijfers?')}>
+              <p>
+                {t('Saldo is de stand van al je rekeningen samen, vandaag. Dat cijfer verandert niet mee met de maand die je bovenaan koos — het is wat er nú staat.')}
+              </p>
+              <p>
+                {t('Inkomsten, Uitgaven en Netto gaan wél over de gekozen maand. Netto is inkomsten min uitgaven: wat je die maand overhield of tekortkwam. Tik op een van de drie om de boekingen erachter te zien.')}
+              </p>
+            </UitlegBlok>
           </Kaart>
 
-          <ErrorBoundary naam="Maandoverzicht">
+          <ErrorBoundary naam="Overzicht">
             <div className="raster-hoofd">
               <div className="stapel">
                 {/* Twee grote donuts. Geen lijst met alle categorieën eronder meer:
@@ -2631,8 +2676,29 @@ export function App() {
                       een nieuwe gebruiker niet eens DÁT er een uitgavengrafiek bestaat
                       — en dan lijkt de app op dag één simpeler dan ze is. */}
                   <Kaart titel={t('Uitgaven per categorie')} bijschrift={maandJaarLabel(maand)}>
+                    {/* ⚠ RONDE 66. Deze zin NOEMDE twee handelingen maar bood er geen
+                        enkele aan — je stond op je startscherm en moest zelf uitzoeken
+                        waar die knoppen zaten. */}
                     {perCategorie.length === 0 ? (
-                      <Leeg>{t('Nog niets geboekt deze maand. Voeg een transactie toe, of lees een bankuittreksel in.')}</Leeg>
+                      <Leeg
+                        /* ⚠ Eén knop, niet twee: de kaart "Recente boekingen" verderop
+                           op ditzelfde scherm draagt al "Boeking toevoegen", en twee
+                           knoppen met exact dezelfde naam op één pagina leest een
+                           schermlezer twee keer voor zonder verschil. */
+                        /* ⚠ En pas vanaf ÉÉN rekening (slotronde): de Inlezen-pagina
+                           vraagt er zelf om, dus zonder rekening stuurde deze knop je
+                           van het ene lege scherm naar het andere. De welkomstkaart
+                           bovenaan ditzelfde scherm wijst dan al de juiste kant op. */
+                        actie={
+                          actieveRekeningen.length > 0 ? (
+                            <EersteStapKnop onClick={() => kiesPagina('importeren')}>
+                              {t('Uittreksel inlezen')}
+                            </EersteStapKnop>
+                          ) : undefined
+                        }
+                      >
+                        {t('Nog niets geboekt deze maand.')}
+                      </Leeg>
                     ) : (
                       <>
                         <Donut
@@ -2666,6 +2732,7 @@ export function App() {
                         />
                         <TopDrie
                           posten={perInkomsten}
+                          richting="inkomst"
                           onAlles={() => gaNaarAnalyse('inkomst')}
                           onKies={(sleutel) => gaNaarCategorie(sleutel, { maand, richting: 'in' })}
                         />
@@ -2707,6 +2774,7 @@ export function App() {
                 categorieen={categorieen}
                 onAlle={() => kiesPagina('transacties')}
                 onBewerk={setBewerkTransactie}
+                onNieuw={nieuweTransactie}
               />
 
               <Kaart
@@ -2748,10 +2816,16 @@ export function App() {
               In de 'Meer'-lade zoeken doet niemand. */}
           <PaginaKop
             titel={paginaTitel}
+            bijschrift={t('Je uitgaven en inkomsten van de laatste maanden, nieuwste eerst. Zoek, filter, of tik er een aan om ze te wijzigen; oudere haal je onderaan erbij.')}
+            // ⚠ Pas vanaf één rekening (ronde 66, slotronde): de Inlezen-pagina vraagt
+            // er zelf om, dus zonder rekening stuurde deze knop je van het ene lege
+            // scherm naar het andere. Dezelfde afscherming als op het Overzicht.
             actie={
-              <button type="button" className="knop knop-secundair knop-klein" onClick={() => kiesPagina('importeren')}>
-                {t('Uittreksel inlezen')}
-              </button>
+              actieveRekeningen.length > 0 ? (
+                <button type="button" className="knop knop-secundair knop-klein" onClick={() => kiesPagina('importeren')}>
+                  {t('Uittreksel inlezen')}
+                </button>
+              ) : undefined
             }
           />
 
@@ -2760,7 +2834,7 @@ export function App() {
               zodat je je eigen transacties niet zag zonder te scrollen. Toevoegen
               gaat via de popup (de ➕), bewerken via het potloodje in de lijst — in
               dezelfde popup, zodat er één vorm is om een boeking in te vullen. */}
-          <ErrorBoundary naam="Transactielijst">
+          <ErrorBoundary naam="Boekingen">
             <TransactieLijst
               // Elke doorklik krijgt een nieuwe sleutel, zodat de lijst het nieuwe
               // beginfilter écht overneemt in plaats van bij het eerste te blijven.
@@ -2777,6 +2851,7 @@ export function App() {
               onVerwijderMeerdere={verwijderMeerdere}
               onGaNaarDossier={(dossierId) => gaNaarMelding('dossiers', 'coouderschap', dossierId)}
               onGaNaarGarantie={() => gaNaarMelding('dossiers', 'garantie')}
+              onNieuw={nieuweTransactie}
             />
           </ErrorBoundary>
         </>
@@ -2800,6 +2875,15 @@ export function App() {
               // de keuze wel volgen maar kon je ze hier niet wijzigen.
               maandNav={maandNav}
               onGaNaarTransacties={gaNaarTransacties}
+              onNaarOpstelling={() => gaNaarOpstelling('rekeningen')}
+              // ⚠ ZONDER REKENING GEEN KNOP. Het tabblad "Vast" is dan zelf op slot,
+              // dus die kant op sturen is een doodloper. Maar de knop dán stilletjes
+              // naar de rekeningen laten wijzen is óók fout: er staat "Vul je vaste
+              // lasten in" op, en dat is niet waar je uitkomt. In diezelfde kolom staat
+              // op dat moment al "Maak een rekening aan" (Vermogensevolutie), die het
+              // wél eerlijk zegt.
+              onNaarVasteLasten={actieveRekeningen.length === 0 ? undefined : () => gaNaarBudget('vast')}
+              onNaarBoekingen={nieuweTransactie}
               onBewerkTransactie={setBewerkTransactie}
               onBoekVasteLast={boekVasteLastPerIdInMaand}
               gezinsleden={kinderen} transacties={transacties} categorieen={categorieen} rekeningen={rekeningen} overboekingen={overboekingen}
@@ -2861,18 +2945,35 @@ export function App() {
                     van de pagina die begrijpelijker moest worden precies dát niet. */}
                 {terugkerendePosten.length === 0 && (
                   <Kaart titel={t('Nog niets om te verdelen')}>
+                    {/* ⚠ RONDE 66, slotronde — DE BESTEMMING HANGT AF VAN WAT JE HEBT.
+                        De knop wees altijd naar "Vast", maar zonder rekening is dat
+                        tabblad zelf op slot: het zegt daar "Maak eerst een rekening
+                        aan" en stuurt je terug hierheen. Een rondje, en dan nog met de
+                        opvallendste knop van het scherm. */}
                     <p className="rij-meta" style={{ margin: 0 }}>
-                      {t('Deze tab rekent uit wat er overblijft van je inkomen. Daarvoor moet ze weten wat er binnenkomt en wat er elke maand vastligt — dat vul je in bij "Vast".')}
+                      {actieveRekeningen.length === 0
+                        ? t('Deze tab rekent uit wat er overblijft van je inkomen. Daarvoor moet ze weten wat er binnenkomt en wat er elke maand vastligt — en dat moet ergens vanaf gaan. Begin dus bij een rekening.')
+                        : t('Deze tab rekent uit wat er overblijft van je inkomen. Daarvoor moet ze weten wat er binnenkomt en wat er elke maand vastligt — dat vul je in bij "Vast".')}
                     </p>
                     <div className="knoprij">
-                      <button type="button" className="knop knop-primair" onClick={() => kiesBudgetTab('vast')}>
-                        {t('Naar je vaste inkomsten en lasten')}
-                      </button>
+                      {actieveRekeningen.length === 0 ? (
+                        <button
+                          type="button"
+                          className="knop knop-primair"
+                          onClick={() => gaNaarOpstelling('rekeningen')}
+                        >
+                          {t('Maak een rekening aan')}
+                        </button>
+                      ) : (
+                        <button type="button" className="knop knop-primair" onClick={() => kiesBudgetTab('vast')}>
+                          {t('Naar je vaste inkomsten en lasten')}
+                        </button>
+                      )}
                     </div>
                   </Kaart>
                 )}
 
-                <ErrorBoundary naam="Plan">
+                <ErrorBoundary naam="Te verdelen">
                   <PlanRegels
                     posten={terugkerendePosten}
                     budgetten={budgetten}
@@ -2880,6 +2981,7 @@ export function App() {
                     verwachteInkomsten={planBlik.verwachteInkomsten}
                     geboekteInkomsten={planBlik.geboekt.inkomsten}
                     onGaNaarTransacties={gaNaarTransacties}
+                    onNaarVast={() => kiesBudgetTab('vast')}
                   />
                 </ErrorBoundary>
               </div>
@@ -2898,6 +3000,27 @@ export function App() {
                     {t('Pas als er een boeking is, telt het bedrag mee in je budgetten en in de analyse.')}
                   </p>
                 </UitlegBlok>
+
+                {/* ⚠ RONDE 66, slotronde — ÉÉN eerste stap, niet twee. Zonder rekening
+                    kunnen allebei de blokken hieronder niets: een vaste last of inkomst
+                    moet ergens vanaf gaan of op binnenkomen. Liet je ze allebei staan,
+                    dan kreeg je twee keer dezelfde lege toestand met twee knoppen die
+                    exact hetzelfde heten — voor een schermlezer niet uit elkaar te
+                    houden — en een potloodje bij een bestaande post dat een formulier
+                    opende dat er niet was. */}
+                {actieveRekeningen.length === 0 && (
+                  <Kaart titel={t('Eerst een rekening')}>
+                    <Leeg
+                      actie={
+                        <EersteStapKnop onClick={() => gaNaarOpstelling('rekeningen')}>
+                          {t('Maak een rekening aan')}
+                        </EersteStapKnop>
+                      }
+                    >
+                      {t('Maak eerst een rekening aan — een vaste kost of inkomst moet ergens vanaf gaan of op binnenkomen.')}
+                    </Leeg>
+                  </Kaart>
+                )}
 
                 <ErrorBoundary naam="Vaste inkomsten">
                   <TerugkerendeSectie
@@ -2942,7 +3065,7 @@ export function App() {
                       {t('Een budget is een grens die je zelf op een categorie zet: "aan Voeding wil ik deze maand niet meer dan € 400 uitgeven". Kompal telt er alle boekingen van die categorie in deze maand bij op en laat de balk meelopen.')}
                     </p>
                     <p>
-                      {t('Zet je een budget op een hoofdcategorie, dan telt alles eronder mee. Zet je het op één product, dan telt alleen dat product.')}
+                      {t('Zet je een budget op een hoofdcategorie, dan telt alles eronder mee. Zet je het op één subcategorie, dan telt alleen die.')}
                     </p>
                     <p>
                       {t('Een vaste last verbruikt je budget zodra ze geboekt is — precies zoals elke andere uitgave in die categorie.')}
@@ -2950,12 +3073,21 @@ export function App() {
                   </UitlegBlok>
 
                   <ErrorBoundary naam="Budgetten">
-                    <Kaart titel={t('Budgetten')} bijschrift={t('voor {maand}', { maand: maandJaarLabel(maand) })}>
+                    {/* ⚠ GEEN titel: het tabblad hierboven heet al "Budgetten", en dan
+                        stond dat woord twee keer onder elkaar. Het bijschrift blijft wél —
+                        die zegt over wélke maand deze lijst gaat. */}
+                    <Kaart bijschrift={t('voor {maand}', { maand: maandJaarLabel(maand) })}>
                       {/* ⚠ Op de HELE lijst kijken en niet alleen op deze maand (nakijkronde
                           ronde 62). Had je enkel een budget voor januari en keek je naar
                           augustus, dan zei de kaart "Nog geen budgetten ingesteld" met daaronder
                           een knop naar januari — twee zinnen die elkaar tegenspreken. */}
-                      {budgetten.length === 0 && <Leeg>{t('Nog geen budgetten ingesteld.')}</Leeg>}
+                      {/* ⚠ Hier stond een knop "Zet je eerste budget" die naar DEZE tab wees —
+                dus naar het scherm waar je al stond. Precies wat `Leeg` in dezelfde
+                ronde verbiedt: een knop die nergens heen gaat is erger dan geen knop.
+                Het formulier staat al op deze pagina; de zin wijst er nu naar. */}
+            {budgetten.length === 0 && (
+              <Leeg>{t('Nog geen budgetten ingesteld. Met het formulier op deze pagina zet je een grens op een categorie.')}</Leeg>
+            )}
                       {budgetten.length > 0 && geldendNu.length === 0 && (
                         <Leeg>{t('Voor deze maand staat er geen budget. Je budgetten gelden voor een andere maand.')}</Leeg>
                       )}
@@ -3075,7 +3207,27 @@ export function App() {
 
       {pagina === 'dossiers' && (
         <>
-          <PaginaKop titel={paginaTitel} />
+          <PaginaKop
+            titel={paginaTitel}
+            bijschrift={t('Wat je met iemand anders moet afrekenen of over tijd moet opvolgen: gedeelde kosten, leningen, en facturen met hun garantiebewijs.')}
+          />
+
+          {/* ⚠ RONDE 66. De drie zinnen die uitleggen wát een dossier, een lening en
+              een garantie zijn, stonden ALLEEN in de wegwijzerkaart hieronder — en
+              die verdwijnt zodra je er één hebt. Dat was de enige plek in de hele
+              module waar het uitgelegd werd, dus wie een dossier maakte, kon het
+              daarna nergens meer nalezen. Nu staan ze in een blok dat blijft. */}
+          <UitlegBlok titel={t('Wat kan je hier bijhouden?')}>
+            <p>
+              {t('Gedeelde kosten — kosten verdelen met een co-ouder of ex-partner. Je legt één keer vast wie welk deel betaalt, geeft de kosten in, en de app rekent uit wie wie wat verschuldigd is. Van een afrekening maakt ze een PDF met de opbouw erbij.')}
+            </p>
+            <p>
+              {t('Lening of krediet — geld dat jij uitleende of zelf leende. De app houdt bij hoeveel er nog openstaat en wat er al terugbetaald is.')}
+            </p>
+            <p>
+              {t('Facturen & garantiebewijzen — een aankoop met bon of factuur. De app bewaakt de garantieperiode en waarschuwt je vóór ze afloopt.')}
+            </p>
+          </UitlegBlok>
 
           {/* De wegwijzer alleen zolang je nog helemaal niets hebt. Zodra er één
               dossier, lening of aankoop bestaat, doen de subtabs hieronder dat
@@ -3083,7 +3235,26 @@ export function App() {
               zeggen. Klik je hier een soort aan, dan opent die subtab — vroeger
               gebeurde er bij 'Gedeelde kosten' letterlijk niets. */}
           {dossiers.length === 0 && leningen.length === 0 && garanties.length === 0 && (
-            <NieuwDossierKiezer onKies={setDossierTab} />
+            <NieuwDossierKiezer
+              // ⚠ RONDE 66, slotronde: óók de tab in beeld brengen. `dossierTab` begint
+              // op 'coouderschap', dus de knop "Gedeelde kosten" zette de stand op iets
+              // wat al gold — er gebeurde zichtbaar niets, en het formulier staat op een
+              // telefoon onder de vouw. Dezelfde oplossing als `naarBlok()` in
+              // OpstellingSectie: schuiven en de focus verzetten.
+              onKies={(soort) => {
+                setGekozenDossierId(null)
+                setDossierTab(soort)
+                setTimeout(() => {
+                  const tab = document.getElementById(`dossiers-tab-${soort}`)
+                  if (!(tab instanceof HTMLElement) || !tab.isConnected) return
+                  if (typeof tab.scrollIntoView === 'function') {
+                    const rustig = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+                    tab.scrollIntoView({ block: 'start', behavior: rustig ? 'auto' : 'smooth' })
+                  }
+                  tab.focus()
+                }, 0)
+              }}
+            />
           )}
 
           <Subtabs
@@ -3163,7 +3334,7 @@ export function App() {
             )}
 
             {dossierTab === 'garantie' && (
-              <ErrorBoundary naam="Garanties">
+              <ErrorBoundary naam="Facturen & garantiebewijzen">
                 <GarantieSectie
                   gezinsleden={kinderen}
                   garanties={garanties}
@@ -3183,7 +3354,10 @@ export function App() {
 
       {pagina === 'rekeningen' && (
         <>
-          <PaginaKop titel={paginaTitel} />
+          <PaginaKop
+            titel={paginaTitel}
+            bijschrift={t('Waar je geld staat: je betaal- en spaarrekeningen, je cash, je kredietkaarten en je beleggingen. Tik een rekening aan om te zien wat erop gebeurde.')}
+          />
 
           <div className="raster-lijst-formulier">
           <div className="kolom-lijst stapel">
@@ -3203,13 +3377,12 @@ export function App() {
             }
           >
             {rekeningen.length === 0 && (
-              <Leeg>
-                <>
-                  {t('Nog geen rekeningen. Vul het formulier in, of begin bij je situatie.')}{' '}
-                  <button type="button" className="knop knop-ghost knop-klein" onClick={() => kiesPagina('opstelling')}>
-                    {t('Je situatie')}
-                  </button>
-                </>
+              <Leeg
+                actie={
+                  <EersteStapKnop onClick={() => gaNaarOpstelling('rekeningen')}>{t('Naar "Je situatie"')}</EersteStapKnop>
+                }
+              >
+                {t('Nog geen rekeningen. Vul het formulier in, of begin bij je situatie.')}
               </Leeg>
             )}
             {rekeningen.length > 0 && (
@@ -3277,6 +3450,10 @@ export function App() {
               onVerwijderen={verwijderOverboekingH}
               onBewerk={setBewerkOverboeking}
               onStopBewerken={() => setBewerkOverboeking(null)}
+              onNieuweRekening={() => {
+                setGekozenRekeningId(null)
+                setBewerkRekening(null)
+              }}
             />
           </ErrorBoundary>
           </div>
@@ -3330,13 +3507,34 @@ export function App() {
 
       {pagina === 'categorieen' && (
         <>
-          <PaginaKop titel={paginaTitel} />
+          <PaginaKop
+            titel={paginaTitel}
+            bijschrift={t('De indeling waarmee de app je uitgaven groepeert. Ze is al ingevuld; je kan overal iets eigens bij zetten of hernoemen.')}
+          />
+
+          {/* ⚠ RONDE 66. De boom heeft drie lagen, en die droegen vier namen door
+              elkaar: de bovenste laag heette op deze pagina "categorie" en elders
+              "hoofdcategorie", de onderste "subcategorie" in de knop maar "items" in
+              het cijfer erboven. De namen staan nu overal gelijk, en dit blok zegt
+              één keer welke drie het zijn — met een voorbeeld, want een voorbeeld
+              legt een boom sneller uit dan een definitie. */}
+          <UitlegBlok titel={t('Hoe deze indeling in elkaar zit')}>
+            <p>{t('Er zijn drie lagen, van breed naar smal:')}</p>
+            <ul>
+              <li>{t('Een hoofdcategorie is een groot gebied van je leven: Voeding, of Woning en vaste lasten.')}</li>
+              <li>{t('Een categorie is een stuk daarvan: onder Voeding bijvoorbeeld Broodwaren.')}</li>
+              <li>{t('Een subcategorie is één ding dat je koopt: onder Broodwaren bijvoorbeeld Stokbrood.')}</li>
+            </ul>
+            <p>
+              {t('Je hoeft niets van dit alles zelf te maken — de app brengt de hele indeling al mee. Vind je iets niet terug, dan zet je het er op de juiste plek bij; hernoemen mag ook, en dat kan je altijd terugdraaien.')}
+            </p>
+          </UitlegBlok>
 
           <div className="raster-lijst-formulier">
           <div className="kolom-lijst stapel">
           <Kaart>
             {categorieen.length === 0 && (
-              <Leeg>{t('Je hebt nog geen eigen categorieën. De ingebouwde boom staat hieronder.')}</Leeg>
+              <Leeg>{t('Je hebt nog geen eigen hoofdcategorieën. De ingebouwde boom staat hieronder — daar kan je op elk niveau iets toevoegen.')}</Leeg>
             )}
             {categorieen.length > 0 && (
               <ul className="lijst">
@@ -3355,10 +3553,14 @@ export function App() {
                     </span>
                     <span className="rij-midden rij-titel">{c.naam}</span>
                     <span className="rij-acties">
-                      <button className="knop knop-kaal" aria-label={t('Bewerk categorie {naam}', { naam: c.naam })} onClick={() => setBewerkCategorie(c)}>
+                      {/* ⚠ RONDE 66. "categorie" — maar dit is de BOVENSTE laag, die
+                          overal elders "hoofdcategorie" heet, en de knop met exact
+                          dezelfde tekst in de boom hieronder werkt op de MIDDENlaag.
+                          Twee knoppen, twee lagen, één naam. */}
+                      <button className="knop knop-kaal" aria-label={t('Bewerk hoofdcategorie {naam}', { naam: c.naam })} onClick={() => setBewerkCategorie(c)}>
                         ✎
                       </button>
-                      <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder categorie {naam}', { naam: c.naam })} onClick={() => verwijderCat(c.id)}>
+                      <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder hoofdcategorie {naam}', { naam: c.naam })} onClick={() => verwijderCat(c.id)}>
                         ×
                       </button>
                     </span>
@@ -3383,7 +3585,7 @@ export function App() {
           </div>
 
           <div className="kolom-formulier stapel">
-            <Kaart titel={bewerkCategorie ? t('Categorie bewerken') : t('Nieuwe categorie')}>
+            <Kaart titel={bewerkCategorie ? t('Hoofdcategorie bewerken') : t('Nieuwe hoofdcategorie')}>
               <CategorieFormulier onOpslaan={slaCategorieOp} onAnnuleer={() => setBewerkCategorie(null)} bewerken={bewerkCategorie} />
             </Kaart>
           </div>
@@ -3426,6 +3628,7 @@ export function App() {
             dossiers={dossiers}
             onderhoudsbijdragen={onderhoudsbijdragen}
             onBewaarBijdrage={onderhoudsbijdrageOpslaan}
+            onNaarDossiers={() => kiesPagina('dossiers')}
           />
         </ErrorBoundary>
       )}
@@ -3443,6 +3646,8 @@ export function App() {
             onAfsluiten={maandAfsluiten}
             onHeropen={maandHeropenen}
             onGaNaarInlezen={() => kiesPagina('importeren')}
+            heeftRekening={actieveRekeningen.length > 0}
+            onNaarRekeningen={() => gaNaarOpstelling('rekeningen')}
             onToonBoekingen={(maand) => gaNaarTransacties({ maand })}
             onToonZonderCategorie={(maand) => gaNaarTransacties({ maand, zonderCategorie: true })}
           />
@@ -3457,6 +3662,7 @@ export function App() {
             onderhoudsbetalingen={onderhoudsbetalingen}
             documenten={dossierdocumenten}
             onBewerkTransactie={setBewerkTransactie}
+            onNaarBoekingen={nieuweTransactie}
           />
         </ErrorBoundary>
       )}
@@ -3469,13 +3675,17 @@ export function App() {
             dossiers={dossiers}
             gezinsleden={kinderen}
             onGaNaarTransacties={gaNaarTransacties}
+            onNaarGezinsleden={() => gaNaarOpstelling('gezin')}
           />
         </ErrorBoundary>
       )}
 
       {pagina === 'importeren' && (
         <>
-          <PaginaKop titel={paginaTitel} />
+          <PaginaKop
+            titel={paginaTitel}
+            bijschrift={t('Zet in één keer een hele maand aan boekingen in de app, uit het CSV-bestand van je bank. Jij kiest daarna wat er echt in mag.')}
+          />
           <ErrorBoundary naam="Inlezen">
             <ImportSectie
               rekeningen={actieveRekeningen}
@@ -3483,6 +3693,7 @@ export function App() {
               categorieen={categorieen}
               handelaarIndex={handelaarIndex}
               onImporteer={leesUittrekselIn}
+              onNaarRekeningen={() => gaNaarOpstelling('rekeningen')}
             />
           </ErrorBoundary>
         </>
@@ -3627,10 +3838,14 @@ export function App() {
               </>
             )}
             <button className="knop knop-primair knop-klein" onClick={nieuweTransactie}>
-              + {t('Nieuwe transactie')}
+              + {t('Nieuwe boeking')}
             </button>
 
-            <Meldingenbel meldingen={meldingen} onGaNaar={gaNaarMelding} onBoekVasteLast={boekVasteLastPerId} />
+            <Meldingenbel
+              meldingen={meldingen}
+              onGaNaar={gaNaarMelding}
+              onBoekVasteLast={boekVasteLastPerId}
+            />
 
             {verbonden && (
               <button className="knop knop-icoon" aria-label={t('Uitloggen')} onClick={verbreekVerbinding}>
@@ -3694,7 +3909,11 @@ export function App() {
           {/* Hetzelfde belletje als op desktop. Het stond hier vroeger niet, dus op
               een telefoon zag je nooit dat een budget bijna op was. */}
           <div style={{ flex: 1 }} />
-          <Meldingenbel meldingen={meldingen} onGaNaar={gaNaarMelding} onBoekVasteLast={boekVasteLastPerId} />
+          <Meldingenbel
+              meldingen={meldingen}
+              onGaNaar={gaNaarMelding}
+              onBoekVasteLast={boekVasteLastPerId}
+            />
         </div>
 
         {/* Bovenaan de inhoud en NIET zwevend: zie de uitleg in

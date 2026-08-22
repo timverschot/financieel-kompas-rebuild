@@ -98,8 +98,20 @@ describe('AnalyseSectie — verdeling en ranglijst', () => {
   })
 
   it('toont één kaart met een lege toestand wanneer er niets is', () => {
+    // ⚠ RONDE 66, slotronde. Zónder één boeking in de hele app helpt geen enkele
+    // periode, en dan hoort er een eerste stap te staan in plaats van een zin over
+    // "deze periode" die je nergens brengt. Met boekingen blijft "Geen uitgaven in
+    // deze periode" wél het juiste antwoord — de periodekiezer staat erboven.
     toon([])
+    expect(screen.getByText(/Er staat nog geen enkele boeking in de app/)).toBeInTheDocument()
+    expect(screen.queryByText('Geen uitgaven in deze periode')).toBeNull()
+  })
+
+  it('zegt "in deze periode" zodra er wél boekingen zijn', () => {
+    // Een boeking ver buiten het gekozen tijdvak: de lijst is leeg, de app niet.
+    toon([{ ...boodschappen, id: 'oud', datum: '2019-01-05' }])
     expect(screen.getByText('Geen uitgaven in deze periode')).toBeInTheDocument()
+    expect(screen.queryByText(/nog geen enkele boeking in de app/)).toBeNull()
   })
 })
 
@@ -108,7 +120,7 @@ describe('AnalyseSectie — legende naast de donut', () => {
     toon([boodschappen, tanken])
     // De kaart per product/dienst gebruikt .donut-naast: op een breed scherm
     // staat de legende ernaast in plaats van eronder.
-    const perProduct = kaart('Verdeling per product/dienst')
+    const perProduct = kaart('Verdeling per subcategorie')
     expect(perProduct.querySelector('.donut-naast')).not.toBeNull()
     expect(perProduct.querySelectorAll('.donut-naast .rij-pct').length).toBeGreaterThan(0)
   })
@@ -143,7 +155,7 @@ describe('AnalyseSectie — "toon alle" toont ook echt meer', () => {
   it('laat na het uitklappen meer rijen zien dan ervoor, zonder eigen schuifvenster', async () => {
     const user = userEvent.setup()
     toon(veel)
-    const k = kaart('Verdeling per product/dienst')
+    const k = kaart('Verdeling per subcategorie')
     const lijst = k.querySelector('.donut-naast .lijst') as HTMLElement
     const voor = lijst.querySelectorAll('li').length
 
@@ -231,7 +243,7 @@ describe('AnalyseSectie — doorklikken naar de transacties', () => {
     const inMaart: Transactie = { ...boodschappen, id: 'maart', datum: '2026-03-12' }
     toonMet([inMaart], { onGaNaarTransacties, ankerMaand: '2026-03' })
     await user.click(screen.getByRole('button', { name: 'Toon details van Voeding' }))
-    await user.click(await screen.findByRole('button', { name: 'Bekijk in Transacties ›' }))
+    await user.click(await screen.findByRole('button', { name: 'Bekijk bij Boekingen ›' }))
     // Het filter erft de periode van de pagina: klik je op een cijfer over maart,
     // dan hoort de lijst maart te tonen en niet je hele historiek.
     // Eén maand geeft `maand` mee en geen van/tot-paar: zo werkt de maandschakelaar
@@ -269,7 +281,7 @@ describe('AnalyseSectie — doorklikken naar de transacties', () => {
     const user = userEvent.setup()
     toonMet([boodschappen, tanken])
     await user.click(screen.getByRole('button', { name: 'Toon details van Voeding' }))
-    expect(screen.queryByRole('button', { name: 'Bekijk in Transacties ›' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Bekijk bij Boekingen ›' })).toBeNull()
     expect(screen.queryByRole('button', { name: /Bewerk Colruyt/ })).toBeNull()
   })
 })
@@ -383,7 +395,7 @@ describe('AnalyseSectie — welke rijen mogen doorklikken', () => {
     const naarTransacties = vi.fn()
     const zonder: Transactie = { ...tx('z', '', -1000), categorieId: undefined }
     toonMet([zonder, boodschappen], { onGaNaarTransacties: naarTransacties })
-    const kaartje = screen.getByText('Verdeling per product/dienst').closest('section.kaart') as HTMLElement
+    const kaartje = screen.getByText('Verdeling per subcategorie').closest('section.kaart') as HTMLElement
     await gebruiker.click(
       within(kaartje).getByRole('button', { name: /^Zonder categorie .* bekijk de boekingen$/ }),
     )
@@ -392,7 +404,7 @@ describe('AnalyseSectie — welke rijen mogen doorklikken', () => {
 
   it('toont het pijltje alleen op een rij die ergens heen gaat', () => {
     toonMet([opMidden, boodschappen], { onGaNaarTransacties: vi.fn() })
-    const kaartje = screen.getByText('Verdeling per product/dienst').closest('section.kaart') as HTMLElement
+    const kaartje = screen.getByText('Verdeling per subcategorie').closest('section.kaart') as HTMLElement
     const pijltjes = [...kaartje.querySelectorAll('.rij-chevron')]
     // Even veel pijltjes als rijen, maar alleen zichtbaar waar er een knop is:
     // zo blijft de bedragkolom van alle rijen op dezelfde plek staan.
@@ -510,7 +522,7 @@ describe('AnalyseSectie — "Zonder categorie" in een andere taal', () => {
         />
       </TaalProvider>,
     )
-    const kaartje = screen.getByText('Breakdown by product/service').closest('section.kaart') as HTMLElement
+    const kaartje = screen.getByText('Breakdown by subcategory').closest('section.kaart') as HTMLElement
     expect(within(kaartje).getByText('Uncategorised')).toBeInTheDocument()
     expect(within(kaartje).queryByText('Zonder categorie')).toBeNull()
     // De winkelnaam blijft staan zoals ze op je afschrift stond.
@@ -529,7 +541,7 @@ describe('AnalyseSectie — "Zonder categorie" in de drilldown', () => {
     const naarTransacties = vi.fn()
     toonMet([zonder, boodschappen], { onGaNaarTransacties: naarTransacties })
     await gebruiker.click(screen.getByRole('button', { name: 'Toon details van Zonder categorie' }))
-    await gebruiker.click(screen.getByRole('button', { name: /Bekijk in Transacties/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /Bekijk bij Boekingen/ }))
     expect(naarTransacties).toHaveBeenCalledWith(expect.objectContaining({ zonderCategorie: true }))
   })
 
@@ -619,7 +631,7 @@ describe('AnalyseSectie — de drie tabbladen', () => {
   // gebruiker mist dan een grafiek die hij gisteren nog had. Ze noemen elke kaart bij
   // haar kop, want dat is wat je op het scherm ziet staan.
   const KOP_PER_TAB: Record<string, string[]> = {
-    Verdeling: ['Verdeling uitgaven', 'Verdeling per product/dienst', 'Uitgaven per winkel'],
+    Verdeling: ['Verdeling uitgaven', 'Verdeling per subcategorie', 'Uitgaven per winkel'],
     'Wat verandert': ['Waar loopt het op?', 'Wat werd er duurder?', 'Verloop per categorie'],
     Vooruit: ['Vermogensevolutie', 'Vooruitblik & spaarquote'],
   }

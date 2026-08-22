@@ -1,6 +1,6 @@
 import type { Budget, Transactie } from '../data/schema'
 import { budgetKleur, geldendeBudgetten, uitgavenInMaand } from '../utils/budget'
-import { Balk, Kaart, Leeg } from '../ui/basis'
+import { Balk, EersteStapKnop, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 import { useInstellingen } from '../instellingen'
 import { formatEuro } from '../utils/format'
@@ -69,13 +69,33 @@ export function OverzichtZijkolom({
       <Kaart
         titel={t('Budgetstatus')}
         bijschrift={t('voor {maand}', { maand: maandJaarLabel(maand) })}
+        // ⚠ "Alle budgetten" en niet "Alle": op een breed scherm staat deze kaart naast
+        // "Recente boekingen", die ook zo'n knop draagt. Twee knoppen die allebei
+        // "Alle" heten zijn voor een schermlezer niet uit elkaar te houden.
         actie={
           <button className="knop knop-ghost knop-klein" onClick={onGaNaarBudget}>
-            {t('Alle')}
+            {t('Alle budgetten')}
           </button>
         }
       >
-        {budgetStand.length === 0 && <Leeg>{t('Nog geen budgetten ingesteld.')}</Leeg>}
+        {/* ⚠ RONDE 66, slotronde, twee dingen tegelijk.
+            (1) De zin noemde de Budget-pagina maar liet je er zelf naartoe zoeken —
+                terwijl deze kaart de knop ernaartoe al binnenkreeg voor "Alle".
+            (2) Ze zei "Nog geen budgetten ingesteld" zodra er voor DEZE maand niets
+                gold. Had je enkel een budget voor januari en keek je naar augustus,
+                dan stond hier "zet je eerste budget" terwijl de Budget-pagina in
+                diezelfde maand het tegenovergestelde zei. Dezelfde tegenspraak die
+                ronde 62 daar al rechtgezet heeft; deze kolom was toen vergeten. */}
+        {budgetStand.length === 0 &&
+          (budgetten.length === 0 ? (
+            <Leeg actie={<EersteStapKnop onClick={onGaNaarBudget}>{t('Zet je eerste budget')}</EersteStapKnop>}>
+              {t('Nog geen budgetten ingesteld. Op de Budget-pagina zet je een grens op een categorie.')}
+            </Leeg>
+          ) : (
+            <Leeg actie={<EersteStapKnop onClick={onGaNaarBudget}>{t('Bekijk je budgetten')}</EersteStapKnop>}>
+              {t('Voor deze maand staat er geen budget. Je budgetten gelden voor een andere maand.')}
+            </Leeg>
+          ))}
         {budgetStand.map(({ budget, uitgegeven, fractie }) => {
           const naam = categorieNaam(budget.categorieId) ?? '—'
           // Dezelfde kern als op de Budget-pagina, en dezelfde drempel als de
@@ -89,7 +109,13 @@ export function OverzichtZijkolom({
                     type="button"
                     className="rij-titel tekstknop"
                     style={{ fontSize: 'var(--tekst-sm)' }}
-                    aria-label={t('Bekijk de boekingen van {naam} — {bedrag}', { naam, bedrag: formatEuro(uitgegeven) })}
+                    // ⚠ "in je budget" erbij: de donut op ditzelfde scherm heeft voor
+                    // dezelfde categorie een rij met exact dezelfde naam en hetzelfde
+                    // bedrag (zie TopDrie). Zonder dit verschil klinken ze identiek.
+                    aria-label={t('Bekijk de boekingen van {naam} in je budget — {bedrag}', {
+                      naam,
+                      bedrag: formatEuro(uitgegeven),
+                    })}
                     onClick={() => onKies(budget.categorieId)}
                   >
                     {naam}

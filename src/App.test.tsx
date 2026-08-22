@@ -117,7 +117,7 @@ async function zetAandeel(user: Gebruiker, waarde: string) {
 // Toevoegen gaat sinds ronde 21 altijd via de invoerpopup (de centrale ➕), op
 // welke pagina je ook staat. Deze helper opent ze en kiest de soort.
 async function openBoeking(user: Gebruiker, soort = 'Uitgave') {
-  await user.click(screen.getByRole('button', { name: 'Nieuwe transactie' }))
+  await user.click(screen.getByRole('button', { name: 'Nieuwe boeking' }))
   await screen.findByRole('dialog')
   await user.click(screen.getByRole('button', { name: soort }))
 }
@@ -143,7 +143,7 @@ describe('App', () => {
     // De popup sluit na het opslaan.
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 
-    await ga(user, 'Transacties')
+    await ga(user, 'Boekingen')
     expect(await screen.findByText('Boek')).toBeInTheDocument()
 
     await ga(user, 'Overzicht')
@@ -205,7 +205,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Transacties')
+    await ga(user, 'Boekingen')
     await screen.findByText('Boodschappen')
     await user.click(screen.getByRole('button', { name: 'Verwijder Boodschappen' }))
     await waitFor(() => expect(screen.queryByText('Boodschappen')).toBeNull())
@@ -240,7 +240,7 @@ describe('App', () => {
 
     render(<App />)
     await screen.findByText('Saldo')
-    await ga(user, 'Transacties')
+    await ga(user, 'Boekingen')
     await screen.findByText('Boodschappen')
     await user.click(screen.getByRole('button', { name: 'Verwijder Boodschappen' }))
 
@@ -253,7 +253,7 @@ describe('App', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Transacties')
+    await ga(user, 'Boekingen')
     await screen.findByText('Huur')
     // Sinds ronde 45 opent de HELE rij de boeking, met datum en bedrag in het
     // label — er is geen apart potloodknopje meer.
@@ -375,8 +375,8 @@ describe('App', () => {
     await screen.findByText('Saldo')
 
     await gaMeer(user, 'Categorieën')
-    await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
-    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
+    await user.type(screen.getByLabelText('Naam hoofdcategorie'), 'Vervoer')
+    await user.click(screen.getByRole('button', { name: 'Hoofdcategorie toevoegen' }))
 
     // 'Vervoer' verschijnt nu als keuze in het budgetformulier.
     await gaBudget(user, 'Budgetten')
@@ -492,7 +492,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Genereer afrekening' }))
     expect(await screen.findByText('Afrekeningen')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('checkbox', { name: 'Overgemaakt' }))
+    await user.click(screen.getByRole('checkbox', { name: /^Afrekening .* is overgemaakt$/ }))
     await waitFor(() => expect(screen.getAllByText(/Niets te verrekenen/).length).toBeGreaterThan(0))
   })
 
@@ -502,15 +502,15 @@ describe('App', () => {
     await screen.findByText('Saldo')
 
     await gaMeer(user, 'Categorieën')
-    await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
-    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
+    await user.type(screen.getByLabelText('Naam hoofdcategorie'), 'Vervoer')
+    await user.click(screen.getByRole('button', { name: 'Hoofdcategorie toevoegen' }))
     // Sinds ronde 27 staat een eigen hoofdcategorie op twee plaatsen: in de lijst
     // én als tak in de boom eronder. We toetsen dus op de verwijderknop.
-    expect(await screen.findByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Verwijder hoofdcategorie Vervoer' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Verwijder categorie Vervoer' }))
+    await user.click(screen.getByRole('button', { name: 'Verwijder hoofdcategorie Vervoer' }))
     await user.click(await screen.findByRole('button', { name: 'Ja, verwijder' }))
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Verwijder hoofdcategorie Vervoer' })).toBeNull())
   })
 
   // Ronde 61. De ongedaan-balk was er in de praktijk alleen voor wie een muis heeft:
@@ -522,14 +522,14 @@ describe('App', () => {
     await screen.findByText('Saldo')
 
     await gaMeer(user, 'Categorieën')
-    await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
-    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
-    await user.click(await screen.findByRole('button', { name: 'Verwijder categorie Vervoer' }))
+    await user.type(screen.getByLabelText('Naam hoofdcategorie'), 'Vervoer')
+    await user.click(screen.getByRole('button', { name: 'Hoofdcategorie toevoegen' }))
+    await user.click(await screen.findByRole('button', { name: 'Verwijder hoofdcategorie Vervoer' }))
     await user.click(await screen.findByRole('button', { name: 'Ja, verwijder' }))
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Verwijder hoofdcategorie Vervoer' })).toBeNull())
 
     await user.keyboard('{Control>}z{/Control}')
-    expect(await screen.findByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Verwijder hoofdcategorie Vervoer' })).toBeInTheDocument()
   })
 
   it('laat Ctrl+Z met rust terwijl je in een veld typt', async () => {
@@ -541,16 +541,16 @@ describe('App', () => {
     await screen.findByText('Saldo')
 
     await gaMeer(user, 'Categorieën')
-    await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
-    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
-    await user.click(await screen.findByRole('button', { name: 'Verwijder categorie Vervoer' }))
+    await user.type(screen.getByLabelText('Naam hoofdcategorie'), 'Vervoer')
+    await user.click(screen.getByRole('button', { name: 'Hoofdcategorie toevoegen' }))
+    await user.click(await screen.findByRole('button', { name: 'Verwijder hoofdcategorie Vervoer' }))
     await user.click(await screen.findByRole('button', { name: 'Ja, verwijder' }))
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Verwijder hoofdcategorie Vervoer' })).toBeNull())
 
-    const veld = screen.getByLabelText('Categorienaam')
+    const veld = screen.getByLabelText('Naam hoofdcategorie')
     veld.focus()
     await user.keyboard('{Control>}z{/Control}')
-    expect(screen.queryByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Verwijder hoofdcategorie Vervoer' })).toBeNull()
   })
 
   it('laat je de ongedaan-balk meteen wegdoen', async () => {
@@ -561,9 +561,9 @@ describe('App', () => {
     await screen.findByText('Saldo')
 
     await gaMeer(user, 'Categorieën')
-    await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
-    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
-    await user.click(await screen.findByRole('button', { name: 'Verwijder categorie Vervoer' }))
+    await user.type(screen.getByLabelText('Naam hoofdcategorie'), 'Vervoer')
+    await user.click(screen.getByRole('button', { name: 'Hoofdcategorie toevoegen' }))
+    await user.click(await screen.findByRole('button', { name: 'Verwijder hoofdcategorie Vervoer' }))
     await user.click(await screen.findByRole('button', { name: 'Ja, verwijder' }))
 
     const ongedaan = await screen.findByRole('button', { name: 'Ongedaan maken' })
@@ -571,7 +571,7 @@ describe('App', () => {
     await user.click(within(balk).getByRole('button', { name: 'Melding sluiten' }))
     expect(screen.queryByRole('button', { name: 'Ongedaan maken' })).toBeNull()
     // En de categorie blijft verwijderd: wegklikken is niet hetzelfde als herstellen.
-    expect(screen.queryByRole('button', { name: 'Verwijder categorie Vervoer' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Verwijder hoofdcategorie Vervoer' })).toBeNull()
   })
 
   it('hernoemt een bestaande categorie', async () => {
@@ -580,11 +580,11 @@ describe('App', () => {
     await screen.findByText('Saldo')
 
     await gaMeer(user, 'Categorieën')
-    await user.click(screen.getByRole('button', { name: 'Bewerk categorie Voeding' }))
-    const naam = screen.getByLabelText('Categorienaam')
+    await user.click(screen.getByRole('button', { name: 'Bewerk hoofdcategorie Voeding' }))
+    const naam = screen.getByLabelText('Naam hoofdcategorie')
     await user.clear(naam)
     await user.type(naam, 'Eten')
-    await user.click(screen.getByRole('button', { name: 'Categorie wijzigen' }))
+    await user.click(screen.getByRole('button', { name: 'Hoofdcategorie wijzigen' }))
 
     // Beschikbaar als keuze in het budgetformulier onder de nieuwe naam.
     await gaBudget(user, 'Budgetten')
@@ -774,6 +774,23 @@ describe('App', () => {
     expect(await screen.findByRole('button', { name: 'Naar je overzicht' })).toBeInTheDocument()
   })
 
+  it('laat de eerste stap op een leeg Overzicht nergens doodlopen', async () => {
+    // ⚠ RONDE 66, slotronde. "Boeking toevoegen" mág hier staan zonder rekening —
+    // MITS de popup erachter zelf een eerste stap toont in plaats van vier
+    // formulieren met een uitgezette knop. Die twee horen bij elkaar: haal je de
+    // eerste stap uit de popup weg, dan wordt deze knop opnieuw een doodloper.
+    for (const tabel of db.tables) await tabel.clear()
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Dit is je situatie')
+    await ga(user, 'Overzicht')
+
+    expect(await screen.findByText('Nog geen boekingen.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Boeking toevoegen' }))
+    expect(await screen.findByRole('dialog')).toHaveAccessibleName('Eerst een rekening')
+    expect(screen.getByRole('button', { name: 'Maak je eerste rekening aan' })).toBeInTheDocument()
+  })
+
   it('landt op het Overzicht zodra er al een rekening bestaat', async () => {
     // De keuze mag alleen bij het OPSTARTEN gemaakt worden. Stond ze in herlaad(),
     // dan sprong je bij elke bewaaractie terug naar De Opstelling.
@@ -782,19 +799,34 @@ describe('App', () => {
     expect(screen.queryByText('Dit is je situatie')).not.toBeInTheDocument()
   })
 
-  it('zegt in de invoerpopup dat je eerst een rekening nodig hebt', async () => {
+  it('zet in de invoerpopup de eerste stap in plaats van vier doodlopende formulieren', async () => {
     for (const tabel of db.tables) await tabel.clear()
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Dit is je situatie')
 
-    // Deze uitleg stond op de Transacties-pagina, waar het formulier woonde. Nu
-    // het formulier in de popup zit, moet ze mee verhuizen — anders duw je op de
-    // ➕ en zie je een uitgeschakelde knop zonder te weten waarom.
-    await openBoeking(user, 'Uitgave')
+    // ⚠ RONDE 66, slotronde. Vóór deze ronde toonde de popup ook zónder rekening
+    // gewoon haar vier soorten, en leidde elk ervan naar een formulier met een
+    // uitgezette opslaanknop. De ➕ staat op élk scherm en is precies de knop die
+    // een nieuwe gebruiker als eerste probeert; hij mocht dus niet doodlopen.
+    await user.click(screen.getByRole('button', { name: 'Nieuwe boeking' }))
+    await screen.findByRole('dialog')
     expect(
-      await screen.findByText('Maak eerst een rekening aan — een transactie moet ergens op geboekt worden.'),
+      await screen.findByText(
+        'Een boeking moet ergens op staan. Maak eerst een rekening aan — je betaalrekening, je spaarrekening, of gewoon je portemonnee.',
+      ),
     ).toBeInTheDocument()
+    // Geen keuzerij die toch nergens heen kan.
+    expect(screen.queryByRole('button', { name: 'Uitgave' })).toBeNull()
+
+    // ⚠ De knop moet iets DOEN, en dat is hier lastiger te toetsen dan het lijkt:
+    // deze test staat al op "Je situatie" met het rekeningformulier in beeld, dus
+    // zoeken naar "Dit is je situatie" of naar het veld "Rekeningnaam" slaagt ook
+    // wanneer de knop niets doet. Wat er wél verandert: de popup sluit, en het scherm
+    // brengt het blok "Je geld" in beeld met de focus op die tab.
+    await user.click(screen.getByRole('button', { name: 'Maak je eerste rekening aan' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    await waitFor(() => expect(document.activeElement).toBe(document.getElementById('opstelling-tab-rekeningen')))
   })
 })
 
@@ -920,7 +952,7 @@ describe('App — Dossiers met subtabs', () => {
     expect(await screen.findByText('Leningen & kredieten')).toBeInTheDocument()
 
     await user.click(screen.getByRole('tab', { name: /Facturen & garantiebewijzen/ }))
-    expect(await screen.findByText('Garanties & facturen')).toBeInTheDocument()
+    expect(await screen.findByText(/Hou per aankoop de garantie en de factuur bij/)).toBeInTheDocument()
     // De vorige lade is echt weg, niet alleen verborgen: anders scroll je nog
     // steeds langs alles wat je niet zocht.
     expect(screen.queryByText('Leningen & kredieten')).toBeNull()
@@ -946,8 +978,11 @@ describe('App — Dossiers met subtabs', () => {
     expect(await screen.findByText('Wat wil je bijhouden?')).toBeInTheDocument()
 
     // De keuze doet nu ook echt iets: vroeger bleef het scherm onbewogen staan.
-    await user.click(screen.getByRole('button', { name: /Aankoop met garantie/ }))
-    expect(await screen.findByText('Garanties & facturen')).toBeInTheDocument()
+    // ⚠ De knop in de wegwijzer draagt een WERKWOORD ("Een aankoop met garantie
+    // bijhouden") en niet de naam van de tab eronder: vier bedieningen met twee namen
+    // zijn met een schermlezer niet uit elkaar te houden.
+    await user.click(screen.getByRole('button', { name: /Een aankoop met garantie bijhouden/ }))
+    expect(await screen.findByText(/Hou per aankoop de garantie en de factuur bij/)).toBeInTheDocument()
 
     unmount()
     await bewaarGarantie({ id: 'g1', product: 'Koffiezet', aankoopdatum: vandaag(), garantieMaanden: 24 })
@@ -979,7 +1014,7 @@ describe('App — Dossiers met subtabs', () => {
 
     // Niet op de gedeelde kosten, maar meteen bij de garanties.
     expect(await screen.findByRole('tab', { name: /Facturen & garantiebewijzen/ })).toHaveAttribute('aria-selected', 'true')
-    expect(await screen.findByText('Garanties & facturen')).toBeInTheDocument()
+    expect(await screen.findByText(/Hou per aankoop de garantie en de factuur bij/)).toBeInTheDocument()
   })
 })
 
@@ -1164,8 +1199,8 @@ describe('App — volgorde van de hoofdcategorieën', () => {
     await screen.findByText('Saldo')
     await gaMeer(user, 'Categorieën')
 
-    await user.type(screen.getByLabelText('Categorienaam'), 'Mijn hobby')
-    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
+    await user.type(screen.getByLabelText('Naam hoofdcategorie'), 'Mijn hobby')
+    await user.click(screen.getByRole('button', { name: 'Hoofdcategorie toevoegen' }))
 
     const namen = await waitFor(() => {
       const n = hoofdnamen()
@@ -1211,7 +1246,7 @@ describe('App — het Overzicht', () => {
     await screen.findByText('Saldo')
 
     // Dit stond alleen in de zijkolom, en die bestaat pas vanaf 1024 px.
-    expect(await screen.findByText('Recente transacties')).toBeInTheDocument()
+    expect(await screen.findByText('Recente boekingen')).toBeInTheDocument()
     expect(screen.getByText('Boodschappen')).toBeInTheDocument()
   })
 
@@ -1330,7 +1365,7 @@ describe('App — doorklikken van een cijfer naar zijn boekingen', () => {
 
     // Weg en terug via de gewone navigatie.
     await user.click(screen.getByRole('button', { name: 'Overzicht' }))
-    await user.click(screen.getByRole('button', { name: 'Transacties' }))
+    await user.click(screen.getByRole('button', { name: 'Boekingen' }))
     expect(await screen.findByText('Huur')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Wis filter Voeding' })).toBeNull()
   })
@@ -1341,7 +1376,7 @@ describe('App — doorklikken van een cijfer naar zijn boekingen', () => {
     await screen.findByText('Saldo')
 
     await user.click(await screen.findByRole('button', { name: /^Bewerk Boodschappen —/ }))
-    expect(await screen.findByRole('heading', { name: 'Transactie bewerken' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Boeking bewerken' })).toBeInTheDocument()
   })
 })
 
@@ -1369,7 +1404,7 @@ describe('App — de opbouw van een afrekening', () => {
     await screen.findByText('Saldo')
     await maakAfrekening(user)
 
-    await user.click(screen.getByRole('button', { name: 'Toon opbouw' }))
+    await user.click(screen.getByRole('button', { name: /^Toon de opbouw van de afrekening/ }))
     expect(await screen.findByText('Verdeelsleutel')).toBeInTheDocument()
     expect(screen.getByText('Totalen')).toBeInTheDocument()
     expect(screen.getByText('Detail')).toBeInTheDocument()
@@ -1387,9 +1422,9 @@ describe('App — de opbouw van een afrekening', () => {
     await screen.findByText('Saldo')
     await maakAfrekening(user)
 
-    await user.click(screen.getByRole('button', { name: 'Toon opbouw' }))
+    await user.click(screen.getByRole('button', { name: /^Toon de opbouw van de afrekening/ }))
     await screen.findByText('Verdeelsleutel')
-    await user.click(screen.getByRole('button', { name: 'Verberg opbouw' }))
+    await user.click(screen.getByRole('button', { name: /^Verberg de opbouw van de afrekening/ }))
     expect(screen.queryByText('Verdeelsleutel')).toBeNull()
   })
 
@@ -1401,7 +1436,7 @@ describe('App — de opbouw van een afrekening', () => {
 
     // De chip staat in de rij "Wat toon je in dit dossier?".
     await user.click(screen.getByRole('button', { name: 'Opbouw van een afrekening' }))
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Toon opbouw' })).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^Toon de opbouw van de afrekening/ })).toBeNull())
     // De kaart om een afrekening te maken blijft wél staan: de sleutel hangt niet
     // aan de vlag 'verrekeningen'.
     expect(screen.getByRole('heading', { name: 'Nieuwe afrekening' })).toBeInTheDocument()
@@ -1492,7 +1527,7 @@ describe('App — de terugknop en het adres', () => {
     await screen.findByText('Saldo')
 
     for (let i = 0; i < 3; i++) {
-      await user.click(screen.getByRole('button', { name: 'Nieuwe transactie' }))
+      await user.click(screen.getByRole('button', { name: 'Nieuwe boeking' }))
       await screen.findByRole('dialog')
       await user.click(screen.getByRole('button', { name: 'Sluiten' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
@@ -1524,8 +1559,8 @@ describe('App — de terugknop en het adres', () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Saldo')
-    await ga(user, 'Transacties')
-    await user.click(await screen.findByRole('button', { name: 'Nieuwe transactie' }))
+    await ga(user, 'Boekingen')
+    await user.click(await screen.findByRole('button', { name: 'Nieuwe boeking' }))
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Sluiten' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
@@ -1549,7 +1584,7 @@ describe('App — de terugknop en het adres', () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Saldo')
-    await user.click(screen.getByRole('button', { name: 'Nieuwe transactie' }))
+    await user.click(screen.getByRole('button', { name: 'Nieuwe boeking' }))
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
 
     window.history.back()
@@ -1924,7 +1959,7 @@ describe('de Budget-pagina na ronde 64', () => {
     await screen.findByText('Saldo')
 
     // 't3' staat op € 320 in dezelfde categorie: dat is binnen de marge van € 300.
-    await ga(user, 'Transacties')
+    await ga(user, 'Boekingen')
     await screen.findByText('Boodschappen')
     await user.click(screen.getByRole('button', { name: /^Bewerk Boodschappen/ }))
     await user.click(screen.getByRole('button', { name: 'Wijzigen' }))
@@ -1950,7 +1985,7 @@ describe('de Budget-pagina na ronde 64', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Transacties')
+    await ga(user, 'Boekingen')
     await screen.findByText('Boodschappen')
     await user.click(screen.getByRole('button', { name: /^Bewerk Boodschappen/ }))
     await user.click(screen.getByRole('button', { name: 'Wijzigen' }))
@@ -2028,7 +2063,7 @@ describe('de Budget-pagina na ronde 64', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Transacties')
+    await ga(user, 'Boekingen')
     await screen.findByText('Boodschappen')
     await user.click(screen.getByRole('button', { name: /^Bewerk Boodschappen/ }))
     const veld = screen.getByLabelText('Handelaar / winkel')
@@ -2186,7 +2221,7 @@ describe('de Budget-pagina na ronde 64', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await ga(user, 'Transacties')
+    await ga(user, 'Boekingen')
     await screen.findByText('Boodschappen')
     await user.click(screen.getByRole('button', { name: /^Bewerk Boodschappen/ }))
     await user.click(screen.getByLabelText('Inkomst'))
@@ -2234,13 +2269,13 @@ describe('vangnetten bij verwijderen en verbergen', () => {
     await screen.findByText('Saldo')
 
     await gaMeer(user, 'Categorieën')
-    await user.type(screen.getByLabelText('Categorienaam'), 'Hobby')
-    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
-    await user.click(await screen.findByRole('button', { name: 'Verwijder categorie Hobby' }))
+    await user.type(screen.getByLabelText('Naam hoofdcategorie'), 'Hobby')
+    await user.click(screen.getByRole('button', { name: 'Hoofdcategorie toevoegen' }))
+    await user.click(await screen.findByRole('button', { name: 'Verwijder hoofdcategorie Hobby' }))
 
     // ⚠ De kern: één tik wist niets meer.
     expect(await screen.findByText('Hobby verwijderen?')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Verwijder categorie Hobby' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Verwijder hoofdcategorie Hobby' })).toBeInTheDocument()
     // Een lege categorie krijgt geen lijst met vier keer "0".
     expect(screen.getByText('Er hangt niets aan deze categorie.')).toBeInTheDocument()
   })
@@ -2251,12 +2286,12 @@ describe('vangnetten bij verwijderen en verbergen', () => {
     await screen.findByText('Saldo')
 
     await gaMeer(user, 'Categorieën')
-    await user.type(screen.getByLabelText('Categorienaam'), 'Hobby')
-    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
-    await user.click(await screen.findByRole('button', { name: 'Verwijder categorie Hobby' }))
+    await user.type(screen.getByLabelText('Naam hoofdcategorie'), 'Hobby')
+    await user.click(screen.getByRole('button', { name: 'Hoofdcategorie toevoegen' }))
+    await user.click(await screen.findByRole('button', { name: 'Verwijder hoofdcategorie Hobby' }))
     await user.click(await screen.findByRole('button', { name: 'Nee, behouden' }))
 
-    expect(screen.getByRole('button', { name: 'Verwijder categorie Hobby' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Verwijder hoofdcategorie Hobby' })).toBeInTheDocument()
   })
 
   it('zegt op de ongedaan-balk hoeveel er met de categorie meeging', async () => {
@@ -2265,9 +2300,9 @@ describe('vangnetten bij verwijderen en verbergen', () => {
     await screen.findByText('Saldo')
 
     await gaMeer(user, 'Categorieën')
-    await user.type(screen.getByLabelText('Categorienaam'), 'Hobby')
-    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
-    await user.click(await screen.findByRole('button', { name: 'Verwijder categorie Hobby' }))
+    await user.type(screen.getByLabelText('Naam hoofdcategorie'), 'Hobby')
+    await user.click(screen.getByRole('button', { name: 'Hoofdcategorie toevoegen' }))
+    await user.click(await screen.findByRole('button', { name: 'Verwijder hoofdcategorie Hobby' }))
     await user.click(await screen.findByRole('button', { name: 'Ja, verwijder' }))
 
     // ⚠ "Categorie verwijderd" zei niet WELKE. Bij een tak met items zegt de balk
@@ -2353,7 +2388,7 @@ describe('een overgemaakte afrekening verwijderen', () => {
 
     await user.click(screen.getByRole('button', { name: 'Genereer afrekening' }))
     await screen.findByText('Afrekeningen')
-    await user.click(screen.getByRole('checkbox', { name: 'Overgemaakt' }))
+    await user.click(screen.getByRole('checkbox', { name: /^Afrekening .* is overgemaakt$/ }))
     await waitFor(() => expect(screen.getAllByText(/Niets te verrekenen/).length).toBeGreaterThan(0))
   }
 
@@ -2368,7 +2403,7 @@ describe('een overgemaakte afrekening verwijderen', () => {
     // dat geld uit het saldo terwijl er niets meer bestond dat uitlegde waarom.
     // De kaart "Openstaand" is de plek waar het geld staat of niet staat.
     await waitFor(() => {
-      const openstaand = screen.getByText('Openstaand').closest('.kaart') as HTMLElement
+      const openstaand = screen.getByText('Te verrekenen').closest('.kaart') as HTMLElement
       expect(openstaand).toHaveTextContent('Partner is jou')
       expect(openstaand).not.toHaveTextContent('Niets te verrekenen')
     })
@@ -2397,10 +2432,10 @@ describe('een overgemaakte afrekening verwijderen', () => {
     await user.click(screen.getByRole('button', { name: 'Ongedaan maken' }))
 
     await waitFor(() => {
-      const openstaand = screen.getByText('Openstaand').closest('.kaart') as HTMLElement
+      const openstaand = screen.getByText('Te verrekenen').closest('.kaart') as HTMLElement
       expect(openstaand).toHaveTextContent('Partner is jou')
     })
-    expect((screen.getByRole('checkbox', { name: 'Overgemaakt' }) as HTMLInputElement).checked).toBe(false)
+    expect((screen.getByRole('checkbox', { name: /^Afrekening .* is overgemaakt$/ }) as HTMLInputElement).checked).toBe(false)
   })
 
   it('verwijdert niets wanneer je het venster wegklikt met Escape', async () => {
@@ -2452,5 +2487,117 @@ describe('een gezinslid verwijderen vanuit de app', () => {
     await gaMeer(user, 'Instellingen')
     await user.click(await screen.findByRole('button', { name: 'Verwijder gezinslid Ella' }))
     expect(await screen.findByText('1 boeking(en)')).toBeInTheDocument()
+  })
+})
+
+// Ronde 66 — elk scherm zegt wat het is.
+describe('elke pagina zegt wat ze is', () => {
+  // ⚠ Acht van de vijftien pagina's droegen geen enkele zin onder hun titel — en
+  // dat waren niet de kleinste: het startscherm, de dossiers (de troef van de app)
+  // en het scherm met de knop die alles wist.
+  const PAGINAS_IN_DE_LADE = [
+    'Rekeningen',
+    'Dossiers',
+    'Analyse',
+    'Categorieën',
+    'Inlezen',
+    'Instellingen',
+  ]
+
+  it('zet een uitlegzin onder de titel van het startscherm', async () => {
+    render(<App />)
+    await screen.findByText('Saldo')
+    const zin = document.querySelector('.paginasub')
+    expect(zin).not.toBeNull()
+    expect(zin).toHaveTextContent(/deze maand/)
+  })
+
+  it('zet een uitlegzin onder de titel van elke pagina in de lade', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    for (const naam of PAGINAS_IN_DE_LADE) {
+      await gaMeer(user, naam)
+      await waitFor(() => {
+        const zin = document.querySelector('.paginasub')
+        expect(zin, `${naam} heeft geen uitlegzin onder de titel`).not.toBeNull()
+        expect((zin?.textContent ?? '').length, `de zin op ${naam} is te kort`).toBeGreaterThan(30)
+      })
+    }
+  })
+
+  it('zet een uitlegzin onder de titel van Boekingen', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await ga(user, 'Boekingen')
+    await waitFor(() => expect(document.querySelector('.paginasub')).toHaveTextContent(/uitgaven en inkomsten van de laatste maanden/))
+  })
+
+  it('legt op het startscherm uit wat Saldo en Netto van elkaar onderscheidt', async () => {
+    // ⚠ Vier bedragen naast elkaar, waarvan er twee sterk op elkaar lijken: het ene
+    // is een STAND, het andere een VERSCHIL over de maand. Dat verschil stond alleen
+    // in de PDF van het periodeoverzicht uitgelegd, nergens op het scherm.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await user.click(screen.getByText('Wat betekenen deze vier cijfers?'))
+    expect(screen.getByText(/stand van al je rekeningen samen/)).toBeInTheDocument()
+    expect(screen.getByText(/Netto is inkomsten min uitgaven/)).toBeInTheDocument()
+  })
+
+  it('legt op Categorieën de drie lagen uit, met een voorbeeld', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Categorieën')
+    await user.click(await screen.findByText('Hoe deze indeling in elkaar zit'))
+    expect(screen.getByText(/Een hoofdcategorie is een groot gebied/)).toBeInTheDocument()
+    expect(screen.getByText(/Een categorie is een stuk daarvan/)).toBeInTheDocument()
+    expect(screen.getByText(/Een subcategorie is één ding dat je koopt/)).toBeInTheDocument()
+  })
+
+  it('houdt de uitleg over dossiers, leningen en garanties staan, ook als je er al een hebt', async () => {
+    // ⚠ Deze drie zinnen stonden ALLEEN in de wegwijzerkaart, en die verdwijnt zodra
+    // je er één hebt. Het was de enige plek in de hele module waar het uitgelegd werd.
+    await bewaarDossier({ id: 'd1', naam: 'Kinderen', aandeelJij: 50 })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Dossiers')
+
+    await user.click(await screen.findByText('Wat kan je hier bijhouden?'))
+    expect(screen.getByText(/Gedeelde kosten —/)).toBeInTheDocument()
+    expect(screen.getByText(/Lening of krediet —/)).toBeInTheDocument()
+    expect(screen.getByText(/Facturen & garantiebewijzen —/)).toBeInTheDocument()
+  })
+})
+
+describe('de uitleg staat waar je hem nodig hebt', () => {
+  it('toont het welkom op de pagina waar een gloednieuwe app landt', async () => {
+    // ⚠ De beste onboardingtekst van de app stond op Overzicht, terwijl een lege app
+    // je op "Je situatie" laat landen. De nieuwe gebruiker kreeg hem dus nooit te zien.
+    await db.rekeningen.clear()
+    await db.transacties.clear()
+    render(<App />)
+
+    expect(await screen.findByText('Welkom bij Kompal')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Je situatie' })).toBeInTheDocument()
+  })
+
+  it('zet de eerste stap bovenaan in plaats van onderaan', async () => {
+    // De tip "begin bij Je geld" stond helemaal onderaan Je situatie, voorbij alle
+    // acht blokken — dus voorbij alles waar ze je van weg wilde houden.
+    await db.rekeningen.clear()
+    await db.transacties.clear()
+    render(<App />)
+
+    const knop = await screen.findByRole('button', { name: 'Begin bij "Je geld"' })
+    const welkom = screen.getByText('Welkom bij Kompal')
+    const tabs = screen.getAllByRole('tab')[0]
+    expect(knop).toBeInTheDocument()
+    // Het welkom staat vóór de blokkenstrook, niet erachter.
+    expect(welkom.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })

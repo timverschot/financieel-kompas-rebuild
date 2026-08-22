@@ -177,3 +177,39 @@ describe('BoekingDialoog', () => {
     expect(screen.getByText(/geen uitgave/)).toBeInTheDocument()
   })
 })
+
+// --- Ronde 66, slotronde: de popup mag nooit doodlopen ---
+describe('BoekingDialoog — zonder (genoeg) rekeningen', () => {
+  it('zet één eerste stap in plaats van vier onbruikbare formulieren', async () => {
+    // ⚠ Zonder rekening leidt élk van de vier soorten naar een formulier met een
+    // uitgezette opslaanknop. De ➕ staat op elk scherm en is precies wat een
+    // nieuwe gebruiker als eerste probeert; hij mocht daar niet stranden.
+    const user = userEvent.setup()
+    const onNaarRekeningen = vi.fn()
+    const { onSluiten } = toon({ rekeningen: [], onNaarRekeningen })
+    expect(screen.queryByRole('button', { name: 'Uitgave' })).toBeNull()
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Eerst een rekening')
+    await user.click(screen.getByRole('button', { name: 'Maak je eerste rekening aan' }))
+    expect(onNaarRekeningen).toHaveBeenCalledTimes(1)
+    // Eerst sluiten, anders staat de popup nog over de pagina waar je heen ging.
+    expect(onSluiten).toHaveBeenCalled()
+  })
+
+  it('belooft geen knop wanneer er geen bestemming meegegeven is', () => {
+    toon({ rekeningen: [] })
+    expect(screen.getByText(/Een boeking moet ergens op staan/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Maak je eerste rekening aan' })).toBeNull()
+  })
+
+  it('geeft ook bij Sparen met één rekening een weg naar buiten', async () => {
+    // Eén rekening: uitgaven en inkomsten kunnen wél, sparen niet. Die tab zei
+    // "je hebt minstens twee rekeningen nodig" en liet je daar staan.
+    const user = userEvent.setup()
+    const onNaarRekeningen = vi.fn()
+    toon({ rekeningen: [REKENINGEN[0]], onNaarRekeningen })
+    await user.click(screen.getByRole('button', { name: 'Sparen' }))
+    expect(screen.getByText(/minstens twee rekeningen nodig/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Maak een rekening aan' }))
+    expect(onNaarRekeningen).toHaveBeenCalledTimes(1)
+  })
+})

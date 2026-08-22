@@ -6,6 +6,7 @@ import { rekeningLabel, rekeningStandTekst } from '../utils/rekening'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { saldoVanRekening } from '../utils/saldo'
 import { useT } from '../i18n'
+import { EersteStapKnop, Leeg } from '../ui/basis'
 import { vandaag } from '../utils/datum'
 
 // Het invoerformulier voor een interne overboeking, los van zijn overzicht.
@@ -28,6 +29,7 @@ export function OverboekingFormulier({
   onOpslaan,
   onStopBewerken,
   onOpgeslagen,
+  onNaarRekeningen,
 }: {
   rekeningen: Rekening[]
   overboekingen: Overboeking[]
@@ -44,6 +46,14 @@ export function OverboekingFormulier({
    * tweede knop — zo hoeft de popup zelf niets over dit formulier te weten.
    */
   onOpgeslagen?: (opties: { blijfOpen: boolean }) => void
+  /**
+   * De weg naar je rekeningen, wanneer er nog geen twee zijn (ronde 66, slotronde).
+   *
+   * ⚠ Alleen nodig waar dit formulier LOSGEKOPPELD staat van het rekeningformulier —
+   * in de boekingspopup dus. Op de Rekeningen-pagina staat het formulier om er een
+   * bij te maken op hetzelfde scherm, en dan is een knop overbodig.
+   */
+  onNaarRekeningen?: () => void
 }) {
   const { t } = useT()
   // Naam + saldo van vandaag, zodat de keuzelijsten tonen wat er op elke rekening staat.
@@ -127,7 +137,17 @@ export function OverboekingFormulier({
   }
 
   if (rekeningen.length < 2) {
-    return <p className="leeg">{t('Je hebt minstens twee rekeningen nodig om over te boeken.')}</p>
+    return (
+      <Leeg
+        actie={
+          onNaarRekeningen ? (
+            <EersteStapKnop onClick={onNaarRekeningen}>{t('Maak een rekening aan')}</EersteStapKnop>
+          ) : undefined
+        }
+      >
+        {t('Je hebt minstens twee rekeningen nodig om over te boeken.')}
+      </Leeg>
+    )
   }
 
   return (

@@ -23,6 +23,7 @@ function toon(
   inkomsten = 240000,
   geboekt = 0,
   onGaNaarTransacties?: (filter: { maand: string; richting: 'in' }) => void,
+  onNaarVast?: () => void,
 ) {
   render(
     <PlanRegels
@@ -32,6 +33,7 @@ function toon(
       verwachteInkomsten={inkomsten}
       geboekteInkomsten={geboekt}
       onGaNaarTransacties={onGaNaarTransacties}
+      onNaarVast={onNaarVast}
     />,
   )
 }
@@ -128,7 +130,23 @@ describe('PlanRegels — zonder bekende inkomsten', () => {
     // betekent dat er nog niets ingevuld is.
     toon([huur], [], '2026-07', 0)
     expect(document.querySelector('[data-te-verdelen]')).toBeNull()
-    expect(screen.getByText(/Vul hieronder je vaste inkomsten in/)).toBeInTheDocument()
+    expect(screen.getByText(/kent je vaste inkomsten nog niet/)).toBeInTheDocument()
+  })
+
+  it('wijst naar het tabblad waar je die inkomsten ook echt invult', async () => {
+    // ⚠ RONDE 66, slotronde. Hier stond "Vul HIERONDER je vaste inkomsten in",
+    // maar deze kaart hangt op het tabblad "Te verdelen" en het formulier op
+    // "Vast". Onder deze regel stond dus niets. De test toetste alleen de tekst en
+    // kon dat verschil daarom niet zien.
+    const naarVast = vi.fn()
+    toon([huur], [], '2026-07', 0, 0, undefined, naarVast)
+    await userEvent.click(screen.getByRole('button', { name: 'Vul je vaste inkomsten in' }))
+    expect(naarVast).toHaveBeenCalledTimes(1)
+  })
+
+  it('belooft geen knop wanneer er geen bestemming is', () => {
+    toon([huur], [], '2026-07', 0)
+    expect(screen.queryByRole('button', { name: 'Vul je vaste inkomsten in' })).toBeNull()
   })
 
   it('toont het cijfer wél zodra er een vaste inkomst is', () => {

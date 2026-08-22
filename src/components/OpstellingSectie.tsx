@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type {
   Aflossing,
   Dossier,
@@ -14,11 +14,12 @@ import type {
 } from '../data/schema'
 import { KLASSIEKE_VASTE_KOSTEN, SLUIPENDE_KOSTEN, type Kostvoorstel } from '../data/opstelling'
 import { nieuwId } from '../data/sync/id'
-import { Balk, Kaart, Leeg, PaginaKop, Stat } from '../ui/basis'
+import { Balk, EersteStapKnop, Kaart, Leeg, PaginaKop, Stat } from '../ui/basis'
 import { Subtabs, type Subtab } from '../ui/Subtabs'
 import { RekeningFormulier } from './RekeningFormulier'
 import { LeningFormulier } from './LeningFormulier'
 import { KinderenSectie } from './KinderenSectie'
+import { EersteStap } from './EersteStap'
 import { DossierFormulier } from './DossierFormulier'
 import { InstallerenKaart } from './InstallerenKaart'
 import { DriveKaart } from './DriveKaart'
@@ -226,6 +227,8 @@ function KostenLijst({
   titel,
   uitleg,
   voorstellen,
+  heeftRekening,
+  onNaarRekeningen,
   posten,
   t,
   bezig,
@@ -249,6 +252,17 @@ function KostenLijst({
   fout: { sleutel: string; tekst: string } | null
   onToevoegen: (voorstel: Kostvoorstel, centen: number) => Promise<boolean>
   onNaarBudget: () => void
+  /**
+   * Is er al een rekening om deze kosten vanaf te laten gaan? (ronde 66, slotronde)
+   *
+   * ⚠ Zonder rekening liet dit blok je gewoon bedragen intikken, en pas bij het
+   * aanvinken kwam de melding "Maak eerst een rekening aan bij Je geld" — een zin
+   * die de bestemming noemt maar je er niet heen brengt, terwijl dat blok op dit
+   * eigen scherm staat. Je invoer was dan ook nog weg. Beter is: het niet laten
+   * beginnen, en één tik naar het juiste blok aanbieden.
+   */
+  heeftRekening: boolean
+  onNaarRekeningen: () => void
 }) {
   const velden = useRef<Record<string, HTMLInputElement | null>>({})
   // Wat is er al? We vergelijken op de OMSCHRIJVING, niet op de categorie: vier
@@ -271,8 +285,23 @@ function KostenLijst({
   return (
     <Kaart
       titel={titel}
-      bijschrift={`${uitleg} ${t('{gedaan} van {totaal} aangevinkt.', { gedaan, totaal: voorstellen.length })}`}
+      // ⚠ Geen telling zolang de lijst zelf verborgen is: "0 van 20 aangevinkt" boven
+      // een leeg blok is een stand van iets wat er niet staat.
+      bijschrift={
+        heeftRekening
+          ? `${uitleg} ${t('{gedaan} van {totaal} aangevinkt.', { gedaan, totaal: voorstellen.length })}`
+          : uitleg
+      }
     >
+      {/* ⚠ Een ándere knoptekst dan op de welkomstkaart ("Begin bij Je geld"): op een
+          verse app staan die kaart en dit blok samen op één scherm, en twee knoppen met
+          exact dezelfde naam zijn voor een schermlezer niet uit elkaar te houden. */}
+      {!heeftRekening && (
+        <Leeg actie={<EersteStapKnop onClick={onNaarRekeningen}>{t('Maak een rekening aan')}</EersteStapKnop>}>
+          {t('Maak eerst een rekening aan — een vaste kost moet ergens vanaf gaan.')}
+        </Leeg>
+      )}
+      {heeftRekening && (
       <ul className="lijst">
         {voorstellen.map((v, i) => {
           // Na een geslaagde toevoeging springt de focus naar het eerstvolgende veld
@@ -299,17 +328,45 @@ function KostenLijst({
           )
         })}
       </ul>
-      <p className="rij-meta" style={{ margin: 0 }}>
-        {/* ⚠ Deze zin wees naar een pagina en niet naar een plek (ronde 64). De knop
-            brengt je nu naar het tabblad "Vast" van Budget, met het formulier in beeld
-            waarin je die kost toevoegt. */}
-        {t('Staat het er niet bij? Voeg het zelf toe bij je vaste lasten.')}{' '}
-        <button type="button" className="knop knop-ghost knop-klein" onClick={onNaarBudget}>
-          {t('Naar je vaste lasten')}
-        </button>
-      </p>
+      )}
+      {/* ⚠ Óók binnen `heeftRekening` (ronde 66, slotronde). Zonder rekening bracht
+          deze knop je naar Budget → Vast, waar allebei de formulieren zeggen "Maak
+          eerst een rekening aan" en je met een knop terugsturen naar dit scherm. Een
+          rondje, en precies het soort doodloper dat deze ronde wegwerkt. */}
+      {heeftRekening && (
+        <p className="rij-meta" style={{ margin: 0 }}>
+          {/* ⚠ Deze zin wees naar een pagina en niet naar een plek (ronde 64). De knop
+              brengt je nu naar het tabblad "Vast" van Budget, met het formulier in beeld
+              waarin je die kost toevoegt. */}
+          {t('Staat het er niet bij? Voeg het zelf toe bij je vaste lasten.')}{' '}
+          <button type="button" className="knop knop-ghost knop-klein" onClick={onNaarBudget}>
+            {t('Naar je vaste lasten')}
+          </button>
+        </p>
+      )}
     </Kaart>
   )
+}
+
+/**
+ * Een blok van dit scherm in beeld brengen en de focus erop zetten.
+ *
+ * ⚠ Waarom dit apart staat: zowel de knoppen bínnen dit scherm als een doorklik van
+ * buitenaf hebben het nodig, en zonder dit doet allebei niets zichtbaars wanneer het
+ * gevraagde blok al openstond — het meest voorkomende geval, want "Je geld" is het
+ * standaardblok. `scrollIntoView` bestaat niet in de testomgeving; vandaar de
+ * bestaanscheck, dezelfde als in ui/Dialoog.tsx.
+ */
+function brengBlokInBeeld(id: OpstellingBlok) {
+  setTimeout(() => {
+    const knop = document.getElementById(`opstelling-tab-${id}`)
+    if (!(knop instanceof HTMLElement) || !knop.isConnected) return
+    if (typeof knop.scrollIntoView === 'function') {
+      const rustig = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+      knop.scrollIntoView({ block: 'start', behavior: rustig ? 'auto' : 'smooth' })
+    }
+    knop.focus()
+  }, 0)
 }
 
 export function OpstellingSectie({
@@ -333,6 +390,8 @@ export function OpstellingSectie({
   onNaarPagina,
   onNaarBudget,
   veilig,
+  naarBlok: gevraagdBlok = 'rekeningen',
+  naarBlokNr = 0,
 }: {
   rekeningen: Rekening[]
   transacties: Transactie[]
@@ -369,9 +428,74 @@ export function OpstellingSectie({
    * hoort ze niet te tonen. Zo staat er nooit een verbindknop die niets doet.
    */
   veilig?: VeiligInvoer
+  /**
+   * Welk blok moet er opengaan? (ronde 66, slotronde)
+   *
+   * ⚠ Bestaat omdat een knop ELDERS in de app naar een bepaald blok van dit scherm
+   * moet kunnen wijzen. "Stel je gezinsleden in" op de pagina "Wat kost elk
+   * gezinslid?" zette je hier neer met het REKENINGformulier voor je neus, en het
+   * blok "Je gezin" moest je zelf nog vinden — precies wat `gaNaarBudget(tab)` voor
+   * de Budget-pagina al oploste.
+   */
+  naarBlok?: OpstellingBlok
+  /**
+   * Loopt op bij élke doorklik, óók naar hetzelfde blok.
+   *
+   * ⚠ Waarom een teller en geen `key` op deze component: een nieuwe sleutel
+   * hermonteert het hele scherm, en dan is alles weg wat je net had ingetikt. De
+   * teller laat de component zijn eigen stand bijstellen zonder iets te verliezen.
+   */
+  naarBlokNr?: number
 }) {
   const { t } = useT()
-  const [blok, setBlok] = useState<OpstellingBlok>('rekeningen')
+  const [blok, setBlok] = useState<OpstellingBlok>(gevraagdBlok)
+
+  // Stand bijstellen tijdens het tekenen wanneer de oproeper naar een ander blok
+  // wijst. Dit is het patroon dat React zelf aanraadt boven een effect: het gebeurt
+  // vóór het tekenen, dus je ziet nooit even het verkeerde blok staan.
+  const [gezienNr, setGezienNr] = useState(naarBlokNr)
+  if (naarBlokNr !== gezienNr) {
+    setGezienNr(naarBlokNr)
+    setBlok(gevraagdBlok)
+  }
+
+  // ⚠ EN HET SCHERM MOET ER OOK HEEN. `setBlok` alleen doet niets zichtbaars wanneer
+  // het gevraagde blok al openstond — en dat is precies het meest voorkomende geval:
+  // de ➕ staat op élke pagina, en zonder rekening wijst haar eerste stap hierheen,
+  // naar het blok dat standaard al open is. Dan sloot de popup en veranderde er
+  // niets. Ditzelfde deed `naarBlok()` al voor de knoppen binnen dit scherm.
+  //
+  // ⚠ ALLEEN BIJ EEN VERANDERING, niet bij het aankomen. De teller staat in App-state
+  // en loopt nooit terug, terwijl dit scherm bij élke paginawissel opnieuw opgebouwd
+  // wordt. Zonder deze vergelijking zou "Je situatie" na één doorklik voor de rest van
+  // de sessie bij ÉLK bezoek naar de tabstrook springen en de focus verzetten — de
+  // paginakop uit beeld, de cursor ergens waar je hem niet zette.
+  const vorigNr = useRef(naarBlokNr)
+  useEffect(() => {
+    if (vorigNr.current === naarBlokNr) return
+    vorigNr.current = naarBlokNr
+    brengBlokInBeeld(gevraagdBlok)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [naarBlokNr])
+
+  /**
+   * Naar een blok springen ÉN het in beeld brengen (ronde 66, slotronde).
+   *
+   * ⚠ Waarom dit niet gewoon `setBlok` mag zijn. Op een gloednieuwe app staat "Je
+   * geld" al open — het is het standaardblok. De welkomstknop `Begin bij "Je geld"`
+   * riep dus `setBlok('rekeningen')` terwijl dat al de stand was: er gebeurde
+   * zichtbaar niets. En de tabstrook staat onder de vouw, dus je zag ook niet
+   * wáár je heen had moeten kijken. Nu schuift het scherm naar de strook en krijgt
+   * de tab de focus, zodat de knop altijd iets doet — ook wanneer het blok al open
+   * stond.
+   *
+   * `scrollIntoView` bestaat niet in de testomgeving; vandaar de bestaanscheck,
+   * dezelfde als in ui/Dialoog.tsx.
+   */
+  function naarBlok(id: OpstellingBlok) {
+    setBlok(id)
+    brengBlokInBeeld(id)
+  }
   const [bezig, setBezig] = useState(false)
   const [melding, setMelding] = useState<string | null>(null)
   const [fout, setFout] = useState<{ sleutel: string; tekst: string } | null>(null)
@@ -553,6 +677,17 @@ export function OpstellingSectie({
         bijschrift={t('Breng in kaart wat er vastligt. Loop de blokken door die op jou van toepassing zijn — je mag er elk overslaan en later terugkomen.')}
       />
 
+      {/* ⚠ RONDE 66. Een gloednieuwe app landt HIER (zie `beginpagina` in App.tsx),
+          maar het welkom stond op Overzicht — een pagina die zo iemand op dat moment
+          niet ziet. En de enige zin die zei waar je moest beginnen, stond helemaal
+          ONDERAAN deze pagina, voorbij alle acht blokken. Allebei staan ze nu waar je
+          landt, boven de vouw. */}
+      {/* ⚠ `actieveRekeningen` en niet de kale lijst (ronde 66, slotronde): wie al zijn
+          rekeningen archiveert heeft er geen enkele meer om op te boeken, en de rest van
+          dit scherm rekent ook met de actieve lijst. Drie maatstaven voor hetzelfde
+          begrip is precies hoe schermen elkaar gaan tegenspreken. */}
+      {actieveRekeningen.length === 0 && <EersteStap hier onNaarRekeningen={() => naarBlok('rekeningen')} />}
+
       {/* Het slotscherm staat BOVENAAN en groeit live mee. Zo zie je je eigen beeld
           ontstaan terwijl je invult, in plaats van pas aan het eind — en geen van
           deze vier cijfers heeft één transactie nodig. */}
@@ -596,7 +731,11 @@ export function OpstellingSectie({
             lijkt het er wel op: het cijfer heeft een spaarrekening of cash nodig (zie
             BUFFERTYPES in utils/buffer.ts). Wie alleen een zichtrekening heeft, zag
             daar anders voor altijd een streepje zonder te weten waarom. */}
-        {!buffer.bruikbaar && buffer.vasteLastenPerMaand > 0 && (
+        {/* ⚠ RONDE 66. Hier stond `buffer.vasteLastenPerMaand > 0` bij, waardoor deze
+            uitleg alleen verscheen als je AL vaste lasten had — dus niet bij de
+            gebruiker die net begint en zich afvraagt waarom daar een streepje staat.
+            Precies omgekeerd aan waar ze voor dient. */}
+        {!buffer.bruikbaar && (
           <p className="rij-meta" style={{ margin: 0 }}>
             {t('Voor "zo lang kom je toe" heeft de app een spaarrekening of cash nodig. Voeg er een toe bij "Je geld".')}
           </p>
@@ -743,6 +882,8 @@ export function OpstellingSectie({
             fout={fout}
             onToevoegen={voegKostToe}
             onNaarBudget={() => (onNaarBudget ? onNaarBudget('vast') : onNaarPagina('budget'))}
+            heeftRekening={actieveRekeningen.length > 0}
+            onNaarRekeningen={() => naarBlok('rekeningen')}
           />
         )}
 
@@ -757,6 +898,8 @@ export function OpstellingSectie({
             fout={fout}
             onToevoegen={voegKostToe}
             onNaarBudget={() => (onNaarBudget ? onNaarBudget('vast') : onNaarPagina('budget'))}
+            heeftRekening={actieveRekeningen.length > 0}
+            onNaarRekeningen={() => naarBlok('rekeningen')}
           />
         )}
 
@@ -834,14 +977,9 @@ export function OpstellingSectie({
         )}
       </Subtabs>
 
-      {/* Wie hier komt zonder ook maar één rekening, heeft nog geen enkel cijfer.
-          Dan is één duidelijke wegwijzer nuttiger dan een knop naar een leeg
-          overzicht. */}
-      {rekeningen.length === 0 && (
-        <p className="rij-meta" style={{ margin: 0 }}>
-          {t('Tip: begin bij "Je geld". Zonder rekening kan de app nog niets uitrekenen.')}
-        </p>
-      )}
+      {/* De tip die hier stond, is naar BOVEN verhuisd (ronde 66): ze zei waar je
+          moest beginnen, en stond zelf voorbij alles wat je moest doorlopen. Ze zit
+          nu in de welkomstkaart bovenaan deze pagina. */}
     </section>
   )
 }

@@ -36,7 +36,11 @@ type KaartProps = {
 
 /** Het standaard inhoudsvlak: crème vlak, zachte rand, grote radius. */
 export function Kaart({ titel, bijschrift, actie, compact, className, style, children, ...rest }: KaartProps) {
-  const heeftKop = titel !== undefined || actie !== undefined
+  // ⚠ RONDE 66: `bijschrift` hoort hier ook bij. Stond er alleen een bijschrift en
+  // geen titel, dan verdween die zin geruisloos — precies wat er gebeurde toen een
+  // kaart haar titel afstond aan het tabblad erboven. Een tekst die je meegeeft en
+  // die dan nergens verschijnt, is de stilste fout die een component kan maken.
+  const heeftKop = titel !== undefined || actie !== undefined || bijschrift !== undefined
   return (
     <section className={klassen('kaart', compact && 'kaart-compact', className)} style={style} {...rest}>
       {heeftKop && (
@@ -66,9 +70,41 @@ export function PaginaKop({ titel, bijschrift, actie }: { titel: ReactNode; bijs
   )
 }
 
-/** Vriendelijke lege toestand: "hier staat nog niets". */
-export function Leeg({ children }: { children: ReactNode }) {
-  return <p className="leeg">{children}</p>
+/**
+ * Vriendelijke lege toestand: "hier staat nog niets".
+ *
+ * ⚠ RONDE 66 — DE EERSTE STAP. De doorlichting telde negentien lege toestanden die
+ * alleen een CONSTATERING toonden ("Nog geen budgetten ingesteld.") en niets zeiden
+ * over wat je dan moet doen. Voor wie de app al kent is dat genoeg; voor wie ze
+ * leert is het een doodlopend scherm. Een lege toestand hoort te bestaan uit twee
+ * delen: wat er niet is, en wat je eraan doet.
+ *
+ * De actie is OPTIONEEL, want niet elke lege toestand heeft er een: "Geen inkomsten
+ * deze maand" is gewoon waar, en er is niets aan te doen. Een knop die nergens heen
+ * gaat is erger dan geen knop.
+ */
+export function Leeg({ children, actie }: { children: ReactNode; actie?: ReactNode }) {
+  if (actie === undefined) return <p className="leeg">{children}</p>
+  return (
+    <div className="leeg leeg-met-stap">
+      <p style={{ margin: 0 }}>{children}</p>
+      <div className="knoprij" style={{ justifyContent: 'center' }}>
+        {actie}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * De knop in een lege toestand. Eén vorm, zodat de eerste stap er overal hetzelfde
+ * uitziet en je hem na één keer herkent.
+ */
+export function EersteStapKnop({ children, onClick }: { children: ReactNode; onClick: () => void }) {
+  return (
+    <button type="button" className="knop knop-secundair knop-klein" onClick={onClick}>
+      {children}
+    </button>
+  )
 }
 
 /**
@@ -128,7 +164,7 @@ export function Stat({
   /**
    * Bestemming en toegankelijke naam samen in ÉÉN prop, en niet als twee losse
    * optionele props. Zo kan er geen knop ontstaan zonder naam: dan zou een
-   * schermlezer alleen "Verschil€ 1.500,00" voorlezen, zonder dat er iets zegt dat
+   * schermlezer alleen "Netto€ 1.500,00" voorlezen, zonder dat er iets zegt dat
    * je erop kan tikken of waar je terechtkomt.
    */
   doorklik?: { naar: () => void; naam: string }

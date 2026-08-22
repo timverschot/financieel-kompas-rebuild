@@ -14,6 +14,12 @@ import type { DossierSoort } from '../utils/dossiersoort'
 // ze krijgt. Klik je een soort aan, dan springt de app naar die subtab — vroeger
 // gebeurde er bij 'Gedeelde kosten' letterlijk niets.
 //
+// ⚠ RONDE 66, slotronde: de knoppen dragen een WERKWOORD ("Kosten delen met een
+// co-ouder"), niet de naam van de tab. Ze stonden namelijk vlak boven een tabstrook
+// met exact dezelfde woorden erin — vier bedieningen, twee namen — en de knop verzet
+// daarna ook nog de focus naar die gelijknamige tab. Met een schermlezer hoorde je
+// twee keer hetzelfde en leek er niets gebeurd.
+//
 // Bewuste keuze die blijft gelden: we voegen de OPSLAG niet samen. Een lening en een
 // garantie hebben een eigen recordvorm die goed werkt; ze in één dossiermodel persen
 // zou de validatie van de verdeelsleutel verzwakken en een datamigratie vragen.
@@ -27,19 +33,19 @@ export function NieuwDossierKiezer({ onKies }: { onKies: (soort: DossierSoort) =
     {
       soort: 'coouderschap',
       icoon: '👨‍👧',
-      titel: t('Gedeelde kosten'),
+      titel: t('Kosten delen met een co-ouder'),
       uitleg: t('Kosten verdelen met een co-ouder of ex-partner, met een verdeelsleutel en afrekeningen.'),
     },
     {
       soort: 'lening',
       icoon: '📄',
-      titel: t('Lening of krediet'),
+      titel: t('Een lening bijhouden'),
       uitleg: t('Geld dat jij uitleende of zelf leende, met terugbetalingen en openstaand kapitaal.'),
     },
     {
       soort: 'garantie',
       icoon: '🧾',
-      titel: t('Aankoop met garantie'),
+      titel: t('Een aankoop met garantie bijhouden'),
       uitleg: t('Een aankoop met bon of factuur, waarvan de app de garantieperiode bewaakt.'),
     },
   ]

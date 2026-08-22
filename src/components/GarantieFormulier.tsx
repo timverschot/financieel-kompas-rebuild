@@ -147,7 +147,7 @@ export function GarantieFormulier({
       {gesorteerdeTx.length > 0 && (
         <div className="veldgroep">
           <label className="label-caps" htmlFor="gar-tx">
-            {t('Koppel aan transactie (optioneel)')}
+            {t('Koppel aan een boeking (optioneel)')}
           </label>
           <select id="gar-tx" value={transactieId} onChange={(e) => kiesTransactie(e.target.value)}>
             <option value="">{t('Niet gekoppeld')}</option>

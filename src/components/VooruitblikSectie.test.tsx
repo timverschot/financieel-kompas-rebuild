@@ -129,4 +129,55 @@ describe('VooruitblikSectie — een vaste last meteen inboeken', () => {
     const metas = [...document.querySelectorAll('.rij-meta')].map((el) => el.textContent ?? '')
     expect(metas).toContain('dag 12')
   })
+
+  // Ronde 66: de zin zei wat er ontbrak, maar niet waar je het invult.
+  it('biedt een weg naar je vaste lasten wanneer er nog geen zijn', async () => {
+    const user = userEvent.setup()
+    const onNaarVast = vi.fn()
+    toon({ terugkerendePosten: [], onNaarVast })
+    await user.click(screen.getByRole('button', { name: 'Vul je vaste lasten in' }))
+    expect(onNaarVast).toHaveBeenCalled()
+  })
+
+  it('laat de knop weg wanneer de kaart nergens heen kan wijzen', () => {
+    toon({ terugkerendePosten: [] })
+    expect(screen.queryByRole('button', { name: 'Vul je vaste lasten in' })).toBeNull()
+    expect(screen.getByText(/nog geen vaste lasten ingesteld/)).toBeInTheDocument()
+  })
+})
+
+// --- Ronde 66, slotronde: geen bevestiging van een controle die niet gedaan is ---
+describe('VooruitblikSectie — een maand waarin niets vervalt', () => {
+  it('zegt niet "alles al ingeboekt" wanneer er niets te boeken viel', () => {
+    // ⚠ De zin hing aan de TOTALE lijst posten, terwijl de tellers alleen gaan over
+    // wat déze maand vervalt. Heb je enkel een jaarlijkse verzekering die in een
+    // andere maand valt, dan stonden beide tellers op nul en meldde de app dat alles
+    // al ingeboekt was — terwijl er niets te boeken viel. Dezelfde valse
+    // geruststelling die ronde 65 uit de maandafsluiting gehaald heeft.
+    const jaarpost = post({
+      id: 'Autoverzekering',
+      dag: 5,
+      bedrag: -62000,
+      frequentie: 'jaar',
+      startMaand: verschuifMaandVoorTest(volgendeMaand, 3),
+    })
+    toon({ terugkerendePosten: [jaarpost] })
+    expect(screen.getByText(/vervalt er geen enkele vaste last/)).toBeInTheDocument()
+    expect(screen.queryByText(/zijn al ingeboekt/)).toBeNull()
+  })
+
+  it('zegt het wél wanneer er deze maand iets viel en het geboekt is', () => {
+    // Huur vervalt elke maand; met een boeking ervoor is de telling terecht nul.
+    const geboekt: Transactie = {
+      id: 'huurboeking',
+      datum: `${volgendeMaand}-05`,
+      omschrijving: 'Huur',
+      bedrag: -90000,
+      rekeningId: 'r1',
+      vasteLastId: 'Huur',
+    }
+    toon({ transacties: [inkomst, geboekt] })
+    expect(screen.getByText(/zijn al ingeboekt/)).toBeInTheDocument()
+    expect(screen.queryByText(/vervalt er geen enkele vaste last/)).toBeNull()
+  })
 })

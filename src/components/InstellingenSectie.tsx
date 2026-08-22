@@ -124,7 +124,14 @@ export function InstellingenSectie({
 
   return (
     <div className="stapel">
-      <PaginaKop titel={t('Instellingen')} />
+      <PaginaKop
+        titel={t('Instellingen')}
+        // ⚠ RONDE 66, slotronde: deze zin beschreef de pagina verkeerd. Ze begon bij
+        // "taal", maar de eerste kaart is "Op je beginscherm zetten" en daarna komen
+        // kleuren en pas dán taal. Een wegwijzer die zelf de weg kwijt is, is erger
+        // dan geen wegwijzer.
+        bijschrift={t('Bovenaan de app op je beginscherm zetten, kleuren, taal en meldingen. Daarna alles rond het bewaren van je gegevens, dan je gezinsleden, en helemaal onderaan de knop die alles wist.')}
+      />
 
       {/* Op het beginscherm zetten. Staat vooraan, want zolang de app in een
           browsertab leeft, voelt ze niet als een app. */}
@@ -222,7 +229,7 @@ export function InstellingenSectie({
               <span className="rij-titel">{t('Alles staat op dit toestel')}</span>
               <span className="rij-meta">
                 {t(
-                  'Je rekeningen, transacties en documenten zitten in de database van deze browser, op dit toestel. Er is geen account nodig en er staat geen kopie op een server van ons — die server bestaat niet.',
+                  'Je rekeningen, boekingen en documenten zitten in de database van deze browser, op dit toestel. Er is geen account nodig en er staat geen kopie op een server van ons — die server bestaat niet.',
                 )}
               </span>
             </span>

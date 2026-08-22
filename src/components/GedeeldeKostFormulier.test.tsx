@@ -73,7 +73,7 @@ describe('GedeeldeKostFormulier', () => {
     const user = userEvent.setup()
     toon()
 
-    await user.type(screen.getByLabelText('Zoek categorie of item'), 'Orthodontie')
+    await user.type(screen.getByLabelText('Zoek een categorie of subcategorie'), 'Orthodontie')
     await user.click(await screen.findByRole('option', { name: /Orthodontie/ }))
 
     expect(screen.getByLabelText('Soort kost')).toHaveValue('buitengewoon')
@@ -85,7 +85,7 @@ describe('GedeeldeKostFormulier', () => {
     const user = userEvent.setup()
     const onOpslaan = toon()
 
-    await user.type(screen.getByLabelText('Zoek categorie of item'), 'Orthodontie')
+    await user.type(screen.getByLabelText('Zoek een categorie of subcategorie'), 'Orthodontie')
     await user.click(await screen.findByRole('option', { name: /Orthodontie/ }))
 
     await user.selectOptions(screen.getByLabelText('Soort kost'), 'gewoon')

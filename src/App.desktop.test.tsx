@@ -96,7 +96,7 @@ describe('App op een breed scherm', () => {
 
     // De recente transacties staan sinds ronde 31 in de HOOFDkolom (ze waren op een
     // telefoon anders nergens te zien); de zijkolom houdt de budgetstatus.
-    expect(screen.getByText('Recente transacties')).toBeInTheDocument()
+    expect(screen.getByText('Recente boekingen')).toBeInTheDocument()
     expect(screen.getByText('Budgetstatus')).toBeInTheDocument()
     // De voorbeelddata bevat een transactie 'Loon'.
     expect(await screen.findByText('Loon')).toBeInTheDocument()
@@ -105,13 +105,13 @@ describe('App op een breed scherm', () => {
   it('springt vanuit de recente transacties naar de transactiepagina', async () => {
     const user = userEvent.setup()
     render(<App />)
-    await screen.findByText('Recente transacties')
+    await screen.findByText('Recente boekingen')
 
-    // De 'Alle'-knop ván de kaart met recente transacties. Bewust niet "de eerste
-    // Alle-knop op de pagina": sinds ronde 32 staat die kaart onder het raster,
-    // dus komt de zijkolom (die ook een 'Alle' heeft) er in de DOM vóór.
-    const kop = screen.getByText('Recente transacties').closest('.kaart') as HTMLElement
-    await user.click(within(kop).getByRole('button', { name: 'Alle' }))
+    // ⚠ RONDE 66, slotronde: deze knop heette gewoon "Alle", net als die in de
+    // zijkolom ernaast — twee knoppen met exact dezelfde naam op één scherm. Ze heten
+    // nu "Alle boekingen" en "Alle budgetten", dus de omweg via `within(kaart)` is
+    // niet meer nodig om de juiste te vinden.
+    await user.click(screen.getByRole('button', { name: 'Alle boekingen' }))
     // De pagina is nu puur overzicht: de knop die zoeken en filteren opent hoort
     // er te staan, en het invoerformulier niet meer (dat zit in de popup).
     //
@@ -120,7 +120,7 @@ describe('App op een breed scherm', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /Zoeken en filteren/ })).toBeInTheDocument())
     expect(screen.queryByLabelText('Handelaar / winkel')).toBeNull()
     await user.click(screen.getByRole('button', { name: /Zoeken en filteren/ }))
-    expect(screen.getByLabelText('Zoek in transacties')).toBeInTheDocument()
+    expect(screen.getByLabelText('Zoek in je boekingen')).toBeInTheDocument()
   })
 
   it('opent de invoerpopup vanuit de bovenbalk, zonder de pagina te verlaten', async () => {
@@ -128,11 +128,11 @@ describe('App op een breed scherm', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await user.click(screen.getByRole('button', { name: '+ Nieuwe transactie' }))
+    await user.click(screen.getByRole('button', { name: '+ Nieuwe boeking' }))
     const popup = await screen.findByRole('dialog')
     expect(within(popup).getByLabelText('Handelaar / winkel')).toBeInTheDocument()
     // We staan nog steeds op het Overzicht — deze knop verplaatste je vroeger.
-    expect(screen.getByText('Recente transacties')).toBeInTheDocument()
+    expect(screen.getByText('Recente boekingen')).toBeInTheDocument()
   })
 
   // Ronde 61. Tel eens mee wat je op een pc met het toetsenbord passeert vóór je bij
@@ -209,7 +209,7 @@ describe('App op een breed scherm', () => {
 
   it('zet de recente transacties en de maandgrafiek over de volle breedte', async () => {
     render(<App />)
-    await screen.findByText('Recente transacties')
+    await screen.findByText('Recente boekingen')
 
     // Ze stonden in de LINKERkolom van het hoofdraster, dus naast de zijkolom en
     // maar twee derde breed — met een leeg vak rechts ernaast. Nu staan ze buiten
@@ -217,7 +217,7 @@ describe('App op een breed scherm', () => {
     const volle = document.querySelector('[data-volle-breedte]') as HTMLElement
     expect(volle).not.toBeNull()
     expect(volle.closest('.raster-hoofd')).toBeNull()
-    expect(within(volle).getByText('Recente transacties')).toBeInTheDocument()
+    expect(within(volle).getByText('Recente boekingen')).toBeInTheDocument()
     expect(within(volle).getByText('Inkomsten en uitgaven per maand')).toBeInTheDocument()
   })
 
@@ -252,7 +252,7 @@ describe('App (desktop) — doorklikken vanaf de budgetstatus in de zijkolom', (
     await screen.findByText('Saldo')
 
     const zijkolom = screen.getByText('Budgetstatus').closest('section.kaart') as HTMLElement
-    await user.click(within(zijkolom).getByRole('button', { name: /^Bekijk de boekingen van Voeding —/ }))
+    await user.click(within(zijkolom).getByRole('button', { name: /^Bekijk de boekingen van Voeding in je budget —/ }))
 
     expect(await screen.findByText('Boodschappen')).toBeInTheDocument()
     expect(screen.queryByText('Huur')).toBeNull()
@@ -272,7 +272,7 @@ describe('App (desktop) — doorklikken vanaf de budgetstatus in de zijkolom', (
     const zijkolom = screen.getByText('Budgetstatus').closest('section.kaart') as HTMLElement
     // € 320 boodschappen van een budget van € 400 = 80 %.
     expect(within(zijkolom).getByRole('progressbar', { name: 'Voeding' })).toHaveAttribute('aria-valuenow', '32000')
-    expect(within(zijkolom).getByRole('button', { name: /^Bekijk de boekingen van Voeding —/ })).toHaveAccessibleName(
+    expect(within(zijkolom).getByRole('button', { name: /^Bekijk de boekingen van Voeding in je budget —/ })).toHaveAccessibleName(
       /320/,
     )
   })
@@ -298,14 +298,14 @@ describe('App (desktop) — doorklikken vanaf de budgetstatus in de zijkolom', (
     expect(within(zijkolom).getByRole('progressbar', { name: 'Voeding' })).toHaveAttribute('aria-valuemax', '80000')
   })
 
-  it('laat de knop "Alle" gewoon naar de Budget-pagina gaan', async () => {
+  it('laat de knop "Alle budgetten" gewoon naar de Budget-pagina gaan', async () => {
     const user = userEvent.setup()
     await bewaarBudget({ id: 'b1', categorieId: 'cat-voeding', bedrag: 40000 })
     render(<App />)
     await screen.findByText('Saldo')
 
     const zijkolom = screen.getByText('Budgetstatus').closest('section.kaart') as HTMLElement
-    await user.click(within(zijkolom).getByRole('button', { name: 'Alle' }))
+    await user.click(within(zijkolom).getByRole('button', { name: 'Alle budgetten' }))
     expect(await screen.findByRole('heading', { name: 'Budget instellen' })).toBeInTheDocument()
   })
 })

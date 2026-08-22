@@ -164,12 +164,12 @@ describe('transactieCsvBestand', () => {
 
 describe('transactieCsvBestandsnaam', () => {
   it('zegt "alles" wanneer er niets gefilterd is', () => {
-    expect(transactieCsvBestandsnaam(t, {}, '2026-07-29')).toBe('transacties-alle-transacties-2026-07-29.csv')
+    expect(transactieCsvBestandsnaam(t, {}, '2026-07-29')).toBe('boekingen-alle-boekingen-2026-07-29.csv')
   })
 
   it('zet het filter in de naam', () => {
     const naam = transactieCsvBestandsnaam(t, { maand: '2026-03', richting: 'uit' }, '2026-07-29')
-    expect(naam).toBe('transacties-uitgaven-maart-2026-2026-07-29.csv')
+    expect(naam).toBe('boekingen-uitgaven-maart-2026-2026-07-29.csv')
   })
 
   it('haalt tekens uit de naam die een bestandssysteem weigert', () => {
@@ -216,7 +216,7 @@ describe('de bestandsnaam bij het historiekvenster', () => {
     // in zaten — en dat merk je pas als iemand naar de oudere boekingen vraagt.
     const naam = transactieCsvBestandsnaam(t, { van: '2026-02-01' }, '2026-07-29')
     expect(naam).toContain('2026-02-01')
-    expect(naam).not.toContain('alle-transacties')
+    expect(naam).not.toContain('transacties')
   })
 })
 

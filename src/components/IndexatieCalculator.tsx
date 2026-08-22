@@ -7,7 +7,7 @@ import { indexVan, maandVoor } from '../utils/onderhoudsbijdrage'
 import { maandJaarLabel } from '../utils/datum'
 import { nieuwId } from '../data/sync/id'
 import type { Dossier, Onderhoudsbijdrage } from '../data/schema'
-import { Kaart } from '../ui/basis'
+import { EersteStapKnop, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 
 // De uitkomst krijgt een zacht amberen vlak: het is het antwoord van de rekenhulp,
@@ -26,7 +26,7 @@ export const uitkomstVlak: CSSProperties = {
 export const uitkomstBijregel: CSSProperties = { margin: '6px 0 0', fontSize: 'var(--tekst-s)', fontWeight: 500 }
 
 /**
- * Rekenhulp voor de Belgische indexatie. Alimentatie en huur gebruiken exact
+ * Rekenhulp voor de Belgische indexatie. De onderhoudsbijdrage en huur gebruiken exact
  * dezelfde formule (basisbedrag × nieuwe index / aanvangsindex); enkel de uitleg
  * en de gebruikte indexreeks verschillen.
  *
@@ -44,6 +44,7 @@ export function IndexatieCalculator({
   dossiers = [],
   bestaandeBijdragen = [],
   onBewaarBijdrage,
+  onNaarDossiers,
 }: {
   /** De dossiers waarin een regeling bewaard kan worden. */
   dossiers?: Dossier[]
@@ -51,6 +52,13 @@ export function IndexatieCalculator({
   bestaandeBijdragen?: Onderhoudsbijdrage[]
   /** Ontbreekt deze, dan gedraagt de rekenhulp zich zoals voorheen: ze bewaart niets. */
   onBewaarBijdrage?: (b: Onderhoudsbijdrage) => Promise<void> | void
+  /**
+   * Naar Dossiers, wanneer er nog geen enkel dossier is (ronde 66, slotronde).
+   *
+   * ⚠ De zin hieronder noemde de bestemming maar liet je ze zelf zoeken — precies
+   * het patroon dat deze ronde overal rechtzet.
+   */
+  onNaarDossiers?: () => void
 } = {}) {
   const { t } = useT()
   const [soort, setSoort] = useState<IndexatieSoort>('alimentatie')
@@ -66,7 +74,7 @@ export function IndexatieCalculator({
   return (
     <Kaart
       // Ronde 32: één vaste titel. De titel wisselde mee met de gekozen tab
-      // ("Huurindexatie" / "Alimentatie-indexatie"), terwijl de tabs er vlak onder
+      // ("Huurindexatie" / "Indexatie van de onderhoudsbijdrage"), terwijl de tabs er vlak onder
       // al staan — de kop herhaalde dus wat je zelf net had aangeklikt. "Indexatie-
       // tools" zegt wat de kaart IS; de tabs zeggen welke je gebruikt.
       titel={t('Indexatie-tools')}
@@ -83,7 +91,7 @@ export function IndexatieCalculator({
           aria-pressed={soort === 'alimentatie'}
           onClick={() => setSoort('alimentatie')}
         >
-          {t('Alimentatie')}
+          {t('Onderhoudsbijdrage')}
         </button>
         <button
           type="button"
@@ -98,7 +106,7 @@ export function IndexatieCalculator({
       <p style={{ margin: '0 0 12px', fontSize: 'var(--tekst-s)', color: 'var(--text-muted)' }}>
         {soort === 'huur'
           ? t('Voor huur gebruik je de gezondheidsindex: de aanvangsindex is die van de maand vóór de ondertekening van het huurcontract.')
-          : t('Voor onderhoudsgeld gebruik je de consumptieprijsindex, en is de aanvangsindex die van de maand vóór de maand waarin het bedrag werd vastgelegd. Hou je een lopende regeling bij, gebruik dan de onderhoudsbijdrage in je dossier: die zoekt de indexcijfers zelf op.')}
+          : t('Voor een onderhoudsbijdrage gebruik je de consumptieprijsindex, en is de aanvangsindex die van de maand vóór de maand waarin het bedrag werd vastgelegd. Hou je er een blijvend bij, doe dat dan in een dossier: daar zoekt de app de indexcijfers zelf op.')}
       </p>
 
       <div className="veldrij">
@@ -156,6 +164,7 @@ export function IndexatieCalculator({
           dossiers={dossiers}
           bestaandeBijdragen={bestaandeBijdragen}
           onBewaar={onBewaarBijdrage}
+          onNaarDossiers={onNaarDossiers}
         />
       )}
     </Kaart>
@@ -181,12 +190,14 @@ function BewaarAlsBijdrage({
   dossiers,
   bestaandeBijdragen,
   onBewaar,
+  onNaarDossiers,
 }: {
   basisbedrag: number
   aanvangsindex: number
   dossiers: Dossier[]
   bestaandeBijdragen: Onderhoudsbijdrage[]
   onBewaar: (b: Onderhoudsbijdrage) => Promise<void> | void
+  onNaarDossiers?: () => void
 }) {
   const { t } = useT()
   // Per dossier past er één regeling; een tweede zou nooit getoond worden.
@@ -263,9 +274,11 @@ function BewaarAlsBijdrage({
       )}
 
       {dossiers.length === 0 ? (
-        <p className="rij-meta" style={{ margin: 0 }}>
-          {t('Wil je dit als lopende regeling bijhouden, maak dan eerst een dossier aan bij Dossiers.')}
-        </p>
+        <Leeg
+          actie={onNaarDossiers ? <EersteStapKnop onClick={onNaarDossiers}>{t('Naar Dossiers')}</EersteStapKnop> : undefined}
+        >
+          {t('Wil je deze onderhoudsbijdrage blijvend bijhouden, maak dan eerst een dossier aan bij Dossiers.')}
+        </Leeg>
       ) : vrij.length === 0 ? (
         <p className="rij-meta" style={{ margin: 0 }}>
           {t('Al je dossiers hebben al een onderhoudsbijdrage. Pas ze daar aan in plaats van hier een tweede te maken.')}

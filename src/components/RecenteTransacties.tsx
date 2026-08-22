@@ -1,7 +1,7 @@
 import type { Categorie, Transactie } from '../data/schema'
 import { groepenVanTransactie, isGesplitstOverCategorieen } from '../utils/transactie'
 import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
-import { Bedrag, Kaart, Leeg } from '../ui/basis'
+import { Bedrag, EersteStapKnop, Kaart, Leeg } from '../ui/basis'
 import { dagKort } from '../utils/datum'
 import { formatEuro } from '../utils/format'
 import { useT } from '../i18n'
@@ -43,10 +43,13 @@ export function RecenteTransacties({
   categorieen,
   onAlle,
   onBewerk,
+  onNieuw,
 }: {
   transacties: Transactie[]
   categorieen: Categorie[]
   onAlle: () => void
+  /** De eerste stap in de lege toestand (ronde 66). Optioneel: zonder handler geen knop. */
+  onNieuw?: () => void
   /**
    * Een rij aanklikken opent die boeking (ronde 40).
    *
@@ -62,15 +65,17 @@ export function RecenteTransacties({
 
   return (
     <Kaart
-      titel={t('Recente transacties')}
+      titel={t('Recente boekingen')}
       actie={
         <button className="knop knop-ghost knop-klein" onClick={onAlle}>
-          {t('Alle')}
+          {t('Alle boekingen')}
         </button>
       }
     >
       {recent.length === 0 ? (
-        <Leeg>{t('Nog geen transacties.')}</Leeg>
+        <Leeg actie={onNieuw ? <EersteStapKnop onClick={onNieuw}>{t('Boeking toevoegen')}</EersteStapKnop> : undefined}>
+          {t('Nog geen boekingen.')}
+        </Leeg>
       ) : (
         <ul className="lijst">
           {recent.map((tx) => {

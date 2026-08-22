@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, it, expect, vi } from 'vitest'
 import { Vermogensevolutie } from './Vermogensevolutie'
 import type { Rekening, Transactie } from '../data/schema'
 import { huidigeMaand } from '../utils/datum'
@@ -67,5 +68,28 @@ describe('Vermogensevolutie', () => {
       <Vermogensevolutie rekeningen={[]} transacties={[]} overboekingen={[]} waarderingen={[]} ankerMaand="2026-07" />,
     )
     expect(screen.getByText('Zodra je een rekening hebt toegevoegd, zie je hier hoe je bezit evolueert.')).toBeInTheDocument()
+  })
+
+  // Ronde 66: de zin zei wat er ontbrak, maar niet waar je het maakt.
+  it('biedt een weg naar een rekening wanneer er nog geen is', async () => {
+    const user = userEvent.setup()
+    const onNaarRekeningen = vi.fn()
+    render(
+      <Vermogensevolutie
+        rekeningen={[]}
+        transacties={[]}
+        overboekingen={[]}
+        waarderingen={[]}
+        onNaarRekeningen={onNaarRekeningen}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Maak een rekening aan' }))
+    expect(onNaarRekeningen).toHaveBeenCalled()
+  })
+
+  it('laat de knop weg wanneer de kaart nergens heen kan wijzen', () => {
+    // Een knop die nergens heen gaat is erger dan geen knop.
+    render(<Vermogensevolutie rekeningen={[]} transacties={[]} overboekingen={[]} waarderingen={[]} />)
+    expect(screen.queryByRole('button', { name: 'Maak een rekening aan' })).toBeNull()
   })
 })

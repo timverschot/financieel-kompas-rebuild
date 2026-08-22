@@ -509,7 +509,7 @@ export function UitwisselingKaart({
                           {k.omschrijving}
                         </span>
                         <span className="rij-meta">
-                          {formatEuro(k.bedrag)} · {dagJaar(k.datum)} · {t('telt niet mee in het saldo')}
+                          {formatEuro(k.bedrag)} · {dagJaar(k.datum)} · {t('telt niet mee in wat er te verrekenen valt')}
                         </span>
                       </div>
                       <div className="rij-acties">

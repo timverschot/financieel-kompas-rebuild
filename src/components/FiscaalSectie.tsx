@@ -9,7 +9,7 @@ import { downloadTekst } from '../utils/download'
 import { formatEuro } from '../utils/format'
 import { dagKort, vandaag } from '../utils/datum'
 import { labelVanCategorie } from '../data/categorieen/resolve'
-import { Bedrag, Kaart, Leeg, PaginaKop, Stat } from '../ui/basis'
+import { Bedrag, EersteStapKnop, Kaart, Leeg, PaginaKop, Stat } from '../ui/basis'
 import { useT, type Vertaler } from '../i18n'
 
 // Het fiscale jaaroverzicht (ronde 50).
@@ -42,6 +42,7 @@ export function FiscaalSectie({
   onderhoudsbetalingen = [],
   documenten = [],
   onBewerkTransactie,
+  onNaarBoekingen,
   vandaagISO = vandaag(),
 }: {
   transacties: Transactie[]
@@ -50,6 +51,13 @@ export function FiscaalSectie({
   documenten?: DossierDocument[]
   /** Eén boeking openen om ze na te kijken of te corrigeren. */
   onBewerkTransactie?: (tx: Transactie) => void
+  /**
+   * De eerste stap wanneer er in de hele app nog niets geboekt is (ronde 66,
+   * slotronde). Alleen dán: heb je wél boekingen maar staan ze onder een andere
+   * categorie, dan is "voeg er een toe" het verkeerde antwoord — dan hoort de zin
+   * hieronder je naar de categorieën te sturen, en dat doet ze.
+   */
+  onNaarBoekingen?: () => void
   /** Alleen om te kunnen testen. */
   vandaagISO?: string
 }) {
@@ -177,11 +185,25 @@ export function FiscaalSectie({
         <>
           {metIets.length === 0 ? (
             <Kaart>
-              <Leeg>
-                {t('De app vond in {jaar} geen boekingen onder een fiscale post. Boek je die uitgaven onder een andere categorie, dan vindt ze hier niets — hieronder staat per post waar ze kijkt.', {
-                  jaar: overzicht.inkomstenjaar,
-                })}
-              </Leeg>
+              {transacties.length === 0 ? (
+                <Leeg
+                  actie={
+                    onNaarBoekingen ? (
+                      <EersteStapKnop onClick={onNaarBoekingen}>{t('Boeking toevoegen')}</EersteStapKnop>
+                    ) : undefined
+                  }
+                >
+                  {t('Er staat nog geen enkele boeking in de app, dus valt er voor {jaar} niets samen te tellen. Hieronder zie je alvast waar dit scherm straks naar kijkt.', {
+                    jaar: overzicht.inkomstenjaar,
+                  })}
+                </Leeg>
+              ) : (
+                <Leeg>
+                  {t('De app vond in {jaar} geen boekingen onder een fiscale post. Boek je die uitgaven onder een andere categorie, dan vindt ze hier niets — hieronder staat per post waar ze kijkt.', {
+                    jaar: overzicht.inkomstenjaar,
+                  })}
+                </Leeg>
+              )}
             </Kaart>
           ) : (
             metIets.map((regel) => (
@@ -247,7 +269,18 @@ export function FiscaalSectie({
               LEZEN — per post het bedrag mét de reden waarom het niet zomaar in de
               aangifte mag. De CSV is om mee te REKENEN: één rij per boeking,
               filterbaar en optelbaar. Vandaar dat de PDF de gevulde knop is: dat is
-              het blad dat je doorgeeft. */}
+              het blad dat je doorgeeft.
+
+              ⚠ RONDE 66, slotronde: alleen wanneer er ook íets in staat. Deze kaart
+              stond er onvoorwaardelijk, dus op een lege app was de opvallendste knop
+              van het scherm — de enige gevulde — "maak een leeg blad voor je
+              boekhouder". */}
+          {/* ⚠ Óók `vervallen`: dat zijn posten die niet meer bestaan maar waar in dit
+              jaar wél nog op geboekt is. Het scherm toont ze onder "Dit bestaat niet
+              meer", en de PDF én de CSV nemen ze mee — dus alleen op `metIets` kijken
+              zou de enige weg naar die bestanden afsluiten terwijl er wel degelijk
+              iets in staat. */}
+          {(metIets.length > 0 || overzicht.vervallen.length > 0) && (
           <Kaart
             titel={t('Meegeven aan je boekhouder')}
             bijschrift={t('De PDF leest als een blad: elk bedrag met zijn voorbehoud erbij. De CSV is om zelf mee te rekenen — één rij per boeking.')}
@@ -275,6 +308,7 @@ export function FiscaalSectie({
               </p>
             )}
           </Kaart>
+          )}
         </>
       )}
     </>
@@ -298,7 +332,7 @@ function codeTekst(t: Vertaler, regel: FiscaleRegel): string {
  */
 function kijktInTekst(t: Vertaler, post: FiscalePost): string {
   if (post.uitOnderhoudsbetalingen) {
-    return t('Kijkt in: je betalingen op een onderhoudsregeling in Dossiers.')
+    return t('Kijkt in: je betalingen op een onderhoudsbijdrage in Dossiers.')
   }
   const namen = post.categorieIds
     .map((id) => labelVanCategorie(id, []))

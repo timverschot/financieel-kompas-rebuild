@@ -86,7 +86,7 @@ export function CategorieNiveauKiezer({
     <div className="stapel" style={{ gap: 6 }}>
       <input
         aria-label={t('Zoek een categorie')}
-        placeholder={t('Typ om ook subcategorieën en producten te zoeken…')}
+        placeholder={t('Typ om ook subcategorieën te zoeken…')}
         value={zoek}
         onChange={(e) => setZoek(e.target.value)}
       />
@@ -111,7 +111,7 @@ export function CategorieNiveauKiezer({
       )}
       {term.length < ZOEK_VANAF && (
         <span className="rij-meta">
-          {t('Je kan een budget ook op een subcategorie of op één product zetten — typ dan de naam.')}
+          {t('Je kan een budget ook op één subcategorie zetten — typ dan de naam.')}
         </span>
       )}
     </div>

@@ -10,8 +10,8 @@ describe('CategorieFormulier', () => {
     const onOpslaan = vi.fn()
     render(<CategorieFormulier onOpslaan={onOpslaan} />)
 
-    await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
-    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
+    await user.type(screen.getByLabelText('Naam hoofdcategorie'), 'Vervoer')
+    await user.click(screen.getByRole('button', { name: 'Hoofdcategorie toevoegen' }))
 
     expect(onOpslaan).toHaveBeenCalledTimes(1)
     const opgeslagen = onOpslaan.mock.calls[0][0]
@@ -31,7 +31,7 @@ describe('CategorieFormulier', () => {
     const onOpslaan = vi.fn()
     render(<CategorieFormulier onOpslaan={onOpslaan} />)
 
-    const knop = screen.getByRole('button', { name: 'Categorie toevoegen' })
+    const knop = screen.getByRole('button', { name: 'Hoofdcategorie toevoegen' })
     expect(knop).toHaveAttribute('aria-disabled', 'true')
     expect(knop).not.toBeDisabled()
 
@@ -45,8 +45,8 @@ describe('CategorieFormulier', () => {
     expect(onOpslaan).not.toHaveBeenCalled()
 
     // Zodra er een naam staat, verdwijnt de reden en werkt de knop.
-    await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
-    expect(screen.getByRole('button', { name: 'Categorie toevoegen' })).toHaveAttribute('aria-disabled', 'false')
+    await user.type(screen.getByLabelText('Naam hoofdcategorie'), 'Vervoer')
+    expect(screen.getByRole('button', { name: 'Hoofdcategorie toevoegen' })).toHaveAttribute('aria-disabled', 'false')
     expect(document.getElementById(redenId)).toHaveTextContent('')
   })
 
@@ -55,10 +55,10 @@ describe('CategorieFormulier', () => {
     const onOpslaan = vi.fn()
     render(<CategorieFormulier onOpslaan={onOpslaan} />)
 
-    await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
+    await user.type(screen.getByLabelText('Naam hoofdcategorie'), 'Vervoer')
     await user.click(screen.getByRole('button', { name: 'Kies icoon Auto' }))
     await user.click(screen.getByRole('button', { name: 'Kies kleur Turkoois' }))
-    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
+    await user.click(screen.getByRole('button', { name: 'Hoofdcategorie toevoegen' }))
 
     expect(onOpslaan).toHaveBeenCalledWith(
       expect.objectContaining({ naam: 'Vervoer', icoon: '🚗', kleur: '#0891B2' }),
@@ -71,12 +71,12 @@ describe('CategorieFormulier', () => {
     const onOpslaan = vi.fn()
     render(<CategorieFormulier onOpslaan={onOpslaan} />)
 
-    await user.type(screen.getByLabelText('Categorienaam'), 'Vervoer')
+    await user.type(screen.getByLabelText('Naam hoofdcategorie'), 'Vervoer')
     await user.click(screen.getByRole('button', { name: 'Kies icoon Auto' }))
     await user.click(screen.getByRole('button', { name: 'Kies kleur Turkoois' }))
-    await user.click(screen.getByRole('button', { name: 'Categorie toevoegen' }))
+    await user.click(screen.getByRole('button', { name: 'Hoofdcategorie toevoegen' }))
 
-    await waitFor(() => expect(screen.getByLabelText('Categorienaam')).toHaveValue(''))
+    await waitFor(() => expect(screen.getByLabelText('Naam hoofdcategorie')).toHaveValue(''))
     expect(screen.getByLabelText('Eigen teken')).toHaveValue('')
     expect(screen.getByRole('button', { name: 'Kies icoon Auto' })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: 'Kies kleur Turkoois' })).toHaveAttribute('aria-pressed', 'false')
@@ -91,7 +91,7 @@ describe('CategorieFormulier', () => {
       />,
     )
 
-    expect(screen.getByLabelText('Categorienaam')).toHaveValue('Vervoer')
+    expect(screen.getByLabelText('Naam hoofdcategorie')).toHaveValue('Vervoer')
     expect(screen.getByLabelText('Eigen teken')).toHaveValue('🚗')
     expect(screen.getByRole('button', { name: 'Kies icoon Auto' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'Kies kleur Turkoois' })).toHaveAttribute('aria-pressed', 'true')
@@ -105,7 +105,7 @@ describe('CategorieFormulier', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Kies icoon Fiets' }))
-    await user.click(screen.getByRole('button', { name: 'Categorie wijzigen' }))
+    await user.click(screen.getByRole('button', { name: 'Hoofdcategorie wijzigen' }))
 
     expect(onOpslaan).toHaveBeenCalledWith({ id: 'c1', naam: 'Vervoer', icoon: '🚲' })
   })

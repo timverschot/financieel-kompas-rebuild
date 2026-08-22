@@ -92,7 +92,7 @@ describe('categorieverwijdering', () => {
     })
     expect(regels).toEqual([
       '2 categorie(ën) eronder',
-      '2 item(s) daarin',
+      '2 subcategorie(ën) daarin',
       '1 boeking(en) blijven bestaan, maar staan daarna zonder categorienaam.',
       '1 budget(ten) hierop verliezen hun categorie.',
     ])
@@ -100,7 +100,7 @@ describe('categorieverwijdering', () => {
 
   it('zegt op de ongedaan-balk hoeveel er meeging', () => {
     expect(categorieUndoTekst(t, 'Hobby', 0, 0)).toBe('Hobby verwijderd')
-    expect(categorieUndoTekst(t, 'Hobby', 0, 3)).toBe('Hobby verwijderd, met 3 item(s)')
-    expect(categorieUndoTekst(t, 'Hobby', 2, 5)).toBe('Hobby verwijderd, met 2 categorie(ën) en 5 item(s)')
+    expect(categorieUndoTekst(t, 'Hobby', 0, 3)).toBe('Hobby verwijderd, met 3 subcategorie(ën)')
+    expect(categorieUndoTekst(t, 'Hobby', 2, 5)).toBe('Hobby verwijderd, met 2 categorie(ën) en 5 subcategorie(ën)')
   })
 })

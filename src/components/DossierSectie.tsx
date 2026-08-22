@@ -793,12 +793,29 @@ export function DossierSectie({
               </ul>
             )}
 
-            <div className="stat">
-              <span className="label-caps">{t('Openstaand')}</span>
-              <span className="stat-waarde" style={{ fontFamily: 'var(--font-body)' }}>
-                {verrekenTekst(t, openSaldo)}
-              </span>
-            </div>
+            {/* ⚠ RONDE 66. Dit bedrag heette hier "Openstaand" en in de PDF én de
+                klembordtekst "Te verrekenen" — hetzelfde getal, twee namen. En
+                "Openstaand" is op Je situatie de naam van het blok met je
+                kredietkaarten en leningen, en op een rekeningdetail het bedrag dat
+                je nog moet afbetalen. Drie dingen, één woord. */}
+            {/* ⚠ RONDE 66, slotronde — GEEN OORDEEL OVER NUL KOSTEN. Bij een vers
+                dossier stond hier meteen "Niets te verrekenen", en dat leest als
+                "jullie staan quitte" terwijl er nog nooit iets ingegeven is. Dezelfde
+                valse geruststelling die `BalansRegel` bij nul boekingen afvangt en die
+                ronde 65 uit de maandafsluiting gehaald heeft. Het formulier staat er
+                direct onder, dus een knop is hier niet nodig. */}
+            {openKosten.length === 0 ? (
+              <Leeg>
+                {t('Nog geen kosten in dit dossier. Voeg er hieronder een toe; zodra er kosten staan, rekent de app uit wie wie wat verschuldigd is.')}
+              </Leeg>
+            ) : (
+              <div className="stat">
+                <span className="label-caps">{t('Te verrekenen')}</span>
+                <span className="stat-waarde" style={{ fontFamily: 'var(--font-body)' }}>
+                  {verrekenTekst(t, openSaldo)}
+                </span>
+              </div>
+            )}
 
             <hr className="scheiding" style={{ margin: 0 }} />
 
@@ -908,18 +925,35 @@ export function DossierSectie({
                         <label className="rij-meta raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           {/* `.tx-vinkje`: zonder die klasse is dit met ~13 px het
                               kleinste raakvlak van de rij, pal naast knoppen van 44 px. */}
+                          {/* ⚠ RONDE 66, slotronde — DE DATUM IN ELKE NAAM. Deze rij
+                              staat er één per afrekening, dus met acht afrekeningen
+                              hoorde je acht keer "PDF", acht keer "Kopieer" en acht keer
+                              "Overgemaakt" zonder één verschil. De bewijsmapknop en het
+                              kruisje in dezelfde rij deden dit al goed; deze vier waren
+                              toen overgeslagen. */}
                           <input
                             type="checkbox"
                             className="tx-vinkje"
+                            aria-label={t('Afrekening {datum} is overgemaakt', { datum: dagJaar(v.datum) })}
                             checked={!!v.overgemaakt}
                             onChange={(e) => onMarkeerOvergemaakt(v, e.target.checked)}
                           />{' '}
                           {t('Overgemaakt')}
                         </label>
-                        <button type="button" className="knop knop-ghost knop-klein" onClick={() => kopieerSamenvatting(v)}>
+                        <button
+                          type="button"
+                          className="knop knop-ghost knop-klein"
+                          aria-label={t('Kopieer de afrekening van {datum}', { datum: dagJaar(v.datum) })}
+                          onClick={() => kopieerSamenvatting(v)}
+                        >
                           {gekopieerd === v.id ? t('Gekopieerd ✓') : t('Kopieer')}
                         </button>
-                        <button type="button" className="knop knop-ghost knop-klein" onClick={() => exportPdf(v)}>
+                        <button
+                          type="button"
+                          className="knop knop-ghost knop-klein"
+                          aria-label={t('PDF van de afrekening van {datum}', { datum: dagJaar(v.datum) })}
+                          onClick={() => exportPdf(v)}
+                        >
                           PDF
                         </button>
                         {/* `aria-disabled` en niet `disabled`: dat laatste haalt de
@@ -954,6 +988,11 @@ export function DossierSectie({
                             type="button"
                             className="knop knop-ghost knop-klein"
                             aria-expanded={opbouwVan === v.id}
+                            aria-label={
+                              opbouwVan === v.id
+                                ? t('Verberg de opbouw van de afrekening van {datum}', { datum: dagJaar(v.datum) })
+                                : t('Toon de opbouw van de afrekening van {datum}', { datum: dagJaar(v.datum) })
+                            }
                             onClick={() => setOpbouwVan(opbouwVan === v.id ? '' : v.id)}
                           >
                             {opbouwVan === v.id ? t('Verberg opbouw') : t('Toon opbouw')}
@@ -1220,7 +1259,7 @@ function AfrekeningOpbouw({
                   jij: formatEuro(g.jouwAandeel),
                   partner: formatEuro(g.partnerAandeel),
                 })}{' '}
-                · {t('saldo')} {formatEuro(g.netto)}
+                · {t('te verrekenen')} {formatEuro(g.netto)}
               </span>
             </li>
           ))}

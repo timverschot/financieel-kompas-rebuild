@@ -324,8 +324,23 @@ export function richtingTekstNeutraal(t: Vertaler, richting: 'jij-betaalt' | 'ji
     : t('Betaald aan de ouder die dit overzicht opmaakte')
 }
 
-/** Het openstaande saldo in klare taal, zonder oordeel. */
-export function openTekst(t: Vertaler, open: number, richting: 'jij-betaalt' | 'jij-ontvangt'): string {
+/**
+ * Het openstaande saldo in klare taal, zonder oordeel.
+ *
+ * ⚠ RONDE 66, slotronde — `maanden` is er bij gekomen. Ligt de datum van de regeling
+ * in een toekomstige maand, dan zijn verschuldigd, betaald én open alle drie nul, en
+ * zei deze regel "Betaald en verschuldigd zijn precies gelijk." — een bevestiging
+ * van een berekening over nul maanden. Dat is exact de valse geruststelling die
+ * ronde 65 uit de maandafsluiting gehaald heeft ("Je kwam precies uit" boven drie
+ * keer € 0,00) en die `BalansRegel` afvangt door bij leegte niets te tonen.
+ */
+export function openTekst(
+  t: Vertaler,
+  open: number,
+  richting: 'jij-betaalt' | 'jij-ontvangt',
+  maanden = 1,
+): string {
+  if (maanden === 0) return t('Deze regeling is nog niet beginnen lopen — er is dus nog niets verschuldigd.')
   if (open === 0) return t('Betaald en verschuldigd zijn precies gelijk.')
   if (open > 0) {
     return richting === 'jij-betaalt'

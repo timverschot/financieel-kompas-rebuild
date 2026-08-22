@@ -38,7 +38,7 @@ function kluisTekst(t: Vertaler, soort: KluisEigenaar['soort']): { bijschrift: s
       }
     case 'transactie':
       return {
-        bijschrift: t('Bewaar de bon of factuur van deze transactie.'),
+        bijschrift: t('Bewaar de bon of factuur van deze boeking.'),
         voorbeeld: t('bv. Kassaticket Colruyt'),
         begin: 'bon',
       }

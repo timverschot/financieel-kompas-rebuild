@@ -5,7 +5,7 @@ import { stijgersDalers, maandreeksPerHoofd } from '../utils/trends'
 import { laatsteMaanden } from '../utils/vermogen'
 import type { Periode, Richting } from '../utils/analyse'
 import { formatEuro } from '../utils/format'
-import { Kaart, Leeg, Bedrag } from '../ui/basis'
+import { Bedrag, EersteStapKnop, Kaart, Leeg } from '../ui/basis'
 import { maandKort } from '../utils/datum'
 import { useT } from '../i18n'
 
@@ -56,6 +56,7 @@ export function TrendsSectie({
   periodeLabel,
   ankerMaand,
   onKies,
+  onNaarBoekingen,
 }: {
   transacties: Transactie[]
   categorieen: Categorie[]
@@ -73,6 +74,8 @@ export function TrendsSectie({
   ankerMaand?: string
   /** Doorklikken naar de boekingen van één hoofdcategorie (ronde 40). */
   onKies?: (sleutel: string, naam: string) => void
+  /** De eerste stap wanneer er in de hele app nog niets geboekt is (ronde 66). */
+  onNaarBoekingen?: () => void
 }) {
   const { t } = useT()
 
@@ -114,7 +117,21 @@ export function TrendsSectie({
       }
     >
       {reeksen.length === 0 ? (
-        <Leeg>{t('Nog niets geboekt in deze maanden.')}</Leeg>
+        /* ⚠ RONDE 66, slotronde. "Nog niets geboekt in deze maanden" is het juiste
+           antwoord zodra er boekingen bestaan — dan verschuif je gewoon het venster.
+           Maar op een app waarin nog niets staat, helpt geen enkel venster, en dan
+           hoort hier dezelfde eerste stap te staan als op het buurtabblad. */
+        <Leeg
+          actie={
+            transacties.length === 0 && onNaarBoekingen ? (
+              <EersteStapKnop onClick={onNaarBoekingen}>{t('Boeking toevoegen')}</EersteStapKnop>
+            ) : undefined
+          }
+        >
+          {transacties.length === 0
+            ? t('Er staat nog geen enkele boeking in de app. Zodra je er een ingeeft — zelf of via een uittreksel — zie je hier wat er duurder of goedkoper werd.')
+            : t('Nog niets geboekt in deze maanden.')}
+        </Leeg>
       ) : (
         <ul className="lijst">
           {reeksen.map((r) => {

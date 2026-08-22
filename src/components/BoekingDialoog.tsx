@@ -13,6 +13,7 @@ import type {
   Waardering,
 } from '../data/schema'
 import { Dialoog } from '../ui/Dialoog'
+import { EersteStapKnop, Leeg } from '../ui/basis'
 import { TransactieFormulier } from './TransactieFormulier'
 import { TerugkerendePostFormulier } from './TerugkerendePostFormulier'
 import { OverboekingFormulier } from './OverboekingFormulier'
@@ -58,6 +59,7 @@ export function BoekingDialoog({
   onSluiten,
   beginSoort = 'uitgave',
   rekeningen,
+  onNaarRekeningen,
   categorieen,
   handelaars,
   handelaarIndex,
@@ -78,6 +80,16 @@ export function BoekingDialoog({
   onSluiten: () => void
   beginSoort?: Boekingsoort
   rekeningen: Rekening[]
+  /**
+   * De eerste stap wanneer er nog geen enkele rekening is (ronde 66, slotronde).
+   *
+   * ⚠ Zonder dit was deze popup op een gloednieuwe app een doodloper: alle vier de
+   * soorten leiden naar een formulier dat een rekening nodig heeft, dus je kreeg
+   * vier keer een uitgezette opslaanknop en nergens een weg naar buiten. De ➕
+   * staat onderaan op élk scherm, dus dit is precies de knop die een nieuwe
+   * gebruiker als eerste probeert.
+   */
+  onNaarRekeningen?: () => void
   categorieen: Categorie[]
   handelaars: string[]
   handelaarIndex?: HandelaarIndex
@@ -122,6 +134,31 @@ export function BoekingDialoog({
   const naOpslaan = ({ blijfOpen }: { blijfOpen: boolean }) => {
     setOpgeslagen((n) => n + 1)
     if (!blijfOpen) onSluiten()
+  }
+
+  // Geen enkele rekening: dan heeft geen van de vier soorten zin. Eén duidelijke
+  // eerste stap in plaats van vier doodlopende formulieren.
+  if (open && rekeningen.length === 0) {
+    return (
+      <Dialoog titel={t('Eerst een rekening')} open={open} onSluiten={onSluiten}>
+        <Leeg
+          actie={
+            onNaarRekeningen ? (
+              <EersteStapKnop
+                onClick={() => {
+                  onSluiten()
+                  onNaarRekeningen()
+                }}
+              >
+                {t('Maak je eerste rekening aan')}
+              </EersteStapKnop>
+            ) : undefined
+          }
+        >
+          {t('Een boeking moet ergens op staan. Maak eerst een rekening aan — je betaalrekening, je spaarrekening, of gewoon je portemonnee.')}
+        </Leeg>
+      </Dialoog>
+    )
   }
 
   return (
@@ -187,6 +224,14 @@ export function BoekingDialoog({
             waarderingen={waarderingen}
             onOpslaan={onOverboeking}
             onOpgeslagen={naOpslaan}
+            onNaarRekeningen={
+              onNaarRekeningen
+                ? () => {
+                    onSluiten()
+                    onNaarRekeningen()
+                  }
+                : undefined
+            }
           />
         </>
       )}

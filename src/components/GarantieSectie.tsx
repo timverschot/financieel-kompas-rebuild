@@ -79,10 +79,11 @@ export function GarantieSectie({
   })
 
   return (
-    <Kaart
-      titel={t('Garanties & facturen')}
-      bijschrift={t('Hou per aankoop de garantie en de factuur bij. De app berekent de vervaldatum en waarschuwt vóór ze afloopt.')}
-    >
+    // ⚠ RONDE 66. Deze kaart heette "Garanties & facturen" terwijl het tabblad er
+    // vlak boven "Facturen & garantiebewijzen" zei en de keuzeknop op een lege pagina
+    // "Aankoop met garantie" — drie namen voor één lade. De lade draagt de naam nu
+    // één keer, op het tabblad; de kaart eronder zegt alleen nog wat ze doet.
+    <Kaart bijschrift={t('Hou per aankoop de garantie en de factuur bij. De app berekent de vervaldatum en waarschuwt vóór ze afloopt.')}>
       {garanties.length === 0 && <Leeg>{t('Nog geen aankopen. Voeg er hieronder een toe.')}</Leeg>}
 
       {metStatus.length > 0 && (

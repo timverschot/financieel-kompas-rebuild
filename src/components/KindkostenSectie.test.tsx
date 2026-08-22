@@ -220,3 +220,34 @@ describe('KindkostenSectie — wat de app niet zeker weet', () => {
     expect(rijVan('emma').textContent).toContain(formatEuro(5000))
   })
 })
+
+// --- Ronde 66, slotronde: geen raad geven die je niet kan opvolgen ---
+describe('KindkostenSectie — nog geen gezinsleden', () => {
+  it('wijst naar de plek waar je ze aanmaakt', async () => {
+    // ⚠ De oude zin zei "zet een gezinslid bij een boeking". Zonder gezinsleden
+    // bestaat dat veld niet eens in het boekingsformulier (GezinsledenKiezer geeft
+    // dan `null` terug), dus dat was een opdracht die je niet kón uitvoeren.
+    const gebruiker = userEvent.setup()
+    const onNaarGezinsleden = vi.fn()
+    render(
+      <KindkostenSectie
+        transacties={[]}
+        dossiers={dossiers}
+        gezinsleden={[]}
+        vandaagISO={VANDAAG}
+        onGaNaarTransacties={vi.fn()}
+        onNaarGezinsleden={onNaarGezinsleden}
+      />,
+    )
+    expect(screen.getByText(/nog geen gezinsleden ingesteld/)).toBeInTheDocument()
+    expect(screen.queryByText(/Zet een gezinslid bij een boeking/)).toBeNull()
+    await gebruiker.click(screen.getByRole('button', { name: 'Stel je gezinsleden in' }))
+    expect(onNaarGezinsleden).toHaveBeenCalledTimes(1)
+  })
+
+  it('geeft die raad wél zodra er gezinsleden zijn maar nog geen kosten', () => {
+    toon({ transacties: [], gedeeldeKosten: [] })
+    expect(screen.getByText(/Zet een gezinslid bij een boeking/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Stel je gezinsleden in' })).toBeNull()
+  })
+})

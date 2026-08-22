@@ -337,7 +337,7 @@ export function OnderNavigatie({
             type="button"
             className="knop-zweef"
             onClick={onNieuweTransactie}
-            aria-label={t('Nieuwe transactie')}
+            aria-label={t('Nieuwe boeking')}
             style={{
               width: 52,
               height: 52,

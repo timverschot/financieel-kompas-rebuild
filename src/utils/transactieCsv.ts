@@ -138,5 +138,8 @@ export function transactieCsvBestandsnaam(
   namen: FilterNamen = {},
 ): string {
   const beschrijving = veiligeBestandsnaam(filterBeschrijving(t, filter, namen), 50)
-  return `transacties-${beschrijving || 'alles'}-${vandaagISO}.csv`
+  // ⚠ RONDE 66: dit begon met "transacties-", terwijl de beschrijving erachter sinds
+  // deze ronde "alle boekingen" zegt — dan staan het oude en het nieuwe woord in één
+  // bestandsnaam.
+  return `boekingen-${beschrijving || 'alles'}-${vandaagISO}.csv`
 }

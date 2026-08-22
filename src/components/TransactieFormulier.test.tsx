@@ -70,14 +70,14 @@ describe('TransactieFormulier', () => {
     await user.click(screen.getByLabelText(/Kassaticket splitsen/))
 
     // Regel 1: item via autocomplete (op synoniem) + deelbedrag.
-    await user.type(screen.getAllByLabelText('Item zoeken')[0], 'witbrood')
+    await user.type(screen.getAllByLabelText('Subcategorie zoeken')[0], 'witbrood')
     await user.keyboard('{Enter}')
-    await user.type(screen.getAllByLabelText('Deelbedrag')[0], '30')
+    await user.type(screen.getAllByLabelText(/^Deelbedrag /)[0], '30')
 
     // Regel 2 toevoegen: vrije tekst + deelbedrag.
     await user.click(screen.getByRole('button', { name: '+ Regel toevoegen' }))
-    await user.type(screen.getAllByLabelText('Item zoeken')[1], 'Wasmiddel')
-    await user.type(screen.getAllByLabelText('Deelbedrag')[1], '20')
+    await user.type(screen.getAllByLabelText('Subcategorie zoeken')[1], 'Wasmiddel')
+    await user.type(screen.getAllByLabelText(/^Deelbedrag /)[1], '20')
 
     await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
 
@@ -100,13 +100,13 @@ describe('TransactieFormulier', () => {
     await user.type(screen.getByLabelText('Bedrag (€)'), '50')
     await user.click(screen.getByLabelText(/Kassaticket splitsen/))
 
-    await user.type(screen.getAllByLabelText('Item zoeken')[0], 'brood')
+    await user.type(screen.getAllByLabelText('Subcategorie zoeken')[0], 'brood')
     await user.keyboard('{Enter}')
-    await user.type(screen.getAllByLabelText('Deelbedrag')[0], '30')
+    await user.type(screen.getAllByLabelText(/^Deelbedrag /)[0], '30')
 
-    expect(screen.getAllByLabelText('Deelbedrag')).toHaveLength(1)
+    expect(screen.getAllByLabelText(/^Deelbedrag /)).toHaveLength(1)
     await user.keyboard('{Enter}')
-    expect(screen.getAllByLabelText('Deelbedrag')).toHaveLength(2)
+    expect(screen.getAllByLabelText(/^Deelbedrag /)).toHaveLength(2)
   })
 
   it('tagt een ticketregel breed via een hoofdcategorie-chip', async () => {
@@ -117,11 +117,11 @@ describe('TransactieFormulier', () => {
     await user.type(screen.getByLabelText('Bedrag (€)'), '12')
     await user.click(screen.getByLabelText(/Kassaticket splitsen/))
 
-    await user.type(screen.getAllByLabelText('Item zoeken')[0], 'diversen')
+    await user.type(screen.getAllByLabelText('Subcategorie zoeken')[0], 'diversen')
     // Ronde 30: de hoofdcategorieën zitten achter één knop. Eerst openen.
     await user.click(screen.getAllByRole('button', { name: 'Selecteer hoofdcategorie (optioneel)' })[0])
     await user.click(screen.getAllByRole('button', { name: /Huishouden en Verzorging/ })[0])
-    await user.type(screen.getAllByLabelText('Deelbedrag')[0], '12')
+    await user.type(screen.getAllByLabelText(/^Deelbedrag /)[0], '12')
 
     await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
 
@@ -150,7 +150,7 @@ describe('TransactieFormulier', () => {
     await user.type(screen.getByLabelText('Bedrag (€)'), '3')
     await user.click(screen.getByLabelText(/Kassaticket splitsen/))
 
-    await user.type(screen.getAllByLabelText('Item zoeken')[0], 'Kefir')
+    await user.type(screen.getAllByLabelText('Subcategorie zoeken')[0], 'Kefir')
     await user.click(await screen.findByRole('option', { name: /Kefir.*toevoegen/ }))
     await user.selectOptions(screen.getByLabelText('Onder welke categorie'), 'cat-zuivel-en-kaas')
     await user.click(screen.getByRole('button', { name: 'Subcategorie toevoegen' }))
@@ -158,7 +158,7 @@ describe('TransactieFormulier', () => {
     // Het bewaren is asynchroon; pas daarna wordt de regel op het nieuwe id getagd.
     await waitFor(() => expect(onNieuweSubcategorie).toHaveBeenCalledWith('cat-zuivel-en-kaas', 'Kefir'))
 
-    await user.type(screen.getAllByLabelText('Deelbedrag')[0], '3')
+    await user.type(screen.getAllByLabelText(/^Deelbedrag /)[0], '3')
     await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
 
     expect(onOpslaan).toHaveBeenCalledWith(
@@ -524,11 +524,11 @@ describe('TransactieFormulier — te veel verdeeld', () => {
     await user.type(screen.getByLabelText('Handelaar / winkel'), 'Colruyt')
     await user.type(screen.getByLabelText('Bedrag (€)'), '50')
     await user.click(screen.getByLabelText(/Kassaticket splitsen/))
-    await user.type(screen.getAllByLabelText('Item zoeken')[0], 'Brood')
-    await user.type(screen.getAllByLabelText('Deelbedrag')[0], '40')
+    await user.type(screen.getAllByLabelText('Subcategorie zoeken')[0], 'Brood')
+    await user.type(screen.getAllByLabelText(/^Deelbedrag /)[0], '40')
     await user.click(screen.getByRole('button', { name: '+ Regel toevoegen' }))
-    await user.type(screen.getAllByLabelText('Item zoeken')[1], 'Zeep')
-    await user.type(screen.getAllByLabelText('Deelbedrag')[1], '20')
+    await user.type(screen.getAllByLabelText('Subcategorie zoeken')[1], 'Zeep')
+    await user.type(screen.getAllByLabelText(/^Deelbedrag /)[1], '20')
   }
 
   it('weigert op te slaan en zegt waarom', async () => {
@@ -562,8 +562,8 @@ describe('TransactieFormulier — te veel verdeeld', () => {
     const onOpslaan = renderForm()
     await verdeelTeveel(user)
     // Van 20 naar 5: samen 45 van de 50, de rest wordt "zonder categorie".
-    await user.clear(screen.getAllByLabelText('Deelbedrag')[1])
-    await user.type(screen.getAllByLabelText('Deelbedrag')[1], '5')
+    await user.clear(screen.getAllByLabelText(/^Deelbedrag /)[1])
+    await user.type(screen.getAllByLabelText(/^Deelbedrag /)[1], '5')
 
     await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
     expect(onOpslaan).toHaveBeenCalled()

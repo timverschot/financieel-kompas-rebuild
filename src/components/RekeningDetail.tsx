@@ -530,13 +530,13 @@ export function RekeningDetail({
   /**
    * Naar de boekingenlijst met een filter (ronde 48).
    *
-   * LET OP welke cijfers hier wél en niet mogen doorklikken. `Binnengekomen` en
-   * `Eraf gegaan` tellen op TRANSACTIENIVEAU (zie de kop van dit bestand), terwijl
-   * het richting-filter van de lijst op REGELNIVEAU werkt. Een kassaticket van
-   * € 47 met een regel statiegeld van + € 3 staat hier dus volledig onder "eraf",
-   * maar de gefilterde lijst zou er € 50 uitgaven boven zetten — en bij "in" zou
-   * je op € 0,00 klikken en toch een boeking krijgen. Alleen `Verschil` telt in
-   * beide berekeningen hetzelfde op, en die krijgt daarom als enige een knop.
+   * LET OP welke cijfers hier wél en niet mogen doorklikken. `Inkomsten` en
+   * `Uitgaven` tellen op BOEKINGSNIVEAU (zie de kop van dit bestand), terwijl het
+   * richting-filter van de lijst op REGELNIVEAU werkt. Een kassaticket van € 47 met
+   * een regel statiegeld van + € 3 staat hier dus volledig onder "uitgaven", maar de
+   * gefilterde lijst zou er € 50 uitgaven boven zetten — en bij "inkomsten" zou je op
+   * € 0,00 klikken en toch een boeking krijgen. Alleen `Netto` telt in beide
+   * berekeningen hetzelfde op, en die krijgt daarom als enige een knop.
    */
   onGaNaarTransacties?: (filter: TxFilter) => void
   /** Eén boeking openen om ze te bewerken. */
@@ -680,14 +680,16 @@ export function RekeningDetail({
           </p>
         )}
         <div className="stat-rij">
-          <Stat label={t('Binnengekomen')}>{formatEuro(binnen)}</Stat>
-          <Stat label={t('Eraf gegaan')}>{formatEuro(Math.abs(eraf))}</Stat>
+          {/* Dezelfde drie namen als op Overzicht, Boekingen en de Maandafsluiting
+              (ronde 66). */}
+          <Stat label={t('Inkomsten')}>{formatEuro(binnen)}</Stat>
+          <Stat label={t('Uitgaven')}>{formatEuro(Math.abs(eraf))}</Stat>
           <Stat
-            label={t('Verschil')}
+            label={t('Netto')}
             doorklik={
               onGaNaarTransacties
                 ? {
-                    naam: t('Verschil {bedrag} — bekijk de boekingen van deze maand', {
+                    naam: t('Netto {bedrag} — bekijk de boekingen van deze maand', {
                       bedrag: formatEuro(verschil),
                     }),
                     naar: () => onGaNaarTransacties({ rekeningId: rekening.id, maand }),
@@ -705,12 +707,12 @@ export function RekeningDetail({
 
       {nogNiets && (
         <Kaart>
-          <Leeg>{t('Nog geen boekingen op deze rekening.')}</Leeg>
+          <Leeg>{t('Nog geen boekingen op deze rekening. Ze verschijnen hier zodra je er een ingeeft of een uittreksel inleest.')}</Leeg>
         </Kaart>
       )}
 
       {!nogNiets && eigenTransacties.length > 0 && (
-        <Kaart titel={t('Laatste transacties')}>
+        <Kaart titel={t('Laatste boekingen')}>
           <ul className="lijst">
             {zichtbareTransacties.map((tx) => {
               const groepen = groepenVanTransactie(tx, categorieen)

@@ -18,7 +18,7 @@ import {
   type Sorteerveld,
   type Sortering,
 } from '../utils/transactieSorteer'
-import { Bedrag, Kaart, Kengetal, Leeg } from '../ui/basis'
+import { Bedrag, EersteStapKnop, Kaart, Kengetal, Leeg } from '../ui/basis'
 import { useT, type Vertaler } from '../i18n'
 import { huidigeMaand, maandJaarLabel, vandaag } from '../utils/datum'
 
@@ -134,6 +134,7 @@ export function TransactieLijst({
   beginFilter,
   onGaNaarDossier,
   onGaNaarGarantie,
+  onNieuw,
 }: {
   transacties: Transactie[]
   categorieen: Categorie[]
@@ -167,6 +168,15 @@ export function TransactieLijst({
   onGaNaarDossier?: (dossierId: string) => void
   /** Doorklikken vanaf de badge "garantie" naar de garantielade (ronde 40). */
   onGaNaarGarantie?: (garantieId: string) => void
+  /**
+   * De eerste stap wanneer er nog geen énkele boeking is (ronde 66, slotronde).
+   *
+   * ⚠ Alleen dán. Levert een filter geen resultaat op, dan is "Geen boekingen
+   * gevonden" precies het juiste antwoord en staat "Wis filters" er al bij; een
+   * knop "Boeking toevoegen" zou daar suggereren dat je iets moet aanmaken terwijl
+   * je alleen te streng aan het zoeken was.
+   */
+  onNieuw?: () => void
 }) {
   const { t } = useT()
   const [filter, setFilter] = useState<TxFilter>(beginFilter ?? {})
@@ -375,7 +385,7 @@ export function TransactieLijst({
       setExportFout('')
       // Bij een download gebeurt er op het scherm niets. Zonder deze regel weet wie
       // met een schermlezer werkt niet of het bestand er komt.
-      setExportKlaar(t('{n} rij(en) gedownload als CSV-bestand.', { n: zichtbaar.length }))
+      setExportKlaar(t('{n} boeking(en) gedownload als CSV-bestand.', { n: zichtbaar.length }))
     } catch {
       setExportKlaar('')
       setExportFout(t('Het bestand kon niet gedownload worden. Probeer het opnieuw.'))
@@ -450,10 +460,17 @@ export function TransactieLijst({
             {formatEuro(cijfers.uitgaven)}
           </span>
         </Kengetal>
-        {/* Het saldo krijgt bewust GEEN knop: het is inkomsten min uitgaven, dus er
+        {/* ⚠ RONDE 66. Deze tegel heette "Saldo", en dat was het zwaarste taalprobleem
+            van de app: hetzelfde woord droeg drie verschillende bedragen. Op Overzicht
+            is "Saldo" de stand van ál je rekeningen, hier was het inkomsten min
+            uitgaven — en datzelfde getal heet op Overzicht "Netto". Eén ding, één
+            woord: dit is "Netto", en "Saldo" is voortaan altijd de stand van een
+            rekening.
+
+            De tegel krijgt bewust GEEN knop: het is inkomsten min uitgaven, dus er
             bestaat geen kortere lijst die precies dát getal oplevert. Dezelfde reden
             waarom de saldotegel op Overzicht een gewone tegel bleef. */}
-        <Kengetal label={t('Saldo')}>
+        <Kengetal label={t('Netto')}>
           <span className="bedrag-groot">{formatEuro(cijfers.saldo)}</span>
         </Kengetal>
       </div>
@@ -587,7 +604,7 @@ export function TransactieLijst({
                 <span className="label-caps">{t('Zoeken')}</span>
                 <input
                   type="search"
-                  aria-label={t('Zoek in transacties')}
+                  aria-label={t('Zoek in je boekingen')}
                   autoCorrect="off"
                   autoCapitalize="off"
                   spellCheck={false}
@@ -704,8 +721,8 @@ export function TransactieLijst({
               nagemeten op 393 px. */}
           <p className="kaart-bijschrift rij-midden" style={{ margin: 0, minWidth: 'max-content' }}>
             {actief
-              ? t('{n} transactie(s) gevonden', { n: gesorteerd.length })
-              : t('{n} transactie(s) getoond', { n: zichtbaar.length })}
+              ? t('{n} boeking(en) gevonden', { n: gesorteerd.length })
+              : t('{n} boeking(en) getoond', { n: zichtbaar.length })}
           </p>
           {/* Naast de teller, bewust: daar staat al hoeveel rijen er in het bestand
               komen, dus hoeft de knop dat niet nog eens uit te leggen. */}
@@ -863,12 +880,19 @@ export function TransactieLijst({
           </>
         )}
 
-        {zichtbaar.length === 0 && <Leeg>{t('Geen transacties gevonden.')}</Leeg>}
+        {zichtbaar.length === 0 &&
+          (transacties.length === 0 ? (
+            <Leeg actie={onNieuw ? <EersteStapKnop onClick={onNieuw}>{t('Boeking toevoegen')}</EersteStapKnop> : undefined}>
+              {t('Nog geen boekingen. Hier komt elke uitgave en elke inkomst te staan die je ingeeft.')}
+            </Leeg>
+          ) : (
+            <Leeg>{t('Geen boekingen gevonden.')}</Leeg>
+          ))}
 
         {venster && verborgen > 0 && (
           <div className="knoprij">
             <button type="button" className="knop knop-secundair knop-klein" onClick={() => setToonAlles(true)}>
-              {t('Toon oudere transacties ({n} ouder dan {maanden} maanden)', { n: verborgen, maanden: STANDAARD_MAANDEN })}
+              {t('Toon oudere boekingen ({n} ouder dan {maanden} maanden)', { n: verborgen, maanden: STANDAARD_MAANDEN })}
             </button>
           </div>
         )}

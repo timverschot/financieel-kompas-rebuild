@@ -2005,6 +2005,16 @@ main:focus-visible {
   color: var(--text-subtle);
 }
 
+/* Een lege toestand MET een eerste stap (ronde 66). De knop staat onder de zin en
+   niet ernaast: op een telefoon van 393 px breekt een knop naast een zin van drie
+   regels altijd op een lelijke plek af. */
+.leeg-met-stap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
 /* Een korte toelichting onder een veld of een voorbeeldvlak: leesbaar, maar
    duidelijk ondergeschikt aan de inhoud erboven. */
 .hulptekst {

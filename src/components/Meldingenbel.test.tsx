@@ -48,7 +48,7 @@ describe('Meldingenbel', () => {
     const user = userEvent.setup()
     render(<Meldingenbel meldingen={[]} onGaNaar={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Meldingen' }))
-    expect(screen.getByText('Niets om te melden. Al je budgetten en garanties zijn in orde.')).toBeInTheDocument()
+    expect(screen.getByText(/Zodra er iets je aandacht nodig heeft/)).toBeInTheDocument()
   })
 
   // Ronde 64: de Budget-pagina heeft drie tabbladen, dus "naar Budget" is niet
@@ -198,5 +198,20 @@ describe('Meldingenbel — een melding met een dossier', () => {
     await user.click(screen.getByRole('button', { name: /Meldingen/ }))
     await user.click(screen.getByText('De bijdrage is geïndexeerd'))
     expect(onGaNaar).toHaveBeenCalledWith('dossiers', 'coouderschap', 'd7', undefined)
+  })
+})
+
+// --- Ronde 66, slotronde: geen bevestiging van wat de app niet gekeken heeft ---
+describe('Meldingenbel — niets te melden', () => {
+  it('bevestigt niets en belooft niets', async () => {
+    // ⚠ De zin zei "Al je budgetten en garanties zijn in orde": een oordeel over nul
+    // garanties zodra je één budget had, en stil over de zes andere dingen die deze
+    // bel bekijkt. Een tweede versie wisselde van zin op basis van wat er ingesteld
+    // was, maar beloofde dan stilte over dingen die de bel wél in het oog houdt.
+    const gebruiker = userEvent.setup()
+    render(<Meldingenbel meldingen={[]} onGaNaar={vi.fn()} />)
+    await gebruiker.click(screen.getByRole('button', { name: /Meldingen/ }))
+    expect(screen.getByText(/Zodra er iets je aandacht nodig heeft/)).toBeInTheDocument()
+    expect(screen.queryByText(/zijn in orde/)).toBeNull()
   })
 })

@@ -10,7 +10,7 @@ import {
 } from '../utils/kindkosten'
 import { formatEuro } from '../utils/format'
 import { vandaag } from '../utils/datum'
-import { Bedrag, Kaart, Leeg, PaginaKop, Stat } from '../ui/basis'
+import { Bedrag, EersteStapKnop, Kaart, Leeg, PaginaKop, Stat } from '../ui/basis'
 import { useT } from '../i18n'
 
 // Wat kost elk gezinslid mij per jaar? (ronde 53)
@@ -34,12 +34,22 @@ export function KindkostenSectie({
   dossiers = [],
   gezinsleden = [],
   onGaNaarTransacties,
+  onNaarGezinsleden,
   vandaagISO = vandaag(),
 }: {
   transacties: Transactie[]
   gedeeldeKosten?: GedeeldeKost[]
   dossiers?: Dossier[]
   gezinsleden?: Kind[]
+  /**
+   * Naar de plek waar je gezinsleden aanmaakt (ronde 66, slotronde).
+   *
+   * ⚠ Zonder gezinsleden was de raad op dit scherm — "zet een gezinslid bij een
+   * boeking" — niet uit te voeren: het keuzeveld daarvoor verschijnt pas zódra er
+   * gezinsleden bestaan (zie GezinsledenKiezer). Je kreeg dus een opdracht die het
+   * scherm waarnaar verwezen wordt niet aanbood.
+   */
+  onNaarGezinsleden?: () => void
   /** Van één regel naar de boekingen erachter — alleen waar dat exact klopt. */
   onGaNaarTransacties?: (filter: TxFilter) => void
   /** Alleen om te kunnen testen. */
@@ -120,11 +130,23 @@ export function KindkostenSectie({
 
       {overzicht.regels.length === 0 ? (
         <Kaart>
-          <Leeg>
-            {t('In {jaar} staat er nog niets op naam van een gezinslid. Zet een gezinslid bij een boeking, of hang een kost in een dossier aan een kind.', {
-              jaar: overzicht.jaar,
-            })}
-          </Leeg>
+          {gezinsleden.length === 0 ? (
+            <Leeg
+              actie={
+                onNaarGezinsleden ? (
+                  <EersteStapKnop onClick={onNaarGezinsleden}>{t('Stel je gezinsleden in')}</EersteStapKnop>
+                ) : undefined
+              }
+            >
+              {t('Je hebt nog geen gezinsleden ingesteld. Zodra ze er zijn, kan je ze bij een boeking of bij een gedeelde kost aanduiden — en verschijnt hier per gezinslid wat het kost.')}
+            </Leeg>
+          ) : (
+            <Leeg>
+              {t('In {jaar} staat er nog niets op naam van een gezinslid. Zet een gezinslid bij een boeking, of hang een kost in een dossier aan een kind.', {
+                jaar: overzicht.jaar,
+              })}
+            </Leeg>
+          )}
         </Kaart>
       ) : (
         <Kaart

@@ -101,5 +101,5 @@ export function filterDelen(t: Vertaler, filter: TxFilter, namen: FilterNamen = 
  */
 export function filterBeschrijving(t: Vertaler, filter: TxFilter, namen: FilterNamen = {}): string {
   const delen = filterDelen(t, filter, namen)
-  return delen.length === 0 ? t('alle transacties') : delen.map((d) => d.label).join(' · ')
+  return delen.length === 0 ? t('alle boekingen') : delen.map((d) => d.label).join(' · ')
 }

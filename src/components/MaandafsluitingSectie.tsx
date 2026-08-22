@@ -47,6 +47,8 @@ export function MaandafsluitingSectie({
   onAfsluiten,
   onHeropen,
   onGaNaarInlezen,
+  onNaarRekeningen,
+  heeftRekening = true,
   onToonBoekingen,
   onToonZonderCategorie,
   vandaagISO = vandaag(),
@@ -62,6 +64,18 @@ export function MaandafsluitingSectie({
   onAfsluiten: (m: Maandafsluiting) => Promise<void> | void
   onHeropen: (maand: string) => Promise<void> | void
   onGaNaarInlezen: () => void
+  /**
+   * Is er al een rekening om op te boeken? (ronde 66, slotronde)
+   *
+   * ⚠ Zonder rekening is de Inlezen-pagina zelf geblokkeerd, dus "Uittreksel inlezen"
+   * bracht je van het ene lege scherm naar het andere — en op een lege maand is dat
+   * ook nog eens de gevulde knop van dit scherm. Overzicht en Boekingen schermen die
+   * knop al af; deze pagina kreeg de rekeningen simpelweg niet binnen en kón het dus
+   * niet weten. Standaard `true`, want dat is wat ze vóór deze ronde altijd aannam.
+   */
+  heeftRekening?: boolean
+  /** Waar de eerste stap heen gaat wanneer er nog geen rekening is. */
+  onNaarRekeningen?: () => void
   /** Toont de boekingen van deze maand in de transactielijst. */
   onToonBoekingen: (maand: string) => void
   /** Toont enkel wat nog geen categorie heeft — daar bewerk je ze volledig. */
@@ -199,9 +213,14 @@ export function MaandafsluitingSectie({
             : t('{n} boeking(en) in {maand}.', { n: stand.boekingen, maand: maandJaarLabel(maand) })}
         </p>
         <div className="knoprij">
-          <button type="button" className="knop knop-secundair knop-klein" onClick={onGaNaarInlezen}>
-            {t('Uittreksel inlezen')}
-          </button>
+          {/* ⚠ Niet zodra de hoofdknop onderaan óók "Uittreksel inlezen" heet (bij nul
+              boekingen): twee knoppen met exact dezelfde naam op één scherm zijn voor
+              een schermlezer niet uit elkaar te houden. */}
+          {stand.boekingen > 0 && heeftRekening && (
+            <button type="button" className="knop knop-secundair knop-klein" onClick={onGaNaarInlezen}>
+              {t('Uittreksel inlezen')}
+            </button>
+          )}
           {stand.boekingen > 0 && (
             <button type="button" className="knop knop-ghost knop-klein" onClick={() => onToonBoekingen(maand)}>
               {t('Bekijk de boekingen ›')}
@@ -262,10 +281,14 @@ export function MaandafsluitingSectie({
         bijschrift={t('De cijfers waarvoor je het allemaal deed.')}
         actie={<StapMerk klaar={stapKlaar('oordeel')} />}
       >
+        {/* ⚠ RONDE 66. Deze drie cijfers heetten hier "Binnengekomen · Eraf gegaan ·
+            Verschil" en op Overzicht en Boekingen "Inkomsten · Uitgaven · Netto" —
+            dezelfde drie getallen onder zes namen. Eén naam per ding, en het zijn de
+            namen die op de twee drukst bezochte schermen staan. */}
         <div className="stat-rij">
-          <Stat label={t('Binnengekomen')}>{formatEuro(stand.inkomsten)}</Stat>
-          <Stat label={t('Eraf gegaan')}>{formatEuro(stand.uitgaven)}</Stat>
-          <Stat label={t('Verschil')}>
+          <Stat label={t('Inkomsten')}>{formatEuro(stand.inkomsten)}</Stat>
+          <Stat label={t('Uitgaven')}>{formatEuro(stand.uitgaven)}</Stat>
+          <Stat label={t('Netto')}>
             <Bedrag centen={stand.inkomsten - stand.uitgaven} />
           </Stat>
         </div>
@@ -352,14 +375,37 @@ export function MaandafsluitingSectie({
         ) : (
           <>
             <p style={{ margin: '0 0 10px' }}>
-              {stand.werkTeDoen
-                ? t('Er staat nog werk open. Je mag toch afsluiten — de app onthoudt dan wat er bleef liggen.')
-                : t('Alles is rond. Sluit de maand af, dan weet je later dat je ernaar gekeken hebt.')}
+              {stand.boekingen === 0
+                ? heeftRekening
+                  ? t('Er staat nog geen enkele boeking in deze maand. Afsluiten mag, maar er valt dan niets na te kijken — begin met je uittreksel in te lezen.')
+                  : t('Er staat nog geen enkele boeking in deze maand, en er is nog geen rekening om erop te boeken. Afsluiten mag, maar er valt dan niets na te kijken.')
+                : stand.werkTeDoen
+                  ? t('Er staat nog werk open. Je mag toch afsluiten — de app onthoudt dan wat er bleef liggen.')
+                  : t('Alles is rond. Sluit de maand af, dan weet je later dat je ernaar gekeken hebt.')}
             </p>
+            {/* ⚠ RONDE 66, slotronde — DE ROLLEN WISSELEN BIJ EEN LEGE MAAND. DESIGN.md
+                laat één gevulde knop per scherm toe, en die hoort dé hoofdactie te zijn.
+                Op een maand met nul boekingen was dat "Maand afsluiten": de app bood het
+                dichtklappen van een leeg dossier aan als het belangrijkste wat je kon
+                doen, terwijl het echte werk — je uittreksel inlezen — een klein
+                secundair knopje in stap 1 was. */}
             <div className="knoprij">
-              <button type="button" className="knop knop-primair" aria-disabled={bezig} onClick={sluitAf}>
-                {bezig ? t('Bezig…') : t('Maand afsluiten')}
-              </button>
+              {stand.boekingen === 0 ? (
+                <>
+                  {/* Zonder rekening is Inlezen zelf geblokkeerd; dan is de rekening
+                      de echte eerste stap. */}
+                  <button type="button" className="knop knop-primair" onClick={heeftRekening ? onGaNaarInlezen : onNaarRekeningen}>
+                    {heeftRekening ? t('Uittreksel inlezen') : t('Maak een rekening aan')}
+                  </button>
+                  <button type="button" className="knop knop-ghost" aria-disabled={bezig} onClick={sluitAf}>
+                    {bezig ? t('Bezig…') : t('Toch afsluiten')}
+                  </button>
+                </>
+              ) : (
+                <button type="button" className="knop knop-primair" aria-disabled={bezig} onClick={sluitAf}>
+                  {bezig ? t('Bezig…') : t('Maand afsluiten')}
+                </button>
+              )}
             </div>
           </>
         )}

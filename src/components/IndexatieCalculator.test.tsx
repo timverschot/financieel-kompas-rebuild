@@ -24,7 +24,7 @@ describe('IndexatieCalculator', () => {
     render(<IndexatieCalculator />)
 
     expect(screen.getByText('Indexatie-tools')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Alimentatie' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Onderhoudsbijdrage' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Huur' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Huur' }))
@@ -208,6 +208,19 @@ describe('IndexatieCalculator — de uitkomst bewaren', () => {
     render(<IndexatieCalculator dossiers={[]} onBewaarBijdrage={vi.fn()} />)
     await vulIn(user)
     expect(screen.getByText(/maak dan eerst een dossier aan/)).toBeInTheDocument()
+    // Zonder bestemming geen knop: een knop die nergens heen gaat is erger dan geen.
+    expect(screen.queryByRole('button', { name: 'Naar Dossiers' })).toBeNull()
+  })
+
+  it('brengt je naar Dossiers in plaats van je te laten zoeken', async () => {
+    // ⚠ RONDE 66, slotronde. De zin noemde de bestemming maar liet je ze zelf
+    // opzoeken — precies het patroon dat deze ronde overal rechtzet.
+    const user = userEvent.setup()
+    const onNaarDossiers = vi.fn()
+    render(<IndexatieCalculator dossiers={[]} onBewaarBijdrage={vi.fn()} onNaarDossiers={onNaarDossiers} />)
+    await vulIn(user)
+    await user.click(screen.getByRole('button', { name: 'Naar Dossiers' }))
+    expect(onNaarDossiers).toHaveBeenCalledTimes(1)
   })
 
   it('biedt het niet aan bij huur', async () => {

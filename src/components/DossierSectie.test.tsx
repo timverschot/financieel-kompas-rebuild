@@ -141,7 +141,7 @@ describe('DossierSectie — de bewijsmap', () => {
   it('houdt de gewone PDF-knop naast de bewijsmap', async () => {
     const user = userEvent.setup()
     toon()
-    await user.click(screen.getByRole('button', { name: 'PDF' }))
+    await user.click(screen.getByRole('button', { name: /^PDF van de afrekening/ }))
     expect(afrekeningPdf).toHaveBeenCalledTimes(1)
     expect(bewijsmap).not.toHaveBeenCalled()
   })
@@ -185,7 +185,7 @@ describe('DossierSectie — de bewijsmap', () => {
     afrekeningPdf.mockRejectedValue(new Error('stuk'))
     const user = userEvent.setup()
     toon()
-    await user.click(screen.getByRole('button', { name: 'PDF' }))
+    await user.click(screen.getByRole('button', { name: /^PDF van de afrekening/ }))
     expect(await screen.findByRole('alert')).toHaveTextContent('De PDF van 2026-04-01 kon niet gemaakt worden.')
   })
 
@@ -532,5 +532,29 @@ describe('DossierSectie — een afrekening verwijderen', () => {
     await user.click(kruisje())
     await user.click(await screen.findByRole('button', { name: 'Ja, verwijder' }))
     expect(onVerwijderAfrekening).toHaveBeenCalledWith('v1')
+  })
+})
+
+// --- Ronde 66, slotronde: geen oordeel over nul kosten ---
+describe('DossierSectie — een vers dossier', () => {
+  it('zegt niet "Niets te verrekenen" wanneer er nog geen enkele kost is', () => {
+    // ⚠ "Niets te verrekenen" leest als "jullie staan quitte", terwijl er nog nooit
+    // iets ingegeven is. Dezelfde valse geruststelling die `BalansRegel` bij nul
+    // boekingen afvangt en die ronde 65 uit de maandafsluiting gehaald heeft.
+    toon({ kosten: [] })
+    expect(screen.getByText(/Nog geen kosten in dit dossier/)).toBeInTheDocument()
+    // De stat met het saldo staat er niet; de filterregel eronder telt gewoon nul.
+    expect(screen.queryByText('Te verrekenen')).toBeNull()
+  })
+
+  it('toont het te verrekenen bedrag wél zodra er een open kost staat', () => {
+    // Zonder `verrekeningId`: dan staat de kost nog open en telt ze mee.
+    toon({
+      kosten: [
+        { id: 'k9', dossierId: 'd1', omschrijving: 'Schoolreis', bedrag: 10000, betaaldDoor: 'jij', datum: '2026-03-04' },
+      ],
+    })
+    expect(screen.queryByText(/Nog geen kosten in dit dossier/)).toBeNull()
+    expect(screen.getByText('Te verrekenen')).toBeInTheDocument()
   })
 })

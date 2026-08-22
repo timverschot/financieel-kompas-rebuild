@@ -86,10 +86,10 @@ export function verdeelsleutelTekst(t: Vertaler, s: Verdeelsleutel): string {
 
 // De kop-cijfers als label/waarde-paren, zodat de PDF en de tekst gegarandeerd
 // dezelfde regels in dezelfde volgorde tonen.
-// Eén zin die uitlegt hoe je de saldokolom van de uitsplitsingen leest. Zonder
-// die uitleg lijkt een min-bedrag bij een kind al snel een fout.
+// Eén zin die uitlegt hoe je de kolom "te verrekenen" van de uitsplitsingen leest.
+// Zonder die uitleg lijkt een min-bedrag bij een kind al snel een fout.
 export function saldoLegende(t: Vertaler): string {
-  return t('Saldo: plus = partner betaalt jou, min = jij betaalt partner.')
+  return t('Te verrekenen: plus = partner betaalt jou, min = jij betaalt partner.')
 }
 
 export function totaalRegels(t: Vertaler, o: AfrekeningOverzicht): { label: string; waarde: string }[] {
@@ -139,7 +139,12 @@ export function groepTekst(t: Vertaler, groep: AfrekeningGroep): string {
     jij: formatEuro(groep.jouwAandeel),
     partner: formatEuro(groep.partnerAandeel),
   })
-  return `• ${groepLabel(t, groep)}: ${formatEuro(groep.totaal)} (${verdeling}) · ${t('saldo')} ${formatEuro(groep.netto)}`
+  // ⚠ RONDE 66. Hier stond het woord "saldo", dat elders in de app drie verschillende
+  // bedragen droeg. "Te verrekenen" is negen tekens langer, en deze regel gaat naar
+  // WhatsApp — waar een regel van meer dan negentig tekens afbreekt op een plek die
+  // niemand kiest. Het bedrag draagt het woord nu ACHTER zich, waar het als bijstelling
+  // leest en waar een afbreking hoogstens die twee woorden meeneemt.
+  return `• ${groepLabel(t, groep)}: ${formatEuro(groep.totaal)} (${verdeling})\n  ${formatEuro(groep.netto)} ${t('te verrekenen')}`
 }
 
 // ---------------------------------------------------------------------------

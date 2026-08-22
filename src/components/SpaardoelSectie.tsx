@@ -151,7 +151,11 @@ export function SpaardoelSectie({
       <div className="raster-lijst-formulier">
       <div className="kolom-lijst stapel">
       <Kaart>
-        {spaardoelen.length === 0 && <Leeg>{t('Nog geen doelen. Voeg je eerste doel toe!')}</Leeg>}
+        {/* Ronde 66: de zin zei niet WAAR je dat doet; het formulier staat op een breed
+            scherm ernaast en op een telefoon eronder. */}
+        {spaardoelen.length === 0 && (
+          <Leeg>{t('Nog geen doelen. Met het formulier op deze pagina zet je je eerste doel — een buffer, een grote aankoop, of schuldenvrij zijn.')}</Leeg>
+        )}
 
         {spaardoelen.length > 0 && (
           <ul className="lijst">

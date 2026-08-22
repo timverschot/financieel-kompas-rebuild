@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import type { Overboeking, Rekening, Transactie, Waardering } from '../data/schema'
 import { vermogensEvolutie, laatsteMaanden } from '../utils/vermogen'
 import { formatEuro } from '../utils/format'
-import { Kaart, Leeg } from '../ui/basis'
+import { EersteStapKnop, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 import { maandKort } from '../utils/datum'
 
@@ -31,6 +31,7 @@ export function Vermogensevolutie({
   overboekingen,
   waarderingen,
   ankerMaand,
+  onNaarRekeningen,
 }: {
   rekeningen: Rekening[]
   transacties: Transactie[]
@@ -42,6 +43,8 @@ export function Vermogensevolutie({
    * andere maand bladerde. Standaard blijft het de huidige maand.
    */
   ankerMaand?: string
+  /** De eerste stap in de lege toestand (ronde 66). Optioneel: zonder handler geen knop. */
+  onNaarRekeningen?: () => void
 }) {
   const { t } = useT()
   const [verborgen, setVerborgen] = useState<Set<string>>(new Set())
@@ -60,7 +63,15 @@ export function Vermogensevolutie({
   if (rekeningen.length === 0 || data.length === 0) {
     return (
       <Kaart titel={t('Vermogensevolutie')}>
-        <Leeg>{t('Zodra je een rekening hebt toegevoegd, zie je hier hoe je bezit evolueert.')}</Leeg>
+        <Leeg
+          actie={
+            onNaarRekeningen ? (
+              <EersteStapKnop onClick={onNaarRekeningen}>{t('Maak een rekening aan')}</EersteStapKnop>
+            ) : undefined
+          }
+        >
+          {t('Zodra je een rekening hebt toegevoegd, zie je hier hoe je bezit evolueert.')}
+        </Leeg>
       </Kaart>
     )
   }

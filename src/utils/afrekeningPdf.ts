@@ -99,7 +99,7 @@ export async function exporteerAfrekeningPDF(
     doc.text(t('Totaal'), KOL_TOTAAL, blad.positie(), { align: 'right' })
     doc.text(t('Jij'), KOL_JIJ, blad.positie(), { align: 'right' })
     doc.text(t('Partner'), KOL_PARTNER, blad.positie(), { align: 'right' })
-    doc.text(t('Saldo'), KOL_SALDO, blad.positie(), { align: 'right' })
+    doc.text(t('Te verrekenen'), KOL_SALDO, blad.positie(), { align: 'right' })
     doc.setFont('helvetica', 'normal')
     blad.verschuif(5)
     doc.setFontSize(9.5)

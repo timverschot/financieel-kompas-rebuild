@@ -10,7 +10,7 @@ describe('CategorieKiezer', () => {
     const onKies = vi.fn()
     render(<CategorieKiezer waarde={undefined} onKies={onKies} gebruikerCategorieen={[]} />)
 
-    await user.click(screen.getByLabelText('Zoek categorie of item'))
+    await user.click(screen.getByLabelText('Zoek een categorie of subcategorie'))
     // Ronde 30: de hoofdcategorieën zitten achter één knop. Openen, dan kiezen.
     await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie (optioneel)' }))
     await user.click(screen.getByRole('button', { name: /Voeding/ }))
@@ -22,7 +22,7 @@ describe('CategorieKiezer', () => {
     const onKies = vi.fn()
     render(<CategorieKiezer waarde={undefined} onKies={onKies} gebruikerCategorieen={[]} />)
 
-    await user.type(screen.getByLabelText('Zoek categorie of item'), 'brood')
+    await user.type(screen.getByLabelText('Zoek een categorie of subcategorie'), 'brood')
     await user.click(await screen.findByRole('option', { name: /Brood \(wit\)/ }))
     expect(onKies).toHaveBeenCalledWith('i-brood--wit-9238')
   })
@@ -32,7 +32,7 @@ describe('CategorieKiezer', () => {
     const onKies = vi.fn()
     render(<CategorieKiezer waarde={undefined} onKies={onKies} gebruikerCategorieen={[]} />)
 
-    await user.type(screen.getByLabelText('Zoek categorie of item'), 'witbrood')
+    await user.type(screen.getByLabelText('Zoek een categorie of subcategorie'), 'witbrood')
     await user.keyboard('{Enter}')
     expect(onKies).toHaveBeenCalledWith('i-brood--wit-9238')
   })
@@ -42,7 +42,7 @@ describe('CategorieKiezer', () => {
     const onKies = vi.fn()
     render(<CategorieKiezer waarde={undefined} onKies={onKies} gebruikerCategorieen={[]} />)
 
-    await user.type(screen.getByLabelText('Zoek categorie of item'), 'brood')
+    await user.type(screen.getByLabelText('Zoek een categorie of subcategorie'), 'brood')
     // 'Broodwaren' staat bovenaan, 'Broodwaren (zoet)' er net onder.
     await user.keyboard('{ArrowDown}{Enter}')
     expect(onKies).toHaveBeenCalledWith('cat-broodwaren--zoet')
@@ -56,7 +56,7 @@ describe('CategorieKiezer', () => {
     const onKies = vi.fn()
     render(<CategorieKiezer waarde={undefined} onKies={onKies} gebruikerCategorieen={[]} />)
 
-    await user.type(screen.getByLabelText('Zoek categorie of item'), 'broodwaren')
+    await user.type(screen.getByLabelText('Zoek een categorie of subcategorie'), 'broodwaren')
     await user.click(await screen.findByRole('option', { name: /^Broodwaren · .*hele categorie/ }))
     expect(onKies).toHaveBeenCalledWith('cat-broodwaren')
   })
@@ -75,7 +75,7 @@ describe('CategorieKiezer', () => {
     const onKies = vi.fn()
     render(<CategorieKiezer waarde={undefined} onKies={onKies} gebruikerCategorieen={[]} />)
 
-    await user.type(screen.getByLabelText('Zoek categorie of item'), 'witbrood')
+    await user.type(screen.getByLabelText('Zoek een categorie of subcategorie'), 'witbrood')
     await user.keyboard('{Tab}')
     expect(onKies).toHaveBeenCalledWith('i-brood--wit-9238')
   })
@@ -90,7 +90,7 @@ describe('CategorieKiezer', () => {
     const onKies = vi.fn()
     render(<CategorieKiezer waarde={undefined} onKies={onKies} gebruikerCategorieen={[]} />)
 
-    await user.type(screen.getByLabelText('Zoek categorie of item'), 'brood')
+    await user.type(screen.getByLabelText('Zoek een categorie of subcategorie'), 'brood')
     // De knop blijft bereikbaar terwijl de voorstellen getoond worden.
     await user.click(screen.getByRole('button', { name: 'Selecteer hoofdcategorie (optioneel)' }))
     await user.click(screen.getByRole('button', { name: /Huishouden en Verzorging/ }))
@@ -168,7 +168,7 @@ describe('CategorieKiezer', () => {
       />,
     )
 
-    await user.type(screen.getByLabelText('Zoek categorie of item'), 'Kefir')
+    await user.type(screen.getByLabelText('Zoek een categorie of subcategorie'), 'Kefir')
     await user.click(await screen.findByRole('option', { name: /Kefir.*toevoegen/ }))
 
     await user.selectOptions(screen.getByLabelText('Onder welke categorie'), 'cat-zuivel-en-kaas')
@@ -191,7 +191,7 @@ describe('CategorieKiezer', () => {
       />,
     )
 
-    await user.type(screen.getByLabelText('Zoek categorie of item'), 'kefir')
+    await user.type(screen.getByLabelText('Zoek een categorie of subcategorie'), 'kefir')
     // Geen enkel bestaand item heet 'kefir': de toevoegen-regel staat bovenaan.
     await user.keyboard('{Enter}')
     expect(await screen.findByLabelText('Onder welke categorie')).toBeInTheDocument()

@@ -303,10 +303,17 @@ export function CategorieBoom({
                 <span className="rij-midden">
                   <span className="rij-titel">{h.naam}</span>
                   {/* BEIDE aantallen, zoals in V1: het aantal categorieën zegt hoe
-                      fijn de tak vertakt is, het aantal items hoe diep. Alleen dat
-                      tweede tonen liet de middenlaag onbenoemd. */}
+                      fijn de tak vertakt is, het aantal subcategorieën hoe diep.
+                      Alleen dat tweede tonen liet de middenlaag onbenoemd.
+                      ⚠ RONDE 66: hier stond "cat." naast "items" — twee afkortingen
+                      voor lagen die elders "categorie" en "subcategorie" heten. Nu
+                      afkortingen van dezelfde drie woorden, zodat je ze herkent uit
+                      het uitlegblok bovenaan de pagina.
+                      ⚠ En bewust AFGEKORT: de volle woorden ("26 categorieën · 546
+                      subcategorieën") zijn op een telefoon van 393 px breder dan de
+                      hele regel, waardoor élke tak twee regels hoog werd. */}
                   <span className="rij-meta">
-                    {t('{c} cat. · {i} items', { c: h.categorieen.length, i: aantalItems })}
+                    {t('{c} cat. · {i} subcat.', { c: h.categorieen.length, i: aantalItems })}
                     {h.eigen && <span style={{ color: 'var(--accent-ink)' }}> · {t('eigen')}</span>}
                   </span>
                 </span>
@@ -361,11 +368,26 @@ export function CategorieBoom({
                             onChange={(e) => setNieuweCatTekst(e.target.value)}
                             placeholder={t('Naam categorie')}
                           />
+                          {/* ⚠ RONDE 66, slotronde: een eigen naam per laag. Je kan een
+                              categorie én een subcategorie tegelijk openstaan hebben, en
+                              dan heetten allebei de knoppen gewoon "Toevoegen" — voor een
+                              schermlezer niet uit elkaar te houden. Het kruisje had zelfs
+                              helemaal geen naam en werd als "×" voorgelezen. */}
                           <span className="rij-acties">
-                            <button type="button" className="knop knop-secundair knop-klein" onClick={() => bewaarNieuweCategorie(h.id)}>
+                            <button
+                              type="button"
+                              className="knop knop-secundair knop-klein"
+                              aria-label={t('Voeg deze categorie toe in {naam}', { naam: h.naam })}
+                              onClick={() => bewaarNieuweCategorie(h.id)}
+                            >
                               {t('Toevoegen')}
                             </button>
-                            <button type="button" className="knop knop-kaal" onClick={() => setNieuweCatOnder(null)}>
+                            <button
+                              type="button"
+                              className="knop knop-kaal"
+                              aria-label={t('Annuleer nieuwe categorie in {naam}', { naam: h.naam })}
+                              onClick={() => setNieuweCatOnder(null)}
+                            >
                               ×
                             </button>
                           </span>
@@ -406,7 +428,8 @@ export function CategorieBoom({
                               {c.eigen && <span style={{ color: 'var(--accent-ink)' }}> · {t('eigen')}</span>}
                             </span>
                           </span>
-                          <span className="rij-meta">{c.items.length}</span>
+                          {/* Het kale getal zei niet WAT het telde (ronde 66). */}
+                          <span className="rij-meta">{t('{n} subcat.', { n: c.items.length })}</span>
                         </button>
                         {cOpen && (
                           <ul className="lijst" style={subLijst}>
@@ -421,10 +444,20 @@ export function CategorieBoom({
                                     placeholder={t('Naam subcategorie')}
                                   />
                                   <span className="rij-acties">
-                                    <button type="button" className="knop knop-secundair knop-klein" onClick={() => bewaarToevoeging(c.id)}>
+                                    <button
+                                      type="button"
+                                      className="knop knop-secundair knop-klein"
+                                      aria-label={t('Voeg deze subcategorie toe in {naam}', { naam: c.naam })}
+                                      onClick={() => bewaarToevoeging(c.id)}
+                                    >
                                       {t('Toevoegen')}
                                     </button>
-                                    <button type="button" className="knop knop-kaal" onClick={() => setToevoegCatId(null)}>
+                                    <button
+                                      type="button"
+                                      className="knop knop-kaal"
+                                      aria-label={t('Annuleer nieuwe subcategorie in {naam}', { naam: c.naam })}
+                                      onClick={() => setToevoegCatId(null)}
+                                    >
                                       ×
                                     </button>
                                   </span>

@@ -36,7 +36,7 @@ describe('RecenteTransacties', () => {
     render(<RecenteTransacties transacties={lijst} categorieen={[]} onAlle={vi.fn()} />)
     expect(screen.queryByRole('button', { name: /Bewerk/ })).toBeNull()
     // De knop 'Alle' blijft wel bestaan.
-    expect(screen.getByRole('button', { name: 'Alle' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Alle boekingen' })).toBeInTheDocument()
   })
 
   it('zet datum en bedrag ín het label van de knop', async () => {
@@ -52,6 +52,21 @@ describe('RecenteTransacties', () => {
 
   it('zegt het wanneer er nog niets geboekt is', () => {
     render(<RecenteTransacties transacties={[]} categorieen={[]} onAlle={vi.fn()} onBewerk={vi.fn()} />)
-    expect(screen.getByText('Nog geen transacties.')).toBeInTheDocument()
+    expect(screen.getByText('Nog geen boekingen.')).toBeInTheDocument()
+  })
+
+  // Ronde 66: de lege kaart zei alleen dát er niets was.
+  it('biedt de eerste stap wanneer er nog geen boekingen zijn', async () => {
+    const user = userEvent.setup()
+    const onNieuw = vi.fn()
+    render(<RecenteTransacties transacties={[]} categorieen={[]} onAlle={vi.fn()} onNieuw={onNieuw} />)
+    await user.click(screen.getByRole('button', { name: 'Boeking toevoegen' }))
+    expect(onNieuw).toHaveBeenCalled()
+  })
+
+  it('laat de knop weg wanneer de kaart nergens heen kan wijzen', () => {
+    render(<RecenteTransacties transacties={[]} categorieen={[]} onAlle={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: 'Boeking toevoegen' })).toBeNull()
+    expect(screen.getByText('Nog geen boekingen.')).toBeInTheDocument()
   })
 })

@@ -32,6 +32,7 @@ function toon(over: Partial<typeof leeg> = {}, handlers: Record<string, unknown>
       onKindVerwijderen={vi.fn()}
       onDossier={vi.fn()}
       onNaarPagina={onNaarPagina}
+      {...(handlers as Record<string, never>)}
     />,
   )
   return { ...resultaat, onVastePost, onNaarPagina }
@@ -249,8 +250,13 @@ describe('OpstellingSectie — de aanvinklijsten', () => {
   it('houdt je bedrag vast wanneer het opslaan niet lukt', async () => {
     // Regel 7 van de projectinstructies: een mislukte opslag mag de gebruiker nooit
     // zijn invoer kosten. Vroeger maakte het veld zich hoe dan ook leeg.
+    //
+    // ⚠ RONDE 66, slotronde: deze test dwong de mislukking af door GEEN rekening te
+    // geven. Dat kan niet meer — zonder rekening toont het blok nu de eerste stap in
+    // plaats van invulvelden. De mislukking komt nu van de opslag zelf, wat het
+    // eerlijkere geval is: een echte schrijffout, met je bedrag al ingetikt.
     const gebruiker = userEvent.setup()
-    toon({}, { onVastePost: vi.fn() })
+    toon({ rekeningen: [rekening] }, { onVastePost: vi.fn().mockRejectedValue(new Error('schijf vol')) })
 
     await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
     await gebruiker.type(screen.getByLabelText('Huur'), '950')
@@ -262,13 +268,13 @@ describe('OpstellingSectie — de aanvinklijsten', () => {
   it('zegt de reden in de rij zelf, niet bovenaan de pagina', async () => {
     // Bovenaan staat ze bij regel vijftien van de lijst volledig buiten beeld.
     const gebruiker = userEvent.setup()
-    toon()
+    toon({ rekeningen: [rekening] }, { onVastePost: vi.fn().mockRejectedValue(new Error('schijf vol')) })
     await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
     await gebruiker.type(screen.getByLabelText('Huur'), '950')
     await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
 
     const rij = screen.getByLabelText('Huur').closest('li') as HTMLElement
-    expect(within(rij).getByRole('alert')).toHaveTextContent(/Maak eerst een rekening aan/)
+    expect(within(rij).getByRole('alert')).toHaveTextContent(/Toevoegen is niet gelukt/)
   })
 
   it('herkent een post ook wanneer de app in een andere taal staat', async () => {
@@ -398,19 +404,22 @@ describe('OpstellingSectie — de aanvinklijsten', () => {
     expect(await screen.findByText(/Zichtrekening/)).toBeInTheDocument()
   })
 
-  it('zegt waarom het niet lukt wanneer er nog geen rekening is', async () => {
-    // Een vaste kost moet ergens vanaf gaan; zonder rekening kan de app dat niet
-    // invullen, en dan hoort ze dat te zeggen in plaats van stil te falen.
+  it('laat je zonder rekening niet eerst twintig bedragen intikken', async () => {
+    // ⚠ RONDE 66, slotronde. Vroeger stonden hier gewoon de invulvelden, en kwam de
+    // melding "Maak eerst een rekening aan bij Je geld" pas bij het aanvinken — een
+    // zin die de bestemming noemt maar er niet heen brengt, en je invoer was weg.
+    // Nu begint het blok er niet eens aan en staat de weg erheen er meteen bij.
     const gebruiker = userEvent.setup()
     const onVastePost = vi.fn()
     toon({}, { onVastePost })
 
     await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.type(screen.getByLabelText('Huur'), '950')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
+    expect(screen.queryByLabelText('Huur')).toBeNull()
+    expect(screen.getByText(/een vaste kost moet ergens vanaf gaan/)).toBeInTheDocument()
 
+    await gebruiker.click(screen.getByRole('button', { name: 'Maak een rekening aan' }))
+    await vi.waitFor(() => expect(document.activeElement).toBe(document.getElementById('opstelling-tab-rekeningen')))
     expect(onVastePost).not.toHaveBeenCalled()
-    expect(await screen.findByText(/Maak eerst een rekening aan/)).toBeInTheDocument()
   })
 })
 
@@ -673,5 +682,66 @@ describe('OpstellingSectie — Veilig bewaren', () => {
     await user.click(screen.getByRole('tab', { name: /Veilig bewaren/ }))
     await user.click(screen.getByRole('button', { name: 'Exporteer back-up' }))
     expect(onExporteer).toHaveBeenCalledTimes(1)
+  })
+})
+
+// --- Ronde 66, slotronde: de welkomstknop moet ook iets doen wanneer het blok al open staat ---
+describe('OpstellingSectie — de eerste stap op de pagina zelf', () => {
+  it('brengt de tab "Je geld" in beeld en geeft ze de focus', async () => {
+    // ⚠ De knop riep `setBlok('rekeningen')` aan terwijl dat AL het standaardblok
+    // is. Op een gloednieuwe app — precies waar deze kaart voor bestaat — gebeurde
+    // er dus zichtbaar niets: het blok stond open, en de tabstrook staat onder de
+    // vouw. Nu krijgt de tab de focus, zodat de knop altijd ergens toe leidt.
+    const user = userEvent.setup()
+    toon()
+    const knop = screen.getByRole('button', { name: 'Begin bij "Je geld"' })
+    await user.click(knop)
+    const tab = document.getElementById('opstelling-tab-rekeningen')
+    expect(tab).not.toBeNull()
+    await vi.waitFor(() => expect(document.activeElement).toBe(tab))
+  })
+
+  it('toont de welkomstkaart niet meer zodra er een rekening is', () => {
+    toon({ rekeningen: [rekening] })
+    expect(screen.queryByRole('button', { name: 'Begin bij "Je geld"' })).toBeNull()
+  })
+
+  it('opent het blok waar de oproeper om vraagt', async () => {
+    // ⚠ RONDE 66, slotronde. "Stel je gezinsleden in" op de pagina "Wat kost elk
+    // gezinslid?" zette je hier neer met het REKENINGformulier voor je neus; het
+    // blok "Je gezin" moest je zelf nog zoeken in een strook die onder de vouw
+    // staat. Hetzelfde probleem dat `gaNaarBudget(tab)` voor Budget al oploste.
+    toon({ rekeningen: [rekening] }, { naarBlok: 'gezin', naarBlokNr: 1 })
+    expect(screen.getByRole('tab', { name: /Je gezin/ })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: /Je geld/ })).toHaveAttribute('aria-selected', 'false')
+  })
+
+  it('wist je invoer niet wanneer een knop je naar het blok stuurt waar je al staat', async () => {
+    // ⚠ DIT is waarom er een teller is en geen `key` op deze component. Met een
+    // nieuwe sleutel hermonteert het hele scherm en is alles weg wat je net had
+    // ingetikt. En dat gebeurt écht: de ➕ staat op élke pagina, en zonder rekening
+    // wijst haar eerste stap hierheen — naar het blok waar je op dat moment al staat.
+    const gebruiker = userEvent.setup()
+    const { rerender } = toon({ rekeningen: [rekening] }, { naarBlok: 'rekeningen', naarBlokNr: 1 })
+    await gebruiker.type(screen.getByLabelText('Rekeningnaam'), 'Spaarpot')
+
+    rerender(
+      <OpstellingSectie
+        {...leeg}
+        rekeningen={[rekening]}
+        onRekening={vi.fn()}
+        onLening={vi.fn()}
+        onVastePost={vi.fn()}
+        onKindToevoegen={vi.fn()}
+        onKindWijzigen={vi.fn()}
+        onKindVerwijderen={vi.fn()}
+        onDossier={vi.fn()}
+        onNaarPagina={vi.fn()}
+        naarBlok="rekeningen"
+        naarBlokNr={2}
+      />,
+    )
+    expect(screen.getByRole('tab', { name: /Je geld/ })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByLabelText('Rekeningnaam')).toHaveValue('Spaarpot')
   })
 })

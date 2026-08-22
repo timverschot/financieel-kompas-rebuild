@@ -85,7 +85,7 @@ export function telAfrekeningVerwijderen(
   // hier niet beweerd worden dat ze "weer meetelt".
   const terugInSaldo = kostenOmTeHeropenen(afrekening, kosten).filter((k) => !k.ingetrokken).length
   if (terugInSaldo > 0) {
-    regels.push(t('{n} kost(en) komen weer op "nog niet afgerekend" te staan en tellen dus opnieuw mee in je saldo.', { n: terugInSaldo }))
+    regels.push(t('{n} kost(en) komen weer op "nog niet afgerekend" te staan en tellen dus opnieuw mee in wat er te verrekenen valt.', { n: terugInSaldo }))
   }
   return regels
 }

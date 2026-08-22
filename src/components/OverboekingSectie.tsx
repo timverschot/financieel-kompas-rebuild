@@ -1,5 +1,5 @@
 import type { Overboeking, Rekening, Transactie, Waardering } from '../data/schema'
-import { Bedrag, Kaart, Leeg } from '../ui/basis'
+import { Bedrag, EersteStapKnop, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
 import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 import { OverboekingFormulier } from './OverboekingFormulier'
@@ -23,6 +23,7 @@ export function OverboekingSectie({
   onVerwijderen,
   onBewerk,
   onStopBewerken,
+  onNieuweRekening,
 }: {
   overboekingen: Overboeking[]
   rekeningen: Rekening[]
@@ -35,6 +36,14 @@ export function OverboekingSectie({
   onVerwijderen: (id: string) => Promise<void> | void
   onBewerk: (o: Overboeking) => void
   onStopBewerken: () => void
+  /**
+   * Het rekeningformulier op deze pagina tevoorschijn halen (ronde 66, slotronde).
+   *
+   * ⚠ Zonder dit wees de lege toestand naar iets wat er niet altijd stond. Deze
+   * handler doet wat de knop "+ Nieuwe rekening" doet: de keuze wissen, zodat het
+   * formulier weer in beeld komt.
+   */
+  onNieuweRekening?: () => void
 }) {
   const { t } = useT()
   const naam = (id: string) => rekeningen.find((r) => r.id === id)?.naam ?? t('onbekende rekening')
@@ -43,7 +52,24 @@ export function OverboekingSectie({
   return (
     <Kaart titel={t('Alle overboekingen')} bijschrift={t('Geld verschuiven tussen je eigen rekeningen (geen inkomst of uitgave).')}>
       {rekeningen.length < 2 ? (
-        <Leeg>{t('Je hebt minstens twee rekeningen nodig om over te boeken.')}</Leeg>
+        /* ⚠ RONDE 66, slotronde: dezelfde zin stond hier kaal en in de boekingspopup
+           mét eerste stap. Hier staat het rekeningformulier op ditzelfde scherm, dus
+           een knop is overbodig — maar de zin moest dat wél zeggen. */
+        /* ⚠ RONDE 66, slotronde. Deze zin heeft twee versies gehad die allebei naar
+           iets wezen dat er niet altijd stond: "het formulier op deze pagina" (dat op
+           een breed scherm door het rekeningdetail vervangen wordt zodra je een
+           rekening aantikt) en "+ Nieuwe rekening hierboven" (die knop bestaat alleen
+           mét een gekozen rekening). Een knop die het formulier zélf tevoorschijn
+           haalt, klopt altijd. */
+        <Leeg
+          actie={
+            onNieuweRekening ? (
+              <EersteStapKnop onClick={onNieuweRekening}>{t('Maak een rekening aan')}</EersteStapKnop>
+            ) : undefined
+          }
+        >
+          {t('Je hebt minstens twee rekeningen nodig om over te boeken.')}
+        </Leeg>
       ) : (
         <>
           {gesorteerd.length > 0 && (

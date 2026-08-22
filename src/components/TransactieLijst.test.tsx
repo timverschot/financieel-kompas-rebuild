@@ -60,7 +60,7 @@ describe('TransactieLijst', () => {
     ])
     expect(screen.getByText('Colruyt')).toBeInTheDocument()
     await klapFiltersOpen(user)
-    await user.type(screen.getByLabelText('Zoek in transacties'), 'delh')
+    await user.type(screen.getByLabelText('Zoek in je boekingen'), 'delh')
     expect(screen.queryByText('Colruyt')).not.toBeInTheDocument()
     expect(screen.getByText('Delhaize')).toBeInTheDocument()
   })
@@ -85,7 +85,7 @@ describe('TransactieLijst', () => {
       tx({ id: 'nieuw', omschrijving: 'RecenteAankoop' }),
     ])
     expect(screen.queryByText('AntiekeAankoop')).not.toBeInTheDocument()
-    const knop = screen.getByRole('button', { name: /Toon oudere transacties/ })
+    const knop = screen.getByRole('button', { name: /Toon oudere boekingen/ })
     await user.click(knop)
     expect(screen.getByText('AntiekeAankoop')).toBeInTheDocument()
   })
@@ -225,7 +225,7 @@ describe('TransactieLijst — de filterlade', () => {
   it('houdt in rust álle velden dicht, achter één knop', () => {
     toon([tx({ id: '1' })])
     expect(screen.getByRole('button', { name: /Zoeken en filteren/ })).toBeInTheDocument()
-    expect(screen.queryByLabelText('Zoek in transacties')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Zoek in je boekingen')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Richting')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Rekening')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Sorteer op')).not.toBeInTheDocument()
@@ -237,7 +237,7 @@ describe('TransactieLijst — de filterlade', () => {
     toon([tx({ id: '1' })])
 
     await klapFiltersOpen(user)
-    expect(screen.getByLabelText('Zoek in transacties')).toBeInTheDocument()
+    expect(screen.getByLabelText('Zoek in je boekingen')).toBeInTheDocument()
     expect(screen.getByLabelText('Richting')).toBeInTheDocument()
     expect(screen.getByLabelText('Rekening')).toBeInTheDocument()
     expect(screen.getByLabelText('Sorteer op')).toBeInTheDocument()
@@ -273,7 +273,7 @@ describe('TransactieLijst — de filterlade', () => {
     toon([tx({ id: '1', omschrijving: 'Colruyt' })])
 
     await klapFiltersOpen(user)
-    await user.type(screen.getByLabelText('Zoek in transacties'), 'colr')
+    await user.type(screen.getByLabelText('Zoek in je boekingen'), 'colr')
     await klapFiltersOpen(user)
 
     // Zonder deze chip zou je een gefilterde lijst zien zonder dat ergens staat
@@ -421,7 +421,7 @@ describe('TransactieLijst — kengetallen', () => {
     ])
     expect(kengetal('Inkomsten')).toMatch(/2[.\s]?000/)
     expect(kengetal('Uitgaven')).toMatch(/30,00/)
-    expect(kengetal('Saldo')).toMatch(/1[.\s]?970/)
+    expect(kengetal('Netto')).toMatch(/1[.\s]?970/)
   })
 
   it('volgt het filter, zodat de cijfers en de lijst nooit iets anders zeggen', async () => {
@@ -526,7 +526,7 @@ describe('TransactieLijst — kengetallen', () => {
     // getal oplevert. Dezelfde reden waarom de saldotegel op Overzicht geen knop werd.
     toon([tx({ id: '1', omschrijving: 'Winkel', bedrag: -3000 })])
     const blok = document.querySelector('[data-kengetallen]') as HTMLElement
-    const tegel = within(blok).getByText('Saldo').closest('.kengetal') as HTMLElement
+    const tegel = within(blok).getByText('Netto').closest('.kengetal') as HTMLElement
     expect(tegel.tagName).toBe('DIV')
   })
 
@@ -537,7 +537,7 @@ describe('TransactieLijst — kengetallen', () => {
     const tegels = document.querySelectorAll('[data-kengetallen] .kengetal')
     const metPijl = [...tegels].filter((e) => e.querySelector('.rij-chevron') !== null)
     expect(metPijl).toHaveLength(2)
-    expect([...tegels].find((e) => e.textContent?.includes('Saldo'))?.querySelector('.rij-chevron')).toBeNull()
+    expect([...tegels].find((e) => e.textContent?.includes('Netto'))?.querySelector('.rij-chevron')).toBeNull()
   })
 
   it('splitst een kassaticket uit, net als de rest van de app', () => {
@@ -893,7 +893,7 @@ describe('TransactieLijst — CSV exporteren', () => {
     const vangst = vangDownload()
     try {
       await user.click(screen.getByRole('button', { name: 'Exporteer CSV' }))
-      expect(await screen.findByRole('status')).toHaveTextContent('3 rij(en) gedownload als CSV-bestand.')
+      expect(await screen.findByRole('status')).toHaveTextContent('3 boeking(en) gedownload als CSV-bestand.')
     } finally {
       vangst.opruimen()
     }
@@ -1068,5 +1068,50 @@ describe('TransactieLijst — de chip van een persoonsfilter (ronde 49)', () => 
     expect(
       await screen.findByRole('button', { name: 'Wis filter Het gezin (zonder gezinslid)' }),
     ).toBeInTheDocument()
+  })
+})
+
+// --- Ronde 66, slotronde: het verschil tussen "je hebt er nog geen" en "je zoekt te streng" ---
+describe('TransactieLijst — de lege lijst', () => {
+  function toonMetNieuw(transacties: Transactie[]) {
+    const onNieuw = vi.fn()
+    render(
+      <TransactieLijst
+        transacties={transacties}
+        categorieen={[]}
+        rekeningen={rekeningen}
+        onBewerk={vi.fn()}
+        onVerwijder={vi.fn()}
+        onNieuw={onNieuw}
+      />,
+    )
+    return { onNieuw }
+  }
+
+  it('biedt de eerste stap aan wanneer er nog geen enkele boeking is', async () => {
+    const user = userEvent.setup()
+    const { onNieuw } = toonMetNieuw([])
+    expect(screen.getByText(/Hier komt elke uitgave en elke inkomst/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Boeking toevoegen' }))
+    expect(onNieuw).toHaveBeenCalledTimes(1)
+  })
+
+  it('biedt die stap NIET aan wanneer een filter niets oplevert', async () => {
+    // ⚠ Het onderscheid dat deze test bewaakt. Vind je niets omdat je te streng
+    // zoekt, dan is "voeg er een toe" het verkeerde antwoord: er staan boekingen,
+    // je ziet ze alleen niet. "Wis filters" is dan de uitweg, en die staat er al.
+    const user = userEvent.setup()
+    toonMetNieuw([tx({ id: 't1', omschrijving: 'Colruyt' })])
+    await klapFiltersOpen(user)
+    await user.type(screen.getByLabelText(/Zoek in je boekingen/), 'bestaatniet')
+    expect(await screen.findByText('Geen boekingen gevonden.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Boeking toevoegen' })).toBeNull()
+  })
+
+  it('toont geen knop zonder bestemming', () => {
+    render(
+      <TransactieLijst transacties={[]} categorieen={[]} rekeningen={rekeningen} onBewerk={vi.fn()} onVerwijder={vi.fn()} />,
+    )
+    expect(screen.queryByRole('button', { name: 'Boeking toevoegen' })).toBeNull()
   })
 })

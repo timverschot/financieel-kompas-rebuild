@@ -13,7 +13,7 @@ import {
   type Indexreeks,
 } from '../data/indexreeksen'
 import { useT, type Vertaler } from '../i18n'
-import { Bedrag, Kaart, Leeg } from '../ui/basis'
+import { Bedrag, EersteStapKnop, Kaart, Leeg } from '../ui/basis'
 import { centenNaarInvoer, formatEuro, invoerNaarCenten } from '../utils/format'
 import { exportFoutmelding } from '../utils/appVersie'
 import { maandJaarLabel, vandaag } from '../utils/datum'
@@ -239,14 +239,23 @@ export function OnderhoudsbijdrageSectie({
       {/* Altijd aanwezig, leeg wanneer er niets te melden is: een `role="status"`
           die pas mét de melding in het document verschijnt, wordt door sommige
           schermlezers niet voorgelezen (zie RapportKaart.tsx). */}
+      {/* ⚠ RONDE 66, slotronde: de zin zei "hieronder" terwijl het invulveld ín het
+          dichtgeklapte blok "Wijzig de regeling" zit. De app zei dus precies wat je
+          moest doen en verzweeg de enige plek waar het kan. Nu noemt ze die plek, en
+          staat er een knop die hem in één tik opent. */}
       <p className={kentAlles ? 'rij-meta' : 'foutregel'} role="status" style={{ margin: 0 }}>
         {kentAlles
           ? ''
-          : t('De app kent nog geen indexcijfer voor {maanden}. Ze kent cijfers tot {laatste}. Vul het ontbrekende cijfer hieronder zelf in, dan is de berekening volledig.', {
+          : t('De app kent nog geen indexcijfer voor {maanden}. Ze kent cijfers tot {laatste}. Vul het ontbrekende cijfer zelf in via "Wijzig de regeling", dan is de berekening volledig.', {
               maanden: o.ontbrekendeMaanden.map((m) => maandJaarLabel(`${m}-01`)).join(', '),
               laatste: maandJaarLabel(`${laatsteIndexmaand(bijdrage.indexreeks)}-01`),
             })}
       </p>
+      {!kentAlles && !toonAfspraak && (
+        <div className="knoprij">
+          <EersteStapKnop onClick={() => setToonAfspraak(true)}>{t('Vul het indexcijfer in')}</EersteStapKnop>
+        </div>
+      )}
 
       <div className="knoprij">
         <button
@@ -464,7 +473,7 @@ function Achterstand({
       <p className={conflict ? 'foutregel' : 'rij-titel'} style={{ margin: 0 }} data-open>
         {conflict
           ? t('Wat er openstaat is niet te berekenen: elke maand zou hier aan het bedrag uit de regeling geteld worden, zonder de indexatie. Het echte bedrag ligt hoger. Los eerst de indexcijfers bovenaan op.')
-          : openTekst(t, stand.open, bijdrage.richting)}
+          : openTekst(t, stand.open, bijdrage.richting, stand.maanden)}
       </p>
       <p className="rij-meta" style={{ margin: 0 }}>
         {telwijzeTekst(t)}

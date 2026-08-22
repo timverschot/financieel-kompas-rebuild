@@ -556,7 +556,7 @@ export function CategorieKiezer({
           honderden pixels omlaag — met het toetsenbord open vaak buiten beeld. */}
       <div style={{ position: 'relative' }}>
       <input
-        aria-label={t('Zoek categorie of item')}
+        aria-label={t('Zoek een categorie of subcategorie')}
         autoCorrect="off"
         autoCapitalize="off"
         spellCheck={false}

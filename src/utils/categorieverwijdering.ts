@@ -90,7 +90,7 @@ export function telCategorieVerwijderen(
   const tel = telVerwijzingen(ids, gegevens)
   const paren: [number, string][] = [
     [midden.length, '{n} categorie(ën) eronder'],
-    [items.length, '{n} item(s) daarin'],
+    [items.length, '{n} subcategorie(ën) daarin'],
     [tel.boekingen, '{n} boeking(en) blijven bestaan, maar staan daarna zonder categorienaam.'],
     [tel.vasteLasten, '{n} vaste last(en) verliezen hun categorie.'],
     [tel.budgetten, '{n} budget(ten) hierop verliezen hun categorie.'],
@@ -114,6 +114,6 @@ export function categorieUndoTekst(
   items: number,
 ): string {
   if (midden === 0 && items === 0) return t('{naam} verwijderd', { naam })
-  if (midden === 0) return t('{naam} verwijderd, met {items} item(s)', { naam, items })
-  return t('{naam} verwijderd, met {midden} categorie(ën) en {items} item(s)', { naam, midden, items })
+  if (midden === 0) return t('{naam} verwijderd, met {items} subcategorie(ën)', { naam, items })
+  return t('{naam} verwijderd, met {midden} categorie(ën) en {items} subcategorie(ën)', { naam, midden, items })
 }

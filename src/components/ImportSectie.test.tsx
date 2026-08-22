@@ -318,3 +318,44 @@ describe('ImportSectie — de juiste rekening kiezen', () => {
     expect(screen.queryByText(/staan al op/)).toBeNull()
   })
 })
+
+// Ronde 66: de beste uitleg van de app stond dicht, achter een vraag.
+describe('ImportSectie — de uitleg over het bankbestand', () => {
+  it('staat open zolang de app nog geen enkele boeking heeft', () => {
+    toon()
+    const blok = screen.getByText('Zo vind je dat bestand bij je bank').closest('details') as HTMLElement
+    // ⚠ Wie niet weet dát hij het niet weet, klapt een dichte vraag niet open.
+    expect(blok).toHaveAttribute('open')
+    expect(screen.getByText(/zoek je bij je rekeninguittreksels/)).toBeInTheDocument()
+  })
+
+  it('staat dicht zodra je al boekingen hebt', () => {
+    toon([{ id: 't1', datum: '2026-02-01', omschrijving: 'Colruyt', bedrag: -1250, rekeningId: 'r1' }])
+    const blok = screen.getByText('Zo vind je dat bestand bij je bank').closest('details') as HTMLElement
+    expect(blok).not.toHaveAttribute('open')
+  })
+
+  it('heet geen vraag meer, maar zegt wat het is', () => {
+    toon()
+    expect(screen.queryByText('Waar vind ik dat bestand bij mijn bank?')).toBeNull()
+  })
+
+  it('biedt een weg naar een rekening wanneer er nog geen is', async () => {
+    const user = userEvent.setup()
+    const onNaarRekeningen = vi.fn()
+    render(
+      <ImportSectie
+        rekeningen={[]}
+        transacties={[]}
+        categorieen={[]}
+        handelaarIndex={bouwHandelaarIndex([])}
+        onImporteer={vi.fn()}
+        onNaarRekeningen={onNaarRekeningen}
+      />,
+    )
+    // ⚠ Zonder deze knop was dit scherm doodlopend: de zin zei wat je moest doen,
+    // maar er stond nergens een weg erheen.
+    await user.click(screen.getByRole('button', { name: 'Maak een rekening aan' }))
+    expect(onNaarRekeningen).toHaveBeenCalled()
+  })
+})

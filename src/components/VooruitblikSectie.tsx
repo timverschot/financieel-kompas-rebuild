@@ -3,7 +3,7 @@ import type { TerugkerendePost, Transactie } from '../data/schema'
 import { spaarquote, maandVooruitblik } from '../utils/vooruitblik'
 import type { Periode } from '../utils/analyse'
 import { formatEuro } from '../utils/format'
-import { Kaart, Leeg } from '../ui/basis'
+import { EersteStapKnop, Kaart, Leeg } from '../ui/basis'
 import { useT, type Vertaler } from '../i18n'
 import { huidigeMaand, vandaag, maandVoluit } from '../utils/datum'
 
@@ -120,6 +120,7 @@ export function VooruitblikSectie({
   periodeLabel,
   maand: maandProp,
   onBoekVasteLast,
+  onNaarVast,
 }: {
   transacties: Transactie[]
   terugkerendePosten: TerugkerendePost[]
@@ -140,6 +141,8 @@ export function VooruitblikSectie({
    * kaart toont, zodat er nooit stil in een andere maand geboekt wordt.
    */
   onBoekVasteLast?: (postId: string, maand: string) => void
+  /** De eerste stap wanneer er nog geen vaste lasten zijn (ronde 66). Optioneel. */
+  onNaarVast?: () => void
 }) {
   const { t } = useT()
   const [openLijst, setOpenLijst] = useState<'komend' | 'achterstallig' | null>(null)
@@ -255,14 +258,23 @@ export function VooruitblikSectie({
             triomfantelijk dat alles ingeboekt was — terwijl je nog nooit een vaste
             last had aangemaakt. Dat is drie keer erger dan niets zeggen. */}
         {terugkerendePosten.length === 0 ? (
-          <p className="rij-meta" style={{ margin: 0 }}>
+          /* ⚠ RONDE 66: de zin zei wat er ontbrak, maar niet waar je het invult. */
+          <Leeg
+            actie={onNaarVast ? <EersteStapKnop onClick={onNaarVast}>{t('Vul je vaste lasten in')}</EersteStapKnop> : undefined}
+          >
             {t('Je hebt nog geen vaste lasten ingesteld. Zonder die weet de app niet wat er nog moet komen.')}
-          </p>
+          </Leeg>
         ) : (
           vb.aantalKomend === 0 &&
           vb.aantalAchterstallig === 0 && (
             <p className="rij-meta" style={{ margin: 0 }}>
-              {t('Alle vaste lasten voor {maand} zijn al ingeboekt', { maand: maandNaam })}
+              {/* ⚠ RONDE 66, slotronde. "Alles al ingeboekt" mag alleen als er deze
+                  maand ook écht iets te boeken viel. Heb je enkel een jaarpost die in
+                  december vervalt, dan stonden beide tellers in augustus op nul en
+                  bevestigde de app een controle die ze niet gedaan had. */}
+              {vb.aantalDezeMaand > 0
+                ? t('Alle vaste lasten voor {maand} zijn al ingeboekt', { maand: maandNaam })
+                : t('Voor {maand} vervalt er geen enkele vaste last.', { maand: maandNaam })}
             </p>
           )
         )}

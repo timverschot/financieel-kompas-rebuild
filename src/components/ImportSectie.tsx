@@ -15,10 +15,11 @@ import {
 } from '../utils/bankimport'
 import { voorstelCategorie, type HandelaarIndex } from '../utils/categorieVoorstel'
 import { CategorieKiezer } from './CategorieKiezer'
+import { UitlegBlok } from './UitlegBlok'
 import { labelVanCategorie } from '../data/categorieen/resolve'
 import { formatEuro } from '../utils/format'
 import { dagKort } from '../utils/datum'
-import { Bedrag, Kaart, Leeg } from '../ui/basis'
+import { Bedrag, EersteStapKnop, Kaart, Leeg } from '../ui/basis'
 import { useT, type Vertaler } from '../i18n'
 import { rekeningLabel, standaardRekening } from '../utils/rekening'
 
@@ -160,12 +161,15 @@ export function ImportSectie({
   categorieen,
   handelaarIndex,
   onImporteer,
+  onNaarRekeningen,
 }: {
   rekeningen: Rekening[]
   transacties: Transactie[]
   categorieen: Categorie[]
   handelaarIndex: HandelaarIndex
   onImporteer: (nieuwe: Transactie[]) => Promise<void> | void
+  /** De eerste stap wanneer er nog geen rekening is (ronde 66). Optioneel. */
+  onNaarRekeningen?: () => void
 }) {
   const { t } = useT()
   const [bestand, setBestand] = useState<Bestand | null>(null)
@@ -380,8 +384,18 @@ export function ImportSectie({
         titel={t('Bankuittreksel inlezen')}
         bijschrift={t('Kies het CSV-bestand dat je bij je bank downloadt. Het blijft op dit toestel — er wordt niets verstuurd.')}
       >
+        {/* ⚠ RONDE 66: dit was een doodlopend scherm — de zin zei wat je moest doen,
+            maar er stond nergens een weg erheen. */}
         {rekeningen.length === 0 ? (
-          <Leeg>{t('Maak eerst een rekening aan; een boeking moet ergens op staan.')}</Leeg>
+          <Leeg
+            actie={
+              onNaarRekeningen ? (
+                <EersteStapKnop onClick={onNaarRekeningen}>{t('Maak een rekening aan')}</EersteStapKnop>
+              ) : undefined
+            }
+          >
+            {t('Maak eerst een rekening aan; een boeking moet ergens op staan.')}
+          </Leeg>
         ) : (
           <>
             <div className="veldgroep">
@@ -398,14 +412,18 @@ export function ImportSectie({
                 }}
               />
             </div>
-            <details>
-              <summary className="rij-meta" style={{ cursor: 'pointer' }}>
-                {t('Waar vind ik dat bestand bij mijn bank?')}
-              </summary>
-              <p className="rij-meta" style={{ margin: '6px 0 0' }}>
+            {/* ⚠ RONDE 66. Dit is de beste uitleg in de hele app, en ze stond in een
+                kale, DICHTE `<details>` met een VRAAG als opschrift. Wie niet weet
+                dát hij het niet weet, klapt zo'n vraag niet open. Nu is het het
+                gewone uitlegblok van de app, met een mededeling als opschrift — en
+                het staat OPEN zolang er nog geen énkele boeking in de app staat, want
+                dan is dit precies wat je zoekt. Wie al boekingen heeft, heeft de weg
+                naar zijn bank al gevonden of tikt liever met de hand in. */}
+            <UitlegBlok titel={t('Zo vind je dat bestand bij je bank')} open={transacties.length === 0}>
+              <p>
                 {t('In je bankapp of op de website van je bank zoek je bij je rekeninguittreksels naar "exporteren" of "downloaden". Kies daar het formaat CSV (soms staat er "CSV/Excel"). Kompal kan geen pdf lezen — dat is een afdruk, geen bestand met cijfers erin.')}
               </p>
-            </details>
+            </UitlegBlok>
             <div className="veldgroep">
               <label className="label-caps" htmlFor="imp-rekening">{t('Op welke rekening?')}</label>
               {/* ⚠ RONDE 65. Hier stond kaal {r.naam}. Dit was het ENIGE
@@ -536,13 +554,21 @@ export function ImportSectie({
                   driehonderd regels moest je anders eerst langs alles scrollen wat
                   je niet zocht, en verscheen een foutmelding bovenaan de pagina
                   terwijl je onderaan stond te duwen. */}
+              {/* ⚠ RONDE 66, slotronde: met nul aangevinkte regels heeft dit sjabloon
+                  geen datums om in te vullen, en las je letterlijk "0 boekingen van
+                  t/m , samen € 0,00" — een zin met gaten. Dat gebeurt echt: herkent de
+                  app élke regel als vermoedelijke dubbel, dan staat er niets aan. */}
               <p className="rij-titel" style={{ margin: 0 }}>
-                {t('{n} boekingen van {van} t/m {tot}, samen {saldo}', {
-                  n: gekozen.length,
-                  van: dagKort(periode.van),
-                  tot: dagKort(periode.tot),
-                  saldo: formatEuro(periode.som),
-                })}
+                {gekozen.length === 0
+                  ? bruikbaar.length > 0 && dubbels === bruikbaar.length
+                    ? t('Elke regel uit dit bestand staat al in de app. Vink zelf aan wat je tóch wil inlezen.')
+                    : t('Niets aangevinkt. Vink aan wat je wil inlezen.')
+                  : t('{n} boekingen van {van} t/m {tot}, samen {saldo}', {
+                      n: gekozen.length,
+                      van: dagKort(periode.van),
+                      tot: dagKort(periode.tot),
+                      saldo: formatEuro(periode.som),
+                    })}
               </p>
               <div className="knoprij">
                 <button

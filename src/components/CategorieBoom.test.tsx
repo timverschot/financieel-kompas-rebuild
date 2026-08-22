@@ -26,7 +26,10 @@ describe('CategorieBoom', () => {
     await user.click(await screen.findByRole('button', { name: /Zuivel en Kaas/ }))
     await user.click(screen.getByRole('button', { name: 'Voeg subcategorie toe aan Zuivel en Kaas' }))
     await user.type(screen.getByLabelText('Nieuwe subcategorie in Zuivel en Kaas'), 'Kefir')
-    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+    // ⚠ De knop heet niet gewoon "Toevoegen": je kan een categorie én een subcategorie
+    // tegelijk openstaan hebben, en dan waren die twee knoppen niet uit elkaar te
+    // houden. De laag staat nu in de naam.
+    await user.click(screen.getByRole('button', { name: 'Voeg deze subcategorie toe in Zuivel en Kaas' }))
     expect(fns.onToevoegen).toHaveBeenCalledWith('cat-zuivel-en-kaas', 'Kefir')
   })
 
