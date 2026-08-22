@@ -1115,3 +1115,41 @@ describe('TransactieLijst — de lege lijst', () => {
     expect(screen.queryByRole('button', { name: 'Boeking toevoegen' })).toBeNull()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 68 — elke mislukking zegt het.
+// ---------------------------------------------------------------------------
+describe('TransactieLijst — een mislukte verwijdering', () => {
+  it('meldt het ook wanneer het kruisje van ÉÉN rij mislukt', async () => {
+    // ⚠ Dit is de meest gebruikte verwijderknop van de app, en hij was als enige in
+    // deze component nog stil (gevonden bij de doorlichting van ronde 68).
+    const user = userEvent.setup()
+    toonUitgebreid([tx({ id: '1', omschrijving: 'Een' })], {
+      onVerwijder: vi.fn().mockRejectedValue(new Error('geweigerd')),
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Verwijder Een' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Verwijderen is niet gelukt. Er is niets weggehaald.')
+  })
+
+  it('houdt de selectie vast en zegt wat er misging', async () => {
+    // ⚠ De vinkjes verdwenen sowieso, ook wanneer het verwijderen mislukte. Je vinkte
+    // veertig rijen aan, bevestigde, zag de vinkjes weggaan en de rijen blijven staan
+    // — dat leest als "de app pakte de verkeerde rijen", niet als "het is mislukt".
+    const user = userEvent.setup()
+    toonUitgebreid(
+      [tx({ id: '1', omschrijving: 'Een' }), tx({ id: '2', omschrijving: 'Twee' })],
+      { onVerwijderMeerdere: vi.fn().mockRejectedValue(new Error('geweigerd')) },
+    )
+
+    await user.click(screen.getByLabelText('Selecteer Een'))
+    await user.click(screen.getByLabelText('Selecteer Twee'))
+    await user.click(screen.getByRole('button', { name: 'Verwijderen' }))
+    await user.click(screen.getByRole('button', { name: 'Ja, verwijder 2' }))
+
+    expect(screen.getByText('2 geselecteerd')).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent('Verwijderen is niet gelukt. Er is niets weggehaald.')
+  })
+})
+

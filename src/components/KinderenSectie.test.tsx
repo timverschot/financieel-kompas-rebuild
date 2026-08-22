@@ -77,3 +77,56 @@ describe('KinderenSectie — een gezinslid verwijderen', () => {
     expect(fns.onVerwijderen).toHaveBeenCalledWith('k1')
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 68 — elke mislukking zegt het.
+//
+// Deze kaart wiste het naamveld en sloot de bewerkrij vóór er iets geschreven was.
+// Mislukte het wegschrijven (volle opslag, privémodus), dan was de ingetikte naam
+// weg, stond er niemand bij, en zei niets iets.
+// ---------------------------------------------------------------------------
+describe('KinderenSectie — een mislukte opslag', () => {
+  it('houdt de ingetikte naam vast en zegt wat er misging', async () => {
+    const user = userEvent.setup()
+    const onToevoegen = vi.fn().mockRejectedValue(new Error('QuotaExceededError'))
+    toon({ onToevoegen })
+
+    await user.type(screen.getByLabelText('Naam gezinslid'), 'Noor')
+    await user.click(screen.getByRole('button', { name: 'Gezinslid toevoegen' }))
+
+    expect(onToevoegen).toHaveBeenCalled()
+    // De naam staat er nog…
+    expect((screen.getByLabelText('Naam gezinslid') as HTMLInputElement).value).toBe('Noor')
+    // …en er staat waarom er niets gebeurde, met de raad die bij een volle schijf hoort.
+    expect(await screen.findByRole('alert')).toHaveTextContent('De opslag van dit toestel zit vol')
+  })
+
+  it('houdt de bewerkrij open wanneer hernoemen mislukt', async () => {
+    const user = userEvent.setup()
+    toon({ onWijzigen: vi.fn().mockRejectedValue(new Error('database geweigerd')) })
+
+    await user.click(screen.getByRole('button', { name: 'Wijzig gezinslid Ella' }))
+    const veld = screen.getByLabelText('Nieuwe naam voor Ella')
+    await user.clear(veld)
+    await user.type(veld, 'Elise')
+    await user.click(screen.getByRole('button', { name: 'Bewaar' }))
+
+    expect((screen.getByLabelText('Nieuwe naam voor Ella') as HTMLInputElement).value).toBe('Elise')
+    expect(await screen.findByRole('alert')).toHaveTextContent('database geweigerd')
+  })
+
+  it('laat het bevestigingsvenster staan wanneer verwijderen mislukt', async () => {
+    // ⚠ Het venster ging dicht vóór er iets gebeurd was. Je las hier net waar de naam
+    // van je kind overal nog gebruikt wordt, drukte op "Ja, verwijder", zag het venster
+    // wegvallen — en het lid stond er gewoon nog.
+    const user = userEvent.setup()
+    toon({ onVerwijderen: vi.fn().mockRejectedValue(new Error('geweigerd')) })
+
+    await user.click(kruisje())
+    await user.click(screen.getByRole('button', { name: 'Ja, verwijder' }))
+
+    expect(screen.getByRole('button', { name: 'Ja, verwijder' })).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent('Dat is niet gelukt. Er is niets veranderd.')
+  })
+})
+

@@ -6,6 +6,8 @@ import { rekeningLabel, rekeningStandTekst } from '../utils/rekening'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { saldoVanRekening } from '../utils/saldo'
 import { useT } from '../i18n'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import { EersteStapKnop, Leeg } from '../ui/basis'
 import { vandaag } from '../utils/datum'
 
@@ -71,6 +73,11 @@ export function OverboekingFormulier({
   // Vul het formulier bij het starten/stoppen van bewerken.
   const bewerkId = bewerken?.id ?? null
   const [vorigeBewerkId, setVorigeBewerkId] = useState<string | null>(null)
+  // Vangt een mislukte opslag op en zegt het (ronde 68).
+  const opslag = useOpslagpoging()
+  // ⚠ Eén vast id per invulbeurt: een tweede poging na een mislukking hoort dezelfde
+  // overboeking te overschrijven, niet een tweede te maken.
+  const nieuwIdRef = useRef(nieuwId())
   if (bewerkId !== vorigeBewerkId) {
     setVorigeBewerkId(bewerkId)
     if (bewerken) {
@@ -119,17 +126,28 @@ export function OverboekingFormulier({
       return
     }
     const o: Overboeking = {
-      id: bewerken ? bewerken.id : nieuwId(),
+      id: bewerken ? bewerken.id : nieuwIdRef.current,
       datum,
       vanRekeningId: vanId,
       naarRekeningId: naarId,
       bedrag: centen,
       ...(omschrijving.trim() ? { omschrijving: omschrijving.trim() } : {}),
     }
-    await onOpslaan(o)
+    // ⚠ RONDE 68 — een mislukte opslag mag niet stil blijven, en ze mag zeker de
+    // popup niet laten sluiten met een leeg formulier.
+    if (!(await opslag.probeer(() => onOpslaan(o)))) {
+      // ⚠ Ook hier de vlag wissen. Bleef ze staan, dan hield de vólgende, geslaagde
+      // opslag de popup open met lege velden — en dan denk je dat het niet gelukt is
+      // en boek je alles een tweede keer.
+      blijfOpen.current = false
+      return
+    }
     if (!bewerken) {
       setBedrag('')
       setOmschrijving('')
+      // Klaar voor de volgende overboeking: een vers id, zodat die niet dezelfde
+      // overschrijft.
+      nieuwIdRef.current = nieuwId()
     }
     const nog = blijfOpen.current
     blijfOpen.current = false
@@ -220,6 +238,7 @@ export function OverboekingFormulier({
           niets gewonnen tegenover `disabled`. Altijd aanwezig, leeg wanneer er niets
           te melden is: een `role="status"` die pas mét de tekst verschijnt, wordt
           door sommige schermlezers overgeslagen. */}
+      <Opslagfout fout={opslag.fout} />
       <p id={redenId} className="rij-meta" role="status" style={{ margin: 0 }}>
         {geldig ? '' : redenTekst}
       </p>

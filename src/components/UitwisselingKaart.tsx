@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Dossier, GedeeldeKost, Kind } from '../data/schema'
 import type { EigenCategorie } from '../data/categorieen/resolve'
 import {
@@ -62,6 +62,8 @@ export function UitwisselingKaart({
   const [melding, setMelding] = useState('')
   const [fout, setFout] = useState('')
   const [bezig, setBezig] = useState(false)
+  // Het verborgen bestandsveld dat de knop hieronder aanklikt (ronde 68).
+  const bestandsveld = useRef<HTMLInputElement | null>(null)
   const [ontvangen, setOntvangen] = useState<UitwisselBestand | null>(null)
   const [overgeslagen, setOvergeslagen] = useState(0)
   const [gekozen, setGekozen] = useState<Set<string>>(new Set())
@@ -350,20 +352,33 @@ export function UitwisselingKaart({
             <p className="rij-meta" style={{ margin: '0 0 8px' }}>
               {t('De app legt het bestand eerst naast dit dossier. Er verandert niets tot je het bevestigt.')}
             </p>
-            <label className="knop knop-secundair" style={{ display: 'inline-block' }}>
+            {/* ⚠ RONDE 68 — HIER STOND EEN `<label>` MET EEN VERBORGEN BESTANDSVELD.
+                Dat haalt het veld uit de tabvolgorde én uit de toegankelijkheidsboom,
+                en een label is zelf niet focusbaar: met een toetsenbord of een
+                schermlezer was deze knop niet te bedienen. Dezelfde ingreep als in
+                ronde 63 bij "Herstel uit back-up"; dit was het laatste exemplaar in
+                de app. Nu is het een échte knop die het verborgen veld aanklikt. */}
+            <button
+              type="button"
+              className="knop knop-secundair"
+              onClick={() => bestandsveld.current?.click()}
+            >
               {t('Kies een uitwisselbestand')}
-              <input
-                type="file"
-                accept="application/json,.json"
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                  const b = e.target.files?.[0]
-                  // Leegmaken, anders werkt hetzelfde bestand een tweede keer kiezen niet.
-                  e.target.value = ''
-                  if (b) void kiesBestand(b)
-                }}
-              />
-            </label>
+            </button>
+            <input
+              ref={bestandsveld}
+              type="file"
+              accept="application/json,.json"
+              style={{ display: 'none' }}
+              aria-hidden="true"
+              tabIndex={-1}
+              onChange={(e) => {
+                const b = e.target.files?.[0]
+                // Leegmaken, anders werkt hetzelfde bestand een tweede keer kiezen niet.
+                e.target.value = ''
+                if (b) void kiesBestand(b)
+              }}
+            />
 
             {overzicht && ontvangen && (
               <Voorstel

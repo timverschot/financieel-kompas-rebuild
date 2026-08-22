@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Categorie, Dossier, Kind, Kindrekening, Kindrekeningpost } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
@@ -7,6 +7,8 @@ import { labelVanCategorie } from '../data/categorieen/resolve'
 import { KindrekeningpostFormulier } from './KindrekeningpostFormulier'
 import { Bedrag, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import type { NieuweTak } from '../utils/categorietak'
 import type { Vertaler } from '../i18n'
 import { dagKort, vandaag } from '../utils/datum'
@@ -52,6 +54,9 @@ export function KindrekeningSectie({
   onNieuweSubcategorie?: (plan: NieuweTak) => Promise<string>
 }) {
   const { t } = useT()
+  // Vangt een mislukte opslag op en zegt het (ronde 68).
+  const opslag = useOpslagpoging()
+  const nieuwIdRef = useRef(nieuwId())
   const [bewerkPost, setBewerkPost] = useState<Kindrekeningpost | null>(null)
   const [toonAfspraak, setToonAfspraak] = useState(false)
 
@@ -77,7 +82,16 @@ export function KindrekeningSectie({
   }, [kindrekening])
 
   async function zetAan() {
-    await onOpslaan({ id: nieuwId(), dossierId: dossier.id, naam: t('Kindrekening'), beginsaldo: 0 })
+    // ⚠ Eén vast id (ronde 68): mislukt dit en probeer je het opnieuw, dan hoort er
+    // geen tweede kindrekening in hetzelfde dossier te ontstaan.
+    // ⚠ HET ID MOET NA AFLOOP VERVERST WORDEN. Deze sectie blijft gemount wanneer je
+    // van dossier wisselt, dus zonder dit kreeg de pot van het TWEEDE dossier hetzelfde
+    // id als die van het eerste — en dan is dat geen nieuwe pot maar een wijziging: de
+    // pot van dossier A verhuist naar B, met haar bewegingen erachteraan.
+    const gelukt = await opslag.probeer(() =>
+      onOpslaan({ id: nieuwIdRef.current, dossierId: dossier.id, naam: t('Kindrekening'), beginsaldo: 0 }),
+    )
+    if (gelukt) nieuwIdRef.current = nieuwId()
   }
 
   async function bewaarAfspraak() {
@@ -97,18 +111,25 @@ export function KindrekeningSectie({
     }
     setIndexFout('')
 
-    await onOpslaan({
+    const gelukt = await opslag.probeer(() =>
+      onOpslaan({
       ...kindrekening,
       ...(Number.isFinite(jij) && jij > 0 ? { maandbijdrageJij: jij } : { maandbijdrageJij: undefined }),
       ...(Number.isFinite(partner) && partner > 0 ? { maandbijdragePartner: partner } : { maandbijdragePartner: undefined }),
       ...(start ? { bijdrageStart: start } : { bijdrageStart: undefined }),
       ...(keurAanvang.soort === 'goed' ? { aanvangsindex: keurAanvang.waarde } : { aanvangsindex: undefined }),
       ...(keurHuidig.soort === 'goed' ? { huidigeIndex: keurHuidig.waarde } : { huidigeIndex: undefined }),
-    })
+      }),
+    )
+    if (!gelukt) return
     setToonAfspraak(false)
   }
 
   async function postOpslaan(p: Kindrekeningpost) {
+    // ⚠ RONDE 68 — HIER MAG DE FOUT NIET OPGEVANGEN WORDEN. Het formulier hieronder
+    // vangt zelf op en houdt dan je invoer vast; ving deze tussenstap hem al weg, dan
+    // zag het formulier "gelukt", maakte het zichzelf leeg, en was je tekst tóch weg —
+    // mét een melding erbij. Precies de fout die deze ronde moest uitroeien.
     await onPostOpslaan(p)
     setBewerkPost(null)
   }
@@ -123,10 +144,11 @@ export function KindrekeningSectie({
         bijschrift={t('Een gezamenlijke pot waarop beide ouders storten en waaruit kosten rechtstreeks betaald worden. Een tweede manier van afrekenen naast het verschil-model.')}
       >
         <div className="knoprij">
-          <button type="button" className="knop knop-secundair" onClick={zetAan}>
+          <button type="button" className="knop knop-secundair" onClick={() => void zetAan()}>
             {t('Kindrekening aanzetten')}
           </button>
         </div>
+        <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Er is niets veranderd.')} />
       </Kaart>
     )
   }
@@ -160,12 +182,14 @@ export function KindrekeningSectie({
         <button
           className="knop knop-kaal knop-gevaar"
           aria-label={t('Kindrekening uitzetten')}
-          onClick={() => onVerwijderen(kindrekening.id)}
+          onClick={() => void opslag.probeer(() => onVerwijderen(kindrekening.id))}
         >
           ×
         </button>
       }
     >
+      <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Er is niets veranderd.')} />
+
       <div className="stat">
         <span className="label-caps">{t('Saldo van de pot')}</span>
         <Bedrag centen={saldo} groot />
@@ -337,7 +361,7 @@ export function KindrekeningSectie({
                 <button
                   className="knop knop-kaal knop-gevaar"
                   aria-label={t('Verwijder beweging {naam} van {datum}', { naam: p.omschrijving ?? t('beweging'), datum: dagKort(p.datum) })}
-                  onClick={() => onPostVerwijderen(p.id)}
+                  onClick={() => void opslag.probeer(() => onPostVerwijderen(p.id))}
                 >
                   ×
                 </button>

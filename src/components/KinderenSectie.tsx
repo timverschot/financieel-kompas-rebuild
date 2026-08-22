@@ -4,6 +4,8 @@ import { GEZINSROLLEN, type Gezinsrol, type Kind } from '../data/schema'
 import { ROL_SLEUTELS } from '../utils/persoon'
 import { Kaart, Leeg } from '../ui/basis'
 import { Dialoog } from '../ui/Dialoog'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import { useT } from '../i18n'
 
 // Beheer van de globale lijst gezinsleden (kinderen, partner, jezelf, iemand
@@ -35,6 +37,9 @@ export function KinderenSectie({
   telGebruik?: (id: string) => string[]
 }) {
   const { t } = useT()
+  // Eén poging voor deze kaart: toevoegen, hernoemen, archiveren en verwijderen
+  // gebeuren nooit tegelijk.
+  const opslag = useOpslagpoging()
   const [nieuw, setNieuw] = useState('')
   const [nieuweRol, setNieuweRol] = useState<Gezinsrol>('kind')
   const [bewerkId, setBewerkId] = useState<string | null>(null)
@@ -55,10 +60,13 @@ export function KinderenSectie({
   // De id van de regel die zegt wat er nog ontbreekt (ronde 61).
   const redenId = useId()
 
-  function voegToe(e: FormEvent) {
+  // ⚠ RONDE 68 — HIER GING DE INGETIKTE NAAM STIL VERLOREN. Deze functies riepen
+  // hun handler aan zonder te wachten en wisten daarna meteen het veld. Mislukte het
+  // wegschrijven, dan was de naam weg, stond er niemand bij, en zei niets iets.
+  async function voegToe(e: FormEvent) {
     e.preventDefault()
     if (!nieuw.trim()) return
-    onToevoegen(nieuw.trim(), nieuweRol)
+    if (!(await opslag.probeer(() => onToevoegen(nieuw.trim(), nieuweRol)))) return
     setNieuw('')
     setNieuweRol('kind')
   }
@@ -69,16 +77,17 @@ export function KinderenSectie({
     setBewerkRol(lid.rol ?? 'kind')
   }
 
-  function bewaarBewerking(lid: Kind) {
+  async function bewaarBewerking(lid: Kind) {
     // Een lege naam zou het lid onvindbaar maken; dan bewaren we niets.
-    if (bewerkTekst.trim()) onWijzigen({ ...lid, naam: bewerkTekst.trim(), rol: bewerkRol })
+    if (!bewerkTekst.trim()) return
+    if (!(await opslag.probeer(() => onWijzigen({ ...lid, naam: bewerkTekst.trim(), rol: bewerkRol })))) return
     setBewerkId(null)
     setBewerkTekst('')
   }
 
   // Archiveren en heropenen zijn dezelfde wijziging, alleen andersom.
-  function zetArchief(lid: Kind, archiveer: boolean) {
-    onWijzigen({ ...lid, gearchiveerd: archiveer })
+  async function zetArchief(lid: Kind, archiveer: boolean): Promise<boolean> {
+    return opslag.probeer(() => onWijzigen({ ...lid, gearchiveerd: archiveer }))
   }
 
   function rolKeuze(waarde: Gezinsrol, zet: (r: Gezinsrol) => void, label: string) {
@@ -107,7 +116,7 @@ export function KinderenSectie({
             />
             {rolKeuze(bewerkRol, setBewerkRol, t('Rol van {naam}', { naam: k.naam }))}
             <span className="rij-acties">
-              <button type="button" className="knop knop-secundair knop-klein" onClick={() => bewaarBewerking(k)}>
+              <button type="button" className="knop knop-secundair knop-klein" onClick={() => void bewaarBewerking(k)}>
                 {t('Bewaar')}
               </button>
               <button type="button" className="knop knop-kaal" onClick={() => setBewerkId(null)}>
@@ -143,7 +152,7 @@ export function KinderenSectie({
                     ? t('Heropen gezinslid {naam}', { naam: k.naam })
                     : t('Archiveer gezinslid {naam}', { naam: k.naam })
                 }
-                onClick={() => zetArchief(k, !isArchief)}
+                onClick={() => void zetArchief(k, !isArchief)}
               >
                 {isArchief ? t('heropen') : t('archiveer')}
               </button>
@@ -151,7 +160,13 @@ export function KinderenSectie({
                 type="button"
                 className="knop knop-kaal knop-gevaar"
                 aria-label={t('Verwijder gezinslid {naam}', { naam: k.naam })}
-                onClick={() => setLidWegId(k.id)}
+                // ⚠ De oude melding eerst weg (tweede doorlichting ronde 68): anders
+                // opende dit venster met "Dat is niet gelukt" van een vórige poging
+                // erin, terwijl er hier nog niets geprobeerd was.
+                onClick={() => {
+                  opslag.wis()
+                  setLidWegId(k.id)
+                }}
               >
                 ×
               </button>
@@ -185,7 +200,7 @@ export function KinderenSectie({
         </>
       )}
 
-      <form onSubmit={voegToe} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+      <form onSubmit={(e) => void voegToe(e)} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <input
           aria-label={t('Naam gezinslid')}
           style={{ flex: 1, minWidth: 140 }}
@@ -207,6 +222,17 @@ export function KinderenSectie({
         <p id={redenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left', width: '100%' }}>
           {nieuw.trim() ? '' : t('Geef een naam om op te slaan.')}
         </p>
+        {/* Onder het formulier, want dit is waar je staat wanneer je toevoegt of
+            hernoemt. Het venster hieronder toont dezelfde melding op zijn eigen
+            plek. */}
+        {/* ⚠ Zwijgt zolang het bevestigingsvenster openstaat: dat venster toont
+            dezelfde melding op zijn eigen plek, en twee `alert`-regels tegelijk
+            leest voorleessoftware twee keer voor. */}
+        <div style={{ width: '100%' }}>
+          {lidWegId === null && (
+            <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Je invoer staat er nog.')} />
+          )}
+        </div>
       </form>
 
       {/* De vraag vóór het verwijderen (ronde 65). Ze telt waar het lid nog aan
@@ -219,7 +245,14 @@ export function KinderenSectie({
         onSluiten={() => setLidWegId(null)}
         voet={
           <div className="knoprij">
-            <button type="button" className="knop knop-secundair" onClick={() => setLidWegId(null)}>
+            <button
+              type="button"
+              className="knop knop-secundair"
+              onClick={() => {
+                opslag.wis()
+                setLidWegId(null)
+              }}
+            >
               {t('Nee, behouden')}
             </button>
             {/* Alleen zinvol voor een lid dat nog NIET gearchiveerd is; anders is
@@ -228,10 +261,13 @@ export function KinderenSectie({
               <button
                 type="button"
                 className="knop knop-secundair"
+                aria-busy={opslag.bezig}
                 onClick={() => {
                   const doel = lidWeg
-                  setLidWegId(null)
-                  if (doel) zetArchief(doel, true)
+                  if (!doel) return
+                  void zetArchief(doel, true).then((gelukt) => {
+                    if (gelukt) setLidWegId(null)
+                  })
                 }}
               >
                 {t('Liever archiveren')}
@@ -240,10 +276,17 @@ export function KinderenSectie({
             <button
               type="button"
               className="knop knop-secundair knop-gevaar"
+              aria-busy={opslag.bezig}
+              // ⚠ RONDE 68 — het venster ging dicht vóór er iets gebeurd was. Je las
+              // hier net waar de naam van je kind overal nog gebruikt wordt, drukte
+              // op "Ja, verwijder", zag het venster wegvallen — en het lid stond er
+              // gewoon nog.
               onClick={() => {
                 const doel = lidWegId
-                setLidWegId(null)
-                if (doel) onVerwijderen(doel)
+                if (!doel) return
+                void opslag.probeer(() => onVerwijderen(doel)).then((gelukt) => {
+                  if (gelukt) setLidWegId(null)
+                })
               }}
             >
               {t('Ja, verwijder')}
@@ -286,6 +329,7 @@ export function KinderenSectie({
             <p className="rij-meta" style={{ margin: 0 }}>
               {t('Verwijder je het lid, dan blijft het overal waar het al gebruikt is als naamloze verwijzing staan. Archiveren haalt het alleen uit de keuzelijsten en laat elke naam staan.')}
             </p>
+            <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Er is niets veranderd.')} />
           </div>
         )}
       </Dialoog>

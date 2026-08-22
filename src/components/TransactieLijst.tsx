@@ -10,6 +10,8 @@ import { groepenVanTransactie, isGesplitstOverCategorieen, type TransactieGroep 
 import { formatEuro } from '../utils/format'
 import { kengetallenVan } from '../utils/overzicht'
 import { rekeningLabel } from '../utils/rekening'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import {
   SORTEERVELDEN,
   STANDAARD_SORTERING,
@@ -150,7 +152,7 @@ export function TransactieLijst({
    */
   gezinsleden?: Kind[]
   onBewerk: (tx: Transactie) => void
-  onVerwijder: (id: string) => void
+  onVerwijder: (id: string) => Promise<void> | void
   /**
    * Meerdere rijen tegelijk verwijderen, met één keer ongedaan maken.
    *
@@ -160,7 +162,7 @@ export function TransactieLijst({
    * hierboven de lijst permanent een balk breder maakte. De vinkjes blijven dus,
    * alleen om te verwijderen.
    */
-  onVerwijderMeerdere?: (ids: string[]) => void
+  onVerwijderMeerdere?: (ids: string[]) => Promise<void> | void
   // Optioneel: filters die al aanstaan bij het laden. Het filterpaneel klapt dan
   // meteen open, zodat de chips niet uit het niets lijken te komen.
   beginFilter?: TxFilter
@@ -188,6 +190,8 @@ export function TransactieLijst({
   // aangeduid hebt.
   const [selectie, setSelectie] = useState<Set<string>>(new Set())
   const [bevestigWissen, setBevestigWissen] = useState(false)
+  // Eén poging voor deze lijst (ronde 68).
+  const opslag = useOpslagpoging()
 
   // De mid-categorieën van de gekozen hoofdcategorie (voor de tweede keuzelijst).
   const subOpties = useMemo(() => {
@@ -813,9 +817,17 @@ export function TransactieLijst({
                   <button
                     type="button"
                     className="knop knop-secundair knop-klein knop-gevaar"
+                    aria-busy={opslag.bezig}
+                    // ⚠ RONDE 68 — DE VINKJES VERDWENEN, DE RIJEN NIET. Het
+                    // leegmaken draaide sowieso, ook wanneer het verwijderen
+                    // mislukte. Je vinkte veertig rijen aan, bevestigde, zag de
+                    // vinkjes weggaan en de rijen blijven staan — dat leest als
+                    // "de app pakte de verkeerde rijen", niet als "het is mislukt".
                     onClick={() => {
-                      onVerwijderMeerdere?.(geselecteerd.map((tx) => tx.id))
-                      maakSelectieLeeg()
+                      const ids = geselecteerd.map((tx) => tx.id)
+                      void opslag.probeer(() => onVerwijderMeerdere?.(ids)).then((gelukt: boolean) => {
+                        if (gelukt) maakSelectieLeeg()
+                      })
                     }}
                   >
                     {t('Ja, verwijder {n}', { n: geselecteerd.length })}
@@ -833,6 +845,10 @@ export function TransactieLijst({
                   {t('Verwijderen')}
                 </button>
               ))}
+            {/* ⚠ Hier stond een tweede meldingsvak met dezelfde inhoud als dat boven
+                de lijst (tweede doorlichting ronde 68). Twee `alert`-blokken tegelijk
+                laat voorleessoftware hetzelfde twee keer zeggen. Eén volstaat, en dat
+                is degene die er ook staat wanneer er niets aangevinkt is. */}
 
             <button type="button" className="knop knop-ghost knop-klein" onClick={maakSelectieLeeg}>
               {t('Selectie wissen')}
@@ -856,6 +872,7 @@ export function TransactieLijst({
               </span>
               <span />
             </div>
+          <Opslagfout fout={opslag.fout} zin={t('Verwijderen is niet gelukt. Er is niets weggehaald.')} />
           <ul className="lijst tx-lijst">
             {zichtbaar.map((tx) => (
               <TransactieRij
@@ -873,7 +890,10 @@ export function TransactieLijst({
                 onSchakel={schakelRij}
                 t={t}
                 onBewerk={onBewerk}
-                onVerwijder={onVerwijder}
+                // ⚠ Via de poging van deze lijst (tweede doorlichting ronde 68): het
+                // kruisje bij ÉÉN boeking — de meest gebruikte verwijderknop van de
+                // app — meldde zijn mislukking als enige nog altijd niet.
+                onVerwijder={(id) => void opslag.probeer(() => onVerwijder(id))}
               />
             ))}
           </ul>
@@ -971,7 +991,7 @@ function TransactieRij({
   onSchakel: (id: string) => void
   t: Vertaler
   onBewerk: (tx: Transactie) => void
-  onVerwijder: (id: string) => void
+  onVerwijder: (id: string) => Promise<void> | void
 }) {
   const groepen = groepenVanTransactie(tx, categorieen)
   const gesplitst = isGesplitstOverCategorieen(tx, categorieen)
@@ -1115,7 +1135,7 @@ function TransactieRij({
           type="button"
           className="knop knop-kaal knop-gevaar"
           aria-label={t('Verwijder {oms}', { oms: tx.omschrijving })}
-          onClick={() => onVerwijder(tx.id)}
+          onClick={() => void onVerwijder(tx.id)}
         >
           ×
         </button>

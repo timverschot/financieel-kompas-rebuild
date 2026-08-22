@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useId, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { REKENING_TYPES, type Rekening, type RekeningType } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { DAG_MAX, DAG_MIN, kaartbedragNaarOpslag, kaartbedragUitOpslag } from '../utils/kredietkaart'
 import { useT } from '../i18n'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 
 // Weergavenaam per type (Nederlandse sleutel; via t() vertaald bij weergave). De
 // opgeslagen waarde blijft altijd de taal-onafhankelijke sleutel ('betaal', ...).
@@ -41,6 +43,18 @@ export function RekeningFormulier({
   beginType?: RekeningType
 }) {
   const { t } = useT()
+  // Vangt een mislukte opslag op en zegt het (ronde 68).
+  const opslag = useOpslagpoging()
+  // ⚠ RONDE 68 — ÉÉN VAST ID PER INVULBEURT, niet één per poging.
+  //
+  // Nu een mislukte opslag zichtbaar is en de app zegt "probeer het opnieuw", telt dit
+  // ineens: werd het record wél weggeschreven maar liep het opnieuw inlezen daarna mis,
+  // dan maakte een tweede poging met een VERS id een tweede record in plaats van
+  // hetzelfde te overschrijven. Het boekingsformulier doet dit al sinds ronde 36 zo, om
+  // precies dezelfde reden.
+  //
+  // Het id wordt ververst zodra het formulier na een geslaagde opslag leeggemaakt wordt.
+  const nieuwIdRef = useRef(nieuwId())
   const [naam, setNaam] = useState(BEGIN.naam)
   const [beginsaldo, setBeginsaldo] = useState(BEGIN.beginsaldo)
   const [type, setType] = useState<RekeningType>(beginType ?? BEGIN.type)
@@ -72,6 +86,9 @@ export function RekeningFormulier({
 
   // Zet alle velden terug op hun beginwaarde.
   const leegmaken = useCallback(() => {
+    // Klaar voor het volgende record: een vers id, zodat de volgende invoer niet
+    // hetzelfde record overschrijft (ronde 68).
+    nieuwIdRef.current = nieuwId()
     setNaam(BEGIN.naam)
     setBeginsaldo(BEGIN.beginsaldo)
     setType(beginType ?? BEGIN.type)
@@ -134,18 +151,26 @@ export function RekeningFormulier({
     // Wat je bij een kaart intikt is wat er OPENSTAAT; de opslag houdt een schuld
     // negatief. Zonder deze omkering telde de kaart als bezit mee.
     const bedrag = Number.isFinite(centen) ? centen : 0
-    await onOpslaan({
-      id: bewerken ? bewerken.id : nieuwId(),
-      naam: naam.trim(),
-      beginsaldo: isKrediet ? kaartbedragNaarOpslag(bedrag) : bedrag,
-      type,
-      ...(nr ? { rekeningnummer: nr } : {}),
-      ...(rub ? { rubriek: rub } : {}),
-      ...(bewerken?.gearchiveerd ? { gearchiveerd: true } : {}),
-      ...(Number.isFinite(limiet) && limiet > 0 ? { kredietlimiet: limiet } : {}),
-      ...(Number.isInteger(dag) && dag >= DAG_MIN && dag <= DAG_MAX ? { afrekendag: dag } : {}),
-      ...(Number.isInteger(afboek) && afboek >= DAG_MIN && afboek <= DAG_MAX ? { afboekdag: afboek } : {}),
-    })
+    // ⚠ RONDE 68 — EEN MISLUKTE OPSLAG MAG NOOIT STIL BLIJVEN. Dit formulier riep
+    // `onOpslaan` aan zonder de mislukking op te vangen: de belofte werd weggegooid,
+    // er verscheen geen letter, en de knop leek gewoon niet te reageren. Je drukte
+    // opnieuw, of je sloot het venster en was je invoer kwijt. Alles wat "het is
+    // gelukt" uitstraalt, gebeurt nu pas ná een geslaagde opslag.
+    const gelukt = await opslag.probeer(() =>
+      onOpslaan({
+        id: bewerken ? bewerken.id : nieuwIdRef.current,
+        naam: naam.trim(),
+        beginsaldo: isKrediet ? kaartbedragNaarOpslag(bedrag) : bedrag,
+        type,
+        ...(nr ? { rekeningnummer: nr } : {}),
+        ...(rub ? { rubriek: rub } : {}),
+        ...(bewerken?.gearchiveerd ? { gearchiveerd: true } : {}),
+        ...(Number.isFinite(limiet) && limiet > 0 ? { kredietlimiet: limiet } : {}),
+        ...(Number.isInteger(dag) && dag >= DAG_MIN && dag <= DAG_MAX ? { afrekendag: dag } : {}),
+        ...(Number.isInteger(afboek) && afboek >= DAG_MIN && afboek <= DAG_MAX ? { afboekdag: afboek } : {}),
+      }),
+    )
+    if (!gelukt) return
     // Bij een NIEUWE rekening blijft 'bewerken' null, dus de useEffect hierboven
     // draait niet. Daarom hier leegmaken, anders blijft alles ingevuld staan en
     // maakt een tweede klik dezelfde rekening nog eens aan.
@@ -314,6 +339,7 @@ export function RekeningFormulier({
           sommige schermlezers overgeslagen — die regel past de app elders al toe. En de
           knop hiernaast wijst met `aria-describedby` naar deze tekst, dus wie erop landt,
           hóórt meteen wat er nog ontbreekt in plaats van alleen "niet-beschikbaar". */}
+      <Opslagfout fout={opslag.fout} />
       <p id={redenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
         {geldig
           ? ''

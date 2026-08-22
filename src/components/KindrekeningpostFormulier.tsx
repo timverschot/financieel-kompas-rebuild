@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Categorie, Kind, Kindrekeningpost } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
@@ -8,6 +8,8 @@ import { GezinsledenKiezer } from './GezinslidKiezer'
 import { verkleinAfbeelding } from '../utils/afbeelding'
 import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import type { NieuweTak } from '../utils/categorietak'
 import { Bonknop } from '../ui/Bonknop'
 
@@ -48,6 +50,18 @@ export function KindrekeningpostFormulier({
   onNieuweSubcategorie?: (plan: NieuweTak) => Promise<string>
 }) {
   const { t } = useT()
+  // Vangt een mislukte opslag op en zegt het (ronde 68).
+  const opslag = useOpslagpoging()
+  // ⚠ RONDE 68 — ÉÉN VAST ID PER INVULBEURT, niet één per poging.
+  //
+  // Nu een mislukte opslag zichtbaar is en de app zegt "probeer het opnieuw", telt dit
+  // ineens: werd het record wél weggeschreven maar liep het opnieuw inlezen daarna mis,
+  // dan maakte een tweede poging met een VERS id een tweede record in plaats van
+  // hetzelfde te overschrijven. Het boekingsformulier doet dit al sinds ronde 36 zo, om
+  // precies dezelfde reden.
+  //
+  // Het id wordt ververst zodra het formulier na een geslaagde opslag leeggemaakt wordt.
+  const nieuwIdRef = useRef(nieuwId())
   const [soort, setSoort] = useState<'storting' | 'uitgave'>(() => beginwaarden().soort)
   const [bedrag, setBedrag] = useState(() => beginwaarden().bedrag)
   const [datum, setDatum] = useState(() => beginwaarden().datum)
@@ -60,6 +74,9 @@ export function KindrekeningpostFormulier({
 
   // Zet alle velden terug op hun beginwaarde.
   const leegmaken = useCallback(() => {
+    // Klaar voor het volgende record: een vers id, zodat de volgende invoer niet
+    // hetzelfde record overschrijft (ronde 68).
+    nieuwIdRef.current = nieuwId()
     const b = beginwaarden()
     setSoort(b.soort)
     setBedrag(b.bedrag)
@@ -107,18 +124,26 @@ export function KindrekeningpostFormulier({
     e.preventDefault()
     if (!geldig) return
     const isUitgave = soort === 'uitgave'
-    await onOpslaan({
-      id: bewerken ? bewerken.id : nieuwId(),
-      kindrekeningId: bewerken ? bewerken.kindrekeningId : kindrekeningId,
-      datum,
-      soort,
-      bedrag: bedragCenten,
-      ...(omschrijving.trim() ? { omschrijving: omschrijving.trim() } : {}),
-      ...(soort === 'storting' ? { door } : {}),
-      ...(isUitgave && kindIds.length > 0 ? { kindIds } : {}),
-      ...(isUitgave && categorieId ? { categorieId } : {}),
-      ...(isUitgave && bonnetje ? { bonnetje } : {}),
-    })
+    // ⚠ RONDE 68 — EEN MISLUKTE OPSLAG MAG NOOIT STIL BLIJVEN. Dit formulier riep
+    // `onOpslaan` aan zonder de mislukking op te vangen: de belofte werd weggegooid,
+    // er verscheen geen letter, en de knop leek gewoon niet te reageren. Je drukte
+    // opnieuw, of je sloot het venster en was je invoer kwijt. Alles wat "het is
+    // gelukt" uitstraalt, gebeurt nu pas ná een geslaagde opslag.
+    const gelukt = await opslag.probeer(() =>
+      onOpslaan({
+        id: bewerken ? bewerken.id : nieuwIdRef.current,
+        kindrekeningId: bewerken ? bewerken.kindrekeningId : kindrekeningId,
+        datum,
+        soort,
+        bedrag: bedragCenten,
+        ...(omschrijving.trim() ? { omschrijving: omschrijving.trim() } : {}),
+        ...(soort === 'storting' ? { door } : {}),
+        ...(isUitgave && kindIds.length > 0 ? { kindIds } : {}),
+        ...(isUitgave && categorieId ? { categorieId } : {}),
+        ...(isUitgave && bonnetje ? { bonnetje } : {}),
+      }),
+    )
+    if (!gelukt) return
     // Bij een NIEUWE beweging blijft 'bewerken' null, dus de useEffect hierboven
     // draait niet. Daarom hier leegmaken, anders blijft alles ingevuld staan en boek
     // je met een tweede klik dezelfde beweging nog eens.
@@ -225,6 +250,7 @@ export function KindrekeningpostFormulier({
           sommige schermlezers overgeslagen — die regel past de app elders al toe. En de
           knop hiernaast wijst met `aria-describedby` naar deze tekst, dus wie erop landt,
           hóórt meteen wat er nog ontbreekt in plaats van alleen "niet-beschikbaar". */}
+      <Opslagfout fout={opslag.fout} />
       <p id={redenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
         {geldig ? '' : t('Vul een bedrag groter dan nul in.')}
       </p>

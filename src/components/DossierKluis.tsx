@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { DOCUMENTSOORTEN } from '../data/schema'
 import type { DossierDocument, Documentsoort } from '../data/schema'
@@ -90,6 +90,7 @@ export function Documentkluis({
   const [bestandsnaam, setBestandsnaam] = useState('')
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState('')
+  const nieuwIdRef = useRef(nieuwId())
   // De rij waarvoor "weet je het zeker?" openstaat; een tweede klik verwijdert echt.
   const [bevestigId, setBevestigId] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
@@ -106,6 +107,8 @@ export function Documentkluis({
   const geldig = naam.trim().length > 0 && bestand.length > 0
 
   function leegmaken() {
+    // Klaar voor het volgende document: een vers id (ronde 68).
+    nieuwIdRef.current = nieuwId()
     setNaam('')
     setSoort(tekst.begin)
     setNotitie('')
@@ -140,7 +143,10 @@ export function Documentkluis({
     e.preventDefault()
     if (!geldig) return
     const doc: DossierDocument = {
-      id: nieuwId(),
+      // ⚠ Eén vast id per invulbeurt (ronde 68): mislukt het bewaren en probeer je het
+      // opnieuw, dan hoort dat hetzelfde document te overschrijven — niet er een
+      // tweede bij te zetten.
+      id: nieuwIdRef.current,
       [veldVanSoort(eigenaar.soort)]: eigenaar.id,
       naam: naam.trim(),
       soort,
@@ -165,8 +171,18 @@ export function Documentkluis({
       setBevestigId(id)
       return
     }
+    // ⚠ RONDE 68 — de bevestiging werd hier gereset vóór er iets gebeurd was.
+    // Mislukte het verwijderen, dan stond het document er nog, was de tweede tik
+    // "vergeten", en zei niets iets. Het opslaan hierboven deed het al goed; dit was
+    // de andere helft van dezelfde kaart.
+    try {
+      await onVerwijderen(id)
+    } catch {
+      setFout(t('Verwijderen is mislukt. Het document staat er nog; probeer het opnieuw.'))
+      return
+    }
+    setFout('')
     setBevestigId(null)
-    await onVerwijderen(id)
   }
 
   const inhoud = (

@@ -8,6 +8,8 @@ import { naamVanPersoon } from '../utils/persoon'
 import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { Balk, Kaart, Leeg, PaginaKop } from '../ui/basis'
 import { useT } from '../i18n'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import { zachteAchtergrond } from './TransactieLijst'
 
 // Eén regel per doel die zegt of je het haalt: wat er per maand bij moet, wat je
@@ -107,6 +109,8 @@ export function SpaardoelSectie({
   onVerwijderen: (id: string) => Promise<void> | void
 }) {
   const { t } = useT()
+  // Vangt een mislukte opslag op en zegt het (ronde 68).
+  const opslag = useOpslagpoging()
   // Eén keer per render dezelfde dag gebruiken, zodat alle doelen met exact
   // dezelfde 'vandaag' rekenen.
   const nu = vandaag()
@@ -117,6 +121,10 @@ export function SpaardoelSectie({
   const [bedragInvoer, setBedragInvoer] = useState<Record<string, string>>({})
 
   async function opslaan(d: Spaardoel) {
+    // ⚠ RONDE 68 — HIER MAG DE FOUT NIET OPGEVANGEN WORDEN. Het formulier hieronder
+    // vangt zelf op en houdt dan je invoer vast; ving deze tussenstap hem al weg, dan
+    // zag het formulier "gelukt", maakte het zichzelf leeg, en was je tekst tóch weg —
+    // mét een melding erbij. Precies de fout die deze ronde moest uitroeien.
     await onOpslaan(d)
     // Na het opslaan staat rechts weer het formulier voor een NIEUW doel, dus
     // mag er in de lijst ook niets meer oplichten — anders lijkt de markering te
@@ -126,9 +134,11 @@ export function SpaardoelSectie({
   }
 
   async function verwijder(id: string) {
+    // ⚠ RONDE 68 — het rechterpaneel klapte dicht en het doel bleef staan. Pas
+    // opruimen ná een geslaagde verwijdering.
+    if (!(await opslag.probeer(() => onVerwijderen(id)))) return
     if (gekozenId === id) setGekozenId(null)
     if (bewerk?.id === id) setBewerk(null)
-    await onVerwijderen(id)
   }
 
   async function werkBedragBij(doel: Spaardoel) {
@@ -136,7 +146,9 @@ export function SpaardoelSectie({
     if (tekst === undefined) return
     const centen = invoerNaarCenten(tekst)
     if (!Number.isFinite(centen)) return
-    await onOpslaan({ ...doel, huidigBedrag: centen })
+    // ⚠ RONDE 68 — mislukte dit, dan bleef de balk op het oude bedrag staan terwijl
+    // je nieuwe getal in het veld stond. Niets zei welke van de twee klopte.
+    if (!(await opslag.probeer(() => onOpslaan({ ...doel, huidigBedrag: centen })))) return
     setBedragInvoer((m) => {
       const n = { ...m }
       delete n[doel.id]
@@ -156,6 +168,8 @@ export function SpaardoelSectie({
         {spaardoelen.length === 0 && (
           <Leeg>{t('Nog geen doelen. Met het formulier op deze pagina zet je je eerste doel — een buffer, een grote aankoop, of schuldenvrij zijn.')}</Leeg>
         )}
+
+        <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Er is niets veranderd.')} />
 
         {spaardoelen.length > 0 && (
           <ul className="lijst">

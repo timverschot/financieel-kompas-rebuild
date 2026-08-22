@@ -1,6 +1,8 @@
 import type { Overboeking, Rekening, Transactie, Waardering } from '../data/schema'
 import { Bedrag, EersteStapKnop, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 import { OverboekingFormulier } from './OverboekingFormulier'
 
@@ -46,11 +48,14 @@ export function OverboekingSectie({
   onNieuweRekening?: () => void
 }) {
   const { t } = useT()
+  // Vangt een mislukte opslag op en zegt het (ronde 68).
+  const opslag = useOpslagpoging()
   const naam = (id: string) => rekeningen.find((r) => r.id === id)?.naam ?? t('onbekende rekening')
   const gesorteerd = gesorteerdNieuwsteEerst(overboekingen)
 
   return (
     <Kaart titel={t('Alle overboekingen')} bijschrift={t('Geld verschuiven tussen je eigen rekeningen (geen inkomst of uitgave).')}>
+      <Opslagfout fout={opslag.fout} zin={t('Verwijderen is niet gelukt. Er is niets weggehaald.')} />
       {rekeningen.length < 2 ? (
         /* ⚠ RONDE 66, slotronde: dezelfde zin stond hier kaal en in de boekingspopup
            mét eerste stap. Hier staat het rekeningformulier op ditzelfde scherm, dus
@@ -97,7 +102,7 @@ export function OverboekingSectie({
                     <button
                       className="knop knop-kaal knop-gevaar"
                       aria-label={t('Verwijder overboeking {van} naar {naar}', { van: naam(o.vanRekeningId), naar: naam(o.naarRekeningId) })}
-                      onClick={() => onVerwijderen(o.id)}
+                      onClick={() => void opslag.probeer(() => onVerwijderen(o.id))}
                     >
                       ×
                     </button>

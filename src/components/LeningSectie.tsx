@@ -7,6 +7,8 @@ import { aflossingenVan, boekingVoorAflossing, openstaandKapitaal, totaalAfgelos
 import { LeningFormulier } from './LeningFormulier'
 import { Kaart, Leeg, Bedrag, Balk, Stat } from '../ui/basis'
 import { useT } from '../i18n'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import { Documentkluis } from './DossierKluis'
 import type { Vertaler } from '../i18n'
 import { dagKort, vandaag } from '../utils/datum'
@@ -155,8 +157,14 @@ export function LeningSectie({
   const { t } = useT()
   const [bewerk, setBewerk] = useState<Lening | null>(null)
   const [toonGeschiedenis, setToonGeschiedenis] = useState<Record<string, boolean>>({})
+  // Vangt een mislukte opslag op en zegt het (ronde 68).
+  const opslag = useOpslagpoging()
 
   async function opslaan(l: Lening) {
+    // ⚠ RONDE 68 — HIER MAG DE FOUT NIET OPGEVANGEN WORDEN. Het formulier hieronder
+    // vangt zelf op en houdt dan je invoer vast; ving deze tussenstap hem al weg, dan
+    // zag het formulier "gelukt", maakte het zichzelf leeg, en was je tekst tóch weg —
+    // mét een melding erbij. Precies de fout die deze ronde moest uitroeien.
     await onOpslaan(l)
     setBewerk(null)
   }
@@ -168,7 +176,7 @@ export function LeningSectie({
   async function zetAfgesloten(l: Lening, afgesloten: boolean) {
     const gewijzigd: Lening = { ...l, afgesloten: true }
     if (!afgesloten) delete gewijzigd.afgesloten // heropenen: het veld verdwijnt weer
-    await onOpslaan(gewijzigd)
+    await opslag.probeer(() => onOpslaan(gewijzigd))
   }
 
   const gesorteerd = [...leningen].sort((a, b) => {
@@ -184,6 +192,7 @@ export function LeningSectie({
       bijschrift={t('Geld dat jij uitleende of zelf leende. Log terugbetalingen; de app houdt het openstaand kapitaal en de geschiedenis bij.')}
     >
       {leningen.length === 0 && <Leeg>{t('Nog geen leningen. Voeg er hieronder een toe.')}</Leeg>}
+      <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Er is niets veranderd.')} />
 
       {/* Wat er in totaal nog openstaat; afgesloten leningen tellen niet meer mee.
           Bij één enkele lening zou dit gewoon de rij eronder herhalen, dus tonen
@@ -227,7 +236,7 @@ export function LeningSectie({
                     >
                       {l.afgesloten ? t('heropen') : t('sluit af')}
                     </button>
-                    <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder lening {naam}', { naam: l.naam })} onClick={() => onVerwijderen(l.id)}>
+                    <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder lening {naam}', { naam: l.naam })} onClick={() => void opslag.probeer(() => onVerwijderen(l.id))}>
                       ×
                     </button>
                   </span>
@@ -287,7 +296,7 @@ export function LeningSectie({
                         </span>
                         <span className="rij-acties">
                           <Bedrag centen={a.bedrag} />
-                          <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder aflossing {datum}', { datum: a.datum })} onClick={() => onAflossingVerwijderen(a.id)}>
+                          <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder aflossing {datum}', { datum: a.datum })} onClick={() => void opslag.probeer(() => onAflossingVerwijderen(a.id))}>
                             ×
                           </button>
                         </span>

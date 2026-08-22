@@ -425,3 +425,23 @@ describe('UitwisselingKaart — wat de review na het bouwen ving', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// Ronde 68 — de laatste `<label>` met een verborgen bestandsveld.
+//
+// Dat patroon haalt het veld uit de tabvolgorde én uit de toegankelijkheidsboom, en
+// een label is zelf niet focusbaar: met een toetsenbord of een schermlezer was deze
+// knop niet te bedienen. Dezelfde ingreep als in ronde 63 bij "Herstel uit back-up".
+// ---------------------------------------------------------------------------
+describe('UitwisselingKaart — het bestand kiezen', () => {
+  it('is een echte knop en dus met het toetsenbord te bereiken', async () => {
+    const user = userEvent.setup()
+    toon()
+    await user.click(screen.getByRole('button', { name: 'Toon' }))
+
+    const knop = screen.getByRole('button', { name: 'Kies een uitwisselbestand' })
+    expect(knop.tagName).toBe('BUTTON')
+    knop.focus()
+    expect(knop).toHaveFocus()
+  })
+})
+

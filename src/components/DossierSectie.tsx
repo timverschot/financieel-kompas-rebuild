@@ -52,6 +52,8 @@ import { GezinsledenKiezer } from './GezinslidKiezer'
 import { useT, type Vertaler } from '../i18n'
 import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 import { Bonknop } from '../ui/Bonknop'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import { formatEuro } from '../utils/format'
 import { dagJaar } from '../utils/datum'
 import type { NieuweTak } from '../utils/categorietak'
@@ -151,6 +153,15 @@ export function DossierSectie({
   beginDossierId?: string | null
 }) {
   const { t } = useT()
+  // Eén poging voor dit dossierscherm (ronde 68). ⚠ De chips hebben hun eigen,
+  // fijnere melding (`chipFout`): die meldt alleen wanneer je tik écht verloren gaat
+  // én je nog in hetzelfde dossier staat.
+  const opslag = useOpslagpoging()
+  // ⚠ Een EIGEN poging voor het verwijdervenster (tweede doorlichting ronde 68). Met
+  // één gedeelde stonden er bij een mislukking twee `alert`-blokken tegelijk op het
+  // scherm — één achter het venster en één erin, met verschillende tekst — en las
+  // voorleessoftware het twee keer voor.
+  const vensterOpslag = useOpslagpoging()
   // Welk dossier staat op het punt verwijderd te worden? (ronde 59)
   //
   // ⚠ WAAROM DIT ER MOET ZIJN. Het kruisje naast de keuzelijst wiste het HELE
@@ -215,10 +226,16 @@ export function DossierSectie({
 
   async function voegSplitToe() {
     if (!dossier || !splitGeldig || typeof splitPctWaarde !== 'number') return
-    await onDossierOpslaan({
-      ...dossier,
-      categorieAandelen: { ...(dossier.categorieAandelen ?? {}), [splitCat]: splitPctWaarde },
-    })
+    // ⚠ RONDE 68 — dit gaat over hoe het geld tussen jullie verdeeld wordt. Mislukte
+    // het wegschrijven, dan gebeurde er zichtbaar niets en dacht je dat de knop kapot
+    // was. Leegmaken pas na een geslaagde opslag.
+    const gelukt = await opslag.probeer(() =>
+      onDossierOpslaan({
+        ...dossier,
+        categorieAandelen: { ...(dossier.categorieAandelen ?? {}), [splitCat]: splitPctWaarde },
+      }),
+    )
+    if (!gelukt) return
     setSplitCat('')
     setSplitPct('')
   }
@@ -237,7 +254,8 @@ export function DossierSectie({
     const bijgewerkt: Dossier = { ...dossier }
     if (Object.keys(nieuw).length > 0) bijgewerkt.typeAandelen = nieuw
     else delete bijgewerkt.typeAandelen
-    await onDossierOpslaan(bijgewerkt)
+    // ⚠ Zonder melding leek deze knop kapot: er gebeurde zichtbaar niets.
+    await opslag.probeer(() => onDossierOpslaan(bijgewerkt))
   }
 
   // Welke onderdelen zijn zichtbaar? We bewaren wat VERBORGEN is, dus een dossier
@@ -388,14 +406,16 @@ export function DossierSectie({
     // schrijven — zelfde keuze als bij `typeAandelen` en `verborgenOnderdelen`.
     if (id) bijgewerkt.grondslagDocumentId = id
     else delete bijgewerkt.grondslagDocumentId
-    await onDossierOpslaan(bijgewerkt)
+    // ⚠ Mislukte dit, dan sprong de keuzelijst zonder een woord terug naar de oude
+    // waarde — niet te onderscheiden van een misgetikte klik.
+    await opslag.probeer(() => onDossierOpslaan(bijgewerkt))
   }
 
   async function verwijderSplit(catId: string) {
     if (!dossier || !dossier.categorieAandelen) return
     const nieuw = { ...dossier.categorieAandelen }
     delete nieuw[catId]
-    await onDossierOpslaan({ ...dossier, categorieAandelen: nieuw })
+    await opslag.probeer(() => onDossierOpslaan({ ...dossier, categorieAandelen: nieuw }))
   }
 
   async function kopieerSamenvatting(v: Verrekening) {
@@ -487,13 +507,19 @@ export function DossierSectie({
   const bijdrageBetalingen = bijdrage ? (onderhoudsbetalingen ?? []).filter((b) => b.bijdrageId === bijdrage.id) : []
 
   async function kostOpslaan(k: GedeeldeKost) {
+    // ⚠ RONDE 68 — HIER MAG DE FOUT NIET OPGEVANGEN WORDEN. Het formulier hieronder
+    // vangt zelf op en houdt dan je invoer vast; ving deze tussenstap hem al weg, dan
+    // zag het formulier "gelukt", maakte het zichzelf leeg, en was je tekst tóch weg —
+    // mét een melding erbij. Precies de fout die deze ronde moest uitroeien.
     await onKostOpslaan(k)
     setBewerkKost(null)
   }
 
   async function genereerNu() {
     if (!dossier || selectie.length === 0) return
-    await onGenereer(dossier, filter)
+    // ⚠ Dit maakt de momentopname die naar de andere ouder gaat. Mislukte ze in
+    // stilte, dan dacht je dat de afrekening bestond en stuurde je niets door.
+    await opslag.probeer(() => onGenereer(dossier, filter))
   }
 
   return (
@@ -571,6 +597,12 @@ export function DossierSectie({
                 {chipFout}
               </p>
             )}
+            {/* ⚠ RONDE 68 — de melding voor al het ándere op dit scherm: een verdeling
+                bewaren of wissen, het grondslagdocument aanduiden, een gedeelde kost
+                opslaan, een afrekening genereren. Die deden tot nu toe allemaal
+                zichtbaar niets wanneer het wegschrijven mislukte, en het gaat hier over
+                geld dat tussen twee ouders verdeeld wordt. */}
+            <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Er is niets veranderd.')} />
             {/* ⚠ Een uitgezet onderdeel waar tóch iets in staat (ronde 60). Dat kan
                 echt gebeuren: de rekenhulp "Indexatie" bewaart een onderhoudsbijdrage
                 rechtstreeks in een dossier. Zonder deze regel zou je die gegevens
@@ -785,7 +817,7 @@ export function DossierSectie({
                       <button className="knop knop-kaal" aria-label={t('Bewerk kost {naam}', { naam: k.omschrijving })} onClick={() => setBewerkKost(k)}>
                         ✎
                       </button>
-                      <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder kost {naam}', { naam: k.omschrijving })} onClick={() => onKostVerwijderen(k.id)}>
+                      <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder kost {naam}', { naam: k.omschrijving })} onClick={() => void opslag.probeer(() => onKostVerwijderen(k.id))}>
                         ×
                       </button>
                     </span>
@@ -937,7 +969,14 @@ export function DossierSectie({
                             className="tx-vinkje"
                             aria-label={t('Afrekening {datum} is overgemaakt', { datum: dagJaar(v.datum) })}
                             checked={!!v.overgemaakt}
-                            onChange={(e) => onMarkeerOvergemaakt(v, e.target.checked)}
+                            // ⚠ RONDE 68 — mislukte dit, dan sprong het vinkje zonder
+                            // een woord terug. Op een trage telefoon is dat niet te
+                            // onderscheiden van een misgetikte klik: de kosten blijven
+                            // open staan en komen in de volgende afrekening opnieuw mee.
+                            onChange={(e) => {
+                              const aan = e.target.checked
+                              void opslag.probeer(() => onMarkeerOvergemaakt(v, aan))
+                            }}
                           />{' '}
                           {t('Overgemaakt')}
                         </label>
@@ -1170,10 +1209,17 @@ export function DossierSectie({
             <button
               type="button"
               className="knop knop-secundair knop-gevaar"
+              aria-busy={vensterOpslag.bezig}
+              // ⚠ RONDE 68 — het venster ging dicht vóór er iets gebeurd was. Je las
+              // hier net hoeveel kosten er weer op "nog niet afgerekend" komen te
+              // staan, drukte op "Ja, verwijder", zag het venster wegvallen — en de
+              // afrekening stond er gewoon nog.
               onClick={() => {
                 const doel = afrekeningWegId
-                setAfrekeningWegId(null)
-                if (doel) void onVerwijderAfrekening(doel)
+                if (!doel) return
+                void vensterOpslag.probeer(() => onVerwijderAfrekening(doel)).then((gelukt) => {
+                  if (gelukt) setAfrekeningWegId(null)
+                })
               }}
             >
               {t('Ja, verwijder')}
@@ -1196,6 +1242,7 @@ export function DossierSectie({
             <p className="rij-meta" style={{ margin: 0 }}>
               {t('Je kan dit meteen daarna nog ongedaan maken met de balk onderaan, maar die blijft niet lang staan.')}
             </p>
+            <Opslagfout fout={vensterOpslag.fout} zin={t('Verwijderen is niet gelukt. Er is niets weggehaald.')} />
           </div>
         )}
       </Dialoog>

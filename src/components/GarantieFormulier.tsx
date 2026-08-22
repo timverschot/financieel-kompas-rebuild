@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Garantie, Kind, Transactie } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
@@ -9,6 +9,8 @@ import { verkleinAfbeelding } from '../utils/afbeelding'
 import { STANDAARD_GARANTIE_MAANDEN } from '../utils/garantie'
 import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 import { Bonknop } from '../ui/Bonknop'
 
@@ -47,6 +49,18 @@ export function GarantieFormulier({
   gezinsleden?: Kind[]
 }) {
   const { t } = useT()
+  // Vangt een mislukte opslag op en zegt het (ronde 68).
+  const opslag = useOpslagpoging()
+  // ⚠ RONDE 68 — ÉÉN VAST ID PER INVULBEURT, niet één per poging.
+  //
+  // Nu een mislukte opslag zichtbaar is en de app zegt "probeer het opnieuw", telt dit
+  // ineens: werd het record wél weggeschreven maar liep het opnieuw inlezen daarna mis,
+  // dan maakte een tweede poging met een VERS id een tweede record in plaats van
+  // hetzelfde te overschrijven. Het boekingsformulier doet dit al sinds ronde 36 zo, om
+  // precies dezelfde reden.
+  //
+  // Het id wordt ververst zodra het formulier na een geslaagde opslag leeggemaakt wordt.
+  const nieuwIdRef = useRef(nieuwId())
   const [product, setProduct] = useState(() => beginwaarden().product)
   const [winkel, setWinkel] = useState(() => beginwaarden().winkel)
   const [aankoopdatum, setAankoopdatum] = useState(() => beginwaarden().aankoopdatum)
@@ -60,6 +74,9 @@ export function GarantieFormulier({
 
   // Zet alle velden terug op hun beginwaarde.
   const leegmaken = useCallback(() => {
+    // Klaar voor het volgende record: een vers id, zodat de volgende invoer niet
+    // hetzelfde record overschrijft (ronde 68).
+    nieuwIdRef.current = nieuwId()
     const b = beginwaarden()
     setProduct(b.product)
     setWinkel(b.winkel)
@@ -122,20 +139,28 @@ export function GarantieFormulier({
   async function verzend(e: FormEvent) {
     e.preventDefault()
     if (!geldig) return
-    await onOpslaan({
-      id: bewerken ? bewerken.id : nieuwId(),
-      product: product.trim(),
-      aankoopdatum,
-      garantieMaanden: maandenGetal,
-      ...(winkel.trim() ? { winkel: winkel.trim() } : {}),
-      ...(Number.isFinite(prijsCenten) && prijsCenten > 0 ? { prijs: prijsCenten } : {}),
-      ...(transactieId ? { transactieId } : {}),
-      ...(notitie.trim() ? { notitie: notitie.trim() } : {}),
-      ...(bonnetje ? { bonnetje } : {}),
-      // Ook bewaren als het veld niet zichtbaar is (bv. het gekoppelde lid werd
-      // intussen gearchiveerd): een koppeling mag nooit stil verdwijnen.
-      ...(persoonId ? { persoonId } : {}),
-    })
+    // ⚠ RONDE 68 — EEN MISLUKTE OPSLAG MAG NOOIT STIL BLIJVEN. Dit formulier riep
+    // `onOpslaan` aan zonder de mislukking op te vangen: de belofte werd weggegooid,
+    // er verscheen geen letter, en de knop leek gewoon niet te reageren. Je drukte
+    // opnieuw, of je sloot het venster en was je invoer kwijt. Alles wat "het is
+    // gelukt" uitstraalt, gebeurt nu pas ná een geslaagde opslag.
+    const gelukt = await opslag.probeer(() =>
+      onOpslaan({
+        id: bewerken ? bewerken.id : nieuwIdRef.current,
+        product: product.trim(),
+        aankoopdatum,
+        garantieMaanden: maandenGetal,
+        ...(winkel.trim() ? { winkel: winkel.trim() } : {}),
+        ...(Number.isFinite(prijsCenten) && prijsCenten > 0 ? { prijs: prijsCenten } : {}),
+        ...(transactieId ? { transactieId } : {}),
+        ...(notitie.trim() ? { notitie: notitie.trim() } : {}),
+        ...(bonnetje ? { bonnetje } : {}),
+        // Ook bewaren als het veld niet zichtbaar is (bv. het gekoppelde lid werd
+        // intussen gearchiveerd): een koppeling mag nooit stil verdwijnen.
+        ...(persoonId ? { persoonId } : {}),
+      }),
+    )
+    if (!gelukt) return
     // Bij een NIEUWE aankoop blijft 'bewerken' null, dus de useEffect hierboven
     // draait niet. Daarom hier leegmaken, anders blijft alles ingevuld staan en
     // maakt een tweede klik dezelfde garantie nog eens aan.
@@ -252,6 +277,7 @@ export function GarantieFormulier({
           sommige schermlezers overgeslagen — die regel past de app elders al toe. En de
           knop hiernaast wijst met `aria-describedby` naar deze tekst, dus wie erop landt,
           hóórt meteen wat er nog ontbreekt in plaats van alleen "niet-beschikbaar". */}
+      <Opslagfout fout={opslag.fout} />
       <p id={redenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
         {geldig ? '' : t('Geef een productnaam en een garantieduur in maanden om op te slaan.')}
       </p>

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useT } from '../i18n'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import type { Melding, MeldingPagina } from '../utils/meldingen'
 import type { BudgetTab } from '../utils/budgettab'
 import type { DossierSoort } from '../utils/dossiersoort'
@@ -66,9 +68,12 @@ export function Meldingenbel({
    * Een vaste last meteen inboeken vanuit het paneel. Zonder deze prop gedraagt de
    * bel zich zoals voorheen: elke melding brengt je enkel naar een pagina.
    */
-  onBoekVasteLast?: (postId: string) => void
+  // ⚠ `Promise<void> | void` (ronde 68): dit schrijft een boeking weg en kan mislukken.
+  onBoekVasteLast?: (postId: string) => Promise<void> | void
 }) {
   const { t } = useT()
+  // Vangt een mislukte inboeking op en zegt het (ronde 68).
+  const opslag = useOpslagpoging()
   const [open, setOpen] = useState(false)
   const aantal = meldingen.length
 
@@ -107,7 +112,9 @@ export function Meldingenbel({
   function boek(postId: string) {
     // Het paneel blijft open: heb je er drie staan, dan wil je ze na elkaar
     // wegwerken zonder telkens opnieuw op het belletje te duwen.
-    onBoekVasteLast?.(postId)
+    // ⚠ RONDE 68 — mislukte het inboeken, dan gebeurde er zichtbaar niets en bleef de
+    // melding in de lijst staan. Nu staat er waarom.
+    void opslag.probeer(() => onBoekVasteLast?.(postId))
   }
 
   return (
@@ -162,6 +169,7 @@ export function Meldingenbel({
             <p className="label-caps" style={{ margin: '0 4px 6px' }}>
               {t('Meldingen')}
             </p>
+            <Opslagfout fout={opslag.fout} zin={t('Inboeken is niet gelukt. Er is niets geboekt.')} />
             {aantal === 0 ? (
               <p className="leeg" style={{ margin: 0 }}>
                 {/* ⚠ RONDE 66, slotronde — DEZE ZIN MAG NIETS BEVESTIGEN EN NIETS

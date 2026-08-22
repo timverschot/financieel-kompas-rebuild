@@ -5,6 +5,8 @@ import { garantieStatus, dagenTussen } from '../utils/garantie'
 import { GarantieFormulier } from './GarantieFormulier'
 import { Kaart, Leeg, Balk } from '../ui/basis'
 import { useT } from '../i18n'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import { Documentkluis } from './DossierKluis'
 import type { Vertaler } from '../i18n'
 import { vandaag, dagKort } from '../utils/datum'
@@ -61,8 +63,14 @@ export function GarantieSectie({
   const { t } = useT()
   const [bewerk, setBewerk] = useState<Garantie | null>(null)
   const nu = vandaag()
+  // Vangt een mislukte opslag op en zegt het (ronde 68).
+  const opslag = useOpslagpoging()
 
   async function opslaan(g: Garantie) {
+    // ⚠ RONDE 68 — HIER MAG DE FOUT NIET OPGEVANGEN WORDEN. Het formulier hieronder
+    // vangt zelf op en houdt dan je invoer vast; ving deze tussenstap hem al weg, dan
+    // zag het formulier "gelukt", maakte het zichzelf leeg, en was je tekst tóch weg —
+    // mét een melding erbij. Precies de fout die deze ronde moest uitroeien.
     await onOpslaan(g)
     setBewerk(null)
   }
@@ -85,6 +93,8 @@ export function GarantieSectie({
     // één keer, op het tabblad; de kaart eronder zegt alleen nog wat ze doet.
     <Kaart bijschrift={t('Hou per aankoop de garantie en de factuur bij. De app berekent de vervaldatum en waarschuwt vóór ze afloopt.')}>
       {garanties.length === 0 && <Leeg>{t('Nog geen aankopen. Voeg er hieronder een toe.')}</Leeg>}
+
+      <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Er is niets veranderd.')} />
 
       {metStatus.length > 0 && (
         <ul className="lijst">
@@ -115,7 +125,7 @@ export function GarantieSectie({
                     <button className="knop knop-kaal" aria-label={t('Bewerk garantie {naam}', { naam: g.product })} onClick={() => setBewerk(g)}>
                       ✎
                     </button>
-                    <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder garantie {naam}', { naam: g.product })} onClick={() => onVerwijderen(g.id)}>
+                    <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder garantie {naam}', { naam: g.product })} onClick={() => void opslag.probeer(() => onVerwijderen(g.id))}>
                       ×
                     </button>
                   </span>

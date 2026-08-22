@@ -8,6 +8,8 @@ import { GezinsledenKiezer } from './GezinslidKiezer'
 import { verkleinAfbeelding } from '../utils/afbeelding'
 import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import type { NieuweTak } from '../utils/categorietak'
 import { Bonknop } from '../ui/Bonknop'
 import { voorstelKostensoort, KOSTENSOORT_BRON } from '../utils/kostensoort'
@@ -61,6 +63,10 @@ export function GedeeldeKostFormulier({
   const [aandeelOverride, setAandeelOverride] = useState(() => beginwaarden().aandeelOverride)
   const [bonnetje, setBonnetje] = useState(() => beginwaarden().bonnetje)
   const [bezigBon, setBezigBon] = useState(false)
+  // Vangt een mislukte opslag op en zegt het (ronde 68).
+  const opslag = useOpslagpoging()
+  // ⚠ Eén vast id per invulbeurt; zie de andere formulieren.
+  const nieuwIdRef = useRef(nieuwId())
   // Heeft de gebruiker de soort kost zélf gekozen? Zolang dat niet zo is, mag het
   // voorstel van de KB-lijst het veld invullen. Zodra hij hem zelf zet, blijft die
   // keuze staan — ook als hij daarna nog van categorie wisselt.
@@ -72,6 +78,8 @@ export function GedeeldeKostFormulier({
 
   // Zet alle velden terug op hun beginwaarde.
   const leegmaken = useCallback(() => {
+    // Klaar voor de volgende kost: een vers id, zodat die niet dezelfde overschrijft.
+    nieuwIdRef.current = nieuwId()
     const b = beginwaarden()
     setOmschrijving(b.omschrijving)
     setBedrag(b.bedrag)
@@ -142,7 +150,7 @@ export function GedeeldeKostFormulier({
     // vanzelf behouden, zonder dat iemand eraan moet denken.
     const kost: GedeeldeKost = {
       ...(bewerken ?? {}),
-      id: bewerken ? bewerken.id : nieuwId(),
+      id: bewerken ? bewerken.id : nieuwIdRef.current,
       dossierId: bewerken ? bewerken.dossierId : dossierId,
       omschrijving: omschrijving.trim(),
       bedrag: bedragCenten,
@@ -161,7 +169,9 @@ export function GedeeldeKostFormulier({
     if (bonnetje) kost.bonnetje = bonnetje
     else delete kost.bonnetje
 
-    await onOpslaan(kost)
+    // ⚠ RONDE 68 — een mislukte opslag mag niet stil blijven. Dit formulier schrijft
+    // bovendien een bonfoto weg, dus een volle opslag is hier geen theoretisch geval.
+    if (!(await opslag.probeer(() => onOpslaan(kost)))) return
     // Bij een NIEUWE kost blijft 'bewerken' null, dus de useEffect hierboven draait
     // niet. Daarom hier leegmaken, anders blijft alles ingevuld staan en boek je met
     // een tweede klik dezelfde kost nog eens.
@@ -329,6 +339,7 @@ export function GedeeldeKostFormulier({
           sommige schermlezers overgeslagen — die regel past de app elders al toe. En de
           knop hiernaast wijst met `aria-describedby` naar deze tekst, dus wie erop landt,
           hóórt meteen wat er nog ontbreekt in plaats van alleen "niet-beschikbaar". */}
+      <Opslagfout fout={opslag.fout} />
       <p id={redenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
         {geldig ? '' : t('Geef een naam en een geldig bedrag om op te slaan.')}
       </p>

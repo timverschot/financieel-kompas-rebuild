@@ -493,6 +493,15 @@ const en: Record<string, string> = {
   'Exporteer back-up': 'Export backup',
   'Herstel uit back-up': 'Restore from backup',
   'Back-up gedownload.': 'Backup downloaded.',
+  'Verwijderen is mislukt. Het document staat er nog; probeer het opnieuw.': 'Deleting did not work. The document is still there; please try again.',
+  'Inboeken is niet gelukt. Er is niets geboekt.': 'Recording it did not work. Nothing has been recorded.',
+  'Verwijderen is niet gelukt. De waardering staat er nog.': 'Deleting did not work. The valuation is still there.',
+  'Verwijderen is niet gelukt. Er is niets weggehaald.': 'Deleting did not work. Nothing has been removed.',
+  'Dat is niet gelukt. Je invoer staat er nog.': 'That did not work. What you typed is still there.',
+  'Dat is niet gelukt. Er is niets veranderd.': 'That did not work. Nothing has changed.',
+  'Je antwoord is niet bewaard. Er is niets veranderd.': 'Your answer was not saved. Nothing has changed.',
+  'Niets hersteld: dit bestand komt van een nieuwere versie van de app ({n} regels). Werk deze app eerst bij en probeer het dan opnieuw.':
+    'Nothing restored: this file comes from a newer version of the app ({n} lines). Update this app first, then try again.',
   'Hersteld: {toegevoegd} toegevoegd, {overgeslagen} al aanwezig, {ongeldig} ongeldig.':
     'Restored: {toegevoegd} added, {overgeslagen} already present, {ongeldig} invalid.',
   'Herstellen mislukte: {fout}': 'Restore failed: {fout}',
@@ -3061,6 +3070,15 @@ const fr: Record<string, string> = {
   'Exporteer back-up': 'Exporter la sauvegarde',
   'Herstel uit back-up': 'Restaurer depuis la sauvegarde',
   'Back-up gedownload.': 'Sauvegarde téléchargée.',
+  'Verwijderen is mislukt. Het document staat er nog; probeer het opnieuw.': 'La suppression n’a pas fonctionné. Le document est toujours là ; réessaie.',
+  'Inboeken is niet gelukt. Er is niets geboekt.': 'L’enregistrement n’a pas fonctionné. Rien n’a été enregistré.',
+  'Verwijderen is niet gelukt. De waardering staat er nog.': 'La suppression n’a pas fonctionné. La valorisation est toujours là.',
+  'Verwijderen is niet gelukt. Er is niets weggehaald.': 'La suppression n’a pas fonctionné. Rien n’a été supprimé.',
+  'Dat is niet gelukt. Je invoer staat er nog.': 'Ça n’a pas fonctionné. Ce que tu as encodé est toujours là.',
+  'Dat is niet gelukt. Er is niets veranderd.': 'Ça n’a pas fonctionné. Rien n’a changé.',
+  'Je antwoord is niet bewaard. Er is niets veranderd.': 'Ta réponse n’a pas été enregistrée. Rien n’a changé.',
+  'Niets hersteld: dit bestand komt van een nieuwere versie van de app ({n} regels). Werk deze app eerst bij en probeer het dan opnieuw.':
+    'Rien n’a été restauré : ce fichier provient d’une version plus récente de l’app ({n} lignes). Mets d’abord cette app à jour, puis réessaie.',
   'Hersteld: {toegevoegd} toegevoegd, {overgeslagen} al aanwezig, {ongeldig} ongeldig.':
     'Restauré : {toegevoegd} ajouté(s), {overgeslagen} déjà présent(s), {ongeldig} invalide(s).',
   'Herstellen mislukte: {fout}': 'Échec de la restauration : {fout}',

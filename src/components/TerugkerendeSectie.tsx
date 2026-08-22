@@ -8,6 +8,8 @@ import { contractstand, contractTeltNog, type Contractstand } from '../utils/con
 import { geboekteVasteLasten, vasteLastTransactieId } from '../utils/vooruitblik'
 import { Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 
 // Sectie voor vaste (terugkerende) lasten: overzicht, inboeken voor de gekozen
 // maand, en een formulier om een vaste post toe te voegen of te bewerken.
@@ -72,6 +74,8 @@ export function TerugkerendeSectie({
   // Invullen en bewerken kan pas zodra er een rekening bestaat om het aan te hangen.
   const kanBewerken = rekeningen.length > 0
   const [bewerken, setBewerken] = useState<TerugkerendePost | null>(null)
+  // Vangt een mislukte opslag op en zegt het (ronde 68).
+  const opslag = useOpslagpoging()
   // Elke sectie toont enkel haar eigen soort.
   const eigen = posten.filter((p) => (soort === 'inkomst' ? p.bedrag > 0 : p.bedrag < 0))
   const isInkomst = soort === 'inkomst'
@@ -108,6 +112,10 @@ export function TerugkerendeSectie({
   )
 
   async function opslaan(p: TerugkerendePost) {
+    // ⚠ RONDE 68 — HIER MAG DE FOUT NIET OPGEVANGEN WORDEN. Het formulier hieronder
+    // vangt zelf op en houdt dan je invoer vast; ving deze tussenstap hem al weg, dan
+    // zag het formulier "gelukt", maakte het zichzelf leeg, en was je tekst tóch weg —
+    // mét een melding erbij. Precies de fout die deze ronde moest uitroeien.
     await onOpslaan(p)
     setBewerken(null)
   }
@@ -133,6 +141,8 @@ export function TerugkerendeSectie({
             : t('Nog geen vaste lasten.')}
         </Leeg>
       )}
+      <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Er is niets veranderd.')} />
+
       {eigen.length > 0 && (
         <ul className="lijst">
           {eigen.map((p) => {
@@ -240,7 +250,7 @@ export function TerugkerendeSectie({
                         <button
                           className="knop knop-ghost knop-klein"
                           aria-label={t('Uitboeken: wis de boeking van {naam}', { naam: p.omschrijving })}
-                          onClick={() => onOngedaan(p)}
+                          onClick={() => void opslag.probeer(() => onOngedaan(p))}
                         >
                           {t('Uitboeken')}
                         </button>
@@ -251,7 +261,7 @@ export function TerugkerendeSectie({
                         <button
                           className="knop knop-ghost knop-klein"
                           aria-label={t('Losmaken: {naam} telt dan weer als niet geboekt', { naam: p.omschrijving })}
-                          onClick={() => onLosmaken(gekoppeld.get(p.id) as Transactie)}
+                          onClick={() => void opslag.probeer(() => onLosmaken(gekoppeld.get(p.id) as Transactie))}
                         >
                           {t('Losmaken')}
                         </button>
@@ -260,7 +270,7 @@ export function TerugkerendeSectie({
                       <span className="badge badge-ok">{t('Geboekt ✓')}</span>
                     )
                   ) : (
-                    <button className="knop knop-secundair knop-klein" onClick={() => onBoek(p)}>
+                    <button className="knop knop-secundair knop-klein" onClick={() => void opslag.probeer(() => onBoek(p))}>
                       {t('Boek in')}
                     </button>
                   )}
@@ -278,7 +288,7 @@ export function TerugkerendeSectie({
                   <button
                     className="knop knop-kaal knop-gevaar"
                     aria-label={t('Verwijder vaste post {naam}', { naam: p.omschrijving })}
-                    onClick={() => onVerwijderen(p.id)}
+                    onClick={() => void opslag.probeer(() => onVerwijderen(p.id))}
                   >
                     ×
                   </button>

@@ -5,6 +5,8 @@ import type { Periode } from '../utils/analyse'
 import { formatEuro } from '../utils/format'
 import { EersteStapKnop, Kaart, Leeg } from '../ui/basis'
 import { useT, type Vertaler } from '../i18n'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import { huidigeMaand, vandaag, maandVoluit } from '../utils/datum'
 
 function kleurVanSaldo(saldo: number): string {
@@ -55,8 +57,12 @@ function TeBoeken({
   maand: string
   open: boolean
   onWissel: () => void
-  onBoekVasteLast?: (postId: string, maand: string) => void
+  // ⚠ `Promise<void> | void` (ronde 68): dit schrijft een boeking weg en kan mislukken.
+  onBoekVasteLast?: (postId: string, maand: string) => Promise<void> | void
 }) {
+  // Vangt een mislukte inboeking op en zegt het (ronde 68). ⚠ Een haak moet vóór elke
+  // vroege `return` staan; React telt ze per tekening.
+  const opslag = useOpslagpoging()
   if (!onBoekVasteLast || posten.length === 0) {
     return (
       <p className="rij-meta" style={{ margin: 0 }}>
@@ -66,6 +72,7 @@ function TeBoeken({
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <Opslagfout fout={opslag.fout} zin={t('Inboeken is niet gelukt. Er is niets geboekt.')} />
       <button
         type="button"
         className="knop knop-ghost knop-klein"
@@ -97,7 +104,7 @@ function TeBoeken({
                   // Drie keer "Boek in" in dezelfde lijst is voor een schermlezer
                   // niet te onderscheiden; de naam van de post hoort erbij.
                   aria-label={t('Boek {naam} in', { naam: p.omschrijving })}
-                  onClick={() => onBoekVasteLast(p.id, maand)}
+                  onClick={() => void opslag.probeer(() => onBoekVasteLast(p.id, maand))}
                 >
                   {t('Boek in')}
                 </button>

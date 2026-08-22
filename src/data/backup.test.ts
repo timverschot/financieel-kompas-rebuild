@@ -206,3 +206,44 @@ describe('backup — een bestand uit de euro-tijd', () => {
     expect((await laadTransacties()).geldig[0].bedrag).toBe(240000)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 68 — een back-up van een NIEUWERE versie van de app.
+//
+// `importeerBackup` telde dit geval altijd al mee, maar de melding op het scherm
+// noemde het niet: je las "Hersteld: 0 toegevoegd, 0 al aanwezig, 0 ongeldig" terwijl
+// élke regel geweigerd was. Dat klinkt alsof het bestand leeg was.
+// ---------------------------------------------------------------------------
+describe('backup — een bestand van een nieuwere versie', () => {
+  const teNieuw = JSON.stringify({
+    app: 'financieel-kompas',
+    soort: 'backup',
+    versie: 2,
+    gemaaktOp: '2026-08-01T10:00:00.000Z',
+    events: [
+      {
+        id: 'nieuw-1',
+        toestelId: 'toestel-nieuw',
+        volgnummer: 1,
+        tijdstip: 1754040000000,
+        formaat: 99,
+        gebeurtenis: {
+          type: 'transactie.bewaard',
+          payload: { id: 'nw-tx', datum: '2026-08-01', omschrijving: 'Loon', bedrag: 240000, rekeningId: 'r1' },
+        },
+      },
+    ],
+  })
+
+  it('telt de geweigerde regels apart, zodat het scherm het kan zeggen', async () => {
+    const r = await importeerBackup(teNieuw)
+    expect(r.teNieuw).toBe(1)
+    expect(r.toegevoegd).toBe(0)
+    expect(r.ongeldig).toBe(0)
+    // ⚠ Vooral dit: het is GEEN ongeldige regel. Zou ze als "ongeldig" geteld worden,
+    // dan las je "1 ongeldig" — en dan denk je dat je bestand stuk is in plaats van
+    // dat je app te oud is.
+    expect((await laadTransacties()).geldig).toHaveLength(0)
+  })
+})
+

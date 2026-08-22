@@ -9,6 +9,8 @@ import { invoerNaarCenten, centenNaarInvoer, formatEuro } from '../utils/format'
 import { huidigeMaand, maandJaarLabel } from '../utils/datum'
 import { INTERVAL_MAANDEN, verschuifMaand } from '../utils/vastelast'
 import { useT } from '../i18n'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import type { Vertaler } from '../i18n'
 import { CategorieNiveauKiezer } from './CategorieNiveauKiezer'
 
@@ -70,6 +72,18 @@ export function TerugkerendePostFormulier({
   onOpgeslagen?: (opties: { blijfOpen: boolean }) => void
 }) {
   const { t } = useT()
+  // Vangt een mislukte opslag op en zegt het (ronde 68).
+  const opslag = useOpslagpoging()
+  // ⚠ RONDE 68 — ÉÉN VAST ID PER INVULBEURT, niet één per poging.
+  //
+  // Nu een mislukte opslag zichtbaar is en de app zegt "probeer het opnieuw", telt dit
+  // ineens: werd het record wél weggeschreven maar liep het opnieuw inlezen daarna mis,
+  // dan maakte een tweede poging met een VERS id een tweede record in plaats van
+  // hetzelfde te overschrijven. Het boekingsformulier doet dit al sinds ronde 36 zo, om
+  // precies dezelfde reden.
+  //
+  // Het id wordt ververst zodra het formulier na een geslaagde opslag leeggemaakt wordt.
+  const nieuwIdRef = useRef(nieuwId())
   // Sinds ronde 25 staan er TWEE van deze formulieren op de Plan-pagina (één voor
   // inkomsten, één voor lasten). Vaste id's zouden dan dubbel voorkomen, en dan
   // wijst een label naar het veld van de andere kaart.
@@ -116,6 +130,9 @@ export function TerugkerendePostFormulier({
 
   // Zet alle velden terug op hun beginwaarde.
   const leegmaken = useCallback(() => {
+    // Klaar voor het volgende record: een vers id, zodat de volgende invoer niet
+    // hetzelfde record overschrijft (ronde 68).
+    nieuwIdRef.current = nieuwId()
     setOmschrijving(BEGIN.omschrijving)
     setBedrag(BEGIN.bedrag)
     setEigenSoort(BEGIN.soort)
@@ -234,31 +251,39 @@ export function TerugkerendePostFormulier({
       blijfOpen.current = false
       return
     }
-    await onOpslaan({
-      id: bewerken ? bewerken.id : nieuwId(),
-      omschrijving: omschrijving.trim(),
-      bedrag: soort === 'uitgave' ? -bedragCenten : bedragCenten,
-      rekeningId,
-      dag: dagGetal,
-      ...(categorieId ? { categorieId } : {}),
-      // Een maandelijkse post laat deze drie velden weg, zodat ze exact hetzelfde
-      // record blijft als vóór deze uitbreiding.
-      ...(periodiek ? { frequentie, startMaand } : {}),
-      ...(eindeGeldig && eindMaand ? { eindMaand } : {}),
-      ...(periodiek && opbouwen ? { opbouwen: true } : {}),
-      // Het contract. Zonder soort wordt er niets weggeschreven, en dan blijft dit
-      // record byte voor byte wat het vóór ronde 57 was.
-      ...(contractsoort ? { contractsoort } : {}),
-      ...(contractsoort && verlengtOp ? { verlengtOp } : {}),
-      ...(contractsoort && verlengtElkeGetal ? { verlengtElkeMaanden: verlengtElkeGetal } : {}),
-      // Hoogstens één van de twee wordt weggeschreven, zodat er nooit twee eigen
-      // termijnen naast elkaar staan die iets anders zeggen.
-      ...(contractsoort && eigenTermijnGetal !== null
-        ? eigenEenheid === 'maand'
-          ? { opzegtermijnMaanden: eigenTermijnGetal }
-          : { opzegtermijnDagen: eigenTermijnGetal }
-        : {}),
-    })
+    // ⚠ RONDE 68 — EEN MISLUKTE OPSLAG MAG NOOIT STIL BLIJVEN. Dit formulier riep
+    // `onOpslaan` aan zonder de mislukking op te vangen: de belofte werd weggegooid,
+    // er verscheen geen letter, en de knop leek gewoon niet te reageren. Je drukte
+    // opnieuw, of je sloot het venster en was je invoer kwijt. Alles wat "het is
+    // gelukt" uitstraalt, gebeurt nu pas ná een geslaagde opslag.
+    const gelukt = await opslag.probeer(() =>
+      onOpslaan({
+        id: bewerken ? bewerken.id : nieuwIdRef.current,
+        omschrijving: omschrijving.trim(),
+        bedrag: soort === 'uitgave' ? -bedragCenten : bedragCenten,
+        rekeningId,
+        dag: dagGetal,
+        ...(categorieId ? { categorieId } : {}),
+        // Een maandelijkse post laat deze drie velden weg, zodat ze exact hetzelfde
+        // record blijft als vóór deze uitbreiding.
+        ...(periodiek ? { frequentie, startMaand } : {}),
+        ...(eindeGeldig && eindMaand ? { eindMaand } : {}),
+        ...(periodiek && opbouwen ? { opbouwen: true } : {}),
+        // Het contract. Zonder soort wordt er niets weggeschreven, en dan blijft dit
+        // record byte voor byte wat het vóór ronde 57 was.
+        ...(contractsoort ? { contractsoort } : {}),
+        ...(contractsoort && verlengtOp ? { verlengtOp } : {}),
+        ...(contractsoort && verlengtElkeGetal ? { verlengtElkeMaanden: verlengtElkeGetal } : {}),
+        // Hoogstens één van de twee wordt weggeschreven, zodat er nooit twee eigen
+        // termijnen naast elkaar staan die iets anders zeggen.
+        ...(contractsoort && eigenTermijnGetal !== null
+          ? eigenEenheid === 'maand'
+            ? { opzegtermijnMaanden: eigenTermijnGetal }
+            : { opzegtermijnDagen: eigenTermijnGetal }
+          : {}),
+      }),
+    )
+    if (!gelukt) return
     // Bij een NIEUWE vaste post blijft 'bewerken' null, dus de useEffect hierboven
     // draait niet. Daarom hier leegmaken, anders blijft alles ingevuld staan en
     // maakt een tweede klik dezelfde post nog eens aan.
@@ -590,6 +615,7 @@ export function TerugkerendePostFormulier({
       {/* ⚠ Altijd aanwezig, leeg wanneer er niets te melden is (ronde 61): een
           `role="status"` die pas MÉT zijn tekst verschijnt, wordt door sommige
           schermlezers overgeslagen, en de twee knoppen hierboven wijzen ernaar. */}
+      <Opslagfout fout={opslag.fout} />
       <p id={redenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
         {geldig
           ? ''

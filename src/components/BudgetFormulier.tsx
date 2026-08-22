@@ -5,6 +5,8 @@ import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { STANDAARD_CATEGORIE_ID } from './CategorieSelect'
 import { CategorieNiveauKiezer } from './CategorieNiveauKiezer'
 import { useT } from '../i18n'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import { budgetId } from '../utils/budget'
 
 // De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
@@ -31,6 +33,8 @@ export function BudgetFormulier({
   onOpslaan: (b: Budget) => Promise<void> | void
 }) {
   const { t } = useT()
+  // Vangt een mislukte opslag op en zegt het (ronde 68).
+  const opslag = useOpslagpoging()
   const [categorieId, setCategorieId] = useState(BEGIN.categorieId)
   const [bedrag, setBedrag] = useState(BEGIN.bedrag)
   // Geldt dit bedrag elke maand (de standaard), of alleen voor de maand die je
@@ -86,13 +90,21 @@ export function BudgetFormulier({
   async function verzend(e: FormEvent) {
     e.preventDefault()
     if (!geldig) return
+    // ⚠ RONDE 68 — EEN MISLUKTE OPSLAG MAG NOOIT STIL BLIJVEN. Dit formulier riep
+    // `onOpslaan` aan zonder de mislukking op te vangen: de belofte werd weggegooid,
+    // er verscheen geen letter, en de knop leek gewoon niet te reageren. Je drukte
+    // opnieuw, of sloot het venster en was je invoer kwijt. Alles wat "het is gelukt"
+    // uitstraalt — leegmaken, sluiten — gebeurt nu pas ná een geslaagde opslag.
     const voorMaand = alleenDezeMaand ? maand : undefined
-    await onOpslaan({
-      id: budgetId(categorieId, voorMaand),
-      categorieId,
-      bedrag: bedragCenten,
-      ...(voorMaand ? { maand: voorMaand } : {}),
-    })
+    const gelukt = await opslag.probeer(() =>
+      onOpslaan({
+        id: budgetId(categorieId, voorMaand),
+        categorieId,
+        bedrag: bedragCenten,
+        ...(voorMaand ? { maand: voorMaand } : {}),
+      }),
+    )
+    if (!gelukt) return
     // Pas ná een geslaagde opslag leegmaken, zodat het formulier klaar staat voor een
     // volgend budget. (Twee keer hetzelfde instellen kan niet: de id ligt vast, dus
     // opnieuw opslaan werkt je bestaande budget bij.)
@@ -183,6 +195,7 @@ export function BudgetFormulier({
       <p id={redenId} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
         {geldig ? '' : t('Kies een categorie en geef een bedrag.')}
       </p>
+      <Opslagfout fout={opslag.fout} />
     </form>
   )
 }

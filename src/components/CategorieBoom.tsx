@@ -3,6 +3,8 @@ import type { CSSProperties } from 'react'
 import { bouwEffectieveBoom } from '../data/categorieen/effectief'
 import type { Categorie, Subcategorie } from '../data/schema'
 import { Kaart } from '../ui/basis'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import { opVolgorde } from '../utils/categorieVolgorde'
 import { useHoofdvolgorde } from '../categorievolgorde'
 import { useT } from '../i18n'
@@ -81,13 +83,19 @@ export function CategorieBoom({
   aanpassingen: Subcategorie[]
   /** De eigen categorieën: hoofdcategorieën (zonder ouder) én middencategorieën. */
   eigenCategorieen?: Categorie[]
-  onToevoegen: (categorieId: string, naam: string) => void
-  onWijzigen: (id: string, categorieId: string, naam: string) => void
-  onVerwijderen: (id: string) => void
+  /**
+   * ⚠ `Promise<void> | void` en niet `void` (ronde 68). Deze handlers schrijven naar
+   * de database en kunnen dus mislukken. Zolang ze als `void` getypeerd stonden,
+   * gooide elke aanroeper de belofte weg zonder dat de compiler er iets van zei — en
+   * dan wist dit scherm het ingetikte woord terwijl er niets bewaard was.
+   */
+  onToevoegen: (categorieId: string, naam: string) => Promise<void> | void
+  onWijzigen: (id: string, categorieId: string, naam: string) => Promise<void> | void
+  onVerwijderen: (id: string) => Promise<void> | void
   /** Maakt een eigen MIDDENcategorie onder een hoofdcategorie. */
-  onCategorieToevoegen?: (ouderId: string, naam: string) => void
+  onCategorieToevoegen?: (ouderId: string, naam: string) => Promise<void> | void
   /** Verwijdert een eigen middencategorie, met alles wat eronder hangt. */
-  onCategorieVerwijderen?: (id: string) => void
+  onCategorieVerwijderen?: (id: string) => Promise<void> | void
   /**
    * Zet een hoofdcategorie één plaats omhoog (-1) of omlaag (+1).
    *
@@ -98,6 +106,8 @@ export function CategorieBoom({
   onVerplaats?: (id: string, richting: -1 | 1) => void
 }) {
   const { t } = useT()
+  // Eén poging voor deze kaart: er staat er nooit meer dan één tegelijk open.
+  const opslag = useOpslagpoging()
   const zoekVeldId = useId()
   // Dezelfde volgorde als overal elders; ze wordt hieronder ook ingesteld.
   const volgorde = useHoofdvolgorde()
@@ -212,20 +222,37 @@ export function CategorieBoom({
     zet(nieuw)
   }
 
-  function bewaarHernoeming(catId: string) {
-    if (bewerkId && bewerkTekst.trim()) onWijzigen(bewerkId, catId, bewerkTekst.trim())
+  // ⚠ RONDE 68 — HIER GING JE INGETIKTE WOORD STIL VERLOREN.
+  // De drie functies hieronder riepen hun handler aan ZONDER te wachten, en wisten
+  // daarna meteen het veld. Mislukte het wegschrijven (volle opslag, privémodus),
+  // dan sloot het invoerveld, was het woord weg, stond er niets nieuws in de lijst,
+  // en verscheen er geen letter uitleg. Je tikte het opnieuw. En nog eens.
+  //
+  // Nu wordt er gewacht, en alles wat "het is gelukt" uitstraalt — het veld sluiten,
+  // de tekst wissen — gebeurt pas ná een geslaagde opslag.
+  async function bewaarHernoeming(catId: string) {
+    if (!bewerkId || !bewerkTekst.trim()) return
+    const id = bewerkId
+    if (!(await opslag.probeer(() => onWijzigen(id, catId, bewerkTekst.trim())))) return
     setBewerkId(null)
     setBewerkTekst('')
   }
-  function bewaarToevoeging(catId: string) {
-    if (toevoegTekst.trim()) onToevoegen(catId, toevoegTekst.trim())
+  async function bewaarToevoeging(catId: string) {
+    if (!toevoegTekst.trim()) return
+    if (!(await opslag.probeer(() => onToevoegen(catId, toevoegTekst.trim())))) return
     setToevoegCatId(null)
     setToevoegTekst('')
   }
-  function bewaarNieuweCategorie(ouderId: string) {
-    if (nieuweCatTekst.trim()) onCategorieToevoegen?.(ouderId, nieuweCatTekst.trim())
+  async function bewaarNieuweCategorie(ouderId: string) {
+    if (!nieuweCatTekst.trim() || !onCategorieToevoegen) return
+    if (!(await opslag.probeer(() => onCategorieToevoegen(ouderId, nieuweCatTekst.trim())))) return
     setNieuweCatOnder(null)
     setNieuweCatTekst('')
+  }
+
+  /** Verwijderen: er is geen veld dat leeg mag gaan, maar zwijgen mag ook hier niet. */
+  function verwijder(actie: () => Promise<void> | void) {
+    void opslag.probeer(actie)
   }
 
   return (
@@ -233,6 +260,12 @@ export function CategorieBoom({
       titel={t('Alle categorieën')}
       bijschrift={t('Vouw open om te bekijken. Je kan op elk niveau iets toevoegen.')}
     >
+      {/* ⚠ Bovenaan de kaart en niet bij de rij waar het misging: deze boom is lang
+          en de rij waar je stond, kan na een herlaadbeurt ergens anders staan. Boven
+          in beeld weet je zeker dat je het ziet. De rij zelf blijft trouwens open
+          staan met je tekst erin, dus je hoeft niets opnieuw te typen. */}
+      <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Je invoer staat er nog.')} />
+
       {/* Het zoekveld staat bovenaan, net als "+ categorie" en "+ subcategorie":
           in een lange lijst hoort wat je het vaakst nodig hebt vóór de lijst. */}
       <div className="veldgroep">
@@ -330,7 +363,7 @@ export function CategorieBoom({
                     className="knop knop-kaal"
                     aria-label={t('Zet {naam} hoger', { naam: h.naam })}
                     disabled={hIndex === 0}
-                    onClick={() => onVerplaats(h.id, -1)}
+                    onClick={() => verwijder(() => onVerplaats(h.id, -1))}
                   >
                     ▲
                   </button>
@@ -339,7 +372,7 @@ export function CategorieBoom({
                     className="knop knop-kaal"
                     aria-label={t('Zet {naam} lager', { naam: h.naam })}
                     disabled={hIndex === volledigeBoom.length - 1}
-                    onClick={() => onVerplaats(h.id, 1)}
+                    onClick={() => verwijder(() => onVerplaats(h.id, 1))}
                   >
                     ▼
                   </button>
@@ -378,7 +411,7 @@ export function CategorieBoom({
                               type="button"
                               className="knop knop-secundair knop-klein"
                               aria-label={t('Voeg deze categorie toe in {naam}', { naam: h.naam })}
-                              onClick={() => bewaarNieuweCategorie(h.id)}
+                              onClick={() => void bewaarNieuweCategorie(h.id)}
                             >
                               {t('Toevoegen')}
                             </button>
@@ -448,7 +481,7 @@ export function CategorieBoom({
                                       type="button"
                                       className="knop knop-secundair knop-klein"
                                       aria-label={t('Voeg deze subcategorie toe in {naam}', { naam: c.naam })}
-                                      onClick={() => bewaarToevoeging(c.id)}
+                                      onClick={() => void bewaarToevoeging(c.id)}
                                     >
                                       {t('Toevoegen')}
                                     </button>
@@ -497,7 +530,7 @@ export function CategorieBoom({
                                       onChange={(e) => setBewerkTekst(e.target.value)}
                                     />
                                     <span className="rij-acties">
-                                      <button type="button" className="knop knop-secundair knop-klein" onClick={() => bewaarHernoeming(c.id)}>
+                                      <button type="button" className="knop knop-secundair knop-klein" onClick={() => void bewaarHernoeming(c.id)}>
                                         {t('Bewaar')}
                                       </button>
                                       <button type="button" className="knop knop-kaal" onClick={() => setBewerkId(null)}>
@@ -530,7 +563,7 @@ export function CategorieBoom({
                                           type="button"
                                           className="knop knop-kaal knop-gevaar"
                                           aria-label={t('Verwijder {naam}', { naam: it.naam })}
-                                          onClick={() => onVerwijderen(it.id)}
+                                          onClick={() => verwijder(() => onVerwijderen(it.id))}
                                         >
                                           ×
                                         </button>
@@ -554,7 +587,7 @@ export function CategorieBoom({
                                   type="button"
                                   className="knop knop-ghost knop-klein knop-gevaar"
                                   aria-label={t('Verwijder categorie {naam}', { naam: c.naam })}
-                                  onClick={() => onCategorieVerwijderen(c.id)}
+                                  onClick={() => verwijder(() => onCategorieVerwijderen(c.id))}
                                 >
                                   {t('Verwijderen')}
                                 </button>

@@ -110,3 +110,46 @@ describe('CategorieFormulier', () => {
     expect(onOpslaan).toHaveBeenCalledWith({ id: 'c1', naam: 'Vervoer', icoon: '🚲' })
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 68 — één VAST id per invulbeurt.
+//
+// Waarom dit telt: nu een mislukte opslag zichtbaar is en de app zegt "probeer het
+// opnieuw", maakte een tweede poging met een VERS id een tweede record in plaats van
+// hetzelfde te overschrijven. En omgekeerd geldt: na een GESLAAGDE opslag moet het id
+// wél ververst worden, anders overschrijft je volgende categorie de vorige.
+// ---------------------------------------------------------------------------
+describe('CategorieFormulier — het id over pogingen heen', () => {
+  it('gebruikt hetzelfde id wanneer je het na een mislukking opnieuw probeert', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = vi.fn().mockRejectedValueOnce(new Error('geweigerd')).mockResolvedValueOnce(undefined)
+    render(<CategorieFormulier onOpslaan={onOpslaan} />)
+
+    await user.type(screen.getByLabelText('Naam hoofdcategorie'), 'Huisraad')
+    await user.click(screen.getByRole('button', { name: 'Hoofdcategorie toevoegen' }))
+    await screen.findByRole('alert')
+    await user.click(screen.getByRole('button', { name: 'Hoofdcategorie toevoegen' }))
+
+    await waitFor(() => expect(onOpslaan).toHaveBeenCalledTimes(2))
+    expect(onOpslaan.mock.calls[1][0].id).toBe(onOpslaan.mock.calls[0][0].id)
+  })
+
+  it('gebruikt een VERS id voor de categorie erna', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = vi.fn().mockResolvedValue(undefined)
+    render(<CategorieFormulier onOpslaan={onOpslaan} />)
+
+    await user.type(screen.getByLabelText('Naam hoofdcategorie'), 'Huisraad')
+    await user.click(screen.getByRole('button', { name: 'Hoofdcategorie toevoegen' }))
+    await waitFor(() => expect((screen.getByLabelText('Naam hoofdcategorie') as HTMLInputElement).value).toBe(''))
+
+    await user.type(screen.getByLabelText('Naam hoofdcategorie'), 'Tuin')
+    await user.click(screen.getByRole('button', { name: 'Hoofdcategorie toevoegen' }))
+
+    await waitFor(() => expect(onOpslaan).toHaveBeenCalledTimes(2))
+    // ⚠ Zonder het verversen zou "Tuin" de categorie "Huisraad" OVERSCHRIJVEN — erger
+    // dan de fout die het vaste id moest oplossen.
+    expect(onOpslaan.mock.calls[1][0].id).not.toBe(onOpslaan.mock.calls[0][0].id)
+  })
+})
+

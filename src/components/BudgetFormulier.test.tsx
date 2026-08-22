@@ -131,3 +131,28 @@ describe('BudgetFormulier — elke maand of alleen deze', () => {
     expect(screen.queryByText('Voor welke maanden geldt dit?')).toBeNull()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 68 — elke mislukking zegt het.
+//
+// Dit formulier riep `onOpslaan` aan zonder de mislukking op te vangen: de belofte
+// werd weggegooid, er verscheen geen letter, en de knop leek gewoon niet te reageren.
+// ---------------------------------------------------------------------------
+describe('BudgetFormulier — een mislukte opslag', () => {
+  it('houdt je invoer vast, maakt niets leeg en zegt wat er misging', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = vi.fn().mockRejectedValue(new Error('DataError: geweigerd'))
+    toon({ onOpslaan })
+
+    await user.type(screen.getByLabelText('Maandbudget (€)'), '250')
+    await user.click(screen.getByRole('button', { name: 'Budget instellen' }))
+
+    expect(onOpslaan).toHaveBeenCalled()
+    // Het bedrag staat er nog: leegmaken hoort ná een GESLAAGDE opslag.
+    expect((screen.getByLabelText('Maandbudget (€)') as HTMLInputElement).value).toBe('250')
+    const melding = await screen.findByRole('alert')
+    expect(melding).toHaveTextContent('Opslaan is niet gelukt. Je invoer staat er nog.')
+    expect(melding).toHaveTextContent('Technische melding: DataError: geweigerd')
+  })
+})
+

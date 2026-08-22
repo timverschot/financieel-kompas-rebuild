@@ -125,6 +125,8 @@ import { NieuwDossierKiezer } from './components/NieuwDossierKiezer'
 import { LeningSectie } from './components/LeningSectie'
 import { GarantieSectie } from './components/GarantieSectie'
 import { Subtabs } from './ui/Subtabs'
+import { Opslagfout } from './ui/Opslagfout'
+import { useOpslagpoging } from './ui/opslagpoging'
 import { CategorieVolgordeProvider } from './categorievolgorde'
 import { alleHoofdcategorieen, bewaardeVolgorde, verplaats } from './utils/categorieVolgorde'
 import { ORDENING_HOOFDCATEGORIEEN } from './data/schema'
@@ -443,6 +445,16 @@ export function App() {
   // en geen kopie: zo loopt het venster mee wanneer de tak intussen verandert, en
   // sluit het vanzelf wanneer de categorie er niet meer is.
   const [catWegId, setCatWegId] = useState<string | null>(null)
+  /**
+   * ⚠ EEN EIGEN POGING PER PLEK, en niet één gedeelde (ronde 68, tweede doorlichting).
+   * Met één gedeelde lekte een mislukking van de ene knop naar het volgende venster:
+   * je verwijderde een budget, dat mislukte in stilte, en het eerstvolgende
+   * bevestigingsvenster opende met "Verwijderen is niet gelukt" erin — nog vóór je
+   * iets had aangeraakt.
+   */
+  const catWegOpslag = useOpslagpoging()
+  const vraagOpslag = useOpslagpoging()
+  const budgetOpslag = useOpslagpoging()
   const catWeg = categorieen.find((c) => c.id === catWegId) ?? null
   const [bewerkRekening, setBewerkRekening] = useState<Rekening | null>(null)
   // Welke rekening staat rechts open? null = het formulier voor een nieuwe rekening.
@@ -981,22 +993,38 @@ export function App() {
       const r = await importeerBackup(tekst)
       await herlaad()
       onthoudFormaat(r)
+      // ⚠ RONDE 68 — DE MELDING VERZWEEG ÉÉN VAN DE VIJF UITKOMSTEN. `importeerBackup`
+      // telt ook regels uit een NIEUWERE versie van de app (`teNieuw`), en die kwamen
+      // in geen enkele zin voor. Zet je op je oude telefoon een back-up terug die je
+      // met een nieuwere versie maakte, dan werd élke regel geweigerd en las je
+      // "Hersteld: 0 toegevoegd, 0 al aanwezig, 0 ongeldig." — een zin die klinkt
+      // alsof het bestand leeg was, terwijl het voluit geweigerd is. De synchronisatie
+      // zegt het wél; dit was de enige plek die het niet deed.
       meldBackup(
-        r.verouderd > 0
+        // ⚠ Alleen wanneer er ook ÉCHT niets bijgekomen is. Een logboek bevat regels
+        // van álle toestellen, dus een bestand kan tegelijk regels toevoegen én regels
+        // weigeren — en dan zou "Niets hersteld" een tweede onwaarheid zijn.
+        r.teNieuw > 0 && r.toegevoegd === 0
           ? t(
-              'Hersteld: {toegevoegd} toegevoegd, {overgeslagen} al aanwezig, {ongeldig} ongeldig, {verouderd} uit een te oude versie (niet ingelezen).',
-              {
+              'Niets hersteld: dit bestand komt van een nieuwere versie van de app ({n} regels). Werk deze app eerst bij en probeer het dan opnieuw.',
+              { n: r.teNieuw },
+            )
+          : r.verouderd > 0
+            ? t(
+                'Hersteld: {toegevoegd} toegevoegd, {overgeslagen} al aanwezig, {ongeldig} ongeldig, {verouderd} uit een te oude versie (niet ingelezen).',
+                {
+                  toegevoegd: r.toegevoegd,
+                  overgeslagen: r.overgeslagen,
+                  ongeldig: r.ongeldig,
+                  verouderd: r.verouderd,
+                },
+              )
+            : t('Hersteld: {toegevoegd} toegevoegd, {overgeslagen} al aanwezig, {ongeldig} ongeldig.', {
                 toegevoegd: r.toegevoegd,
                 overgeslagen: r.overgeslagen,
                 ongeldig: r.ongeldig,
-                verouderd: r.verouderd,
-              },
-            )
-          : t('Hersteld: {toegevoegd} toegevoegd, {overgeslagen} al aanwezig, {ongeldig} ongeldig.', {
-              toegevoegd: r.toegevoegd,
-              overgeslagen: r.overgeslagen,
-              ongeldig: r.ongeldig,
-            }),
+              }),
+        r.teNieuw > 0 && r.toegevoegd === 0 ? 'fout' : 'ok',
       )
     } catch (e) {
       meldBackup(t('Herstellen mislukte: {fout}', { fout: e instanceof Error ? e.message : t('onbekende fout') }), 'fout')
@@ -1115,9 +1143,13 @@ export function App() {
   }
 
   async function slaRekeningOp(r: Rekening) {
-    setGekozenRekeningId(r.id)
+    // ⚠ RONDE 68 — EERST BEWAREN, DAN PAS KIEZEN. Andersom stond je bij een mislukte
+    // opslag naar het detailscherm te kijken van een rekening die niet in de database
+    // bestaat, met het formulier er nog open. Dezelfde regel als bij een nieuw
+    // dossier (`DossierSectie`), waar ze al met zoveel woorden in de code staat.
     await bewaarRekening(r)
     await herlaad()
+    setGekozenRekeningId(r.id)
     setBewerkRekening(null)
   }
 
@@ -1241,6 +1273,8 @@ export function App() {
   // middencategorieën, items, en de naam onder elke boeking die eraan hing —
   // met alleen "Categorie verwijderd" achteraf.
   function verwijderCat(id: string) {
+    // De melding van een vórige poging hoort niet in dit verse venster.
+    catWegOpslag.wis()
     setCatWegId(id)
   }
 
@@ -2315,10 +2349,20 @@ export function App() {
             <button
               type="button"
               className="knop knop-secundair knop-gevaar"
+              aria-busy={catWegOpslag.bezig}
+              // ⚠ RONDE 68 — HET VENSTER GING DICHT VÓÓR ER IETS GEBEURD WAS.
+              // Je las hier net hoeveel boekingen, budgetten en dossiers hun
+              // categorienaam zouden verliezen, drukte op "Ja, verwijder", zag het
+              // venster wegvallen — en mocht daaruit afleiden dat het gebeurd was.
+              // Mislukte het wegschrijven, dan stond de categorie er gewoon nog en
+              // was er geen woord gezegd. Nu blijft het venster staan tot het écht
+              // gelukt is.
               onClick={() => {
                 const doel = catWegId
-                setCatWegId(null)
-                if (doel) void verwijderCatEcht(doel)
+                if (!doel) return
+                void catWegOpslag.probeer(() => verwijderCatEcht(doel)).then((gelukt) => {
+                  if (gelukt) setCatWegId(null)
+                })
               }}
             >
               {t('Ja, verwijder')}
@@ -2350,6 +2394,7 @@ export function App() {
             <p className="rij-meta" style={{ margin: 0 }}>
               {t('Je kan dit meteen daarna nog ongedaan maken met de balk onderaan, maar die blijft niet lang staan.')}
             </p>
+            <Opslagfout fout={catWegOpslag.fout} zin={t('Verwijderen is niet gelukt. Er is niets weggehaald.')} />
           </div>
         )}
       </Dialoog>
@@ -2359,12 +2404,20 @@ export function App() {
           "Boek in" — en dat laatste kan ook vanuit het meldingenpaneel. */}
       <VasteLastVraag
         inhoud={vasteLastVraag}
+        bezig={vraagOpslag.bezig}
+        fout={vraagOpslag.fout}
+        // ⚠ RONDE 68 — DIT VENSTER LOOG. Het ging dicht en zette de boeking op
+        // "hierover is al gevraagd" vóór de koppeling geschreven was. Mislukte dat,
+        // dan bleef je vaste last als NIET betaald staan, kwam de vraag nooit meer
+        // terug, en maakte één tik op "Boek in" een tweede boeking bovenop de eerste.
         onJa={() => {
           const vraag = vasteLastVraag
-          setVasteLastVraag(null)
           if (!vraag) return
-          gevraagdOverBoeking.current.add(vraag.boeking.id)
-          void koppelAanVasteLast(vraag.boeking, vraag.post)
+          void vraagOpslag.probeer(() => koppelAanVasteLast(vraag.boeking, vraag.post)).then((gelukt) => {
+            if (!gelukt) return
+            gevraagdOverBoeking.current.add(vraag.boeking.id)
+            setVasteLastVraag(null)
+          })
         }}
         onAnnuleer={() => {
           const vraag = vasteLastVraag
@@ -2376,14 +2429,25 @@ export function App() {
         }}
         onNee={() => {
           const vraag = vasteLastVraag
-          setVasteLastVraag(null)
           if (!vraag) return
-          gevraagdOverBoeking.current.add(vraag.boeking.id)
           // ⚠ "Nee" betekent iets ANDERS per vraag. Na een boeking: laat maar, het
           // is een gewone uitgave. Vóór het inboeken: je wilde die vaste last
           // boeken, dus dan gebeurt dat alsnog — anders zou de knop "Boek in" na
           // een "nee" gewoon niets gedaan hebben.
-          if (vraag.soort === 'voor-inboeken') void boekTerugkerendEcht(vraag.post, vraag.maand)
+          //
+          // ⚠ En omdat er in dat tweede geval iets GESCHREVEN wordt, mag het venster
+          // ook daar pas dicht als dat gelukt is. Anders verdween de vraag, kwam ze
+          // nooit meer terug, en was er niets geboekt.
+          if (vraag.soort !== 'voor-inboeken') {
+            gevraagdOverBoeking.current.add(vraag.boeking.id)
+            setVasteLastVraag(null)
+            return
+          }
+          void vraagOpslag.probeer(() => boekTerugkerendEcht(vraag.post, vraag.maand)).then((gelukt) => {
+            if (!gelukt) return
+            gevraagdOverBoeking.current.add(vraag.boeking.id)
+            setVasteLastVraag(null)
+          })
         }}
       />
     </>
@@ -3120,6 +3184,14 @@ export function App() {
                           {t('Een terugbetaling in dezelfde categorie verlaagt het verbruik. Daardoor kan dit cijfer lager liggen dan de uitgaven in de Analyse.')}
                         </p>
                       )}
+                      {/* ⚠ RONDE 68, tweede doorlichting — het kruisje bij een budget
+                          ving zijn mislukking wél op maar toonde ze nergens. Dat was
+                          slechter dan vóór deze ronde: toen belandde ze tenminste nog
+                          als onafgevangen fout in de crashrapportage. */}
+                      <Opslagfout
+                        fout={budgetOpslag.fout}
+                        zin={t('Verwijderen is niet gelukt. Er is niets weggehaald.')}
+                      />
                       {geldendNu.length > 0 && (
                         <ul className="lijst">
                           {geldendNu.map((b) => {
@@ -3157,7 +3229,7 @@ export function App() {
                                           ? t('Verwijder budget {naam}', { naam })
                                           : t('Verwijder het budget van {naam} voor {maand}', { naam, maand: maandJaarLabel(maand) })
                                       }
-                                      onClick={() => verwijderBud(b.id)}
+                                      onClick={() => void budgetOpslag.probeer(() => verwijderBud(b.id))}
                                     >
                                       ×
                                     </button>
@@ -3598,7 +3670,12 @@ export function App() {
             <CategorieBoom
               aanpassingen={subcategorieen}
               eigenCategorieen={categorieen}
-              onToevoegen={(categorieId, naam) => void voegSubcategorieToe({ subnaam: naam, categorie: { id: categorieId } })}
+              // ⚠ De belofte DOORGEVEN en niet met `void` weggooien: de boom wacht
+              // erop en houdt je ingetikte woord vast wanneer het wegschrijven
+              // mislukt (ronde 68).
+              onToevoegen={(categorieId, naam) =>
+                voegSubcategorieToe({ subnaam: naam, categorie: { id: categorieId } }).then(() => undefined)
+              }
               onWijzigen={wijzigSubcategorie}
               onVerwijderen={verwijderSubcategorieH}
               onCategorieToevoegen={voegCategorieOnderToe}

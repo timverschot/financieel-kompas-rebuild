@@ -310,3 +310,48 @@ describe('CategorieBoom — zoekstand en handmatig open-/dichtklappen', () => {
     expect(zichtbareCategorieen.length).toBeLessThan(6)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 68 — elke mislukking zegt het.
+//
+// Deze boom wiste het invoerveld en sloot de rij vóór er iets geschreven was. Bij een
+// volle opslag was het ingetikte woord dus weg, stond er niets nieuws in de lijst, en
+// verscheen er geen letter uitleg. Je tikte het opnieuw. En nog eens.
+// ---------------------------------------------------------------------------
+describe('CategorieBoom — een mislukte opslag', () => {
+  it('houdt het ingetikte woord vast en zegt wat er misging', async () => {
+    const user = userEvent.setup()
+    const onToevoegen = vi.fn().mockRejectedValue(new Error('QuotaExceededError'))
+    renderBoom({ onToevoegen })
+
+    await user.click(screen.getByRole('button', { name: /Voeding/ }))
+    await user.click(await screen.findByRole('button', { name: /Zuivel en Kaas/ }))
+    await user.click(screen.getByRole('button', { name: 'Voeg subcategorie toe aan Zuivel en Kaas' }))
+    await user.type(screen.getByLabelText('Nieuwe subcategorie in Zuivel en Kaas'), 'Kefir')
+    await user.click(screen.getByRole('button', { name: 'Voeg deze subcategorie toe in Zuivel en Kaas' }))
+
+    expect(onToevoegen).toHaveBeenCalled()
+    // Het veld staat er nog, mét het woord erin.
+    expect((screen.getByLabelText('Nieuwe subcategorie in Zuivel en Kaas') as HTMLInputElement).value).toBe('Kefir')
+    // En er staat waarom, met de raad die bij een volle schijf hoort.
+    expect(await screen.findByRole('alert')).toHaveTextContent('De opslag van dit toestel zit vol')
+  })
+
+  it('houdt de bewerkrij open wanneer hernoemen mislukt', async () => {
+    const user = userEvent.setup()
+    const onWijzigen = vi.fn().mockRejectedValue(new Error('database geweigerd'))
+    renderBoom({ onWijzigen })
+
+    await user.click(screen.getByRole('button', { name: /Voeding/ }))
+    await user.click(await screen.findByRole('button', { name: /Zuivel en Kaas/ }))
+    await user.click(screen.getByRole('button', { name: 'Wijzig Eieren' }))
+    const veld = screen.getByLabelText('Nieuwe naam voor Eieren')
+    await user.clear(veld)
+    await user.type(veld, 'Eitjes')
+    await user.click(screen.getByRole('button', { name: 'Bewaar' }))
+
+    expect((screen.getByLabelText('Nieuwe naam voor Eieren') as HTMLInputElement).value).toBe('Eitjes')
+    expect(await screen.findByRole('alert')).toHaveTextContent('database geweigerd')
+  })
+})
+

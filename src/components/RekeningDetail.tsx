@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { TxFilter } from '../utils/transactieFilter'
 import type { Categorie, Overboeking, Rekening, Transactie, Waardering } from '../data/schema'
 import { labelVanCategorie } from '../data/categorieen/resolve'
@@ -12,6 +12,8 @@ import { dagJaar, huidigeMaand, vandaag } from '../utils/datum'
 import { centenNaarInvoer, formatEuro, invoerNaarCenten } from '../utils/format'
 import { Bedrag, Kaart, Leeg, Stat } from '../ui/basis'
 import { useT } from '../i18n'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 import { nieuwId } from '../data/sync/id'
 
@@ -66,6 +68,7 @@ function WaardeBijwerken({
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
   const [gelukt, setGelukt] = useState<string | null>(null)
+  const nieuwIdRef = useRef(nieuwId())
 
   const geldendId = geldendeWaardering(rekening.id, waarderingen, vandaagISO)?.id
 
@@ -98,6 +101,16 @@ function WaardeBijwerken({
     return tx + ob
   }, [transacties, overboekingen, rekening.id, datum])
 
+  async function verwijderWaardering(id: string) {
+    setFout(null)
+    setGelukt(null)
+    try {
+      await onWaarderingVerwijderen(id)
+    } catch {
+      setFout(t('Verwijderen is niet gelukt. De waardering staat er nog.'))
+    }
+  }
+
   async function bewaar() {
     if (!geldig || bezig) return
     setBezig(true)
@@ -106,7 +119,9 @@ function WaardeBijwerken({
     try {
       const n = notitie.trim()
       await onWaardering({
-        id: bestaandeVandaag ? bestaandeVandaag.id : nieuwId(),
+        // ⚠ Eén vast id per invulbeurt (ronde 68): een tweede poging na een mislukking
+        // hoort dezelfde waardering te overschrijven, niet een tweede te maken.
+        id: bestaandeVandaag ? bestaandeVandaag.id : nieuwIdRef.current,
         rekeningId: rekening.id,
         datum,
         saldo: centen,
@@ -114,6 +129,7 @@ function WaardeBijwerken({
       })
       setSaldo('')
       setNotitie('')
+      nieuwIdRef.current = nieuwId()
       setGelukt(t('Vastgelegd: op {datum} stond er {bedrag}.', { datum: dagJaar(datum), bedrag: formatEuro(centen) }))
     } catch {
       // De invoer blijft staan: een mislukte opslag mag je je werk niet kosten.
@@ -247,7 +263,11 @@ function WaardeBijwerken({
                       type="button"
                       className="knop knop-kaal knop-gevaar"
                       aria-label={t('Verwijder waardering van {datum}', { datum: dagJaar(w.datum) })}
-                      onClick={() => onWaarderingVerwijderen(w.id)}
+                      // ⚠ RONDE 68 — hier gebeurde zichtbaar niets bij een mislukking.
+                      // Deze kaart heeft haar eigen meldregel al (voor het BEWAREN);
+                      // die gebruiken we ook hier, in plaats van er een tweede naast
+                      // te zetten.
+                      onClick={() => void verwijderWaardering(w.id)}
                     >
                       ×
                     </button>
@@ -543,6 +563,8 @@ export function RekeningDetail({
   onBewerkTransactie?: (tx: Transactie) => void
 }) {
   const { t } = useT()
+  // Vangt een mislukte opslag op en zegt het (ronde 68).
+  const opslag = useOpslagpoging()
 
   const dag = vandaag()
   const maand = huidigeMaand()
@@ -856,7 +878,7 @@ export function RekeningDetail({
                 ? t('Herstel rekening {naam}', { naam: rekening.naam })
                 : t('Archiveer rekening {naam}', { naam: rekening.naam })
             }
-            onClick={() => onArchiveer(rekening, !rekening.gearchiveerd)}
+            onClick={() => void opslag.probeer(() => onArchiveer(rekening, !rekening.gearchiveerd))}
           >
             {rekening.gearchiveerd ? t('Heropenen') : t('Archiveren')}
           </button>
@@ -864,11 +886,12 @@ export function RekeningDetail({
             type="button"
             className="knop knop-secundair knop-gevaar"
             aria-label={t('Verwijder rekening {naam}', { naam: rekening.naam })}
-            onClick={() => onVerwijder(rekening.id)}
+            onClick={() => void opslag.probeer(() => onVerwijder(rekening.id))}
           >
             {t('Verwijderen')}
           </button>
         </div>
+        <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Er is niets veranderd.')} />
       </Kaart>
     </section>
   )

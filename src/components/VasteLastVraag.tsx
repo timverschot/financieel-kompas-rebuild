@@ -1,6 +1,7 @@
 import type { TerugkerendePost, Transactie } from '../data/schema'
 import { Dialoog } from '../ui/Dialoog'
 import { useT } from '../i18n'
+import { Opslagfout } from '../ui/Opslagfout'
 import { formatEuro } from '../utils/format'
 import { dagJaar } from '../utils/datum'
 
@@ -39,10 +40,20 @@ export function VasteLastVraag({
   onJa,
   onNee,
   onAnnuleer,
+  bezig = false,
+  fout = '',
 }: {
   inhoud: VasteLastVraagInhoud | null
   onJa: () => void
   onNee: () => void
+  /** Waar zolang het antwoord weggeschreven wordt (ronde 68). */
+  bezig?: boolean
+  /**
+   * De melding wanneer dat wegschrijven mislukte. ⚠ Het venster blijft dan OPEN
+   * staan: sloot het toch, dan zou het beweren dat je antwoord verwerkt is terwijl
+   * je vaste last als niet-betaald blijft staan én de vraag nooit meer terugkomt.
+   */
+  fout?: string
   /**
    * Wegklikken zonder te antwoorden: Escape, het kruisje, een klik naast het
    * venster, de terugknop.
@@ -93,14 +104,17 @@ export function VasteLastVraag({
         </p>
       </div>
       <div className="knoprij" style={{ marginTop: 12 }}>
-        <button type="button" className="knop knop-primair" onClick={onJa}>
+        <button type="button" className="knop knop-primair" aria-busy={bezig} onClick={onJa}>
           {t('Ja, dit is die betaling')}
         </button>
-        <button type="button" className="knop knop-secundair" onClick={onNee}>
+        <button type="button" className="knop knop-secundair" aria-busy={bezig} onClick={onNee}>
           {soort === 'na-boeking'
             ? t('Nee, aparte uitgave')
             : t('Nee, boek {vast} bij', { vast: postBedrag })}
         </button>
+      </div>
+      <div style={{ marginTop: 8 }}>
+        <Opslagfout fout={fout} zin={t('Je antwoord is niet bewaard. Er is niets veranderd.')} />
       </div>
     </Dialoog>
   )

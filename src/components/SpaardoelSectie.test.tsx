@@ -168,3 +168,40 @@ describe('SpaardoelSectie — haal ik het?', () => {
     expect(screen.getByText('Datum voorbij')).toBeInTheDocument()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 68 — de sectie mag de fout van het FORMULIER niet opvangen.
+//
+// ⚠ Dit ging in deze ronde eerst mis en is door de doorlichting gevonden: de sectie
+// ving de mislukking op, het formulier zag daardoor "gelukt", maakte zichzelf leeg,
+// en je invoer was tóch weg — mét een melding erbij. Precies de fout die deze ronde
+// moest uitroeien.
+// ---------------------------------------------------------------------------
+describe('SpaardoelSectie — een mislukte opslag van het formulier', () => {
+  it('laat de mislukking dóór naar het formulier, dat je invoer vasthoudt', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = vi.fn().mockRejectedValue(new Error('geweigerd'))
+    render(
+      <SpaardoelSectie
+        spaardoelen={[]}
+        rekeningen={rekeningen}
+        transacties={[]}
+        waarderingen={[]}
+        overboekingen={[]}
+        onOpslaan={onOpslaan}
+        onVerwijderen={vi.fn()}
+      />,
+    )
+
+    await user.type(screen.getByLabelText('Doelnaam'), 'Buffer')
+    await user.type(screen.getByLabelText('Doelbedrag (€)'), '3000')
+    await user.click(screen.getByRole('button', { name: 'Doel toevoegen' }))
+
+    expect(onOpslaan).toHaveBeenCalled()
+    // De velden staan er nog: leegmaken hoort ná een GESLAAGDE opslag.
+    expect((screen.getByLabelText('Doelnaam') as HTMLInputElement).value).toBe('Buffer')
+    expect((screen.getByLabelText('Doelbedrag (€)') as HTMLInputElement).value).toBe('3000')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Je invoer staat er nog')
+  })
+})
+

@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Dossier, Kind, Onderhoudsbetaling, Onderhoudsbijdrage } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
@@ -13,6 +13,8 @@ import {
   type Indexreeks,
 } from '../data/indexreeksen'
 import { useT, type Vertaler } from '../i18n'
+import { Opslagfout } from '../ui/Opslagfout'
+import { useOpslagpoging } from '../ui/opslagpoging'
 import { Bedrag, EersteStapKnop, Kaart, Leeg } from '../ui/basis'
 import { centenNaarInvoer, formatEuro, invoerNaarCenten } from '../utils/format'
 import { exportFoutmelding } from '../utils/appVersie'
@@ -83,6 +85,10 @@ export function OnderhoudsbijdrageSectie({
   vandaagISO?: string
 }) {
   const { t } = useT()
+  // Vangt een mislukte opslag op en zegt het (ronde 68).
+  const opslag = useOpslagpoging()
+  // ⚠ Eén vast id voor het aanmaken van de bijdrage; zie de knop hieronder.
+  const nieuwIdRef = useRef(nieuwId())
   const [toonAfspraak, setToonAfspraak] = useState(false)
   const [toonOpbouw, setToonOpbouw] = useState(false)
   const [toonAchterstand, setToonAchterstand] = useState(false)
@@ -111,20 +117,35 @@ export function OnderhoudsbijdrageSectie({
             // grote kop "Bijdrage vandaag € 250,00 — gelijk aan de regeling van
             // vandaag": twee verzonnen getallen, in precies het vak waar elders een
             // verdedigbaar cijfer staat.
-            onClick={async () => {
-              await onOpslaan({
-                id: nieuwId(),
-                dossierId: dossier.id,
-                richting: 'jij-ontvangt',
-                basisbedrag: 25000,
-                datumRegeling: vandaagISO,
-              })
-              setToonAfspraak(true)
+            onClick={() => {
+              // ⚠ Eén vast id (ronde 68): mislukt dit en probeer je het opnieuw, dan
+              // hoort er geen tweede bijdrage in hetzelfde dossier te ontstaan — het
+              // dossierscherm toont er dan maar één en de andere blijft onzichtbaar.
+              void opslag
+                .probeer(() =>
+                  onOpslaan({
+                    id: nieuwIdRef.current,
+                    dossierId: dossier.id,
+                    richting: 'jij-ontvangt',
+                    basisbedrag: 25000,
+                    datumRegeling: vandaagISO,
+                  }),
+                )
+                .then((gelukt: boolean) => {
+                  if (!gelukt) return
+                  // ⚠ Het id moet ververst worden: deze sectie blijft gemount wanneer je
+                  // van dossier wisselt, en zonder dit kreeg de bijdrage van het tweede
+                  // dossier hetzelfde id als die van het eerste — dan verhuist de eerste
+                  // mét haar betalingen naar het andere dossier.
+                  nieuwIdRef.current = nieuwId()
+                  setToonAfspraak(true)
+                })
             }}
           >
             {t('Onderhoudsbijdrage instellen')}
           </button>
         </div>
+        <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Er is niets veranderd.')} />
       </Kaart>
     )
   }
@@ -166,7 +187,7 @@ export function OnderhoudsbijdrageSectie({
         <button
           className="knop knop-kaal knop-gevaar"
           aria-label={t('Onderhoudsbijdrage verwijderen')}
-          onClick={() => onVerwijderen(bijdrage.id)}
+          onClick={() => void opslag.probeer(() => onVerwijderen(bijdrage.id))}
         >
           ×
         </button>
@@ -311,6 +332,7 @@ export function OnderhoudsbijdrageSectie({
           {fout}
         </p>
       )}
+      <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Er is niets veranderd.')} />
       <p className="rij-meta" role="status" style={{ margin: 0 }}>
         {melding}
       </p>
@@ -427,6 +449,10 @@ function Achterstand({
   const [bedrag, setBedrag] = useState('')
   const [voorMaand, setVoorMaand] = useState('')
   const [fout, setFout] = useState('')
+  // Vangt een mislukte opslag op en zegt het (ronde 68).
+  const opslag = useOpslagpoging()
+  // ⚠ Eén vast id per betaling: een tweede poging hoort dezelfde te overschrijven.
+  const nieuwIdRef = useRef(nieuwId())
 
   async function voegToe(e: FormEvent) {
     e.preventDefault()
@@ -436,13 +462,21 @@ function Achterstand({
       return
     }
     setFout('')
-    await onBetalingOpslaan({
-      id: nieuwId(),
-      bijdrageId: bijdrage.id,
-      datum,
-      bedrag: centen,
-      ...(voorMaand ? { voorMaand } : {}),
-    })
+    // ⚠ RONDE 68 — dit is geld. Mislukte het wegschrijven, dan bleef je bedrag in het
+    // veld staan, verscheen er geen letter, en klopte de achterstandsberekening niet
+    // met wat je dacht ingevoerd te hebben. Eén vast id, zodat een tweede poging
+    // dezelfde betaling overschrijft in plaats van er twee te maken.
+    const gelukt = await opslag.probeer(() =>
+      onBetalingOpslaan({
+        id: nieuwIdRef.current,
+        bijdrageId: bijdrage.id,
+        datum,
+        bedrag: centen,
+        ...(voorMaand ? { voorMaand } : {}),
+      }),
+    )
+    if (!gelukt) return
+    nieuwIdRef.current = nieuwId()
     setBedrag('')
     setVoorMaand('')
   }
@@ -500,6 +534,7 @@ function Achterstand({
             {fout}
           </p>
         )}
+        <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Er is niets veranderd.')} />
         <div className="knoprij">
           <button type="submit" className="knop knop-secundair knop-klein">
             {t('Betaling toevoegen')}
@@ -526,7 +561,7 @@ function Achterstand({
                 <button
                   className="knop knop-kaal knop-gevaar"
                   aria-label={t('Verwijder betaling van {datum}', { datum: b.datum })}
-                  onClick={() => onBetalingVerwijderen(b.id)}
+                  onClick={() => void opslag.probeer(() => onBetalingVerwijderen(b.id))}
                 >
                   ×
                 </button>
@@ -568,6 +603,8 @@ function Regeling({
   const [gekozenKinderen, setGekozenKinderen] = useState<string[]>(bijdrage.kindIds ?? [])
   const [fout, setFout] = useState('')
   const [regelingMelding, setRegelingMelding] = useState('')
+  // Vangt een mislukte opslag op en zegt het (ronde 68).
+  const opslag = useOpslagpoging()
 
   const eigen = bijdrage.eigenIndexcijfers ?? {}
 
@@ -593,7 +630,8 @@ function Regeling({
     // het scherm zegt dat — dezelfde behandeling als bij een basisjaarwissel.
     const reeksGewisseld = reeks !== reeksVan(bijdrage.indexreeks)
     const eigenWeg = reeksGewisseld && Object.keys(eigen).length > 0
-    await onOpslaan({
+    const gelukt = await opslag.probeer(() =>
+      onOpslaan({
       ...bijdrage,
       basisbedrag: centen,
       datumRegeling: datum,
@@ -615,7 +653,9 @@ function Regeling({
         : { aanvangsindexHandmatig: undefined }),
       ...(eind ? { eindDatum: eind } : { eindDatum: undefined }),
       ...(gekozenKinderen.length > 0 ? { kindIds: gekozenKinderen } : { kindIds: undefined }),
-    })
+      }),
+    )
+    if (!gelukt) return
     if (eigenWeg) {
       setRegelingMelding(
         t('Je eigen indexcijfers stonden in de vorige reeks en zijn verwijderd. Zet ze opnieuw met cijfers uit de {nieuw}.', {
@@ -673,12 +713,20 @@ function Regeling({
     const oudeBasis = (bijdrage.indexBasisjaar ?? basisNu) !== basisNu
     const oudeReeks = (bijdrage.eigenIndexreeks ?? reeks) !== reeks
     const opnieuw = oudeBasis || oudeReeks
-    await onOpslaan({
-      ...bijdrage,
-      eigenIndexcijfers: opnieuw ? { [eigenMaand]: cijfer } : { ...eigen, [eigenMaand]: cijfer },
-      indexBasisjaar: basisNu,
-      eigenIndexreeks: reeks,
-    })
+    // ⚠ Mislukte dit in stilte, dan bleef precies het mengsel van reeksen staan
+    // waarvoor de uitleg hierboven waarschuwt — én de zin die dat uitlegt bleef weg.
+    if (
+      !(await opslag.probeer(() =>
+        onOpslaan({
+          ...bijdrage,
+          eigenIndexcijfers: opnieuw ? { [eigenMaand]: cijfer } : { ...eigen, [eigenMaand]: cijfer },
+          indexBasisjaar: basisNu,
+          eigenIndexreeks: reeks,
+        }),
+      ))
+    ) {
+      return
+    }
     if (oudeBasis) {
       setRegelingMelding(
         t('Je eerdere indexcijfers stonden in basis {oud} = 100 en zijn verwijderd. Zet ze opnieuw met de cijfers uit de huidige reeks.', {
@@ -700,10 +748,12 @@ function Regeling({
   async function wisIndex(maand: string) {
     const rest = { ...eigen }
     delete rest[maand]
-    await onOpslaan({
-      ...bijdrage,
-      ...(Object.keys(rest).length > 0 ? { eigenIndexcijfers: rest } : { eigenIndexcijfers: undefined }),
-    })
+    await opslag.probeer(() =>
+      onOpslaan({
+        ...bijdrage,
+        ...(Object.keys(rest).length > 0 ? { eigenIndexcijfers: rest } : { eigenIndexcijfers: undefined }),
+      }),
+    )
   }
 
   return (
@@ -858,6 +908,7 @@ function Regeling({
         <p className="rij-meta" role="status" style={{ margin: 0 }}>
           {regelingMelding}
         </p>
+        <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Er is niets veranderd.')} />
         {Object.keys(eigen).length > 0 && (
           <ul className="lijst">
             {Object.entries(eigen)
