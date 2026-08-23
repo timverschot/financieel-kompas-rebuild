@@ -87,7 +87,9 @@ describe('bepaalBuffer — andere termijnen dan maandelijks', () => {
   }
 
   it('rekent een jaarlijkse kost om naar één maand', () => {
-    const b = bepaalBuffer([spaar], [], [], [jaarpremie], [], '2026-07-15')
+    // ⚠ Op of ná de startmaand (2026-08); daarvóór telt de premie sinds ronde 71 niet
+    // mee — zie de test onderaan.
+    const b = bepaalBuffer([spaar], [], [], [jaarpremie], [], '2026-08-15')
     // € 1.200 per jaar = € 100 per maand, dus € 6.000 spaargeld dekt 60 maanden.
     expect(b.vasteLastenPerMaand).toBe(10000)
     expect(b.maanden).toBe(60)
@@ -95,7 +97,26 @@ describe('bepaalBuffer — andere termijnen dan maandelijks', () => {
 
   it('telt een kwartaalkost als een derde per maand', () => {
     const kwartaal: TerugkerendePost = { ...jaarpremie, bedrag: -30000, frequentie: 'kwartaal' }
-    expect(bepaalBuffer([spaar], [], [], [kwartaal], [], '2026-07-15').vasteLastenPerMaand).toBe(10000)
+    expect(bepaalBuffer([spaar], [], [], [kwartaal], [], '2026-08-15').vasteLastenPerMaand).toBe(10000)
+  })
+
+  it('telt een kost die nog niet begonnen is niet mee (ronde 71)', () => {
+    // ⚠ De premie begint in augustus. In juli trok ze je buffercijfer al omlaag voor
+    // een kost die nog niet bestaat — en sinds ronde 70 kiest de gebruiker die maand
+    // zelf, dus dat kan jaren vooruit liggen.
+    const b = bepaalBuffer([spaar], [], [], [jaarpremie], [], '2026-07-15')
+    expect(b.vasteLastenPerMaand).toBe(0)
+    // Zonder vaste lasten is er geen buffercijfer om te tonen.
+    expect(b.bruikbaar).toBe(false)
+    expect(b.maanden).toBeNull()
+  })
+
+  it('laat een maandelijkse post ongemoeid, ook met een startmaand (ronde 71)', () => {
+    // `valtInMaand` kort een maandelijkse post af vóór de startmaand bekeken wordt,
+    // dus dat veld is daar een dood veld. Zou de begincontrole hem wél lezen, dan zou
+    // dezelfde post in het ene cijfer meetellen en in het andere niet.
+    const maandelijks: TerugkerendePost = { ...jaarpremie, bedrag: -10000, frequentie: 'maand', startMaand: '2029-03' }
+    expect(bepaalBuffer([spaar], [], [], [maandelijks], [], '2026-07-15').vasteLastenPerMaand).toBe(10000)
   })
 })
 

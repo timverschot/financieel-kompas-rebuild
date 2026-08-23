@@ -552,6 +552,23 @@ h4 {
   justify-content: flex-end;
 }
 
+/* Het invoerblok van de aanvinklijst mag afbreken (ronde 71). Op een rij die al
+   toegevoegd is staan sinds deze ronde de badge "toegevoegd" én de knop "Nog een"
+   naast het bedragveld en het periodewoord; samen is dat op een telefoon breder dan de
+   321 px die `.rij-acties` daar krijgt. `.lijst` heeft `overflow: hidden`, dus de
+   overloop zou weggeknipt worden zonder dat de pagina breder wordt — precies het
+   faalpatroon waar het commentaar bij `.rij-kost` voor waarschuwt. */
+.rij-kost-invoer > .rij-acties {
+  flex-wrap: wrap;
+  row-gap: 8px;
+  /* ⚠ `max-width` is wat het afbreken écht mogelijk maakt. Vanaf 560 px staat dit blok
+     op `flex: 0 0 auto`, dus het meet zichzelf op zijn inhoud in ÉÉN regel en wrapt
+     nooit uit zichzelf — het liep gewoon 32 px buiten de kolom, waar `.lijst` het met
+     `overflow: hidden` afknipte. Met een bovengrens moet het binnen de rij passen, en
+     dan doet `flex-wrap` zijn werk. */
+  max-width: 100%;
+}
+
 .kost-bedrag {
   flex: 1 1 auto;
   min-width: 96px;
@@ -634,6 +651,19 @@ h4 {
    volle kolombreedte. Nagemeten op 393, 600 en 1440 px. */
 .kost-ritme-paneel {
   margin-top: 6px;
+}
+
+/* Het vinkje "hier maandelijks voor opzijzetten" krijgt de volle breedte (ronde 71).
+   `.veldrij > .veldgroep` staat op `flex: 1 1 160px`, dus het vinkje kwam met een label
+   van 32 tekens en een uitlegzin van 87 tekens in een halve kolom terecht — op een
+   telefoon zo'n 154 px. Op Budget → Vast staat exact hetzelfde vinkje buiten een
+   `.veldrij` en heeft het wél de volle breedte.
+
+   ⚠ Drie klassen diep, met opzet: `.kost-ritme-paneel > .veldgroep` alleen zou even
+   specifiek zijn als `.veldrij > .veldgroep` verderop in dit bestand, en dan wint de
+   laatste — de val die deze ronde al twee keer gekost heeft. */
+.kost-ritme-paneel > .veldgroep.kost-opzij {
+  flex: 1 1 100%;
 }
 
 @media (min-width: 560px) {

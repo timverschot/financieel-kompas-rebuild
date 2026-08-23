@@ -33,7 +33,9 @@ import { openstaandKapitaal } from '../utils/lening'
 import { saldoVanRekening, totaalSaldoVan } from '../utils/saldo'
 import {
   isGestopt,
+  isNogNietBegonnen,
   maandbedrag,
+  opzijPerMaand,
   verschuifMaand,
   intervalVan,
   FREQUENTIES,
@@ -120,6 +122,22 @@ function isSluipend(post: TerugkerendePost): boolean {
  * dan is het geen aanvinklijst meer maar twintig keer hetzelfde formulier.
  */
 /**
+ * Alles wat één rij van de aanvinklijst invult (ronde 71).
+ *
+ * Eén object en geen zes losse argumenten: dit groeide van (voorstel, centen) naar
+ * zes waarden, en bij die vorm staat op de aanroepplaats niet meer te lezen wélke
+ * string de startmaand is en welke de naam.
+ */
+export type NieuweKost = {
+  naam: string
+  centen: number
+  frequentie: Frequentie
+  startMaand: string
+  dag: number
+  opbouwen: boolean
+}
+
+/**
  * Hoe vaak een BESTAANDE post terugkomt, in woorden (ronde 70).
  *
  * Los van de keuze op de rij: die gaat over wat je nog gaat toevoegen, deze over wat
@@ -151,6 +169,7 @@ function KostRegel({
   t,
   bestaand,
   bezig,
+  naamBestaat,
   fout,
   velden,
   volgende,
@@ -171,12 +190,24 @@ function KostRegel({
    */
   bestaand: TerugkerendePost | undefined
   bezig: boolean
-  onToevoegen: (voorstel: Kostvoorstel, centen: number, frequentie: Frequentie, startMaand: string) => Promise<boolean>
+  onToevoegen: (voorstel: Kostvoorstel, invoer: NieuweKost) => Promise<boolean>
+  /** Staat er al een vaste last met deze naam? Voor de tweede kost van dezelfde soort. */
+  naamBestaat: (naam: string) => boolean
   fout: string | null
   velden: React.MutableRefObject<Record<string, HTMLInputElement | null>>
   volgende: string | null
 }) {
-  const alToegevoegd = bestaand !== undefined
+  // RONDE 71 — NOG EEN VAN DEZELFDE SOORT.
+  //
+  // Wie twee auto's heeft, heeft twee autoverzekeringen. De lijst herkent een
+  // voorstel aan zijn NAAM, dus zodra er ergens een post "Autoverzekering" stond,
+  // zette die rij zichzelf op "toegevoegd" en verdween het invoerveld — er was geen
+  // weg naar een tweede. Met `extra` gaat de rij terug open, mét een naamveld: twee
+  // posten die allebei "Autoverzekering" heten zijn in je lijsten, je grafieken en je
+  // belletje niet uit elkaar te houden.
+  const [extra, setExtra] = useState(false)
+  const alToegevoegd = bestaand !== undefined && !extra
+  const [naam, setNaam] = useState(() => t(voorstel.naam))
   const [bedrag, setBedrag] = useState('')
   // RONDE 70 — JE KIEST ZELF HOE VAAK HET TERUGKOMT.
   //
@@ -194,10 +225,25 @@ function KostRegel({
   const [frequentie, setFrequentie] = useState<Frequentie>(voorstel.frequentie ?? 'maand')
   const [startMaand, setStartMaand] = useState(() => verschuifMaand(huidigeMaand(), 1))
   const [ritmeOpen, setRitmeOpen] = useState(false)
+  // RONDE 71 — de dag en het opzijzetten stonden alleen op Budget → Vast.
+  //
+  // De dag werd hier stil op vandaag gezet (hoogstens 28, want 29-31 bestaan niet in
+  // februari), en wie hem wilde bijstellen moest het scherm verlaten. Het opzijzetten
+  // werd zelfs nooit gevraagd: elke jaarpost uit deze lijst zette het volle bedrag in
+  // één klap in je plan van de maand dat ze vervalt.
+  const [dag, setDag] = useState(() => String(Math.min(Number(vandaag().slice(8, 10)), 28)))
+  const [opbouwen, setOpbouwen] = useState(false)
   const centen = invoerNaarCenten(bedrag)
   const periodiek = frequentie !== 'maand'
   const startGeldig = !periodiek || /^\d{4}-\d{2}$/.test(startMaand)
-  const geldig = bedrag.trim().length > 0 && Number.isFinite(centen) && centen > 0 && startGeldig
+  const dagGetal = Number(dag)
+  const dagGeldig = Number.isInteger(dagGetal) && dagGetal >= 1 && dagGetal <= 28
+  // Alleen bij een TWEEDE kost van dezelfde soort telt de naam als invoer. Bij de
+  // eerste is het gewoon de naam van het voorstel en valt er niets te botsen.
+  const naamSchoon = naam.trim()
+  const naamGeldig = !extra || (naamSchoon.length > 0 && !naamBestaat(naamSchoon))
+  const geldig =
+    bedrag.trim().length > 0 && Number.isFinite(centen) && centen > 0 && startGeldig && dagGeldig && naamGeldig
   const veldId = `opstelling-${voorstel.sleutel}`
   // Niet 'jaar of maand': het type kent vier frequenties, en kwartaal/semester
   // kregen anders stil het woord "per maand" te zien (ronde 65).
@@ -207,7 +253,12 @@ function KostRegel({
   // en "per jaar" (uit het voorstel): het paneeltje is daar verborgen, dus de lokale
   // keuze werd nooit meer gecorrigeerd. Twee woorden over hetzelfde record, naast
   // elkaar op één regel.
-  const effectieveFrequentie: Frequentie = bestaand ? (bestaand.frequentie ?? 'maand') : frequentie
+  // ⚠ `alToegevoegd` en niet `bestaand`: in de `extra`-modus vult de rij een NIEUWE
+  // post in, dus dan hoort het woord bij de keuze te horen en niet bij de post die er
+  // al staat. Anders las het bedragveld "per maand" (uit de oude post) terwijl de
+  // keuzelijst op "Eén keer per jaar" stond — en dan tik je een maandbedrag in een
+  // jaarpost. Precies de factorfout die ronde 65 op dit scherm heeft weggenomen.
+  const effectieveFrequentie: Frequentie = alToegevoegd && bestaand ? (bestaand.frequentie ?? 'maand') : frequentie
   const periode = t(PERIODE_SLEUTELS[effectieveFrequentie])
   // De samenvatting op de rij. Bij een periodieke post hoort de eerste vervalmaand
   // erbij: zonder die maand zegt "om de 3 maanden" niet wélke drie.
@@ -230,20 +281,38 @@ function KostRegel({
   // ALTIJD — leeg wanneer alles klopt — want een `role="status"` die pas mét zijn
   // tekst verschijnt, wordt door sommige schermlezers overgeslagen.
   const redenId = `${veldId}-reden`
-  const reden = !startGeldig
-    ? t('Kies eerst in welke maand de eerste betaling valt.')
-    : bedrag.trim().length > 0 && !geldig
-      ? t('Geef een bedrag groter dan nul.')
-      : ''
+  const reden = !naamGeldig
+    ? naamSchoon.length === 0
+      ? t('Geef deze kost een naam.')
+      : t('Er staat al een vaste last met die naam. Geef deze een andere naam, bijvoorbeeld met het voertuig erbij.')
+    : !startGeldig
+      ? t('Kies eerst in welke maand de eerste betaling valt.')
+      : !dagGeldig
+        ? t('De dag van de maand is een getal van 1 tot 28.')
+        : bedrag.trim().length > 0 && !geldig
+          ? t('Geef een bedrag groter dan nul.')
+          : ''
 
   async function verzend() {
     if (!geldig || bezig) return
-    const gelukt = await onToevoegen(voorstel, centen, frequentie, startMaand)
+    const gelukt = await onToevoegen(voorstel, {
+      naam: extra ? naamSchoon : t(voorstel.naam),
+      centen,
+      frequentie,
+      startMaand,
+      dag: dagGetal,
+      opbouwen,
+    })
     // Alleen leegmaken wanneer het écht gelukt is. Wiste je het veld ook bij een
     // mislukking, dan tikt iemand zonder rekening twintig bedragen in en ziet ze
     // allemaal verdampen zonder te weten waarom.
     if (!gelukt) return
     setBedrag('')
+    // Terug naar de rusttoestand: de rij toont weer "toegevoegd" met de knop om er
+    // nóg een bij te zetten, en het naamveld vertrekt weer vanaf het voorstel.
+    setExtra(false)
+    setRitmeOpen(false)
+    setNaam(t(voorstel.naam))
     // De rij verdwijnt niet uit beeld, maar het veld wordt uitgeschakeld — dus de
     // focus zou naar <body> vallen en je zou na élke regel opnieuw van bovenaf naar
     // beneden moeten tabben. Ga daarom door naar het volgende bedragveld.
@@ -277,7 +346,7 @@ function KostRegel({
             exact de fout die ronde 67 op dit scherm vond (zeven dode verwijzingen).
             `aria-expanded` zegt al wat er gebeurt, en het paneel staat er meteen
             onder. */}
-        {bestaand ? (
+        {alToegevoegd && bestaand ? (
           <span className="rij-meta">{ritmeVan(t, bestaand)}</span>
         ) : (
           <button
@@ -291,7 +360,7 @@ function KostRegel({
             // negatieve marge voor het raakvlak bleef staan terwijl de padding
             // weggevaagd werd, dus de knop overlapte haar buren met 24 px.
             className="kost-ritme"
-            aria-expanded={ritmeOpen}
+            aria-expanded={ritmeOpen || !startGeldig || !dagGeldig || !naamGeldig}
             // De naam van het voorstel maakt de knop uniek: zonder haar dragen
             // zevenendertig knoppen op één scherm dezelfde toegankelijke naam
             // (ronde 66). De zichtbare tekst staat er vooraan in, zoals WCAG 2.5.3
@@ -303,7 +372,11 @@ function KostRegel({
           </button>
         )}
 
-        {ritmeOpen && !alToegevoegd && (
+        {/* ⚠ Ook open zolang er in het paneeltje iets ontbreekt. De redenen onder de
+            knop gaan over velden die híér staan; klapte je dicht met een leeg
+            maandveld, dan bleef "Toevoegen" geblokkeerd met een uitleg over een veld
+            dat nergens te bekennen was. */}
+        {(ritmeOpen || !startGeldig || !dagGeldig || !naamGeldig) && !alToegevoegd && (
           <div className="veldrij kost-ritme-paneel">
             <div className="veldgroep">
               <label className="label-caps" htmlFor={`${veldId}-hoevaak`}>
@@ -326,6 +399,22 @@ function KostRegel({
                 ))}
               </select>
             </div>
+            {/* RONDE 71. De naam alleen bij een TWEEDE kost van dezelfde soort: bij de
+                eerste is het gewoon de naam van het voorstel, en een veld dat altijd
+                hetzelfde zegt is een veld te veel op deze lijst. */}
+            {extra && (
+              <div className="veldgroep">
+                <label className="label-caps" htmlFor={`${veldId}-naam`}>
+                  {t('Naam')}
+                </label>
+                <input
+                  id={`${veldId}-naam`}
+                  aria-label={t('Naam — {naam}', { naam: t(voorstel.naam) })}
+                  value={naam}
+                  onChange={(e) => setNaam(e.target.value)}
+                />
+              </div>
+            )}
             {periodiek && (
               <div className="veldgroep">
                 <label className="label-caps" htmlFor={`${veldId}-start`}>
@@ -342,6 +431,48 @@ function KostRegel({
                   value={startMaand}
                   onChange={(e) => setStartMaand(e.target.value)}
                 />
+              </div>
+            )}
+            {/* De dag stond hier stil op vandaag; wie hem wilde bijstellen moest naar
+                Budget → Vast. Hoogstens 28: 29, 30 en 31 bestaan niet in februari, en
+                dan zou de vervaldag stil doorrollen naar maart. */}
+            <div className="veldgroep">
+              <label className="label-caps" htmlFor={`${veldId}-dag`}>
+                {t('Dag van de maand')}
+              </label>
+              <input
+                id={`${veldId}-dag`}
+                aria-label={t('Dag van de maand — {naam}', { naam: t(voorstel.naam) })}
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={28}
+                value={dag}
+                onChange={(e) => setDag(e.target.value)}
+              />
+            </div>
+            {/* Alleen bij een niet-maandelijkse kost, net als op Budget → Vast: bij een
+                maandpost zet je niets opzij, je betaalt gewoon. */}
+            {periodiek && (
+              <div className="veldgroep kost-opzij">
+                <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  {/* De naam van het voorstel erin, om dezelfde reden als bij de drie
+                      velden hierboven: je kan meerdere paneeltjes tegelijk openzetten,
+                      en dan dragen ze allemaal dezelfde toegankelijke naam. */}
+                  <input
+                    type="checkbox"
+                    aria-label={t('Hier maandelijks voor opzijzetten — {naam}', { naam: t(voorstel.naam) })}
+                    aria-describedby={`${veldId}-opzij-uitleg`}
+                    checked={opbouwen}
+                    onChange={(e) => setOpbouwen(e.target.checked)}
+                  />{' '}
+                  {t('Hier maandelijks voor opzijzetten')}
+                </label>
+                <span className="rij-meta" id={`${veldId}-opzij-uitleg`}>
+                  {opbouwen
+                    ? t('In de maanden zonder betaling rekent je plan hierop.')
+                    : t('Zonder dit staat het volle bedrag in één keer in je plan, in de maand dat het vervalt.')}
+                </span>
               </div>
             )}
           </div>
@@ -389,7 +520,27 @@ function KostRegel({
         />
         <span className="rij-meta kost-periode">{periode}</span>
         {alToegevoegd ? (
-          <span className="badge badge-ok">{t('toegevoegd')}</span>
+          <>
+            <span className="badge badge-ok">{t('toegevoegd')}</span>
+            {/* RONDE 71. Twee auto's, twee autoverzekeringen. Zonder deze knop was er
+                geen weg naar een tweede: de rij herkent het voorstel aan zijn naam en
+                zette zichzelf op slot zodra er één stond. */}
+            <button
+              type="button"
+              className="knop knop-secundair knop-klein"
+              aria-label={t('Voeg nog een {naam} toe', { naam: t(voorstel.naam) })}
+              onClick={() => {
+                setExtra(true)
+                setRitmeOpen(true)
+                // ⚠ Deze knop verdwijnt uit de DOM zodra `extra` aanstaat — de rij
+                // wisselt van tak. Zonder deze regel valt de focus naar <body> en moet
+                // je met een toetsenbord van bovenaan de pagina terug naar beneden.
+                setTimeout(() => document.getElementById(`${veldId}-naam`)?.focus(), 0)
+              }}
+            >
+              {t('Nog een')}
+            </button>
+          </>
         ) : (
           <button
             type="button"
@@ -437,7 +588,7 @@ function KostenLijst({
   t: Vertaler
   bezig: boolean
   fout: { sleutel: string; tekst: string } | null
-  onToevoegen: (voorstel: Kostvoorstel, centen: number, frequentie: Frequentie, startMaand: string) => Promise<boolean>
+  onToevoegen: (voorstel: Kostvoorstel, invoer: NieuweKost) => Promise<boolean>
   onNaarBudget: () => void
   /**
    * Is er al een rekening om deze kosten vanaf te laten gaan? (ronde 66, slotronde)
@@ -522,6 +673,20 @@ function KostenLijst({
               voorstel={v}
               t={t}
               bestaand={bestaandeVan(v)}
+              // ⚠ Ook de namen van de ándere voorstellen. Noem je je tweede
+              // autoverzekering "Huur", dan zou de rij Huur die post daarna als de
+              // hare herkennen: ze zou zichzelf op "toegevoegd" zetten, het ritme van
+              // je autoverzekering tonen, en je echte huur kon je daar niet meer
+              // invullen — met de categorie van de autoverzekering in je grafieken.
+              naamBestaat={(n) => {
+                const kaal = n.trim().toLowerCase()
+                if (bestaandePerNaam.has(kaal)) return true
+                return voorstellen.some(
+                  (ander) =>
+                    ander.sleutel !== v.sleutel &&
+                    TALEN.some((taal) => vertaal(taal.waarde, ander.naam).trim().toLowerCase() === kaal),
+                )
+              }}
               bezig={bezig}
               fout={fout?.sleutel === v.sleutel ? fout.tekst : null}
               velden={velden}
@@ -723,7 +888,23 @@ export function OpstellingSectie({
   // tegel: "waarvan sluipend" zou dan een bedrag noemen dat niet in het totaal
   // erboven zit.
   const dezeMaand = huidigeMaand()
-  const lasten = terugkerendePosten.filter((p) => p.bedrag < 0 && !isGestopt(p, dezeMaand))
+  // ⚠ RONDE 71 — TWEE LIJSTEN, WANT ER WORDEN TWEE VERSCHILLENDE VRAGEN GESTELD.
+  //
+  // `ingevuld` is "wat heb ik al?", en dat is wat de aanvinklijst nodig heeft om een
+  // rij op "toegevoegd" te zetten. Een post die pas volgend jaar begint, HÉB je —
+  // hij staat in je database. (Een GESTOPTE post telt hier bewust niet mee: die mag
+  // je opnieuw ingeven, zie de uitleg bij `bestaandePerNaam`.)
+  //
+  // `lasten` is "wat kost mij dit vandaag?", en daar hoort een kost die nog niet
+  // begonnen is niet in. Dat is de keuze van deze ronde.
+  //
+  // ⚠ EERST STOND HIER ÉÉN LIJST, met de begincontrole erin — en die lijst voedde
+  // allebei. Gevolg: elke jaarpost die je toevoegde (standaard "eerste betaling
+  // volgende maand") verdween meteen weer uit de aanvinklijst. Het bedragveld bleef
+  // leeg en open, de badge "toegevoegd" kwam nooit, en wie het opnieuw intikte kreeg
+  // een tweede identieke post — zonder één waarschuwing.
+  const ingevuld = terugkerendePosten.filter((p) => p.bedrag < 0 && !isGestopt(p, dezeMaand))
+  const lasten = ingevuld.filter((p) => !isNogNietBegonnen(p, dezeMaand))
   const sluipend = lasten.filter(isSluipend)
   const klassiek = lasten.filter((p) => !isSluipend(p))
 
@@ -733,6 +914,15 @@ export function OpstellingSectie({
   const bezit = totaalSaldoVan(rekeningen, transacties, overboekingen, waarderingen, vandaag())
   const vermogen = nettoVermogen(bezit, leningen, aflossingen)
   const sluipendPerMaand = sluipend.reduce((som, p) => som + -maandbedrag(p), 0)
+  // RONDE 71 — wat er nog NIET in de tegel zit. Zonder deze zin lijkt de tegel te laag
+  // (of beweegt ze niet wanneer je iets toevoegt) zonder dat iets zegt waarom. Alleen
+  // wanneer er ook echt zo'n post is; anders noemt de zin een beperking zonder gevolg.
+  const nogNietBegonnen = ingevuld.filter((p) => isNogNietBegonnen(p, dezeMaand))
+  const nogNietBegonnenPerMaand = nogNietBegonnen.reduce((som, p) => som + -maandbedrag(p), 0)
+  const nogNietBegonnenOpzij = nogNietBegonnen.reduce((som, p) => som + opzijPerMaand(p), 0)
+  // Dezelfde types als `BUFFERTYPES` in utils/buffer.ts, en om dezelfde reden: alleen
+  // geld dat je vrij kan gebruiken telt als buffer.
+  const heeftSpaarOfCash = rekeningen.some((r) => !r.gearchiveerd && (r.type === 'spaar' || r.type === 'cash'))
   // Het jaarbedrag uit de ORIGINELE bedragen, niet uit het afgeronde maandbedrag.
   // Een jaarabonnement van € 100 werd anders € 8,33 × 12 = € 99,96 — vier cent te
   // weinig, en dat is precies het soort cijfer dat nageteld wordt.
@@ -790,12 +980,8 @@ export function OpstellingSectie({
     telling: b.telling,
   }))
 
-  async function voegKostToe(
-    voorstel: Kostvoorstel,
-    centen: number,
-    frequentie: Frequentie,
-    startMaand: string,
-  ): Promise<boolean> {
+  async function voegKostToe(voorstel: Kostvoorstel, invoer: NieuweKost): Promise<boolean> {
+    const { naam, centen, frequentie, startMaand, dag, opbouwen } = invoer
     setBezig(true)
     setFout(null)
     setMelding(null)
@@ -821,19 +1007,17 @@ export function OpstellingSectie({
       }
       await onVastePost({
         id: nieuwId(),
-        omschrijving: t(voorstel.naam),
+        // De naam komt uit de rij: bij de eerste kost is dat het voorstel, bij een
+        // tweede van dezelfde soort wat jij erbij tikte ("Autoverzekering Volvo").
+        omschrijving: naam,
         bedrag: -centen,
         rekeningId,
-        // De dag van vandaag, niet de 1e. Met dag 1 stond élke post die je hier
-        // invult meteen als ACHTERSTALLIG in je vooruitblik en in het belletje —
-        // je doet deze opstelling immers zelden op de eerste van de maand.
-        //
-        // Eerlijk over de grens: het schema laat hoogstens dag 28 toe (anders bestaat
-        // de datum niet in februari). Vul je de opstelling in op de 29e, 30e of 31e,
-        // dan ligt dag 28 een paar dagen achter je en telt de vooruitblik de post wél
-        // als achterstallig. Dat is dan ook waar: er staat voor deze maand nog geen
-        // boeking tegenover.
-        dag: Math.min(Number(vandaag().slice(8, 10)), 28),
+        // ⚠ RONDE 71: de rij vraagt de dag nu, met de dag van vandaag als vertrekpunt.
+        // Waarom vandaag en niet de 1e: met dag 1 stond élke post die je hier invult
+        // meteen als ACHTERSTALLIG in je vooruitblik en in het belletje — je doet deze
+        // opstelling immers zelden op de eerste van de maand. Hoogstens 28, want 29 tot
+        // 31 bestaan niet in februari.
+        dag,
         categorieId: voorstel.categorieId,
         // ⚠ RONDE 70. Hier stond `startMaand: verschuifMaand(huidigeMaand(), 1)` —
         // de app koos zelf "volgende maand". Dat was een verdedigbare gok (op DEZE
@@ -843,6 +1027,10 @@ export function OpstellingSectie({
         // dat pas wanneer de vooruitblik het bedrag in de verkeerde maand zette.
         // De rij vraagt het nu, met dezelfde gok als vertrekpunt.
         ...(frequentie !== 'maand' ? { frequentie, startMaand } : {}),
+        // Alleen wegschrijven wanneer het aanstaat: `opbouwen: false` zou een veld
+        // toevoegen dat niets zegt, en elk record dat de app schrijft hoort te dragen
+        // wat de gebruiker écht koos.
+        ...(opbouwen && frequentie !== 'maand' ? { opbouwen: true } : {}),
       })
       // De rekening staat erbij: dit scherm vraagt ze bewust niet, dus zonder deze
       // regel wist je niet waar de app je vaste last aan gehangen heeft.
@@ -850,25 +1038,48 @@ export function OpstellingSectie({
       // ⚠ De periode staat er ook hier bij, met bij een jaarpost het maandbedrag
       // erachter: dat is het getal dat straks in je tegels en je buffer opduikt.
       // Klopt het niet, dan zie je het hier meteen in plaats van pas over een maand.
-      setMelding(
+      // ⚠ RONDE 71 — DE MELDING MOET UITLEGGEN WAAROM DE TEGELS NIET BEWOGEN.
+      // Sinds deze ronde telt een kost pas mee in "Vaste lasten per maand" en in je
+      // buffer vanaf de maand van zijn eerste betaling. Voeg je iets toe dat pas later
+      // begint, dan verandert er dus zichtbaar niets aan het slotscherm — en dan lijkt
+      // het alsof je invoer niet aankwam. De maand staat er daarom bij.
+      const permaand = formatEuro(-Math.round(-centen / INTERVAL_MAANDEN[frequentie]))
+      const beginTekst = maandJaarLabel(`${startMaand}-01`)
+      const nogNietBegonnen = frequentie !== 'maand' && startMaand > huidigeMaand()
+      const kern =
         frequentie === 'maand'
           ? t('{naam} toegevoegd: {bedrag} per maand, van {rekening}.', {
-              naam: t(voorstel.naam),
+              naam,
               bedrag: formatEuro(centen),
               rekening: rekeningNaam,
             })
-          : t('{naam} toegevoegd: {bedrag} {periode} — dat is {permaand} per maand, van {rekening}.', {
-              naam: t(voorstel.naam),
-              bedrag: formatEuro(centen),
-              periode: t(PERIODE_SLEUTELS[frequentie]),
-              // Delen door het EIGEN interval, niet altijd door twaalf. En op het
-              // NEGATIEVE bedrag, want zo staat het straks in de database: `Math.round`
-              // rondt naar +∞, dus op een halve cent zou de melding er anders één cent
-              // naast zitten ten opzichte van `maandbedrag()` in de tegels en de buffer.
-              permaand: formatEuro(-Math.round(-centen / INTERVAL_MAANDEN[frequentie])),
-              rekening: rekeningNaam,
-            }),
-      )
+          : nogNietBegonnen
+            ? t('{naam} toegevoegd: {bedrag} {periode} — dat is {permaand} per maand vanaf {maand}, van {rekening}.', {
+                naam,
+                bedrag: formatEuro(centen),
+                periode: t(PERIODE_SLEUTELS[frequentie]),
+                permaand,
+                maand: beginTekst,
+                rekening: rekeningNaam,
+              })
+            : t('{naam} toegevoegd: {bedrag} {periode} — dat is {permaand} per maand, van {rekening}.', {
+                naam,
+                bedrag: formatEuro(centen),
+                periode: t(PERIODE_SLEUTELS[frequentie]),
+                // Delen door het EIGEN interval, niet altijd door twaalf. En op het
+                // NEGATIEVE bedrag, want zo staat het straks in de database: `Math.round`
+                // rondt naar +∞, dus op een halve cent zou de melding er anders één cent
+                // naast zitten ten opzichte van `maandbedrag()` in de tegels en de buffer.
+                permaand,
+                rekening: rekeningNaam,
+              })
+      // Het opzijzetten begint wél meteen — dat is het hele punt van vooruit sparen —
+      // dus dat hoort in dezelfde adem.
+      const opzijTekst =
+        opbouwen && frequentie !== 'maand'
+          ? ' ' + t('Je zet er vanaf nu {permaand} per maand voor opzij; dat staat op Budget onder "Opzij voor later".', { permaand })
+          : ''
+      setMelding(kern + opzijTekst)
       return true
     } catch {
       setFout({ sleutel: voorstel.sleutel, tekst: t('Toevoegen is niet gelukt. Probeer het opnieuw.') })
@@ -922,10 +1133,34 @@ export function OpstellingSectie({
           <Stat
             label={t('Vaste lasten per maand')}
             bron={
-              buffer.vasteLastenPerMaand > 0
-                ? t(
-                    'Omgerekend naar één maand: een jaarpremie van € 1.200 telt hier als € 100. Op Budget staat daarnaast wat er in déze maand effectief vervalt — bij een post per kwartaal of per jaar is dat een ander bedrag.',
-                  )
+              buffer.vasteLastenPerMaand > 0 || nogNietBegonnenPerMaand > 0
+                ? [
+                    buffer.vasteLastenPerMaand > 0
+                      ? t(
+                          'Omgerekend naar één maand: een jaarpremie van € 1.200 telt hier als € 100. Op Budget staat daarnaast wat er in déze maand effectief vervalt — bij een post per kwartaal of per jaar is dat een ander bedrag.',
+                        )
+                      : '',
+                    nogNietBegonnenPerMaand > 0
+                      ? (nogNietBegonnen.length === 1
+                          ? t('{bedrag} telt hier nog niet mee: die kost begint pas later.', {
+                              bedrag: formatEuro(nogNietBegonnenPerMaand),
+                            })
+                          : t('{bedrag} telt hier nog niet mee: die kosten beginnen pas later.', {
+                              bedrag: formatEuro(nogNietBegonnenPerMaand),
+                            })) +
+                        // ⚠ Zet je er wél al voor opzij, dan gáát dat geld elke maand
+                        // weg — en dan staat er op Budget een bedrag dat deze tegel
+                        // niet kent. Zwijgen zou twee schermen laten tegenspreken.
+                        (nogNietBegonnenOpzij > 0
+                          ? ' ' +
+                            t('Je zet er wel al {bedrag} per maand voor opzij; dat staat op Budget.', {
+                              bedrag: formatEuro(nogNietBegonnenOpzij),
+                            })
+                          : '')
+                      : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')
                 : undefined
             }
           >
@@ -992,9 +1227,17 @@ export function OpstellingSectie({
             uitleg alleen verscheen als je AL vaste lasten had — dus niet bij de
             gebruiker die net begint en zich afvraagt waarom daar een streepje staat.
             Precies omgekeerd aan waar ze voor dient. */}
+        {/* ⚠ RONDE 71: twee redenen, twee zinnen. `bruikbaar` is onwaar zodra er géén
+            spaar-/cashrekening is OF er geen lopende vaste lasten zijn. Sinds deze
+            ronde valt een kost die pas later begint in die tweede groep — en dan
+            vroeg dit scherm je een spaarrekening toe te voegen die je al had. */}
         {!buffer.bruikbaar && (
           <p className="rij-meta" style={{ margin: 0 }}>
-            {t('Voor "zo lang kom je toe" heeft de app een spaarrekening of cash nodig. Voeg er een toe bij "Je geld".')}
+            {buffer.beschikbaar === 0 && !heeftSpaarOfCash
+              ? t('Voor "zo lang kom je toe" heeft de app een spaarrekening of cash nodig. Voeg er een toe bij "Je geld".')
+              : nogNietBegonnenPerMaand > 0
+                ? t('Je vaste lasten beginnen pas later. Zodra de eerste betaling er is, staat hier hoelang je toekomt.')
+                : t('Voor "zo lang kom je toe" heeft de app een spaarrekening of cash nodig, én vaste lasten om ze tegen af te zetten.')}
           </p>
         )}
 
@@ -1133,7 +1376,7 @@ export function OpstellingSectie({
             titel={t('Je vaste kosten')}
             uitleg={t('Vink aan wat je betaalt en tik het bedrag in. Achter elk veld staat of het om een bedrag per maand of per jaar gaat — tik het bedrag van die periode.')}
             voorstellen={KLASSIEKE_VASTE_KOSTEN}
-            posten={lasten}
+            posten={ingevuld}
             t={t}
             bezig={bezig}
             fout={fout}
@@ -1149,7 +1392,7 @@ export function OpstellingSectie({
             titel={t('Je sluipende kosten')}
             uitleg={t('De kleine abonnementen waar je nooit meer naar omkijkt. Samen zijn ze vaak groter dan je denkt. Achter elk veld staat of het per maand of per jaar is.')}
             voorstellen={SLUIPENDE_KOSTEN}
-            posten={lasten}
+            posten={ingevuld}
             t={t}
             bezig={bezig}
             fout={fout}

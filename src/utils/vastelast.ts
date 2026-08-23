@@ -78,6 +78,36 @@ export function isGestopt(post: TerugkerendePost, maand: string): boolean {
 }
 
 /**
+ * Is deze post in deze maand ('JJJJ-MM') nog NIET begonnen? (ronde 71)
+ *
+ * De tegenhanger van `isGestopt`, en ze bestond niet. Twee plekken rekenen bewust
+ * buiten `valtInMaand` om — het buffercijfer en `gemiddeldPerMaand` — omdat ze juist
+ * het OMGEREKENDE maandbedrag willen, ook in maanden waarin de post niet vervalt.
+ * Allebei controleerden ze wél het einde en nooit het begin. Gevolg: een
+ * halfjaarlijkse premie met "eerste betaling maart 2029" trok je buffer vandaag al
+ * met € 100 per maand omlaag, voor een kost die nog niet bestaat.
+ *
+ * Tot ronde 70 was dat bijna onschuldig: de app zette de startmaand altijd op
+ * volgende maand, dus de fout was hoogstens één maand groot. Sinds de gebruiker die
+ * maand zelf kiest, kan ze jaren zijn.
+ *
+ * ⚠ DE INTERVALCONTROLE HOORT ERBIJ, en om precies dezelfde reden als in
+ * `valtInMaand`: daar kort een maandelijkse post af vóór de startmaand bekeken wordt,
+ * dus draagt een maandelijkse post haar startmaand vandaag als een dood veld. Zou
+ * deze functie hem wél lezen, dan zouden de twee regels uiteenlopen — en dan telt een
+ * post in het ene cijfer mee en in het andere niet.
+ *
+ * ⚠ EN DIT GELDT NIET VOOR "OPZIJ". Geld opzijzetten voor een kost die er nog niet
+ * is, is precies wat je wil; dat is de voorbereiding. `plancijfers` houdt die tak dus
+ * los.
+ */
+export function isNogNietBegonnen(post: TerugkerendePost, maand: string): boolean {
+  if (post.startMaand === undefined) return false
+  if (intervalVan(post) === 1) return false
+  return maand < post.startMaand
+}
+
+/**
  * Valt deze post in deze maand ('JJJJ-MM')?
  *
  * Een maandelijkse post valt altijd. Een post met een langere termijn valt enkel
@@ -219,7 +249,11 @@ export function plancijfers(posten: TerugkerendePost[], maand: string): Plancijf
     // in de else-tak. Zonder deze regel zou een opgezegd abonnement eeuwig blijven
     // vragen om er geld voor opzij te zetten.
     if (isGestopt(p, maand)) continue
-    if (p.bedrag < 0) gemiddeldPerMaand += -maandbedrag(p)
+    // ⚠ RONDE 71. Het gemiddelde telt een post pas vanaf zijn eerste betaling. Het
+    // stond vóór élke controle, dus een kost die pas over jaren begint zat er al in.
+    // `opzij` hieronder blijft er BUITEN staan: daar hoort ze juist wél, want dat is
+    // het geld dat je nú opzijzet om ze straks te kunnen betalen.
+    if (p.bedrag < 0 && !isNogNietBegonnen(p, maand)) gemiddeldPerMaand += -maandbedrag(p)
     if (valtInMaand(p, maand)) {
       if (p.bedrag < 0) vastDezeMaand += -p.bedrag
       else if (p.bedrag > 0) vasteInkomsten += p.bedrag

@@ -106,7 +106,9 @@ describe('PlanRegels', () => {
   })
 
   it('toont het jaargemiddelde apart van het bedrag van deze maand', () => {
-    toon([huur, premie], [], '2026-07')
+    // ⚠ Augustus en niet juli: de premie start in 2026-08, en sinds ronde 71 telt een
+    // post pas vanaf zijn eerste betaling mee in het gemiddelde.
+    toon([huur, premie], [], '2026-08')
     // € 950 + € 100 omgerekende premie = € 1.050 gemiddeld per maand.
     expect(screen.getByText(/gemiddeld.*1[.\s]?050/)).toBeInTheDocument()
   })

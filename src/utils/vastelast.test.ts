@@ -157,8 +157,30 @@ describe('plancijfers', () => {
 
   it('geeft het gemiddelde per maand los van de gekozen maand', () => {
     // € 950 huur + € 100 omgerekende premie, in élke maand hetzelfde.
-    expect(plancijfers([huur, premie], '2026-07').gemiddeldPerMaand).toBe(105000)
+    // ⚠ Vanaf de startmaand van de premie (2026-08); zie de test hieronder voor de
+    // maanden dáárvoor.
     expect(plancijfers([huur, premie], '2026-08').gemiddeldPerMaand).toBe(105000)
+    expect(plancijfers([huur, premie], '2026-09').gemiddeldPerMaand).toBe(105000)
+    expect(plancijfers([huur, premie], '2027-03').gemiddeldPerMaand).toBe(105000)
+  })
+
+  it('telt een post die nog niet begonnen is niet mee in het gemiddelde (ronde 71)', () => {
+    // De premie begint pas in augustus. In juli kost ze je nog niets, dus hoort ze
+    // niet in "wat kosten mijn vaste lasten mij eigenlijk" te zitten. Vóór ronde 71
+    // stond dit gemiddelde vóór élke controle, dus telde een kost die pas over jaren
+    // begint vandaag al mee.
+    expect(plancijfers([huur, premie], '2026-07').gemiddeldPerMaand).toBe(95000)
+    expect(plancijfers([huur, premie], '2020-01').gemiddeldPerMaand).toBe(95000)
+  })
+
+  it('zet er WEL al voor opzij vóór de eerste betaling (ronde 71)', () => {
+    // ⚠ De keerzijde van de test hierboven, en het hele punt van "opbouwen": geld
+    // opzijzetten voor een kost die er nog niet is, is precies wat je wil. Zou de
+    // begincontrole ook op `opzij` slaan, dan begon je pas te sparen in de maand dat
+    // je moest betalen.
+    const c = plancijfers([opbouw], '2026-07')
+    expect(c.opzij).toBe(10000)
+    expect(c.gemiddeldPerMaand).toBe(0)
   })
 
   it('rekent een terugkerende inkomst niet mee als last', () => {
