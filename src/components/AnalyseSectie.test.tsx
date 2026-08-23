@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { AnalyseSectie } from './AnalyseSectie'
 import { TaalProvider } from '../i18n'
-import type { Transactie } from '../data/schema'
-import { vandaag, huidigeMaand } from '../utils/datum'
+import type { TerugkerendePost, Transactie } from '../data/schema'
+import { vandaag, huidigeMaand, maandJaarLabel } from '../utils/datum'
 import { verschuifMaand } from '../utils/maandverloop'
 
 const rekeningen = [{ id: 'r1', naam: 'Zicht', beginsaldo: 0 }]
@@ -19,7 +19,7 @@ const tx = (id: string, categorieId: string, bedrag: number, omschrijving = 'Win
   categorieId,
 })
 
-function toon(transacties: Transactie[]) {
+function toon(transacties: Transactie[], terugkerendePosten: TerugkerendePost[] = [], ankerMaand?: string) {
   render(
     <AnalyseSectie
       transacties={transacties}
@@ -27,7 +27,8 @@ function toon(transacties: Transactie[]) {
       rekeningen={rekeningen}
       overboekingen={[]}
       waarderingen={[]}
-      terugkerendePosten={[]}
+      terugkerendePosten={terugkerendePosten}
+      ankerMaand={ankerMaand}
     />,
   )
 }
@@ -633,7 +634,7 @@ describe('AnalyseSectie — de drie tabbladen', () => {
   const KOP_PER_TAB: Record<string, string[]> = {
     Verdeling: ['Verdeling uitgaven', 'Verdeling per subcategorie', 'Uitgaven per winkel'],
     'Wat verandert': ['Waar loopt het op?', 'Wat werd er duurder?', 'Verloop per categorie'],
-    Vooruit: ['Vermogensevolutie', 'Vooruitblik & spaarquote'],
+    Vooruit: ['Vermogensevolutie', 'Vooruitblik & spaarquote', 'Wat komt eraan'],
   }
 
   for (const [tabnaam, koppen] of Object.entries(KOP_PER_TAB)) {
@@ -653,6 +654,45 @@ describe('AnalyseSectie — de drie tabbladen', () => {
       }
     })
   }
+
+  it('geeft "Wat komt eraan" een weg vooruit wanneer je alleen een vast inkomen hebt', async () => {
+    // ⚠ De vooruitblik-kaart toont haar eerste stap alleen bij NUL terugkerende posten.
+    // Vulde je enkel je loon in, dan stond er zonder deze doorgifte een uitnodiging
+    // zonder knop en op het hele tabblad geen enkele weg vooruit.
+    const loon: TerugkerendePost = { id: 'loon', omschrijving: 'Loon', bedrag: 240000, rekeningId: 'r1', dag: 25 }
+    const naarVast = vi.fn()
+    const gebruiker = userEvent.setup()
+    render(
+      <AnalyseSectie
+        transacties={[boodschappen]}
+        categorieen={[]}
+        rekeningen={rekeningen}
+        overboekingen={[]}
+        waarderingen={[]}
+        terugkerendePosten={[loon]}
+        onNaarVasteLasten={naarVast}
+      />,
+    )
+    await gebruiker.click(screen.getByRole('tab', { name: 'Vooruit' }))
+    await gebruiker.click(screen.getByRole('button', { name: 'Vul je vaste lasten in' }))
+    expect(naarVast).toHaveBeenCalledTimes(1)
+  })
+
+  it('laat "Wat komt eraan" vanaf VANDAAG kijken, ook als je naar een vorige maand bladert', async () => {
+    // ⚠ De rest van deze pagina volgt het anker bovenaan: blader je naar vorige maand,
+    // dan gaan de donuts, de vermogensevolutie en de vooruitblik over vorige maand.
+    // Maar "wat komt eraan" vertrekt per definitie van vandaag; zou hij het anker
+    // volgen, dan stond er een toekomst die al voorbij is.
+    const huur: TerugkerendePost = { id: 'h', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 3 }
+    const gebruiker = userEvent.setup()
+    // Het anker komt van de maandschakelaar van de app; hier zetten we hem een jaar
+    // terug, zodat het verschil met vandaag niet per ongeluk wegvalt.
+    toon([boodschappen], [huur], verschuifMaand(huidigeMaand(), -12))
+    await gebruiker.click(screen.getByRole('tab', { name: 'Vooruit' }))
+
+    const kaart = screen.getByRole('heading', { name: 'Wat komt eraan' }).closest('section.kaart') as HTMLElement
+    expect(kaart.querySelector('.kaart-bijschrift')?.textContent).toContain(maandJaarLabel(`${huidigeMaand()}-01`))
+  })
 
   it('zegt bij de periodekaartjes welke gekozen is, niet alleen met kleur', () => {
     toon([boodschappen])

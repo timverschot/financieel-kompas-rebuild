@@ -303,8 +303,8 @@ const en: Record<string, string> = {
   '{n} dossier(s) hebben hiervoor een eigen verdeelsleutel — die valt terug op de dossierstandaard, en dan verandert je afrekeningsbedrag.':
     '{n} case(s) have their own split for this — that falls back to the case default, and then your settlement amount changes.',
   // Ronde 65 — fouten die zichzelf verbergen
-  'De periode hierboven geldt op deze tab alleen voor je spaarquote. De rest volgt de maand die je bovenaan koos.':
-    'On this tab the period above only applies to your savings rate. The rest follows the month you picked at the top.',
+  'De periode hierboven geldt op deze tab alleen voor je spaarquote. De rest volgt de maand die je bovenaan koos — behalve "Wat komt eraan", dat vertrekt van de lopende maand.':
+    'On this tab the period above only applies to your savings rate. The rest follows the month you picked at the top — except "What is coming up", which starts from the current month.',
   'Alle overboekingen': 'All transfers',
   'Overboekingen van deze rekening': 'Transfers on this account',
   'per jaar': 'per year',
@@ -2579,6 +2579,58 @@ const en: Record<string, string> = {
     'Your last backup was {dagen} days ago. Your data lives only on this device.',
   'Er ging al {dagen} dagen niets meer naar Google Drive. Kijk je verbinding na of maak een back-up.':
     'Nothing has gone to Google Drive for {dagen} days. Check your connection or make a backup.',
+  // Ronde 72 — "Wat komt eraan": je vaste lasten over twaalf maanden
+  'Wat komt eraan': 'What is coming up',
+  'Je vaste lasten per maand, {venster}.': 'Your fixed costs per month, {venster}.',
+  'Zodra je vaste lasten hebt ingevuld, zie je hier in welke maand ze vervallen.':
+    'Once you have entered your fixed costs, you will see here in which month they fall due.',
+  'Elke staaf is wat er die maand aan vaste lasten vervalt, met het volle bedrag — een jaarpremie staat dus één keer voluit en elf maanden op nul. Je inkomsten en je losse uitgaven zoals boodschappen zitten er niet in, en ook niet wat je apart bijhoudt bij Leningen, bij een onderhoudsbijdrage, bij de kindrekening of bij een spaardoel.':
+    'Each bar is the fixed costs falling due that month, at their full amount — an annual premium therefore appears once in full and at zero for eleven months. Your income and your day-to-day spending such as groceries are not included, and neither is anything you keep separately under Loans, a maintenance contribution, the children\'s account or a savings goal.',
+  'Alleen wat je bij je vaste lasten invulde, met het volle bedrag in de maand dat het vervalt — geen inkomsten, geen losse uitgaven, en niet wat je apart bijhoudt bij Leningen of bij een onderhoudsbijdrage.':
+    'Only what you entered as fixed costs, at its full amount in the month it falls due — no income, no day-to-day spending, and nothing you keep separately under Loans or a maintenance contribution.',
+  '{maand}: geen vaste lasten': '{maand}: no fixed costs',
+  '{maand}: {bedrag} aan vaste lasten': '{maand}: {bedrag} in fixed costs',
+  '{maand}: {bedrag} aan vaste lasten — deze maand loopt al':
+    '{maand}: {bedrag} in fixed costs — this month is already under way',
+  'Gemiddeld {bedrag} aan vaste lasten per maand over deze twaalf maanden':
+    'On average {bedrag} in fixed costs a month over these twelve months',
+  '* {maand} loopt al; een deel van die staaf is wellicht al betaald.':
+    '* {maand} is already under way; part of that bar may already have been paid.',
+  'Je zwaarste maand is {maand}: {bedrag} aan vaste lasten.':
+    'Your heaviest month is {maand}: {bedrag} in fixed costs.',
+  '{n} maanden zijn even zwaar, met {bedrag} aan vaste lasten. De eerste is {maand}.':
+    '{n} months are equally heavy, at {bedrag} in fixed costs. The first is {maand}.',
+  'Elke maand kost je evenveel: {bedrag} aan vaste lasten.': 'Every month costs you the same: {bedrag} in fixed costs.',
+  'Van wat de app kan plaatsen kost elke maand evenveel: {bedrag}.':
+    'Of what the app can place, every month costs the same: {bedrag}.',
+  'Van wat de app kan plaatsen is {maand} de zwaarste maand: {bedrag}.':
+    'Of what the app can place, {maand} is the heaviest month: {bedrag}.',
+  'Van wat de app kan plaatsen zijn {n} maanden even zwaar, met {bedrag}. De eerste is {maand}.':
+    'Of what the app can place, {n} months are equally heavy, at {bedrag}. The first is {maand}.',
+  'In deze twaalf maanden vervalt er geen enkele vaste last.': 'No fixed cost falls due in these twelve months.',
+  'In deze twaalf maanden vervalt er geen enkele vaste last waarvan de app de maand kent.':
+    'No fixed cost whose month the app knows falls due in these twelve months.',
+  '{n} vaste last(en) staan hier niet in, omdat de app niet weet in welke maand ze vervallen: {namen}. Ze tellen nergens op deze kaart mee. Vul bij Budget › Vast hun eerste betaling in.':
+    '{n} fixed cost(s) are missing here, because the app does not know in which month they fall due: {namen}. Nothing on this card counts them. Enter their first payment under Budget › Fixed.',
+  'Van wat de app kan plaatsen vervalt er na {maand} niets meer. Van de vaste last(en) waarvan ze de maand niet kent, kan ze niets zeggen.':
+    'Of what the app can place, nothing falls due after {maand}. About the fixed cost(s) whose month it does not know, it can say nothing.',
+  '{n} vaste last(en) staan hier niet in en tellen niet mee in deze cijfers: de app weet niet in welke maand ze vervallen.':
+    '{n} fixed cost(s) are missing here and are left out of these figures: the app does not know in which month they fall due.',
+  '{namen} en {n} andere': '{namen} and {n} more',
+  'Over wat de app kan plaatsen verandert er verder vooruit niets meer. Van de vaste last(en) waarvan ze de maand niet kent, kan ze niets zeggen.':
+    'For what the app can place, nothing changes further ahead. About the fixed cost(s) whose month it does not know, it can say nothing.',
+  '‹ Vorige twaalf maanden': '‹ Previous twelve months',
+  'Volgende twaalf maanden ›': 'Next twelve months ›',
+  'Verder vooruit verandert er niets meer: vanaf hier herhaalt elk jaar zich.':
+    'Nothing changes further ahead: from here on every year repeats itself.',
+  'Na {maand} vervalt er geen enkele vaste last meer.': 'After {maand} no fixed cost falls due any more.',
+  'Verder vooruit verandert er niets meer.': 'Nothing changes further ahead.',
+  'Toon per maand': 'Show per month',
+  'Verberg per maand': 'Hide per month',
+  'geen vaste lasten': 'no fixed costs',
+  '{n} vaste last(en)': '{n} fixed cost(s)',
+  'waaronder {namen}': 'including {namen}',
+  'Bekijk vooruit': 'Look ahead',
 }
 const fr: Record<string, string> = {
   // Ronde 66 — dernière relecture : la première étape là où elle manquait encore
@@ -2865,8 +2917,8 @@ const fr: Record<string, string> = {
   '{n} dossier(s) hebben hiervoor een eigen verdeelsleutel — die valt terug op de dossierstandaard, en dan verandert je afrekeningsbedrag.':
     '{n} dossier(s) ont une clé de répartition propre pour cela — elle retombe sur la valeur par défaut du dossier, et ton montant de décompte change alors.',
   // Ronde 65 — les erreurs qui se cachent elles-mêmes
-  'De periode hierboven geldt op deze tab alleen voor je spaarquote. De rest volgt de maand die je bovenaan koos.':
-    'Sur cet onglet, la période ci-dessus ne vaut que pour ton taux d’épargne. Le reste suit le mois que tu as choisi en haut.',
+  'De periode hierboven geldt op deze tab alleen voor je spaarquote. De rest volgt de maand die je bovenaan koos — behalve "Wat komt eraan", dat vertrekt van de lopende maand.':
+    'Sur cet onglet, la période ci-dessus ne vaut que pour ton taux d’épargne. Le reste suit le mois que tu as choisi en haut — sauf « Ce qui arrive », qui part du mois en cours.',
   'Alle overboekingen': 'Tous les virements',
   'Overboekingen van deze rekening': 'Virements de ce compte',
   'per jaar': 'par an',
@@ -5142,6 +5194,60 @@ const fr: Record<string, string> = {
     'La page suivante indique sur quoi cela repose : le montant de l’accord et les données qui s’y rapportent. Tout peut ainsi être vérifié sans cette application.',
   'Deze brief is opgemaakt met Financieel Kompas. Hij bevat een berekening en geen juridisch standpunt.':
     'Cette lettre a été établie avec Financieel Kompas. Elle contient un calcul et non une position juridique.',
+  // Ronde 72 — « Ce qui arrive » : tes charges fixes sur douze mois
+  'Wat komt eraan': 'Ce qui arrive',
+  'Je vaste lasten per maand, {venster}.': 'Tes charges fixes par mois, {venster}.',
+  'Zodra je vaste lasten hebt ingevuld, zie je hier in welke maand ze vervallen.':
+    'Dès que tu auras encodé tes charges fixes, tu verras ici le mois où elles tombent.',
+  'Elke staaf is wat er die maand aan vaste lasten vervalt, met het volle bedrag — een jaarpremie staat dus één keer voluit en elf maanden op nul. Je inkomsten en je losse uitgaven zoals boodschappen zitten er niet in, en ook niet wat je apart bijhoudt bij Leningen, bij een onderhoudsbijdrage, bij de kindrekening of bij een spaardoel.':
+    'Chaque barre représente les charges fixes qui tombent ce mois-là, pour leur montant complet — une prime annuelle apparaît donc une seule fois en entier et à zéro pendant onze mois. Tes revenus et tes dépenses courantes comme les courses ne sont pas comptés, ni ce que tu tiens à part sous Prêts, sous une contribution alimentaire, sous le compte des enfants ou sous un objectif d’épargne.',
+  'Alleen wat je bij je vaste lasten invulde, met het volle bedrag in de maand dat het vervalt — geen inkomsten, geen losse uitgaven, en niet wat je apart bijhoudt bij Leningen of bij een onderhoudsbijdrage.':
+    'Uniquement ce que tu as encodé comme charges fixes, pour son montant complet dans le mois où il tombe — ni revenus, ni dépenses courantes, ni ce que tu tiens à part sous Prêts ou sous une contribution alimentaire.',
+  '{maand}: geen vaste lasten': '{maand} : aucune charge fixe',
+  '{maand}: {bedrag} aan vaste lasten': '{maand} : {bedrag} de charges fixes',
+  '{maand}: {bedrag} aan vaste lasten — deze maand loopt al':
+    '{maand} : {bedrag} de charges fixes — ce mois est déjà entamé',
+  'Gemiddeld {bedrag} aan vaste lasten per maand over deze twaalf maanden':
+    'En moyenne {bedrag} de charges fixes par mois sur ces douze mois',
+  '* {maand} loopt al; een deel van die staaf is wellicht al betaald.':
+    '* {maand} est déjà entamé ; une partie de cette barre a peut-être déjà été payée.',
+  'Je zwaarste maand is {maand}: {bedrag} aan vaste lasten.':
+    'Ton mois le plus lourd est {maand} : {bedrag} de charges fixes.',
+  '{n} maanden zijn even zwaar, met {bedrag} aan vaste lasten. De eerste is {maand}.':
+    '{n} mois sont aussi lourds les uns que les autres, avec {bedrag} de charges fixes. Le premier est {maand}.',
+  'Elke maand kost je evenveel: {bedrag} aan vaste lasten.':
+    'Chaque mois te coûte pareil : {bedrag} de charges fixes.',
+  'Van wat de app kan plaatsen kost elke maand evenveel: {bedrag}.':
+    'De ce que l’application peut situer, chaque mois coûte pareil : {bedrag}.',
+  'Van wat de app kan plaatsen is {maand} de zwaarste maand: {bedrag}.':
+    'De ce que l’application peut situer, {maand} est le mois le plus lourd : {bedrag}.',
+  'Van wat de app kan plaatsen zijn {n} maanden even zwaar, met {bedrag}. De eerste is {maand}.':
+    'De ce que l’application peut situer, {n} mois sont aussi lourds les uns que les autres, avec {bedrag}. Le premier est {maand}.',
+  'In deze twaalf maanden vervalt er geen enkele vaste last.':
+    'Aucune charge fixe ne tombe dans ces douze mois.',
+  'In deze twaalf maanden vervalt er geen enkele vaste last waarvan de app de maand kent.':
+    'Aucune charge fixe dont l’application connaît le mois ne tombe dans ces douze mois.',
+  '{n} vaste last(en) staan hier niet in, omdat de app niet weet in welke maand ze vervallen: {namen}. Ze tellen nergens op deze kaart mee. Vul bij Budget › Vast hun eerste betaling in.':
+    '{n} charge(s) fixe(s) ne figurent pas ici, parce que l’application ne sait pas dans quel mois elles tombent : {namen}. Rien sur cette carte ne les compte. Encode leur premier paiement dans Budget › Fixe.',
+  'Van wat de app kan plaatsen vervalt er na {maand} niets meer. Van de vaste last(en) waarvan ze de maand niet kent, kan ze niets zeggen.':
+    'De ce que l’application peut situer, plus rien ne tombe après {maand}. Des charges fixes dont elle ignore le mois, elle ne peut rien dire.',
+  '{n} vaste last(en) staan hier niet in en tellen niet mee in deze cijfers: de app weet niet in welke maand ze vervallen.':
+    '{n} charge(s) fixe(s) ne figurent pas ici et ne comptent pas dans ces chiffres : l’application ne sait pas dans quel mois elles tombent.',
+  '{namen} en {n} andere': '{namen} et {n} autre(s)',
+  'Over wat de app kan plaatsen verandert er verder vooruit niets meer. Van de vaste last(en) waarvan ze de maand niet kent, kan ze niets zeggen.':
+    'Pour ce que l’application peut situer, plus rien ne change au-delà. Des charges fixes dont elle ignore le mois, elle ne peut rien dire.',
+  '‹ Vorige twaalf maanden': '‹ Douze mois précédents',
+  'Volgende twaalf maanden ›': 'Douze mois suivants ›',
+  'Verder vooruit verandert er niets meer: vanaf hier herhaalt elk jaar zich.':
+    'Plus loin, rien ne change : à partir d’ici chaque année se répète.',
+  'Na {maand} vervalt er geen enkele vaste last meer.': 'Après {maand}, plus aucune charge fixe ne tombe.',
+  'Verder vooruit verandert er niets meer.': 'Plus loin, rien ne change.',
+  'Toon per maand': 'Afficher par mois',
+  'Verberg per maand': 'Masquer par mois',
+  'geen vaste lasten': 'aucune charge fixe',
+  '{n} vaste last(en)': '{n} charge(s) fixe(s)',
+  'waaronder {namen}': 'dont {namen}',
+  'Bekijk vooruit': 'Voir plus loin',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 

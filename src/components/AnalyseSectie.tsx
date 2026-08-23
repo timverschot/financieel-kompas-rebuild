@@ -3,6 +3,7 @@ import type { Categorie, Kind, Overboeking, Rekening, TerugkerendePost, Transact
 import { Vermogensevolutie } from './Vermogensevolutie'
 import { TrendsSectie } from './TrendsSectie'
 import { VooruitblikSectie } from './VooruitblikSectie'
+import { ToekomstlastenKaart } from './ToekomstLasten'
 import { BesparenKaart } from './BesparenKaart'
 import { PrijsstijgingenKaart } from './PrijsstijgingenKaart'
 import {
@@ -674,7 +675,12 @@ export function AnalyseSectie({
           op deze tab helemaal verborgen zijn omdat ze daar níets doen. */}
       {tab === 'vooruit' && !drill && (
         <p className="rij-meta" style={{ margin: '-4px 0 0' }}>
-          {t('De periode hierboven geldt op deze tab alleen voor je spaarquote. De rest volgt de maand die je bovenaan koos.')}
+          {/* ⚠ RONDE 72: "de rest" was niet meer waar. De kaart "Wat komt eraan" volgt
+              noch de periode, noch de maandschakelaar — ze vertrekt altijd van vandaag,
+              want een toekomst die al voorbij is, is geen toekomst. Die uitzondering
+              hoort erbij, anders zit hier precies de stille tegenspraak die deze zin in
+              ronde 65 moest wegnemen. */}
+          {t('De periode hierboven geldt op deze tab alleen voor je spaarquote. De rest volgt de maand die je bovenaan koos — behalve "Wat komt eraan", dat vertrekt van de lopende maand.')}
         </p>
       )}
 
@@ -958,6 +964,21 @@ export function AnalyseSectie({
             periodeLabel={periodeLabel}
             maand={anker}
             onBoekVasteLast={onBoekVasteLast}
+            onNaarVast={onNaarVasteLasten}
+          />
+          )}
+
+          {/* Ronde 72. De vooruitblik hierboven gaat over ÉÉN maand; deze kaart over
+              de twaalf die eraan komen. Bewust eronder: eerst de maand waar je in
+              zit, dan het jaar dat volgt. */}
+          {tab === 'vooruit' && (
+          <ToekomstlastenKaart
+            terugkerendePosten={terugkerendePosten}
+            // ⚠ De HUIDIGE maand, niet het anker bovenaan. Blader je naar maart
+            // terug, dan gaat de rest van de pagina over maart — maar "wat komt
+            // eraan" vertrekt per definitie van vandaag. Zou hij het anker volgen,
+            // dan stond er een toekomst die al voorbij is.
+            beginMaand={huidigeMaand()}
             onNaarVast={onNaarVasteLasten}
           />
           )}

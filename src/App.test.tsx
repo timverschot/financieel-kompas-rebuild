@@ -2601,3 +2601,89 @@ describe('de uitleg staat waar je hem nodig hebt', () => {
     expect(welkom.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 72 — "Wat komt eraan" op het Overzicht
+//
+// ⚠ WAAROM DEZE TESTS BESTAAN. De widget en haar knop stonden in App.tsx zonder dat
+// één test ze aanraakte: je kon het hele blok verwijderen en alles bleef groen. Een
+// kaart die spoorloos uit de app kan verdwijnen, verdwijnt ooit ook echt.
+// ---------------------------------------------------------------------------
+describe('Overzicht — Wat komt eraan', () => {
+  it('zwijgt zolang er geen vaste lasten zijn', async () => {
+    render(<App />)
+    expect(await screen.findByText('Recente boekingen')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Wat komt eraan' })).toBeNull()
+  })
+
+  it('toont de komende twaalf maanden zodra er een vaste last staat', async () => {
+    await bewaarTerugkerendePost({
+      id: 'vast1',
+      omschrijving: 'Huur',
+      bedrag: -95000,
+      rekeningId: 'r1',
+      dag: 3,
+    })
+    render(<App />)
+    const kop = await screen.findByRole('heading', { name: 'Wat komt eraan' })
+    const kaart = kop.closest('section.kaart') as HTMLElement
+    expect(within(kaart).getAllByRole('img')).toHaveLength(12)
+    // De eerste staaf is de maand die nu loopt.
+    expect(within(kaart).getAllByRole('img')[0].getAttribute('aria-label')).toContain('deze maand loopt al')
+  })
+
+  it('brengt je met "Bekijk vooruit" naar Analyse › Vooruit, niet naar Verdeling', async () => {
+    // ⚠ De bestaande weg `gaNaarAnalyse` zet het tabblad hard op "Verdeling" (ze hoort
+    // bij de donut). Zou de knop die hergebruiken, dan landde je op de verkeerde helft
+    // van de pagina, met de kaart die je aanklikte nergens in beeld.
+    await bewaarTerugkerendePost({
+      id: 'vast1',
+      omschrijving: 'Huur',
+      bedrag: -95000,
+      rekeningId: 'r1',
+      dag: 3,
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Wat komt eraan' })
+
+    await user.click(screen.getByRole('button', { name: 'Bekijk vooruit' }))
+
+    expect(await screen.findByRole('tab', { name: 'Vooruit' })).toHaveAttribute('aria-selected', 'true')
+    expect(window.location.hash).toBe('#/analyse/vooruit')
+    // Op Analyse staat dezelfde kaart, nu met haar volledige uitrusting.
+    expect(screen.getByRole('button', { name: /Toon per maand/ })).toBeInTheDocument()
+
+    // ⚠ En je focus komt mee. Wie met de tab-toets op "Bekijk vooruit" stond, verloor
+    // hem anders naar <body> zodra het Overzicht — en dus die knop — verdween, en
+    // begon met de volgende druk weer helemaal bovenaan.
+    // ⚠ De KOP en niet de hele kaart: voorleessoftware leest bij het landen voor wat de
+    // focus krijgt, en dat zijn dan twee woorden in plaats van twaalf staven, drie
+    // alinea's en vier knoppen.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(document.querySelector('[data-toekomstkaart] .kaart-titel')),
+    )
+  })
+
+  it('laat de widget vanaf VANDAAG kijken, ook als je bovenaan terugbladert', async () => {
+    // ⚠ De maandschakelaar bovenaan stuurt het hele Overzicht. Deze kaart mag hem niet
+    // volgen: een "toekomst" die vorige maand begint, is geen toekomst.
+    await bewaarTerugkerendePost({
+      id: 'vast1',
+      omschrijving: 'Huur',
+      bedrag: -95000,
+      rekeningId: 'r1',
+      dag: 3,
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    const kop = await screen.findByRole('heading', { name: 'Wat komt eraan' })
+    const kaart = kop.closest('section.kaart') as HTMLElement
+    const bijschrift = () => kaart.querySelector('.kaart-bijschrift')?.textContent ?? ''
+    const voor = bijschrift()
+
+    await user.click(screen.getByRole('button', { name: 'Vorige maand' }))
+
+    expect(bijschrift()).toBe(voor)
+  })
+})

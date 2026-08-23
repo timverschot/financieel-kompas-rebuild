@@ -142,6 +142,7 @@ import { Donut } from './components/Donut'
 import { KindkostenSectie } from './components/KindkostenSectie'
 import { FiscaalSectie } from './components/FiscaalSectie'
 import { MaandGrafiek } from './components/MaandGrafiek'
+import { ToekomstlastenWidget } from './components/ToekomstLasten'
 import { RecenteTransacties } from './components/RecenteTransacties'
 import { RapportKaart } from './components/RapportKaart'
 import { downloadTekst } from './utils/download'
@@ -2544,6 +2545,59 @@ export function App() {
   }
 
   /**
+   * De kaart "Wat komt eraan" in beeld schuiven na een sprong vanaf het Overzicht.
+   *
+   * ⚠ Zonder dit landde je bovenaan Analyse › Vooruit, waar die kaart het VIERDE blok
+   * is — onder de periodekiezer, de vermogensevolutie en de vooruitblik. Dat is
+   * letterlijk de klacht die ronde 64 voor de Budget-pagina oploste. Zelfde aanpak
+   * als `brengBlokInBeeld` in OpstellingSectie: in een `setTimeout`, want de pagina
+   * moet eerst getekend zijn, en met een bestaanscheck omdat `scrollIntoView` in de
+   * testomgeving niet bestaat.
+   *
+   * ⚠ ÓÓK DE FOCUS VERZETTEN (tweede doorlichting ronde 72), net als de twee zusters.
+   * Wie met de tab-toets op "Bekijk vooruit" stond en Enter duwde, verloor zijn focus
+   * naar `<body>` zodra het Overzicht — en dus die knop — verdween; de volgende druk
+   * op tab begon weer helemaal bovenaan.
+   *
+   * ⚠ EN DE FOCUS GAAT NAAR DE KOP, NIET NAAR DE KAART (vierde doorlichting ronde 72).
+   * De zusters focussen een knop of een tab, die al focusbaar is én een korte naam
+   * heeft. Zetten we de `tabindex` op de kaart zelf, dan leest voorleessoftware bij het
+   * landen de hele kaart voor — twaalf staven, drie alinea's en vier knoppen. De kop
+   * zegt in twee woorden waar je bent. `-1` houdt hem buiten de tab-volgorde en maakt
+   * hem alleen voor deze sprong bereikbaar.
+   */
+  function brengToekomstInBeeld() {
+    setTimeout(() => {
+      const kaart = document.querySelector('[data-toekomstkaart]')
+      if (!(kaart instanceof HTMLElement) || !kaart.isConnected) return
+      if (typeof kaart.scrollIntoView === 'function') {
+        const rustig = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+        kaart.scrollIntoView({ block: 'start', behavior: rustig ? 'auto' : 'smooth' })
+      }
+      // De terugval op de kaart zelf is een typenoodzaak (`querySelector` kan `null`
+      // geven), geen gedrag: elke `Kaart` hier krijgt een titel mee.
+      const doel = kaart.querySelector<HTMLElement>('.kaart-titel') ?? kaart
+      doel.setAttribute('tabindex', '-1')
+      doel.focus({ preventScroll: true })
+    }, 0)
+  }
+
+  /**
+   * Vanuit een ander scherm naar een bepaald tabblad van Analyse (ronde 72).
+   *
+   * ⚠ Niet `gaNaarAnalyse` hergebruiken: die zet het tabblad hard op "verdeling"
+   * (ze hoort bij de donut op het Overzicht) en zou de widget "Wat komt eraan" dus
+   * naar de verkeerde helft van de pagina sturen. Deze weg zet ook het ADRES, wat
+   * `setPagina` alleen niet doet.
+   */
+  function gaNaarAnalyseTab(tb: AnalyseTab) {
+    setTxFilter(null)
+    setAnalyseTab(tb)
+    setPagina('analyse')
+    zetRoute({ pagina: 'analyse', analyse: tb })
+  }
+
+  /**
    * Vanuit een ander scherm naar een bepaald tabblad van Budget (ronde 64).
    *
    * ⚠ Bestaat omdat de knop "Naar Budget" in "Je situatie" je bovenaan de pagina
@@ -2881,6 +2935,18 @@ export function App() {
                   onKiesMaand={(m) => gaNaarTransacties({ maand: m })}
                 />
               </Kaart>
+
+              {/* Ronde 72. De grafiek hierboven kijkt zes maanden TERUG; deze twaalf
+                  maanden VOORUIT. Ze horen naast elkaar: eerst wat er gebeurd is,
+                  dan wat eraan komt. Op een lege app tekent de widget zichzelf niet. */}
+              <ToekomstlastenWidget
+                terugkerendePosten={terugkerendePosten}
+                beginMaand={huidigeMaand()}
+                onNaarVooruitblik={() => {
+                  gaNaarAnalyseTab('vooruit')
+                  brengToekomstInBeeld()
+                }}
+              />
 
               {/* Onderaan, bewust: je exporteert een maand nadat je ze bekeken hebt,
                   niet ervoor. De kaart volgt de maandschakelaar bovenaan. */}

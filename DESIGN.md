@@ -215,6 +215,36 @@ het te controleren is de gebouwde app in een echte browser openen en per pagina
 elke wijziging aan de rasters of aan brede inhoud (chips, tabellen, lange namen),
 op 390 px én op 1440 px.
 
+## Staafgrafieken: drie regels uit ronde 72
+
+**Een referentielijn met `position: absolute` ligt VÓÓR de staven, niet erachter.**
+Een positioneerd element wordt na de gewone kinderen getekend, dus de stippellijn
+van een gemiddelde komt bovenop de staven te liggen. Je ziet het niet meteen:
+zolang de opkomstanimatie loopt heeft elke staaf een `transform` en dekt ze de lijn
+wél af — en precies op het moment dat de laatste animatie eindigt, springt de lijn
+naar voren over de hele grafiek. Geef de staafkolommen `position: relative` en
+`z-index: 1`; dan klopt de volgorde ook onder `prefers-reduced-motion`, waar die
+transform er nooit is.
+
+**Boven de zes kolommen wordt een staaf geen knop meer.** `MaandGrafiek` maakt van
+elke maandkolom een knop, en dat mag: zes kolommen halen op een telefoon ongeveer
+46 px. Twaalf kolommen komen op ongeveer 23 px uit — de helft van de 44 px die deze
+app zichzelf oplegt. Zet de doorklik dan in een uitklaplijst eronder, waar de rijen
+die maat wél halen, en geef elke kolom een `role="img"` met een volledige
+`aria-label` (**met het jaartal erin**, anders klinken twee vensters na elkaar
+identiek).
+
+**Twaalf maandnamen naast elkaar passen niet, en dat is nagemeten.** Op een telefoon
+van 360 px is er ongeveer 20 px per kolom; "sep" vraagt er 21 en het Franse "sept."
+29. Met `overflow: hidden` worden ze aan béíde kanten geklemd — je leest "eptembe" —
+zonder beletselteken en zonder dat een test het kan zien. De oplossing die hier staat:
+de AFKORTING overal (ook op een breed scherm, waar "september" bij 56 px per kolom
+evenmin paste), op een smal scherm alleen om de drie maanden een naam, en
+`overflow: visible` zodat die naam over haar naamloze buren mag steken. En denk aan
+het PAPIER: `.alleen-smal`/`.alleen-breed` wisselen op 1024 px, en een A4 staand is
+maar ~794 px breed, dus zonder een eigen `@media print`-regel krijg je op papier de
+smalle versie terwijl daar ruimte zat is.
+
 ## Wat je niet doet
 
 - Geen hexkleuren, geen `#fff`, geen `rgba(...)` behalve in `index.css`.
