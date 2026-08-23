@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type {
   Aflossing,
   Dossier,
@@ -31,11 +31,20 @@ import { bepaalBuffer } from '../utils/buffer'
 import { nettoVermogen } from '../utils/vermogen'
 import { openstaandKapitaal } from '../utils/lening'
 import { saldoVanRekening, totaalSaldoVan } from '../utils/saldo'
-import { isGestopt, maandbedrag, verschuifMaand, intervalVan, INTERVAL_MAANDEN, PERIODE_SLEUTELS } from '../utils/vastelast'
+import {
+  isGestopt,
+  maandbedrag,
+  verschuifMaand,
+  intervalVan,
+  FREQUENTIES,
+  INTERVAL_MAANDEN,
+  PERIODE_SLEUTELS,
+} from '../utils/vastelast'
+import { frequentieNaam } from './TerugkerendePostFormulier'
 import { kaartbedragUitOpslag } from '../utils/kredietkaart'
 import { formatEuro, invoerNaarCenten } from '../utils/format'
 import { standaardRekening } from '../utils/rekening'
-import { huidigeMaand, vandaag } from '../utils/datum'
+import { huidigeMaand, maandJaarLabel, vandaag } from '../utils/datum'
 import { opmaakLocale } from '../utils/opmaaktaal'
 import { TALEN, useT, vertaal } from '../i18n'
 import type { Vertaler } from '../i18n'
@@ -110,10 +119,37 @@ function isSluipend(post: TerugkerendePost): boolean {
  * in; wie ze wil bijstellen doet dat later op de Budget-pagina. Vraag je hier alles,
  * dan is het geen aanvinklijst meer maar twintig keer hetzelfde formulier.
  */
+/**
+ * Hoe vaak een BESTAANDE post terugkomt, in woorden (ronde 70).
+ *
+ * Los van de keuze op de rij: die gaat over wat je nog gaat toevoegen, deze over wat
+ * er al staat. Zonder `startMaand` kan `valtInMaand` het ritme niet plaatsen en
+ * gedraagt de post zich als maandelijks — dan zegt de zin dat ook, in plaats van een
+ * maand te verzinnen.
+ *
+ * ⚠ NIET geëxporteerd: dit is een componentbestand, en een losse export ernaast laat
+ * de fast-refresh-regel van ESLint waarschuwen — dezelfde val als bij `naamMetBron`
+ * in ronde 69. Ze wordt alleen hier gebruikt.
+ */
+function ritmeVan(t: Vertaler, post: TerugkerendePost): string {
+  const f = post.frequentie ?? 'maand'
+  if (f === 'maand') return frequentieNaam(t, 'maand')
+  // ⚠ WEL de frequentie noemen, ook zonder startmaand. Hier stond eerst "Elke maand",
+  // omdat `valtInMaand` zonder startmaand terugvalt op elke maand. Maar `maandbedrag`
+  // deelt dan wél door drie, en op Budget → Vast heet diezelfde post "Om de 3
+  // maanden" — dan zeggen twee schermen iets anders over één record. De app weet dat
+  // het een kwartaalpost is; ze weet alleen niet wélke maanden.
+  if (!post.startMaand) return t('{hoevaak}, vanaf een maand die je nog moet kiezen', { hoevaak: frequentieNaam(t, f) })
+  return t('{hoevaak}, vanaf {maand}', {
+    hoevaak: frequentieNaam(t, f),
+    maand: maandJaarLabel(`${post.startMaand}-01`),
+  })
+}
+
 function KostRegel({
   voorstel,
   t,
-  alToegevoegd,
+  bestaand,
   bezig,
   fout,
   velden,
@@ -122,24 +158,87 @@ function KostRegel({
 }: {
   voorstel: Kostvoorstel
   t: Vertaler
-  alToegevoegd: boolean
+  /**
+   * De post die er al staat, of `undefined`. Sinds ronde 70 een record en niet meer
+   * een boolean.
+   *
+   * ⚠ WAAROM. De rij toont nu wat er geldt ("Eén keer per jaar, vanaf april 2026"),
+   * en die zin kwam uit de LOKALE keuze van deze rij — dus ook op een rij waar je
+   * niets gekozen had. Stond je autoverzekering al in de app met een andere
+   * frequentie of een andere startmaand, dan beweerde het scherm iets over jouw post
+   * dat het nooit gelezen had. De oude zin ("meestal één keer per jaar") beweerde
+   * niets over jou; deze wel, en dan moet ze kloppen.
+   */
+  bestaand: TerugkerendePost | undefined
   bezig: boolean
-  onToevoegen: (voorstel: Kostvoorstel, centen: number) => Promise<boolean>
+  onToevoegen: (voorstel: Kostvoorstel, centen: number, frequentie: Frequentie, startMaand: string) => Promise<boolean>
   fout: string | null
   velden: React.MutableRefObject<Record<string, HTMLInputElement | null>>
   volgende: string | null
 }) {
+  const alToegevoegd = bestaand !== undefined
   const [bedrag, setBedrag] = useState('')
+  // RONDE 70 — JE KIEST ZELF HOE VAAK HET TERUGKOMT.
+  //
+  // De lijst dacht dit vóór je: de frequentie kwam uit het voorstel en de eerste
+  // vervalmaand werd stil op VOLGENDE maand gezet. Voor de meeste posten klopte dat
+  // toevallig, maar wie een driemaandelijkse factuur heeft die in februari valt, of
+  // een halfjaarlijkse premie in maart, kreeg een ritme dat nergens op sloeg — en
+  // zag dat pas maanden later, wanneer de vooruitblik het bedrag in de verkeerde
+  // maand zette. De rekenkern kon het al (`valtInMaand` telt vanaf `startMaand`, dus
+  // níét op kalenderkwartalen), en het Budget-formulier vraagt het ook al. Alleen
+  // dit scherm besliste het.
+  //
+  // Het voorstel blijft het VERTREKPUNT — dat is de hele waarde van een
+  // aanvinklijst — maar het is nu een voorstel en geen vaststelling.
+  const [frequentie, setFrequentie] = useState<Frequentie>(voorstel.frequentie ?? 'maand')
+  const [startMaand, setStartMaand] = useState(() => verschuifMaand(huidigeMaand(), 1))
+  const [ritmeOpen, setRitmeOpen] = useState(false)
   const centen = invoerNaarCenten(bedrag)
-  const geldig = bedrag.trim().length > 0 && Number.isFinite(centen) && centen > 0
+  const periodiek = frequentie !== 'maand'
+  const startGeldig = !periodiek || /^\d{4}-\d{2}$/.test(startMaand)
+  const geldig = bedrag.trim().length > 0 && Number.isFinite(centen) && centen > 0 && startGeldig
   const veldId = `opstelling-${voorstel.sleutel}`
   // Niet 'jaar of maand': het type kent vier frequenties, en kwartaal/semester
   // kregen anders stil het woord "per maand" te zien (ronde 65).
-  const periode = t(PERIODE_SLEUTELS[voorstel.frequentie ?? 'maand'])
+  //
+  // ⚠ Sinds ronde 70 volgt dit woord de KEUZE — en op een rij die er al staat, de
+  // ECHTE post. Zonder dat laatste las één rij tegelijk "Elke maand" (uit het record)
+  // en "per jaar" (uit het voorstel): het paneeltje is daar verborgen, dus de lokale
+  // keuze werd nooit meer gecorrigeerd. Twee woorden over hetzelfde record, naast
+  // elkaar op één regel.
+  const effectieveFrequentie: Frequentie = bestaand ? (bestaand.frequentie ?? 'maand') : frequentie
+  const periode = t(PERIODE_SLEUTELS[effectieveFrequentie])
+  // De samenvatting op de rij. Bij een periodieke post hoort de eerste vervalmaand
+  // erbij: zonder die maand zegt "om de 3 maanden" niet wélke drie.
+  //
+  // ⚠ `startGeldig` staat er niet voor de sier. Maak je het maandveld leeg, dan zou
+  // `maandJaarLabel('-01')` er "januari 1900" van maken: `Number('')` is 0, en nul is
+  // een geldig getal, dus de vangregel in `datum.ts` slaat niet aan. Een verzonnen
+  // jaartal op het scherm is erger dan een open vraag.
+  const ritme = !periodiek
+    ? frequentieNaam(t, frequentie)
+    : startGeldig
+      ? t('{hoevaak}, vanaf {maand}', {
+          hoevaak: frequentieNaam(t, frequentie),
+          maand: maandJaarLabel(`${startMaand}-01`),
+        })
+      : t('{hoevaak}, vanaf een maand die je nog moet kiezen', { hoevaak: frequentieNaam(t, frequentie) })
+
+  // Waarom de knop "Toevoegen" niet kan (huisregel sinds ronde 41, uitgerold in
+  // ronde 61): een uitgeschakelde knop zonder reden laat je raden. De regel staat er
+  // ALTIJD — leeg wanneer alles klopt — want een `role="status"` die pas mét zijn
+  // tekst verschijnt, wordt door sommige schermlezers overgeslagen.
+  const redenId = `${veldId}-reden`
+  const reden = !startGeldig
+    ? t('Kies eerst in welke maand de eerste betaling valt.')
+    : bedrag.trim().length > 0 && !geldig
+      ? t('Geef een bedrag groter dan nul.')
+      : ''
 
   async function verzend() {
     if (!geldig || bezig) return
-    const gelukt = await onToevoegen(voorstel, centen)
+    const gelukt = await onToevoegen(voorstel, centen, frequentie, startMaand)
     // Alleen leegmaken wanneer het écht gelukt is. Wiste je het veld ook bij een
     // mislukking, dan tikt iemand zonder rekening twintig bedragen in en ziet ze
     // allemaal verdampen zonder te weten waarom.
@@ -158,7 +257,7 @@ function KostRegel({
     // gebruikelijke controle op zijwaarts scrollen ziet dat NIET, want `.lijst`
     // heeft `overflow: hidden` — de tekst wordt afgekapt in plaats van de pagina te
     // verbreden.
-    <li className="rij rij-kost">
+    <li className="rij rij-kost rij-kost-invoer">
       <span className="rij-teken" aria-hidden="true">
         {voorstel.icoon}
       </span>
@@ -167,7 +266,91 @@ function KostRegel({
           {t(voorstel.naam)}
         </label>
         {voorstel.toelichting && <span className="rij-meta">{t(voorstel.toelichting)}</span>}
-        {voorstel.frequentie === 'jaar' && <span className="rij-meta">{t('meestal één keer per jaar')}</span>}
+
+        {/* RONDE 70. Eén rustige regel die zegt wat er nu geldt, en die je kan
+            openklappen. De rij zelf blijft wat ze was — dit scherm is al het drukste
+            van de app, en 37 rijen met elk een keuzelijst en een maandveld ernaast
+            zou precies het "te veel tegelijk" opleveren waar deze reeks vanaf wil.
+
+            ⚠ GEEN `aria-controls`. Dat attribuut mag alleen naar een element wijzen
+            dat ECHT bestaat, en dit paneeltje bestaat alleen wanneer het openstaat —
+            exact de fout die ronde 67 op dit scherm vond (zeven dode verwijzingen).
+            `aria-expanded` zegt al wat er gebeurt, en het paneel staat er meteen
+            onder. */}
+        {bestaand ? (
+          <span className="rij-meta">{ritmeVan(t, bestaand)}</span>
+        ) : (
+          <button
+            type="button"
+            // ⚠ ALLEEN `kost-ritme`, GEEN `knop knop-kaal knop-klein`. Die stonden er
+            // eerst bij, en `.knop-kaal` staat later in index.css: die won met haar
+            // vaste 44 × 44 px. "Elke maand · wijzig" is zo'n 120 px breed en liep
+            // dus links en rechts uit haar vak, over het icoon en over het bedragveld
+            // heen — afgekapt door de `overflow: hidden` van `.lijst`, precies het
+            // faalpatroon waar het commentaar bij `.rij-kost` voor waarschuwt. En de
+            // negatieve marge voor het raakvlak bleef staan terwijl de padding
+            // weggevaagd werd, dus de knop overlapte haar buren met 24 px.
+            className="kost-ritme"
+            aria-expanded={ritmeOpen}
+            // De naam van het voorstel maakt de knop uniek: zonder haar dragen
+            // zevenendertig knoppen op één scherm dezelfde toegankelijke naam
+            // (ronde 66). De zichtbare tekst staat er vooraan in, zoals WCAG 2.5.3
+            // vraagt.
+            aria-label={t('{ritme} · wijzig — {naam}', { ritme, naam: t(voorstel.naam) })}
+            onClick={() => setRitmeOpen((o) => !o)}
+          >
+            {ritme} · {t('wijzig')}
+          </button>
+        )}
+
+        {ritmeOpen && !alToegevoegd && (
+          <div className="veldrij kost-ritme-paneel">
+            <div className="veldgroep">
+              <label className="label-caps" htmlFor={`${veldId}-hoevaak`}>
+                {t('Hoe vaak?')}
+              </label>
+              <select
+                id={`${veldId}-hoevaak`}
+                // ⚠ De naam van het voorstel erbij. Elke rij houdt haar eigen
+                // open/dicht bij, dus je kan tien paneeltjes tegelijk openzetten — en
+                // dan dragen tien keuzelijsten dezelfde toegankelijke naam (regel van
+                // ronde 66). De zichtbare tekst staat er vooraan in.
+                aria-label={t('Hoe vaak? — {naam}', { naam: t(voorstel.naam) })}
+                value={frequentie}
+                onChange={(e) => setFrequentie(e.target.value as Frequentie)}
+              >
+                {FREQUENTIES.map((f) => (
+                  <option key={f} value={f}>
+                    {frequentieNaam(t, f)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {periodiek && (
+              <div className="veldgroep">
+                <label className="label-caps" htmlFor={`${veldId}-start`}>
+                  {t('Eerste betaling in')}
+                </label>
+                {/* Het ritme telt vanaf hier en niet vanaf het kalenderjaar: kies je
+                    februari, dan volgt bij een kwartaalpost mei, augustus en november.
+                    Precies dezelfde regel en hetzelfde veld als op Budget → Vast, zodat
+                    er niet twee begrippen naast elkaar ontstaan. */}
+                <input
+                  id={`${veldId}-start`}
+                  aria-label={t('Eerste betaling in — {naam}', { naam: t(voorstel.naam) })}
+                  type="month"
+                  value={startMaand}
+                  onChange={(e) => setStartMaand(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* De regel staat er ALTIJD, ook leeg — zie de uitleg bij `reden` hierboven. */}
+        <span className="rij-meta" id={redenId} role="status">
+          {reden}
+        </span>
         {fout && (
           <span className="rij-meta" role="alert" style={{ color: 'var(--negative)' }}>
             {fout}
@@ -212,6 +395,9 @@ function KostRegel({
             type="button"
             className="knop knop-secundair knop-klein"
             aria-disabled={!geldig || bezig}
+            // Alleen wanneer er iets te zeggen valt: een verwijzing naar een leeg
+            // element is geen beschrijving. Zelfde vorm als de elf formulieren.
+            aria-describedby={reden ? redenId : undefined}
             aria-label={t('Voeg {naam} toe', { naam: t(voorstel.naam) })}
             onClick={() => void verzend()}
           >
@@ -251,7 +437,7 @@ function KostenLijst({
   t: Vertaler
   bezig: boolean
   fout: { sleutel: string; tekst: string } | null
-  onToevoegen: (voorstel: Kostvoorstel, centen: number) => Promise<boolean>
+  onToevoegen: (voorstel: Kostvoorstel, centen: number, frequentie: Frequentie, startMaand: string) => Promise<boolean>
   onNaarBudget: () => void
   /**
    * Is er al een rekening om deze kosten vanaf te laten gaan? (ronde 66, slotronde)
@@ -274,12 +460,28 @@ function KostenLijst({
   // wordt is de vertaalde naam, dus wie de app op Frans zet zag "Huur" niet meer
   // terug onder "Loyer" — en voegde zijn huur een tweede keer toe. Dan staat je
   // huur dubbel in je vaste lasten, zonder één waarschuwing.
-  const bestaande = useMemo(
-    () => new Set(posten.map((p) => p.omschrijving.trim().toLowerCase())),
-    [posten],
-  )
-  const alToegevoegd = (v: Kostvoorstel) =>
-    TALEN.some((taal) => bestaande.has(vertaal(taal.waarde, v.naam).trim().toLowerCase()))
+  //
+  // ⚠ RONDE 70: een MAP naar de post zelf en niet meer een verzameling namen. De rij
+  // toont sinds deze ronde wat er geldt (frequentie + eerste vervalmaand), en dat
+  // moet uit het echte record komen — niet uit de lokale keuze van een rij waarop je
+  // niets gekozen hebt. Bij een dubbel wint de EERSTE, net als overal elders.
+  // Geen `useMemo`: `posten` is bij elke render een verse `.filter()`-array, dus de
+  // afhankelijkheid verandert altijd en de cache sloeg nooit aan. Bij 37 voorstellen
+  // kost het niets; een memo die niets doet mét een commentaar dat zegt van wel, kost
+  // de volgende lezer wel iets.
+  const bestaandePerNaam = new Map<string, TerugkerendePost>()
+  for (const p of posten) {
+    const sleutel = p.omschrijving.trim().toLowerCase()
+    if (!bestaandePerNaam.has(sleutel)) bestaandePerNaam.set(sleutel, p)
+  }
+  const bestaandeVan = (v: Kostvoorstel): TerugkerendePost | undefined => {
+    for (const taal of TALEN) {
+      const gevonden = bestaandePerNaam.get(vertaal(taal.waarde, v.naam).trim().toLowerCase())
+      if (gevonden) return gevonden
+    }
+    return undefined
+  }
+  const alToegevoegd = (v: Kostvoorstel) => bestaandeVan(v) !== undefined
 
   const gedaan = voorstellen.filter(alToegevoegd).length
 
@@ -319,7 +521,7 @@ function KostenLijst({
               key={v.sleutel}
               voorstel={v}
               t={t}
-              alToegevoegd={alToegevoegd(v)}
+              bestaand={bestaandeVan(v)}
               bezig={bezig}
               fout={fout?.sleutel === v.sleutel ? fout.tekst : null}
               velden={velden}
@@ -588,7 +790,12 @@ export function OpstellingSectie({
     telling: b.telling,
   }))
 
-  async function voegKostToe(voorstel: Kostvoorstel, centen: number): Promise<boolean> {
+  async function voegKostToe(
+    voorstel: Kostvoorstel,
+    centen: number,
+    frequentie: Frequentie,
+    startMaand: string,
+  ): Promise<boolean> {
     setBezig(true)
     setFout(null)
     setMelding(null)
@@ -612,7 +819,6 @@ export function OpstellingSectie({
         })
         return false
       }
-      const frequentie: Frequentie = voorstel.frequentie ?? 'maand'
       await onVastePost({
         id: nieuwId(),
         omschrijving: t(voorstel.naam),
@@ -629,13 +835,14 @@ export function OpstellingSectie({
         // boeking tegenover.
         dag: Math.min(Number(vandaag().slice(8, 10)), 28),
         categorieId: voorstel.categorieId,
-        // Een jaarlijkse post begint pas VOLGENDE maand. We weten de echte
-        // vervaldag niet (die vragen we hier bewust niet), en zetten we hem op deze
-        // maand, dan valt het volle jaarbedrag meteen in je lopende maand — een
-        // autoverzekering van € 620 die er nooit is geweest.
-        ...(frequentie !== 'maand'
-          ? { frequentie, startMaand: verschuifMaand(huidigeMaand(), 1) }
-          : {}),
+        // ⚠ RONDE 70. Hier stond `startMaand: verschuifMaand(huidigeMaand(), 1)` —
+        // de app koos zelf "volgende maand". Dat was een verdedigbare gok (op DEZE
+        // maand zetten zou het volle jaarbedrag meteen in je lopende maand laten
+        // vallen), maar het bleef een gok: een driemaandelijkse factuur die in
+        // februari valt, kreeg zo een ritme dat er drie maanden naast zat, en je zag
+        // dat pas wanneer de vooruitblik het bedrag in de verkeerde maand zette.
+        // De rij vraagt het nu, met dezelfde gok als vertrekpunt.
+        ...(frequentie !== 'maand' ? { frequentie, startMaand } : {}),
       })
       // De rekening staat erbij: dit scherm vraagt ze bewust niet, dus zonder deze
       // regel wist je niet waar de app je vaste last aan gehangen heeft.

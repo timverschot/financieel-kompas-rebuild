@@ -566,6 +566,76 @@ h4 {
   white-space: nowrap;
 }
 
+/* De regel die zegt hoe vaak een voorstel terugkomt, en die je kan openklappen
+   (ronde 70).
+
+   Bewust GEEN `.knop`-klasse: die brengt padding, een rand en een achtergrond mee,
+   en dit hoort te lezen als een rustige metaregel — zoals de toelichting erboven —
+   met een stippellijntje dat verraadt dat je erop kan tikken. `align-self` houdt de
+   knop zo breed als haar tekst; zonder die regel rekt ze over de hele rij en tik je
+   hem per ongeluk open terwijl je naast de naam mikt.
+
+   Het raakvlak van 44 px komt van de padding onder `pointer: coarse`, met een
+   negatieve marge die de rij weer even hoog maakt — hetzelfde patroon als bij de
+   knop "Toon ze ook" in de boekingslijst (ronde 47). */
+.kost-ritme {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  font: inherit;
+  font-size: var(--tekst-s);
+  line-height: 1.35;
+  color: var(--text-subtle);
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+@media (pointer: coarse) {
+  .kost-ritme {
+    min-height: 44px;
+    padding: 12px 0;
+    margin: -12px 0;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .kost-ritme:hover {
+    color: var(--text);
+  }
+}
+
+/* ⚠ Het voorvoegsel `.rij ` is nodig, en de offset is NEGATIEF. Zonder het voorvoegsel
+   is dit dode code: `.rij button:focus-visible` verderop in dit bestand is even
+   specifiek plus een type, dus die wint en de ring valt terug op haar box-shadow.
+   Precies de val die bij `.rij-knop`, `.badge-knop` en `.tx-openen` al beschreven staat.
+   Een positieve offset wijst naar buiten, en `.lijst` heeft `overflow: hidden` — dan
+   knipt de lijst de ring weg. */
+.rij .kost-ritme:focus-visible,
+.kost-ritme:focus-visible {
+  outline: 3px solid var(--focus-rand);
+  outline-offset: -3px;
+  box-shadow: none;
+  border-radius: var(--radius-sm);
+}
+
+/* Het paneeltje eronder.
+   ⚠ Hier stonden twee regels die allebei niets deden, en dat is precies de val die dit
+   bestand elders drie keer documenteert. `flex: 1 1 100%` op het paneel zelf: `.rij-midden`
+   is een KOLOM, dus daar is `flex-basis` een hoogte — de breedte kwam sowieso al van
+   `align-items: stretch`. En `.kost-ritme-paneel > .veldgroep { flex: 1 1 200px }` verloor
+   van `.veldrij > .veldgroep` verderop in dit bestand: gelijke specificiteit, en dan wint
+   de laatste. Allebei weg. De basis van 160 px volstaat, want `.rij-kost-invoer` breekt de
+   rij nu af zodra ze niet in twee kolommen past (zie daar) — en dan heeft het paneel de
+   volle kolombreedte. Nagemeten op 393, 600 en 1440 px. */
+.kost-ritme-paneel {
+  margin-top: 6px;
+}
+
 @media (min-width: 560px) {
   .rij-kost > .rij-midden {
     flex: 1 1 0;
@@ -573,6 +643,30 @@ h4 {
 
   .rij-kost > .rij-acties {
     flex: 0 0 auto;
+  }
+
+  /* ⚠ RONDE 70, en ALLEEN voor de aanvinklijst van "Je situatie".
+     Met basis 0 nam de naamkolom gewoon wat er overbleef naast het invoerblok
+     (~325 px). De smalle weergave staat tot 1024 px op `maxWidth: 480`, dus de
+     inhoudskolom is in die hele band 408 px breed — daar hield de naam maar 116 px
+     over, en brak "Hospitalisatieverzekering" in vier regeltjes. Sinds deze ronde
+     geldt dat ook voor de ritmeregel en voor de twee velden van het paneeltje.
+     Met een echte basis past de rij daar niet meer in twee kolommen en wrapt
+     `.rij-acties` naar een eigen regel, precies zoals onder 560 px.
+
+     ⚠ Een EIGEN klasse en niet `.rij-kost`: die klasse wordt ook gebruikt door de
+     uitwisselkaart, de maandafsluiting, de prijsstijgingen, de onderhoudsbijdrage en
+     de dossierkaart. Daar zou dezelfde regel rijen laten afbreken die vandaag netjes
+     op één lijn staan — én hun knoppen naar links laten springen, want een afgebroken
+     `.rij-acties` heeft geen uitlijning meer. */
+  .rij-kost-invoer > .rij-midden {
+    flex: 1 1 260px;
+  }
+
+  /* Houdt het invoerblok rechts wanneer het op een eigen regel belandt. Staat het wél
+     naast de naamkolom, dan is er geen vrije ruimte en doet deze regel niets. */
+  .rij-kost-invoer > .rij-acties {
+    margin-left: auto;
   }
 }
 

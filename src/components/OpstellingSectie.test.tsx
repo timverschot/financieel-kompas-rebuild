@@ -223,6 +223,254 @@ describe('OpstellingSectie — de aanvinklijsten', () => {
     expect(onVastePost.mock.calls[0][0].startMaand).toMatch(/^\d{4}-\d{2}$/)
   })
 
+  // ⚠ RONDE 70. De lijst besliste de periodiciteit vóór je: de frequentie kwam uit
+  // het voorstel en de eerste vervalmaand werd stil op VOLGENDE maand gezet. Wie een
+  // driemaandelijkse factuur heeft die in februari valt, kreeg zo een ritme dat er
+  // drie maanden naast zat — en zag dat pas wanneer de vooruitblik het bedrag in de
+  // verkeerde maand zette.
+
+  it('toont op elke rij hoe vaak de post terugkomt, met het voorstel als vertrekpunt', async () => {
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] })
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+
+    expect(screen.getByRole('button', { name: /Elke maand · wijzig — Huur/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Eén keer per jaar, vanaf .+ · wijzig — Autoverzekering/ })).toBeInTheDocument()
+  })
+
+  it('klapt de keuze pas open als je erom vraagt', async () => {
+    // Het drukste scherm van de app: 37 rijen met elk een keuzelijst en een maandveld
+    // ernaast zou precies het "te veel tegelijk" opleveren dat deze reeks wegwerkt.
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] })
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+
+    const knop = screen.getByRole('button', { name: /wijzig — Huur/ })
+    expect(knop).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByLabelText('Hoe vaak?')).toBeNull()
+
+    await gebruiker.click(knop)
+    expect(knop).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByLabelText('Hoe vaak?')).toBeInTheDocument()
+  })
+
+  it('vraagt de eerste vervalmaand pas zodra de post niet meer maandelijks is', async () => {
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] })
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Huur/ }))
+
+    // Maandelijks: er is geen ritme te plaatsen, dus geen veld.
+    expect(screen.queryByLabelText('Eerste betaling in')).toBeNull()
+
+    await gebruiker.selectOptions(screen.getByLabelText('Hoe vaak?'), 'kwartaal')
+    expect(screen.getByLabelText('Eerste betaling in')).toBeInTheDocument()
+  })
+
+  it('laat het woord bij het bedragveld de KEUZE volgen, niet het voorstel', async () => {
+    // Anders tik je een kwartaalbedrag in een veld dat "per maand" belooft — dezelfde
+    // factorfout die ronde 65 wegnam, alleen met een andere factor.
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] })
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Huur/ }))
+    await gebruiker.selectOptions(screen.getByLabelText('Hoe vaak?'), 'kwartaal')
+
+    expect(screen.getByLabelText('Huur')).toHaveAttribute('placeholder', 'bedrag per kwartaal')
+    expect(screen.getByRole('textbox', { name: 'Huur — bedrag per kwartaal' })).toBeInTheDocument()
+  })
+
+  it('bewaart de gekozen frequentie en de gekozen vervalmaand', async () => {
+    const gebruiker = userEvent.setup()
+    const onVastePost = vi.fn()
+    toon({ rekeningen: [rekening] }, { onVastePost })
+
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Huur/ }))
+    await gebruiker.selectOptions(screen.getByLabelText('Hoe vaak?'), 'kwartaal')
+    await gebruiker.clear(screen.getByLabelText('Eerste betaling in'))
+    await gebruiker.type(screen.getByLabelText('Eerste betaling in'), '2027-02')
+    await gebruiker.type(screen.getByLabelText('Huur'), '300')
+    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
+
+    // Februari, niet "volgende maand": vanaf hier telt het ritme door naar mei,
+    // augustus en november. Dat is precies waarom dit veld bestaat.
+    expect(onVastePost.mock.calls[0][0].frequentie).toBe('kwartaal')
+    expect(onVastePost.mock.calls[0][0].startMaand).toBe('2027-02')
+  })
+
+  it('laat een maandelijkse keuze zonder frequentie en zonder startmaand weg', async () => {
+    // Een maandpost heeft geen ritme te plaatsen; die twee velden horen dan niet in
+    // het record te staan.
+    const gebruiker = userEvent.setup()
+    const onVastePost = vi.fn()
+    toon({ rekeningen: [rekening] }, { onVastePost })
+
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Autoverzekering/ }))
+    await gebruiker.selectOptions(screen.getByLabelText('Hoe vaak?'), 'maand')
+    await gebruiker.type(screen.getByLabelText('Autoverzekering'), '52')
+    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Autoverzekering toe' }))
+
+    expect(onVastePost.mock.calls[0][0].frequentie).toBeUndefined()
+    expect(onVastePost.mock.calls[0][0].startMaand).toBeUndefined()
+  })
+
+  it('voegt niets toe zolang de vervalmaand leeg is', async () => {
+    // Zonder startmaand kan `valtInMaand` het ritme niet plaatsen en gedraagt de post
+    // zich als maandelijks — een kwartaalfactuur die elke maand meetelt.
+    const gebruiker = userEvent.setup()
+    const onVastePost = vi.fn()
+    toon({ rekeningen: [rekening] }, { onVastePost })
+
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Huur/ }))
+    await gebruiker.selectOptions(screen.getByLabelText('Hoe vaak?'), 'kwartaal')
+    await gebruiker.clear(screen.getByLabelText('Eerste betaling in'))
+    await gebruiker.type(screen.getByLabelText('Huur'), '300')
+    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
+
+    expect(onVastePost).not.toHaveBeenCalled()
+  })
+
+  it('rekent de bevestiging om met de GEKOZEN frequentie', async () => {
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] })
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Huur/ }))
+    await gebruiker.selectOptions(screen.getByLabelText('Hoe vaak?'), 'semester')
+    await gebruiker.type(screen.getByLabelText('Huur'), '300')
+    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
+
+    // € 300 per half jaar is € 50 per maand — niet € 300, en niet gedeeld door twaalf.
+    const melding = await screen.findByText(/Huur toegevoegd/)
+    expect(melding).toHaveTextContent('per half jaar')
+    expect(melding).toHaveTextContent('50,00')
+  })
+
+  it('leest het ritme van een AL bestaande post uit die post, niet uit het voorstel', async () => {
+    // ⚠ De regel op de rij kwam uit de lokale keuze van die rij — ook op een rij waar
+    // je niets gekozen had. Stond je autoverzekering al in de app als kwartaalpost
+    // vanaf april 2026, dan beweerde het scherm "Eén keer per jaar, vanaf <volgende
+    // maand>": een harde uitspraak over gegevens die het nooit gelezen had.
+    const gebruiker = userEvent.setup()
+    const bestaand: TerugkerendePost = {
+      id: 'p1',
+      omschrijving: 'Autoverzekering',
+      bedrag: -15000,
+      rekeningId: 'r1',
+      dag: 1,
+      frequentie: 'kwartaal',
+      startMaand: '2026-04',
+    }
+    toon({ rekeningen: [rekening], terugkerendePosten: [bestaand] })
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+
+    const rij = screen.getByText('Autoverzekering').closest('li') as HTMLElement
+    expect(within(rij).getByText(/Om de 3 maanden, vanaf april 2026/)).toBeInTheDocument()
+    expect(within(rij).queryByText(/Eén keer per jaar/)).toBeNull()
+  })
+
+  it('noemt de frequentie ook wanneer een bestaande post geen startmaand heeft', async () => {
+    // ⚠ Hier stond eerst "Elke maand", omdat `valtInMaand` zonder startmaand terugvalt
+    // op elke maand. Maar `maandbedrag` deelt dan wél door drie, en op Budget → Vast
+    // heet diezelfde post "Om de 3 maanden" — twee schermen die iets anders zeggen over
+    // één record. De app weet dat het een kwartaalpost is; alleen niet wélke maanden.
+    const gebruiker = userEvent.setup()
+    // ⚠ WEL een frequentie, GEEN startmaand — dat is precies het geval waarin
+    // `valtInMaand` terugvalt op "elke maand". Een post zónder frequentie zou de
+    // controle nooit bereiken en zou dus niets bewijzen.
+    const bestaand: TerugkerendePost = {
+      id: 'p1',
+      omschrijving: 'Huur',
+      bedrag: -95000,
+      rekeningId: 'r1',
+      dag: 1,
+      frequentie: 'kwartaal',
+    }
+    toon({ rekeningen: [rekening], terugkerendePosten: [bestaand] })
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+
+    const rij = screen.getByText('Huur').closest('li') as HTMLElement
+    expect(within(rij).getByText('Om de 3 maanden, vanaf een maand die je nog moet kiezen')).toBeInTheDocument()
+    expect(within(rij).queryByText('Elke maand')).toBeNull()
+  })
+
+  it('laat óók het woord bij het bedrag de bestaande post volgen', async () => {
+    // ⚠ De zin kwam uit het record, het woord ernaast nog uit het voorstel. Eén rij las
+    // dan tegelijk "Elke maand" en "per jaar": het paneeltje is op een toegevoegde rij
+    // verborgen, dus die lokale keuze werd nooit meer gecorrigeerd.
+    const gebruiker = userEvent.setup()
+    const bestaand: TerugkerendePost = {
+      id: 'p1',
+      omschrijving: 'Autoverzekering',
+      bedrag: -5200,
+      rekeningId: 'r1',
+      dag: 1,
+    }
+    toon({ rekeningen: [rekening], terugkerendePosten: [bestaand] })
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+
+    const rij = screen.getByText('Autoverzekering').closest('li') as HTMLElement
+    expect(within(rij).getByText('Elke maand')).toBeInTheDocument()
+    expect(within(rij).getByText('per maand')).toBeInTheDocument()
+    expect(within(rij).queryByText('per jaar')).toBeNull()
+  })
+
+  it('verwijst pas naar een reden wanneer er ook een staat', async () => {
+    // Een `aria-describedby` naar een lege regel is geen beschrijving. Zelfde vorm als
+    // in de elf formulieren die deze huisregel al volgen.
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] })
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+
+    expect(screen.getByRole('button', { name: 'Voeg Huur toe' })).not.toHaveAttribute('aria-describedby')
+  })
+
+  it('verzint geen jaartal wanneer je de vervalmaand leegmaakt', async () => {
+    // `maandJaarLabel('-01')` maakte er "januari 1900" van: `Number('')` is 0, en nul
+    // is een geldig getal, dus de vangregel in datum.ts sloeg niet aan.
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] })
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Huur/ }))
+    await gebruiker.selectOptions(screen.getByLabelText(/^Hoe vaak\?/), 'kwartaal')
+    await gebruiker.clear(screen.getByLabelText(/^Eerste betaling in/))
+
+    expect(screen.queryByText(/1900/)).toBeNull()
+    expect(screen.getByRole('button', { name: /vanaf een maand die je nog moet kiezen/ })).toBeInTheDocument()
+  })
+
+  it('zegt waarom "Toevoegen" niet kan zolang de vervalmaand ontbreekt', async () => {
+    // Huisregel sinds ronde 41: een knop die uitstaat omdat JOUW INVOER onvolledig
+    // is, hoort te zeggen wát er ontbreekt — en die reden hoort aan de knop te hangen.
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] })
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Huur/ }))
+    await gebruiker.selectOptions(screen.getByLabelText(/^Hoe vaak\?/), 'kwartaal')
+    await gebruiker.clear(screen.getByLabelText(/^Eerste betaling in/))
+    await gebruiker.type(screen.getByLabelText('Huur'), '300')
+
+    const knop = screen.getByRole('button', { name: 'Voeg Huur toe' })
+    expect(knop).toHaveAttribute('aria-disabled', 'true')
+    const redenId = knop.getAttribute('aria-describedby') as string
+    expect(document.getElementById(redenId)?.textContent).toBe('Kies eerst in welke maand de eerste betaling valt.')
+  })
+
+  it('geeft elke keuzelijst een eigen naam, ook met twee paneeltjes open', async () => {
+    // Elke rij houdt haar eigen open/dicht bij, dus je kan er meerdere tegelijk
+    // openzetten — en dan dragen twee keuzelijsten dezelfde toegankelijke naam.
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] })
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Huur/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Autoverzekering/ }))
+
+    expect(screen.getByRole('combobox', { name: 'Hoe vaak? — Huur' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Hoe vaak? — Autoverzekering' })).toBeInTheDocument()
+  })
+
   it('markeert wat je al hebt en biedt daar geen tweede invoer meer aan', async () => {
     const gebruiker = userEvent.setup()
     const bestaand: TerugkerendePost = { id: 'p1', omschrijving: 'Netflix', bedrag: -1399, rekeningId: 'r1', dag: 1 }
@@ -306,7 +554,7 @@ describe('OpstellingSectie — de aanvinklijsten', () => {
     expect(onVastePost.mock.calls[0][0].dag).toBe(vandaagDag)
   })
 
-  it('laat een jaarlijkse post pas volgende maand beginnen', async () => {
+  it('stelt volgende maand voor als eerste vervalmaand van een jaarpost', async () => {
     // Anders valt het volle jaarbedrag meteen in je lopende maand: een
     // autoverzekering van € 620 die er nooit is geweest.
     const gebruiker = userEvent.setup()
