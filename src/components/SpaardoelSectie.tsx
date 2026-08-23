@@ -175,6 +175,19 @@ export function SpaardoelSectie({
           <ul className="lijst">
             {spaardoelen.map((d) => {
               const v = spaardoelVoortgang(d, rekeningen, transacties, overboekingen, waarderingen)
+              // RONDE 69 — WAT "AL GESPAARD" HIER ÉCHT IS. Hangt er een rekening aan
+              // het doel, dan neemt `spaardoelVoortgang` het VOLLEDIGE saldo van die
+              // rekening over. Dat is bruikbaar zolang die rekening één doel dient,
+              // maar wie twee doelen aan dezelfde spaarrekening hangt, ziet hetzelfde
+              // geld twee keer als voortgang staan — en dan lijken allebei de doelen
+              // bijna gehaald terwijl er maar één keer geld is. Het cijfer zwijgt
+              // erover, dus zegt het scherm het nu zelf.
+              const medeDoelen = d.gekoppeldeRekeningId
+                ? spaardoelen.filter((a) => a.id !== d.id && a.gekoppeldeRekeningId === d.gekoppeldeRekeningId).length
+                : 0
+              const rekeningNaam = d.gekoppeldeRekeningId
+                ? rekeningen.find((r) => r.id === d.gekoppeldeRekeningId)?.naam
+                : undefined
               const tempo = spaardoelTempo(d, rekeningen, transacties, overboekingen, waarderingen, nu)
               const plan = spaardoelPlan(d, v, tempo, nu)
               const kleur = d.kleur ?? 'var(--positive)'
@@ -231,6 +244,22 @@ export function SpaardoelSectie({
                   </div>
 
                   <Balk label={d.naam} fractie={v.fractie} kleur={kleur} nu={v.fractie * 100} max={100} />
+
+                  {rekeningNaam ? (
+                    <span className="getal-bron">
+                      {t('Het eerste bedrag hierboven is het volledige saldo van {rekening} zoals het vandaag staat — niet alleen wat je sinds dit doel opzijzette.', {
+                        rekening: rekeningNaam,
+                      })}
+                      {medeDoelen > 0
+                        ? ' ' +
+                          (medeDoelen === 1
+                            ? t('Er hangt nog een doel aan diezelfde rekening: hetzelfde geld telt bij allebei mee.')
+                            : t('Er hangen nog {n} doelen aan diezelfde rekening: hetzelfde geld telt bij allemaal mee.', {
+                                n: medeDoelen,
+                              }))
+                        : ''}
+                    </span>
+                  ) : null}
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
                     <span className="rij-meta">{t('nog {bedrag}', { bedrag: formatEuro(v.resterend) })}</span>

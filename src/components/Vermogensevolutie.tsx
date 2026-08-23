@@ -4,7 +4,7 @@ import { vermogensEvolutie, laatsteMaanden } from '../utils/vermogen'
 import { formatEuro } from '../utils/format'
 import { EersteStapKnop, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
-import { maandKort } from '../utils/datum'
+import { maandKort, vandaag } from '../utils/datum'
 
 // Vaste, onderscheidbare lijnkleuren per rekening. De kleur reist mee met de
 // reeks (zelfde data-object als de waarden), zodat lijn en schakelaar nooit uit
@@ -104,6 +104,17 @@ export function Vermogensevolutie({
   const eersteTotaal = data[0].totaal
   const verschil = laatsteTotaal - eersteTotaal
 
+  // Hoeveel boekingen er in de LAATSTE maand van de grafiek nog moeten vallen. Zie
+  // de uitleg bij de zin hieronder. Overboekingen tellen mee: ook die verschuiven
+  // het saldo van een rekening, en de grafiek toont saldo's per rekening.
+  const laatsteMaand = maanden[maanden.length - 1]
+  const vandaagISO = vandaag()
+  const komtNog =
+    laatsteMaand === vandaagISO.slice(0, 7)
+      ? transacties.filter((tx) => tx.datum > vandaagISO && tx.datum.slice(0, 7) === laatsteMaand).length +
+        overboekingen.filter((o) => o.datum > vandaagISO && o.datum.slice(0, 7) === laatsteMaand).length
+      : 0
+
   return (
     <Kaart
       titel={t('Vermogensevolutie')}
@@ -121,6 +132,29 @@ export function Vermogensevolutie({
           {verschil >= 0 ? '▲' : '▼'} {formatEuro(Math.abs(verschil))} {t('over {n} maanden', { n: MAANDEN })}
         </span>
       </div>
+
+      {/* RONDE 69 — WAAROM DIT BEDRAG KAN VERSCHILLEN VAN DE SALDOTEGEL.
+          `saldoOpEinde` telt tot het EINDE van de maand; de saldotegel telt tot en
+          met VANDAAG. Staat er een huurbetaling op de 28ste klaar en is het de 5de,
+          dan staat hier een lager bedrag — twee cijfers over hetzelfde geld, zonder
+          dat iets het verschil benoemt.
+
+          ⚠ De zin noemt uitdrukkelijk de OVERZICHT-pagina en niet "bovenaan". Deze
+          grafiek staat op Analyse › Vooruit, en op dat scherm staat geen saldotegel;
+          het enige grote bedrag erboven is het eindpunt van deze lijn zelf. "Je saldo
+          bovenaan" zou dus naar het cijfer wijzen dat per definitie gelijk is.
+
+          De zin komt er alleen wanneer er ook écht zo'n boeking klaarstaat: anders
+          zou ze een verschil verklaren dat er niet is. */}
+      {komtNog > 0 ? (
+        <p className="rij-meta" data-evolutiebron style={{ margin: 0 }}>
+          {komtNog === 1
+            ? t('Het laatste punt is de stand aan het einde van de maand. Eén boeking van later deze maand telt er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.')
+            : t('Het laatste punt is de stand aan het einde van de maand. {n} boekingen van later deze maand tellen er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.', {
+                n: komtNog,
+              })}
+        </p>
+      ) : null}
 
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={t('Vermogensevolutie')} style={{ display: 'block' }}>
         {/* Nullijn wanneer er negatieve waarden zijn */}

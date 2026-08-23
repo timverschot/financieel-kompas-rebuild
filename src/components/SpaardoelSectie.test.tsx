@@ -205,3 +205,85 @@ describe('SpaardoelSectie — een mislukte opslag van het formulier', () => {
   })
 })
 
+
+// ---------------------------------------------------------------------------
+// Ronde 69 — elk getal verantwoordt zich.
+//
+// Het bedrag links van "van € X" is bij een doel MET gekoppelde rekening het
+// VOLLEDIGE saldo van die rekening, zoals het vandaag staat. Dat is bruikbaar zolang die rekening één doel dient, maar wie twee
+// doelen aan dezelfde spaarrekening hangt, ziet hetzelfde geld twee keer als
+// voortgang staan — en dan lijken allebei de doelen bijna gehaald terwijl er maar
+// één keer geld is. Het cijfer zwijgt daarover, dus moet het scherm het zeggen.
+// ---------------------------------------------------------------------------
+describe('SpaardoelSectie — waar het gespaarde bedrag vandaan komt', () => {
+  const spaarRekeningen: Rekening[] = [
+    { id: 'sp', naam: 'Spaar', beginsaldo: 200000, type: 'spaar' },
+    { id: 'sp2', naam: 'Tweede spaarpot', beginsaldo: 100000, type: 'spaar' },
+  ]
+
+  function toonDoelen(doelen: Spaardoel[]) {
+    render(
+      <SpaardoelSectie
+        spaardoelen={doelen}
+        rekeningen={spaarRekeningen}
+        transacties={[]}
+        waarderingen={[]}
+        overboekingen={[]}
+        onOpslaan={vi.fn()}
+        onVerwijderen={vi.fn()}
+      />,
+    )
+  }
+
+  // De bronregels van de doelenlijst; scopen op `.lijst` omdat het formulier
+  // ernaast zijn eigen uitlegregels kan hebben.
+  const bronnen = () => [...document.querySelectorAll('.lijst .getal-bron')].map((el) => el.textContent ?? '')
+
+  it('noemt de rekening waarvan het volledige saldo geteld wordt', () => {
+    toonDoelen([{ id: 'd1', naam: 'Buffer', doelbedrag: 600000, huidigBedrag: 0, gekoppeldeRekeningId: 'sp' }])
+    expect(bronnen()).toHaveLength(1)
+    expect(bronnen()[0]).toContain('Het eerste bedrag hierboven is het volledige saldo van Spaar zoals het vandaag staat — niet alleen wat je sinds dit doel opzijzette.')
+    // Er hangt maar één doel aan die rekening, dus telt er niets dubbel en hoort
+    // die waarschuwing er niet te staan.
+    expect(bronnen()[0]).not.toContain('diezelfde rekening')
+  })
+
+  it('waarschuwt bij elk doel dat hetzelfde geld deelt met een ander doel', () => {
+    // ⚠ Dit is de fout die de zin moet vangen: twee doelen aan dezelfde
+    // spaarrekening tellen allebei het VOLLEDIGE saldo mee. Zonder de zin lijken
+    // allebei de doelen halverwege, terwijl het geld er maar één keer is.
+    toonDoelen([
+      { id: 'd1', naam: 'Buffer', doelbedrag: 600000, huidigBedrag: 0, gekoppeldeRekeningId: 'sp' },
+      { id: 'd2', naam: 'Reis', doelbedrag: 400000, huidigBedrag: 0, gekoppeldeRekeningId: 'sp' },
+    ])
+    const regels = bronnen()
+    expect(regels).toHaveLength(2)
+    for (const regel of regels) {
+      expect(regel).toContain('Het eerste bedrag hierboven is het volledige saldo van Spaar zoals het vandaag staat — niet alleen wat je sinds dit doel opzijzette.')
+      expect(regel).toContain('Er hangt nog een doel aan diezelfde rekening: hetzelfde geld telt bij allebei mee.')
+    }
+  })
+
+  it('telt alleen de doelen op DEZELFDE rekening mee in die waarschuwing', () => {
+    // Een doel op een andere spaarpot deelt niets, dus mag het de telling niet
+    // opblazen — anders waarschuwt de app over geld dat helemaal niet dubbel telt.
+    toonDoelen([
+      { id: 'd1', naam: 'Buffer', doelbedrag: 600000, huidigBedrag: 0, gekoppeldeRekeningId: 'sp' },
+      { id: 'd2', naam: 'Reis', doelbedrag: 400000, huidigBedrag: 0, gekoppeldeRekeningId: 'sp2' },
+    ])
+    const regels = bronnen()
+    expect(regels).toHaveLength(2)
+    expect(regels[0]).toContain('Het eerste bedrag hierboven is het volledige saldo van Spaar zoals het vandaag staat — niet alleen wat je sinds dit doel opzijzette.')
+    expect(regels[1]).toContain('Het eerste bedrag hierboven is het volledige saldo van Tweede spaarpot zoals het vandaag staat — niet alleen wat je sinds dit doel opzijzette.')
+    for (const regel of regels) {
+      expect(regel).not.toContain('diezelfde rekening')
+    }
+  })
+
+  it('zwijgt bij een doel waarvan je het bedrag zelf bijhoudt', () => {
+    // Zonder gekoppelde rekening komt "Al gespaard" uit je eigen invoer; er is dan
+    // geen saldo waarnaar te verwijzen valt en niets dat dubbel kan tellen.
+    toonDoelen([{ id: 'd1', naam: 'Buffer', doelbedrag: 600000, huidigBedrag: 150000 }])
+    expect(document.querySelectorAll('.lijst .getal-bron')).toHaveLength(0)
+  })
+})

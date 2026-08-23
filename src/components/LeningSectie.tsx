@@ -179,6 +179,10 @@ export function LeningSectie({
     await opslag.probeer(() => onOpslaan(gewijzigd))
   }
 
+  // Eén keer uitgerekend: het bedrag én de vraag of er een herkomstzin onder hoort.
+  const teOntvangen = totaalOpenstaand(leningen, aflossingen, 'uitgeleend')
+  const teBetalen = totaalOpenstaand(leningen, aflossingen, 'geleend')
+
   const gesorteerd = [...leningen].sort((a, b) => {
     const aKlaar = isAfbetaald(a, aflossingen)
     const bKlaar = isAfbetaald(b, aflossingen)
@@ -199,8 +203,33 @@ export function LeningSectie({
           we het pas vanaf twee. */}
       {leningen.length > 1 && (
         <div className="stat-rij">
-          <Stat label={t('Nog te ontvangen')}>{formatEuro(totaalOpenstaand(leningen, aflossingen, 'uitgeleend'))}</Stat>
-          <Stat label={t('Nog te betalen')}>{formatEuro(totaalOpenstaand(leningen, aflossingen, 'geleend'))}</Stat>
+          {/* RONDE 69. `openstaandKapitaal` rekent hoofdsom − afgelost. De rentevoet
+              staat in het schema uitdrukkelijk als informatief en zit dus in geen van
+              beide bedragen. Ditzelfde cijfer voedt het netto vermogen, waar de
+              vermogensregel het intussen ook zegt. */}
+          {/* Zoals bij de tegels op "Je situatie": de zin hangt aan het bedrag. Heb je
+              twee leningen die allebei uitgeleend zijn, dan staat er "Nog te betalen
+              € 0,00" — daar hoort geen alinea over hoofdsom en interest onder. */}
+          <Stat
+            label={t('Nog te ontvangen')}
+            bron={
+              teOntvangen > 0
+                ? t('Alleen het openstaande kapitaal: hoofdsom min wat er terugbetaald is. Interest zit er niet in, en een afgesloten lening telt niet meer mee.')
+                : undefined
+            }
+          >
+            {formatEuro(teOntvangen)}
+          </Stat>
+          <Stat
+            label={t('Nog te betalen')}
+            bron={
+              teBetalen > 0
+                ? t('Alleen het openstaande kapitaal: hoofdsom min wat je al afbetaalde. De interest die je nog betaalt zit er niet in, en een afgesloten lening telt niet meer mee.')
+                : undefined
+            }
+          >
+            {formatEuro(teBetalen)}
+          </Stat>
         </div>
       )}
 

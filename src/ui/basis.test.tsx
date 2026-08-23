@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
-import { EersteStapKnop, Kaart, Leeg } from './basis'
+import { EersteStapKnop, Kaart, Kengetal, Leeg, Stat } from './basis'
 
 // Ronde 66 — de eerste stap in een lege toestand.
 //
@@ -53,5 +53,100 @@ describe('Kaart', () => {
   it('laat de kop weg wanneer er niets in staat', () => {
     const { container } = render(<Kaart>inhoud</Kaart>)
     expect(container.querySelector('.kaart-kop')).toBeNull()
+  })
+})
+
+// Ronde 69 — elk getal verantwoordt zich. Een cijfer hoort te zeggen over welke
+// periode het gaat en wat er niet in meegeteld is.
+describe('Stat en Kengetal met een bron', () => {
+  it('zet de herkomstzin onder het cijfer', () => {
+    const { container } = render(
+      <Stat label="Vaste lasten per maand" bron="Omgerekend naar één maand.">
+        € 840,00
+      </Stat>,
+    )
+    expect(container.querySelector('.getal-bron')?.textContent).toBe('Omgerekend naar één maand.')
+  })
+
+  it('laat een cijfer zonder bron ongemoeid', () => {
+    // De prop is optioneel; een cijfer dat zichzelf verklaart hoeft geen zin.
+    const { container } = render(<Stat label="Netto">€ 10,00</Stat>)
+    expect(container.querySelector('.getal-bron')).toBeNull()
+  })
+
+  it('zet de herkomstzin ook in de naam van een doorklikbaar cijfer', () => {
+    // ⚠ Op een knop vervangt `aria-label` ALLE tekst binnenin. Zonder deze regel zag
+    // een ziende gebruiker de beperking staan en hoorde een schermlezer ze niet.
+    render(
+      <Kengetal
+        label="Uitgaven"
+        bron="Alleen de laatste 6 maanden."
+        doorklik={{ naam: 'Uitgaven € 500,00 — bekijk de boekingen', naar: vi.fn() }}
+      >
+        € 500,00
+      </Kengetal>,
+    )
+    expect(
+      screen.getByRole('button', { name: 'Uitgaven € 500,00 — bekijk de boekingen. Alleen de laatste 6 maanden.' }),
+    ).toBeInTheDocument()
+  })
+})
+
+// Ronde 69 — de klasse `stat-met-bron` is de ENIGE haak van twee opmaakregels.
+//
+// `.stat-met-bron { flex: 1 1 220px }` en `.tegelrij > .stat-met-bron { grid-column:
+// 1 / -1 }` in index.css hangen allebei aan deze ene klassenaam. Ze staat er bewust
+// niet als `:has(> .getal-bron)`: die selector werkt niet op oudere iOS-versies, en
+// dan valt de regel stil weg op precies het toestel waar het probleem zit. Gevolg:
+// haal je de klasse uit `Stat` of `Kengetal` weg, dan blijft ELKE andere test groen
+// terwijl de herkomstzin op een telefoon van 393 px in een kolom van 154 px valt en
+// acht regeltjes hoog wordt. Alleen deze tests zien dat.
+describe('de merkklasse stat-met-bron', () => {
+  it('markeert een Stat met een herkomstzin', () => {
+    const { container } = render(
+      <Stat label="Vaste lasten per maand" bron="Omgerekend naar één maand.">
+        € 840,00
+      </Stat>,
+    )
+    expect(container.querySelector('.stat')).toHaveClass('stat-met-bron')
+  })
+
+  it('laat een Stat zonder herkomstzin ongemerkt', () => {
+    // Zonder zin is er niets om te laten wrappen; de tegel hoort gewoon een halve
+    // kolom te blijven, anders duwt ze haar buur zonder reden naar beneden.
+    const { container } = render(<Stat label="Netto">€ 10,00</Stat>)
+    expect(container.querySelector('.stat')).not.toHaveClass('stat-met-bron')
+  })
+
+  it('markeert ook de knopvariant van een Stat', () => {
+    // "Netto vermogen" op Je situatie is vandaag de enige plek die `bron` én
+    // `doorklik` combineert. Zat de klasse alleen op het blokje zonder knop, dan
+    // viel juist die tegel — de langste zin van het scherm — in het gat.
+    render(
+      <Stat label="Netto vermogen" bron="Je rekeningen min je schulden." doorklik={{ naam: 'Netto vermogen', naar: vi.fn() }}>
+        € 12.400,00
+      </Stat>,
+    )
+    expect(screen.getByRole('button', { name: /Netto vermogen/ })).toHaveClass('stat-met-bron')
+  })
+
+  it('markeert een Kengetal met een herkomstzin, ook als knop', () => {
+    // `.tegelrij` is een raster van twee kolommen; daar is de klasse nog nodiger dan
+    // in een flexrij. Vandaag gebruikt geen enkel scherm `Kengetal bron` — zou de
+    // klasse hier ontbreken, dan valt de eerste die het wél doet in precies dat gat.
+    const { container } = render(<Kengetal label="Uitgaven" bron="Alleen deze maand.">€ 500,00</Kengetal>)
+    expect(container.querySelector('.kengetal')).toHaveClass('stat-met-bron')
+
+    render(
+      <Kengetal label="Inkomsten" bron="Alleen deze maand." doorklik={{ naam: 'Inkomsten', naar: vi.fn() }}>
+        € 900,00
+      </Kengetal>,
+    )
+    expect(screen.getByRole('button', { name: /Inkomsten/ })).toHaveClass('stat-met-bron')
+  })
+
+  it('laat een Kengetal zonder herkomstzin ongemerkt', () => {
+    const { container } = render(<Kengetal label="Saldo">€ 10,00</Kengetal>)
+    expect(container.querySelector('.kengetal')).not.toHaveClass('stat-met-bron')
   })
 })

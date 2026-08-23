@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import type { TxFilter } from '../utils/transactieFilter'
 import type { Categorie, Overboeking, Rekening, Transactie, Waardering } from '../data/schema'
 import { labelVanCategorie } from '../data/categorieen/resolve'
-import { groepenVanTransactie, isGesplitstOverCategorieen } from '../utils/transactie'
+import { categorieBedragen, groepenVanTransactie, isGesplitstOverCategorieen } from '../utils/transactie'
 import { tekenVanTransactie, uitsplitsingTekst, zachteAchtergrond } from './TransactieLijst'
 import { REKENING_TYPE_LABEL } from './RekeningFormulier'
 import { geldendeWaardering, saldoVanRekening } from '../utils/saldo'
@@ -550,13 +550,21 @@ export function RekeningDetail({
   /**
    * Naar de boekingenlijst met een filter (ronde 48).
    *
-   * LET OP welke cijfers hier wél en niet mogen doorklikken. `Inkomsten` en
-   * `Uitgaven` tellen op BOEKINGSNIVEAU (zie de kop van dit bestand), terwijl het
-   * richting-filter van de lijst op REGELNIVEAU werkt. Een kassaticket van € 47 met
-   * een regel statiegeld van + € 3 staat hier dus volledig onder "uitgaven", maar de
-   * gefilterde lijst zou er € 50 uitgaven boven zetten — en bij "inkomsten" zou je op
-   * € 0,00 klikken en toch een boeking krijgen. Alleen `Netto` telt in beide
-   * berekeningen hetzelfde op, en die krijgt daarom als enige een knop.
+   * LET OP welke cijfers hier wél en niet mogen doorklikken. Alleen `Netto` heeft
+   * een knop.
+   *
+   * ⚠ RONDE 69 — DE REDEN IS VERANDERD, DE UITKOMST (VOORLOPIG) NIET. Hier stond dat
+   * `Inkomsten` en `Uitgaven` op BOEKINGSNIVEAU tellen terwijl het richting-filter van
+   * de lijst op REGELNIVEAU werkt, zodat een doorklik een ánder bedrag zou tonen. Dat
+   * argument is vervallen: sinds deze ronde tellen ze hier óók per regel
+   * (`categorieBedragen`), precies zoals `kengetallenVan` in de lijst. Een knop zou nu
+   * dus wél hetzelfde bedrag opleveren.
+   *
+   * Waarom hij er toch nog niet staat: deze ronde gaat over cijfers die zeggen waar ze
+   * vandaan komen, niet over nieuwe navigatie, en een doorklik erbij vraagt om zijn
+   * eigen test tegen het venster en de filters van de lijst. Het staat als los eindje
+   * genoteerd. Wat hier NIET meer mag staan, is een verzonnen reden — dat is precies
+   * de fout die deze ronde opruimt.
    */
   onGaNaarTransacties?: (filter: TxFilter) => void
   /** Eén boeking openen om ze te bewerken. */
@@ -597,9 +605,17 @@ export function RekeningDetail({
 
   // De maandcijfers. Overboekingen zitten hier bewust NIET in: die verschuiven
   // enkel geld tussen je eigen rekeningen en zijn dus geen inkomst of uitgave.
+  //
+  // ⚠ RONDE 69 — GESPLITSTE KASSATICKETS. Dit telde op de MOEDERtransactie, en dat
+  // is precies de valkuil die `categorieBedragen` moet voorkomen: bij een ticket
+  // met regels in twee richtingen (€ 60 boodschappen en € 10 statiegeld terug,
+  // samen − € 50) zag deze kaart € 50 uitgaven en € 0 inkomsten, terwijl Analyse en
+  // de budgetten er € 60 en € 10 van maakten. Het netto klopte toevallig wél, dus
+  // de tegenspraak viel alleen op als je twee schermen naast elkaar legde.
   const dezeMaand = eigenTransacties.filter((tx) => tx.datum.slice(0, 7) === maand)
-  const binnen = dezeMaand.reduce((som, tx) => (tx.bedrag > 0 ? som + tx.bedrag : som), 0)
-  const eraf = dezeMaand.reduce((som, tx) => (tx.bedrag < 0 ? som + tx.bedrag : som), 0)
+  const maandLijnen = dezeMaand.flatMap((tx) => categorieBedragen(tx))
+  const binnen = maandLijnen.reduce((som, r) => (r.bedrag > 0 ? som + r.bedrag : som), 0)
+  const eraf = maandLijnen.reduce((som, r) => (r.bedrag < 0 ? som + r.bedrag : som), 0)
   const verschil = binnen + eraf
 
   // Type, rubriek en rekeningnummer, elk enkel wanneer ingevuld.
@@ -704,10 +720,19 @@ export function RekeningDetail({
         <div className="stat-rij">
           {/* Dezelfde drie namen als op Overzicht, Boekingen en de Maandafsluiting
               (ronde 66). */}
-          <Stat label={t('Inkomsten')}>{formatEuro(binnen)}</Stat>
-          <Stat label={t('Uitgaven')}>{formatEuro(Math.abs(eraf))}</Stat>
+          <Stat label={t('Inkomsten')} bron={t('Een gesplitst kassaticket telt per regel mee.')}>
+            {formatEuro(binnen)}
+          </Stat>
+          <Stat label={t('Uitgaven')} bron={t('Een gesplitst kassaticket telt per regel mee.')}>
+            {formatEuro(Math.abs(eraf))}
+          </Stat>
           <Stat
             label={t('Netto')}
+            // Dezelfde zin als bij de twee cijfers ernaast: `verschil` komt uit
+            // dezelfde `maandLijnen`. En zonder de zin zou Netto als enige van de drie
+            // géén `stat-met-bron` krijgen, waardoor de rij op een telefoon scheef ging
+            // staan — twee tegels over de volle breedte en Netto ernaast geplakt.
+            bron={t('Een gesplitst kassaticket telt per regel mee.')}
             doorklik={
               onGaNaarTransacties
                 ? {

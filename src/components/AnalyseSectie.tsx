@@ -81,6 +81,7 @@ const MAX_SCHIJVEN = 10
 function DonutKaart({
   titel,
   subtitel,
+  bron,
   posten,
   richting,
   onKiesPost,
@@ -88,6 +89,16 @@ function DonutKaart({
 }: {
   titel: string
   subtitel?: string
+  /**
+   * Waar het totaal onderaan vandaan komt (ronde 69).
+   *
+   * BEWUST per aanroeper en niet één zin hier. De drie verdelingen tellen elk iets
+   * anders: "per winkel" slaat boekingen zónder omschrijving over (`perWinkel` in
+   * utils/analyse.ts doet `if (!naam) continue`), en dan zou één gedeelde zin
+   * "alle uitgaven" beweren terwijl het totaal lager is dan dat van de kaart
+   * ernaast. Precies de stille tegenspraak die deze ronde opruimt.
+   */
+  bron?: string
   posten: Gekleurd[]
   richting: Richting
   /**
@@ -264,8 +275,17 @@ function DonutKaart({
           </button>
         </div>
       )}
+      {/* RONDE 69. "Totaal" is de som van álle posten van deze verdeling — ook de
+          rijen die achter "Toon alle" verstopt zitten, niet alleen van de tien die je
+          ziet staan. Die tweede zin komt er dus alleen bij wanneer er ook écht iets
+          verstopt is; anders belooft ze verborgen rijen die niet bestaan. */}
       <div className="stat-rij" style={{ paddingTop: 12, borderTop: '1px solid var(--divider)' }}>
-        <Stat label={t('Totaal')}>{formatEuro(totaal)}</Stat>
+        <Stat
+          label={t('Totaal')}
+          bron={[bron, rest.length > 0 ? t('Ook de rijen achter “Toon alle” tellen mee.') : ''].filter(Boolean).join(' ')}
+        >
+          {formatEuro(totaal)}
+        </Stat>
       </div>
     </Kaart>
   )
@@ -784,8 +804,24 @@ export function AnalyseSectie({
                   })}
                 </ul>
               </div>
+              {/* ⚠ Deze kaart verbergt NIETS. De lijst rendert `byOv` volledig, en de
+                  donut ernaast krijgt `donutInvoer` — óók `byOv` volledig. Het
+                  samenvegen tot een schijf "Overige" gebeurt alleen in de component
+                  `DonutKaart` (zie `MAX_SCHIJVEN`), en die wordt hier niet gebruikt.
+                  Er hoort hier dus geen zin over verborgen rijen én geen zin over een
+                  restschijf: allebei zouden ze iets beschrijven wat dit scherm niet
+                  doet — precies de fout die deze ronde opruimt. */}
               <div className="stat-rij" style={{ paddingTop: 12, borderTop: '1px solid var(--divider)' }}>
-                <Stat label={t('Totaal')}>{formatEuro(totaal)}</Stat>
+                <Stat
+                  label={t('Totaal')}
+                  bron={
+                    richting === 'inkomst'
+                      ? t('Alle inkomsten in de gekozen periode, per hoofdcategorie. Een gesplitst kassaticket telt per regel mee.')
+                      : t('Alle uitgaven in de gekozen periode, per hoofdcategorie. Een gesplitst kassaticket telt per regel mee.')
+                  }
+                >
+                  {formatEuro(totaal)}
+                </Stat>
               </div>
             </Kaart>
           ))}
@@ -794,6 +830,11 @@ export function AnalyseSectie({
             <DonutKaart
               titel={t('Verdeling per subcategorie')}
               subtitel={t('Subcategorieën — brood, koffiekoeken, elektriciteit… Klik je door, dan zie je de volledige boeking, dus een gesplitst kassaticket komt in zijn geheel in beeld.')}
+              bron={
+                richting === 'inkomst'
+                  ? t('Alle inkomsten in de gekozen periode, per subcategorie geteld — een gesplitst kassaticket dus per regel.')
+                  : t('Alle uitgaven in de gekozen periode, per subcategorie geteld — een gesplitst kassaticket dus per regel.')
+              }
               posten={byItem}
               richting={richting}
               // `perItem` geeft alleen een sleutel mee wanneer die rij aantoonbaar
@@ -822,6 +863,14 @@ export function AnalyseSectie({
             <DonutKaart
               titel={richting === 'uitgave' ? t('Uitgaven per winkel') : t('Inkomsten per bron')}
               subtitel={t('Gebaseerd op de omschrijving bij elke boeking')}
+              // ⚠ `perWinkel` slaat een boeking ZONDER omschrijving over. Dit totaal
+              // kan dus lager zijn dan dat van de verdeling per categorie op dezelfde
+              // pagina, en dan staan er twee "Totaal"-cijfers die niet gelijk zijn.
+              bron={
+                richting === 'inkomst'
+                  ? t('Alleen inkomsten met een omschrijving; een boeking zonder omschrijving staat hier niet in. Daardoor kan dit totaal lager zijn dan dat van de verdeling per categorie.')
+                  : t('Alleen uitgaven met een omschrijving; een boeking zonder omschrijving staat hier niet in. Daardoor kan dit totaal lager zijn dan dat van de verdeling per categorie.')
+              }
               posten={byWinkel}
               richting={richting}
               // `perWinkel` groepeert op de letterlijke omschrijving, dus de naam
@@ -840,6 +889,11 @@ export function AnalyseSectie({
             <DonutKaart
               titel={richting === 'uitgave' ? t('Uitgaven per gezinslid') : t('Inkomsten per gezinslid')}
               subtitel={t('Wat aan niemand persoonlijk hangt, staat bij "Het gezin". Een kost voor meerdere gezinsleden wordt gelijk verdeeld; zo\u2019n aandeel bestaat niet als aparte boeking, dus die rij klikt niet door.')}
+              bron={
+                richting === 'inkomst'
+                  ? t('Alle inkomsten in de gekozen periode. Een bedrag voor meerdere gezinsleden is gelijk over hen verdeeld; het totaal telt elke boeking één keer.')
+                  : t('Alle uitgaven in de gekozen periode. Een kost voor meerdere gezinsleden is gelijk over hen verdeeld; het totaal telt elke boeking één keer.')
+              }
               posten={perPersoonGekleurd}
               richting={richting}
               // "Het gezin" staat altijd achteraan (zie `uitgavenPerPersoon`), dus bij

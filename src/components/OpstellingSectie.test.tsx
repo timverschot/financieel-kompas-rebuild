@@ -1,9 +1,10 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { Aflossing, Lening, Rekening, TerugkerendePost, Transactie } from '../data/schema'
 import { OpstellingSectie, type VeiligInvoer } from './OpstellingSectie'
 import { formatEuro } from '../utils/format'
+import { zetOpmaaktaal } from '../utils/opmaaktaal'
 
 const leeg = {
   rekeningen: [] as Rekening[],
@@ -743,5 +744,123 @@ describe('OpstellingSectie — de eerste stap op de pagina zelf', () => {
     )
     expect(screen.getByRole('tab', { name: /Je geld/ })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByLabelText('Rekeningnaam')).toHaveValue('Spaarpot')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 69 — "Zo lang kom je toe": de telfout en de decimale komma
+//
+// Deze tegel toonde vroeger `t('{n} maanden', …)` zonder enkelvoudsgeval, dus las je
+// tussen 1,0 en 1,09 maand "1 maanden". `BufferRegel` vangt exact dat geval al op,
+// met exact dezelfde cijfers uit dezelfde `bepaalBuffer` — hetzelfde getal op twee
+// schermen, twee uitkomsten. En `.replace('.', ',')` duwde er ook in het Engels een
+// decimale komma in ("5,2 months"), terwijl `toLocaleString(opmaakLocale())` dat in
+// elke taal juist doet. De tweelingtest staat in BufferRegel.test.tsx; zonder deze
+// hier kon de fout op dit scherm ongemerkt terugkomen.
+
+describe('OpstellingSectie — "Zo lang kom je toe" telt en schrijft juist', () => {
+  // Dezelfde opstelling als in BufferRegel.test.tsx: één spaarrekening tegenover
+  // één maandelijkse vaste last.
+  const huur: TerugkerendePost = { id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 3 }
+
+  afterEach(() => zetOpmaaktaal('nl'))
+
+  it('zegt "1 maand" en niet "1 maanden" bij precies één maand buffer', () => {
+    // € 950 spaargeld tegenover € 950 vaste lasten = precies 1 maand.
+    toon({ rekeningen: [{ ...spaar, beginsaldo: 95000 }], terugkerendePosten: [huur] })
+    expect(tegel('Zo lang kom je toe')).toBe('1 maand')
+  })
+
+  it('schrijft de decimaal met het scheidingsteken van de gekozen taal', () => {
+    // € 5.000 / € 950 = 5,26 → naar beneden op één decimaal: 5,2.
+    toon({ rekeningen: [{ ...spaar, beginsaldo: 500000 }], terugkerendePosten: [huur] })
+    expect(tegel('Zo lang kom je toe')).toBe('5,2 maanden')
+  })
+
+  it('gebruikt in het Engels een punt en dwingt er geen komma in', () => {
+    // ⚠ Dit is de regressie die `.replace('.', ',')` maakte: een Engelstalig scherm
+    // met "5,2" erin. De opmaaktaal staat los van de vertaling en stuurt hier de
+    // `toLocaleString`; de rest van de zin blijft dus Nederlands, en dat is precies
+    // wat deze test wil isoleren.
+    zetOpmaaktaal('en')
+    toon({ rekeningen: [{ ...spaar, beginsaldo: 500000 }], terugkerendePosten: [huur] })
+    expect(tegel('Zo lang kom je toe')).toBe('5.2 maanden')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 69 — de vier herkomstzinnen op "Dit is je situatie"
+//
+// Elk van de vier tegels vertelt onder haar cijfer waar dat cijfer vandaan komt.
+// Twee dingen moeten daarbij kloppen, en geen van beide werd bewaakt:
+//
+//  1. De zin hangt aan DEZELFDE voorwaarde als het cijfer. Dit is het eerste scherm
+//     van een verse app: vier streepjes met samen ruim vijfhonderd tekens uitleg
+//     over berekeningen die er nog niet zijn, is precies het "te veel op één scherm"
+//     waar deze reeks vanaf wil.
+//  2. "Netto vermogen" is de enige plek in de app die `bron` én `doorklik`
+//     combineert. Op een knop vervangt `aria-label` ALLE tekst binnenin, dus zonder
+//     `naamMetBron` ziet een ziende gebruiker de uitleg staan en hoort een
+//     schermlezer ze niet — het cijfer zonder verantwoording, maar dan alleen voor
+//     wie luistert (en in strijd met WCAG 2.5.3, "Label in Name").
+
+describe('OpstellingSectie — elke tegel verantwoordt haar cijfer', () => {
+  const huur: TerugkerendePost = { id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 3 }
+  const netflix: TerugkerendePost = {
+    id: 'p2',
+    omschrijving: 'Netflix',
+    bedrag: -1399,
+    rekeningId: 'r1',
+    dag: 1,
+    categorieId: 'i-streaming-video-5157',
+  }
+
+  // De herkomstzin die onder één tegel staat, opgezocht via haar label.
+  function bron(label: string): string {
+    const blok = screen.getByText(label).closest('.stat') as HTMLElement
+    return blok.querySelector('.getal-bron')?.textContent ?? ''
+  }
+
+  function situatie(): HTMLElement {
+    return document.querySelector('[data-situatie]') as HTMLElement
+  }
+
+  it('zet onder elk van de vier cijfers een zin', () => {
+    toon({ rekeningen: [rekening, spaar], terugkerendePosten: [huur, netflix] })
+    // Vaste lasten: het verschil met het gelijknamige label op Budget ("deze maand"
+    // in plaats van "gemiddeld per maand") stond alleen in de broncode.
+    expect(bron('Vaste lasten per maand')).toContain('Omgerekend naar één maand')
+    expect(bron('Waarvan sluipend')).toContain('Sluipende kosten')
+    expect(bron('Zo lang kom je toe')).toContain('gedeeld door je vaste lasten per maand')
+    expect(bron('Netto vermogen')).toContain('Alleen het openstaande kapitaal van een lening')
+    // Vier tegels, vier zinnen — geen enkele die er stilletjes bij of af valt.
+    expect(situatie().querySelectorAll('.getal-bron')).toHaveLength(4)
+  })
+
+  it('zwijgt op een lege app, waar alle vier de tegels een streepje tonen', () => {
+    // ⚠ Vier streepjes mét ruim vijfhonderd tekens uitleg eronder is een muur van
+    // tekst over cijfers die nog niet bestaan. Staat er een streepje, dan hoort er
+    // geen uitleg onder.
+    toon()
+    expect(tegel('Vaste lasten per maand')).toBe('—')
+    expect(tegel('Waarvan sluipend')).toBe('—')
+    expect(tegel('Zo lang kom je toe')).toBe('—')
+    expect(tegel('Netto vermogen')).toBe('—')
+    expect(situatie().querySelectorAll('.getal-bron')).toHaveLength(0)
+  })
+
+  it('zet de zin van "Netto vermogen" ook in de naam van de knop', () => {
+    // De enige tegel met een bestemming. Zonder `naamMetBron` leest een schermlezer
+    // alleen "Netto vermogen € 14.500,00 — bekijk het op je overzicht" voor, zonder
+    // één woord over wat er wel en niet in dat bedrag zit.
+    toon({ rekeningen: [rekening, spaar], terugkerendePosten: [huur] })
+    const knop = screen.getByRole('button', { name: /^Netto vermogen .* bekijk het op je overzicht/ })
+    // De zichtbare zin staat er letterlijk achteraan; het scheidingsteken is de punt
+    // die `naamMetBron` erbij zet.
+    expect(knop.getAttribute('aria-label')).toBe(
+      `Netto vermogen ${formatEuro(1450000)} — bekijk het op je overzicht. ` +
+        'Je rekeningen, plus wat men jou nog schuldig is, min wat jij nog schuldig bent. ' +
+        'Alleen het openstaande kapitaal van een lening; de interest komt daar nog bij.',
+    )
   })
 })

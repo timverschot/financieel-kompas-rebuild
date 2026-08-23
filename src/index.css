@@ -664,6 +664,30 @@ h4 {
   font-weight: 600;
 }
 
+/* De herkomstzin onder een cijfer (ronde 69): over welke periode het gaat en wat
+   er niet in meegeteld is.
+
+   Bewust kleiner en grijzer dan het cijfer, en met `font-weight: 400` — een
+   knopvariant zet `font: inherit` en zou anders de 600 van de knop erven, waardoor
+   de uitleg even hard zou roepen als het bedrag zelf. `text-align` volgt de tegel
+   (links in een `.stat`, gecentreerd in een `.kengetal`), dus die staat hier niet.
+
+   `text-wrap: balance` zodat een zin van twee regels niet als lange regel plus één
+   los woord eindigt; browsers zonder die eigenschap negeren ze zonder gevolg. */
+.getal-bron {
+  /* `--tekst-s`, net als `.rij-meta` en `.kaart-bijschrift`. `--tekst-xs` is de maat
+     van `.label-caps` — een klein kapitaaltje, geen lopende tekst — en de opmerking
+     bij de typografische schaal zegt zelf dat 11-12 px voor metaregels te fijn was.
+     Anders staat dezelfde soort zin op twee maten, afhankelijk van of ze in een tegel
+     of in een `Herkomstregel` terechtkwam. */
+  font-size: var(--tekst-s);
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--text-subtle);
+  text-wrap: balance;
+}
+
+
 /* Een kengetal op het Overzicht dat naar zijn boekingen leidt (ronde 48).
  *
  * De knopstijl van de browser wordt teruggezet zodat de tegel er precies
@@ -765,6 +789,20 @@ h4 {
   display: flex;
   gap: 18px;
   flex-wrap: wrap;
+}
+
+/* Een `.stat` MET herkomstzin heeft ruimte nodig (ronde 69).
+   `.stat-rij` is een flexrij zonder `flex-basis`, en de `min-width: auto` van een
+   flex-item is zo breed als één woord — twee stats met een zin van honderd tekens
+   kregen op een telefoon elk ~170 px en braken in acht regeltjes naast elkaar. Met
+   een basis van 220 px wrappen ze onder elkaar zodra dat niet meer past.
+
+   Een eigen klasse en geen `:has(> .getal-bron)`: die selector werkt niet op oudere
+   iOS-versies, en dan valt de regel stil weg op precies het toestel waar het probleem
+   zich voordoet. `Stat` zet de klasse zelf wanneer er een zin is, dus ze kan niet uit
+   de pas lopen met wat er staat. */
+.stat-met-bron {
+  flex: 1 1 220px;
 }
 
 /* ---------------------------------------------------------------------------
@@ -2115,6 +2153,23 @@ a {
    naast een gat. */
 .tegelrij > .kengetal:last-child {
   grid-column: 1 / -1;
+}
+
+/* Een tegel MET herkomstzin krijgt op een smal scherm de volle breedte (ronde 69).
+   `.tegelrij` is een raster van twee kolommen; op een telefoon van 393 px is dat
+   154 px per tegel. Een zin van honderd tekens werd daarin gemeten 158 px HOOG —
+   acht regeltjes in een kolom die smaller is dan de zin lang. Over de volle breedte
+   zijn het er twee. Vanaf 560 px is een halve kolom ruim genoeg en mag de tegel weer
+   naast haar buur staan — 560 px is het kleine breekpunt dat dit bestand elders ook
+   gebruikt; drie verschillende breekpunten op één raster vraagt om scheefstand. */
+.tegelrij > .stat-met-bron {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 560px) {
+  .tegelrij > .stat-met-bron {
+    grid-column: auto;
+  }
 }
 
 /* Het hoofdcijfer van --tekst-2xl (28 px) past niet in een halve tegel op 390 px:

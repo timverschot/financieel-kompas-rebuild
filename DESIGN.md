@@ -12,7 +12,8 @@ hetzelfde aanvoelt en een latere designwijziging op één plek gebeurt.
 - **Herbruikbare klassen** (`.kaart`, `.knop`, `.lijst`, `.rij`, `.badge`, …) →
   ook in `src/index.css`.
 - **Herbruikbare componenten** (`Kaart`, `PaginaKop`, `Leeg`, `Bedrag`, `Stat`,
-  `Balk`) → `src/ui/basis.tsx`.
+  `Kengetal`, `Balk`) → `src/ui/basis.tsx`.
+- **`Herkomstregel`** (badge links, één zin ernaast) → `src/ui/Herkomstregel.tsx`.
 - `src/ui/tokens.ts` is leeg en achterhaald; niet gebruiken.
 
 ## Basisregels uit het designsysteem
@@ -87,6 +88,7 @@ Labels krijgen `className="label-caps"`.
 | `badge` + `badge-ok` / `badge-open` / `badge-laat` / `badge-info` / `badge-neutraal` / `badge-mini` | statuslabels |
 | `bedrag`, `bedrag-positief`, `bedrag-negatief`, `bedrag-groot` | bedragen |
 | `stat`, `stat-waarde`, `stat-rij` | label-boven-cijfer-blokjes |
+| `getal-bron`, `stat-met-bron` | de herkomstzin onder een cijfer; `Stat`/`Kengetal` zetten ze zelf via `bron` |
 | `balk`, `balk-vulling` | voortgangsbalk (gebruik liefst `<Balk>`) |
 | `leeg` | lege toestand (gebruik liefst `<Leeg>`) |
 | `saldotegel` | donkere accenttegel met amberglow, max. één per scherm |
@@ -100,8 +102,41 @@ Labels krijgen `className="label-caps"`.
 <Bedrag centen={1250} richting="in" />        // 'in' | 'uit' | 'auto' | weglaten
 <Bedrag centen={saldo} groot />
 <Stat label={t('Netto')}>{formatEuro(x)}</Stat>
+<Stat label={t('Nog te betalen')} bron={t('Alleen het openstaande kapitaal; interest zit er niet in.')}>
+  {formatEuro(x)}
+</Stat>
 <Balk label={naam} fractie={0.62} nu={620} max={1000} kleur="var(--positive)" />
 ```
+
+## Elk getal verantwoordt zich (ronde 69)
+
+Een cijfer op het scherm hoort te zeggen **over welke periode het gaat** en **wat er
+wel en niet in meegeteld is**. Dat gebeurt met de `bron`-prop van `Stat`/`Kengetal`
+(één korte zin onder het cijfer, en bij een doorklikbaar cijfer ook achteraan de
+`aria-label`), of met een `rij-meta`-regel onder een blok cijfers.
+
+Drie regels:
+
+1. **Een zin die niet klopt is erger dan geen zin.** Lees eerst de rekenkern; noem
+   alleen wat je in de code ziet staan.
+2. **Hang de zin aan dezelfde voorwaarde als het cijfer.** Staat er een streepje of
+   nul, dan hoort er geen alinea onder over hoe het berekend zou zijn.
+3. **Zeg niets wat een zin ernaast al zegt.** Twee zinnen die hetzelfde tellen,
+   lezen als twee verschillende feiten.
+
+## Herkomstregel: één badge, één zin
+
+`BalansRegel`, `BufferRegel` en `VermogenRegel` hadden alle drie dezelfde acht regels
+opmaak gekopieerd. Ze delen nu `src/ui/Herkomstregel.tsx`:
+
+```tsx
+<Herkomstregel badge={t('Overschot')} toon="ok" kaal data-balans="1">
+  {t('Je houdt deze maand € 100,00 over.')}
+</Herkomstregel>
+```
+
+`toon` is `'ok' | 'let-op' | 'info' | 'neutraal'` en kiest de badge-klasse; `kaal`
+laat het kaartvlak weg voor gebruik binnen een groter blok.
 
 ## Subtabs: altijd `src/ui/Subtabs.tsx`
 

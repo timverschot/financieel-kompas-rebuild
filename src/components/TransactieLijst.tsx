@@ -479,6 +479,37 @@ export function TransactieLijst({
         </Kengetal>
       </div>
 
+      {/* RONDE 69 — WAAR DEZE DRIE CIJFERS OVER GAAN.
+          Ze tellen `zichtbaar`, en dat is zonder filter alleen het venster van zes
+          maanden. Dat venster is eerlijk tegenover de lijst eronder, maar het stond
+          nergens bij de tegels: wie ze las en wegscrollde, nam "€ 12.340 uitgaven"
+          mee als het totaal van alles.
+
+          ⚠ BEWUST GEEN AANTAL EN GEEN KNOP. Een paar centimeter lager staat al
+          `[data-venstermelding]` met precies dat aantal en de knop "Toon ze ook".
+          Twee zinnen die hetzelfde tellen, lezen als twee verschillende feiten.
+          Deze zin voegt één ding toe: dat de TEGELS die beperking delen.
+
+          En bewust de begindatum in plaats van "de laatste zes maanden": het venster
+          heeft alleen een ondergrens (`tx.datum >= grens`). Een boeking met een datum
+          in de toekomst telt gewoon mee, dus "de laatste zes maanden" zou net niet
+          waar zijn. "Vanaf maart" belooft niets over de bovenkant. */}
+      {venster && verborgen > 0 ? (
+        <p className="rij-meta" data-kengetalbron style={{ margin: 0 }}>
+          {t('Deze drie cijfers gaan over de boekingen vanaf {maand}; oudere boekingen tellen niet mee.', {
+            maand: maandJaarLabel(grens),
+          })}
+        </p>
+      ) : actief && zichtbaar.length > 0 ? (
+        <p className="rij-meta" data-kengetalbron style={{ margin: 0 }}>
+          {zichtbaar.length === 1
+            ? t('Deze drie cijfers gaan over de ene boeking die je filters overhouden, en over niets anders.')
+            : t('Deze drie cijfers gaan over de {n} boekingen die je filters overhouden, en over niets anders.', {
+                n: zichtbaar.length,
+              })}
+        </p>
+      ) : null}
+
       {/* Waarom de ene tegel wél klikt en de andere niet (ronde 54). Zonder deze zin
           zag je twee tegels die er identiek uitzien, waarvan er één reageert — dat
           leest als een app die soms hapert. Hij staat er alleen wanneer een tegel
@@ -783,10 +814,17 @@ export function TransactieLijst({
             knop niet op, en dan lijkt het alsof er boekingen weg zijn. */}
         {venster && verborgen > 0 && (
           <p className="rij-meta" data-venstermelding style={{ margin: 0 }}>
-            {t('{n} oudere boeking(en) vallen buiten dit venster van {maanden} maanden.', {
-              n: verborgen,
-              maanden: STANDAARD_MAANDEN,
-            })}{' '}
+            {/* RONDE 69. Hier stond één zin met "{n} oudere boeking(en) VALLEN buiten
+                dit venster van {maanden} maanden": het zelfstandig naamwoord gebruikte
+                de "(en)"-vorm, maar het werkwoord stond vast in het meervoud. Bij één
+                verborgen boeking las dat scheef — en het staat nu pal onder de nieuwe
+                herkomstzin, dus het valt meer op dan vroeger. */}
+            {verborgen === 1
+              ? t('Eén oudere boeking valt buiten dit venster van {maanden} maanden.', { maanden: STANDAARD_MAANDEN })
+              : t('{n} oudere boekingen vallen buiten dit venster van {maanden} maanden.', {
+                  n: verborgen,
+                  maanden: STANDAARD_MAANDEN,
+                })}{' '}
             <button
               type="button"
               className="knop knop-ghost knop-klein"

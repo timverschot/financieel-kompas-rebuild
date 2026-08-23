@@ -181,3 +181,45 @@ describe('VooruitblikSectie — een maand waarin niets vervalt', () => {
     expect(screen.queryByText(/vervalt er geen enkele vaste last/)).toBeNull()
   })
 })
+
+// --- Ronde 69: elk getal verantwoordt zich ---
+describe('VooruitblikSectie — waar het verwachte cijfer vandaan komt', () => {
+  // Deze kaart toont standaard de VOLGENDE maand (zie `toon` hierboven), maar de
+  // bronzin hoort alleen bij de maand die nog loopt. Vandaar telkens de huidige
+  // maand meegeven.
+  function toonDezeMaand() {
+    toon({ maand: dezeMaand, periode: { van: `${dezeMaand}-01`, tot: `${dezeMaand}-31` }, periodeLabel: 'Deze maand' })
+  }
+
+  it('zegt onder het verwachte saldo dat losse uitgaven er niet in zitten', () => {
+    // ⚠ `bepaalVooruitblik` telt alleen wat er al geboekt is plus de terugkerende
+    // posten. Er zit GEEN schatting in van de boodschappen en de tankbeurten voor
+    // de resterende dagen. Op de 3de van de maand staat er daardoor een royaal
+    // overschot dat op de 30ste verdwenen is, zonder dat er iets misgelopen is —
+    // het cijfer beloofde alleen iets anders dan het rekende. Zonder deze zin
+    // leest "+ € 900 verwacht in september" als geld dat je overhoudt.
+    toonDezeMaand()
+    expect(document.querySelector('[data-vooruitblikbron]')?.textContent).toBe(
+      'Hierin zit wat er deze maand al geboekt is, plus de terugkerende posten die déze maand vervallen — ook de te late. Losse uitgaven die nog komen — boodschappen, tanken — zitten er niet in.',
+    )
+  })
+
+  it('zet die zin onder het cijfer waar ze over gaat, niet ergens anders op de kaart', () => {
+    // De zin verantwoordt het bedrag bij "verwacht in {maand}". Staat ze boven de
+    // spaarquote, dan verklaart ze het verkeerde getal.
+    toonDezeMaand()
+    const metas = [...document.querySelectorAll('.rij-meta')].map((el) => el.textContent ?? '')
+    const cijfer = metas.findIndex((m) => m.includes('verwacht in'))
+    const bron = metas.findIndex((m) => m.startsWith('Hierin zit wat er deze maand al geboekt is'))
+    expect(cijfer).toBeGreaterThanOrEqual(0)
+    expect(bron).toBeGreaterThan(cijfer)
+  })
+
+  it('zwijgt zodra je naar een maand bladert die al voorbij is', () => {
+    // ⚠ De zin kondigt aan dat er nog losse uitgaven bij komen. Bij een afgesloten
+    // maand komt er niets meer bij: dan zou ze een onderschatting beloven bij een
+    // cijfer dat al definitief is, en dat is erger dan zwijgen.
+    toon({ maand: vorigeMaand, periode: { van: `${vorigeMaand}-01`, tot: `${vorigeMaand}-31` } })
+    expect(document.querySelector('[data-vooruitblikbron]')).toBeNull()
+  })
+})

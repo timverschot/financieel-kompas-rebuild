@@ -558,3 +558,122 @@ describe('DossierSectie — een vers dossier', () => {
     expect(screen.getByText('Te verrekenen')).toBeInTheDocument()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 69 — elk getal verantwoordt zich.
+//
+// "Te verrekenen" telt ALLE open kosten van het dossier, ongeacht de periode die
+// je in de afrekening hieronder instelt. En een betwiste kost telt gewoon mee —
+// dat is een bewuste keuze (stil geld uit een saldo laten vallen is erger dan het
+// zichtbaar te houden), maar dan moet het scherm het wél zeggen. Anders staat er
+// een bedrag dat er zeker uitziet terwijl de andere ouder er net bezwaar tegen
+// maakte. Zo'n cijfer belandt bij een bemiddelaar of een advocaat.
+// ---------------------------------------------------------------------------
+describe('DossierSectie — waar "Te verrekenen" vandaan komt', () => {
+  const openKost: GedeeldeKost = {
+    id: 'k9',
+    dossierId: 'd1',
+    omschrijving: 'Schoolreis',
+    bedrag: 10000,
+    betaaldDoor: 'jij',
+    datum: '2026-03-04',
+  }
+
+  const bron = () => document.querySelector('.getal-bron')?.textContent ?? ''
+
+  // Eén keer opschrijven: vier tests hangen aan exact deze zin, en hij is te lang om
+  // vier keer over te tikken zonder tikfout.
+  const BASISZIN =
+    'Alle kosten in dit dossier die nog niet afgerekend zijn, ongeacht de periode. ' +
+    'Wat ingetrokken is telt niet mee; wat al in een afrekening staat die je nog niet ' +
+    'als overgemaakt aanvinkte, telt hier nog wel mee.'
+
+  it('zegt dat het over alle open kosten gaat, ongeacht de periode', () => {
+    toon({ kosten: [openKost] })
+    expect(bron()).toBe(BASISZIN)
+  })
+
+  it('zegt erbij wanneer een van die kosten betwist is', () => {
+    // ⚠ De afrekening zegt het wél en dit scherm zweeg erover. Het bedrag ziet er
+    // dan even vast uit als een bedrag waarover iedereen akkoord is.
+    toon({
+      kosten: [{ ...openKost, reactie: { soort: 'betwist', op: '2026-03-10', bedrag: 10000, datum: '2026-03-04' } }],
+    })
+    expect(bron()).toContain(BASISZIN)
+    expect(bron()).toContain('Eén ervan is betwist door de andere ouder en telt hier toch mee.')
+  })
+
+  it('telt hoeveel er betwist zijn wanneer het er meer dan één zijn', () => {
+    toon({
+      kosten: [
+        { ...openKost, reactie: { soort: 'betwist', op: '2026-03-10', bedrag: 10000, datum: '2026-03-04' } },
+        {
+          ...openKost,
+          id: 'k10',
+          omschrijving: 'Turnpak',
+          bedrag: 4000,
+          reactie: { soort: 'betwist', op: '2026-03-11', bedrag: 4000, datum: '2026-03-04' },
+        },
+      ],
+    })
+    expect(bron()).toContain('2 ervan zijn betwist door de andere ouder en tellen hier toch mee.')
+  })
+
+  it('zwijgt over een betwisting die vervallen is doordat de kost nadien wijzigde', () => {
+    // ⚠ Een bezwaar tegen € 40 is geen bezwaar tegen € 400. `reactieVervallen`
+    // merkt dat het antwoord op een ánder bedrag sloeg; `afrekeningOverzicht`
+    // hanteert diezelfde regel, en de twee mogen niet uit elkaar lopen — anders
+    // meldt dit scherm een betwisting die in de afrekening niet meer bestaat.
+    toon({
+      kosten: [{ ...openKost, bedrag: 40000, reactie: { soort: 'betwist', op: '2026-03-10', bedrag: 10000, datum: '2026-03-04' } }],
+    })
+    expect(bron()).toBe(BASISZIN)
+  })
+
+  // --- Het merkteken op de rij zelf ---
+  //
+  // Het cijfer eronder zegt DÁT er een kost betwist is; zonder merkteken op de rij
+  // wist je niet WELKE, en dan is de mededeling onbruikbaar zodra er meer dan een
+  // handvol kosten staat.
+
+  // De badge in de rij van een kost, of null. Bewust binnen de rij gezocht: het
+  // woord "betwist" staat ook in de zin onder het bedrag.
+  const badgeVan = (omschrijving: string) => {
+    const rij = screen.getByText(omschrijving, { selector: '.rij-titel' }).closest('li') as HTMLElement
+    return rij.querySelector('.badge-laat')
+  }
+
+  it('zet een merkteken op de betwiste rij zelf', () => {
+    toon({
+      kosten: [{ ...openKost, reactie: { soort: 'betwist', op: '2026-03-10', bedrag: 10000, datum: '2026-03-04' } }],
+    })
+    expect(badgeVan('Schoolreis')).not.toBeNull()
+    expect(badgeVan('Schoolreis')?.textContent).toBe('betwist')
+  })
+
+  it('laat een rij ongemerkt waarmee de andere ouder akkoord ging', () => {
+    toon({
+      kosten: [{ ...openKost, reactie: { soort: 'akkoord', op: '2026-03-10', bedrag: 10000, datum: '2026-03-04' } }],
+    })
+    expect(badgeVan('Schoolreis')).toBeNull()
+  })
+
+  it('laat een rij ongemerkt waarvan de betwisting vervallen is', () => {
+    // ⚠ Dezelfde regel als bij het cijfer eronder: een bezwaar tegen € 100 is geen
+    // bezwaar tegen € 400. Zouden de badge en de zin hier uit elkaar lopen, dan
+    // wijst het merkteken naar een rij die in het bedrag niet als betwist telt.
+    toon({
+      kosten: [{ ...openKost, bedrag: 40000, reactie: { soort: 'betwist', op: '2026-03-10', bedrag: 10000, datum: '2026-03-04' } }],
+    })
+    expect(badgeVan('Schoolreis')).toBeNull()
+  })
+
+  it('meldt niets bij een kost waarmee de andere ouder akkoord ging', () => {
+    toon({
+      kosten: [{ ...openKost, reactie: { soort: 'akkoord', op: '2026-03-10', bedrag: 10000, datum: '2026-03-04' } }],
+    })
+    // Bewust de volledige regel: zou de bronregel helemaal verdwijnen, dan zou een
+    // toets op de afwezigheid van "betwist" nog altijd slagen zonder iets te bewaken.
+    expect(bron()).toBe(BASISZIN)
+  })
+})

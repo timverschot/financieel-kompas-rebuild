@@ -29,6 +29,7 @@ import {
 import { saldoVerrekeningDossier } from '../utils/dossier'
 import { exportFoutmelding } from '../utils/appVersie'
 import { isOpenKost, kostenVoorAfrekening, type AfrekeningFilter } from '../utils/afrekening'
+import { reactieVervallen } from '../utils/uitwisseling'
 import {
   verrekenTekst,
   afrekeningSamenvatting,
@@ -482,6 +483,16 @@ export function DossierSectie({
   const alleKosten = dossier ? kosten.filter((k) => k.dossierId === dossier.id) : []
   const openKosten = alleKosten.filter(isOpenKost)
   const openSaldo = dossier ? saldoVerrekeningDossier(dossier, openKosten) : 0
+  // RONDE 69. Een betwiste kost telt gewoon mee in "Te verrekenen" — dat is een
+  // bewuste keuze (zie `afrekeningTekst.ts`: stil geld uit een saldo laten vallen
+  // is erger dan het zichtbaar te houden). Maar de afrekening ZEGT dat er betwist
+  // is, en dit scherm zei het niet. Dan staat er een bedrag dat er zeker uitziet
+  // terwijl de andere ouder er net bezwaar tegen maakte.
+  //
+  // `reactieVervallen` hoort erbij: is de kost na het antwoord gewijzigd, dan sloeg
+  // die betwisting op een ander bedrag en telt ze hier niet meer als bezwaar —
+  // dezelfde regel die `afrekeningOverzicht` hanteert.
+  const aantalBetwist = openKosten.filter((k) => k.reactie?.soort === 'betwist' && !reactieVervallen(k)).length
 
   const filter: AfrekeningFilter = {
     ...(afrVan ? { periodeVan: afrVan } : {}),
@@ -796,7 +807,19 @@ export function DossierSectie({
                 {openKosten.map((k) => (
                   <li key={k.id} className="rij">
                     <span className="rij-midden">
-                      <span className="rij-titel">{k.omschrijving}</span>
+                      <span className="rij-titel">
+                        {k.omschrijving}
+                        {/* RONDE 69. Het cijfer "Te verrekenen" zegt eronder dát er een
+                            kost betwist is; zonder merkteken op de rij wist je niet
+                            WELKE. Dezelfde regel als in `afrekeningOverzicht`: een
+                            reactie op een bedrag dat nadien gewijzigd is, telt niet. */}
+                        {k.reactie?.soort === 'betwist' && !reactieVervallen(k) ? (
+                          <>
+                            {' '}
+                            <span className="badge badge-laat">{t('betwist')}</span>
+                          </>
+                        ) : null}
+                      </span>
                       <span className="rij-meta">
                         {t('betaald door {wie}', { wie: k.betaaldDoor === 'jij' ? t('jou') : t('partner') })}
                         {k.categorieId && ` · ${labelVanCategorie(k.categorieId, categorieen) ?? ''}`}
@@ -846,6 +869,15 @@ export function DossierSectie({
                 <span className="label-caps">{t('Te verrekenen')}</span>
                 <span className="stat-waarde" style={{ fontFamily: 'var(--font-body)' }}>
                   {verrekenTekst(t, openSaldo)}
+                </span>
+                <span className="getal-bron">
+                  {t('Alle kosten in dit dossier die nog niet afgerekend zijn, ongeacht de periode. Wat ingetrokken is telt niet mee; wat al in een afrekening staat die je nog niet als overgemaakt aanvinkte, telt hier nog wel mee.')}
+                  {aantalBetwist > 0
+                    ? ' ' +
+                      (aantalBetwist === 1
+                        ? t('Eén ervan is betwist door de andere ouder en telt hier toch mee.')
+                        : t('{n} ervan zijn betwist door de andere ouder en tellen hier toch mee.', { n: aantalBetwist }))
+                    : ''}
                 </span>
               </div>
             )}

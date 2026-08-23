@@ -495,7 +495,22 @@ function Achterstand({
         <li className="rij">
           <span className="rij-midden">
             <span className="rij-titel">{t('Betaald')}</span>
-            <span className="rij-meta">{t('{n} betaling(en) geregistreerd', { n: betalingen.length })}</span>
+            {/* RONDE 69: `stand.aantalBetalingen` en niet `betalingen.length`. Het
+                bedrag ernaast telt alleen de betalingen die bij de getelde maanden
+                horen; de teller telde ze allemaal. Twee cijfers naast elkaar die
+                over een verschillende verzameling gingen. */}
+            <span className="rij-meta">
+              {/* Bij nul stond hier "0 betaling(en) geregistreerd" naast een zin die
+                  al zegt dat ze allemaal buiten de periode vallen. Een nul die niets
+                  toevoegt, laten we weg. */}
+              {stand.aantalBetalingen > 0 ? t('{n} betaling(en) geregistreerd', { n: stand.aantalBetalingen }) : ''}
+              {stand.aantalBuitenPeriode > 0
+                ? (stand.aantalBetalingen > 0 ? ' · ' : '') +
+                  (stand.aantalBuitenPeriode === 1
+                    ? t('1 betaling valt buiten deze periode en telt niet mee')
+                    : t('{n} betalingen vallen buiten deze periode en tellen niet mee', { n: stand.aantalBuitenPeriode }))
+                : ''}
+            </span>
           </span>
           <Bedrag centen={stand.betaald} />
         </li>

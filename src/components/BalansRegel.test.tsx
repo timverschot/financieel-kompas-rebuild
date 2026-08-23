@@ -35,4 +35,21 @@ describe('BalansRegel', () => {
     expect(screen.queryByText('In balans')).not.toBeInTheDocument()
     expect(document.querySelector('[data-balans]')).toBeNull()
   })
+
+  it('geeft elke stand haar eigen badgekleur (ronde 69)', () => {
+    // Deze drie klassen zaten tot ronde 69 in dit bestand zelf; ze staan nu in de
+    // gedeelde `Herkomstregel`. Geen enkele test bewaakte ze, dus een verwisselde
+    // toon bij het overhevelen — groen voor een tekort — was geruisloos doorgekomen.
+    // De buurbestanden BufferRegel en VermogenRegel doen dit wél.
+    const overschot = render(<BalansRegel inkomsten={240000} uitgaven={127000} />)
+    expect(overschot.getByText('Overschot')).toHaveClass('badge', 'badge-ok')
+    overschot.unmount()
+
+    const tekort = render(<BalansRegel inkomsten={100000} uitgaven={130000} />)
+    expect(tekort.getByText('Tekort')).toHaveClass('badge', 'badge-laat')
+    tekort.unmount()
+
+    const gelijk = render(<BalansRegel inkomsten={100000} uitgaven={100000} />)
+    expect(gelijk.getByText('In balans')).toHaveClass('badge', 'badge-neutraal')
+  })
 })

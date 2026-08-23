@@ -221,6 +221,27 @@ export function VooruitblikSectie({
           </span>
         </div>
 
+        {/* RONDE 69 — waar dit cijfer vandaan komt.
+            `bepaalVooruitblik` telt: wat er deze maand al geboekt is, plus de
+            terugkerende posten die déze maand nog moeten vallen (en de achterstallige).
+            Meer niet. Er zit dus GEEN schatting in van de boodschappen, de tankbeurten
+            en de rest van de losse uitgaven voor de resterende dagen. Op de 3de van de
+            maand staat er daardoor een royaal overschot dat op de 30ste verdwenen is,
+            zonder dat er iets misgelopen is — het cijfer beloofde alleen iets anders
+            dan het rekende. BufferRegel zegt deze beperking al met zoveel woorden
+            ("eten en tanken komen daar nog bij"); hier ontbrak ze.
+
+            ⚠ Alleen voor de HUIDIGE maand. Je kan bovenaan naar maart bladeren, en dan
+            is `isVoorbij` voor alles waar: er komt niets meer. "Wat er nog komt" zou
+            dan een onderschatting aankondigen bij een maand die af is. */}
+        {maand === huidigeMaand(nu) ? (
+          <p className="rij-meta" data-vooruitblikbron style={{ margin: 0 }}>
+            {t(
+              'Hierin zit wat er deze maand al geboekt is, plus de terugkerende posten die déze maand vervallen — ook de te late. Losse uitgaven die nog komen — boodschappen, tanken — zitten er niet in.',
+            )}
+          </p>
+        ) : null}
+
         <ul className="lijst">
           <Regel label={t('Al geboekt — inkomsten')} bedrag={vb.geboekt.inkomsten} teken="+" />
           <Regel label={t('Al geboekt — uitgaven')} bedrag={vb.geboekt.uitgaven} teken="−" />

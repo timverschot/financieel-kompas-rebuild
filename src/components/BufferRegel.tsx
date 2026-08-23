@@ -2,6 +2,7 @@ import type { Overboeking, Rekening, TerugkerendePost, Transactie, Waardering } 
 import { bepaalBuffer } from '../utils/buffer'
 import { opmaakLocale } from '../utils/opmaaktaal'
 import { formatEuro } from '../utils/format'
+import { Herkomstregel } from '../ui/Herkomstregel'
 import { useT } from '../i18n'
 
 // Hoeveel maanden je vaste lasten je spaargeld nog kan dragen. Eén rustige regel,
@@ -38,21 +39,19 @@ export function BufferRegel({
   const krap = maanden < 3
 
   return (
-    <div
-      className={kaal ? undefined : 'kaart kaart-compact'}
-      data-buffer
-      style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}
+    <Herkomstregel
+      badge={
+        // Exact één maand krijgt het enkelvoud; "1 maanden buffer" zou fout staan.
+        maanden === 1 ? t('1 maand buffer') : t('{n} maanden buffer', { n: maanden.toLocaleString(opmaakLocale()) })
+      }
+      toon={krap ? 'let-op' : 'info'}
+      kaal={kaal}
+      data-buffer="1"
     >
-      <span className={krap ? 'badge badge-laat' : 'badge badge-info'}>
-        {/* Exact één maand krijgt het enkelvoud; "1 maanden buffer" zou fout staan. */}
-        {maanden === 1 ? t('1 maand buffer') : t('{n} maanden buffer', { n: maanden.toLocaleString(opmaakLocale()) })}
-      </span>
-      <span className="rij-meta" style={{ flex: 1, minWidth: 220 }}>
-        {t(
-          'Je vaste lasten zijn {last} per maand. Met {geld} op je spaar- en cashrekeningen kom je zo lang toe zonder inkomen — eten en tanken komen daar nog bij.',
-          { last: formatEuro(b.vasteLastenPerMaand), geld: formatEuro(b.beschikbaar) },
-        )}
-      </span>
-    </div>
+      {t(
+        'Je vaste lasten zijn {last} per maand. Met {geld} op je spaar- en cashrekeningen kom je zo lang toe zonder inkomen — eten en tanken komen daar nog bij.',
+        { last: formatEuro(b.vasteLastenPerMaand), geld: formatEuro(b.beschikbaar) },
+      )}
+    </Herkomstregel>
   )
 }

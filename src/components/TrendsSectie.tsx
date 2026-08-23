@@ -104,16 +104,23 @@ export function TrendsSectie({
 
   const venster = maanden.length > 0 ? `${maandKort(maanden[0])} – ${maandKort(maanden[maanden.length - 1])}` : ''
 
+  // RONDE 69. Het bedrag helemaal rechts op elke rij is de waarde van de LAATSTE
+  // maand van het lijntje — niet het totaal van het venster, en niet het bedrag van
+  // de gekozen periode. Drie kandidaten voor één getal, en het bijschrift benoemde
+  // er twee. Deze naam maakt de derde noembaar.
+  const laatsteMaandKort = maanden.length > 0 ? maandKort(maanden[maanden.length - 1]) : ''
+
   return (
     <Kaart
       titel={t('Verloop per categorie')}
       bijschrift={
-        vorige
+        (vorige
           ? t('Het lijntje loopt over {venster}. Het verschil ernaast vergelijkt {periode} met de vorige even lange periode.', {
               venster,
               periode: periodeLabel.toLowerCase(),
             })
-          : t('Het lijntje loopt over {venster}. Kies een periode (niet Alles) om er een verschil bij te zien.', { venster })
+          : t('Het lijntje loopt over {venster}. Kies een periode (niet Alles) om er een verschil bij te zien.', { venster })) +
+        (laatsteMaandKort ? ' ' + t('Het bedrag rechts is dat van {maand}.', { maand: laatsteMaandKort }) : '')
       }
     >
       {reeksen.length === 0 ? (
@@ -169,9 +176,17 @@ export function TrendsSectie({
                     // de periode omdat het cijfer op de rij over de laatste maand
                     // van het lijntje gaat, terwijl de doorklik de gekozen periode
                     // toont. Zonder dat erbij te zeggen spreken de twee elkaar tegen.
-                    aria-label={t('Bekijk de boekingen van {naam} — {bedrag}, {periode}', {
+                    //
+                    // ⚠ RONDE 69. Het stond er wél bij, maar in een vorm die het
+                    // omgekeerde beweerde: "€ 340, laatste 6 maanden" leest als een
+                    // bedrag OVER die zes maanden, terwijl € 340 het cijfer van één
+                    // maand is. De uitleg in de opmerking hierboven was juist; de zin
+                    // die eruit kwam niet. Nu hangt elk van de twee bedragen aan zijn
+                    // eigen tijdvak.
+                    aria-label={t('Bekijk de boekingen van {naam} — {bedrag} in {maand}; de doorklik toont {periode}', {
                       naam: r.naam,
                       bedrag: formatEuro(laatste),
+                      maand: laatsteMaandKort,
                       periode: periodeLabel.toLowerCase(),
                     })}
                     onClick={() => onKies(r.sleutel, r.naam)}

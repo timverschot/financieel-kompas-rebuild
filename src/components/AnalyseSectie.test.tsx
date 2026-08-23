@@ -679,3 +679,105 @@ describe('AnalyseSectie — de ringen en de periodekaartjes', () => {
     expect(screen.queryByText(/alleen voor je spaarquote/)).toBeNull()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 69 — de herkomstzinnen onder de vier "Totaal"-cijfers op Verdeling
+//
+// Op dit ene tabblad staan vier kaarten met een cijfer dat "Totaal" heet, en ze zijn
+// niet allemaal hetzelfde totaal. "Uitgaven per winkel" slaat een boeking zonder
+// omschrijving over en komt dus lager uit dan de verdeling per categorie ernaast;
+// "per gezinslid" verdeelt een gedeelde kost over de betrokkenen. Vier keer hetzelfde
+// woord met vier verschillende betekenissen, zonder één zin die het verschil zegt,
+// is precies wat deze ronde opruimt — en niets bewaakte dat die zinnen er staan en
+// bij de juiste kaart horen.
+
+describe('AnalyseSectie — elk "Totaal" zegt wat het optelt', () => {
+  // De herkomstzin onder het "Totaal" van één kaart, opgezocht via haar kop.
+  function totaalBron(titel: string): string {
+    const k = kaart(titel)
+    const stat = within(k).getByText('Totaal').closest('.stat') as HTMLElement
+    return stat.querySelector('.getal-bron')?.textContent ?? ''
+  }
+
+  it('zegt bij de verdeling per hoofdcategorie dat ze per hoofdcategorie telt', () => {
+    toon([boodschappen, tanken])
+    expect(totaalBron('Verdeling uitgaven')).toContain('per hoofdcategorie')
+    expect(totaalBron('Verdeling uitgaven')).toContain('Een gesplitst kassaticket telt per regel mee')
+  })
+
+  it('belooft bij die kaart GEEN verborgen rijen en geen restschijf', () => {
+    // ⚠ Deze kaart verbergt niets: de lijst rendert `byOv` volledig, en de donut
+    // ernaast krijgt diezelfde volledige lijst. Het samenvegen tot een schijf
+    // "Overige" gebeurt alleen in `DonutKaart` (zie `MAX_SCHIJVEN`), en die wordt
+    // hier niet gebruikt. Een zin over "Toon alle" of over een restschijf zou hier
+    // dus iets beschrijven wat dit scherm niet doet — de fout die deze ronde net
+    // wilde uitroeien.
+    //
+    // Daarom staan er hier meer dan tien hoofdcategorieën: was deze kaart wél een
+    // `DonutKaart`, dan zat de tweede zin er nu bij en werd deze test rood.
+    const alleOv = [
+      'ov-voeding',
+      'ov-drank',
+      'ov-huishouden-en-verzorging',
+      'ov-apotheek-en-gezondheid',
+      'ov-kinderen-en-gezin',
+      'ov-woning-en-vaste-lasten',
+      'ov-vervoer-en-mobiliteit',
+      'ov-vrije-tijd-en-lifestyle',
+      'ov-kledij-en-schoenen',
+      'ov-belastingen-en-offici-le-koste',
+      'ov-huisdieren',
+      'ov-diensten-en-ontwikkeling',
+    ]
+    toon(alleOv.map((id, i) => tx(`ov${i}`, id, -(50000 - i * 1000), `Winkel ${i}`)))
+    const k = kaart('Verdeling uitgaven')
+    expect(k.querySelectorAll('.donut-naast .lijst li').length).toBeGreaterThan(10)
+    expect(within(k).queryByRole('button', { name: /^Toon alle/ })).toBeNull()
+    expect(totaalBron('Verdeling uitgaven')).not.toContain('Toon alle')
+    expect(totaalBron('Verdeling uitgaven')).not.toContain('Overige')
+  })
+
+  it('zegt bij de verdeling per subcategorie dat ze per subcategorie telt', () => {
+    toon([boodschappen, tanken])
+    expect(totaalBron('Verdeling per subcategorie')).toContain('per subcategorie geteld')
+  })
+
+  it('waarschuwt bij "per winkel" dat een boeking zonder omschrijving ontbreekt', () => {
+    // Zonder die zin staan er twee "Totaal"-cijfers op één pagina die niet gelijk
+    // zijn, en niets zegt waarom.
+    toon([boodschappen, tanken])
+    expect(totaalBron('Uitgaven per winkel')).toContain('Alleen uitgaven met een omschrijving')
+    expect(totaalBron('Uitgaven per winkel')).toContain('lager zijn dan dat van de verdeling per categorie')
+  })
+
+  it('zegt bij "per gezinslid" dat een gedeelde kost gelijk verdeeld is', () => {
+    // Die kaart verschijnt alleen wanneer er gezinsleden bestaan.
+    toonMet([boodschappen, tanken], { gezinsleden: [{ id: 'k1', naam: 'Emma' }] })
+    expect(totaalBron('Uitgaven per gezinslid')).toContain('gelijk over hen verdeeld')
+    expect(totaalBron('Uitgaven per gezinslid')).toContain('het totaal telt elke boeking één keer')
+  })
+
+  // De tweede zin in `DonutKaart`. "Totaal" is de som van álle posten van die
+  // verdeling — ook de rijen die achter "Toon alle" verstopt zitten. Ze hoort er dus
+  // alleen bij te staan wanneer er ook écht iets verstopt is; anders belooft ze
+  // verborgen rijen die niet bestaan.
+  const veelWinkels: Transactie[] = Array.from({ length: 15 }, (_, i) =>
+    tx(`w${i}`, '', -(50000 - i * 1000), `Winkel ${i}`),
+  )
+
+  it('zwijgt over "Toon alle" zolang alle rijen zichtbaar zijn', () => {
+    toon([boodschappen, tanken])
+    expect(within(kaart('Uitgaven per winkel')).queryByRole('button', { name: /^Toon alle/ })).toBeNull()
+    expect(totaalBron('Uitgaven per winkel')).not.toContain('Toon alle')
+  })
+
+  it('zegt het wél zodra er rijen achter "Toon alle" zitten', () => {
+    // Vijftien winkels: tien in de ring, vijf erachter.
+    toon(veelWinkels)
+    expect(within(kaart('Uitgaven per winkel')).getByRole('button', { name: /Toon alle 15/ })).toBeInTheDocument()
+    expect(totaalBron('Uitgaven per winkel')).toContain('Ook de rijen achter \u201cToon alle\u201d tellen mee.')
+    // En de eigen zin van de kaart blijft ervoor staan; de tweede komt erbij, ze
+    // vervangt niet.
+    expect(totaalBron('Uitgaven per winkel')).toContain('Alleen uitgaven met een omschrijving')
+  })
+})

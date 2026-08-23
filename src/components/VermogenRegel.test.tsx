@@ -79,4 +79,18 @@ describe('VermogenRegel', () => {
     // 1.000 − (8.000 − 3.000) = −4.000
     expect(screen.getByText(/Netto vermogen/)).toHaveTextContent('4.000')
   })
+
+  it('zegt erbij dat de interest niet meegeteld is (ronde 69)', () => {
+    // `openstaandKapitaal` rekent hoofdsom − afgelost; de rentevoet is in het schema
+    // uitdrukkelijk informatief. Wie € 15.000 aan 6 % invoert, ziet zijn vermogen met
+    // € 15.000 zakken en niet met wat hij de bank in totaal nog zal betalen.
+    render(<VermogenRegel bezit={100_000} leningen={[len('a', 1_500_000, 'geleend')]} aflossingen={[]} />)
+    expect(screen.getByText(/alleen het openstaande kapitaal mee/)).toBeInTheDocument()
+  })
+
+  it('zwijgt over interest wanneer je zelf niets moet betalen', () => {
+    // Bij uitgeleend geld gaat de zin niet op: dan gaat het niet om jouw schuld.
+    render(<VermogenRegel bezit={100_000} leningen={[len('a', 25_000, 'uitgeleend')]} aflossingen={[]} />)
+    expect(screen.queryByText(/openstaande kapitaal/)).toBeNull()
+  })
 })

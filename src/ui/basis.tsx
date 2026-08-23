@@ -8,6 +8,7 @@
 
 import type { CSSProperties, ReactNode } from 'react'
 import { formatEuro } from '../utils/format'
+import { naamMetBron } from './getalbron'
 
 function klassen(...delen: Array<string | false | undefined>): string {
   return delen.filter(Boolean).join(' ')
@@ -156,11 +157,25 @@ export function Bedrag({
  */
 export function Stat({
   label,
+  bron,
   doorklik,
   children,
 }: {
   label: ReactNode
   children: ReactNode
+  /**
+   * Waar dit cijfer vandaan komt: over welke periode het gaat, en wat er wel en
+   * niet in meegeteld is. Eén korte zin onder het cijfer (ronde 69).
+   *
+   * Waarom een prop en geen los regeltje dat elk scherm zelf ernaast zet: dan
+   * bestaan er twee soorten cijfers naast elkaar — met en zonder verantwoording —
+   * en groeit de tweede soort vanzelf weer aan. Zo staat de vraag "waar komt dit
+   * vandaan?" letterlijk in de vorm van het cijfer.
+   *
+   * `string` en geen `ReactNode`: de zin moet ook in de naam van de knop kunnen,
+   * en daar past geen opmaak in.
+   */
+  bron?: string
   /**
    * Bestemming en toegankelijke naam samen in ÉÉN prop, en niet als twee losse
    * optionele props. Zo kan er geen knop ontstaan zonder naam: dan zou een
@@ -173,11 +188,21 @@ export function Stat({
     <>
       <span className="label-caps">{label}</span>
       <span className="stat-waarde">{children}</span>
+      {bron ? <span className="getal-bron">{bron}</span> : null}
     </>
   )
-  if (!doorklik) return <div className="stat">{inhoud}</div>
+  // `stat-met-bron` geeft het blokje een flex-basis, zodat twee zinnen naast elkaar
+  // op een telefoon onder elkaar wrappen in plaats van in twee smalle kolommen te
+  // breken. Zie de uitleg bij die klasse in index.css.
+  const klasse = klassen('stat', bron && 'stat-met-bron')
+  if (!doorklik) return <div className={klasse}>{inhoud}</div>
   return (
-    <button type="button" className="stat stat-knop" aria-label={doorklik.naam} onClick={doorklik.naar}>
+    <button
+      type="button"
+      className={klassen(klasse, 'stat-knop')}
+      aria-label={naamMetBron(doorklik.naam, bron)}
+      onClick={doorklik.naar}
+    >
       {inhoud}
       <Chevron />
     </button>
@@ -222,22 +247,36 @@ function Chevron() {
  */
 export function Kengetal({
   label,
+  bron,
   doorklik,
   children,
 }: {
   label: ReactNode
   children: ReactNode
+  /** Zie `Stat`: over welke periode dit cijfer gaat en wat er niet in zit (ronde 69). */
+  bron?: string
   doorklik?: { naar: () => void; naam: string }
 }) {
   const inhoud = (
     <>
       <span className="label-caps">{label}</span>
       {children}
+      {bron ? <span className="getal-bron">{bron}</span> : null}
     </>
   )
-  if (!doorklik) return <div className="kengetal">{inhoud}</div>
+  // Dezelfde merkklasse als bij `Stat`, en om dezelfde reden: `.tegelrij` is een
+  // raster van twee kolommen, en een zin van honderd tekens in 154 px wordt acht
+  // regeltjes hoog. Vandaag gebruikt geen enkel scherm `Kengetal bron`; zou de klasse
+  // hier ontbreken, dan viel de eerste die het wél doet in precies dat gat.
+  const klasse = klassen('kengetal', bron && 'stat-met-bron')
+  if (!doorklik) return <div className={klasse}>{inhoud}</div>
   return (
-    <button type="button" className="kengetal kengetal-knop" aria-label={doorklik.naam} onClick={doorklik.naar}>
+    <button
+      type="button"
+      className={klassen(klasse, 'kengetal-knop')}
+      aria-label={naamMetBron(doorklik.naam, bron)}
+      onClick={doorklik.naar}
+    >
       {inhoud}
       <Chevron />
     </button>

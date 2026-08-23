@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { TransactieLijst, aantalActieveFilters, uitsplitsingTekst } from './TransactieLijst'
 import type { Garantie, Transactie } from '../data/schema'
-import { vandaag } from '../utils/datum'
+import { maandJaarLabel, vandaag } from '../utils/datum'
 import { grensDatumMaandenTerug } from '../utils/transactieFilter'
 import { formatEuro } from '../utils/format'
 
@@ -337,10 +337,19 @@ describe('TransactieLijst — het venster van zes maanden', () => {
   const lang = '2020-03-04' // ruim buiten elk venster
 
   it('meldt bovenaan hoeveel boekingen erbuiten vallen', () => {
-    toon([tx({ id: 'nieuw' }), tx({ id: 'oud', datum: lang })])
+    toon([tx({ id: 'nieuw' }), tx({ id: 'oud', datum: lang }), tx({ id: 'ouder', datum: lang })])
     const melding = document.querySelector('[data-venstermelding]') as HTMLElement
     expect(melding).not.toBeNull()
-    expect(melding.textContent).toContain('1 oudere boeking(en) vallen buiten dit venster van 6 maanden.')
+    expect(melding.textContent).toContain('2 oudere boekingen vallen buiten dit venster van 6 maanden.')
+  })
+
+  it('schrijft die melding in het enkelvoud bij één boeking (ronde 69)', () => {
+    // Hier stond "1 oudere boeking(en) VALLEN buiten dit venster": het zelfstandig
+    // naamwoord in de "(en)"-vorm, het werkwoord vast in het meervoud. Sinds ronde 69
+    // staat er een herkomstzin pal boven, dus de scheve regel valt meer op.
+    toon([tx({ id: 'nieuw' }), tx({ id: 'oud', datum: lang })])
+    const melding = document.querySelector('[data-venstermelding]') as HTMLElement
+    expect(melding.textContent).toContain('Eén oudere boeking valt buiten dit venster van 6 maanden.')
   })
 
   it('zwijgt wanneer alles binnen het venster valt', () => {
@@ -1153,3 +1162,58 @@ describe('TransactieLijst — een mislukte verwijdering', () => {
   })
 })
 
+
+// ---------------------------------------------------------------------------
+// Ronde 69 — elk getal verantwoordt zich.
+//
+// De drie tegels tellen wat er ZICHTBAAR is, en dat is zonder filter alleen het
+// venster van zes maanden. Dat venster is eerlijk tegenover de lijst eronder, maar
+// het stond nergens bovenaan: de enige aanwijzing was de knop "Toon oudere
+// boekingen" helemaal onderaan, voorbij honderd rijen. Wie de tegels las en
+// wegscrollde, nam "€ 12.340 uitgaven" mee als het totaal van álles.
+// ---------------------------------------------------------------------------
+describe('TransactieLijst — waar de drie kengetallen over gaan', () => {
+  const langGeleden = '2020-03-04' // ruim buiten elk venster, op elke draaidatum
+
+  const bron = () => document.querySelector('[data-kengetalbron]') as HTMLElement | null
+
+  it('zegt boven de tegels vanaf welke maand de boekingen meetellen', () => {
+    // De begindatum schuift elke maand mee, dus rekent de test ze uit zoals de lijst
+    // dat doet. Een vaste maand in de verwachting zou een tijdbom zijn.
+    //
+    // Bewust de begindatum en géén aantal: het aantal én de knop staan een paar
+    // centimeter lager al in `[data-venstermelding]`, en twee zinnen die hetzelfde
+    // tellen lezen als twee verschillende feiten.
+    toon([
+      tx({ id: 'nieuw', omschrijving: 'Vandaag' }),
+      tx({ id: 'oud', omschrijving: 'Lang geleden', datum: langGeleden }),
+    ])
+    expect(bron()?.textContent).toBe(
+      `Deze drie cijfers gaan over de boekingen vanaf ${maandJaarLabel(grensDatumMaandenTerug(recent, 6))}; oudere boekingen tellen niet mee.`,
+    )
+  })
+
+  it('zwijgt wanneer er niets ouder is dan dat venster', () => {
+    // ⚠ Anders noemt de zin een beperking die geen enkel gevolg heeft: het venster
+    // laat dan niets weg, dus is er niets te verantwoorden. Een waarschuwing zonder
+    // gevolg leert je de rest van de waarschuwingen te negeren.
+    toon([tx({ id: 'nieuw', omschrijving: 'Vandaag' })])
+    expect(bron()).toBeNull()
+  })
+
+  it('zegt met een filter aan over hoeveel boekingen de cijfers dan gaan', async () => {
+    // Met een filter vervalt het venster van zes maanden en telt de lijst precies
+    // wat de filters overhouden. Dat is iets anders dan "al je boekingen", en de
+    // tegels zien er identiek uit — dus moet de zin het verschil benoemen.
+    const user = userEvent.setup()
+    toon([
+      tx({ id: '1', omschrijving: 'Loon', bedrag: 200000 }),
+      tx({ id: '2', omschrijving: 'Winkel', bedrag: -3000 }),
+    ])
+    await klapFiltersOpen(user)
+    await user.selectOptions(screen.getByLabelText('Richting'), 'uit')
+    expect(bron()?.textContent).toBe(
+      'Deze drie cijfers gaan over de ene boeking die je filters overhouden, en over niets anders.',
+    )
+  })
+})

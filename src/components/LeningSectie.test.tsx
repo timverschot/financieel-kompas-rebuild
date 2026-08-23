@@ -100,3 +100,49 @@ describe('LeningSectie', () => {
     expect(onAflossingOpslaan).toHaveBeenCalledWith(expect.objectContaining({ leningId: 'l1', bedrag: 10000 }))
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 69 — de twee herkomstzinnen onder "Nog te ontvangen" / "Nog te betalen"
+//
+// Beide bedragen komen uit `openstaandKapitaal`: hoofdsom min wat er afgelost is.
+// De rentevoet staat in het schema uitdrukkelijk als informatief en zit dus in geen
+// van beide. Precies datzelfde cijfer voedt het netto vermogen op "Je situatie", waar
+// de zin er intussen ook bij staat — zonder deze test kon de ene plek het zeggen en
+// de andere zwijgen over hetzelfde bedrag.
+//
+// En zoals bij de tegels op "Je situatie" hangt de zin aan het BEDRAG, niet aan het
+// blok: bij twee uitgeleende leningen staat er "Nog te betalen € 0,00", en daar hoort
+// geen alinea over hoofdsom en interest onder.
+
+describe('LeningSectie — wat het openstaande totaal wel en niet meetelt', () => {
+  const uitgeleend: Lening = { id: 'l1', naam: 'Broer', richting: 'uitgeleend', hoofdsom: 50000, startdatum: '2026-01-01' }
+  const geleend: Lening = { id: 'l2', naam: 'Autolening', richting: 'geleend', hoofdsom: 100000, startdatum: '2026-01-01' }
+  const tweedeUitgeleend: Lening = { id: 'l3', naam: 'Zus', richting: 'uitgeleend', hoofdsom: 30000, startdatum: '2026-01-01' }
+
+  // De herkomstzin onder één van de twee totalen.
+  function bron(label: string): string {
+    const blok = screen.getByText(label).closest('.stat') as HTMLElement
+    return blok.querySelector('.getal-bron')?.textContent ?? ''
+  }
+
+  it('zegt bij beide totalen dat het om het openstaande kapitaal gaat, zonder interest', () => {
+    // Het blok verschijnt pas vanaf twee leningen; bij één zou het de rij eronder
+    // gewoon herhalen.
+    toon([uitgeleend, geleend], [])
+    expect(bron('Nog te ontvangen')).toContain('Alleen het openstaande kapitaal')
+    expect(bron('Nog te ontvangen')).toContain('Interest zit er niet in')
+    expect(bron('Nog te betalen')).toContain('Alleen het openstaande kapitaal')
+    expect(bron('Nog te betalen')).toContain('De interest die je nog betaalt zit er niet in')
+  })
+
+  it('zwijgt onder een totaal van € 0,00', () => {
+    // Twee leningen die allebei uitgeleend zijn: het blok staat er, maar "Nog te
+    // betalen" is nul. Een uitleg over hoofdsom en interest onder een nul beschrijft
+    // een berekening die hier niet gebeurd is.
+    toon([uitgeleend, tweedeUitgeleend], [])
+    expect(screen.getByText('Nog te betalen').parentElement).toHaveTextContent('€ 0,00')
+    expect(bron('Nog te betalen')).toBe('')
+    // De andere kant heeft wél een bedrag, en dus wél haar zin.
+    expect(bron('Nog te ontvangen')).toContain('Alleen het openstaande kapitaal')
+  })
+})

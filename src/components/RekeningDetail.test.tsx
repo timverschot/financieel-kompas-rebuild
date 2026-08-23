@@ -104,7 +104,7 @@ describe('RekeningDetail', () => {
     expect(screen.getByText(/^startsaldo/).textContent).toBe(`startsaldo ${formatEuro(100000)}`)
   })
 
-  it('telt de maandcijfers op transactieniveau, zonder overboekingen', () => {
+  it('telt de maandcijfers per regel, zonder overboekingen', () => {
     toon({
       transacties: [
         tx({ id: 't1', omschrijving: 'Loon', bedrag: 200000 }),
@@ -144,6 +144,29 @@ describe('RekeningDetail', () => {
     })
     // Het volledige ticketbedrag, niet één van de deelregels.
     expect(kengetal('Uitgaven')).toBe(formatEuro(5000))
+  })
+
+  it('splitst een ticket met een regel in de andere richting uit (ronde 69)', () => {
+    // Een ticket van − € 50: € 60 boodschappen en € 10 statiegeld terug. Op de
+    // MOEDERtransactie geteld stond hier € 50 uitgaven en € 0 inkomsten, terwijl
+    // Analyse en de budgetten er € 60 en € 10 van maken — twee schermen, twee
+    // waarheden. Het netto was toevallig wel gelijk, dus het viel niet op.
+    toon({
+      transacties: [
+        tx({
+          id: 't1',
+          omschrijving: 'Colruyt',
+          bedrag: -5000,
+          regels: [
+            { categorieId: 'voeding', bedrag: -6000 },
+            { categorieId: 'statiegeld', bedrag: 1000 },
+          ],
+        }),
+      ],
+    })
+    expect(kengetal('Uitgaven')).toBe(formatEuro(6000))
+    expect(kengetal('Inkomsten')).toBe(formatEuro(1000))
+    expect(kengetal('Netto')).toBe(formatEuro(-5000))
   })
 
   it('toont de laatste transacties nieuwste eerst en meldt de rest', () => {
@@ -506,5 +529,58 @@ describe('RekeningDetail — doorklikken', () => {
     expect(screen.getByText('+ nog 2')).toBeInTheDocument()
     await gebruiker.click(screen.getByRole('button', { name: 'Bekijk ze allemaal' }))
     expect(onGaNaarTransacties).toHaveBeenCalledWith({ rekeningId: 'r1' })
+  })
+})
+
+
+// ---------------------------------------------------------------------------
+// Ronde 69 — de drie herkomstzinnen boven de boekingen van deze maand
+//
+// `binnen`, `eraf` en `verschil` komen alle drie uit dezelfde `maandLijnen`, en die
+// telt op REGELniveau: een kassaticket van € 47 met een regel statiegeld van + € 3
+// levert € 50 uitgaven en € 3 inkomsten op, niet één bedrag van € 47. Zonder die zin
+// lijkt het cijfer niet te kloppen met de rij eronder.
+//
+// En Netto hoort de zin net zo goed te krijgen. Niet alleen omdat het inhoudelijk
+// waar is: zonder zin krijgt Netto als enige van de drie géén `stat-met-bron`, en dan
+// gaat de `.stat-rij` op een telefoon scheef staan — twee tegels over de volle
+// breedte en Netto ernaast geplakt.
+
+describe('RekeningDetail — de maandcijfers verantwoorden zich', () => {
+  const SPLITSZIN = 'Een gesplitst kassaticket telt per regel mee.'
+
+  // De herkomstzin onder één van de drie kengetallen.
+  function bron(label: string): string {
+    const blok = screen.getByText(label).closest('.stat') as HTMLElement
+    return blok.querySelector('.getal-bron')?.textContent ?? ''
+  }
+
+  it('zegt bij alle drie de cijfers dat een gesplitst ticket per regel telt', () => {
+    toon({ transacties: [tx({ id: 't1', bedrag: 50000 }), tx({ id: 't2', bedrag: -20000 })] })
+    expect(bron('Inkomsten')).toBe(SPLITSZIN)
+    expect(bron('Uitgaven')).toBe(SPLITSZIN)
+    expect(bron('Netto')).toBe(SPLITSZIN)
+  })
+
+  it('houdt de rij van drie recht doordat alle drie de tegels gemerkt zijn', () => {
+    // ⚠ `.stat-met-bron` geeft de tegel een flex-basis van 220 px. Kreeg één van de
+    // drie die klasse niet, dan wrapt de rij op een telefoon scheef: twee tegels over
+    // de volle breedte en de derde ernaast geplakt.
+    const { container } = toon({ transacties: [tx({ id: 't1', bedrag: 50000 })] })
+    const rij = screen.getByText('Netto').closest('.stat-rij') as HTMLElement
+    expect(rij.querySelectorAll('.stat').length).toBe(3)
+    expect(rij.querySelectorAll('.stat-met-bron').length).toBe(3)
+    expect(container.querySelectorAll('.stat-rij .getal-bron').length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('houdt de zin ook overeind wanneer Netto een knop wordt', () => {
+    // Netto is het enige van de drie dat doorklikt (Inkomsten en Uitgaven tellen op
+    // transactieniveau en zouden naar een andere lijst leiden). Op een knop vervangt
+    // `aria-label` ALLE tekst binnenin, dus de zin hoort er ook in te staan.
+    toon({ onGaNaarTransacties: vi.fn() })
+    expect(bron('Netto')).toBe(SPLITSZIN)
+    const knop = screen.getByRole('button', { name: /^Netto / })
+    expect(knop).toHaveClass('stat-met-bron')
+    expect(knop.getAttribute('aria-label')).toContain(SPLITSZIN)
   })
 })

@@ -36,6 +36,7 @@ import { kaartbedragUitOpslag } from '../utils/kredietkaart'
 import { formatEuro, invoerNaarCenten } from '../utils/format'
 import { standaardRekening } from '../utils/rekening'
 import { huidigeMaand, vandaag } from '../utils/datum'
+import { opmaakLocale } from '../utils/opmaaktaal'
 import { TALEN, useT, vertaal } from '../i18n'
 import type { Vertaler } from '../i18n'
 
@@ -701,17 +702,66 @@ export function OpstellingSectie({
             maand" in plaats van "gemiddeld per maand"). Een knop die belooft te tonen
             waaruit een bedrag bestaat en dat niet doet, is erger dan geen knop. */}
         <div className="tegelrij">
-          <Stat label={t('Vaste lasten per maand')}>
+          {/* RONDE 69 — de herkomstzinnen. De opmerking hierboven legde al uit waarom
+              deze twee tegels geen knop krijgen, maar dat stond alleen in de broncode:
+              op het scherm zag je "Vaste lasten per maand € 840" hier en "Vaste lasten
+              deze maand € 610" op Budget, en niets zei dat het twee verschillende
+              vragen zijn. Nu staat het verschil onder het cijfer. */}
+          {/* ⚠ De zin hangt aan DEZELFDE voorwaarde als het cijfer. Dit is het eerste
+              scherm van een verse app: vier streepjes met samen ruim vijfhonderd
+              tekens uitleg over hoe cijfers berekend worden die er nog niet zijn, is
+              precies het "te veel op één scherm" waar deze reeks vanaf wil. Zodra er
+              een bedrag staat, staat de zin erbij. */}
+          <Stat
+            label={t('Vaste lasten per maand')}
+            bron={
+              buffer.vasteLastenPerMaand > 0
+                ? t(
+                    'Omgerekend naar één maand: een jaarpremie van € 1.200 telt hier als € 100. Op Budget staat daarnaast wat er in déze maand effectief vervalt — bij een post per kwartaal of per jaar is dat een ander bedrag.',
+                  )
+                : undefined
+            }
+          >
             {buffer.vasteLastenPerMaand > 0 ? formatEuro(buffer.vasteLastenPerMaand) : '—'}
           </Stat>
-          <Stat label={t('Waarvan sluipend')}>{sluipendPerMaand > 0 ? formatEuro(sluipendPerMaand) : '—'}</Stat>
-          <Stat label={t('Zo lang kom je toe')}>
+          <Stat
+            label={t('Waarvan sluipend')}
+            bron={
+              sluipendPerMaand > 0
+                ? t('Alleen de posten in de categorieën uit de lijst “Sluipende kosten” hieronder. Een eigen categorie telt hier niet mee.')
+                : undefined
+            }
+          >
+            {sluipendPerMaand > 0 ? formatEuro(sluipendPerMaand) : '—'}
+          </Stat>
+          {/* ⚠ RONDE 69 — TELFOUT. Hier stond `t('{n} maanden', …)` zonder
+              enkelvoudsgeval, dus tussen 1,0 en 1,09 maand las je "1 maanden".
+              `BufferRegel` vangt exact dat geval al op, met exact dezelfde cijfers:
+              hetzelfde getal, twee schermen, twee uitkomsten. En `.replace('.', ',')`
+              zette er ook in het Engels een decimale komma neer ("5,2 months");
+              `toLocaleString(opmaakLocale())` doet dat in elke taal juist. */}
+          <Stat
+            label={t('Zo lang kom je toe')}
+            bron={
+              buffer.bruikbaar && buffer.maanden !== null
+                ? t('Je spaar- en cashrekeningen gedeeld door je vaste lasten per maand. Eten, tanken en andere losse uitgaven komen daar nog bij.')
+                : undefined
+            }
+          >
             {buffer.bruikbaar && buffer.maanden !== null
-              ? t('{n} maanden', { n: (Math.floor(buffer.maanden * 10) / 10).toString().replace('.', ',') })
+              ? (() => {
+                  const m = Math.floor(buffer.maanden * 10) / 10
+                  return m === 1 ? t('1 maand') : t('{n} maanden', { n: m.toLocaleString(opmaakLocale()) })
+                })()
               : '—'}
           </Stat>
           <Stat
             label={t('Netto vermogen')}
+            bron={
+              rekeningen.length > 0 || leningen.length > 0
+                ? t('Je rekeningen, plus wat men jou nog schuldig is, min wat jij nog schuldig bent. Alleen het openstaande kapitaal van een lening; de interest komt daar nog bij.')
+                : undefined
+            }
             doorklik={
               rekeningen.length > 0 || leningen.length > 0
                 ? {

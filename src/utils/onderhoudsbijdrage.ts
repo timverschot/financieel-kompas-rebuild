@@ -507,12 +507,24 @@ export function verschuldigdPerMaand(
 export type Achterstand = {
   /** Alles wat er sinds de regeling verschuldigd was, in centen. */
   verschuldigd: number
-  /** Alles wat er betaald is, in centen. */
+  /** Wat er betaald is EN bij de getelde maanden hoort, in centen. */
   betaald: number
   /** Positief = er staat nog iets open. Negatief = er is te veel betaald. */
   open: number
   /** Het aantal maanden waarover geteld is. */
   maanden: number
+  /**
+   * Hoeveel betalingen er in `betaald` zitten (ronde 69).
+   *
+   * WAAROM DIT ERBIJ MOEST. Het scherm zette naast het bedrag "{n} betaling(en)
+   * geregistreerd" met `betalingen.length` — ALLE betalingen — terwijl het bedrag
+   * ernaast alleen de betalingen binnen de getelde maanden optelt. Bij een regeling
+   * die in 2018 afliep las je dan "14 betalingen geregistreerd" bij een bedrag dat
+   * er negen telde, en het verschil leek een rekenfout van de app.
+   */
+  aantalBetalingen: number
+  /** Hoeveel betalingen er buiten de getelde maanden vielen en dus NIET meegeteld zijn. */
+  aantalBuitenPeriode: number
 }
 
 /**
@@ -543,7 +555,14 @@ export function berekenAchterstand(
     return maanden.has(maand)
   })
   const betaald = meetellend.reduce((som, b) => som + b.bedrag, 0)
-  return { verschuldigd, betaald, open: verschuldigd - betaald, maanden: regels.length }
+  return {
+    verschuldigd,
+    betaald,
+    open: verschuldigd - betaald,
+    maanden: regels.length,
+    aantalBetalingen: meetellend.length,
+    aantalBuitenPeriode: betalingen.length - meetellend.length,
+  }
 }
 
 /**

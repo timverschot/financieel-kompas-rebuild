@@ -1,6 +1,7 @@
 import type { Aflossing, Lening } from '../data/schema'
 import { leningstand, nettoVermogen } from '../utils/vermogen'
 import { formatEuro } from '../utils/format'
+import { Herkomstregel } from '../ui/Herkomstregel'
 import { useT } from '../i18n'
 
 /**
@@ -54,21 +55,28 @@ export function VermogenRegel({
         ? t('Je rekeningen staan op {bezit}, met {teOntvangen} nog te ontvangen.', { bezit: bezitTekst, teOntvangen })
         : t('Je rekeningen staan op {bezit}, met {teBetalen} nog te betalen.', { bezit: bezitTekst, teBetalen })
 
+  // RONDE 69. Wat hier "nog te betalen" heet, is het OPENSTAAND KAPITAAL:
+  // `openstaandKapitaal` rekent hoofdsom − afgelost, en de rentevoet op een lening
+  // is in het schema uitdrukkelijk informatief. Wie een autolening van € 15.000 aan
+  // 6 % invoert, ziet zijn vermogen dus met € 15.000 dalen en niet met wat hij de
+  // bank in totaal nog zal betalen. Dat verschil hoort in beeld te staan, niet in de
+  // broncode — anders neemt iemand een beslissing op een cijfer dat te mooi is.
+  const kapitaalzin =
+    stand.teBetalen > 0
+      ? ' ' + t('Bij wat je nog moet betalen telt alleen het openstaande kapitaal mee; de interest komt daar nog bij.')
+      : ''
+
   // Dezelfde vorm als BalansRegel en BufferRegel, waar ze tussen staat: een badge
   // links en één zin ernaast. Een negatief vermogen krijgt dezelfde nadruk als een
   // tekort in de balansregel.
   return (
-    <div
-      className={kaal ? undefined : 'kaart kaart-compact'}
-      data-vermogen
-      style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}
+    <Herkomstregel
+      badge={t('Netto vermogen {bedrag}', { bedrag: formatEuro(netto) })}
+      toon={netto < 0 ? 'let-op' : 'neutraal'}
+      kaal={kaal}
+      data-vermogen="1"
     >
-      <span className={netto < 0 ? 'badge badge-laat' : 'badge badge-neutraal'}>
-        {t('Netto vermogen {bedrag}', { bedrag: formatEuro(netto) })}
-      </span>
-      <span className="rij-meta" style={{ flex: 1, minWidth: 220 }}>
-        {zin}
-      </span>
-    </div>
+      {zin + kapitaalzin}
+    </Herkomstregel>
   )
 }

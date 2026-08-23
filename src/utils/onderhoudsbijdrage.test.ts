@@ -377,6 +377,22 @@ describe('berekenAchterstand', () => {
     expect(uit.maanden).toBe(regels.length)
   })
 
+  it('telt alleen de betalingen die ook in het bedrag zitten (ronde 69)', () => {
+    // De teller op het scherm zei "3 betalingen geregistreerd" naast een bedrag dat
+    // er twee optelde: de storting van 2020 hoorde niet bij een regeling die in
+    // 2018 stopte. Twee cijfers naast elkaar over een verschillende verzameling.
+    const uit = berekenAchterstand(
+      [
+        { maand: '2018-01', verschuldigd: 25000 },
+        { maand: '2018-02', verschuldigd: 25000 },
+      ],
+      [{ bedrag: 25000, datum: '2018-01-05' }, { bedrag: 25000, datum: '2018-02-05' }, { bedrag: 25000, datum: '2020-06-05' }],
+    )
+    expect(uit.betaald).toBe(50000)
+    expect(uit.aantalBetalingen).toBe(2)
+    expect(uit.aantalBuitenPeriode).toBe(1)
+  })
+
   it('geeft een negatief getal wanneer er te veel betaald is', () => {
     // Vooruitbetalen mag; dat is geen fout en hoort dus geen fout te heten.
     const uit = berekenAchterstand([{ maand: '2026-07', verschuldigd: 25000 }], [{ bedrag: 30000 }])
@@ -384,7 +400,14 @@ describe('berekenAchterstand', () => {
   })
 
   it('blijft overeind zonder betalingen en zonder maanden', () => {
-    expect(berekenAchterstand([], [])).toEqual({ verschuldigd: 0, betaald: 0, open: 0, maanden: 0 })
+    expect(berekenAchterstand([], [])).toEqual({
+      verschuldigd: 0,
+      betaald: 0,
+      open: 0,
+      maanden: 0,
+      aantalBetalingen: 0,
+      aantalBuitenPeriode: 0,
+    })
   })
 })
 
