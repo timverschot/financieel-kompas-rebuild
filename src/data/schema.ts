@@ -466,6 +466,22 @@ export const SpaardoelSchema = z.object({
   kleur: z.string().optional(),
   icoon: z.string().min(1).max(8).optional(), // optioneel eigen icoon, zoals bij categorieën
   persoonId: z.string().min(1).optional(), // optioneel: doel op naam van een gezinslid
+  /**
+   * Voor WELKE vaste last dit doel spaart (ronde 74).
+   *
+   * Optioneel, dus elk bestaand spaardoel blijft geldig: geen migratie. Staat het
+   * er wel, dan verandert er iets aan de rekenkant: die vaste last vraagt niet
+   * langer om er maandelijks apart geld voor opzij te zetten, want dát is precies
+   * wat dit doel doet. Anders zou dezelfde euro twee keer gereserveerd staan — één
+   * keer op Budget onder "Opzij voor later", één keer in deze pot.
+   *
+   * ⚠ Het is een VERWIJZING, geen kopie. Het doelbedrag en de doeldatum blijven
+   * gewone velden die jij invult; het doel neemt ze bij het aanmaken over van de
+   * vaste last, maar ze lopen daarna niet automatisch mee. Zo kan de app nooit stil
+   * een bedrag veranderen dat jij bewust anders zette — ze zegt het wanneer de twee
+   * uit elkaar lopen, en jij beslist.
+   */
+  vasteLastId: z.string().min(1).optional(),
 })
 export type Spaardoel = z.infer<typeof SpaardoelSchema>
 

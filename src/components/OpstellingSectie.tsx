@@ -8,6 +8,7 @@ import type {
   Lening,
   Overboeking,
   Rekening,
+  Spaardoel,
   TerugkerendePost,
   Transactie,
   Waardering,
@@ -44,6 +45,7 @@ import {
   verschuifMaand,
 } from '../utils/vastelast'
 import { frequentieNaam } from './TerugkerendePostFormulier'
+import { opzijVolgensSpaardoelen } from '../utils/spaardoel'
 import { kaartbedragUitOpslag } from '../utils/kredietkaart'
 import { formatEuro } from '../utils/format'
 import { standaardRekening } from '../utils/rekening'
@@ -557,6 +559,7 @@ export function OpstellingSectie({
   veilig,
   naarBlok: gevraagdBlok = 'rekeningen',
   naarBlokNr = 0,
+  spaardoelen = [],
 }: {
   rekeningen: Rekening[]
   transacties: Transactie[]
@@ -619,6 +622,11 @@ export function OpstellingSectie({
    * teller laat de component zijn eigen stand bijstellen zonder iets te verliezen.
    */
   naarBlokNr?: number
+  /**
+   * De spaardoelen, alleen om te weten met welk bedrag Budget rekent (ronde 74).
+   * Optioneel en standaard leeg: dan geldt de kale deling, precies zoals vroeger.
+   */
+  spaardoelen?: Spaardoel[]
 }) {
   const { t } = useT()
   const [blok, setBlok] = useState<OpstellingBlok>(gevraagdBlok)
@@ -736,7 +744,15 @@ export function OpstellingSectie({
   // wanneer er ook echt zo'n post is; anders noemt de zin een beperking zonder gevolg.
   const nogNietBegonnen = ingevuld.filter((p) => isNogNietBegonnen(p, dezeMaand))
   const nogNietBegonnenPerMaand = nogNietBegonnen.reduce((som, p) => som + -maandbedrag(p), 0)
-  const nogNietBegonnenOpzij = nogNietBegonnen.reduce((som, p) => som + opzijPerMaand(p), 0)
+  // ⚠ Dezelfde regel als op Budget (ronde 74, doorlichting). Sinds een spaardoel aan
+  // een vaste last kan hangen, komt het bedrag onder "Opzij voor later" uit dát doel.
+  // Rekende deze zin nog met de kale `opzijPerMaand`, dan noemde ze een bedrag dat op
+  // Budget niet staat — en de zin zegt er letterlijk bij "dat staat op Budget".
+  const opzijViaDoel = opzijVolgensSpaardoelen(spaardoelen, terugkerendePosten)
+  const nogNietBegonnenOpzij = nogNietBegonnen.reduce(
+    (som, p) => som + (opzijViaDoel.get(p.id) ?? opzijPerMaand(p)),
+    0,
+  )
   // Dezelfde types als `BUFFERTYPES` in utils/buffer.ts, en om dezelfde reden: alleen
   // geld dat je vrij kan gebruiken telt als buffer.
   const heeftSpaarOfCash = rekeningen.some((r) => !r.gearchiveerd && (r.type === 'spaar' || r.type === 'cash'))

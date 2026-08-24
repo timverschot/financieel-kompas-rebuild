@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import type { Kind, Rekening, Spaardoel } from '../data/schema'
+import type { Kind, Rekening, Spaardoel, TerugkerendePost } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { rekeningLabel } from '../utils/rekening'
-import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
+import { invoerNaarCenten, centenNaarInvoer, formatEuro } from '../utils/format'
+import { volgendeVervaldag } from '../utils/vastelast'
+import { dagJaar, vandaag } from '../utils/datum'
 import { GezinslidKiezer } from './GezinslidKiezer'
 import { heeftKiesbareLeden } from '../utils/persoon'
 import { useT } from '../i18n'
@@ -23,6 +25,7 @@ const BEGIN = {
   kleur: '#3F8A58' as string | undefined,
   icoon: undefined as string | undefined,
   persoonId: '',
+  vasteLastId: '',
 }
 
 // Formulier om een spaardoel aan te maken of te bewerken.
@@ -32,8 +35,19 @@ export function SpaardoelFormulier({
   onAnnuleer,
   bewerken,
   gezinsleden = [],
+  vasteLasten = [],
+  vandaagISO = vandaag(),
 }: {
   rekeningen: Rekening[]
+  /**
+   * De vaste lasten waar je voor kan sparen (ronde 74).
+   *
+   * Optioneel en standaard leeg: dan verschijnt het veld "Waarvoor spaar je?"
+   * gewoon niet, en werkt dit formulier precies zoals vóór die ronde.
+   */
+  vasteLasten?: TerugkerendePost[]
+  /** Welke dag het vandaag is; om de eerstvolgende vervaldag uit te rekenen. */
+  vandaagISO?: string
   onOpslaan: (d: Spaardoel) => Promise<void> | void
   onAnnuleer?: () => void
   bewerken?: Spaardoel | null
@@ -63,6 +77,7 @@ export function SpaardoelFormulier({
   const [kleur, setKleur] = useState(BEGIN.kleur)
   const [icoon, setIcoon] = useState(BEGIN.icoon)
   const [persoonId, setPersoonId] = useState(BEGIN.persoonId)
+  const [vasteLastId, setVasteLastId] = useState(BEGIN.vasteLastId)
 
   // Zet alle velden terug op hun beginwaarde.
   const leegmaken = useCallback(() => {
@@ -78,6 +93,7 @@ export function SpaardoelFormulier({
     setKleur(BEGIN.kleur)
     setIcoon(BEGIN.icoon)
     setPersoonId(BEGIN.persoonId)
+    setVasteLastId(BEGIN.vasteLastId)
   }, [])
 
   useEffect(() => {
@@ -91,10 +107,43 @@ export function SpaardoelFormulier({
       setKleur(bewerken.kleur ?? '#3F8A58')
       setIcoon(bewerken.icoon)
       setPersoonId(bewerken.persoonId ?? '')
+      setVasteLastId(bewerken.vasteLastId ?? '')
     } else {
       leegmaken()
     }
   }, [bewerken, leegmaken])
+
+  // De gekozen vaste last, en wat we daarover kunnen zeggen. Bewust per render
+  // opnieuw opgezocht: de lijst kan tijdens het invullen veranderen (een ander
+  // toestel voegt iets toe), en dan hoort de zin eronder mee te veranderen.
+  const gekozenLast = vasteLasten.find((p) => p.id === vasteLastId) ?? null
+  // ⚠ Hangt dit doel aan een kost die NIET in de keuzelijst staat — opgezegd, of
+  // intussen maandelijks geworden — dan is er geen optie met die waarde, en valt de
+  // keuzelijst stil terug op "Voor niets in het bijzonder". Het formulier zei dan dat
+  // er geen koppeling was terwijl de lijst ernaast er een toonde, en je kon ze niet
+  // meer losmaken. Ze krijgt daarom altijd haar eigen optie.
+  const ontbrekendeKoppeling = vasteLastId !== '' && gekozenLast === null
+  const uitlegId = useId()
+  const vervaldag = gekozenLast ? volgendeVervaldag(gekozenLast, vandaagISO) : null
+
+  /**
+   * Een vaste last kiezen vult de lege velden in.
+   *
+   * ⚠ ALLEEN de lege. Wat jij al ingetikt hebt, blijft staan — een keuzelijst die
+   * je bedrag overschrijft is precies de fout die ronde 62 kostte (het formulier
+   * verving een bedrag dat je aan het typen was). Wil je het bedrag van de vaste
+   * last alsnog, dan maak je het veld leeg en kies je opnieuw; de regel eronder
+   * zegt altijd wat die vaste last kost, dus je hoeft niets op te zoeken.
+   */
+  function kiesVasteLast(id: string) {
+    setVasteLastId(id)
+    const post = vasteLasten.find((p) => p.id === id)
+    if (!post) return
+    if (naam.trim() === '') setNaam(post.omschrijving)
+    if (doelbedrag.trim() === '') setDoelbedrag(centenNaarInvoer(Math.abs(post.bedrag)))
+    const volgende = volgendeVervaldag(post, vandaagISO)
+    if (doeldatum === '' && volgende) setDoeldatum(volgende)
+  }
 
   const doelCenten = invoerNaarCenten(doelbedrag)
   // De id van de regel die zegt wat er nog ontbreekt. De knop wijst ernaar met
@@ -126,6 +175,10 @@ export function SpaardoelFormulier({
         // Ook bewaren als het veld niet zichtbaar is (bv. het gekoppelde lid werd
         // intussen gearchiveerd): een koppeling mag nooit stil verdwijnen.
         ...(persoonId ? { persoonId } : {}),
+        // Idem: ook bewaren wanneer de vaste last intussen opgezegd is. Een koppeling
+        // mag nooit stil verdwijnen — het scherm zegt dan dat de kost gestopt is, en
+        // jij beslist of het doel weg mag.
+        ...(vasteLastId ? { vasteLastId } : {}),
       }),
     )
     if (!gelukt) return
@@ -160,6 +213,51 @@ export function SpaardoelFormulier({
           </div>
         )}
       </div>
+
+      {/* ⚠ Alleen wanneer er iets te kiezen valt (ronde 74). Een lege keuzelijst met
+          "Geen" erin is een veld dat een vraag stelt die niemand kan beantwoorden —
+          dezelfde regel als bij "Voor wie is dit doel?" hieronder. */}
+      {(vasteLasten.length > 0 || ontbrekendeKoppeling) && (
+        <div className="veldgroep">
+          <label className="label-caps" htmlFor="doelvastelast">
+            {t('Waarvoor spaar je? (optioneel)')}
+          </label>
+          <select
+            id="doelvastelast"
+            value={vasteLastId}
+            aria-describedby={uitlegId}
+            onChange={(e) => kiesVasteLast(e.target.value)}
+          >
+            <option value="">{t('Voor niets in het bijzonder')}</option>
+            {vasteLasten.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.omschrijving}
+              </option>
+            ))}
+            {ontbrekendeKoppeling && (
+              <option value={vasteLastId}>
+                {bewerken?.vasteLastId === vasteLastId ? t('De kost waaraan dit doel hangt') : t('Onbekende kost')}
+              </option>
+            )}
+          </select>
+          <p id={uitlegId} className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+            {ontbrekendeKoppeling
+              ? t('Dit doel hangt aan een kost die niet meer in je lijst staat, of die niet meer om vooraf sparen vraagt. Kies "Voor niets in het bijzonder" om de koppeling los te maken.')
+              : gekozenLast
+              ? vervaldag
+                ? t('{naam} kost {bedrag} en valt de volgende keer op {datum}. Zolang dit doel eraan hangt, vraagt Budget er niet meer apart geld voor opzij te zetten.', {
+                    naam: gekozenLast.omschrijving,
+                    bedrag: formatEuro(Math.abs(gekozenLast.bedrag)),
+                    datum: dagJaar(vervaldag),
+                  })
+                : t('{naam} kost {bedrag}, maar er komt geen betaling meer.', {
+                    naam: gekozenLast.omschrijving,
+                    bedrag: formatEuro(Math.abs(gekozenLast.bedrag)),
+                  })
+              : t('Hang dit doel aan een vaste last die niet elke maand valt — een jaarpremie bijvoorbeeld. Dan weet de app waarvoor je spaart en vraagt ze het geld geen tweede keer.')}
+          </p>
+        </div>
+      )}
 
       <div className="veldgroep">
         <label className="label-caps" htmlFor="doelrekening">

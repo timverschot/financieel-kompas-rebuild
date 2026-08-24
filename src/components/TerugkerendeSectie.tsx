@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import type { Categorie, Rekening, TerugkerendePost, Transactie } from '../data/schema'
+import type { Categorie, Rekening, Spaardoel, TerugkerendePost, Transactie } from '../data/schema'
 import { TerugkerendePostFormulier, frequentieNaam } from './TerugkerendePostFormulier'
 import { formatEuro } from '../utils/format'
+import { opzijVolgensSpaardoelen, spaardoelVoorVasteLast } from '../utils/spaardoel'
 import { dagJaar, maandJaarLabel, vandaag } from '../utils/datum'
 import { frequentieVan, isGestopt, maandbedrag, opzijPerMaand, valtInMaand, verschuifMaand, volgendeVervaldag } from '../utils/vastelast'
 import { contractstand, contractTeltNog, type Contractstand } from '../utils/contract'
@@ -33,8 +34,15 @@ export function TerugkerendeSectie({
   onLosmaken,
   soort = 'uitgave',
   vandaagISO = vandaag(),
+  spaardoelen = [],
 }: {
   posten: TerugkerendePost[]
+  /**
+   * De spaardoelen, alleen om te tonen dat er voor deze post al gespaard wordt
+   * (ronde 74). Optioneel en standaard leeg: zonder deze lijst gedraagt de rij zich
+   * precies zoals vóór die ronde.
+   */
+  spaardoelen?: Spaardoel[]
   rekeningen: Rekening[]
 
   categorieen: Categorie[]
@@ -78,6 +86,7 @@ export function TerugkerendeSectie({
   const opslag = useOpslagpoging()
   // Elke sectie toont enkel haar eigen soort.
   const eigen = posten.filter((p) => (soort === 'inkomst' ? p.bedrag > 0 : p.bedrag < 0))
+  const opzijViaDoel = opzijVolgensSpaardoelen(spaardoelen, posten)
   const isInkomst = soort === 'inkomst'
   // Welke posten deze maand al geboekt zijn. Bewust uit de gedeelde kern, want dit
   // moet exact hetzelfde antwoord geven als het belletje en de Vooruitblik.
@@ -156,6 +165,14 @@ export function TerugkerendeSectie({
             const periodiek = frequentieVan(p) !== 'maand'
             const volgende = periodiek && !gestopt ? volgendeVervaldag(p, vandaagISO) : null
             const opzij = gestopt ? 0 : opzijPerMaand(p)
+            // Hangt er een spaardoel aan? Dan zegt de rij dát, en niet "€ 51,67 per
+            // maand opzij" — want dat vraagt de app sinds ronde 74 niet meer: die
+            // reservering loopt via de pot van het doel.
+            const doel = spaardoelVoorVasteLast(p.id, spaardoelen)
+            // Hetzelfde bedrag als Budget onder "Opzij voor later" telt; zie
+            // `opzijVolgensSpaardoelen`. Zonder dit zei deze rij "€ 51,67 per maand
+            // opzij" terwijl Budget met jouw streefbedrag van € 75 rekende.
+            const opzijNu = gestopt ? 0 : (opzijViaDoel.get(p.id) ?? opzij)
             // Het contract achter deze post (ronde 57). Zonder contractgegevens geeft
             // dit `fase: 'geen'` en verandert er niets aan de rij. `contractTeltNog`
             // is dezelfde regel die het belletje gebruikt: zonder haar las je in
@@ -184,9 +201,15 @@ export function TerugkerendeSectie({
                   {periodiek && !gestopt && (
                     <span className="rij-meta">
                       {volgende && t('volgende keer {datum}', { datum: dagJaar(volgende) })}
-                      {opzij > 0
-                        ? t(' · {bedrag} per maand opzij', { bedrag: formatEuro(opzij) })
+                      {/* ⚠ De omgerekende tak blijft staan (doorlichting ronde 74). Eerst
+                          verving de doelzin ALLEBEI de takken, dus bij een post zonder het
+                          vinkje "opzijzetten" verdween het omgerekende maandbedrag zonder
+                          dat er iets voor in de plaats kwam. Dat cijfer gaat niet over
+                          reserveren maar over wat de kost je gemiddeld kost. */}
+                      {opzij > 0 || doel
+                        ? t(' · {bedrag} per maand opzij', { bedrag: formatEuro(opzijNu) })
                         : t(' · {bedrag} per maand omgerekend', { bedrag: formatEuro(-maandbedrag(p)) })}
+                      {doel && t(' · via je spaardoel {doel}', { doel: doel.naam })}
                     </span>
                   )}
                   {/* Het contract (ronde 57). Bewust op de rij zelf en niet achter
@@ -319,6 +342,12 @@ export function TerugkerendeSectie({
           // een vaste ínkomst "Huur" (kotgeld) mag geen waarschuwing geven boven een
           // vaste LAST die ook "Huur" heet — dat zijn twee verschillende dingen.
           bestaande={eigen}
+          gedektDoorDoel={(() => {
+            // Alleen bij het BEWERKEN van een post die een doel draagt; bij een nieuwe
+            // post bestaat er nog geen koppeling.
+            const d = bewerken ? spaardoelVoorVasteLast(bewerken.id, spaardoelen) : null
+            return d ? { naam: d.naam, perMaand: opzijViaDoel.get(bewerken!.id) ?? 0 } : undefined
+          })()}
         />
       )}
     </Kaart>

@@ -1,7 +1,8 @@
-import type { Overboeking, Rekening, Spaardoel, Transactie, Waardering } from '../data/schema'
+import type { Overboeking, Rekening, Spaardoel, TerugkerendePost, Transactie, Waardering } from '../data/schema'
 import { saldoOpDatum } from './saldo'
 import { vandaag } from './datum'
 import { datumVoorDoel, maandbedragVoorDoel } from './rekenhulp'
+import { intervalVan, isGestopt, opzijPerMaand, volgendeVervaldag } from './vastelast'
 
 // Het huidige saldo van een rekening. Gebruikt bewust dezelfde rekenkern als de
 // vermogensevolutie (utils/saldo.ts), zodat een spaardoel en de grafiek nooit meer
@@ -186,4 +187,164 @@ export function spaardoelPlan(
     alBereikt ? true : benodigdPerMaand === null || tempoPerMaand === null ? null : tempoPerMaand >= benodigdPerMaand
 
   return { alBereikt, benodigdPerMaand, maandenTotDoeldatum, datumVerstreken, tempoPerMaand, tempoBron, verwachteDatum, opSchema }
+}
+
+// ---------------------------------------------------------------------------
+// Een spaardoel dat weet WELKE vaste last het dient (ronde 74)
+//
+// Afspraak met Timothy uit ronde 71, op de vraag hoe hij wil sparen voor een kost
+// die pas later valt: *"allebei, maar het vinkje eerst"*. Het vinkje ("hier
+// maandelijks voor opzijzetten") staat er sinds ronde 71; dit is het tweede deel.
+//
+// ⚠ WAT DE KOPPELING ÉCHT VERANDERT — en wat ze BEWUST NIET doet.
+//
+// Ze VERVANGT het bedrag onder "Opzij voor later" op Budget; ze haalt het er niet
+// weg. Dat verschil is de hele ronde waard, en de eerste opzet had het fout: die
+// liet de post gewoon uit `opzij` vallen. Gevolg zou zijn geweest dat "Te verdelen"
+// te HOOG stond, want `Spaardoel.maandbedrag` komt in geen enkele rekenkern die
+// Budget voedt — een storting naar je spaarrekening is een overboeking, en die telt
+// daar per definitie niet mee. Er stond dus niets tegenover.
+//
+// Wat de koppeling wél doet: het bedrag komt voortaan uit JOUW doel in plaats van
+// uit de kale deling "jaarbedrag ÷ 12". Zet je € 75 per maand opzij voor een premie
+// van € 620, dan vraagt Budget € 75 — niet € 51,67. En zet je géén streefbedrag,
+// dan blijft de oude deling gelden en verandert er niets.
+//
+// Alles hieronder is zuiver: 'vandaagISO' gaat er altijd in.
+// ---------------------------------------------------------------------------
+
+/**
+ * De vaste lasten waar je zinnig voor kan sparen.
+ *
+ * Alleen UITGAVEN, alleen wat niet elke maand valt, en niets wat al gestopt is.
+ * Een maandelijkse kost betaal je gewoon uit het loon van die maand; daar vooraf
+ * voor sparen is een pot die elke maand weer leeg is.
+ */
+export function spaarbareVasteLasten(posten: TerugkerendePost[], maand: string): TerugkerendePost[] {
+  return posten.filter((p) => p.bedrag < 0 && intervalVan(p) > 1 && !isGestopt(p, maand))
+}
+
+/**
+ * De id's van de vaste lasten waar een spaardoel aan hangt.
+ *
+ * ⚠ Een `Set`, en niet "zoek per post het doel op": `plancijfers` loopt over alle
+ * posten, en een lineaire zoektocht per post maakt daar stil een kwadratische lus
+ * van op een scherm dat bij elke maandwissel opnieuw rekent.
+ */
+export function vasteLastenMetSpaardoel(spaardoelen: Spaardoel[]): Set<string> {
+  const uit = new Set<string>()
+  for (const d of spaardoelen) if (d.vasteLastId) uit.add(d.vasteLastId)
+  return uit
+}
+
+/** Het spaardoel dat bij deze vaste last hoort, of null. */
+export function spaardoelVoorVasteLast(postId: string, spaardoelen: Spaardoel[]): Spaardoel | null {
+  return spaardoelen.find((d) => d.vasteLastId === postId) ?? null
+}
+
+/** Alle spaardoelen die aan deze vaste last hangen. Meestal één, soms meer. */
+export function spaardoelenVoorVasteLast(postId: string, spaardoelen: Spaardoel[]): Spaardoel[] {
+  return spaardoelen.filter((d) => d.vasteLastId === postId)
+}
+
+/**
+ * Wat je per maand opzij hoort te zetten voor de vaste lasten waar een doel aan hangt.
+ *
+ * Sleutel: het id van de vaste last. Waarde: het bedrag in centen dat Budget onder
+ * "Opzij voor later" hoort te tellen, IN PLAATS VAN de kale `opzijPerMaand`.
+ *
+ *  - Heeft het doel een maandelijks streefbedrag, dan is dát het bedrag. Jij hebt
+ *    gekozen hoeveel je wegzet; de app hoort met jouw bedrag te rekenen, niet met
+ *    een deling die ze zelf verzint.
+ *  - Zonder streefbedrag valt ze terug op `opzijPerMaand` — precies wat er vóór de
+ *    koppeling stond. Dan verandert er dus niets, en dat is de bedoeling.
+ *
+ * ⚠ Hangen er TWEE doelen aan dezelfde kost, dan tellen ze op: je stort dan ook
+ * echt twee keer. Het scherm zegt het erbij, zodat je ziet dat je dubbel spaart.
+ *
+ * ⚠ Alleen voor kosten waar sparen zin heeft (uitgave, niet elke maand). Een doel
+ * dat door een oud logboekbestand naar een inkomst of een maandelijkse post wijst,
+ * mag geen bedrag in je plan zetten dat daar niet hoort.
+ */
+export function opzijVolgensSpaardoelen(
+  spaardoelen: Spaardoel[],
+  posten: TerugkerendePost[],
+): Map<string, number> {
+  const uit = new Map<string, number>()
+  for (const d of spaardoelen) {
+    if (!d.vasteLastId) continue
+    const post = posten.find((p) => p.id === d.vasteLastId)
+    if (!post || post.bedrag >= 0 || intervalVan(post) === 1) continue
+    uit.set(d.vasteLastId, (uit.get(d.vasteLastId) ?? 0) + (d.maandbedrag ?? opzijPerMaand(post)))
+  }
+  return uit
+}
+
+/**
+ * Wat er over de koppeling van dit doel te zeggen valt.
+ *
+ * ⚠ ALLEEN VASTSTELLINGEN, geen stille correcties. De app verandert nooit uit
+ * zichzelf een bedrag of een datum die jij hebt ingevuld — ze zegt wat ze ziet en
+ * laat jou beslissen. Dat is dezelfde regel als bij het indexcijfer van de
+ * kindrekening (ronde 65): kan de app een vergissing niet met zekerheid
+ * aanwijzen, dan wijst ze niets aan.
+ */
+export type Doeldekking =
+  | { soort: 'geen' }
+  /** De post waarnaar het doel wijst, bestaat niet meer. */
+  | { soort: 'verdwenen' }
+  /** De post bestaat nog maar is opgezegd: er komt geen betaling meer. */
+  | { soort: 'gestopt'; post: TerugkerendePost }
+  /** De post loopt nog, maar zijn laatste betaling is al geweest. */
+  | { soort: 'uitbetaald'; post: TerugkerendePost }
+  | {
+      soort: 'loopt'
+      post: TerugkerendePost
+      /** De eerstvolgende vervaldag ('JJJJ-MM-DD'). */
+      vervaldag: string
+      /** Het volle bedrag van één betaling, positief in centen. */
+      bedrag: number
+      /** Waar of het doelbedrag afwijkt van dat bedrag. */
+      bedragWijktAf: boolean
+      /** Waar of je doeldatum ná de vervaldag ligt — dan ben je te laat klaar. */
+      datumNaVervaldag: boolean
+    }
+
+export function doeldekking(doel: Spaardoel, posten: TerugkerendePost[], vandaagISO: string): Doeldekking {
+  if (!doel.vasteLastId) return { soort: 'geen' }
+  const post = posten.find((p) => p.id === doel.vasteLastId)
+  if (!post) return { soort: 'verdwenen' }
+  if (isGestopt(post, vandaagISO.slice(0, 7))) return { soort: 'gestopt', post }
+  const vervaldag = volgendeVervaldag(post, vandaagISO)
+  // ⚠ EEN EIGEN GEVAL (doorlichting ronde 74). Een post met een eindmaand die nog
+  // niet bereikt is, geldt niet als 'gestopt' — maar zijn volgende beurt kan al
+  // voorbij die eindmaand liggen, en dan komt er nooit meer een betaling. Zonder dit
+  // geval zei het scherm alleen "Voor Autoverzekering." en bleef je sparen voor iets
+  // wat nooit meer valt.
+  if (vervaldag === null) return { soort: 'uitbetaald', post }
+  const bedrag = Math.abs(post.bedrag)
+  return {
+    soort: 'loopt',
+    post,
+    vervaldag,
+    bedrag,
+    bedragWijktAf: doel.doelbedrag !== bedrag,
+    // ⚠ Strikt NA, niet "op of na": een doeldatum die precies op de vervaldag valt
+    // is exact goed, en dat mag geen waarschuwing geven.
+    datumNaVervaldag: doel.doeldatum !== undefined && doel.doeldatum > vervaldag,
+  }
+}
+
+/**
+ * Ben je op tijd klaar voor de betaling? (ronde 74, doorlichting)
+ *
+ * ⚠ Los van `doeldekking`, want dit vraagt het PLAN erbij. `doeldekking` vergelijkt
+ * alleen de doeldatum die jij invulde; deze vraag vergelijkt de datum waarop je aan
+ * je huidige tempo genoeg hebt. Zonder haar zei de app "zo klaar rond mei 2028" naast
+ * "de volgende keer op 5 maart 2027" en liet ze jou de vergelijking maken.
+ */
+export function teLaatVoorVervaldag(dekking: Doeldekking, plan: SpaardoelPlan): boolean {
+  if (dekking.soort !== 'loopt' || plan.alBereikt) return false
+  if (plan.verwachteDatum === null) return false
+  return plan.verwachteDatum > dekking.vervaldag
 }

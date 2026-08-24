@@ -2,7 +2,15 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { PlanRegels } from './PlanRegels'
-import type { Budget, TerugkerendePost } from '../data/schema'
+import type { Budget, Spaardoel, TerugkerendePost } from '../data/schema'
+
+const doelVoorPremie: Spaardoel = {
+  id: 'd1',
+  naam: 'Autoverzekering 2027',
+  doelbedrag: 60000,
+  huidigBedrag: 0,
+  vasteLastId: 'prem',
+}
 
 const huur: TerugkerendePost = { id: 'huur', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 3 }
 const premie: TerugkerendePost = {
@@ -24,6 +32,7 @@ function toon(
   geboekt = 0,
   onGaNaarTransacties?: (filter: { maand: string; richting: 'in' }) => void,
   onNaarVast?: () => void,
+  spaardoelen: Spaardoel[] = [],
 ) {
   render(
     <PlanRegels
@@ -34,6 +43,7 @@ function toon(
       geboekteInkomsten={geboekt}
       onGaNaarTransacties={onGaNaarTransacties}
       onNaarVast={onNaarVast}
+      spaardoelen={spaardoelen}
     />,
   )
 }
@@ -210,5 +220,71 @@ describe('PlanRegels — doorklikken', () => {
   it('maakt geen knop wanneer de app er niets mee kan', () => {
     toon([huur, loon], [], MAAND, 240000, 200000)
     expect(screen.queryByRole('button', { name: /^Bekijk die boekingen/ })).toBeNull()
+  })
+})
+
+describe('PlanRegels — een vaste last met een spaardoel (ronde 74)', () => {
+  it('rekent met je streefbedrag in plaats van met de deling van het jaarbedrag', () => {
+    // ⚠ Het bedrag wordt VERVANGEN, niet weggehaald. Weglaten zou "Te verdelen" te HOOG
+    // zetten: `Spaardoel.maandbedrag` komt in geen enkele rekenkern die Budget voedt,
+    // dus er stond niets tegenover.
+    toon([huur, premie], [], '2026-09')
+    expect(screen.getByText('Opzij voor later').closest('li')).toHaveTextContent(/100,00/)
+
+    document.body.innerHTML = ''
+    toon([huur, premie], [], '2026-09', 240000, 0, undefined, undefined, [{ ...doelVoorPremie, maandbedrag: 7500 }])
+    expect(screen.getByText('Opzij voor later').closest('li')).toHaveTextContent(/75,00/)
+  })
+
+  it('zegt waar dat bedrag vandaan komt', () => {
+    // Wie er plots een ander getal ziet staan, moet kunnen zien waarom.
+    toon([huur, premie], [], '2026-09', 240000, 0, undefined, undefined, [{ ...doelVoorPremie, maandbedrag: 7500 }])
+    expect(screen.getByText(/Autoverzekering.*met je spaardoel/)).toBeInTheDocument()
+  })
+
+  it('telt "Te verdelen" met dat bedrag erin', () => {
+    // € 3.000 − € 950 huur − € 75 opzij.
+    toon([huur, premie], [], '2026-09', 300000, 0, undefined, undefined, [{ ...doelVoorPremie, maandbedrag: 7500 }])
+    const rij = document.querySelector('[data-te-verdelen]') as HTMLElement
+    expect(rij).toHaveTextContent(/1\.975,00/)
+  })
+
+  it('reserveert ook wanneer het vinkje "opzijzetten" uit staat', () => {
+    // Het doel is nu net het alternatief voor dat vinkje. Zonder deze regel zou je
+    // € 75 per maand wegzetten en zou je plan er geen cent voor opzijhouden.
+    const zonderVinkje = { ...premie, opbouwen: false }
+    toon([zonderVinkje], [], '2026-09', 300000, 0, undefined, undefined, [{ ...doelVoorPremie, maandbedrag: 7500 }])
+    expect(screen.getByText('Opzij voor later').closest('li')).toHaveTextContent(/75,00/)
+  })
+
+  it('zegt niets zolang het doel geen streefbedrag heeft', () => {
+    // Dan verandert er niets aan het bedrag, en dan valt er ook niets uit te leggen.
+    toon([huur, premie], [], '2026-09', 240000, 0, undefined, undefined, [doelVoorPremie])
+    expect(screen.getByText('Opzij voor later').closest('li')).toHaveTextContent(/100,00/)
+    expect(screen.queryByText(/met je spaardoel/)).toBeNull()
+  })
+
+  it('legt niets uit boven een kost die hier nooit iets vroeg', () => {
+    // ⚠ Zonder vinkje én zonder streefbedrag draagt de koppeling niets bij. De zin
+    // "dit rekent met je spaardoel" boven een plan waarin die kost nooit stond, verklaart
+    // een verandering die er niet is.
+    toon([huur, { ...premie, opbouwen: false }], [], '2026-09', 240000, 0, undefined, undefined, [doelVoorPremie])
+    expect(screen.queryByText(/met je spaardoel/)).toBeNull()
+  })
+
+  it('zwijgt over de koppeling in de maand dat de kost wél valt', () => {
+    // Dan staat er sowieso geen opzij, dus er is niets uit te leggen.
+    toon([huur, premie], [], '2026-08', 240000, 0, undefined, undefined, [{ ...doelVoorPremie, maandbedrag: 7500 }])
+    expect(screen.queryByText(/met je spaardoel/)).toBeNull()
+  })
+
+  it('laat de kaart niet verdwijnen door een koppeling', () => {
+    // ⚠ De nulcontrole bovenaan brak af op "geen inkomsten, niets vast, niets opzij".
+    // Met een koppeling zonder streefbedrag kon `opzij` op nul komen, en dan verdween
+    // de hele kaart — inclusief de uitleg die er net in staat.
+    toon([{ ...premie, opbouwen: false }], [], '2026-09', 0, 0, undefined, undefined, [
+      { ...doelVoorPremie, maandbedrag: 7500 },
+    ])
+    expect(screen.getByText('Opzij voor later')).toBeInTheDocument()
   })
 })

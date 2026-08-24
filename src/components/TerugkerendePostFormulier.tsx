@@ -54,6 +54,7 @@ export function TerugkerendePostFormulier({
   beginwaarden,
   bestaande,
   focusBijStart = false,
+  gedektDoorDoel,
 }: {
   rekeningen: Rekening[]
   categorieen: Categorie[]
@@ -116,6 +117,12 @@ export function TerugkerendePostFormulier({
    * het laden de pagina naar beneden trekken. Vandaar: standaard uit.
    */
   focusBijStart?: boolean
+  /**
+   * Het spaardoel dat de reservering van deze kost draagt (ronde 74), met het bedrag
+   * waarmee je plan effectief rekent. Ontbreekt het, dan geldt de gewone uitleg bij
+   * het vinkje "Hier maandelijks voor opzijzetten".
+   */
+  gedektDoorDoel?: { naam: string; perMaand: number }
   beginwaarden?: {
     omschrijving?: string
     categorieId?: string
@@ -496,9 +503,18 @@ export function TerugkerendePostFormulier({
             {t('Hier maandelijks voor opzijzetten')}
           </label>
           <span className="rij-meta">
-            {opbouwen
-              ? t('In de maanden zonder betaling rekent je plan op {bedrag} opzij.', { bedrag: formatEuro(perMaand) })
-              : t('Zonder dit staat het volle bedrag in één keer in je plan, in de maand dat het vervalt.')}
+            {/* ⚠ Hangt er een spaardoel aan deze kost, dan rekent je plan met DAT
+                bedrag (ronde 74). Bleef hier "€ 51,67" staan terwijl Budget met jouw
+                streefbedrag van € 75 rekent, dan zei dit venster iets anders dan het
+                scherm eronder — over dezelfde kost, in dezelfde maand. */}
+            {gedektDoorDoel
+              ? t('Je plan rekent hiervoor met je spaardoel {doel}: {bedrag} per maand.', {
+                  doel: gedektDoorDoel.naam,
+                  bedrag: formatEuro(gedektDoorDoel.perMaand),
+                })
+              : opbouwen
+                ? t('In de maanden zonder betaling rekent je plan op {bedrag} opzij.', { bedrag: formatEuro(perMaand) })
+                : t('Zonder dit staat het volle bedrag in één keer in je plan, in de maand dat het vervalt.')}
           </span>
         </div>
       )}

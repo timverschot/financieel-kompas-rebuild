@@ -2626,6 +2626,40 @@ const en: Record<string, string> = {
   'Verwijderen — {naam}, {details}': 'Delete — {naam}, {details}',
   'Er staat al een vaste last die zo heet. Is dit een tweede, geef ze dan een eigen naam — dan zie je later welke welke is.':
     'There is already a fixed cost by that name. If this is a second one, give it its own name — then you can tell them apart later.',
+  // Ronde 74 — een spaardoel dat weet welke vaste last het dient
+  'Waarvoor spaar je? (optioneel)': 'What are you saving for? (optional)',
+  'Voor niets in het bijzonder': 'Nothing in particular',
+  '{naam} kost {bedrag} en valt de volgende keer op {datum}. Zolang dit doel eraan hangt, vraagt Budget er niet meer apart geld voor opzij te zetten.':
+    '{naam} costs {bedrag} and falls due next on {datum}. While this goal is attached to it, Budget no longer asks you to set money aside for it separately.',
+  '{naam} kost {bedrag}, maar er komt geen betaling meer.':
+    '{naam} costs {bedrag}, but no further payment is coming.',
+  'Hang dit doel aan een vaste last die niet elke maand valt — een jaarpremie bijvoorbeeld. Dan weet de app waarvoor je spaart en vraagt ze het geld geen tweede keer.':
+    'Attach this goal to a fixed cost that does not fall every month — a yearly premium, for instance. Then the app knows what you are saving for and will not ask for the money twice.',
+  'Kost bestaat niet meer': 'Cost no longer exists',
+  'De vaste last waarvoor je spaarde, staat niet meer in je vaste lasten. Het doel blijft gewoon lopen.':
+    'The fixed cost you were saving for is no longer among your fixed costs. The goal simply carries on.',
+  'Voor {naam}, de volgende keer op {datum}.': 'For {naam}, next due on {datum}.',
+  'Die kost is {bedrag}; je doelbedrag staat op iets anders.':
+    'That cost is {bedrag}; your target amount says something else.',
+  'Je doeldatum ligt ná die betaling, dus aan dit tempo ben je te laat.':
+    'Your target date falls after that payment, so at this pace you will be late.',
+  'Voor {namen} rekent dit met je spaardoel, niet met een deling van het jaarbedrag.':
+    'For {namen} this uses your savings goal, not a division of the yearly amount.',
+  'De kost waaraan dit doel hangt': 'The cost this goal is attached to',
+  'Onbekende kost': 'Unknown cost',
+  'Dit doel hangt aan een kost die niet meer in je lijst staat, of die niet meer om vooraf sparen vraagt. Kies "Voor niets in het bijzonder" om de koppeling los te maken.':
+    'This goal is attached to a cost that is no longer in your list, or that no longer calls for saving up front. Pick "Nothing in particular" to detach it.',
+  'Je spaarde voor {naam}, maar daar komt geen betaling meer van.':
+    'You were saving for {naam}, but no further payment is coming for it.',
+  'Aan je huidige tempo heb je pas ná die betaling genoeg bij elkaar.':
+    'At your current pace you will only have enough after that payment.',
+  'Er hangt nog een doel aan diezelfde kost; je spaart er dus dubbel voor.':
+    'Another goal is attached to that same cost, so you are saving for it twice.',
+  'Er hangen nog {n} doelen aan diezelfde kost; je spaart er dus meervoudig voor.':
+    '{n} more goals are attached to that same cost, so you are saving for it several times over.',
+  'Je plan rekent hiervoor met je spaardoel {doel}: {bedrag} per maand.':
+    'Your plan uses your savings goal {doel} for this: {bedrag} a month.',
+  ' · via je spaardoel {doel}': ' · through your savings goal {doel}',
 }
 const fr: Record<string, string> = {
   // Ronde 66 — dernière relecture : la première étape là où elle manquait encore
@@ -5238,6 +5272,40 @@ const fr: Record<string, string> = {
   'Verwijderen — {naam}, {details}': 'Supprimer — {naam}, {details}',
   'Er staat al een vaste last die zo heet. Is dit een tweede, geef ze dan een eigen naam — dan zie je later welke welke is.':
     'Une charge fixe porte déjà ce nom. Si c’est une deuxième, donne-lui un nom à elle — tu les distingueras plus tard.',
+  // Ronde 74 — un objectif d’épargne qui sait quelle charge fixe il sert
+  'Waarvoor spaar je? (optioneel)': 'Pour quoi épargnes-tu ? (optionnel)',
+  'Voor niets in het bijzonder': 'Pour rien en particulier',
+  '{naam} kost {bedrag} en valt de volgende keer op {datum}. Zolang dit doel eraan hangt, vraagt Budget er niet meer apart geld voor opzij te zetten.':
+    '{naam} coûte {bedrag} et tombe la prochaine fois le {datum}. Tant que cet objectif y est rattaché, Budget ne te demande plus de mettre de l’argent de côté séparément.',
+  '{naam} kost {bedrag}, maar er komt geen betaling meer.':
+    '{naam} coûte {bedrag}, mais plus aucun paiement ne vient.',
+  'Hang dit doel aan een vaste last die niet elke maand valt — een jaarpremie bijvoorbeeld. Dan weet de app waarvoor je spaart en vraagt ze het geld geen tweede keer.':
+    'Rattache cet objectif à une charge fixe qui ne tombe pas chaque mois — une prime annuelle, par exemple. L’application sait alors pour quoi tu épargnes et ne redemande pas cet argent une deuxième fois.',
+  'Kost bestaat niet meer': 'Cette charge n’existe plus',
+  'De vaste last waarvoor je spaarde, staat niet meer in je vaste lasten. Het doel blijft gewoon lopen.':
+    'La charge fixe pour laquelle tu épargnais ne figure plus parmi tes charges fixes. L’objectif continue simplement.',
+  'Voor {naam}, de volgende keer op {datum}.': 'Pour {naam}, la prochaine fois le {datum}.',
+  'Die kost is {bedrag}; je doelbedrag staat op iets anders.':
+    'Cette charge est de {bedrag} ; ton montant cible indique autre chose.',
+  'Je doeldatum ligt ná die betaling, dus aan dit tempo ben je te laat.':
+    'Ta date cible tombe après ce paiement, donc à ce rythme tu seras en retard.',
+  'Voor {namen} rekent dit met je spaardoel, niet met een deling van het jaarbedrag.':
+    'Pour {namen}, ce calcul suit ton objectif d’épargne, pas une division du montant annuel.',
+  'De kost waaraan dit doel hangt': 'La charge à laquelle cet objectif est rattaché',
+  'Onbekende kost': 'Charge inconnue',
+  'Dit doel hangt aan een kost die niet meer in je lijst staat, of die niet meer om vooraf sparen vraagt. Kies "Voor niets in het bijzonder" om de koppeling los te maken.':
+    'Cet objectif est rattaché à une charge qui ne figure plus dans ta liste, ou qui ne demande plus d’épargne préalable. Choisis « Pour rien en particulier » pour le détacher.',
+  'Je spaarde voor {naam}, maar daar komt geen betaling meer van.':
+    'Tu épargnais pour {naam}, mais plus aucun paiement n’en viendra.',
+  'Aan je huidige tempo heb je pas ná die betaling genoeg bij elkaar.':
+    'À ton rythme actuel, tu n’auras assez qu’après ce paiement.',
+  'Er hangt nog een doel aan diezelfde kost; je spaart er dus dubbel voor.':
+    'Un autre objectif est rattaché à cette même charge ; tu épargnes donc en double.',
+  'Er hangen nog {n} doelen aan diezelfde kost; je spaart er dus meervoudig voor.':
+    '{n} autres objectifs sont rattachés à cette même charge ; tu épargnes donc en multiple.',
+  'Je plan rekent hiervoor met je spaardoel {doel}: {bedrag} per maand.':
+    'Ton plan suit ici ton objectif d’épargne {doel} : {bedrag} par mois.',
+  ' · via je spaardoel {doel}': ' · via ton objectif d’épargne {doel}',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 

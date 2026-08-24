@@ -228,6 +228,20 @@ function verschuif(maand: string, delta: number): string {
  * `gemiddeldPerMaand` is een ander soort getal: alle vaste uitgaven omgerekend
  * naar één maand. Het antwoord op "wat kosten mijn vaste lasten mij eigenlijk",
  * los van welke maand je bekijkt.
+ *
+ * ⚠ RONDE 74 — `opzijViaDoel`. Hangt er een spaardoel aan een vaste last, dan komt
+ * het bedrag onder "Opzij voor later" uit dát doel in plaats van uit de kale deling
+ * "jaarbedrag ÷ 12". Zie `opzijVolgensSpaardoelen` in utils/spaardoel.ts.
+ *
+ * ⚠ VERVANGEN, NIET WEGLATEN. De eerste opzet van deze ronde liet zo'n post gewoon
+ * uit `opzij` vallen, in de veronderstelling dat het spaardoel de reservering elders
+ * al meetelde. Dat doet het niet: `Spaardoel.maandbedrag` komt in geen enkele
+ * rekenkern die Budget voedt, en een storting naar je spaarrekening is een
+ * overboeking — die telt hier per definitie niet mee. `teVerdelen` zou dus te HOOG
+ * gestaan hebben: de app zou zeggen dat je meer vrij hebt dan waar is.
+ *
+ * De kaart is OPTIONEEL en standaard leeg: elke bestaande aanroep gedraagt zich
+ * daardoor precies zoals vóór deze ronde.
  */
 export type Plancijfers = {
   vastDezeMaand: number // positief, centen
@@ -236,7 +250,11 @@ export type Plancijfers = {
   gemiddeldPerMaand: number // positief, centen
 }
 
-export function plancijfers(posten: TerugkerendePost[], maand: string): Plancijfers {
+export function plancijfers(
+  posten: TerugkerendePost[],
+  maand: string,
+  opzijViaDoel: ReadonlyMap<string, number> = new Map(),
+): Plancijfers {
   let vastDezeMaand = 0
   let vasteInkomsten = 0
   let opzij = 0
@@ -258,7 +276,12 @@ export function plancijfers(posten: TerugkerendePost[], maand: string): Plancijf
       if (p.bedrag < 0) vastDezeMaand += -p.bedrag
       else if (p.bedrag > 0) vasteInkomsten += p.bedrag
     } else {
-      opzij += opzijPerMaand(p)
+      // ⚠ Het BEDRAG kan uit een spaardoel komen, maar de post blijft meetellen — en
+      // hij blijft ook gewoon in `gemiddeldPerMaand` en in `vastDezeMaand` staan.
+      // Sparen verandert niets aan wat een kost je kost of wanneer hij van je rekening
+      // gaat; het verandert alleen met welk bedrag je plan rekent.
+      const viaDoel = opzijViaDoel.get(p.id)
+      opzij += viaDoel !== undefined ? viaDoel : opzijPerMaand(p)
     }
   }
 

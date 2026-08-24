@@ -2628,6 +2628,7 @@ export function App() {
       {pagina === 'opstelling' && (
         <ErrorBoundary naam="Je situatie">
           <OpstellingSectie
+            spaardoelen={spaardoelen}
             // ⚠ GEEN `key` hier. Dat was mijn eerste opzet — een oplopende sleutel om
             // het gevraagde blok ook de tweede keer te laten opengaan — maar dat
             // hermonteert het hele scherm, en dan is alles weg wat je net had
@@ -3139,6 +3140,7 @@ export function App() {
                     geboekteInkomsten={planBlik.geboekt.inkomsten}
                     onGaNaarTransacties={gaNaarTransacties}
                     onNaarVast={() => kiesBudgetTab('vast')}
+                    spaardoelen={spaardoelen}
                   />
                 </ErrorBoundary>
               </div>
@@ -3209,6 +3211,7 @@ export function App() {
                     onBoek={(post) => boekTerugkerend(post, maand)}
                     onOngedaan={maakInboekenOngedaan}
                     onLosmaken={ontkoppelBoeking}
+                    spaardoelen={spaardoelen}
                   />
                 </ErrorBoundary>
               </div>
@@ -3660,6 +3663,7 @@ export function App() {
             <SpaardoelSectie
               gezinsleden={kinderen}
               spaardoelen={spaardoelen}
+              vasteLasten={terugkerendePosten}
               rekeningen={rekeningen}
               transacties={transacties}
               overboekingen={overboekingen}

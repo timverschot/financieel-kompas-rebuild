@@ -1,6 +1,7 @@
-import type { Budget, TerugkerendePost } from '../data/schema'
+import type { Budget, Spaardoel, TerugkerendePost } from '../data/schema'
 import { formatEuro } from '../utils/format'
-import { plancijfers } from '../utils/vastelast'
+import { isGestopt, opzijPerMaand, plancijfers, valtInMaand } from '../utils/vastelast'
+import { opzijVolgensSpaardoelen } from '../utils/spaardoel'
 import { geldendeBudgetten } from '../utils/budget'
 import { EersteStapKnop, Kaart, Leeg } from '../ui/basis'
 import { useT } from '../i18n'
@@ -36,6 +37,7 @@ export function PlanRegels({
   geboekteInkomsten,
   onGaNaarTransacties,
   onNaarVast,
+  spaardoelen = [],
 }: {
   posten: TerugkerendePost[]
   budgetten: Budget[]
@@ -64,9 +66,33 @@ export function PlanRegels({
    * de welkomstkaart van dit tabblad kreeg — bleef daar staan.
    */
   onNaarVast?: () => void
+  /**
+   * De spaardoelen, alleen om te weten welke vaste last er al een heeft (ronde 74).
+   *
+   * ⚠ Optioneel en standaard leeg, zodat elke bestaande aanroep zich gedraagt zoals
+   * vóór deze ronde. Hangt er een doel aan een vaste last, dan vraagt "Opzij voor
+   * later" er niet meer om: dat geld zet je al weg in die pot.
+   */
+  spaardoelen?: Spaardoel[]
 }) {
   const { t } = useT()
-  const cijfers = plancijfers(posten, maand)
+  const opzijViaDoel = opzijVolgensSpaardoelen(spaardoelen, posten)
+  const cijfers = plancijfers(posten, maand, opzijViaDoel)
+  // Welke posten hun bedrag deze maand ÉCHT uit een spaardoel halen. Alleen om het
+  // te kunnen zeggen; het bedrag zit gewoon in `opzij`.
+  //
+  // ⚠ De laatste voorwaarde telt: staat er hetzelfde bedrag als vroeger, dan is er
+  // niets veranderd en hoort er ook niets uitgelegd te worden. Zonder haar verscheen de
+  // zin boven een regel die er altijd al zo stond — of, erger, boven een plan waarin
+  // die kost nooit iets vroeg.
+  const viaDoel = posten.filter(
+    (p) =>
+      opzijViaDoel.has(p.id) &&
+      !isGestopt(p, maand) &&
+      !valtInMaand(p, maand) &&
+      (opzijViaDoel.get(p.id) as number) > 0 &&
+      opzijViaDoel.get(p.id) !== opzijPerMaand(p),
+  )
   const teVerdelen = verwachteInkomsten - cijfers.vastDezeMaand - cijfers.opzij
   // ⚠ `geldendeBudgetten` en niet de kale lijst (ronde 62). Dit is de ENIGE plek die
   // budgetten OPTELT. Sinds een budget een eigen maand kan hebben, zou een categorie
@@ -81,6 +107,11 @@ export function PlanRegels({
 
   // Zonder inkomsten én zonder vaste lasten valt er niets te plannen; dan is een
   // rij nullen alleen maar ruis op een lege app.
+  // ⚠ GEEN extra voorwaarde op `viaDoel` (ronde 74). Ik heb die er eerst bij gezet uit
+  // vrees dat de kaart met de uitlegzin erin zou verdwijnen — maar een mutatietest beet
+  // niet, en terecht: elke post in `viaDoel` draagt per definitie een bedrag GROTER DAN
+  // NUL bij aan `opzij` hieronder, dus die kan hier nooit nul zijn terwijl `viaDoel`
+  // gevuld is. Een controle die niets kan uitsluiten is dode code (les van ronde 73).
   if (verwachteInkomsten === 0 && cijfers.vastDezeMaand === 0 && cijfers.opzij === 0) return null
 
   return (
@@ -93,6 +124,17 @@ export function PlanRegels({
         <Regel label={t('Vaste lasten deze maand')} bedrag={cijfers.vastDezeMaand} teken="−" />
         {cijfers.opzij > 0 && <Regel label={t('Opzij voor later')} bedrag={cijfers.opzij} teken="−" />}
       </ul>
+
+      {/* ⚠ Deze zin bestaat omdat het bedrag hierboven anders onverklaard verandert
+          (ronde 74). Wie gewend is dat zijn autoverzekering hier € 51,67 vroeg en er
+          plots € 75,00 ziet staan, moet kunnen zien waar dat vandaan komt. */}
+      {viaDoel.length > 0 && (
+        <p className="rij-meta" style={{ margin: '4px 0 0' }}>
+          {t('Voor {namen} rekent dit met je spaardoel, niet met een deling van het jaarbedrag.', {
+            namen: viaDoel.map((p) => p.omschrijving).join(', '),
+          })}
+        </p>
+      )}
 
       {kentInkomsten ? (
         <div

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { TerugkerendeSectie } from './TerugkerendeSectie'
 import type { TerugkerendePost } from '../data/schema'
@@ -341,6 +342,69 @@ describe('TerugkerendeSectie — het contractformulier', () => {
 })
 
 // --- Ronde 66, slotronde: zonder rekening geen formulier, maar wél je posten ---
+describe('TerugkerendeSectie — een kost waar een spaardoel aan hangt (ronde 74)', () => {
+  const doel = { id: 'd1', naam: 'Autoverzekering 2027', doelbedrag: 60000, huidigBedrag: 0, vasteLastId: 'prem' }
+
+  function toonMetDoel(
+    spaardoelen: { id: string; naam: string; doelbedrag: number; huidigBedrag: number; vasteLastId?: string; maandbedrag?: number }[],
+  ) {
+    render(
+      <TerugkerendeSectie
+        posten={[{ ...premie, opbouwen: true }]}
+        spaardoelen={spaardoelen}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        transacties={[]}
+        maand="2026-07"
+        maandLabel="juli 2026"
+        vandaagISO={VANDAAG}
+        onOpslaan={vi.fn()}
+        onVerwijderen={vi.fn()}
+        onBoek={vi.fn()}
+      />,
+    )
+  }
+
+  it('zegt door welk doel de reservering loopt, met het bedrag waarmee Budget rekent', () => {
+    // ⚠ Het bedrag wordt VERVANGEN, niet weggehaald: Budget reserveert nu € 75 in
+    // plaats van de kale deling van € 100. Bleef hier het oude bedrag staan, dan zei
+    // dit scherm iets anders dan Budget — over dezelfde kost, in dezelfde maand.
+    toonMetDoel([{ ...doel, maandbedrag: 7500 }])
+    expect(screen.getByText(/via je spaardoel Autoverzekering 2027/)).toBeInTheDocument()
+    expect(screen.getByText(/75,00 per maand opzij/)).toBeInTheDocument()
+    expect(screen.queryByText(/100,00 per maand opzij/)).toBeNull()
+  })
+
+  it('houdt de kale deling zolang het doel geen streefbedrag heeft', () => {
+    // Zonder streefbedrag valt de app terug op wat er vóór de koppeling stond. Dan
+    // verandert er niets aan het bedrag — alleen de zin erachter komt erbij.
+    toonMetDoel([doel])
+    expect(screen.getByText(/100,00 per maand opzij/)).toBeInTheDocument()
+    expect(screen.getByText(/via je spaardoel/)).toBeInTheDocument()
+  })
+
+  it('vraagt gewoon om opzij te zetten zolang er geen doel aan hangt', () => {
+    toonMetDoel([])
+    expect(screen.getByText(/per maand opzij/)).toBeInTheDocument()
+  })
+
+  it('zegt in het bewerkvenster met welk bedrag je plan écht rekent', async () => {
+    // ⚠ Onder het vinkje "Hier maandelijks voor opzijzetten" stond "je plan rekent op
+    // € 100,00 opzij". Rekent Budget intussen met jouw streefbedrag van € 75, dan zei
+    // dit venster iets anders dan het scherm eronder — over dezelfde kost.
+    const gebruiker = userEvent.setup()
+    toonMetDoel([{ ...doel, maandbedrag: 7500 }])
+    await gebruiker.click(screen.getByRole('button', { name: /Bewerk vaste post Autoverzekering/ }))
+
+    expect(screen.getByText(/rekent hiervoor met je spaardoel Autoverzekering 2027/)).toHaveTextContent(/75,00 per maand/)
+  })
+
+  it('laat een doel dat aan een ANDERE kost hangt met rust', () => {
+    toonMetDoel([{ ...doel, vasteLastId: 'iets-anders' }])
+    expect(screen.getByText(/per maand opzij/)).toBeInTheDocument()
+  })
+})
+
 describe('TerugkerendeSectie — het formulier leest wat er staat (ronde 73)', () => {
   it('leest "12abc" NIET stil als 12', () => {
     // ⚠ `Number.parseInt` stopt bij het eerste teken dat geen cijfer is en zegt niets.

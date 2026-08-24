@@ -1173,3 +1173,35 @@ describe('OpstellingSectie — elke tegel verantwoordt haar cijfer', () => {
     )
   })
 })
+
+
+describe('OpstellingSectie — de tegel volgt Budget (ronde 74)', () => {
+  // ⚠ De zin onder "Vaste lasten per maand" zegt letterlijk "dat staat op Budget".
+  // Sinds een spaardoel aan een vaste last kan hangen, komt dat bedrag daar uit het
+  // doel. Rekende deze zin nog met de kale deling, dan noemde ze een bedrag dat op
+  // Budget niet staat — en dan spreken twee schermen elkaar tegen over dezelfde kost.
+  const later: TerugkerendePost = {
+    id: 'vl1',
+    omschrijving: 'Autoverzekering',
+    bedrag: -62000,
+    rekeningId: 'r1',
+    dag: 5,
+    frequentie: 'jaar',
+    startMaand: '2099-03',
+    opbouwen: true,
+  }
+
+  it('noemt het bedrag van het spaardoel, niet de kale deling', () => {
+    toon({
+      rekeningen: [rekening],
+      terugkerendePosten: [later],
+      spaardoelen: [{ id: 'd1', naam: 'Auto', doelbedrag: 62000, huidigBedrag: 0, vasteLastId: 'vl1', maandbedrag: 7500 }],
+    } as never)
+    expect(screen.getByText(/Je zet er wel al .*75,00 per maand voor opzij/)).toBeInTheDocument()
+  })
+
+  it('noemt de kale deling zolang er geen doel aan hangt', () => {
+    toon({ rekeningen: [rekening], terugkerendePosten: [later] })
+    expect(screen.getByText(/Je zet er wel al .*51,67 per maand voor opzij/)).toBeInTheDocument()
+  })
+})

@@ -1,9 +1,18 @@
 import { useState } from 'react'
-import type { Kind, Overboeking, Rekening, Spaardoel, Transactie, Waardering } from '../data/schema'
+import type { Kind, Overboeking, Rekening, Spaardoel, TerugkerendePost, Transactie, Waardering } from '../data/schema'
 import { SpaardoelFormulier } from './SpaardoelFormulier'
-import { spaardoelPlan, spaardoelTempo, TEMPO_VENSTER_MAANDEN } from '../utils/spaardoel'
+import {
+  doeldekking,
+  spaarbareVasteLasten,
+  spaardoelenVoorVasteLast,
+  spaardoelPlan,
+  spaardoelTempo,
+  teLaatVoorVervaldag,
+  TEMPO_VENSTER_MAANDEN,
+} from '../utils/spaardoel'
+import type { Doeldekking } from '../utils/spaardoel'
 import { spaardoelVoortgang, type SpaardoelPlan } from '../utils/spaardoel'
-import { maandJaarLabel, vandaag } from '../utils/datum'
+import { dagJaar, maandJaarLabel, vandaag } from '../utils/datum'
 import { naamVanPersoon } from '../utils/persoon'
 import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { Balk, Kaart, Leeg, PaginaKop } from '../ui/basis'
@@ -16,7 +25,7 @@ import { zachteAchtergrond } from './TransactieLijst'
 // effectief doet, en wanneer je aan dat tempo klaar bent. Zwijgt volledig zolang
 // er niets zinnigs te zeggen is (geen doeldatum, geen streefbedrag, geen tempo) —
 // een lege regel met streepjes is erger dan geen regel.
-function PlanRegel({ doel, plan }: { doel: Spaardoel; plan: SpaardoelPlan }) {
+function PlanRegel({ doel, plan, teLaat }: { doel: Spaardoel; plan: SpaardoelPlan; teLaat: boolean }) {
   const { t } = useT()
 
   if (plan.alBereikt) {
@@ -74,11 +83,86 @@ function PlanRegel({ doel, plan }: { doel: Spaardoel; plan: SpaardoelPlan }) {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      {plan.opSchema === true && <span className="badge badge-ok">{t('Op schema')}</span>}
-      {plan.opSchema === false && <span className="badge badge-laat">{t('Achter op schema')}</span>}
+      {/* ⚠ `teLaat` overstemt de doeldatum (ronde 74, doorlichting). Anders stond er een
+          groene badge "Op schema" naast de zin "aan dit tempo ben je te laat" — over
+          hetzelfde doel, in dezelfde regel. De badge is het opvallendste element, dus
+          die won het gesprek. De echte deadline is de betaling, niet je eigen datum. */}
+      {plan.opSchema === true && !teLaat && <span className="badge badge-ok">{t('Op schema')}</span>}
+      {(plan.opSchema === false || teLaat) && <span className="badge badge-laat">{t('Achter op schema')}</span>}
       <span className="rij-meta">{stukken.join(' · ')}</span>
     </div>
   )
+}
+
+/**
+ * Wat dit doel met een vaste last te maken heeft (ronde 74).
+ *
+ * ⚠ Deze regel MAG NOOIT NIETS ZEGGEN wanneer er een koppeling is. Een doel dat aan
+ * een vaste last hangt, haalt die kost weg uit "Opzij voor later" op Budget; wie dat
+ * bedrag daar ziet verdwijnen zonder dat hier iets staat, ziet een app die uit
+ * zichzelf getallen verandert.
+ */
+function KoppelingRegel({
+  dekking,
+  teLaat,
+  medeDoelen,
+}: {
+  dekking: Doeldekking
+  /** Aan je huidige tempo ben je pas ná de betaling klaar. */
+  teLaat: boolean
+  /** Hoeveel ANDERE doelen aan dezelfde vaste last hangen. */
+  medeDoelen: number
+}) {
+  const { t } = useT()
+  if (dekking.soort === 'geen') return null
+
+  if (dekking.soort === 'verdwenen') {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span className="badge badge-laat">{t('Kost bestaat niet meer')}</span>
+        <span className="rij-meta">
+          {t('De vaste last waarvoor je spaarde, staat niet meer in je vaste lasten. Het doel blijft gewoon lopen.')}
+        </span>
+      </div>
+    )
+  }
+
+  if (dekking.soort === 'gestopt' || dekking.soort === 'uitbetaald') {
+    return (
+      <span className="rij-meta">
+        {t('Je spaarde voor {naam}, maar daar komt geen betaling meer van.', {
+          naam: dekking.post.omschrijving,
+        })}
+      </span>
+    )
+  }
+
+  const zinnen: string[] = []
+  zinnen.push(
+    t('Voor {naam}, de volgende keer op {datum}.', {
+      naam: dekking.post.omschrijving,
+      datum: dagJaar(dekking.vervaldag),
+    }),
+  )
+  // ⚠ Twee VASTSTELLINGEN, geen correcties. De app zet je doelbedrag of je datum
+  // nooit uit zichzelf goed: misschien spaar je bewust voor twee jaar vooruit, of
+  // legde je de premie van vorig jaar vast. Ze zegt wat ze ziet; jij beslist.
+  if (dekking.bedragWijktAf) {
+    zinnen.push(t('Die kost is {bedrag}; je doelbedrag staat op iets anders.', { bedrag: formatEuro(dekking.bedrag) }))
+  }
+  if (dekking.datumNaVervaldag) {
+    zinnen.push(t('Je doeldatum ligt ná die betaling, dus aan dit tempo ben je te laat.'))
+  } else if (teLaat) {
+    // ⚠ `else`: allebei tegelijk zou twee keer hetzelfde zeggen. De doeldatum is de
+    // scherpste van de twee, want die heb jij zelf gezet.
+    zinnen.push(t('Aan je huidige tempo heb je pas ná die betaling genoeg bij elkaar.'))
+  }
+  // Dezelfde soort waarschuwing als bij twee doelen op één rekening (ronde 69), maar
+  // dan voor de kostkant: twee potten voor één rekening betekent dat je dubbel spaart
+  // — en Budget reserveert dan ook allebei de bedragen.
+  if (medeDoelen === 1) zinnen.push(t('Er hangt nog een doel aan diezelfde kost; je spaart er dus dubbel voor.'))
+  if (medeDoelen > 1) zinnen.push(t('Er hangen nog {n} doelen aan diezelfde kost; je spaart er dus meervoudig voor.', { n: medeDoelen }))
+  return <span className="rij-meta">{zinnen.join(' ')}</span>
 }
 
 // De volledige Spaardoelen-sectie: overzicht met voortgangsbalken, snel het
@@ -86,6 +170,7 @@ function PlanRegel({ doel, plan }: { doel: Spaardoel; plan: SpaardoelPlan }) {
 // een doel toe te voegen of te bewerken.
 export function SpaardoelSectie({
   spaardoelen,
+  vasteLasten = [],
   rekeningen,
   transacties,
   overboekingen = [],
@@ -95,6 +180,11 @@ export function SpaardoelSectie({
   onVerwijderen,
 }: {
   spaardoelen: Spaardoel[]
+  /**
+   * De vaste lasten waarvoor je kan sparen (ronde 74). Optioneel en standaard leeg:
+   * dan verschijnt het keuzeveld niet en gedraagt dit scherm zich zoals vroeger.
+   */
+  vasteLasten?: TerugkerendePost[]
   rekeningen: Rekening[]
   transacties: Transactie[]
   // Optioneel: enkel nodig om te tonen (en te kiezen) voor wie een doel is.
@@ -114,6 +204,8 @@ export function SpaardoelSectie({
   // Eén keer per render dezelfde dag gebruiken, zodat alle doelen met exact
   // dezelfde 'vandaag' rekenen.
   const nu = vandaag()
+  // Alleen de kosten waar sparen zin heeft; zie `spaarbareVasteLasten`.
+  const spaarbaar = spaarbareVasteLasten(vasteLasten, nu.slice(0, 7))
   const [bewerk, setBewerk] = useState<Spaardoel | null>(null)
   // Welk doel er rechts (op een telefoon: eronder) opengeklapt staat. Zolang er
   // niets gekozen is, staat rechts gewoon het formulier voor een nieuw doel.
@@ -190,6 +282,13 @@ export function SpaardoelSectie({
                 : undefined
               const tempo = spaardoelTempo(d, rekeningen, transacties, overboekingen, waarderingen, nu)
               const plan = spaardoelPlan(d, v, tempo, nu)
+              const dekking = doeldekking(d, vasteLasten, nu)
+              // ⚠ Twee manieren om te laat te zijn, en de badge moet op allebei reageren:
+              // je eigen doeldatum ligt ná de betaling, óf je huidige tempo brengt je er
+              // pas ná. `PlanRegel` kent alleen de doeldatum, dus zonder deze combinatie
+              // bleef er een groene badge staan boven een zin die zei dat je te laat bent.
+              const teLaat =
+                teLaatVoorVervaldag(dekking, plan) || (dekking.soort === 'loopt' && dekking.datumNaVervaldag)
               const kleur = d.kleur ?? 'var(--positive)'
               const manueel = !d.gekoppeldeRekeningId
               // De naam van het gezinslid komt uit de lijst; staat het lid er niet
@@ -271,7 +370,12 @@ export function SpaardoelSectie({
 
                   {/* Haal je het? Dit stond vroeger enkel als losse rekenhulp waar je
                       alles zelf moest intikken; nu zegt het doel het zelf. */}
-                  <PlanRegel doel={d} plan={plan} />
+                  <PlanRegel doel={d} plan={plan} teLaat={teLaat} />
+                  <KoppelingRegel
+                    dekking={dekking}
+                    teLaat={teLaat}
+                    medeDoelen={d.vasteLastId ? spaardoelenVoorVasteLast(d.vasteLastId, spaardoelen).length - 1 : 0}
+                  />
 
                   {manueel && (
                     <div className="knoprij" style={{ flexWrap: 'nowrap' }}>
@@ -311,6 +415,8 @@ export function SpaardoelSectie({
           <SpaardoelFormulier
             rekeningen={rekeningen}
             gezinsleden={gezinsleden}
+            vasteLasten={spaarbaar}
+            vandaagISO={nu}
             onOpslaan={opslaan}
             onAnnuleer={() => setBewerk(null)}
             bewerken={bewerk}

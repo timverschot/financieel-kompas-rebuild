@@ -155,6 +155,47 @@ describe('plancijfers', () => {
     expect(augustus.opzij).toBe(0)
   })
 
+  it('rekent met het streefbedrag van het spaardoel in plaats van met de kale deling', () => {
+    // ⚠ RONDE 74 — de kern van die ronde, en de val waar de eerste opzet in liep. Het
+    // bedrag wordt VERVANGEN, niet weggelaten: `Spaardoel.maandbedrag` komt in geen
+    // enkele rekenkern die Budget voedt, dus zou weglaten "Te verdelen" te HOOG zetten.
+    // September: de premie is begonnen (augustus) en valt deze maand niet, dus zonder
+    // koppeling staat hier de kale deling van € 100.
+    expect(plancijfers([huur, opbouw], '2026-09').opzij).toBe(10000)
+    const sept = plancijfers([huur, opbouw], '2026-09', new Map([[opbouw.id, 7500]]))
+    expect(sept.opzij).toBe(7500)
+    // ⚠ En wat er NIET verandert: sparen verandert niets aan wat een kost je kost.
+    expect(sept.gemiddeldPerMaand).toBe(105000)
+    expect(sept.vastDezeMaand).toBe(95000)
+  })
+
+  it('betaalt de kost gewoon in de maand van de vervaldag, ook mét een spaardoel', () => {
+    // Het geld gaat nog steeds van je rekening; alleen het bedrag dat je vooraf
+    // reserveert komt uit het doel. Zou dit meeveranderen, dan verdween een echte
+    // uitgave uit je plan.
+    const augustus = plancijfers([huur, opbouw], '2026-08', new Map([[opbouw.id, 7500]]))
+    expect(augustus.vastDezeMaand).toBe(95000 + 60000)
+    expect(augustus.opzij).toBe(0)
+  })
+
+  it('reserveert ook voor een kost waar het vinkje NIET aanstaat', () => {
+    // Het spaardoel is nu net het alternatief voor dat vinkje. Zonder deze regel zou
+    // je € 75 per maand wegzetten en zou je plan er geen cent voor opzij houden.
+    const zonderVinkje = { ...premie, opbouwen: false }
+    expect(plancijfers([zonderVinkje], '2026-09').opzij).toBe(0)
+    expect(plancijfers([zonderVinkje], '2026-09', new Map([[zonderVinkje.id, 7500]])).opzij).toBe(7500)
+  })
+
+  it('raakt de opzij van de ANDERE posten niet aan', () => {
+    const tweede = post({ id: 'tweede', omschrijving: 'Brandverzekering', bedrag: -24000, dag: 9, frequentie: 'jaar', startMaand: '2026-08', opbouwen: true })
+    const juli = plancijfers([opbouw, tweede], '2026-07', new Map([[opbouw.id, 7500]]))
+    expect(juli.opzij).toBe(7500 + 2000)
+  })
+
+  it('gedraagt zich zonder die kaart precies zoals vroeger', () => {
+    expect(plancijfers([huur, opbouw], '2026-07')).toEqual(plancijfers([huur, opbouw], '2026-07', new Map()))
+  })
+
   it('geeft het gemiddelde per maand los van de gekozen maand', () => {
     // € 950 huur + € 100 omgerekende premie, in élke maand hetzelfde.
     // ⚠ Vanaf de startmaand van de premie (2026-08); zie de test hieronder voor de

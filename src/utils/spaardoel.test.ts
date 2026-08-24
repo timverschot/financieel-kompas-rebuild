@@ -1,7 +1,19 @@
 import { describe, it, expect } from 'vitest'
-import { rekeningSaldo, spaardoelPlan, spaardoelTempo, spaardoelVoortgang } from './spaardoel'
-import type { Overboeking, Rekening, Spaardoel, Transactie } from '../data/schema'
+import {
+  doeldekking,
+  rekeningSaldo,
+  spaarbareVasteLasten,
+  spaardoelPlan,
+  spaardoelTempo,
+  spaardoelVoorVasteLast,
+  spaardoelVoortgang,
+  opzijVolgensSpaardoelen,
+  teLaatVoorVervaldag,
+  vasteLastenMetSpaardoel,
+} from './spaardoel'
+import type { Overboeking, Rekening, Spaardoel, TerugkerendePost, Transactie } from '../data/schema'
 import { vandaag } from './datum'
+import { isGestopt, opzijPerMaand } from './vastelast'
 
 const rekeningen: Rekening[] = [{ id: 'spaar', naam: 'Spaarrekening', beginsaldo: 100000 }]
 const transacties: Transactie[] = [
@@ -242,5 +254,170 @@ describe('spaardoelTempo — een herwaardering is geen spaargedrag', () => {
     ]
     const w = [{ id: 'w1', rekeningId: 'spaar', datum: '2024-01-01', saldo: 400000 }]
     expect(spaardoelTempo(doelMetRekening, rekeningen, tx, [], w, '2026-07-15').gemetenMaanden).toBe(3)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 74 — een spaardoel dat weet welke vaste last het dient
+// ---------------------------------------------------------------------------
+
+const premie: TerugkerendePost = {
+  id: 'vl1',
+  omschrijving: 'Autoverzekering',
+  bedrag: -62000,
+  rekeningId: 'zicht',
+  dag: 5,
+  frequentie: 'jaar',
+  startMaand: '2027-03',
+  opbouwen: true,
+}
+
+describe('spaarbareVasteLasten', () => {
+  it('laat een maandelijkse kost weg', () => {
+    // Voor een kost die elke maand valt, spaar je niet vooruit: je betaalt hem uit
+    // het loon van diezelfde maand. Een pot die elke maand weer leeg is, is geen doel.
+    const huur: TerugkerendePost = { id: 'vl2', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'zicht', dag: 3 }
+    expect(spaarbareVasteLasten([premie, huur], '2026-08').map((p) => p.id)).toEqual(['vl1'])
+  })
+
+  it('laat een inkomst en een gestopte kost weg', () => {
+    const inkomst: TerugkerendePost = {
+      id: 'vl3', omschrijving: 'Kotgeld', bedrag: 40000, rekeningId: 'zicht', dag: 1, frequentie: 'jaar', startMaand: '2027-01',
+    }
+    const gestopt: TerugkerendePost = { ...premie, id: 'vl4', eindMaand: '2026-01' }
+    expect(spaarbareVasteLasten([premie, inkomst, gestopt], '2026-08').map((p) => p.id)).toEqual(['vl1'])
+  })
+})
+
+describe('vasteLastenMetSpaardoel', () => {
+  it('verzamelt alleen de posten waar echt een doel aan hangt', () => {
+    const met = doel({ id: 'd1', vasteLastId: 'vl1' })
+    const zonder = doel({ id: 'd2' })
+    const set = vasteLastenMetSpaardoel([met, zonder])
+    expect(set.has('vl1')).toBe(true)
+    expect(set.size).toBe(1)
+  })
+})
+
+describe('spaardoelVoorVasteLast', () => {
+  it('vindt het doel dat bij een post hoort, en anders null', () => {
+    const d = doel({ vasteLastId: 'vl1' })
+    expect(spaardoelVoorVasteLast('vl1', [d])?.id).toBe('d1')
+    expect(spaardoelVoorVasteLast('vl9', [d])).toBeNull()
+  })
+})
+
+describe('doeldekking — wat er over de koppeling te zeggen valt', () => {
+  it('zwijgt bij een doel zonder koppeling', () => {
+    expect(doeldekking(doel({}), [premie], '2026-08-24')).toEqual({ soort: 'geen' })
+  })
+
+  it('meldt het wanneer de vaste last niet meer bestaat', () => {
+    // ⚠ Het doel blijft gewoon lopen: je spaargeld is niet verdwenen omdat de kost
+    // uit je lijst gehaald is. Maar het scherm hoort te zeggen waarom er niets meer
+    // over die kost staat.
+    expect(doeldekking(doel({ vasteLastId: 'vl1' }), [], '2026-08-24')).toEqual({ soort: 'verdwenen' })
+  })
+
+  it('meldt het wanneer de vaste last opgezegd is', () => {
+    const gestopt = { ...premie, eindMaand: '2026-01' }
+    const uit = doeldekking(doel({ vasteLastId: 'vl1' }), [gestopt], '2026-08-24')
+    expect(uit.soort).toBe('gestopt')
+  })
+
+  it('geeft de vervaldag en het volle bedrag van één betaling', () => {
+    const uit = doeldekking(doel({ vasteLastId: 'vl1', doelbedrag: 62000 }), [premie], '2026-08-24')
+    expect(uit).toMatchObject({ soort: 'loopt', vervaldag: '2027-03-05', bedrag: 62000, bedragWijktAf: false })
+  })
+
+  it('merkt op dat je doelbedrag iets anders zegt dan de kost', () => {
+    // ⚠ Alleen OPMERKEN. De app zet je doelbedrag nooit uit zichzelf goed: misschien
+    // spaar je bewust voor twee jaar vooruit, of legde je de premie van vorig jaar vast.
+    const uit = doeldekking(doel({ vasteLastId: 'vl1', doelbedrag: 68000 }), [premie], '2026-08-24')
+    expect(uit).toMatchObject({ bedragWijktAf: true })
+  })
+
+  it('merkt op dat je doeldatum ná de betaling ligt', () => {
+    const uit = doeldekking(doel({ vasteLastId: 'vl1', doeldatum: '2027-06-01' }), [premie], '2026-08-24')
+    expect(uit).toMatchObject({ datumNaVervaldag: true })
+  })
+
+  it('waarschuwt NIET wanneer de doeldatum precies op de vervaldag valt', () => {
+    // Exact goed mag geen waarschuwing geven; anders leert de gebruiker de melding
+    // te negeren op het moment dat hij het juist perfect gedaan heeft.
+    const uit = doeldekking(doel({ vasteLastId: 'vl1', doeldatum: '2027-03-05' }), [premie], '2026-08-24')
+    expect(uit).toMatchObject({ datumNaVervaldag: false })
+  })
+
+  it('herkent een post waarvan de laatste betaling al geweest is', () => {
+    // ⚠ Deze post is NIET gestopt (de eindmaand is nog niet bereikt), maar zijn
+    // volgende beurt ligt er wel voorbij. Er komt dus nooit meer een betaling. Zonder
+    // dit eigen geval zei het scherm alleen "Voor Autoverzekering." en bleef je sparen
+    // voor iets wat niet meer valt.
+    const laatste = { ...premie, eindMaand: '2027-06' }
+    expect(isGestopt(laatste, '2027-04')).toBe(false)
+    const uit = doeldekking(doel({ vasteLastId: 'vl1', doeldatum: '2030-01-01' }), [laatste], '2027-04-01')
+    expect(uit).toEqual({ soort: 'uitbetaald', post: laatste })
+  })
+})
+
+
+describe('opzijVolgensSpaardoelen', () => {
+  it('neemt het streefbedrag van het doel over', () => {
+    const d = doel({ vasteLastId: 'vl1', maandbedrag: 7500 })
+    expect(opzijVolgensSpaardoelen([d], [premie]).get('vl1')).toBe(7500)
+  })
+
+  it('valt zonder streefbedrag terug op de kale deling', () => {
+    // ⚠ Dan verandert er niets aan het bedrag op Budget, en dat is de bedoeling: de
+    // app mag geen reservering laten verdampen omdat je een doel aanmaakte.
+    const d = doel({ vasteLastId: 'vl1' })
+    expect(opzijVolgensSpaardoelen([d], [premie]).get('vl1')).toBe(opzijPerMaand(premie))
+  })
+
+  it('telt twee doelen op dezelfde kost bij elkaar op', () => {
+    // Je stort dan ook echt twee keer; het scherm zegt het erbij.
+    const a = doel({ id: 'a', vasteLastId: 'vl1', maandbedrag: 3000 })
+    const b = doel({ id: 'b', vasteLastId: 'vl1', maandbedrag: 2000 })
+    expect(opzijVolgensSpaardoelen([a, b], [premie]).get('vl1')).toBe(5000)
+  })
+
+  it('zet niets in je plan voor een inkomst of een maandelijkse post', () => {
+    // ⚠ Alleen bereikbaar via een oud logboekbestand, maar het gevolg zou een bedrag
+    // in je plan zijn dat daar niet hoort.
+    const inkomst: TerugkerendePost = { id: 'i1', omschrijving: 'Loon', bedrag: 240000, rekeningId: 'zicht', dag: 25, frequentie: 'jaar', startMaand: '2027-01' }
+    const maandelijks: TerugkerendePost = { id: 'm1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'zicht', dag: 3 }
+    const doelen = [doel({ id: 'a', vasteLastId: 'i1', maandbedrag: 1000 }), doel({ id: 'b', vasteLastId: 'm1', maandbedrag: 1000 })]
+    expect(opzijVolgensSpaardoelen(doelen, [inkomst, maandelijks]).size).toBe(0)
+  })
+
+  it('negeert een doel dat naar een onbekende post wijst', () => {
+    expect(opzijVolgensSpaardoelen([doel({ vasteLastId: 'weg' })], [premie]).size).toBe(0)
+  })
+})
+
+describe('teLaatVoorVervaldag', () => {
+  const dekking = () => doeldekking(doel({ vasteLastId: 'vl1' }), [premie], '2026-08-24')
+
+  it('zegt het wanneer je aan je tempo pas ná de betaling genoeg hebt', () => {
+    // ⚠ De app kende beide datums en zweeg: "zo klaar rond mei 2028" naast "de
+    // volgende keer op 5 maart 2027", en jij mocht ze zelf vergelijken.
+    const plan = { alBereikt: false, benodigdPerMaand: null, maandenTotDoeldatum: null, datumVerstreken: false,
+      tempoPerMaand: 3000, tempoBron: 'streefbedrag' as const, verwachteDatum: '2028-05-01', opSchema: null }
+    expect(teLaatVoorVervaldag(dekking(), plan)).toBe(true)
+  })
+
+  it('zwijgt wanneer je op tijd bent, wanneer het doel al gehaald is, of zonder verwachte datum', () => {
+    const basis = { benodigdPerMaand: null, maandenTotDoeldatum: null, datumVerstreken: false,
+      tempoPerMaand: 3000, tempoBron: 'streefbedrag' as const, opSchema: null }
+    expect(teLaatVoorVervaldag(dekking(), { ...basis, alBereikt: false, verwachteDatum: '2027-01-01' })).toBe(false)
+    expect(teLaatVoorVervaldag(dekking(), { ...basis, alBereikt: true, verwachteDatum: '2028-05-01' })).toBe(false)
+    expect(teLaatVoorVervaldag(dekking(), { ...basis, alBereikt: false, verwachteDatum: null })).toBe(false)
+  })
+
+  it('zwijgt bij een doel zonder koppeling', () => {
+    const plan = { alBereikt: false, benodigdPerMaand: null, maandenTotDoeldatum: null, datumVerstreken: false,
+      tempoPerMaand: 3000, tempoBron: 'streefbedrag' as const, verwachteDatum: '2099-01-01', opSchema: null }
+    expect(teLaatVoorVervaldag({ soort: 'geen' }, plan)).toBe(false)
   })
 })
