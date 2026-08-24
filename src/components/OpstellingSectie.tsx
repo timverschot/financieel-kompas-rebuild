@@ -15,6 +15,8 @@ import type {
 } from '../data/schema'
 import { KLASSIEKE_VASTE_KOSTEN, SLUIPENDE_KOSTEN, type Kostvoorstel } from '../data/opstelling'
 import { Dialoog } from '../ui/Dialoog'
+import { VasteLastWeg } from './VasteLastWeg'
+import { hangtErIetsAan, telVasteLastGebruik } from '../utils/vastelastverwijdering'
 import { Opslagfout } from '../ui/Opslagfout'
 import { useOpslagpoging } from '../ui/opslagpoging'
 import { TerugkerendePostFormulier } from './TerugkerendePostFormulier'
@@ -844,6 +846,37 @@ export function OpstellingSectie({
   const [schoonNa, setSchoonNa] = useState(0)
   /** De bevestiging die BINNEN het invulvenster hoort te staan. Zie `bewaarUitFormulier`. */
   const [vensterMelding, setVensterMelding] = useState<string | null>(null)
+  /**
+   * De post waarover de verwijdervraag gaat (ronde 76), of null.
+   *
+   * ⚠ EEN ID EN GEEN KOPIE (doorlichting ronde 76), net als `lidWegId` in
+   * KinderenSectie. De app haalt elke 45 seconden stil nieuwe gegevens op; met een
+   * bevroren kopie kon het venster over een record hangen dat intussen elders
+   * gewijzigd of gewist was — en gaf "Liever opzeggen" die verouderde momentopname
+   * aan het invulvenster, dat ze dan over de nieuwere versie heen schrijft.
+   */
+  const [wegPostId, setWegPostId] = useState<string | null>(null)
+  const wegPost = terugkerendePosten.find((p) => p.id === wegPostId) ?? null
+
+  /**
+   * Het kruisje van deze twee lijsten: eerst kijken of er iets aan hangt.
+   *
+   * ⚠ Één functie voor allebei de lijsten (vaste kosten én sluipende kosten), en
+   * dezelfde regel als op Budget → Vast: hangt er niets aan, dan wist ze meteen —
+   * precies zoals voorheen, met de ongedaan-balk als vangnet. Hangt er wél iets aan,
+   * dan komt het venster ertussen. Zie `utils/vastelastverwijdering.ts`.
+   */
+  function vraagOfVerwijder(post: TerugkerendePost) {
+    if (!onVastePostVerwijderen) return
+    if (hangtErIetsAan(post.id, { transacties, spaardoelen })) {
+      // Een oude foutmelding hoort niet achter het venster te blijven staan (regel uit
+      // de tweede doorlichting van ronde 68, hier overgenomen).
+      opslag.wis()
+      setWegPostId(post.id)
+      return
+    }
+    void opslag.probeer(() => onVastePostVerwijderen(post.id))
+  }
 
   /**
    * Het invulvenster openen. Eén plek, zodat de bevestiging van de vorige kost niet
@@ -1183,11 +1216,7 @@ export function OpstellingSectie({
             t={t}
             onToevoegen={(voorstel, lijst) => openVenster({ voorstel, lijst, bewerken: null })}
             onWijzig={(post, voorstel, lijst) => openVenster({ voorstel, lijst, bewerken: post })}
-            onVerwijder={
-              onVastePostVerwijderen
-                ? (post) => void opslag.probeer(() => onVastePostVerwijderen(post.id))
-                : undefined
-            }
+            onVerwijder={onVastePostVerwijderen ? vraagOfVerwijder : undefined}
             onNaarBudget={() => (onNaarBudget ? onNaarBudget('vast') : onNaarPagina('budget'))}
             heeftRekening={actieveRekeningen.length > 0}
             onNaarRekeningen={() => naarBlok('rekeningen')}
@@ -1203,11 +1232,7 @@ export function OpstellingSectie({
             t={t}
             onToevoegen={(voorstel, lijst) => openVenster({ voorstel, lijst, bewerken: null })}
             onWijzig={(post, voorstel, lijst) => openVenster({ voorstel, lijst, bewerken: post })}
-            onVerwijder={
-              onVastePostVerwijderen
-                ? (post) => void opslag.probeer(() => onVastePostVerwijderen(post.id))
-                : undefined
-            }
+            onVerwijder={onVastePostVerwijderen ? vraagOfVerwijder : undefined}
             onNaarBudget={() => (onNaarBudget ? onNaarBudget('vast') : onNaarPagina('budget'))}
             heeftRekening={actieveRekeningen.length > 0}
             onNaarRekeningen={() => naarBlok('rekeningen')}
@@ -1382,6 +1407,34 @@ export function OpstellingSectie({
             }}
           />
         </Dialoog>
+      )}
+
+      {/* De vraag vóór het verwijderen (ronde 76). Eén venster voor allebei de
+          lijsten op deze pagina, en hetzelfde venster als op Budget → Vast.
+
+          "Liever opzeggen" opent het gewone invulvenster op deze bestaande kost;
+          daar staat "Loopt tot en met". Bewust zonder voorstel en zonder lijst: je
+          bewerkt een bestaand record, dus alle waarden komen uit het record zelf en
+          er is geen "volgende kost" om naartoe te springen. */}
+      {onVastePostVerwijderen && (
+        <VasteLastWeg
+          post={wegPost}
+          onSluiten={() => setWegPostId(null)}
+          onVerwijderen={onVastePostVerwijderen}
+          // ⚠ Alleen wanneer er een rekening is (doorlichting ronde 76): zonder
+          // rekening staat het invulvenster er met een lege rekeningkeuze, en dan
+          // stuurt de knop je naar een formulier dat je niet kan opslaan. Dezelfde
+          // grendel als op Budget → Vast, zodat de twee schermen niet uit elkaar lopen.
+          onOpzeggen={
+            actieveRekeningen.length > 0
+              ? (post) => {
+                  setWegPostId(null)
+                  openVenster({ voorstel: null, lijst: [], bewerken: post })
+                }
+              : undefined
+          }
+          telGebruik={(id) => telVasteLastGebruik(t, id, { transacties, spaardoelen })}
+        />
       )}
     </section>
   )

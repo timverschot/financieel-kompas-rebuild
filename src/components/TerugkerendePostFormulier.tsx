@@ -54,6 +54,7 @@ export function TerugkerendePostFormulier({
   beginwaarden,
   bestaande,
   focusBijStart = false,
+  focusEindeNa = 0,
   gedektDoorDoel,
 }: {
   rekeningen: Rekening[]
@@ -117,6 +118,19 @@ export function TerugkerendePostFormulier({
    * het laden de pagina naar beneden trekken. Vandaar: standaard uit.
    */
   focusBijStart?: boolean
+  /**
+   * Verhoog dit getal om de cursor in het veld "Loopt tot en met" te zetten.
+   *
+   * ⚠ Waarvoor (ronde 76): "Liever opzeggen" in het verwijdervenster brengt je naar
+   * dít formulier, en dan moet je ook zíén waar je moet zijn. Op de Plan-pagina staat
+   * het formulier gewoon op de pagina, soms tien vaste lasten naar beneden; zonder
+   * dit gebeurde er zichtbaar niets en leek de knop kapot.
+   *
+   * Bewust een TELLER en geen vlag, net als `schoonNa`: het formulier blijft
+   * gemonteerd staan, dus een vlag zou maar één keer werken. En bewust geen `key` om
+   * het te laten hermonteren — dat gooit je halve invoer weg (ronde 66).
+   */
+  focusEindeNa?: number
   /**
    * Het spaardoel dat de reservering van deze kost draagt (ronde 74), met het bedrag
    * waarmee je plan effectief rekent. Ontbreekt het, dan geldt de gewone uitleg bij
@@ -196,6 +210,8 @@ export function TerugkerendePostFormulier({
   const blijfOpen = useRef(false)
   // Eén keer per opbouw; zie `focusBijStart`.
   const bedragGefocust = useRef(false)
+  // Het veld "Loopt tot en met"; zie `focusEindeNa`.
+  const eindeRef = useRef<HTMLInputElement>(null)
 
   // Zet alle velden terug op hun beginwaarde.
   const leegmaken = useCallback(() => {
@@ -253,6 +269,22 @@ export function TerugkerendePostFormulier({
       leegmaken()
     }
   }, [bewerken, leegmaken])
+
+  /**
+   * De cursor naar "Loopt tot en met" brengen; zie `focusEindeNa`.
+   *
+   * ⚠ De nul slaan we over: dat is de beginstand, en anders zou het formulier bij
+   * élke opbouw naar dat veld springen — ook wanneer je gewoon een nieuwe kost
+   * invult. `scrollIntoView` bestaat niet in de testomgeving, vandaar de
+   * bestaanscheck (dezelfde als in ui/Dialoog.tsx).
+   */
+  useEffect(() => {
+    if (focusEindeNa === 0) return
+    const veld = eindeRef.current
+    if (!veld) return
+    veld.focus()
+    veld.scrollIntoView?.({ block: 'nearest' })
+  }, [focusEindeNa])
 
   const bedragCenten = invoerNaarCenten(bedrag)
   // ⚠ RONDE 73 — BEWUST GEEN `Number.parseInt`. Die leest "12abc" als 12, "28,7" als 28
@@ -483,6 +515,7 @@ export function TerugkerendePostFormulier({
           {t('Loopt tot en met')}
         </label>
         <input
+          ref={eindeRef}
           id={`${veldId}-vaste-einde`}
           type="month"
           value={eindMaand === '' ? '' : verschuifMaand(eindMaand, -1)}

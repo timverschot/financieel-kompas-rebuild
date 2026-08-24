@@ -1205,3 +1205,129 @@ describe('OpstellingSectie — de tegel volgt Budget (ronde 74)', () => {
     expect(screen.getByText(/Je zet er wel al .*51,67 per maand voor opzij/)).toBeInTheDocument()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 76 — ook hier vraagt "Verwijderen" eerst wat er aan de kost hangt
+// ---------------------------------------------------------------------------
+describe('OpstellingSectie — verwijderen vraagt wat eraan hangt', () => {
+  const post: TerugkerendePost = { id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 3 }
+  const geboekt: Transactie = {
+    id: 'tk-p1-2026-07',
+    datum: '2026-07-03',
+    omschrijving: 'Huur',
+    bedrag: -95000,
+    rekeningId: 'r1',
+  }
+
+  async function openUitklap(gebruiker: ReturnType<typeof userEvent.setup>) {
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /^Huur/ }))
+  }
+
+  it('wist meteen wanneer er niets aan hangt', async () => {
+    // Dit is het gedrag van vóór deze ronde, en het blijft: de aanvinklijst voegt in
+    // bulk toe, dus daar hoort ook in bulk weghalen te kunnen.
+    const gebruiker = userEvent.setup()
+    const onVastePostVerwijderen = vi.fn()
+    toon({ rekeningen: [rekening], terugkerendePosten: [post] }, { onVastePostVerwijderen })
+    await openUitklap(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: /^Verwijderen — Huur,/ }))
+    expect(onVastePostVerwijderen).toHaveBeenCalledWith('p1')
+  })
+
+  it('vraagt eerst wanneer er een boeking aan hangt', async () => {
+    const gebruiker = userEvent.setup()
+    const onVastePostVerwijderen = vi.fn()
+    toon(
+      { rekeningen: [rekening], terugkerendePosten: [post], transacties: [geboekt] },
+      { onVastePostVerwijderen },
+    )
+    await openUitklap(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: /^Verwijderen — Huur,/ }))
+    expect(onVastePostVerwijderen).not.toHaveBeenCalled()
+    expect(screen.getByRole('heading', { name: 'Huur verwijderen?' })).toBeInTheDocument()
+
+    await gebruiker.click(screen.getByRole('button', { name: 'Ja, verwijder' }))
+    expect(onVastePostVerwijderen).toHaveBeenCalledWith('p1')
+  })
+
+  it('sluit het venster wanneer de post intussen elders verdwenen is', async () => {
+    // ⚠ Het venster leest het record uit de HUIDIGE lijst en houdt geen kopie vast:
+    // de app haalt elke 45 seconden stil nieuwe gegevens op.
+    const gebruiker = userEvent.setup()
+    const { rerender } = toon(
+      { rekeningen: [rekening], terugkerendePosten: [post], transacties: [geboekt] },
+      { onVastePostVerwijderen: vi.fn() },
+    )
+    await openUitklap(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: /^Verwijderen — Huur,/ }))
+    expect(screen.getByRole('heading', { name: 'Huur verwijderen?' })).toBeInTheDocument()
+
+    rerender(
+      <OpstellingSectie
+        {...leeg}
+        rekeningen={[rekening]}
+        transacties={[geboekt]}
+        onRekening={vi.fn()}
+        onLening={vi.fn()}
+        onVastePost={vi.fn()}
+        onVastePostVerwijderen={vi.fn()}
+        onKindToevoegen={vi.fn()}
+        onKindWijzigen={vi.fn()}
+        onKindVerwijderen={vi.fn()}
+        onDossier={vi.fn()}
+        onNaarPagina={vi.fn()}
+      />,
+    )
+    expect(screen.queryByRole('heading', { name: 'Huur verwijderen?' })).toBeNull()
+  })
+
+  it('zegt in het venster WAT er aan de kost hangt', async () => {
+    // ⚠ Zonder deze test kon de telfunctie van dit scherm geruisloos wegvallen: het
+    // venster viel dan terug op "De app kan hier niet nakijken wat er aan deze kost
+    // hangt" en alle andere tests bleven groen.
+    const gebruiker = userEvent.setup()
+    toon(
+      { rekeningen: [rekening], terugkerendePosten: [post], transacties: [geboekt] },
+      { onVastePostVerwijderen: vi.fn() },
+    )
+    await openUitklap(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: /^Verwijderen — Huur,/ }))
+
+    expect(screen.getByText('Hier hangt nog dit aan:')).toBeInTheDocument()
+    expect(screen.getByText('1 boeking(en) die je hier inboekte')).toBeInTheDocument()
+  })
+
+  it('telt ook een spaardoel dat voor deze kost spaart', async () => {
+    const gebruiker = userEvent.setup()
+    toon(
+      {
+        rekeningen: [rekening],
+        terugkerendePosten: [post],
+        spaardoelen: [{ id: 'd1', naam: 'Huurpot', doelbedrag: 95000, huidigBedrag: 0, vasteLastId: 'p1' }],
+      } as Partial<typeof leeg>,
+      { onVastePostVerwijderen: vi.fn() },
+    )
+    await openUitklap(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: /^Verwijderen — Huur,/ }))
+
+    expect(screen.getByText('1 spaardoel(en) sparen hiervoor')).toBeInTheDocument()
+  })
+
+  it('opent met "Liever opzeggen" het invulvenster op diezelfde kost', async () => {
+    const gebruiker = userEvent.setup()
+    const onVastePostVerwijderen = vi.fn()
+    toon(
+      { rekeningen: [rekening], terugkerendePosten: [post], transacties: [geboekt] },
+      { onVastePostVerwijderen },
+    )
+    await openUitklap(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: /^Verwijderen — Huur,/ }))
+    await gebruiker.click(screen.getByRole('button', { name: 'Liever opzeggen' }))
+
+    expect(onVastePostVerwijderen).not.toHaveBeenCalled()
+    const venster = screen.getByRole('dialog')
+    expect(within(venster).getByLabelText('Vaste omschrijving')).toHaveValue('Huur')
+    expect(within(venster).getByLabelText('Loopt tot en met')).toBeInTheDocument()
+  })
+})

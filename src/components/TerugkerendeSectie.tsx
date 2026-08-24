@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { Categorie, Rekening, Spaardoel, TerugkerendePost, Transactie } from '../data/schema'
 import { TerugkerendePostFormulier, frequentieNaam } from './TerugkerendePostFormulier'
 import { formatEuro } from '../utils/format'
@@ -8,6 +8,8 @@ import { frequentieVan, isGestopt, maandbedrag, opzijPerMaand, valtInMaand, vers
 import { contractstand, contractTeltNog, type Contractstand } from '../utils/contract'
 import { geboekteVasteLasten, vasteLastTransactieId } from '../utils/vooruitblik'
 import { Kaart, Leeg } from '../ui/basis'
+import { VasteLastWeg } from './VasteLastWeg'
+import { hangtErIetsAan, telVasteLastGebruik } from '../utils/vastelastverwijdering'
 import { useT } from '../i18n'
 import { Opslagfout } from '../ui/Opslagfout'
 import { useOpslagpoging } from '../ui/opslagpoging'
@@ -82,10 +84,38 @@ export function TerugkerendeSectie({
   // Invullen en bewerken kan pas zodra er een rekening bestaat om het aan te hangen.
   const kanBewerken = rekeningen.length > 0
   const [bewerken, setBewerken] = useState<TerugkerendePost | null>(null)
+  // De post waarover de verwijdervraag gaat (ronde 76), of null zolang er geen
+  // vraag openstaat.
+  //
+  // ⚠ EEN ID EN GEEN KOPIE (doorlichting ronde 76), precies zoals `lidWegId` in
+  // KinderenSectie. De app haalt elke 45 seconden stil nieuwe gegevens op; een venster
+  // dat een halve minuut openstaat kan dus over een record hangen dat intussen elders
+  // gewijzigd of gewist is. Met een kopie bleef het venster staan met een oude naam,
+  // gaf "Ja, verwijder" zichtbaar niets (er is geen record meer om te herstellen, dus
+  // ook geen ongedaan-balk), en gaf "Liever opzeggen" een verouderde momentopname aan
+  // het formulier — dat schrijft die dan over de nieuwere versie heen. Met een id
+  // sluit het venster zichzelf en krijgt het formulier het verse record.
+  const [wegPostId, setWegPostId] = useState<string | null>(null)
+  // Verhoog om de cursor in "Loopt tot en met" te zetten; zie `focusEindeNa`.
+  const [naarEinde, setNaarEinde] = useState(0)
+  // ⚠ Waar de focus heen gaat vóór een rij verdwijnt (huisregel sinds ronde 73). De
+  // titel van de kaart is het enige dat er in élke toestand staat: de lijst zelf
+  // verdwijnt zodra je de laatste post wist, en het formulier eronder staat er niet
+  // zonder rekening. Landt de focus op een knop die de app meteen daarna weghaalt,
+  // dan valt hij naar `<body>` en sta je met je toetsenbord weer bovenaan de pagina.
+  //
+  // Voor het venster is dit ook het ANKER waar het naar terugkeert: `Dialoog`
+  // onthoudt bij het openen waar de focus stond, en dat is hierdoor niet het kruisje
+  // dat straks weg is.
+  const ankerRef = useRef<HTMLSpanElement>(null)
   // Vangt een mislukte opslag op en zegt het (ronde 68).
   const opslag = useOpslagpoging()
   // Elke sectie toont enkel haar eigen soort.
   const eigen = posten.filter((p) => (soort === 'inkomst' ? p.bedrag > 0 : p.bedrag < 0))
+  // Zie `wegPostId`: het venster leest het record uit de HUIDIGE lijst, niet uit een
+  // bevroren kopie. Uit `eigen` en niet uit `posten`: verandert een post van uitgave
+  // naar inkomst, dan hoort zijn rij hier te verdwijnen en het venster mee.
+  const wegPost = eigen.find((p) => p.id === wegPostId) ?? null
   const opzijViaDoel = opzijVolgensSpaardoelen(spaardoelen, posten)
   const isInkomst = soort === 'inkomst'
   // Welke posten deze maand al geboekt zijn. Bewust uit de gedeelde kern, want dit
@@ -131,7 +161,11 @@ export function TerugkerendeSectie({
 
   return (
     <Kaart
-      titel={isInkomst ? t('Vaste inkomsten') : t('Vaste lasten')}
+      titel={
+        <span ref={ankerRef} tabIndex={-1}>
+          {isInkomst ? t('Vaste inkomsten') : t('Vaste lasten')}
+        </span>
+      }
       bijschrift={
         isInkomst
           ? t('Je loon en alles wat elke maand binnenkomt. Hierop rekent je plan.')
@@ -311,7 +345,32 @@ export function TerugkerendeSectie({
                   <button
                     className="knop knop-kaal knop-gevaar"
                     aria-label={t('Verwijder vaste post {naam}', { naam: p.omschrijving })}
-                    onClick={() => void opslag.probeer(() => onVerwijderen(p.id))}
+                    // ⚠ Eerst de focus verzetten, dán handelen (ronde 73). Deze knop
+                    // haalt zichzelf uit het scherm — of hij opent een venster dat
+                    // straks naar deze knop wil terugkeren. Allebei de gevallen zijn
+                    // opgelost doordat de focus al op de kaarttitel staat.
+                    onClick={() => {
+                      // ⚠ Alleen VRAGEN wanneer er iets aan hangt (ronde 76). Hangt er
+                      // niets aan, dan is dit precies het kruisje van voorheen, met de
+                      // ongedaan-balk als vangnet.
+                      if (hangtErIetsAan(p.id, { transacties, spaardoelen })) {
+                        // ⚠ HIER GEEN ANKER (doorlichting ronde 76). Deze knop blijft
+                        // gewoon staan zolang het venster open is, en `Dialoog` onthoudt
+                        // hem als terugkeerpunt. Verzette je de focus tóch, dan kwam je
+                        // na "Nee, behouden" op de kaarttitel terecht in plaats van op
+                        // het kruisje dat je net indrukte.
+                        // Een oude foutmelding hoort niet achter het venster te
+                        // blijven staan (regel uit de tweede doorlichting van ronde 68).
+                        opslag.wis()
+                        setWegPostId(p.id)
+                        return
+                      }
+                      // ⚠ Wél een anker op dit pad: de rij verdwijnt meteen, en een
+                      // knop die zichzelf uit het scherm haalt laat de focus naar
+                      // `<body>` vallen (huisregel ronde 73).
+                      ankerRef.current?.focus()
+                      void opslag.probeer(() => onVerwijderen(p.id))
+                    }}
                   >
                     ×
                   </button>
@@ -337,6 +396,7 @@ export function TerugkerendeSectie({
           onOpslaan={opslaan}
           onAnnuleer={() => setBewerken(null)}
           bewerken={bewerken}
+          focusEindeNa={naarEinde}
           soort={soort}
           // Waarschuwt bij een naam die er al staat (ronde 73). `eigen` en niet `posten`:
           // een vaste ínkomst "Huur" (kotgeld) mag geen waarschuwing geven boven een
@@ -350,6 +410,31 @@ export function TerugkerendeSectie({
           })()}
         />
       )}
+
+      {/* De vraag vóór het kruisje wist (ronde 76). Ze gaat alleen open wanneer er
+          echt iets aan de post hangt — boekingen die je hier inboekte, boekingen die
+          je als deze kost aanduidde, of een spaardoel dat ervoor spaart.
+
+          ⚠ `onOpzeggen` alleen wanneer er ook écht een formulier staat: zonder
+          rekening rendert de app het niet, en dan zou de knop je naar niets sturen. */}
+      <VasteLastWeg
+        post={wegPost}
+        onSluiten={() => setWegPostId(null)}
+        onVerwijderen={onVerwijderen}
+        onOpzeggen={
+          kanBewerken
+            ? (p) => {
+                setWegPostId(null)
+                setBewerken(p)
+                // ⚠ En de cursor mee naar het veld dat je moet invullen (doorlichting
+                // ronde 76). Het formulier staat hier gewoon op de pagina, soms tien
+                // vaste lasten naar beneden; zonder dit gebeurde er zichtbaar niets.
+                setNaarEinde((n) => n + 1)
+              }
+            : undefined
+        }
+        telGebruik={(id) => telVasteLastGebruik(t, id, { transacties, spaardoelen })}
+      />
     </Kaart>
   )
 }

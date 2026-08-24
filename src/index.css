@@ -2005,6 +2005,29 @@ textarea:focus-visible {
   box-shadow: var(--focus-ring);
 }
 
+/* ⚠ EEN VINKJE HEEFT GEEN ZICHTBARE RAND OM TE KLEUREN (ronde 75). De regel hierboven
+   zet `outline: none` en legt het bewijs bij `border-color` — dat werkt voor een
+   tekstveld en een keuzelijst, maar een native `<input type="checkbox">` tekent zijn
+   eigen vakje, en of een auteursrand daarop iets doet verschilt per browser (Firefox
+   negeert hem). Wat er dan overblijft is alleen de zachte gloed, en die komt volgens de
+   meting in het commentaar hierboven op 1,88:1 — ruim onder de 3:1 die een bediening
+   moet halen (ronde 61).
+
+   In een browser nagemeten op de nieuwe kaart "Wat wil je zien?": `outline: 0px none`.
+   Die kaart zet negen vinkjes onder elkaar als hóófdbediening, dus het viel daar op —
+   maar de app heeft er ook in vier andere schermen. Deze regel staat ná de regel
+   hierboven en wint dus bij gelijke specificiteit.
+
+   ⚠ De offset wijst naar BUITEN, en dat mag hier: een vinkje staat nooit tegen de rand
+   van een `.lijst` (er zit altijd een `rij-teken` of padding naast), dus de
+   `overflow: hidden` van die lijst knipt niets weg. Nagemeten: 50 px van de rand. */
+input[type='checkbox']:focus-visible,
+input[type='radio']:focus-visible {
+  outline: 3px solid var(--focus-rand);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
 button:focus-visible,
 a:focus-visible,
 [tabindex]:focus-visible {
@@ -2940,6 +2963,24 @@ a {
   gap: 12px;
   padding: 16px 18px 12px;
   border-bottom: 1px solid var(--divider);
+  flex-shrink: 0;
+}
+
+/* ⚠ RONDE 76 — HET KRUISJE VAN ELKE POPUP WAS TE SMAL. In een echte browser
+   gemeten op 320 px: 26 px breed, en op 393 px 34 px. `.knop-kaal` zet wel
+   `width: 44px`, maar in een flexrij mag een item krimpen tot zijn eigen inhoud —
+   en de inhoud is één teken "×". De regel van ronde 61 (raakdoelen zijn 44 × 44,
+   in de BREEDTE én in de hoogte) sneuvelde dus in élke popup van de app, precies
+   op de schermen waar je met je duim mikt.
+
+   `flex-shrink: 0` en niet `min-width`: de knop hoort gewoon nooit te krimpen, en
+   zo blijft de bestaande breedte van `.knop-kaal` de enige plek waar dat getal
+   staat. De titel ernaast heeft `flex: 1` nodig noch gekregen — die breekt af over
+   twee regels, wat op 320 px sowieso al gebeurde.
+
+   ⚠ Deze regel staat LATER in het bestand dan `.knop-kaal` (en is bovendien
+   specifieker), dus ze wint. */
+.dialoog-kop > .knop {
   flex-shrink: 0;
 }
 

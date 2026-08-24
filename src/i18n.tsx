@@ -52,8 +52,6 @@ const en: Record<string, string> = {
   // Ronde 66 — slotronde, vierde reeks
   'Deze tab rekent uit wat er overblijft van je inkomen. Daarvoor moet ze weten wat er binnenkomt en wat er elke maand vastligt — en dat moet ergens vanaf gaan. Begin dus bij een rekening.':
     'This tab works out what is left of your income. For that it needs to know what comes in and what is committed each month — and that has to come out of something. So start with an account.',
-  'Bovenaan de app op je beginscherm zetten, kleuren, taal en meldingen. Daarna alles rond het bewaren van je gegevens, dan je gezinsleden, en helemaal onderaan de knop die alles wist.':
-    'At the top: adding the app to your home screen, colours, language and alerts. Then everything about keeping your data safe, then your household members, and right at the bottom the button that erases everything.',
   'Niets om te melden. Zodra er iets je aandacht nodig heeft — een budget dat vol raakt, een garantie die afloopt, een vaste last die nog niet geboekt is — zie je het hier.':
     'Nothing to report. As soon as something needs your attention — a budget filling up, a warranty running out, a fixed cost not yet entered — you will see it here.',
   'Alle budgetten': 'All budgets',
@@ -325,6 +323,20 @@ const en: Record<string, string> = {
   'Gezinslid verwijderen?': 'Delete family member?',
   '{naam} verwijderen?': 'Delete {naam}?',
   'Liever archiveren': 'Archive instead',
+  // Ronde 76 — de vraag vóór het verwijderen van een vaste last.
+  'Vaste post verwijderen?': 'Delete recurring item?',
+  'Liever opzeggen': 'End it instead',
+  'Hier hangt nog dit aan:': 'This is still attached to it:',
+  'Er hangt niets aan deze kost.': 'Nothing is attached to this cost.',
+  'De app kan hier niet nakijken wat er aan deze kost hangt.': 'The app cannot check here what is attached to this cost.',
+  '{n} boeking(en) die je hier inboekte': '{n} entry/entries you booked here',
+  'Ze blijven staan als gewone boeking; alleen de knop "Uitboeken" verdwijnt, want die hoort bij de kost.': 'They stay as ordinary entries; only the "Unrecord" button disappears, because it belongs to the cost.',
+  '{n} boeking(en) waarvan je zei dat ze deze kost zijn': '{n} entry/entries you marked as this cost',
+  'Ze blijven staan en tellen daarna weer mee als een gewone boeking — de app mag ze dus opnieuw bij een andere vaste last voorstellen.': 'They stay and count as ordinary entries again — so the app may suggest them for another fixed cost.',
+  '{n} spaardoel(en) sparen hiervoor': '{n} savings goal(s) save for this',
+  'Ze blijven lopen, maar weten daarna niet meer waarvoor.': 'They keep running, but no longer know what for.',
+  'Zet je hem stop? Vul dan "Loopt tot en met" in — de maand die je daar kiest, is de laatste keer dat hij meetelt. De kost blijft in je historiek staan.': 'Are you ending it? Then fill in "Runs through" — the month you pick there is the last time it counts. The cost stays in your history.',
+  'Bedenk je je meteen, dan zet "Ongedaan maken" onderaan het scherm de kost terug — mét al deze koppelingen.': 'Change your mind right away and "Undo" at the bottom of the screen brings the cost back — with all these links.',
   'Deze naam wordt nu nog gebruikt in:': 'This name is still used in:',
   'Dit gezinslid wordt nergens gebruikt.': 'This family member is not used anywhere.',
   'Verwijder je het lid, dan blijft het overal waar het al gebruikt is als naamloze verwijzing staan. Archiveren haalt het alleen uit de keuzelijsten en laat elke naam staan.':
@@ -513,7 +525,10 @@ const en: Record<string, string> = {
   'Kost verwijderd': 'Expense deleted',
   'Spaardoel verwijderd': 'Savings goal deleted',
   'Subcategorie verwijderd': 'Subcategory deleted',
-  'Vaste post verwijderd': 'Recurring item deleted',
+  // Ronde 76 — de ongedaan-balk zegt WELKE vaste last weg is en wat er aan hing.
+  '{naam} verwijderd, {n} boeking(en) blijven staan': '{naam} deleted, {n} entry/entries stay',
+  '{naam} verwijderd, {n} spaardoel(en) blijven lopen': '{naam} deleted, {n} savings goal(s) keep running',
+  '{naam} verwijderd, {n} boeking(en) blijven staan en {d} spaardoel(en) blijven lopen': '{naam} deleted, {n} entry/entries stay and {d} savings goal(s) keep running',
   'Overboeking verwijderd': 'Transfer deleted',
   // Rekeningformulier
   'Rekeningnaam': 'Account name',
@@ -2660,6 +2675,38 @@ const en: Record<string, string> = {
   'Je plan rekent hiervoor met je spaardoel {doel}: {bedrag} per maand.':
     'Your plan uses your savings goal {doel} for this: {bedrag} a month.',
   ' · via je spaardoel {doel}': ' · through your savings goal {doel}',
+  // Ronde 75 — minder tegelijk
+  'Wat wil je zien?': 'What do you want to see?',
+  'Zet uit wat je niet gebruikt. Het verdwijnt alleen uit je menu — er gaat niets verloren, en je kan het hier altijd terugzetten.':
+    'Switch off what you do not use. It only disappears from your menu — nothing is lost, and you can always bring it back here.',
+  'Toon me alleen de basis': 'Show me just the basics',
+  'Zet alles weer aan': 'Switch everything back on',
+  'Hier staat nog 1 ding in. Het blijft bewaard.': 'There is still 1 thing in here. It stays saved.',
+  'Hier staan nog {n} dingen in. Ze blijven bewaard.': 'There are still {n} things in here. They stay saved.',
+  'Kosten delen met de andere ouder, geld dat je uitleende, en je garantiebewijzen.':
+    'Sharing costs with the other parent, money you lent out, and your proofs of warranty.',
+  'Grafieken over waar je geld naartoe ging, en hoe dat evolueert.':
+    'Charts showing where your money went, and how that changes over time.',
+  'Het bestand van je bank inlezen in plaats van je boekingen zelf in te tikken.':
+    'Reading in your bank file instead of typing your entries yourself.',
+  'Een maand rondmaken: staat alles erin, en wat hield je over?':
+    'Rounding off a month: is everything in, and what did you have left?',
+  'De lijst waarin je boekingen ingedeeld worden, aanpassen of uitbreiden.':
+    'Adjusting or extending the list your entries get sorted into.',
+  'Losse rekenmachines: hoeveel per maand voor een doel, en wat een indexatie doet.':
+    'Standalone calculators: how much a month for a goal, and what indexation does.',
+  'Een overzicht van de uitgaven die je op je belastingbrief kan zetten.':
+    'An overview of the expenses you can put on your tax return.',
+  'Wat elk gezinslid je per maand kost.': 'What each family member costs you per month.',
+  'Bovenaan kies je wat je in de app wil zien, en zet je de app op je beginscherm. Daarna kleuren, taal en meldingen; dan alles rond het bewaren van je gegevens, je gezinsleden, en helemaal onderaan de knop die alles wist.':
+    'At the top you choose what you want to see in the app, and put the app on your home screen. Then colours, language and alerts; then everything about keeping your data safe, your family members, and right at the bottom the button that wipes everything.',
+  'Alle pagina\'s staan aan.': 'Every page is switched on.',
+  'Eén pagina staat uit.': 'One page is switched off.',
+  '{n} pagina\'s staan uit.': '{n} pages are switched off.',
+  'Een uitgezette pagina verdwijnt uit je menu, maar blijft bestaan: alles wat erin staat blijft bewaard, en hier zet je haar met één tik terug.':
+    'A page you switch off disappears from your menu but keeps existing: everything in it stays saved, and one tap here brings it back.',
+  'Potjes voor later: een buffer, een grote aankoop, of sparen voor een jaarafrekening.':
+    'Pots for later: a buffer, a big purchase, or saving up for a yearly bill.',
 }
 const fr: Record<string, string> = {
   // Ronde 66 — dernière relecture : la première étape là où elle manquait encore
@@ -2694,8 +2741,6 @@ const fr: Record<string, string> = {
   // Ronde 66 — dernière relecture, quatrième série
   'Deze tab rekent uit wat er overblijft van je inkomen. Daarvoor moet ze weten wat er binnenkomt en wat er elke maand vastligt — en dat moet ergens vanaf gaan. Begin dus bij een rekening.':
     'Cet onglet calcule ce qu’il reste de tes revenus. Pour cela, il doit savoir ce qui rentre et ce qui est engagé chaque mois — et cela doit bien partir de quelque part. Commence donc par un compte.',
-  'Bovenaan de app op je beginscherm zetten, kleuren, taal en meldingen. Daarna alles rond het bewaren van je gegevens, dan je gezinsleden, en helemaal onderaan de knop die alles wist.':
-    'En haut : ajouter l’app à ton écran d’accueil, les couleurs, la langue et les alertes. Ensuite tout ce qui concerne la conservation de tes données, puis les membres de ton foyer, et tout en bas le bouton qui efface tout.',
   'Niets om te melden. Zodra er iets je aandacht nodig heeft — een budget dat vol raakt, een garantie die afloopt, een vaste last die nog niet geboekt is — zie je het hier.':
     'Rien à signaler. Dès que quelque chose demande ton attention — un budget qui se remplit, une garantie qui expire, une charge fixe pas encore encodée — tu le verras ici.',
   'Alle budgetten': 'Tous les budgets',
@@ -2968,6 +3013,20 @@ const fr: Record<string, string> = {
   'Gezinslid verwijderen?': 'Supprimer ce membre du foyer ?',
   '{naam} verwijderen?': 'Supprimer {naam} ?',
   'Liever archiveren': 'Plutôt archiver',
+  // Ronde 76
+  'Vaste post verwijderen?': 'Supprimer le poste fixe ?',
+  'Liever opzeggen': 'Plutôt résilier',
+  'Hier hangt nog dit aan:': 'Voici ce qui y est encore lié :',
+  'Er hangt niets aan deze kost.': 'Rien n’est lié à cette charge.',
+  'De app kan hier niet nakijken wat er aan deze kost hangt.': 'L’app ne peut pas vérifier ici ce qui est lié à cette charge.',
+  '{n} boeking(en) die je hier inboekte': '{n} écriture(s) que tu as enregistrée(s) ici',
+  'Ze blijven staan als gewone boeking; alleen de knop "Uitboeken" verdwijnt, want die hoort bij de kost.': 'Elles restent comme écritures ordinaires ; seul le bouton « Annuler l’écriture » disparaît, car il appartient à la charge.',
+  '{n} boeking(en) waarvan je zei dat ze deze kost zijn': '{n} écriture(s) que tu as désignée(s) comme cette charge',
+  'Ze blijven staan en tellen daarna weer mee als een gewone boeking — de app mag ze dus opnieuw bij een andere vaste last voorstellen.': 'Elles restent et comptent à nouveau comme des écritures ordinaires — l’app peut donc les proposer pour une autre charge fixe.',
+  '{n} spaardoel(en) sparen hiervoor': '{n} objectif(s) d’épargne épargnent pour cette charge',
+  'Ze blijven lopen, maar weten daarna niet meer waarvoor.': 'Ils continuent, mais ne savent plus pour quoi.',
+  'Zet je hem stop? Vul dan "Loopt tot en met" in — de maand die je daar kiest, is de laatste keer dat hij meetelt. De kost blijft in je historiek staan.': 'Tu l’arrêtes ? Remplis alors « Court jusqu’en » : le mois que tu choisis est la dernière fois qu’elle compte. La charge reste dans ton historique.',
+  'Bedenk je je meteen, dan zet "Ongedaan maken" onderaan het scherm de kost terug — mét al deze koppelingen.': 'Si tu changes d’avis tout de suite, « Annuler » en bas de l’écran te rend la charge — avec tous ces liens.',
   'Deze naam wordt nu nog gebruikt in:': 'Ce nom est encore utilisé dans :',
   'Dit gezinslid wordt nergens gebruikt.': 'Ce membre du foyer n’est utilisé nulle part.',
   'Verwijder je het lid, dan blijft het overal waar het al gebruikt is als naamloze verwijzing staan. Archiveren haalt het alleen uit de keuzelijsten en laat elke naam staan.':
@@ -3229,7 +3288,10 @@ const fr: Record<string, string> = {
   'Kost verwijderd': 'Frais supprimés',
   'Spaardoel verwijderd': 'Objectif d’épargne supprimé',
   'Subcategorie verwijderd': 'Sous-catégorie supprimée',
-  'Vaste post verwijderd': 'Poste fixe supprimé',
+  // Ronde 76
+  '{naam} verwijderd, {n} boeking(en) blijven staan': '{naam} supprimé, {n} écriture(s) restent',
+  '{naam} verwijderd, {n} spaardoel(en) blijven lopen': '{naam} supprimé, {n} objectif(s) d’épargne continuent',
+  '{naam} verwijderd, {n} boeking(en) blijven staan en {d} spaardoel(en) blijven lopen': '{naam} supprimé, {n} écriture(s) restent et {d} objectif(s) d’épargne continuent',
   'Overboeking verwijderd': 'Virement supprimé',
   // Rekeningformulier
   'Rekeningnaam': 'Nom du compte',
@@ -5306,6 +5368,38 @@ const fr: Record<string, string> = {
   'Je plan rekent hiervoor met je spaardoel {doel}: {bedrag} per maand.':
     'Ton plan suit ici ton objectif d’épargne {doel} : {bedrag} par mois.',
   ' · via je spaardoel {doel}': ' · via ton objectif d’épargne {doel}',
+  // Ronde 75 — moins à la fois
+  'Wat wil je zien?': 'Que veux-tu voir ?',
+  'Zet uit wat je niet gebruikt. Het verdwijnt alleen uit je menu — er gaat niets verloren, en je kan het hier altijd terugzetten.':
+    'Désactive ce que tu n’utilises pas. Cela disparaît seulement de ton menu — rien n’est perdu, et tu peux toujours le remettre ici.',
+  'Toon me alleen de basis': 'Montre-moi seulement l’essentiel',
+  'Zet alles weer aan': 'Tout réactiver',
+  'Hier staat nog 1 ding in. Het blijft bewaard.': 'Il y a encore 1 élément ici. Il reste conservé.',
+  'Hier staan nog {n} dingen in. Ze blijven bewaard.': 'Il y a encore {n} éléments ici. Ils restent conservés.',
+  'Kosten delen met de andere ouder, geld dat je uitleende, en je garantiebewijzen.':
+    'Partager des frais avec l’autre parent, l’argent que tu as prêté, et tes preuves de garantie.',
+  'Grafieken over waar je geld naartoe ging, en hoe dat evolueert.':
+    'Des graphiques sur où ton argent est passé, et comment cela évolue.',
+  'Het bestand van je bank inlezen in plaats van je boekingen zelf in te tikken.':
+    'Importer le fichier de ta banque au lieu d’encoder tes écritures toi-même.',
+  'Een maand rondmaken: staat alles erin, en wat hield je over?':
+    'Boucler un mois : tout est-il encodé, et que t’est-il resté ?',
+  'De lijst waarin je boekingen ingedeeld worden, aanpassen of uitbreiden.':
+    'Adapter ou étendre la liste dans laquelle tes écritures sont classées.',
+  'Losse rekenmachines: hoeveel per maand voor een doel, en wat een indexatie doet.':
+    'Des calculettes séparées : combien par mois pour un objectif, et ce que fait une indexation.',
+  'Een overzicht van de uitgaven die je op je belastingbrief kan zetten.':
+    'Un aperçu des dépenses que tu peux porter sur ta déclaration fiscale.',
+  'Wat elk gezinslid je per maand kost.': 'Ce que chaque membre du ménage te coûte par mois.',
+  'Bovenaan kies je wat je in de app wil zien, en zet je de app op je beginscherm. Daarna kleuren, taal en meldingen; dan alles rond het bewaren van je gegevens, je gezinsleden, en helemaal onderaan de knop die alles wist.':
+    'En haut, tu choisis ce que tu veux voir dans l’application et tu l’ajoutes à ton écran d’accueil. Ensuite les couleurs, la langue et les alertes ; puis tout ce qui concerne la conservation de tes données, les membres de ton ménage, et tout en bas le bouton qui efface tout.',
+  'Alle pagina\'s staan aan.': 'Toutes les pages sont activées.',
+  'Eén pagina staat uit.': 'Une page est désactivée.',
+  '{n} pagina\'s staan uit.': '{n} pages sont désactivées.',
+  'Een uitgezette pagina verdwijnt uit je menu, maar blijft bestaan: alles wat erin staat blijft bewaard, en hier zet je haar met één tik terug.':
+    'Une page désactivée disparaît de ton menu mais continue d’exister : tout ce qu’elle contient reste conservé, et une seule pression ici la remet.',
+  'Potjes voor later: een buffer, een grote aankoop, of sparen voor een jaarafrekening.':
+    'Des cagnottes pour plus tard : une réserve, un gros achat, ou épargner pour une facture annuelle.',
 }
 const woordenboeken: Record<Taal, Record<string, string>> = { nl: {}, en, fr }
 

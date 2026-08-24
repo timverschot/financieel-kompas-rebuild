@@ -13,6 +13,7 @@ import {
   bewaarKind,
   bewaarLening,
   bewaarRekening,
+  bewaarSpaardoel,
   bewaarTerugkerendePost,
   bewaarTransactie,
 } from './data/repository'
@@ -2685,5 +2686,178 @@ describe('Overzicht — Wat komt eraan', () => {
     await user.click(screen.getByRole('button', { name: 'Vorige maand' }))
 
     expect(bijschrift()).toBe(voor)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 76 — een vaste last verwijderen die ergens aan hangt
+// ---------------------------------------------------------------------------
+describe('een vaste last verwijderen die ergens aan hangt (ronde 76)', () => {
+  async function huurMetGeboekteBetaling() {
+    await bewaarTerugkerendePost({
+      id: 'p-huur',
+      omschrijving: 'Huur',
+      bedrag: -95000,
+      rekeningId: 'r1',
+      dag: 3,
+    })
+    // Precies het id dat "Boek in" maakt, zodat de boeking aantoonbaar van deze post is.
+    await bewaarTransactie({
+      id: `tk-p-huur-${MAAND}`,
+      datum: `${MAAND}-03`,
+      omschrijving: 'Huur',
+      bedrag: -95000,
+      rekeningId: 'r1',
+    })
+  }
+
+  it('vraagt eerst wat eraan hangt, en zegt daarna op de balk wat er bleef staan', async () => {
+    // ⚠ Deze test gaat over de BEDRADING (les van ronde 68 en 75): de telling in het
+    // venster en de zin op de ongedaan-balk komen allebei uit App.tsx, en zonder deze
+    // test kon je die koppeling weghalen zonder één rode test.
+    await huurMetGeboekteBetaling()
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+
+    await user.click(await screen.findByRole('button', { name: 'Verwijder vaste post Huur' }))
+    expect(await screen.findByRole('heading', { name: 'Huur verwijderen?' })).toBeInTheDocument()
+    expect(screen.getByText('1 boeking(en) die je hier inboekte')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Ja, verwijder' }))
+
+    // Twee treffers: de undo-balk zelf en het live-gebied dat hem voorleest.
+    expect(await screen.findAllByText('Huur verwijderd, 1 boeking(en) blijven staan')).not.toHaveLength(0)
+    // De boeking is NIET mee weg: dat is precies wat het venster beloofde.
+    await waitFor(async () => expect(await db.terugkerendePosten.count()).toBe(0))
+    expect(await db.transacties.get(`tk-p-huur-${MAAND}`)).toBeDefined()
+  })
+
+  it('zet met "Ongedaan maken" de kost én de koppeling terug', async () => {
+    // ⚠ De belofte in het venster ("mét al deze koppelingen") is hiermee nagerekend
+    // en geen troostwoord.
+    await bewaarTerugkerendePost({
+      id: 'p-huur',
+      omschrijving: 'Huur',
+      bedrag: -95000,
+      rekeningId: 'r1',
+      dag: 3,
+    })
+    await bewaarTransactie({
+      id: 'tx-zelf',
+      datum: `${MAAND}-03`,
+      omschrijving: 'Huur',
+      bedrag: -95000,
+      rekeningId: 'r1',
+      vasteLastId: 'p-huur',
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+
+    await user.click(await screen.findByRole('button', { name: 'Verwijder vaste post Huur' }))
+    await user.click(await screen.findByRole('button', { name: 'Ja, verwijder' }))
+    await screen.findAllByText('Huur verwijderd, 1 boeking(en) blijven staan')
+
+    await user.click(screen.getByRole('button', { name: 'Ongedaan maken' }))
+
+    await waitFor(async () => expect(await db.terugkerendePosten.count()).toBe(1))
+    const terug = await db.terugkerendePosten.get('p-huur')
+    expect(terug?.omschrijving).toBe('Huur')
+    // De boeking wees al die tijd naar dit id, dus de koppeling is er weer.
+    expect((await db.transacties.get('tx-zelf'))?.vasteLastId).toBe('p-huur')
+  })
+
+  it('telt ook een spaardoel dat voor deze kost spaart', async () => {
+    // ⚠ De doelentak van de telling loopt via een ándere lijst dan de boekingentak;
+    // zonder deze test kon ze wegvallen zonder één rode test.
+    await bewaarTerugkerendePost({
+      id: 'p-premie',
+      omschrijving: 'Autoverzekering',
+      bedrag: -60000,
+      rekeningId: 'r1',
+      dag: 5,
+      frequentie: 'jaar',
+      startMaand: MAAND,
+    })
+    await bewaarSpaardoel({
+      id: 'd-premie',
+      naam: 'Autoverzekering',
+      doelbedrag: 60000,
+      huidigBedrag: 0,
+      vasteLastId: 'p-premie',
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+
+    await user.click(await screen.findByRole('button', { name: 'Verwijder vaste post Autoverzekering' }))
+    expect(screen.getByText('1 spaardoel(en) sparen hiervoor')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Ja, verwijder' }))
+
+    expect(
+      await screen.findAllByText('Autoverzekering verwijderd, 1 spaardoel(en) blijven lopen'),
+    ).not.toHaveLength(0)
+    // Het doel blijft bestaan; alleen de kost is weg.
+    expect(await db.spaardoelen.count()).toBe(1)
+  })
+
+  it('stelt de koppelvraag opnieuw over een boeking waarvan de kost verwijderd is', async () => {
+    // ⚠ Het gat dat deze ronde blootlegde. Verwijder je een vaste last, dan blijft de
+    // aanduiding op de boeking staan en wijst ze nergens meer naartoe. Vóór deze ronde
+    // BLOKKEERDE die wees de vraag voor altijd, terwijl "Losmaken" niet meer bestond —
+    // die knop hangt aan de rij van de post. En ondertussen maakte "Boek in" er zonder
+    // één vraag een tweede boeking bij.
+    await bewaarTransactie({
+      id: 't3',
+      datum: `${MAAND}-05`,
+      omschrijving: 'Boodschappen',
+      bedrag: -32000,
+      rekeningId: 'r1',
+      categorieId: 'cat-voeding',
+      vasteLastId: 'p-al-verwijderd',
+    })
+    await bewaarTerugkerendePost({
+      id: 'p-boodschappen',
+      omschrijving: 'Voedselpakket',
+      bedrag: -30000,
+      rekeningId: 'r1',
+      dag: 5,
+      categorieId: 'cat-voeding',
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+
+    await ga(user, 'Boekingen')
+    await screen.findByText('Boodschappen')
+    await user.click(screen.getByRole('button', { name: /^Bewerk Boodschappen/ }))
+    await user.click(screen.getByRole('button', { name: 'Wijzigen' }))
+
+    expect(await screen.findByText(/lijkt op je vaste last Voedselpakket/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Ja, dit is die betaling' }))
+    await waitFor(async () => expect((await db.transacties.get('t3'))?.vasteLastId).toBe('p-boodschappen'))
+  })
+
+  it('wist meteen wanneer er niets aan de kost hangt', async () => {
+    await bewaarTerugkerendePost({
+      id: 'p-los',
+      omschrijving: 'Netflix',
+      bedrag: -1500,
+      rekeningId: 'r1',
+      dag: 8,
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+
+    await user.click(await screen.findByRole('button', { name: 'Verwijder vaste post Netflix' }))
+
+    expect(await screen.findAllByText('Netflix verwijderd')).not.toHaveLength(0)
+    await waitFor(async () => expect(await db.terugkerendePosten.count()).toBe(0))
   })
 })

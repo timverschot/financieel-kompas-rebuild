@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useT } from '../i18n'
 import { LADE_GROEPEN, PAGINAS, PRIMAIR_LINKS, PRIMAIR_RECHTS, SECUNDAIR, type Pagina } from './navigatie'
+import { useInstellingen } from '../instellingen'
+import { toontPagina } from '../utils/appOnderdelen'
 
 const balk: CSSProperties = {
   position: 'fixed',
@@ -196,6 +198,12 @@ export function OnderNavigatie({
   const [focusBinnen, setFocusBinnen] = useState(false)
   const meerKnop = useRef<HTMLButtonElement | null>(null)
   const lade = useRef<HTMLDivElement | null>(null)
+  const { verborgenPaginas } = useInstellingen()
+  const uit = new Set(verborgenPaginas)
+  // ⚠ Dezelfde regel als in het zijpaneel: de pagina waar je NU staat blijft in de
+  // lade staan, ook wanneer ze uitgezet is. Anders verdwijnt de plek waar je bent uit
+  // het enige menu dat je op een telefoon hebt.
+  const zichtbaarInLade = (id: Pagina) => id === actief || toontPagina(id, uit)
   const meerAan = SECUNDAIR.includes(actief) || meerOpen
   const zichtbaar = useBalkZichtbaar(meerOpen || focusBinnen)
   const kies = (p: Pagina) => {
@@ -264,6 +272,15 @@ export function OnderNavigatie({
       >
         {meerOpen && (
           <div ref={lade} style={sheet} id="meer-lade" role="group" aria-label={t('Meer pagina\'s')}>
+            {/* ⚠ GEEN FILTER OP LEGE GROEPEN, en dat is nagerekend (ronde 75,
+                doorlichting). Ik had er een gezet uit vrees voor een kop "Af en toe"
+                boven een leegte — maar die situatie kan niet ontstaan: de groep "Elke
+                maand" bevat Rekeningen, en "Af en toe" bevat Je situatie én
+                Instellingen, en die drie staan bewust niet in `APP_ONDERDELEN`. Een
+                mutatietest beet dan ook niet. Weggehaald in plaats van bewaakt; dat is
+                de derde ronde op rij waarin een niet-bijtende mutatie een dode tak
+                blootlegt in plaats van een testgat. Komt er ooit een groep waarin élke
+                pagina uitzetbaar is, dan hoort de filter terug — mét een test. */}
             {LADE_GROEPEN.map((groep, nr) => (
               // De kop die je ZIET is ook de naam van de groep voor hulpsoftware
               // (`aria-labelledby` in plaats van een eigen `aria-label`). Met allebei
@@ -277,7 +294,7 @@ export function OnderNavigatie({
                 >
                   {t(groep.titel)}
                 </span>
-                {groep.paginas.map((id) => {
+                {groep.paginas.filter(zichtbaarInLade).map((id) => {
               const p = PAGINAS.find((x) => x.id === id)!
               const aan = id === actief
               return (

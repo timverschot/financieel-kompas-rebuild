@@ -40,9 +40,19 @@ export const KOPPEL_MARGE = 0.5
  * categorie doet dus nooit mee: dan blijft alleen "zelfde rekening, ongeveer
  * hetzelfde bedrag" over, en dat is te weinig om iemand een vraag over te stellen.
  */
-function lijktErop(t: Transactie, p: TerugkerendePost, maand: string): boolean {
+function lijktErop(t: Transactie, p: TerugkerendePost, maand: string, bekend: ReadonlySet<string>): boolean {
   // Al beantwoord: een boeking die aan een vaste last hangt, hoort bij díé last.
-  if (t.vasteLastId !== undefined) return false
+  //
+  // ⚠ MAAR EEN WEES TELT NIET MEE (ronde 76). Wijst het antwoord naar een post die
+  // niet meer bestaat — je verwijderde de vaste last — dan gedraagt de boeking zich
+  // weer als een gewone boeking. Zonder deze regel bleef die aanduiding voor altijd
+  // in de weg staan: `vooruitblik.ts` negeert de wees wél (zie de `bekend`-controle
+  // daar), dus de app zei "nog niet geboekt", maar déze functie zweeg — en dan maakte
+  // "Boek in" er zonder één vraag een tweede boeking bij. Precies de dubbele telling
+  // waarvoor ronde 64 gebouwd is, opnieuw bereikbaar via het kruisje. Bovendien was
+  // de aanduiding daarna niet meer weg te krijgen: "Losmaken" staat op de rij van de
+  // post, en die rij is er niet meer.
+  if (t.vasteLastId !== undefined && bekend.has(t.vasteLastId)) return false
   // ⚠ Alleen posten die deze maand ECHT vervallen (nakijkronde ronde 64). Zonder
   // deze regel stelde de app de vraag over een abonnement dat je vorig jaar opzegde
   // en over een jaarpremie die pas in januari vervalt — terwijl de vraag zelf zegt
@@ -90,7 +100,10 @@ export function vasteLastVoorBoeking(
   maand: string,
 ): TerugkerendePost | null {
   const alGeboekt = geboekteVasteLasten([...transacties], [...posten], maand)
-  const kandidaten = posten.filter((p) => !alGeboekt.has(p.id) && lijktErop(boeking, p, maand))
+  // ⚠ Uit de VOLLEDIGE lijst, precies zoals in `vooruitblik.ts`: een koppeling naar
+  // een post die de oproeper toevallig wegfilterde, is geen wees.
+  const bekend = new Set(posten.map((p) => p.id))
+  const kandidaten = posten.filter((p) => !alGeboekt.has(p.id) && lijktErop(boeking, p, maand, bekend))
   return dichtstbij(kandidaten, (p) => Math.abs(boeking.bedrag - p.bedrag))
 }
 
@@ -109,6 +122,7 @@ export function boekingVoorVasteLast(
 ): Transactie | null {
   const alGeboekt = geboekteVasteLasten([...transacties], [...posten], maand)
   if (alGeboekt.has(post.id)) return null
-  const kandidaten = transacties.filter((t) => lijktErop(t, post, maand))
+  const bekend = new Set(posten.map((p) => p.id))
+  const kandidaten = transacties.filter((t) => lijktErop(t, post, maand, bekend))
   return dichtstbij(kandidaten, (t) => Math.abs(t.bedrag - post.bedrag))
 }

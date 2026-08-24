@@ -3,6 +3,8 @@ import { PAGINAS, type Pagina } from './navigatie'
 import { Merkteken } from './Merkteken'
 import { VERSIE } from '../config'
 import { THEMAKEUZES, useThema } from '../thema'
+import { useInstellingen } from '../instellingen'
+import { toontPagina } from '../utils/appOnderdelen'
 import { useT } from '../i18n'
 
 // Vast zijpaneel voor brede schermen (desktop/laptop), naar de V1-logica: merk
@@ -53,6 +55,13 @@ export function Zijbalk({
 }) {
   const { t } = useT()
   const { keuze, zetKeuze } = useThema()
+  const { verborgenPaginas } = useInstellingen()
+  // ⚠ DE PAGINA WAAR JE NU STAAT BLIJFT ALTIJD STAAN (ronde 75). Zet je Analyse uit
+  // terwijl je erop staat, dan zou de knop met `aria-current="page"` onder je vandaan
+  // verdwijnen: het paneel zegt dan nergens meer waar je bent, en je kan er ook niet
+  // met één tik weg. Ze verdwijnt vanzelf zodra je ergens anders heen gaat.
+  const uit = new Set(verborgenPaginas)
+  const zichtbaar = PAGINAS.filter((p) => p.id === actief || toontPagina(p.id, uit))
 
   const fout = statusTekst !== null && /mislukt|fout/i.test(statusTekst)
   const statusLabel = bezig
@@ -109,7 +118,7 @@ export function Zijbalk({
       </button>
 
       <nav aria-label={t('Hoofdnavigatie')} style={{ flex: 1, overflowY: 'auto', padding: '0.6rem 0.5rem' }}>
-        {PAGINAS.map((p) => {
+        {zichtbaar.map((p) => {
           const aan = p.id === actief
           return (
             <button

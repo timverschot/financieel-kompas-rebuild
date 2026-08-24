@@ -134,9 +134,19 @@ describe('vasteLastVoorBoeking', () => {
     expect(vasteLastVoorBoeking(tx(), [laag, hoog], [tx()], MAAND)).toBeNull()
   })
 
-  it('vraagt niets over een boeking die al aan een vaste last hangt', () => {
-    const t = tx({ vasteLastId: 'p-iets-anders' })
-    expect(vasteLastVoorBoeking(t, [post()], [t], MAAND)).toBeNull()
+  it('vraagt niets over een boeking die al aan een BESTAANDE vaste last hangt', () => {
+    const ander = post({ id: 'p-ander', omschrijving: 'Elektriciteit' })
+    const t = tx({ vasteLastId: 'p-ander' })
+    expect(vasteLastVoorBoeking(t, [post(), ander], [t], MAAND)).toBeNull()
+  })
+
+  it('vraagt WÉL opnieuw wanneer die vaste last niet meer bestaat', () => {
+    // ⚠ Ronde 76. Verwijder je de vaste last waarnaar het antwoord wijst, dan is de
+    // boeking weer een gewone boeking. Zonder deze regel bleef die aanduiding voor
+    // altijd in de weg staan — "Losmaken" hangt aan de rij van de post, en die rij is
+    // er niet meer — en maakte "Boek in" er ondertussen stil een tweede boeking bij.
+    const t = tx({ vasteLastId: 'p-weg' })
+    expect(vasteLastVoorBoeking(t, [post()], [t], MAAND)?.id).toBe('p-water')
   })
 })
 
@@ -148,6 +158,14 @@ describe('boekingVoorVasteLast', () => {
   it('zwijgt wanneer de vaste last al afgedekt is', () => {
     const betaald = tx({ id: 't-betaald', bedrag: -3000 })
     expect(boekingVoorVasteLast(post(), [betaald], [post()], MAAND)).toBeNull()
+  })
+
+  it('stelt de vraag opnieuw wanneer de gekoppelde post verwijderd is', () => {
+    // ⚠ Ronde 76, de andere kant op: "Boek in" mag geen tweede boeking bijmaken omdat
+    // een wees de herkenning blokkeerde. € 32 tegenover een post van € 30, met een
+    // aanduiding naar een post die niet meer bestaat.
+    const t = tx({ vasteLastId: 'p-weg' })
+    expect(boekingVoorVasteLast(post(), [t], [post()], MAAND)?.id).toBe('t1')
   })
 
   it('zwijgt wanneer er niets in de buurt staat', () => {

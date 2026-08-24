@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { TerugkerendeSectie } from './TerugkerendeSectie'
-import type { TerugkerendePost } from '../data/schema'
+import type { Spaardoel, TerugkerendePost, Transactie } from '../data/schema'
 
 const rekeningen = [{ id: 'r1', naam: 'Zicht', beginsaldo: 0 }]
 
@@ -518,5 +518,211 @@ describe('TerugkerendeSectie — de lege tekst volgt het formulier', () => {
     toonInkomsten(rekeningen)
     expect(screen.getByText(/Vul hieronder je loon in/)).toBeInTheDocument()
     expect(screen.getByLabelText('Vaste omschrijving')).toBeInTheDocument()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 76 — het kruisje vraagt eerst wat er aan de kost hangt
+// ---------------------------------------------------------------------------
+describe('TerugkerendeSectie — verwijderen vraagt wat eraan hangt', () => {
+  const geboekt: Transactie = {
+    id: 'tk-huur-2026-07',
+    datum: '2026-07-03',
+    omschrijving: 'Huur',
+    bedrag: -95000,
+    rekeningId: 'r1',
+  }
+  const doelVoorHuur: Spaardoel = {
+    id: 'd1',
+    naam: 'Huurpot',
+    doelbedrag: 95000,
+    huidigBedrag: 0,
+    vasteLastId: 'huur',
+  }
+
+  function toonMet(over: {
+    transacties?: Transactie[]
+    spaardoelen?: Spaardoel[]
+    onVerwijderen?: (id: string) => void
+  } = {}) {
+    const onVerwijderen = over.onVerwijderen ?? vi.fn()
+    const r = render(
+      <TerugkerendeSectie
+        posten={[huur]}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        transacties={over.transacties ?? []}
+        spaardoelen={over.spaardoelen ?? []}
+        maand="2026-07"
+        maandLabel="juli 2026"
+        vandaagISO={VANDAAG}
+        onOpslaan={vi.fn()}
+        onVerwijderen={onVerwijderen}
+        onBoek={vi.fn()}
+      />,
+    )
+    return { onVerwijderen, ...r }
+  }
+
+  it('wist METEEN wanneer er niets aan de kost hangt', async () => {
+    // ⚠ Bewust geen venster in dit geval. Er valt niets te vertellen, en de
+    // ongedaan-balk is het vangnet — precies zoals vóór deze ronde.
+    const { onVerwijderen } = toonMet()
+    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(onVerwijderen).toHaveBeenCalledWith('huur')
+  })
+
+  it('vraagt eerst wanneer er een ingeboekte betaling aan hangt', async () => {
+    const { onVerwijderen } = toonMet({ transacties: [geboekt] })
+    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    expect(onVerwijderen).not.toHaveBeenCalled()
+    expect(screen.getByRole('heading', { name: 'Huur verwijderen?' })).toBeInTheDocument()
+    expect(screen.getByText('1 boeking(en) die je hier inboekte')).toBeInTheDocument()
+    expect(screen.getByText(/Ze blijven staan als gewone boeking/)).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ja, verwijder' }))
+    expect(onVerwijderen).toHaveBeenCalledWith('huur')
+  })
+
+  it('vraagt eerst wanneer er een spaardoel aan hangt', async () => {
+    const { onVerwijderen } = toonMet({ spaardoelen: [doelVoorHuur] })
+    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    expect(onVerwijderen).not.toHaveBeenCalled()
+    expect(screen.getByText('1 spaardoel(en) sparen hiervoor')).toBeInTheDocument()
+  })
+
+  it('telt een boeking die je zélf als deze kost aanduidde', async () => {
+    toonMet({
+      transacties: [
+        { id: 'zelf', datum: '2026-07-03', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', vasteLastId: 'huur' },
+      ],
+    })
+    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    expect(screen.getByText('1 boeking(en) waarvan je zei dat ze deze kost zijn')).toBeInTheDocument()
+  })
+
+  it('houdt de kost wanneer je "Nee, behouden" kiest', async () => {
+    const { onVerwijderen } = toonMet({ transacties: [geboekt] })
+    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Nee, behouden' }))
+    expect(onVerwijderen).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('brengt "Liever opzeggen" naar het bewerkformulier van diezelfde kost', async () => {
+    // ⚠ Anders is het een knop die zichtbaar niets doet. Het formulier staat in
+    // bewerkstand zodra er een "Annuleer" naast de opslaanknop verschijnt.
+    const { onVerwijderen } = toonMet({ transacties: [geboekt] })
+    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Liever opzeggen' }))
+    expect(onVerwijderen).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Annuleer' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Vaste omschrijving')).toHaveValue('Huur')
+  })
+
+  it('laat de focus niet naar <body> vallen wanneer de rij verdwijnt', async () => {
+    // ⚠ Huisregel sinds ronde 73: een knop die zichzelf uit het scherm haalt, laat de
+    // focus vallen — en dan sta je met je toetsenbord weer bovenaan de pagina.
+    toonMet()
+    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    expect(document.activeElement).not.toBe(document.body)
+    expect(document.activeElement?.textContent).toBe('Vaste lasten')
+  })
+})
+
+describe('TerugkerendeSectie — het venster in bewegende toestanden (ronde 76)', () => {
+  const geboekt: Transactie = {
+    id: 'tk-huur-2026-07',
+    datum: '2026-07-03',
+    omschrijving: 'Huur',
+    bedrag: -95000,
+    rekeningId: 'r1',
+  }
+
+  function schil(posten: TerugkerendePost[]) {
+    return (
+      <TerugkerendeSectie
+        posten={posten}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        transacties={[geboekt]}
+        maand="2026-07"
+        maandLabel="juli 2026"
+        vandaagISO={VANDAAG}
+        onOpslaan={vi.fn()}
+        onVerwijderen={vi.fn()}
+        onBoek={vi.fn()}
+      />
+    )
+  }
+
+  it('sluit zichzelf wanneer de post intussen elders verdwenen is', async () => {
+    // ⚠ De app haalt elke 45 seconden stil nieuwe gegevens op. Hield het venster
+    // een KOPIE van de post vast, dan bleef het staan met een oude naam en gaf
+    // "Ja, verwijder" zichtbaar niets — er is geen record meer om te herstellen, dus
+    // ook geen ongedaan-balk.
+    const { rerender } = render(schil([huur]))
+    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    expect(screen.getByRole('heading', { name: 'Huur verwijderen?' })).toBeInTheDocument()
+
+    rerender(schil([]))
+    expect(screen.queryByRole('heading', { name: 'Huur verwijderen?' })).not.toBeInTheDocument()
+  })
+
+  it('volgt een naamswijziging die van een ander toestel binnenkomt', async () => {
+    const { rerender } = render(schil([huur]))
+    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+
+    rerender(schil([{ ...huur, omschrijving: 'Huur appartement' }]))
+    expect(screen.getByRole('heading', { name: 'Huur appartement verwijderen?' })).toBeInTheDocument()
+  })
+
+  it('geeft de focus terug aan het kruisje na "Nee, behouden"', async () => {
+    // ⚠ Dat is wat `Dialoog` belooft: de focus komt terug naar de knop waarmee je de
+    // popup opende. Die knop staat er nog — er is immers niets gewist.
+    render(schil([huur]))
+    const kruisje = screen.getByRole('button', { name: 'Verwijder vaste post Huur' })
+    await userEvent.click(kruisje)
+    await userEvent.click(screen.getByRole('button', { name: 'Nee, behouden' }))
+    expect(document.activeElement).toBe(kruisje)
+  })
+
+  it('grijpt de cursor NIET bij het opbouwen van het scherm', () => {
+    // ⚠ De teller staat bij het opbouwen op nul, en dan hoort het formulier niets aan
+    // de focus te doen. Zonder die uitzondering sprong de cursor bij élke hertekening
+    // naar het einddatumveld — midden in het invullen van een nieuwe kost.
+    render(schil([huur]))
+    expect(document.activeElement).not.toBe(screen.getByLabelText('Loopt tot en met'))
+  })
+
+  it('sluit zichzelf wanneer de post naar de ándere lijst verhuist', async () => {
+    // Van een vaste last een vaste inkomst maken (op een ander toestel) haalt de rij
+    // uit déze sectie. Dan hoort het venster erover ook hier weg te zijn.
+    const { rerender } = render(schil([huur]))
+    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    expect(screen.getByRole('heading', { name: 'Huur verwijderen?' })).toBeInTheDocument()
+
+    rerender(schil([{ ...huur, bedrag: 95000 }]))
+    expect(screen.queryByRole('heading', { name: 'Huur verwijderen?' })).not.toBeInTheDocument()
+  })
+
+  it('verzet de cursor NIET wanneer je gewoon op het potloodje klikt', async () => {
+    // ⚠ De tegenhanger van de test hieronder: het formulier mag niet bij élke
+    // bewerkbeurt naar het einddatumveld springen — alleen wanneer je erom vroeg.
+    render(schil([huur]))
+    const potlood = screen.getByRole('button', { name: 'Bewerk vaste post Huur' })
+    await userEvent.click(potlood)
+    expect(document.activeElement).not.toBe(screen.getByLabelText('Loopt tot en met'))
+  })
+
+  it('zet met "Liever opzeggen" de cursor in "Loopt tot en met"', async () => {
+    // ⚠ Zonder dit gebeurde er zichtbaar niets: het formulier staat gewoon op de
+    // pagina, soms tien vaste lasten naar beneden.
+    render(schil([huur]))
+    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Liever opzeggen' }))
+    expect(document.activeElement).toBe(screen.getByLabelText('Loopt tot en met'))
   })
 })

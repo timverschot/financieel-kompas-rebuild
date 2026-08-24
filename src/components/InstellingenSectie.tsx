@@ -7,6 +7,9 @@ import { useThema, THEMAKEUZES } from '../thema'
 import { useInstellingen } from '../instellingen'
 import { BUDGETDREMPELS } from '../utils/meldingen'
 import { InstallerenKaart } from './InstallerenKaart'
+import { OnderdelenKaart } from './OnderdelenKaart'
+import { wisselPagina } from '../utils/appOnderdelen'
+import type { Pagina } from './navigatie'
 import { DriveKaart } from './DriveKaart'
 import { BackupKaart } from './BackupKaart'
 import type { OpslagToestand } from '../data/opslag'
@@ -42,6 +45,7 @@ export function InstellingenSectie({
   laatsteBackupOp,
   laatsteSyncOp,
   opslag,
+  onderdeelInhoud,
 }: {
   taal: Taal
   zetTaal: (t: Taal) => void
@@ -71,10 +75,15 @@ export function InstellingenSectie({
   laatsteSyncOp?: string
   /** Of de browser deze database blijvend bewaart (ronde 63). */
   opslag?: OpslagToestand
+  /**
+   * Hoeveel er in elk uitzetbaar onderdeel zit (ronde 75). Alleen om te kunnen zeggen
+   * dat een uitgezet onderdeel nog gegevens draagt; zie `OnderdelenKaart`.
+   */
+  onderdeelInhoud?: Partial<Record<Pagina, number>>
 }) {
   const { t } = useT()
   const { keuze, zetKeuze } = useThema()
-  const { budgetDrempel, zetBudgetDrempel } = useInstellingen()
+  const { budgetDrempel, zetBudgetDrempel, verborgenPaginas, zetVerborgenPaginas } = useInstellingen()
 
   // "Begin opnieuw": de knop opent eerst een bevestiging waarin je een woord moet
   // typen. Zo kan je nooit met één misklik al je gegevens kwijtraken.
@@ -130,12 +139,28 @@ export function InstellingenSectie({
         // "taal", maar de eerste kaart is "Op je beginscherm zetten" en daarna komen
         // kleuren en pas dán taal. Een wegwijzer die zelf de weg kwijt is, is erger
         // dan geen wegwijzer.
-        bijschrift={t('Bovenaan de app op je beginscherm zetten, kleuren, taal en meldingen. Daarna alles rond het bewaren van je gegevens, dan je gezinsleden, en helemaal onderaan de knop die alles wist.')}
+        //
+        // ⚠ RONDE 75: en toen klopte ze weer niet, want er kwam een kaart bij ("Wat wil
+        // je zien?") die bewust vooraan gezet is — precies de kaart die de rest van de
+        // app rustiger maakt, en ze stond niet in de wegwijzer. Dezelfde fout, negen
+        // rondes later. Wie hier een kaart bijzet, hoort deze zin mee te lezen.
+        bijschrift={t('Bovenaan kies je wat je in de app wil zien, en zet je de app op je beginscherm. Daarna kleuren, taal en meldingen; dan alles rond het bewaren van je gegevens, je gezinsleden, en helemaal onderaan de knop die alles wist.')}
       />
 
       {/* Op het beginscherm zetten. Staat vooraan, want zolang de app in een
           browsertab leeft, voelt ze niet als een app. */}
       <InstallerenKaart />
+
+      {/* ⚠ BOVENAAN, en dat is een keuze (ronde 75). De doorlichting van augustus
+          noemde Instellingen "negen kaarten in omgekeerde volgorde van belang". Dit is
+          de kaart die de rest van de app rustiger maakt; ze hoort niet onder een
+          keuzelijst voor licht/donker te liggen. */}
+      <OnderdelenKaart
+        verborgen={verborgenPaginas}
+        onWissel={(pg) => zetVerborgenPaginas(wisselPagina(new Set(verborgenPaginas), pg))}
+        onZetAlles={zetVerborgenPaginas}
+        gegevens={onderdeelInhoud}
+      />
 
       {/* Weergave (licht/donker) */}
       <Kaart

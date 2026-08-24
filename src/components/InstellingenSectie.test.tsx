@@ -219,3 +219,33 @@ describe('InstellingenSectie — meldingen en privacy', () => {
     expect(screen.getByText(/niet extra versleuteld/)).toBeInTheDocument()
   })
 })
+
+
+describe('InstellingenSectie — "Wat wil je zien?" (ronde 75)', () => {
+  it('zet de kaart op de pagina', () => {
+    // ⚠ Dit is de ENIGE plek waar je een uitgezette pagina kan terugzetten. Haalde
+    // iemand de kaart hier weg, dan had de gebruiker geen weg terug — precies de val
+    // die deze ronde moest uitroeien. En geen enkele test merkte het.
+    toon()
+    expect(screen.getByRole('heading', { name: 'Wat wil je zien?' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Analyse' })).toBeInTheDocument()
+  })
+
+  it('bewaart een uitgezette pagina, ook na hertekenen', async () => {
+    // De volledige lus: vinkje uit → de context schrijft het weg → de kaart leest het
+    // terug. Zonder deze test was de hele bedrading van deze ronde ongedekt.
+    const user = userEvent.setup()
+    toon()
+    await user.click(screen.getByRole('checkbox', { name: 'Analyse' }))
+    expect(screen.getByRole('checkbox', { name: 'Analyse' })).not.toBeChecked()
+    expect(JSON.parse(localStorage.getItem('fk_verborgen_paginas') ?? '[]')).toEqual(['analyse'])
+  })
+
+  it('noemt de kaart in de zin onder de titel', () => {
+    // ⚠ Ronde 66 zette die zin al eens recht ("een wegwijzer die zelf de weg kwijt is,
+    // is erger dan geen wegwijzer") en ronde 75 brak hem opnieuw door er een kaart
+    // vóór te zetten. Deze test is het vangnet daartegen.
+    toon()
+    expect(screen.getByText(/kies je wat je in de app wil zien/)).toBeInTheDocument()
+  })
+})

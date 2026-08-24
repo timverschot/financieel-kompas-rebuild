@@ -178,6 +178,7 @@ import { saldoVerrekeningDossier } from './utils/dossier'
 import { kostenVoorAfrekening, type AfrekeningFilter } from './utils/afrekening'
 import { kostenOmTeHeropenen, kostenVanAfrekening } from './utils/afrekeningverwijdering'
 import { telGezinslidGebruik } from './utils/gezinslidverwijdering'
+import { telVasteLastVerwijzingen, vasteLastUndoTekst } from './utils/vastelastverwijdering'
 import { categorieUndoTekst, telCategorieVerwijderen } from './utils/categorieverwijdering'
 import { nieuwId } from './data/sync/id'
 import { inkomstenPerCategorie, maandInkomsten, maandUitgaven, uitgavenPerCategorie, type CategorieUitgave } from './utils/overzicht'
@@ -1051,7 +1052,16 @@ export function App() {
     // De lijst wordt hier zelf samengesteld en niet uit de state gehaald: `herlaad`
     // zet die pas bij de volgende hertekening, en dan zou deze boeking er nog niet
     // in staan.
-    if (tx.vasteLastId !== undefined) return
+    // ⚠ HIER STOND `if (tx.vasteLastId !== undefined) return` (ronde 76). Die regel is
+    // weg omdat ze een KOPIE was van een regel die `vasteLastVoorBoeking` zelf al
+    // toepast — en de twee liepen uit elkaar. Sinds deze ronde telt daar een WEES niet
+    // meer mee: wijst het antwoord naar een vaste last die je intussen verwijderde, dan
+    // is de vraag weer open. Met de snelweg hierboven bleef die aanduiding voor altijd
+    // in de weg staan, en ze was nergens meer te corrigeren — "Losmaken" hangt aan de
+    // rij van de post, en die rij bestaat niet meer.
+    //
+    // Voor een boeking die aan een BESTAANDE post hangt, verandert er niets: die
+    // functie geeft dan gewoon `null` terug.
     if (gevraagdOverBoeking.current.has(tx.id)) return
     const lijst = [...(transacties ?? []).filter((x) => x.id !== tx.id), tx]
     const post = vasteLastVoorBoeking(tx, terugkerendePosten, lijst, tx.datum.slice(0, 7))
@@ -1489,9 +1499,20 @@ export function App() {
 
   async function verwijderTerugkerend(id: string) {
     const oud = terugkerendePosten.find((p) => p.id === id)
+    // De telling voor de balk, uit dezelfde lijsten als het venster die de gebruiker
+    // net las.
+    //
+    // ⚠ Geen belofte over de VOLGORDE (doorlichting ronde 76). `transacties` en
+    // `spaardoelen` zijn de waarden van déze hertekening; `herlaad()` kan ze binnen
+    // deze functie niet veranderen, en het wissen raakt de boekingen en de doelen
+    // sowieso niet aan. Vóór of ná het wissen tellen geeft hier hetzelfde antwoord.
+    const tel = telVasteLastVerwijzingen(id, { transacties: transacties ?? [], spaardoelen })
     await verwijderTerugkerendePost(id)
     await herlaad()
-    if (oud) toonUndo(t('Vaste post verwijderd'), () => bewaarTerugkerendePost(oud))
+    // ⚠ De balk zei "Vaste post verwijderd" — vier woorden die niet zeggen wélke post
+    // weg is en niet dat er iets aan hing. Wie er drie na elkaar wist, las drie keer
+    // hetzelfde en wist bij "Ongedaan maken" niet wat hij terughaalde.
+    if (oud) toonUndo(vasteLastUndoTekst(t, oud.omschrijving, tel), () => bewaarTerugkerendePost(oud))
   }
 
   // Vanuit het meldingenpaneel komt alleen een id binnen; de post zelf zoeken we
@@ -1591,7 +1612,11 @@ export function App() {
     // Bewust 'tx' en niet 't': 't' is in dit bestand de vertaalfunctie, en die
     // hebben we hieronder nodig voor de ongedaan-maken-melding.
     const tx: Transactie = {
-      id: `tk-${post.id}-${doelMaand}`,
+      // ⚠ Via de functie en niet met de hand (ronde 76): dit id is een AFSPRAAK die
+      // op vier plaatsen gelezen wordt (`geboekteVasteLasten`, `maakInboekenOngedaan`,
+      // de knop "Uitboeken", en sinds deze ronde `isInboekingVan`). Een tweede kopie
+      // van diezelfde afspraak is een tweede plek om ze te breken.
+      id: vasteLastTransactieId(post.id, doelMaand),
       datum: `${doelMaand}-${dag}`,
       omschrijving: post.omschrijving,
       bedrag: post.bedrag,
@@ -2656,7 +2681,12 @@ export function App() {
             onKindVerwijderen={verwijderKindH}
             telGezinslidGebruik={gezinslidGebruik}
             onDossier={voegDossierToe}
-            onNaarPagina={setPagina}
+            // ⚠ `kiesPagina` en niet `setPagina` (ronde 75, doorlichting). Die tweede
+            // verzet de pagina zonder het ADRES mee te zetten: de terugknop bracht je
+            // dan niet terug, en een herlaadbeurt zette je weer op Je situatie. Dat
+            // telt sinds deze ronde extra, want dit is de enige knop in de app die
+            // naar Dossiers wijst — en dus je weg terug wanneer je Dossiers uitzet.
+            onNaarPagina={kiesPagina}
             onNaarBudget={gaNaarBudget}
             veilig={veiligInvoer}
           />
@@ -3194,6 +3224,12 @@ export function App() {
                     onVerwijderen={verwijderTerugkerend}
                     onBoek={(post) => boekTerugkerend(post, maand)}
                     onOngedaan={maakInboekenOngedaan}
+                    // ⚠ Óók hier (doorlichting ronde 76). Een spaardoel koppel je
+                    // alleen aan een UITGAVE, maar een post die je later naar een
+                    // inkomst omzet, houdt zijn koppeling. Zonder deze lijst zou het
+                    // verwijdervenster in deze sectie dat doel niet zien terwijl de
+                    // ongedaan-balk het wél telt — twee tellingen over hetzelfde.
+                    spaardoelen={spaardoelen}
                   />
                 </ErrorBoundary>
 
@@ -3790,6 +3826,29 @@ export function App() {
               laatsteBackupOp={backupMoment.laatsteBackupOp}
               laatsteSyncOp={backupMoment.laatsteSyncOp}
               opslag={opslag}
+              // ⚠ Alleen om te kunnen ZEGGEN dat een uitgezet onderdeel nog gegevens
+              // draagt (regel van ronde 60, hier hergebruikt). Wat er niet in staat,
+              // krijgt gewoon geen regel — beter dan een verzonnen nul.
+              // ⚠ Alleen om te kunnen ZEGGEN dat een uitgezet onderdeel nog gegevens
+              // draagt (regel van ronde 60, hier hergebruikt). Elk cijfer telt álles
+              // wat op die pagina woont, en er staat niets in voor een pagina die
+              // niets bewaart — een verzonnen telling is erger dan geen telling.
+              onderdeelInhoud={{
+                // ⚠ Alle DRIE de laden van Dossiers: co-ouderschap, leningen en
+                // garanties. De uitlegzin op de kaart belooft ze alle drie, en de
+                // lege toestand van die pagina telt ze ook alle drie.
+                dossiers: dossiers.length + leningen.length + garanties.length,
+                spaardoelen: spaardoelen.length,
+                // ⚠ Óók de subcategorieën. Een eigen ITEM bijzetten of een ingebouwd
+                // item hernoemen is wat je op die pagina het vaakst doet, en dat
+                // landt in `subcategorieen` — niet in `categorieen`.
+                categorieen: categorieen.length + subcategorieen.length,
+                maandafsluiting: maandafsluitingen.length,
+                // ⚠ `kindkosten` staat er BEWUST niet in: dat scherm bewaart niets.
+                // Het rekent uit wat elk gezinslid kost uit je boekingen en je
+                // gezinsleden, en die staan allebei ergens anders. "Hier staan nog 2
+                // dingen in" zou een verkeerd beeld geven van waar je gegevens wonen.
+              }}
             />
           </ErrorBoundary>
 
