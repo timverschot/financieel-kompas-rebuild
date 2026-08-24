@@ -1,7 +1,7 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { Aflossing, Lening, Rekening, TerugkerendePost, Transactie } from '../data/schema'
+import type { Aflossing, Categorie, Lening, Rekening, TerugkerendePost, Transactie } from '../data/schema'
 import { OpstellingSectie, type VeiligInvoer } from './OpstellingSectie'
 import { formatEuro } from '../utils/format'
 import { zetOpmaaktaal } from '../utils/opmaaktaal'
@@ -12,6 +12,7 @@ const leeg = {
   overboekingen: [],
   waarderingen: [],
   terugkerendePosten: [] as TerugkerendePost[],
+  categorieen: [] as Categorie[],
   leningen: [] as Lening[],
   aflossingen: [] as Aflossing[],
   gezinsleden: [],
@@ -141,15 +142,58 @@ describe('OpstellingSectie — het slotscherm staat bovenaan en groeit mee', () 
   })
 })
 
-describe('OpstellingSectie — de aanvinklijsten', () => {
-  it('maakt een vaste last met de juiste categorie, het juiste teken en de juiste frequentie', async () => {
+describe('OpstellingSectie — de lijst met voorstellen', () => {
+  // ⚠ RONDE 73. Deze lijst droeg per rij een invoerveld, een periodewoord, een
+  // uitklappaneel met vier velden én een knop — zevenendertig keer onder elkaar.
+  // Timothy: *"Nu zie ik daar een slordige pagina. Ik zie niet in waarom dat invulvak
+  // nodig is."* Het invullen gebeurt nu in het volledige formulier van Budget → Vast,
+  // in een venster. Wat híér getest wordt, is dus wat dit scherm nog zélf doet:
+  // herkennen wat je al hebt, het venster juist voorinvullen, en de weg naar wijzigen
+  // en verwijderen.
+
+  async function naarVasteKosten(gebruiker: ReturnType<typeof userEvent.setup>) {
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+  }
+
+  it('laat de rij rustig: geen invoerveld en geen periodewoord meer', async () => {
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] })
+    await naarVasteKosten(gebruiker)
+
+    expect(screen.queryByRole('textbox', { name: /bedrag per/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /wijzig — Huur/ })).toBeNull()
+    // Wat er wél staat: de naam, wat je al hebt, en één knop.
+    expect(screen.getByRole('button', { name: /^Huur/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Toevoegen — Huur' })).toBeInTheDocument()
+  })
+
+  it('opent het volledige formulier, al ingevuld met het voorstel', async () => {
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] })
+    await naarVasteKosten(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Autoverzekering' }))
+
+    const venster = screen.getByRole('dialog')
+    expect(within(venster).getByLabelText('Vaste omschrijving')).toHaveValue('Autoverzekering')
+    // ⚠ Het ritme komt uit het voorstel: de autoverzekering is een jaarpost. Zonder deze
+    // voorinvulling zou je hem als maandelijks wegschrijven en twaalf keer te veel in je
+    // vaste lasten zetten.
+    expect(within(venster).getByLabelText('Hoe vaak?')).toHaveValue('jaar')
+  })
+
+  it('schrijft weg uit welk voorstel de kost komt', async () => {
+    // ⚠ Zonder dit veld herkent de lijst haar eigen kosten alleen aan hun NAAM, en dan
+    // is een tweede kost met een eigen naam ("Autoverzekering bestelwagen") hier
+    // onvindbaar — precies het gat dat ronde 71 openliet.
     const gebruiker = userEvent.setup()
     const onVastePost = vi.fn()
     toon({ rekeningen: [rekening] }, { onVastePost })
+    await naarVasteKosten(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Huur' }))
 
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.type(screen.getByLabelText('Huur'), '950')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
+    const venster = screen.getByRole('dialog')
+    await gebruiker.type(within(venster).getByLabelText('Vast bedrag (€)'), '950')
+    await gebruiker.click(within(venster).getByRole('button', { name: 'Vaste post toevoegen' }))
 
     expect(onVastePost).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -157,677 +201,473 @@ describe('OpstellingSectie — de aanvinklijsten', () => {
         bedrag: -95000, // negatief: het is een uitgave
         rekeningId: 'r1',
         categorieId: 'i-huur-4062',
+        bronVoorstel: 'huur',
       }),
     )
     // Maandelijks, dus géén frequentie en géén startmaand in het record.
     expect(onVastePost.mock.calls[0][0].frequentie).toBeUndefined()
   })
 
-  // ⚠ RONDE 65. Tien van de voorstellen op dit scherm zijn jaarposten. Het veld
-  // vroeg alleen om "bedrag": wie daar zijn maandbedrag intikte, kreeg een post die
-  // twaalf keer te klein was, zonder één woord van waarschuwing.
-  it('zegt bij elk veld of het om een bedrag per maand of per jaar gaat', async () => {
+  it('herkent een hernoemde kost aan haar herkomst, niet aan haar naam', async () => {
     const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+    const tweede: TerugkerendePost = {
+      id: 'p2',
+      omschrijving: 'Autoverzekering bestelwagen',
+      bedrag: -62000,
+      rekeningId: 'r1',
+      dag: 5,
+      frequentie: 'jaar',
+      startMaand: '2027-03',
+      bronVoorstel: 'autoverzekering',
+    }
+    toon({ rekeningen: [rekening], terugkerendePosten: [tweede] })
+    await naarVasteKosten(gebruiker)
 
-    expect(screen.getByRole('textbox', { name: 'Autoverzekering — bedrag per jaar' })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'Huur — bedrag per maand' })).toBeInTheDocument()
+    const rij = screen.getByRole('button', { name: /^Autoverzekering/ })
+    await gebruiker.click(rij)
+    expect(screen.getByText('Autoverzekering bestelwagen')).toBeInTheDocument()
   })
 
-  it('zet de periode ook in het veld zelf, voor wie geen schermlezer gebruikt', async () => {
+  it('blijft een post van vóór deze ronde herkennen aan haar naam', async () => {
+    // Alles wat al in de app staat draagt geen herkomst. Zonder die terugval zou
+    // iedereen die de app al gebruikte, zijn eigen kosten hier niet meer terugvinden.
     const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+    toon({ rekeningen: [rekening], terugkerendePosten: [{ id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 3 }] })
+    await naarVasteKosten(gebruiker)
 
-    expect(screen.getByLabelText('Autoverzekering')).toHaveAttribute('placeholder', 'bedrag per jaar')
-    expect(screen.getByLabelText('Huur')).toHaveAttribute('placeholder', 'bedrag per maand')
+    expect(screen.getByRole('button', { name: /^Huur/ })).toHaveTextContent(/950,00/)
   })
 
-  it('rekent een jaarbedrag in de bevestiging om naar per maand', async () => {
+  it('herkent een post die onder een andere taal weggeschreven is', async () => {
+    // De omschrijving die weggeschreven wordt is de VERTAALDE naam. Wie zijn huur ingaf
+    // terwijl de app op Frans stond, heeft een post die "Loyer" heet; zet hij de app
+    // daarna op Nederlands, dan moet die post nog steeds onder "Huur" verschijnen.
+    // Zonder deze herkenning zag hij een lege rij en zette hij zijn huur een tweede keer
+    // in zijn vaste lasten.
+    //
+    // ⚠ Bewust ZONDER `zetOpmaaktaal`: die zet alleen de opmaak van datums en bedragen,
+    // niet de schermtaal (die komt uit `TaalContext`, en daar staat hier geen provider
+    // boven). Met die regel erbij leek deze test iets te doen wat ze niet deed.
     const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.type(screen.getByLabelText('Autoverzekering'), '620')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Autoverzekering toe' }))
+    toon({ rekeningen: [rekening], terugkerendePosten: [{ id: 'p1', omschrijving: 'Loyer', bedrag: -95000, rekeningId: 'r1', dag: 3 }] })
+    await naarVasteKosten(gebruiker)
 
-    // € 620 per jaar wordt € 51,67 per maand in de tegels en de buffer. Staat dat
-    // getal er niet bij, dan ontdek je een factor-12-vergissing pas maanden later.
-    const melding = await screen.findByText(/Autoverzekering toegevoegd/)
-    expect(melding).toHaveTextContent('per jaar')
-    expect(melding).toHaveTextContent('51,67')
+    expect(screen.getByRole('button', { name: /^Huur/ })).toHaveTextContent(/950,00/)
   })
 
-  it('zegt bij een maandpost gewoon "per maand", zonder omrekening', async () => {
+  it('klapt open en zegt het wanneer er nog niets staat', async () => {
     const gebruiker = userEvent.setup()
     toon({ rekeningen: [rekening] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.type(screen.getByLabelText('Huur'), '950')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
+    await naarVasteKosten(gebruiker)
 
-    const melding = await screen.findByText(/Huur toegevoegd/)
-    expect(melding).toHaveTextContent('per maand')
-    expect(melding).not.toHaveTextContent('per jaar')
+    const rij = screen.getByRole('button', { name: /^Huur/ })
+    expect(rij).toHaveAttribute('aria-expanded', 'false')
+    await gebruiker.click(rij)
+    expect(rij).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText(/Hier heb je nog niets toegevoegd/)).toBeInTheDocument()
   })
 
-  it('zet een jaarlijkse post met haar frequentie en startmaand weg', async () => {
+  it('toont in de uitklap het bedrag, het ritme en de dag', async () => {
+    const gebruiker = userEvent.setup()
+    const post: TerugkerendePost = {
+      id: 'p1',
+      omschrijving: 'Autoverzekering',
+      bedrag: -62000,
+      rekeningId: 'r1',
+      dag: 5,
+      frequentie: 'jaar',
+      startMaand: '2027-03',
+    }
+    toon({ rekeningen: [rekening], terugkerendePosten: [post] })
+    await naarVasteKosten(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: /^Autoverzekering/ }))
+
+    const regel = screen.getByText('Autoverzekering', { selector: '.kost-eigen .rij-titel' }).closest('li') as HTMLElement
+    expect(regel.textContent).toContain('620,00')
+    expect(regel.textContent).toContain('maart 2027')
+    expect(regel.textContent).toContain('dag 5')
+  })
+
+  it('opent een bestaande kost in hetzelfde venster', async () => {
+    const gebruiker = userEvent.setup()
+    const post: TerugkerendePost = { id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 3 }
+    toon({ rekeningen: [rekening], terugkerendePosten: [post] })
+    await naarVasteKosten(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: /^Huur/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /^Bewerken — Huur,/ }))
+
+    const venster = screen.getByRole('dialog')
+    expect(within(venster).getByLabelText('Vaste omschrijving')).toHaveValue('Huur')
+    expect(within(venster).getByLabelText('Vast bedrag (€)')).toHaveValue('950,00')
+  })
+
+  it('verwijdert een kost vanuit de uitklap', async () => {
+    const gebruiker = userEvent.setup()
+    const onVastePostVerwijderen = vi.fn()
+    const post: TerugkerendePost = { id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 3 }
+    toon({ rekeningen: [rekening], terugkerendePosten: [post] }, { onVastePostVerwijderen })
+    await naarVasteKosten(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: /^Huur/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /^Verwijderen — Huur,/ }))
+
+    expect(onVastePostVerwijderen).toHaveBeenCalledWith('p1')
+  })
+
+  it('toont geen verwijderknop wanneer het scherm hem niet kan aansturen', async () => {
+    // Dezelfde afspraak als bij "Veilig bewaren": een scherm dat de knop niet kan
+    // aansturen, hoort hem niet te tonen.
+    const gebruiker = userEvent.setup()
+    const post: TerugkerendePost = { id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 3 }
+    toon({ rekeningen: [rekening], terugkerendePosten: [post] })
+    await naarVasteKosten(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: /^Huur/ }))
+
+    expect(screen.getByRole('button', { name: /^Bewerken — Huur,/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Verwijderen — Huur,/ })).toBeNull()
+  })
+
+  it('klapt alles open en weer dicht', async () => {
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] })
+    await naarVasteKosten(gebruiker)
+
+    await gebruiker.click(screen.getByRole('button', { name: /Klap alles open — Je vaste kosten/ }))
+    expect(screen.getByRole('button', { name: /^Huur/ })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: /^Hypotheek/ })).toHaveAttribute('aria-expanded', 'true')
+
+    await gebruiker.click(screen.getByRole('button', { name: /Klap alles dicht — Je vaste kosten/ }))
+    expect(screen.getByRole('button', { name: /^Huur/ })).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('toont met de filter alleen wat je al hebt', async () => {
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening], terugkerendePosten: [{ id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 3 }] })
+    await naarVasteKosten(gebruiker)
+
+    const filter = screen.getByRole('button', { name: /Toon alleen wat ik al heb — Je vaste kosten/ })
+    expect(filter).toHaveAttribute('aria-pressed', 'false')
+    await gebruiker.click(filter)
+
+    expect(screen.getByRole('button', { name: /^Huur/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Hypotheek/ })).toBeNull()
+    expect(filter).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('zegt het wanneer de filter niets overhoudt', async () => {
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] })
+    await naarVasteKosten(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: /Toon alleen wat ik al heb — Je vaste kosten/ }))
+
+    expect(screen.getByText(/Zet de filter uit om alle voorstellen te zien/)).toBeInTheDocument()
+  })
+
+  it('telt hoeveel voorstellen je al ingevuld hebt', async () => {
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening], terugkerendePosten: [{ id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 3 }] })
+    await naarVasteKosten(gebruiker)
+
+    expect(screen.getByText(/Je vulde er 1 van de \d+ in\./)).toBeInTheDocument()
+  })
+
+  it('telt niets zolang er geen rekening is', async () => {
+    // "0 van 19" boven een leeg blok is een stand van iets wat er niet staat.
+    const gebruiker = userEvent.setup()
+    toon({})
+    await naarVasteKosten(gebruiker)
+
+    expect(screen.queryByText(/Je vulde er/)).toBeNull()
+    expect(screen.getByText(/een vaste kost moet ergens vanaf gaan/)).toBeInTheDocument()
+  })
+
+  it('laat je niet beginnen zonder rekening, en brengt je naar het juiste blok', async () => {
     const gebruiker = userEvent.setup()
     const onVastePost = vi.fn()
-    toon({ rekeningen: [rekening] }, { onVastePost })
+    toon({}, { onVastePost })
+    await naarVasteKosten(gebruiker)
 
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.type(screen.getByLabelText('Autoverzekering'), '620')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Autoverzekering toe' }))
-
-    expect(onVastePost.mock.calls[0][0].frequentie).toBe('jaar')
-    expect(onVastePost.mock.calls[0][0].startMaand).toMatch(/^\d{4}-\d{2}$/)
-  })
-
-  // ⚠ RONDE 70. De lijst besliste de periodiciteit vóór je: de frequentie kwam uit
-  // het voorstel en de eerste vervalmaand werd stil op VOLGENDE maand gezet. Wie een
-  // driemaandelijkse factuur heeft die in februari valt, kreeg zo een ritme dat er
-  // drie maanden naast zat — en zag dat pas wanneer de vooruitblik het bedrag in de
-  // verkeerde maand zette.
-
-  it('toont op elke rij hoe vaak de post terugkomt, met het voorstel als vertrekpunt', async () => {
-    const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-
-    expect(screen.getByRole('button', { name: /Elke maand · wijzig — Huur/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Eén keer per jaar, vanaf .+ · wijzig — Autoverzekering/ })).toBeInTheDocument()
-  })
-
-  it('klapt de keuze pas open als je erom vraagt', async () => {
-    // Het drukste scherm van de app: 37 rijen met elk een keuzelijst en een maandveld
-    // ernaast zou precies het "te veel tegelijk" opleveren dat deze reeks wegwerkt.
-    const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-
-    const knop = screen.getByRole('button', { name: /wijzig — Huur/ })
-    expect(knop).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByLabelText('Hoe vaak?')).toBeNull()
-
-    await gebruiker.click(knop)
-    expect(knop).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByLabelText('Hoe vaak?')).toBeInTheDocument()
-  })
-
-  it('vraagt de eerste vervalmaand pas zodra de post niet meer maandelijks is', async () => {
-    const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Huur/ }))
-
-    // Maandelijks: er is geen ritme te plaatsen, dus geen veld.
-    expect(screen.queryByLabelText('Eerste betaling in')).toBeNull()
-
-    await gebruiker.selectOptions(screen.getByLabelText('Hoe vaak?'), 'kwartaal')
-    expect(screen.getByLabelText('Eerste betaling in')).toBeInTheDocument()
-  })
-
-  it('laat het woord bij het bedragveld de KEUZE volgen, niet het voorstel', async () => {
-    // Anders tik je een kwartaalbedrag in een veld dat "per maand" belooft — dezelfde
-    // factorfout die ronde 65 wegnam, alleen met een andere factor.
-    const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Huur/ }))
-    await gebruiker.selectOptions(screen.getByLabelText('Hoe vaak?'), 'kwartaal')
-
-    expect(screen.getByLabelText('Huur')).toHaveAttribute('placeholder', 'bedrag per kwartaal')
-    expect(screen.getByRole('textbox', { name: 'Huur — bedrag per kwartaal' })).toBeInTheDocument()
-  })
-
-  it('bewaart de gekozen frequentie en de gekozen vervalmaand', async () => {
-    const gebruiker = userEvent.setup()
-    const onVastePost = vi.fn()
-    toon({ rekeningen: [rekening] }, { onVastePost })
-
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Huur/ }))
-    await gebruiker.selectOptions(screen.getByLabelText('Hoe vaak?'), 'kwartaal')
-    await gebruiker.clear(screen.getByLabelText('Eerste betaling in'))
-    await gebruiker.type(screen.getByLabelText('Eerste betaling in'), '2027-02')
-    await gebruiker.type(screen.getByLabelText('Huur'), '300')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
-
-    // Februari, niet "volgende maand": vanaf hier telt het ritme door naar mei,
-    // augustus en november. Dat is precies waarom dit veld bestaat.
-    expect(onVastePost.mock.calls[0][0].frequentie).toBe('kwartaal')
-    expect(onVastePost.mock.calls[0][0].startMaand).toBe('2027-02')
-  })
-
-  it('laat een maandelijkse keuze zonder frequentie en zonder startmaand weg', async () => {
-    // Een maandpost heeft geen ritme te plaatsen; die twee velden horen dan niet in
-    // het record te staan.
-    const gebruiker = userEvent.setup()
-    const onVastePost = vi.fn()
-    toon({ rekeningen: [rekening] }, { onVastePost })
-
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Autoverzekering/ }))
-    await gebruiker.selectOptions(screen.getByLabelText('Hoe vaak?'), 'maand')
-    await gebruiker.type(screen.getByLabelText('Autoverzekering'), '52')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Autoverzekering toe' }))
-
-    expect(onVastePost.mock.calls[0][0].frequentie).toBeUndefined()
-    expect(onVastePost.mock.calls[0][0].startMaand).toBeUndefined()
-  })
-
-  it('voegt niets toe zolang de vervalmaand leeg is', async () => {
-    // Zonder startmaand kan `valtInMaand` het ritme niet plaatsen en gedraagt de post
-    // zich als maandelijks — een kwartaalfactuur die elke maand meetelt.
-    const gebruiker = userEvent.setup()
-    const onVastePost = vi.fn()
-    toon({ rekeningen: [rekening] }, { onVastePost })
-
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Huur/ }))
-    await gebruiker.selectOptions(screen.getByLabelText('Hoe vaak?'), 'kwartaal')
-    await gebruiker.clear(screen.getByLabelText('Eerste betaling in'))
-    await gebruiker.type(screen.getByLabelText('Huur'), '300')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
-
+    expect(screen.queryByRole('button', { name: 'Toevoegen — Huur' })).toBeNull()
+    await gebruiker.click(screen.getByRole('button', { name: 'Maak een rekening aan' }))
+    await vi.waitFor(() => expect(document.activeElement).toBe(document.getElementById('opstelling-tab-rekeningen')))
     expect(onVastePost).not.toHaveBeenCalled()
   })
 
-  it('rekent de bevestiging om met de GEKOZEN frequentie', async () => {
+  it('hangt een vaste kost aan een betaalrekening, niet aan je spaarboekje', async () => {
+    // `standaardRekening` geeft de rekening terug waarop je het laatst boekte; deed je
+    // dat toevallig op je spaarrekening, dan hingen hier je twintig vaste lasten aan je
+    // spaarboekje.
     const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Huur/ }))
-    await gebruiker.selectOptions(screen.getByLabelText('Hoe vaak?'), 'semester')
-    await gebruiker.type(screen.getByLabelText('Huur'), '300')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
+    const spaar: Rekening = { id: 'sp', naam: 'Spaar', beginsaldo: 0, type: 'spaar' }
+    const betaal: Rekening = { id: 'bt', naam: 'Zicht', beginsaldo: 0, type: 'betaal' }
+    toon({ rekeningen: [spaar, betaal] })
+    await naarVasteKosten(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Huur' }))
 
-    // € 300 per half jaar is € 50 per maand — niet € 300, en niet gedeeld door twaalf.
-    const melding = await screen.findByText(/Huur toegevoegd/)
-    expect(melding).toHaveTextContent('per half jaar')
-    expect(melding).toHaveTextContent('50,00')
+    expect(within(screen.getByRole('dialog')).getByLabelText('Vaste rekening')).toHaveValue('bt')
   })
 
-  it('leest het ritme van een AL bestaande post uit die post, niet uit het voorstel', async () => {
-    // ⚠ De regel op de rij kwam uit de lokale keuze van die rij — ook op een rij waar
-    // je niets gekozen had. Stond je autoverzekering al in de app als kwartaalpost
-    // vanaf april 2026, dan beweerde het scherm "Eén keer per jaar, vanaf <volgende
-    // maand>": een harde uitspraak over gegevens die het nooit gelezen had.
+  it('hangt een vaste kost nooit aan een gearchiveerde rekening', async () => {
+    // Een vaste last aan een afgesloten rekening wordt nooit als betaald herkend en
+    // blijft elke maand achterstallig staan.
     const gebruiker = userEvent.setup()
-    const bestaand: TerugkerendePost = {
+    const oud: Rekening = { id: 'oud', naam: 'Oude', beginsaldo: 0, type: 'betaal', gearchiveerd: true }
+    const nieuw: Rekening = { id: 'nw', naam: 'Nieuwe', beginsaldo: 0, type: 'betaal' }
+    toon({ rekeningen: [oud, nieuw] })
+    await naarVasteKosten(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Huur' }))
+
+    expect(within(screen.getByRole('dialog')).getByLabelText('Vaste rekening')).toHaveValue('nw')
+  })
+
+  it('biedt een opgezegd abonnement gewoon opnieuw aan', async () => {
+    // Een gestopte post telt niet als "ingevuld": anders kan je je nieuwe abonnement
+    // hier niet meer ingeven terwijl de tegels er ook niets van meetellen.
+    const gebruiker = userEvent.setup()
+    const gestopt: TerugkerendePost = {
+      id: 'p1',
+      omschrijving: 'Netflix',
+      bedrag: -1599,
+      rekeningId: 'r1',
+      dag: 5,
+      eindMaand: '2020-01',
+    }
+    toon({ rekeningen: [rekening], terugkerendePosten: [gestopt] })
+    await gebruiker.click(screen.getByRole('tab', { name: /Sluipende kosten/ }))
+
+    expect(screen.getByRole('button', { name: /^Netflix/ })).toHaveTextContent('Nog niets toegevoegd')
+  })
+
+  it('zet een kost die pas later begint tóch als ingevuld (ronde 71)', async () => {
+    // De lijst kijkt naar wat er BESTAAT, niet naar wat er deze maand meetelt. Zou ze
+    // dat laatste doen, dan verdween elke jaarpost meteen weer uit beeld en maakte je er
+    // ongemerkt een tweede bij.
+    const gebruiker = userEvent.setup()
+    const later: TerugkerendePost = {
       id: 'p1',
       omschrijving: 'Autoverzekering',
-      bedrag: -15000,
+      bedrag: -62000,
       rekeningId: 'r1',
-      dag: 1,
-      frequentie: 'kwartaal',
-      startMaand: '2026-04',
+      dag: 5,
+      frequentie: 'jaar',
+      startMaand: '2099-03',
     }
-    toon({ rekeningen: [rekening], terugkerendePosten: [bestaand] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+    toon({ rekeningen: [rekening], terugkerendePosten: [later] })
+    await naarVasteKosten(gebruiker)
 
-    const rij = screen.getByText('Autoverzekering').closest('li') as HTMLElement
-    expect(within(rij).getByText(/Om de 3 maanden, vanaf april 2026/)).toBeInTheDocument()
-    expect(within(rij).queryByText(/Eén keer per jaar/)).toBeNull()
+    expect(screen.getByRole('button', { name: /^Autoverzekering/ })).toHaveTextContent(/620,00/)
   })
 
-  it('noemt de frequentie ook wanneer een bestaande post geen startmaand heeft', async () => {
-    // ⚠ Hier stond eerst "Elke maand", omdat `valtInMaand` zonder startmaand terugvalt
-    // op elke maand. Maar `maandbedrag` deelt dan wél door drie, en op Budget → Vast
-    // heet diezelfde post "Om de 3 maanden" — twee schermen die iets anders zeggen over
-    // één record. De app weet dat het een kwartaalpost is; alleen niet wélke maanden.
+  // ---- Wat de doorlichting van deze ronde blootlegde ------------------------------
+
+  it('springt met "Opslaan + volgende" naar het eerstvolgende lege voorstel', async () => {
+    // ⚠ Deze hele ketting was ongetest: je kon `volgendVoorstel` op `null` zetten of de
+    // `key` van het formulier weghalen en alle drieënzestig tests bleven groen.
     const gebruiker = userEvent.setup()
-    // ⚠ WEL een frequentie, GEEN startmaand — dat is precies het geval waarin
-    // `valtInMaand` terugvalt op "elke maand". Een post zónder frequentie zou de
-    // controle nooit bereiken en zou dus niets bewijzen.
-    const bestaand: TerugkerendePost = {
+    const onVastePost = vi.fn()
+    toon({ rekeningen: [rekening] }, { onVastePost })
+    await naarVasteKosten(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Huur' }))
+
+    const venster = screen.getByRole('dialog')
+    await gebruiker.type(within(venster).getByLabelText('Vast bedrag (€)'), '950')
+    await gebruiker.click(within(venster).getByRole('button', { name: 'Opslaan + volgende' }))
+
+    // Het venster blijft open en staat nu op het VOLGENDE voorstel, met zijn eigen naam.
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByLabelText('Vaste omschrijving')).toHaveValue('Hypotheek')
+    // En het bedrag is leeg: anders schrijf je de huur nog eens weg onder een andere naam.
+    expect(screen.getByLabelText('Vast bedrag (€)')).toHaveValue('')
+  })
+
+  it('houdt de cursor in het venster na "Opslaan + volgende"', async () => {
+    // ⚠ Het formulier wordt hermonteerd bij de sprong, dus de knop waarop je net duwde
+    // verdwijnt uit de pagina. De focus viel dan naar `<body>`, en één druk op Tab bracht
+    // je op de pagina ACHTER het venster. Dit is dezelfde fout als in ronde 71 bij de
+    // knop "Nog een", nu via een andere weg.
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] }, { onVastePost: vi.fn() })
+    await naarVasteKosten(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Huur' }))
+    await gebruiker.type(screen.getByLabelText('Vast bedrag (€)'), '950')
+    await gebruiker.click(screen.getByRole('button', { name: 'Opslaan + volgende' }))
+
+    expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true)
+    // En wel in het veld waar je meteen verder tikt.
+    expect(document.activeElement).toBe(screen.getByLabelText('Vast bedrag (€)'))
+  })
+
+  it('bevestigt de opslag BINNEN het venster, niet alleen erachter', async () => {
+    // ⚠ De melding stond alleen op de pagina. Een popup met `aria-modal` verbergt alles
+    // erbuiten, dus je zag na "Opslaan + volgende" enkel een leeg bedragveld — precies
+    // hoe "er is niets gebeurd" eruitziet. Dan tik je het bedrag een tweede keer in.
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] }, { onVastePost: vi.fn() })
+    await naarVasteKosten(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Huur' }))
+    await gebruiker.type(screen.getByLabelText('Vast bedrag (€)'), '950')
+    await gebruiker.click(screen.getByRole('button', { name: 'Opslaan + volgende' }))
+
+    // ⚠ `within(dialog)`: buiten het venster staat dezelfde zin op de pagina, en die is
+    // niet wat hier bewezen moet worden.
+    expect(within(screen.getByRole('dialog')).getByText(/Huur bewaard/)).toBeInTheDocument()
+  })
+
+  it('sluit het venster wanneer er geen volgend leeg voorstel meer is', async () => {
+    // Bleef het openstaan, dan stond er dezelfde titel met een leeg bedragveld — niet te
+    // onderscheiden van een mislukking. Nu sluit het, en staat de bevestiging op de
+    // pagina waar je ze ziet.
+    const gebruiker = userEvent.setup()
+    toon({ rekeningen: [rekening] }, { onVastePost: vi.fn() })
+    // "Luisterboeken" is het LAATSTE voorstel van de sluipende lijst: daarna is er niets
+    // meer om naar te springen.
+    await gebruiker.click(screen.getByRole('tab', { name: /Sluipende kosten/ }))
+    await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Luisterboeken' }))
+    await gebruiker.type(screen.getByLabelText('Vast bedrag (€)'), '9,99')
+    await gebruiker.click(screen.getByRole('button', { name: 'Opslaan + volgende' }))
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getByText(/Luisterboeken bewaard/)).toBeInTheDocument()
+  })
+
+  it('houdt een hernoemde oude kost op haar plaats in plaats van haar te laten verdwijnen', async () => {
+    // ⚠ Een post van vóór deze ronde draagt geen `bronVoorstel`. Hernoemde je hem via
+    // "Bewerken", dan heette hij naar geen enkel voorstel meer en verdween hij uit deze
+    // lijst — terwijl hij in je vaste lasten gewoon meetelde. Dan zet je hem er nog eens
+    // bij. Het venster adopteert hem nu: het voorstel waaronder hij stond gaat mee.
+    const gebruiker = userEvent.setup()
+    const onVastePost = vi.fn()
+    const oud: TerugkerendePost = { id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 3 }
+    toon({ rekeningen: [rekening], terugkerendePosten: [oud] }, { onVastePost })
+    await naarVasteKosten(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: /^Huur/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /^Bewerken — Huur,/ }))
+
+    const venster = screen.getByRole('dialog')
+    const naam = within(venster).getByLabelText('Vaste omschrijving')
+    await gebruiker.clear(naam)
+    await gebruiker.type(naam, 'Huur appartement')
+    await gebruiker.click(within(venster).getByRole('button', { name: 'Vaste post wijzigen' }))
+
+    expect(onVastePost).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'p1', omschrijving: 'Huur appartement', bronVoorstel: 'huur' }),
+    )
+  })
+
+  it('laat de naam winnen van een herkomst die naar iets anders wijst', async () => {
+    // Klik je "Toevoegen" bij Huur maar tik je er Netflix van, dan hoort die post onder
+    // Netflix te staan — niet voorgoed onder Huur omdat je op de verkeerde rij begon.
+    const gebruiker = userEvent.setup()
+    const verdwaald: TerugkerendePost = {
+      id: 'p1',
+      omschrijving: 'Netflix',
+      bedrag: -1599,
+      rekeningId: 'r1',
+      dag: 8,
+      bronVoorstel: 'huur',
+    }
+    toon({ rekeningen: [rekening], terugkerendePosten: [verdwaald] })
+    await naarVasteKosten(gebruiker)
+    expect(screen.getByRole('button', { name: /^Huur/ })).toHaveTextContent('Nog niets toegevoegd')
+
+    await gebruiker.click(screen.getByRole('tab', { name: /Sluipende kosten/ }))
+    expect(screen.getByRole('button', { name: /^Netflix/ })).toHaveTextContent(/15,99/)
+  })
+
+  it('verliest een post niet wanneer haar herkomst niet meer bestaat', async () => {
+    // Wordt een `sleutel` in data/opstelling.ts ooit hernoemd, dan zouden alle posten met
+    // de oude sleutel stil uit de lijst vallen. De naam vangt dat op.
+    const gebruiker = userEvent.setup()
+    const oudeSleutel: TerugkerendePost = {
       id: 'p1',
       omschrijving: 'Huur',
       bedrag: -95000,
       rekeningId: 'r1',
-      dag: 1,
-      frequentie: 'kwartaal',
+      dag: 3,
+      bronVoorstel: 'huur-van-toen',
     }
-    toon({ rekeningen: [rekening], terugkerendePosten: [bestaand] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-
-    const rij = screen.getByText('Huur').closest('li') as HTMLElement
-    expect(within(rij).getByText('Om de 3 maanden, vanaf een maand die je nog moet kiezen')).toBeInTheDocument()
-    expect(within(rij).queryByText('Elke maand')).toBeNull()
+    toon({ rekeningen: [rekening], terugkerendePosten: [oudeSleutel] })
+    await naarVasteKosten(gebruiker)
+    expect(screen.getByRole('button', { name: /^Huur/ })).toHaveTextContent(/950,00/)
   })
 
-  it('laat óók het woord bij het bedrag de bestaande post volgen', async () => {
-    // ⚠ De zin kwam uit het record, het woord ernaast nog uit het voorstel. Eén rij las
-    // dan tegelijk "Elke maand" en "per jaar": het paneeltje is op een toegevoegde rij
-    // verborgen, dus die lokale keuze werd nooit meer gecorrigeerd.
+  it('geeft twee kosten met dezelfde naam een eigen knopnaam', async () => {
+    // ⚠ De knop heet bewust altijd "Toevoegen", dus twee posten die allebei "Netflix"
+    // heten zijn heel gewoon. Dragen hun knoppen dan dezelfde toegankelijke naam, dan
+    // weet een schermlezergebruiker niet welke van de twee hij wist (regel van ronde 66).
     const gebruiker = userEvent.setup()
-    const bestaand: TerugkerendePost = {
-      id: 'p1',
-      omschrijving: 'Autoverzekering',
-      bedrag: -5200,
-      rekeningId: 'r1',
-      dag: 1,
-    }
-    toon({ rekeningen: [rekening], terugkerendePosten: [bestaand] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-
-    const rij = screen.getByText('Autoverzekering').closest('li') as HTMLElement
-    expect(within(rij).getByText('Elke maand')).toBeInTheDocument()
-    expect(within(rij).getByText('per maand')).toBeInTheDocument()
-    expect(within(rij).queryByText('per jaar')).toBeNull()
-  })
-
-  it('verwijst pas naar een reden wanneer er ook een staat', async () => {
-    // Een `aria-describedby` naar een lege regel is geen beschrijving. Zelfde vorm als
-    // in de elf formulieren die deze huisregel al volgen.
-    const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-
-    expect(screen.getByRole('button', { name: 'Voeg Huur toe' })).not.toHaveAttribute('aria-describedby')
-  })
-
-  it('verzint geen jaartal wanneer je de vervalmaand leegmaakt', async () => {
-    // `maandJaarLabel('-01')` maakte er "januari 1900" van: `Number('')` is 0, en nul
-    // is een geldig getal, dus de vangregel in datum.ts sloeg niet aan.
-    const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Huur/ }))
-    await gebruiker.selectOptions(screen.getByLabelText(/^Hoe vaak\?/), 'kwartaal')
-    await gebruiker.clear(screen.getByLabelText(/^Eerste betaling in/))
-
-    expect(screen.queryByText(/1900/)).toBeNull()
-    expect(screen.getByRole('button', { name: /vanaf een maand die je nog moet kiezen/ })).toBeInTheDocument()
-  })
-
-  it('zegt waarom "Toevoegen" niet kan zolang de vervalmaand ontbreekt', async () => {
-    // Huisregel sinds ronde 41: een knop die uitstaat omdat JOUW INVOER onvolledig
-    // is, hoort te zeggen wát er ontbreekt — en die reden hoort aan de knop te hangen.
-    const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Huur/ }))
-    await gebruiker.selectOptions(screen.getByLabelText(/^Hoe vaak\?/), 'kwartaal')
-    await gebruiker.clear(screen.getByLabelText(/^Eerste betaling in/))
-    await gebruiker.type(screen.getByLabelText('Huur'), '300')
-
-    const knop = screen.getByRole('button', { name: 'Voeg Huur toe' })
-    expect(knop).toHaveAttribute('aria-disabled', 'true')
-    const redenId = knop.getAttribute('aria-describedby') as string
-    expect(document.getElementById(redenId)?.textContent).toBe('Kies eerst in welke maand de eerste betaling valt.')
-  })
-
-  it('geeft elke keuzelijst een eigen naam, ook met twee paneeltjes open', async () => {
-    // Elke rij houdt haar eigen open/dicht bij, dus je kan er meerdere tegelijk
-    // openzetten — en dan dragen twee keuzelijsten dezelfde toegankelijke naam.
-    const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Huur/ }))
-    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Autoverzekering/ }))
-
-    expect(screen.getByRole('combobox', { name: 'Hoe vaak? — Huur' })).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Hoe vaak? — Autoverzekering' })).toBeInTheDocument()
-  })
-
-  // --- RONDE 71: de dag, het opzijzetten, en een tweede van dezelfde soort ---
-
-  async function openPaneel(gebruiker: ReturnType<typeof userEvent.setup>, naam: string) {
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.click(screen.getByRole('button', { name: new RegExp(`wijzig — ${naam}`) }))
-  }
-
-  it('vraagt de dag van de maand in het paneeltje zelf', async () => {
-    // ⚠ De dag werd hier stil op vandaag gezet, en wie hem wilde bijstellen moest naar
-    // Budget → Vast. Dat is precies de omweg die dit scherm moet wegnemen.
-    const gebruiker = userEvent.setup()
-    const onVastePost = vi.fn()
-    toon({ rekeningen: [rekening] }, { onVastePost })
-    await openPaneel(gebruiker, 'Huur')
-
-    const dagVeld = screen.getByLabelText(/^Dag van de maand/)
-    expect(Number((dagVeld as HTMLInputElement).value)).toBeGreaterThanOrEqual(1)
-    expect(Number((dagVeld as HTMLInputElement).value)).toBeLessThanOrEqual(28)
-
-    await gebruiker.clear(dagVeld)
-    await gebruiker.type(dagVeld, '12')
-    await gebruiker.type(screen.getByLabelText('Huur'), '950')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
-
-    expect(onVastePost.mock.calls[0][0].dag).toBe(12)
-  })
-
-  it('weigert een dag buiten 1 tot 28 en zegt waarom', async () => {
-    // 29, 30 en 31 bestaan niet in februari; het schema laat ze daarom niet toe.
-    const gebruiker = userEvent.setup()
-    const onVastePost = vi.fn()
-    toon({ rekeningen: [rekening] }, { onVastePost })
-    await openPaneel(gebruiker, 'Huur')
-    await gebruiker.clear(screen.getByLabelText(/^Dag van de maand/))
-    await gebruiker.type(screen.getByLabelText(/^Dag van de maand/), '31')
-    await gebruiker.type(screen.getByLabelText('Huur'), '950')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
-
-    expect(onVastePost).not.toHaveBeenCalled()
-    const knop = screen.getByRole('button', { name: 'Voeg Huur toe' })
-    const redenId = knop.getAttribute('aria-describedby') as string
-    expect(document.getElementById(redenId)?.textContent).toBe('De dag van de maand is een getal van 1 tot 28.')
-  })
-
-  it('biedt het opzijzetten alleen aan bij een kost die niet maandelijks is', async () => {
-    // Bij een maandpost zet je niets opzij — je betaalt gewoon. Zelfde regel als op
-    // Budget → Vast.
-    const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] })
-    await openPaneel(gebruiker, 'Huur')
-    expect(screen.queryByLabelText('Hier maandelijks voor opzijzetten')).toBeNull()
-
-    await gebruiker.selectOptions(screen.getByLabelText(/^Hoe vaak\?/), 'kwartaal')
-    expect(screen.getByLabelText('Hier maandelijks voor opzijzetten')).toBeInTheDocument()
-  })
-
-  it('bewaart het opzijzetten en zegt het in de bevestiging', async () => {
-    const gebruiker = userEvent.setup()
-    const onVastePost = vi.fn()
-    toon({ rekeningen: [rekening] }, { onVastePost })
-    await openPaneel(gebruiker, 'Autoverzekering')
-    await gebruiker.click(screen.getByLabelText('Hier maandelijks voor opzijzetten'))
-    await gebruiker.type(screen.getByLabelText('Autoverzekering'), '600')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Autoverzekering toe' }))
-
-    expect(onVastePost.mock.calls[0][0].opbouwen).toBe(true)
-    expect(await screen.findByText(/per maand voor opzij/)).toBeInTheDocument()
-  })
-
-  it('schrijft geen opbouwen weg wanneer je het niet aanvinkt', async () => {
-    // Een veld dat "nee" zegt, zegt niets: elk record hoort te dragen wat je écht koos.
-    const gebruiker = userEvent.setup()
-    const onVastePost = vi.fn()
-    toon({ rekeningen: [rekening] }, { onVastePost })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.type(screen.getByLabelText('Autoverzekering'), '600')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Autoverzekering toe' }))
-
-    expect(onVastePost.mock.calls[0][0].opbouwen).toBeUndefined()
-  })
-
-  it('zegt in de bevestiging vanaf wanneer een latere kost meetelt', async () => {
-    // ⚠ Sinds ronde 71 telt een kost pas mee in de tegels vanaf zijn eerste betaling.
-    // Voeg je iets toe dat pas later begint, dan beweegt er zichtbaar niets — en dan
-    // lijkt het alsof je invoer niet aankwam.
-    const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] })
-    await openPaneel(gebruiker, 'Autoverzekering')
-    await gebruiker.clear(screen.getByLabelText(/^Eerste betaling in/))
-    await gebruiker.type(screen.getByLabelText(/^Eerste betaling in/), '2029-03')
-    await gebruiker.type(screen.getByLabelText('Autoverzekering'), '600')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Autoverzekering toe' }))
-
-    expect(await screen.findByText(/per maand vanaf maart 2029/)).toBeInTheDocument()
-  })
-
-  it('biedt op een toegevoegde rij een tweede van dezelfde soort aan', async () => {
-    // Twee auto's, twee autoverzekeringen. De rij zette zichzelf op slot zodra er één
-    // stond, en er was geen weg naar een tweede.
-    const gebruiker = userEvent.setup()
-    const bestaand: TerugkerendePost = { id: 'p1', omschrijving: 'Autoverzekering', bedrag: -5000, rekeningId: 'r1', dag: 1 }
-    toon({ rekeningen: [rekening], terugkerendePosten: [bestaand] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg nog een Autoverzekering toe' }))
-    // Het paneeltje gaat open mét een naamveld, voorgevuld met het voorstel.
-    expect((screen.getByLabelText(/^Naam/) as HTMLInputElement).value).toBe('Autoverzekering')
-  })
-
-  it('bewaart die tweede kost onder de naam die jij eraan geeft', async () => {
-    const gebruiker = userEvent.setup()
-    const onVastePost = vi.fn()
-    const bestaand: TerugkerendePost = { id: 'p1', omschrijving: 'Autoverzekering', bedrag: -5000, rekeningId: 'r1', dag: 1 }
-    toon({ rekeningen: [rekening], terugkerendePosten: [bestaand] }, { onVastePost })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg nog een Autoverzekering toe' }))
-
-    await gebruiker.clear(screen.getByLabelText(/^Naam/))
-    await gebruiker.type(screen.getByLabelText(/^Naam/), 'Autoverzekering scooter')
-    await gebruiker.type(screen.getByLabelText('Autoverzekering'), '180')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Autoverzekering toe' }))
-
-    expect(onVastePost.mock.calls[0][0].omschrijving).toBe('Autoverzekering scooter')
-  })
-
-  it('weigert een tweede kost met dezelfde naam als een bestaande', async () => {
-    // ⚠ Twee posten die allebei "Autoverzekering" heten zijn in je lijsten, je
-    // grafieken en je belletje niet uit elkaar te houden — en de aanvinklijst zou de
-    // tweede nooit meer terugvinden.
-    const gebruiker = userEvent.setup()
-    const onVastePost = vi.fn()
-    const bestaand: TerugkerendePost = { id: 'p1', omschrijving: 'Autoverzekering', bedrag: -5000, rekeningId: 'r1', dag: 1 }
-    toon({ rekeningen: [rekening], terugkerendePosten: [bestaand] }, { onVastePost })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg nog een Autoverzekering toe' }))
-    await gebruiker.type(screen.getByLabelText('Autoverzekering'), '180')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Autoverzekering toe' }))
-
-    expect(onVastePost).not.toHaveBeenCalled()
-    const knop = screen.getByRole('button', { name: 'Voeg Autoverzekering toe' })
-    const redenId = knop.getAttribute('aria-describedby') as string
-    expect(document.getElementById(redenId)?.textContent).toMatch(/al een vaste last met die naam/)
-  })
-
-  it('zegt onder de tegel wat er nog niet meetelt', async () => {
-    // Een kost die pas later begint, raakt "Vaste lasten per maand" niet. Zonder deze
-    // zin lijkt de tegel te laag zonder dat iets zegt waarom.
-    const later: TerugkerendePost = {
-      id: 'p1',
-      omschrijving: 'Autoverzekering',
-      bedrag: -60000,
-      rekeningId: 'r1',
-      dag: 5,
-      frequentie: 'semester',
-      startMaand: '2029-03',
-    }
-    toon({ rekeningen: [rekening], terugkerendePosten: [later] })
-    const blok = screen.getByText('Vaste lasten per maand').closest('.stat') as HTMLElement
-    expect(blok.querySelector('.getal-bron')?.textContent).toContain('telt hier nog niet mee')
-  })
-
-  it('zet een kost die pas later begint tóch op "toegevoegd" (ronde 71)', async () => {
-    // ⚠ DE ZWAARSTE FOUT VAN DEZE RONDE. De begincontrole zat óók in de lijst die de
-    // aanvinklijst voedt. Gevolg: elke jaarpost die je toevoegde — standaard "eerste
-    // betaling volgende maand" — verdween meteen weer uit de lijst. Het bedragveld
-    // bleef leeg en open, de badge kwam nooit, en wie het opnieuw intikte kreeg een
-    // tweede identieke post zonder één waarschuwing.
-    const gebruiker = userEvent.setup()
-    const later: TerugkerendePost = {
-      id: 'p1',
-      omschrijving: 'Autoverzekering',
-      bedrag: -60000,
-      rekeningId: 'r1',
-      dag: 5,
-      frequentie: 'jaar',
-      startMaand: '2029-03',
-    }
-    toon({ rekeningen: [rekening], terugkerendePosten: [later] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-
-    const rij = screen.getByText('Autoverzekering').closest('li') as HTMLElement
-    expect(within(rij).getByText('toegevoegd')).toBeInTheDocument()
-    expect(within(rij).getByText(/Eén keer per jaar, vanaf maart 2029/)).toBeInTheDocument()
-    // En dus ook bereikbaar voor een tweede van dezelfde soort.
-    expect(screen.getByRole('button', { name: 'Voeg nog een Autoverzekering toe' })).toBeInTheDocument()
-  })
-
-  it('laat de rij zich tijdens "Nog een" als een verse rij gedragen (ronde 71)', async () => {
-    // ⚠ `effectieveFrequentie` las de BESTAANDE post, ook in de extra-modus. Dan stond
-    // de keuzelijst op "Eén keer per jaar" terwijl het bedragveld "per maand" beloofde
-    // — en wie daar zijn maandbedrag intikte, kreeg een jaarpost die twaalf keer te
-    // klein was.
-    const gebruiker = userEvent.setup()
-    const bestaand: TerugkerendePost = { id: 'p1', omschrijving: 'Autoverzekering', bedrag: -5000, rekeningId: 'r1', dag: 1 }
-    toon({ rekeningen: [rekening], terugkerendePosten: [bestaand] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg nog een Autoverzekering toe' }))
-
-    // Het voorstel is een jaarpost, dus het woord bij het bedrag hoort "per jaar" te zijn.
-    expect(screen.getByLabelText('Autoverzekering')).toHaveAttribute('placeholder', 'bedrag per jaar')
-    // En je kan er weer uit: de wijzig-knop staat er nog.
-    expect(screen.getByRole('button', { name: /wijzig — Autoverzekering/ })).toBeInTheDocument()
-  })
-
-  it('weigert een naam die bij een ándere rij van de lijst hoort (ronde 71)', async () => {
-    // Noem je je tweede autoverzekering "Huur", dan zou de rij Huur die post daarna als
-    // de hare herkennen — met de categorie van de autoverzekering in je grafieken.
-    const gebruiker = userEvent.setup()
-    const onVastePost = vi.fn()
-    const bestaand: TerugkerendePost = { id: 'p1', omschrijving: 'Autoverzekering', bedrag: -5000, rekeningId: 'r1', dag: 1 }
-    toon({ rekeningen: [rekening], terugkerendePosten: [bestaand] }, { onVastePost })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg nog een Autoverzekering toe' }))
-    await gebruiker.clear(screen.getByLabelText(/^Naam/))
-    await gebruiker.type(screen.getByLabelText(/^Naam/), 'Huur')
-    await gebruiker.type(screen.getByLabelText('Autoverzekering'), '180')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Autoverzekering toe' }))
-
-    expect(onVastePost).not.toHaveBeenCalled()
-  })
-
-  it('houdt het paneeltje open zolang er iets in ontbreekt (ronde 71)', async () => {
-    // Een reden die verwijst naar een veld dat je niet ziet, is geen reden.
-    const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] })
-    await openPaneel(gebruiker, 'Huur')
-    await gebruiker.clear(screen.getByLabelText(/^Dag van de maand/))
-    // Dichtklappen mag niet lukken zolang de dag ontbreekt.
-    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Huur/ }))
-    expect(screen.getByLabelText(/^Dag van de maand/)).toBeInTheDocument()
-  })
-
-  it('geeft ook het vinkje een eigen naam met twee paneeltjes open (ronde 71)', async () => {
-    const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] })
-    await openPaneel(gebruiker, 'Autoverzekering')
-    await gebruiker.click(screen.getByRole('button', { name: /wijzig — Hospitalisatieverzekering/ }))
-
-    expect(
-      screen.getByRole('checkbox', { name: 'Hier maandelijks voor opzijzetten — Autoverzekering' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('checkbox', { name: 'Hier maandelijks voor opzijzetten — Hospitalisatieverzekering' }),
-    ).toBeInTheDocument()
-  })
-
-  it('vraagt geen spaarrekening die je al hebt (ronde 71)', async () => {
-    // ⚠ `bruikbaar` is ook onwaar zonder lopende vaste lasten. Sinds deze ronde valt
-    // een kost die pas later begint in die groep — en dan vroeg dit scherm je een
-    // spaarrekening toe te voegen die er gewoon stond.
-    const later: TerugkerendePost = {
-      id: 'p1',
-      omschrijving: 'Autoverzekering',
-      bedrag: -60000,
-      rekeningId: 'r1',
-      dag: 5,
-      frequentie: 'jaar',
-      startMaand: '2029-03',
-    }
-    toon({ rekeningen: [rekening, spaar], terugkerendePosten: [later] })
-    expect(screen.queryByText(/heeft de app een spaarrekening of cash nodig\. Voeg er een toe/)).toBeNull()
-    expect(screen.getByText(/Je vaste lasten beginnen pas later/)).toBeInTheDocument()
-  })
-
-  it('markeert wat je al hebt en biedt daar geen tweede invoer meer aan', async () => {
-    const gebruiker = userEvent.setup()
-    const bestaand: TerugkerendePost = { id: 'p1', omschrijving: 'Netflix', bedrag: -1399, rekeningId: 'r1', dag: 1 }
-    toon({ rekeningen: [rekening], terugkerendePosten: [bestaand] })
-
+    const posten: TerugkerendePost[] = [
+      { id: 'p1', omschrijving: 'Netflix', bedrag: -1599, rekeningId: 'r1', dag: 8, bronVoorstel: 'netflix' },
+      { id: 'p2', omschrijving: 'Netflix', bedrag: -799, rekeningId: 'r1', dag: 20, bronVoorstel: 'netflix' },
+    ]
+    toon({ rekeningen: [rekening], terugkerendePosten: posten }, { onVastePostVerwijderen: vi.fn() })
     await gebruiker.click(screen.getByRole('tab', { name: /Sluipende kosten/ }))
-    const rij = screen.getByText('Netflix').closest('li') as HTMLElement
-    expect(within(rij).getByText('toegevoegd')).toBeInTheDocument()
-    expect(within(rij).queryByRole('button', { name: /Voeg Netflix toe/ })).not.toBeInTheDocument()
+    await gebruiker.click(screen.getByRole('button', { name: /^Netflix/ }))
+
+    const namen = screen
+      .getAllByRole('button', { name: /^Verwijderen — Netflix,/ })
+      .map((k) => k.getAttribute('aria-label'))
+    expect(namen).toHaveLength(2)
+    expect(new Set(namen).size).toBe(2)
   })
 
-  it('weigert een lege of nul-invoer zonder iets te bewaren', async () => {
+  it('houdt een openstaande rij zichtbaar wanneer je haar laatste kost wist', async () => {
+    // ⚠ Met de filter aan verdween de hele rij op het moment dat je hem leegmaakte — met
+    // je focus erin, en zonder weg terug.
+    const gebruiker = userEvent.setup()
+    const onVastePostVerwijderen = vi.fn()
+    const huurpost: TerugkerendePost = { id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 3 }
+    const { rerender } = toon({ rekeningen: [rekening], terugkerendePosten: [huurpost] }, { onVastePostVerwijderen })
+    await naarVasteKosten(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: /^Toon alleen wat ik al heb/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /^Huur/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /^Verwijderen — Huur,/ }))
+    expect(onVastePostVerwijderen).toHaveBeenCalledWith('p1')
+
+    // De app haalt de post weg; de rij hoort te blijven staan omdat ze openstaat.
+    rerender(
+      <OpstellingSectie
+        {...leeg}
+        rekeningen={[rekening]}
+        terugkerendePosten={[]}
+        onRekening={vi.fn()}
+        onLening={vi.fn()}
+        onVastePost={vi.fn()}
+        onVastePostVerwijderen={onVastePostVerwijderen}
+        onKindToevoegen={vi.fn()}
+        onKindWijzigen={vi.fn()}
+        onKindVerwijderen={vi.fn()}
+        onDossier={vi.fn()}
+        onNaarPagina={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('button', { name: /^Huur/ })).toBeInTheDocument()
+  })
+
+  it('zegt het wanneer een verwijdering mislukt', async () => {
+    // Regel sinds ronde 68: een mislukte opslag mag nooit stil blijven. De rij bleef
+    // staan en er verscheen geen letter.
+    const gebruiker = userEvent.setup()
+    const onVastePostVerwijderen = vi.fn().mockRejectedValue(new Error('schijf vol'))
+    const huurpost: TerugkerendePost = { id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 3 }
+    toon({ rekeningen: [rekening], terugkerendePosten: [huurpost] }, { onVastePostVerwijderen })
+    await naarVasteKosten(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: /^Huur/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /^Verwijderen — Huur,/ }))
+
+    expect(await screen.findByText(/niet gelukt/)).toBeInTheDocument()
+  })
+
+  it('zet de eerste betaling van een jaarpost op de VOLGENDE maand', async () => {
+    // ⚠ Op de lopende maand viel de volle jaarpremie meteen vandaag: ze stond op slag in
+    // je vooruitblik en in het belletje als nog niet geboekt, voor een premie die je in
+    // maart betaalt. Dit was ook de standaard vóór deze ronde.
     const gebruiker = userEvent.setup()
     const onVastePost = vi.fn()
     toon({ rekeningen: [rekening] }, { onVastePost })
-
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
-    expect(onVastePost).not.toHaveBeenCalled()
-
-    await gebruiker.type(screen.getByLabelText('Huur'), '0')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
-    expect(onVastePost).not.toHaveBeenCalled()
-  })
-
-  it('houdt je bedrag vast wanneer het opslaan niet lukt', async () => {
-    // Regel 7 van de projectinstructies: een mislukte opslag mag de gebruiker nooit
-    // zijn invoer kosten. Vroeger maakte het veld zich hoe dan ook leeg.
-    //
-    // ⚠ RONDE 66, slotronde: deze test dwong de mislukking af door GEEN rekening te
-    // geven. Dat kan niet meer — zonder rekening toont het blok nu de eerste stap in
-    // plaats van invulvelden. De mislukking komt nu van de opslag zelf, wat het
-    // eerlijkere geval is: een echte schrijffout, met je bedrag al ingetikt.
-    const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] }, { onVastePost: vi.fn().mockRejectedValue(new Error('schijf vol')) })
-
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.type(screen.getByLabelText('Huur'), '950')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
-
-    expect(screen.getByLabelText('Huur')).toHaveValue('950')
-  })
-
-  it('zegt de reden in de rij zelf, niet bovenaan de pagina', async () => {
-    // Bovenaan staat ze bij regel vijftien van de lijst volledig buiten beeld.
-    const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] }, { onVastePost: vi.fn().mockRejectedValue(new Error('schijf vol')) })
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.type(screen.getByLabelText('Huur'), '950')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
-
-    const rij = screen.getByLabelText('Huur').closest('li') as HTMLElement
-    expect(within(rij).getByRole('alert')).toHaveTextContent(/Toevoegen is niet gelukt/)
-  })
-
-  it('herkent een post ook wanneer de app in een andere taal staat', async () => {
-    // De omschrijving wordt vertaald weggeschreven. Vergeleken we alleen met de
-    // Nederlandse naam, dan zag een Franstalige gebruiker "Loyer" niet terug onder
-    // "Huur" en voegde hij zijn huur een tweede keer toe.
-    const frans: TerugkerendePost = { id: 'p1', omschrijving: 'Loyer', bedrag: -95000, rekeningId: 'r1', dag: 1 }
-    const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening], terugkerendePosten: [frans] })
-
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    const rij = screen.getByText('Huur').closest('li') as HTMLElement
-    expect(within(rij).getByText('toegevoegd')).toBeInTheDocument()
-  })
-
-  it('zet een nieuwe post niet meteen op achterstallig', async () => {
-    // Met dag 1 stond élke post die je hier invulde onmiddellijk als achterstallig
-    // in je vooruitblik en in het belletje — je doet dit zelden op de eerste.
-    const gebruiker = userEvent.setup()
-    const onVastePost = vi.fn()
-    toon({ rekeningen: [rekening] }, { onVastePost })
-
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.type(screen.getByLabelText('Huur'), '950')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
-
-    const vandaagDag = Math.min(new Date().getDate(), 28)
-    expect(onVastePost.mock.calls[0][0].dag).toBe(vandaagDag)
-  })
-
-  it('stelt volgende maand voor als eerste vervalmaand van een jaarpost', async () => {
-    // Anders valt het volle jaarbedrag meteen in je lopende maand: een
-    // autoverzekering van € 620 die er nooit is geweest.
-    const gebruiker = userEvent.setup()
-    const onVastePost = vi.fn()
-    toon({ rekeningen: [rekening] }, { onVastePost })
-
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.type(screen.getByLabelText('Autoverzekering'), '620')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Autoverzekering toe' }))
+    await naarVasteKosten(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Autoverzekering' }))
+    await gebruiker.type(screen.getByLabelText('Vast bedrag (€)'), '620')
+    await gebruiker.click(screen.getByRole('button', { name: 'Vaste post toevoegen' }))
 
     const nu = new Date()
     const volgende = new Date(nu.getFullYear(), nu.getMonth() + 1, 1)
@@ -835,104 +675,61 @@ describe('OpstellingSectie — de aanvinklijsten', () => {
     expect(onVastePost.mock.calls[0][0].startMaand).toBe(verwacht)
   })
 
-  it('hangt een vaste kost nooit aan een gearchiveerde rekening', async () => {
-    // Een post op een afgesloten rekening wordt nooit als betaald herkend en blijft
-    // elke maand achterstallig staan.
+  it('waarschuwt wanneer er al een vaste last met die naam staat', async () => {
+    // ⚠ Ronde 71 bouwde deze controle in het inline blok; met dat blok verdween ze. Ze
+    // hoort in het formulier, want dat is sinds deze ronde de enige weg naar een vaste
+    // last. Bewust een waarschuwing en geen blokkade: twee auto's bestaan echt.
     const gebruiker = userEvent.setup()
-    const onVastePost = vi.fn()
-    const oud: Rekening = { id: 'oud', naam: 'ING (gesloten)', beginsaldo: 0, type: 'betaal', gearchiveerd: true }
-    toon({ rekeningen: [oud, rekening] }, { onVastePost })
+    const bestaand: TerugkerendePost = { id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 3 }
+    toon({ rekeningen: [rekening], terugkerendePosten: [bestaand] }, { onVastePost: vi.fn() })
+    await naarVasteKosten(gebruiker)
+    await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Huur' }))
 
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.type(screen.getByLabelText('Huur'), '950')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
-
-    expect(onVastePost.mock.calls[0][0].rekeningId).toBe('r1')
+    const venster = screen.getByRole('dialog')
+    expect(within(venster).getByText(/al een vaste last die zo heet/)).toBeInTheDocument()
+    // De opslaanknop blijft gewoon bruikbaar.
+    await gebruiker.type(within(venster).getByLabelText('Vast bedrag (€)'), '400')
+    expect(within(venster).getByRole('button', { name: 'Vaste post toevoegen' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
   })
 
-  it('springt na Enter naar het volgende veld ONDER de rij, niet terug naar boven', async () => {
-    // Wie geen huur betaalt en bij Hypotheek begint, sprong terug naar het huurveld
-    // bovenaan — en tikte zijn volgende bedrag daar in. Zo ontstond stil een vaste
-    // last "Huur" bij iemand zonder huur, die daarna gewoon meetelt in zijn buffer.
+  it('telt op het tabblad hetzelfde als in de lijst', async () => {
+    // ⚠ De telling op de tab stond op "wat kost mij dit vandaag", de lijst op "heb ik dit
+    // al ingegeven". Eén jaarpost die pas volgend jaar begint, en het blok zei "Je vulde
+    // er 1 van de 19 in" terwijl de tab geen cijfer toonde en de voortgangsbalk het blok
+    // niet aftikte.
     const gebruiker = userEvent.setup()
-    toon({ rekeningen: [rekening] })
-
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.type(screen.getByLabelText('Hypotheek'), '1150')
-    await gebruiker.keyboard('{Enter}')
-
-    // Elektriciteit en gas staat ONDER Hypotheek; Huur staat erboven.
-    expect(document.activeElement).toBe(screen.getByLabelText('Elektriciteit en gas'))
-  })
-
-  it('biedt een opgezegd abonnement gewoon opnieuw aan', async () => {
-    // Netflix met een eindmaand in het verleden telt nergens meer mee: de tegel
-    // "Waarvan sluipend" laat hem weg en het blok geldt niet als ingevuld. Zetten we
-    // de rij dan tóch op "toegevoegd", dan spreekt het scherm zichzelf tegen én kan
-    // wie zich opnieuw abonneert zijn abonnement hier niet meer ingeven.
-    const gebruiker = userEvent.setup()
-    const gestopt: TerugkerendePost = {
+    const later: TerugkerendePost = {
       id: 'p1',
-      omschrijving: 'Netflix',
-      bedrag: -1399,
+      omschrijving: 'Autoverzekering',
+      bedrag: -62000,
       rekeningId: 'r1',
-      dag: 1,
-      eindMaand: '2020-01',
+      dag: 5,
+      frequentie: 'jaar',
+      startMaand: '2099-03',
     }
-    toon({ rekeningen: [rekening], terugkerendePosten: [gestopt] })
-
-    await gebruiker.click(screen.getByRole('tab', { name: /Sluipende kosten/ }))
-    const rij = screen.getByText('Netflix').closest('li') as HTMLElement
-    expect(within(rij).queryByText('toegevoegd')).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Netflix')).toBeEnabled()
+    toon({ rekeningen: [rekening], terugkerendePosten: [later] })
+    expect(screen.getByRole('tab', { name: /Vaste kosten/ })).toHaveTextContent('1')
+    await naarVasteKosten(gebruiker)
+    expect(screen.getByText(/Je vulde er 1 van de 19 in/)).toBeInTheDocument()
   })
 
-  it('laat een terugkerende ínkomst met dezelfde naam de kost niet blokkeren', async () => {
-    // Kotgeld of onderverhuur komt binnen onder "Huur". Telden we die mee als "al
-    // toegevoegd", dan kon je je eigen huur hier niet meer ingeven.
+  it('vat twee kosten samen als een aantal, niet als een opgeteld bedrag', async () => {
+    // Twee bedragen met verschillende periodes optellen geeft een getal dat nergens op
+    // slaat. Wie het detail wil, klapt open.
     const gebruiker = userEvent.setup()
-    const inkomst: TerugkerendePost = { id: 'p1', omschrijving: 'Huur', bedrag: 75000, rekeningId: 'r1', dag: 1 }
-    toon({ rekeningen: [rekening], terugkerendePosten: [inkomst] })
+    const posten: TerugkerendePost[] = [
+      { id: 'p1', omschrijving: 'Autoverzekering', bedrag: -62000, rekeningId: 'r1', dag: 5, frequentie: 'jaar', startMaand: '2027-03', bronVoorstel: 'autoverzekering' },
+      { id: 'p2', omschrijving: 'Autoverzekering bestelwagen', bedrag: -3000, rekeningId: 'r1', dag: 5, bronVoorstel: 'autoverzekering' },
+    ]
+    toon({ rekeningen: [rekening], terugkerendePosten: posten })
+    await naarVasteKosten(gebruiker)
 
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    const rij = screen.getByText('Huur').closest('li') as HTMLElement
-    expect(within(rij).queryByText('toegevoegd')).not.toBeInTheDocument()
-  })
-
-  it('hangt een vaste kost aan een betaalrekening, niet aan je spaarboekje', async () => {
-    // `standaardRekening` geeft de rekening terug waarop je het laatst boekte. Was
-    // dat toevallig je spaarrekening, dan hingen hier twintig vaste lasten aan je
-    // spaargeld. Vaste lasten gaan van een betaalrekening.
-    const gebruiker = userEvent.setup()
-    const onVastePost = vi.fn()
-    toon({ rekeningen: [spaar, rekening] }, { onVastePost })
-
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    await gebruiker.type(screen.getByLabelText('Huur'), '950')
-    await gebruiker.click(screen.getByRole('button', { name: 'Voeg Huur toe' }))
-
-    expect(onVastePost.mock.calls[0][0].rekeningId).toBe('r1')
-    // En het scherm zegt erbij van welke rekening het gaat — het vraagt dat bewust
-    // niet, dus zonder deze regel zou je het nergens zien.
-    expect(await screen.findByText(/Zichtrekening/)).toBeInTheDocument()
-  })
-
-  it('laat je zonder rekening niet eerst twintig bedragen intikken', async () => {
-    // ⚠ RONDE 66, slotronde. Vroeger stonden hier gewoon de invulvelden, en kwam de
-    // melding "Maak eerst een rekening aan bij Je geld" pas bij het aanvinken — een
-    // zin die de bestemming noemt maar er niet heen brengt, en je invoer was weg.
-    // Nu begint het blok er niet eens aan en staat de weg erheen er meteen bij.
-    const gebruiker = userEvent.setup()
-    const onVastePost = vi.fn()
-    toon({}, { onVastePost })
-
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
-    expect(screen.queryByLabelText('Huur')).toBeNull()
-    expect(screen.getByText(/een vaste kost moet ergens vanaf gaan/)).toBeInTheDocument()
-
-    await gebruiker.click(screen.getByRole('button', { name: 'Maak een rekening aan' }))
-    await vi.waitFor(() => expect(document.activeElement).toBe(document.getElementById('opstelling-tab-rekeningen')))
-    expect(onVastePost).not.toHaveBeenCalled()
+    const rij = screen.getByRole('button', { name: /^Autoverzekering/ })
+    expect(rij).toHaveTextContent('2 kosten toegevoegd')
+    expect(rij).not.toHaveTextContent(/650,00/)
   })
 })
 

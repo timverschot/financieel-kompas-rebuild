@@ -69,6 +69,7 @@ export function BoekingDialoog({
   overboekingen,
   transacties,
   waarderingen,
+  terugkerendePosten = [],
   dossiers = [],
   onTransactie,
   onVastePost,
@@ -99,6 +100,8 @@ export function BoekingDialoog({
   overboekingen: Overboeking[]
   transacties: Transactie[]
   waarderingen: Waardering[]
+  /** De vaste lasten die er al zijn — om te waarschuwen bij een dubbele naam (ronde 73). */
+  terugkerendePosten?: TerugkerendePost[]
   /** De dossiers waarin een uitgave meteen gedeeld kan worden. */
   dossiers?: Dossier[]
   onTransactie: (t: Transactie) => Promise<void> | void
@@ -209,6 +212,8 @@ export function BoekingDialoog({
             categorieen={categorieen}
             onOpslaan={onVastePost}
             onOpgeslagen={naOpslaan}
+            // Alleen de LASTEN: een vaste inkomst "Huur" mag hier niet waarschuwen.
+            bestaande={terugkerendePosten.filter((p) => p.bedrag < 0)}
           />
         </>
       )}

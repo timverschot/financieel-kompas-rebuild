@@ -552,77 +552,33 @@ h4 {
   justify-content: flex-end;
 }
 
-/* Het invoerblok van de aanvinklijst mag afbreken (ronde 71). Op een rij die al
-   toegevoegd is staan sinds deze ronde de badge "toegevoegd" én de knop "Nog een"
-   naast het bedragveld en het periodewoord; samen is dat op een telefoon breder dan de
-   321 px die `.rij-acties` daar krijgt. `.lijst` heeft `overflow: hidden`, dus de
-   overloop zou weggeknipt worden zonder dat de pagina breder wordt — precies het
-   faalpatroon waar het commentaar bij `.rij-kost` voor waarschuwt. */
-.rij-kost-invoer > .rij-acties {
-  flex-wrap: wrap;
-  row-gap: 8px;
-  /* ⚠ `max-width` is wat het afbreken écht mogelijk maakt. Vanaf 560 px staat dit blok
-     op `flex: 0 0 auto`, dus het meet zichzelf op zijn inhoud in ÉÉN regel en wrapt
-     nooit uit zichzelf — het liep gewoon 32 px buiten de kolom, waar `.lijst` het met
-     `overflow: hidden` afknipte. Met een bovengrens moet het binnen de rij passen, en
-     dan doet `flex-wrap` zijn werk. */
-  max-width: 100%;
-}
+/* De kop van een voorstel: de naam, wat je er al onder hebt staan, en het
+   driehoekje dat de rij openklapt (ronde 73).
 
-.kost-bedrag {
-  flex: 1 1 auto;
-  min-width: 96px;
-  max-width: 160px;
-}
-
-/* De periode naast het bedragveld (ronde 65). Ze mag niet meekrimpen: net dat
-   woord — "per jaar" of "per maand" — is het verschil tussen een juiste post en
-   een die twaalf keer te klein is. */
-.kost-periode {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
-/* De regel die zegt hoe vaak een voorstel terugkomt, en die je kan openklappen
-   (ronde 70).
-
-   Bewust GEEN `.knop`-klasse: die brengt padding, een rand en een achtergrond mee,
-   en dit hoort te lezen als een rustige metaregel — zoals de toelichting erboven —
-   met een stippellijntje dat verraadt dat je erop kan tikken. `align-self` houdt de
-   knop zo breed als haar tekst; zonder die regel rekt ze over de hele rij en tik je
-   hem per ongeluk open terwijl je naast de naam mikt.
-
-   Het raakvlak van 44 px komt van de padding onder `pointer: coarse`, met een
-   negatieve marge die de rij weer even hoog maakt — hetzelfde patroon als bij de
-   knop "Toon ze ook" in de boekingslijst (ronde 47). */
-.kost-ritme {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
+   Bewust GEEN `.knop`-klasse: dit is de rij zelf die klikbaar wordt, niet een knop
+   op de rij. Ze moet lezen als gewone lijsttekst — vandaar `font: inherit`, geen
+   rand, geen achtergrond en geen padding. `width: 100%` maakt het hele rijgebied
+   raakbaar in plaats van alleen de letters; `text-align: left` is nodig omdat een
+   `<button>` van zichzelf centreert. */
+.kost-kop {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
   font: inherit;
-  font-size: var(--tekst-s);
-  line-height: 1.35;
-  color: var(--text-subtle);
   background: none;
   border: none;
   padding: 0;
   text-align: left;
   cursor: pointer;
-  text-decoration: underline dotted;
-  text-underline-offset: 3px;
-}
-
-@media (pointer: coarse) {
-  .kost-ritme {
-    min-height: 44px;
-    padding: 12px 0;
-    margin: -12px 0;
-  }
+  color: inherit;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .kost-ritme:hover {
-    color: var(--text);
+  .kost-kop:hover .rij-titel {
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
 }
 
@@ -632,38 +588,69 @@ h4 {
    Precies de val die bij `.rij-knop`, `.badge-knop` en `.tx-openen` al beschreven staat.
    Een positieve offset wijst naar buiten, en `.lijst` heeft `overflow: hidden` — dan
    knipt de lijst de ring weg. */
-.rij .kost-ritme:focus-visible,
-.kost-ritme:focus-visible {
+.rij .kost-kop:focus-visible,
+.kost-kop:focus-visible {
   outline: 3px solid var(--focus-rand);
   outline-offset: -3px;
   box-shadow: none;
   border-radius: var(--radius-sm);
 }
 
-/* Het paneeltje eronder.
-   ⚠ Hier stonden twee regels die allebei niets deden, en dat is precies de val die dit
-   bestand elders drie keer documenteert. `flex: 1 1 100%` op het paneel zelf: `.rij-midden`
-   is een KOLOM, dus daar is `flex-basis` een hoogte — de breedte kwam sowieso al van
-   `align-items: stretch`. En `.kost-ritme-paneel > .veldgroep { flex: 1 1 200px }` verloor
-   van `.veldrij > .veldgroep` verderop in dit bestand: gelijke specificiteit, en dan wint
-   de laatste. Allebei weg. De basis van 160 px volstaat, want `.rij-kost-invoer` breekt de
-   rij nu af zodra ze niet in twee kolommen past (zie daar) — en dan heeft het paneel de
-   volle kolombreedte. Nagemeten op 393, 600 en 1440 px. */
-.kost-ritme-paneel {
-  margin-top: 6px;
+/* Een rij die kan openklappen lijnt bovenaan uit, niet in het midden (ronde 73).
+   `.rij` staat op `align-items: center`; met een openstaande uitklap van vijf kosten
+   zweefde het icoontje links en de knop "Toevoegen" rechts halverwege die hoogte,
+   ver van de naam waar ze bij horen. Boven 560 px staan die kolommen naast de
+   naamkolom, dus daar is dit zichtbaar; eronder wrapt `.rij-acties` toch al naar een
+   eigen regel. Altijd toegepast, ook dicht — dan verandert er niets, want een dichte
+   rij is precies één regel hoog. */
+.rij-kost-uitklap {
+  align-items: flex-start;
 }
 
-/* Het vinkje "hier maandelijks voor opzijzetten" krijgt de volle breedte (ronde 71).
-   `.veldrij > .veldgroep` staat op `flex: 1 1 160px`, dus het vinkje kwam met een label
-   van 32 tekens en een uitlegzin van 87 tekens in een halve kolom terecht — op een
-   telefoon zo'n 154 px. Op Budget → Vast staat exact hetzelfde vinkje buiten een
-   `.veldrij` en heeft het wél de volle breedte.
+/* De uitklap met de kosten die je onder dit voorstel hebt staan. Het streepje links
+   maakt zichtbaar dat deze regels bij de rij erboven horen en geen nieuwe voorstellen
+   zijn. */
+.kost-eigen {
+  margin-top: 6px;
+  padding-left: 12px;
+  border-left: 2px solid var(--divider);
+}
 
-   ⚠ Drie klassen diep, met opzet: `.kost-ritme-paneel > .veldgroep` alleen zou even
-   specifiek zijn als `.veldrij > .veldgroep` verderop in dit bestand, en dan wint de
-   laatste — de val die deze ronde al twee keer gekost heeft. */
-.kost-ritme-paneel > .veldgroep.kost-opzij {
-  flex: 1 1 100%;
+/* De regels ÍN de uitklap mogen afbreken (ronde 73, nagemeten in de browser).
+   ⚠ Zonder dit werd op 600 px de detailregel "€ 950,00 per maand · Elke maand · dag 3"
+   tot 33 px platgedrukt en door `overflow: hidden` weggeknipt. De smalle weergave staat
+   tot 1024 px op `maxWidth: 480`; daarbinnen houdt de buitenste rij ruimte over voor
+   haar eigen knop, en wat er dan voor de uitklap overblijft is te weinig voor een naam,
+   een bedrag én twee knoppen op één lijn. Met een echte basis van 200 px springen de
+   knoppen naar een eigen regel zodra het niet past, en staan ze naast elkaar zodra het
+   wél past. De horizontale padding gaat eraf: die 32 px is binnen een uitklap verspild.
+   Nagemeten op 320, 393, 600, 1024 en 1440 px, in het Nederlands en het Frans. */
+.kost-eigen > .rij {
+  flex-wrap: wrap;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.kost-eigen > .rij > .rij-midden {
+  flex: 1 1 200px;
+}
+
+.kost-eigen > .rij > .rij-acties {
+  margin-left: auto;
+}
+
+/* ⚠ De focusring van "Bewerken" en "Verwijderen" in die uitklap. `.kost-eigen` is óók
+   een `.lijst`, en die staat op `overflow: hidden`. De ring die `.rij button:focus-visible`
+   geeft is een box-shadow van 4 px naar BUITEN, dus aan de rechterrand knipt de lijst hem
+   weg — precies de val die dit bestand al vier keer beschrijft (`.rij-knop`, `.badge-knop`,
+   `.tx-openen`, en in ronde 71 de knop "Nog een"). Een outline met een NEGATIEVE offset
+   valt binnen de knop en overleeft het knippen. Drie klassen diep, want `.rij button:…`
+   telt (0,2,1) en moet verliezen. */
+.rij .kost-eigen .knop:focus-visible {
+  outline: 3px solid var(--focus-rand);
+  outline-offset: -3px;
+  box-shadow: none;
+  border-radius: var(--radius-sm);
 }
 
 @media (min-width: 560px) {
@@ -673,30 +660,6 @@ h4 {
 
   .rij-kost > .rij-acties {
     flex: 0 0 auto;
-  }
-
-  /* ⚠ RONDE 70, en ALLEEN voor de aanvinklijst van "Je situatie".
-     Met basis 0 nam de naamkolom gewoon wat er overbleef naast het invoerblok
-     (~325 px). De smalle weergave staat tot 1024 px op `maxWidth: 480`, dus de
-     inhoudskolom is in die hele band 408 px breed — daar hield de naam maar 116 px
-     over, en brak "Hospitalisatieverzekering" in vier regeltjes. Sinds deze ronde
-     geldt dat ook voor de ritmeregel en voor de twee velden van het paneeltje.
-     Met een echte basis past de rij daar niet meer in twee kolommen en wrapt
-     `.rij-acties` naar een eigen regel, precies zoals onder 560 px.
-
-     ⚠ Een EIGEN klasse en niet `.rij-kost`: die klasse wordt ook gebruikt door de
-     uitwisselkaart, de maandafsluiting, de prijsstijgingen, de onderhoudsbijdrage en
-     de dossierkaart. Daar zou dezelfde regel rijen laten afbreken die vandaag netjes
-     op één lijn staan — én hun knoppen naar links laten springen, want een afgebroken
-     `.rij-acties` heeft geen uitlijning meer. */
-  .rij-kost-invoer > .rij-midden {
-    flex: 1 1 260px;
-  }
-
-  /* Houdt het invoerblok rechts wanneer het op een eigen regel belandt. Staat het wél
-     naast de naamkolom, dan is er geen vrije ruimte en doet deze regel niets. */
-  .rij-kost-invoer > .rij-acties {
-    margin-left: auto;
   }
 }
 

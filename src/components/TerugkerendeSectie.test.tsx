@@ -341,6 +341,49 @@ describe('TerugkerendeSectie — het contractformulier', () => {
 })
 
 // --- Ronde 66, slotronde: zonder rekening geen formulier, maar wél je posten ---
+describe('TerugkerendeSectie — het formulier leest wat er staat (ronde 73)', () => {
+  it('leest "12abc" NIET stil als 12', () => {
+    // ⚠ `Number.parseInt` stopt bij het eerste teken dat geen cijfer is en zegt niets.
+    // Ronde 71 vond dat verschil al eens: de aanvinklijst weigerde zo'n waarde, dit
+    // formulier las er 12 van. Ronde 73 voegde de twee invulwegen samen tot dít
+    // formulier, dus de losse regel zou anders stil gewonnen hebben.
+    toon([huur])
+    fireEvent.change(screen.getByLabelText('Vaste omschrijving'), { target: { value: 'Test' } })
+    fireEvent.change(screen.getByLabelText('Vast bedrag (€)'), { target: { value: '10' } })
+    fireEvent.change(screen.getByLabelText('Dag van de maand'), { target: { value: '12abc' } })
+
+    expect(screen.getByRole('button', { name: 'Vaste post toevoegen' })).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('laat een gewone dag gewoon door', () => {
+    toon([huur])
+    fireEvent.change(screen.getByLabelText('Vaste omschrijving'), { target: { value: 'Test' } })
+    fireEvent.change(screen.getByLabelText('Vast bedrag (€)'), { target: { value: '10' } })
+    fireEvent.change(screen.getByLabelText('Dag van de maand'), { target: { value: '12' } })
+
+    expect(screen.getByRole('button', { name: 'Vaste post toevoegen' })).not.toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('waarschuwt bij een naam die al bestaat, zonder het opslaan te blokkeren', () => {
+    // Ronde 71 had deze controle in het inline blok van "Je situatie"; die verdween met
+    // dat blok. Nu staat ze in het formulier, dus ze geldt op élk scherm. Bewust een
+    // waarschuwing: twee gezinsauto's met allebei "Autoverzekering" bestaan echt.
+    toon([huur])
+    fireEvent.change(screen.getByLabelText('Vaste omschrijving'), { target: { value: 'Huur' } })
+    fireEvent.change(screen.getByLabelText('Vast bedrag (€)'), { target: { value: '10' } })
+
+    expect(screen.getByText(/al een vaste last die zo heet/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Vaste post toevoegen' })).not.toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('waarschuwt niet tegen de post die je zelf aan het bewerken bent', () => {
+    toon([huur])
+    fireEvent.click(screen.getByRole('button', { name: /Bewerk vaste post Huur/ }))
+
+    expect(screen.queryByText(/al een vaste last die zo heet/)).toBeNull()
+  })
+})
+
 describe('TerugkerendeSectie — zonder rekening', () => {
   const huurpost: TerugkerendePost = { id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'oud', dag: 3 }
 

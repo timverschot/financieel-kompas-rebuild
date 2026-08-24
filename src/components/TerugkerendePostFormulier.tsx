@@ -51,6 +51,9 @@ export function TerugkerendePostFormulier({
   bewerken,
   onOpgeslagen,
   soort: soortVanBuiten,
+  beginwaarden,
+  bestaande,
+  focusBijStart = false,
 }: {
   rekeningen: Rekening[]
   categorieen: Categorie[]
@@ -70,6 +73,59 @@ export function TerugkerendePostFormulier({
    * tweede knop — zo hoeft de invoerpopup niets over dit formulier te weten.
    */
   onOpgeslagen?: (opties: { blijfOpen: boolean }) => void
+  /**
+   * Waarden waarmee een LEEG formulier begint (ronde 73).
+   *
+   * De aanvinklijst op "Je situatie" opent dit formulier vanuit een voorstel, en dan
+   * hoort de naam, de categorie, het ritme en de rekening al te staan — jij tikt
+   * alleen nog het bedrag. Zo is er één invulweg in plaats van twee die uit elkaar
+   * kunnen lopen; de vorige opzet had twee half-formulieren met verschillende regels,
+   * en dat leverde in ronde 71 al een echt verschil op ("12abc" werd op de ene plek
+   * als 12 gelezen en op de andere geweigerd).
+   *
+   * ⚠ EEN VERTREKPUNT, GEEN KOPPELING. De waarden worden alleen bij het opbouwen van
+   * het formulier gelezen — en opnieuw na "Opslaan + volgende", zodat je meteen aan de
+   * volgende van dezelfde soort kan beginnen. Verandert de prop daarna, dan overschrijft
+   * ze niet wat jij intussen getikt hebt. Wie een ánder voorstel wil openen, geeft het
+   * formulier een andere `key`.
+   *
+   * `bronVoorstel` reist mee naar het record: zo weet die lijst later welke kosten bij
+   * welk voorstel horen, ook wanneer je ze hernoemt.
+   */
+  /**
+   * De vaste posten die er al zijn, om te waarschuwen bij een dubbele naam (ronde 73).
+   *
+   * ⚠ Deze controle stond tot ronde 72 in het inline invulblok van "Je situatie" en
+   * verdween met dat blok. Ze hoort hier thuis: dit is sinds deze ronde de ENIGE weg
+   * waarlangs een vaste last ontstaat, dus een waarschuwing hier geldt meteen op alle
+   * schermen. Het is bewust een WAARSCHUWING en geen blokkade — twee auto's, twee
+   * telefoonabonnementen of twee verzekeringen met dezelfde naam bestaan echt.
+   */
+  bestaande?: TerugkerendePost[]
+  /**
+   * Zet de cursor bij het opbouwen in het bedragveld (ronde 73).
+   *
+   * ⚠ Alleen voor het invulvenster van "Je situatie". Springt "Opslaan + volgende" daar
+   * naar het volgende voorstel, dan bouwt React dit formulier opnieuw op — inclusief de
+   * knop waar de focus op stond. Die viel dan naar `<body>`, en één druk op Tab bracht
+   * je op de pagina áchter het venster. Bij de eerste opening doet deze focus niets
+   * kwaads: de popup zet de cursor daarna zelf in het eerste veld (effecten van een
+   * kind draaien vóór die van de ouder).
+   *
+   * Op de Plan-pagina staat dit formulier gewoon op de pagina; daar zou een focus bij
+   * het laden de pagina naar beneden trekken. Vandaar: standaard uit.
+   */
+  focusBijStart?: boolean
+  beginwaarden?: {
+    omschrijving?: string
+    categorieId?: string
+    frequentie?: Frequentie
+    dag?: number
+    /** De maand van de eerste betaling van een niet-maandelijkse post ('JJJJ-MM'). */
+    startMaand?: string
+    rekeningId?: string
+    bronVoorstel?: string
+  }
 }) {
   const { t } = useT()
   // Vangt een mislukte opslag op en zegt het (ronde 68).
@@ -88,12 +144,16 @@ export function TerugkerendePostFormulier({
   // inkomsten, één voor lasten). Vaste id's zouden dan dubbel voorkomen, en dan
   // wijst een label naar het veld van de andere kaart.
   const veldId = useId()
-  const [omschrijving, setOmschrijving] = useState(BEGIN.omschrijving)
+  // ⚠ Vastgepind bij het opbouwen. Zie de uitleg bij `beginwaarden`: het is een
+  // vertrekpunt en geen koppeling, dus een latere wijziging van de prop mag niet
+  // overschrijven wat de gebruiker intussen intikte.
+  const beginRef = useRef(beginwaarden)
+  const [omschrijving, setOmschrijving] = useState(beginwaarden?.omschrijving ?? BEGIN.omschrijving)
   const [bedrag, setBedrag] = useState(BEGIN.bedrag)
   const [eigenSoort, setEigenSoort] = useState<'uitgave' | 'inkomst'>(BEGIN.soort)
   // Van buiten gezet heeft voorrang; anders houdt het formulier zijn eigen keuze bij.
   const soort = soortVanBuiten ?? eigenSoort
-  const [rekeningId, setRekeningId] = useState(rekeningen[0]?.id ?? '')
+  const [rekeningId, setRekeningId] = useState(beginwaarden?.rekeningId ?? rekeningen[0]?.id ?? '')
   // ⚠ NIET afleiden uit de lijst. Ik heb dat in ronde 66 geprobeerd — "val terug op
   // de eerste rekening zodra de gekozene niet meer in de lijst staat" — en dat is
   // erger dan het gaatje dat het dichtte: bewerk je een vaste last die op een
@@ -101,13 +161,13 @@ export function TerugkerendePostFormulier({
   // een andere rekening zodra je alleen het bedrag aanpaste. Een koppeling mag nooit
   // stil verdwijnen; dat is elders in deze app een harde regel (zie het spaardoel-,
   // garantie- en leningformulier), en ze geldt hier ook.
-  const [categorieId, setCategorieId] = useState(BEGIN.categorieId)
-  const [dag, setDag] = useState(BEGIN.dag)
-  const [frequentie, setFrequentie] = useState<Frequentie>(BEGIN.frequentie)
+  const [categorieId, setCategorieId] = useState(beginwaarden?.categorieId ?? BEGIN.categorieId)
+  const [dag, setDag] = useState(beginwaarden?.dag !== undefined ? String(beginwaarden.dag) : BEGIN.dag)
+  const [frequentie, setFrequentie] = useState<Frequentie>(beginwaarden?.frequentie ?? BEGIN.frequentie)
   // De maand van de eerste betaling. Bepaalt het ritme van een niet-maandelijkse
   // post: begin je in augustus met een halfjaarlijkse premie, dan valt de volgende
   // in februari — niet in januari, want het contract volgt geen kalenderhalfjaar.
-  const [startMaand, setStartMaand] = useState(() => huidigeMaand())
+  const [startMaand, setStartMaand] = useState(() => beginwaarden?.startMaand ?? huidigeMaand())
   // Leeg = loopt door. Geldt voor ELKE frequentie, ook maandelijks: een opgezegde
   // huur of een gestopt abonnement is precies het normale geval.
   const [eindMaand, setEindMaand] = useState('')
@@ -127,19 +187,25 @@ export function TerugkerendePostFormulier({
   // Welke van de twee opslaanknoppen ingedrukt werd. Een klik komt altijd vóór de
   // verzending van het formulier, dus dit staat juist op het moment dat we het lezen.
   const blijfOpen = useRef(false)
+  // Eén keer per opbouw; zie `focusBijStart`.
+  const bedragGefocust = useRef(false)
 
   // Zet alle velden terug op hun beginwaarde.
   const leegmaken = useCallback(() => {
     // Klaar voor het volgende record: een vers id, zodat de volgende invoer niet
     // hetzelfde record overschrijft (ronde 68).
     nieuwIdRef.current = nieuwId()
-    setOmschrijving(BEGIN.omschrijving)
+    // Terug naar het VERTREKPUNT, niet naar leeg: kom je hier na "Opslaan + volgende"
+    // vanuit de aanvinklijst, dan wil je meteen aan de tweede van dezelfde soort
+    // kunnen beginnen zonder de naam en de categorie opnieuw te kiezen.
+    const begin = beginRef.current
+    setOmschrijving(begin?.omschrijving ?? BEGIN.omschrijving)
     setBedrag(BEGIN.bedrag)
     setEigenSoort(BEGIN.soort)
-    setCategorieId(BEGIN.categorieId)
-    setDag(BEGIN.dag)
-    setFrequentie(BEGIN.frequentie)
-    setStartMaand(huidigeMaand())
+    setCategorieId(begin?.categorieId ?? BEGIN.categorieId)
+    setDag(begin?.dag !== undefined ? String(begin.dag) : BEGIN.dag)
+    setFrequentie(begin?.frequentie ?? BEGIN.frequentie)
+    setStartMaand(begin?.startMaand ?? huidigeMaand())
     setEindMaand('')
     setOpbouwen(BEGIN.opbouwen)
     setContractsoort('')
@@ -182,7 +248,12 @@ export function TerugkerendePostFormulier({
   }, [bewerken, leegmaken])
 
   const bedragCenten = invoerNaarCenten(bedrag)
-  const dagGetal = Number.parseInt(dag, 10)
+  // ⚠ RONDE 73 — BEWUST GEEN `Number.parseInt`. Die leest "12abc" als 12, "28,7" als 28
+  // en "1e3" als 1: hij stopt bij het eerste teken dat geen cijfer is en zegt niets. Dat
+  // verschil was in ronde 71 al eens een echte fout, en het samenvoegen van de twee
+  // invulwegen deze ronde zou het anders stil hebben laten winnen. Nu geldt hier
+  // dezelfde regel als bij de contractvelden: wat er staat is een heel getal, of niets.
+  const dagGetal = /^\d+$/.test(dag.trim()) ? Number(dag.trim()) : Number.NaN
 
   // --- Het contract ------------------------------------------------------------
   const regel = opzegregelVan(contractsoort || undefined)
@@ -221,6 +292,16 @@ export function TerugkerendePostFormulier({
     eindMaand === '' || (/^\d{4}-\d{2}$/.test(eindMaand) && (!periodiek || eindMaand > startMaand))
   // De id van de regel die zegt wat er nog ontbreekt (ronde 61).
   const redenId = useId()
+
+  // Staat er al een vaste last die zo heet? (ronde 73, zie de prop `bestaande`)
+  // Vergelijkt zoals de gebruiker kijkt: zonder spaties eromheen en zonder op
+  // hoofdletters te letten. De post die je aan het BEWERKEN bent, telt niet mee — anders
+  // waarschuwt hij tegen zichzelf zodra je alleen het bedrag bijstelt.
+  const naamBestaatAl =
+    omschrijving.trim().length > 0 &&
+    (bestaande ?? []).some(
+      (p) => p.id !== bewerken?.id && p.omschrijving.trim().toLowerCase() === omschrijving.trim().toLowerCase(),
+    )
   const geldig =
     omschrijving.trim().length > 0 &&
     Number.isFinite(bedragCenten) &&
@@ -281,6 +362,15 @@ export function TerugkerendePostFormulier({
             ? { opzegtermijnMaanden: eigenTermijnGetal }
             : { opzegtermijnDagen: eigenTermijnGetal }
           : {}),
+        // Waar deze kost vandaan komt (ronde 73). Bij het BEWERKEN blijft staan wat er
+        // al stond: de herkomst van een record verandert niet omdat je het bedrag
+        // bijstelt. Bij een nieuwe post komt ze uit het voorstel waarop je klikte, en
+        // ontbreekt ze wanneer je het formulier gewoon op Budget → Vast invult.
+        ...(bewerken?.bronVoorstel
+          ? { bronVoorstel: bewerken.bronVoorstel }
+          : beginRef.current?.bronVoorstel
+            ? { bronVoorstel: beginRef.current.bronVoorstel }
+            : {}),
       }),
     )
     if (!gelukt) return
@@ -300,6 +390,16 @@ export function TerugkerendePostFormulier({
           {t('Vaste omschrijving')}
         </label>
         <input id={`${veldId}-vaste-omschrijving`} value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} />
+        {/* ⚠ Een WAARSCHUWING, geen fout: de opslaanknop blijft gewoon werken. Twee
+            gezinsauto's met allebei "Autoverzekering" bestaan, en de app hoort dat niet
+            te verbieden. Ze hoort alleen te voorkomen dat je dezelfde kost twee keer
+            invoert zonder het te merken — dan staat ze ook twee keer in je vaste lasten
+            per maand, in je buffer en in je vooruitblik. */}
+        {naamBestaatAl && (
+          <p className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+            {t('Er staat al een vaste last die zo heet. Is dit een tweede, geef ze dan een eigen naam — dan zie je later welke welke is.')}
+          </p>
+        )}
       </div>
 
       <div className="veldrij">
@@ -307,7 +407,22 @@ export function TerugkerendePostFormulier({
           <label className="label-caps" htmlFor={`${veldId}-vast-bedrag`}>
             {t('Vast bedrag (€)')}
           </label>
-          <input id={`${veldId}-vast-bedrag`} inputMode="decimal" placeholder="0,00" value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
+          <input
+            id={`${veldId}-vast-bedrag`}
+            inputMode="decimal"
+            placeholder="0,00"
+            value={bedrag}
+            onChange={(e) => setBedrag(e.target.value)}
+            ref={(el) => {
+              // Alleen bij het opbouwen, en alleen wanneer erom gevraagd is. Een effect
+              // met een lege afhankelijkheidslijst zou hetzelfde doen; via de ref is er
+              // geen extra beurt tussen het tekenen en het zetten van de cursor.
+              if (focusBijStart && el && !bedragGefocust.current) {
+                bedragGefocust.current = true
+                el.focus()
+              }
+            }}
+          />
         </div>
         <div className="veldgroep">
           <label className="label-caps" htmlFor={`${veldId}-vaste-dag`}>

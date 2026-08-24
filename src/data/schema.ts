@@ -426,6 +426,17 @@ export const TerugkerendePostSchema = z.object({
   // voorspelbaar antwoord te zijn.
   opzegtermijnDagen: z.number().int().min(0).max(365).optional(),
   opzegtermijnMaanden: z.number().int().min(0).max(24).optional(),
+  // Uit welk voorstel van de aanvinklijst op "Je situatie" deze post ontstaan is
+  // (ronde 73). Optioneel, dus elke bestaande post blijft geldig: geen migratie.
+  //
+  // ⚠ WAAROM DIT NODIG IS. Die lijst herkende haar eigen kosten aan hun NAAM, in elke
+  // taal. Dat werkt voor de eerste — "Huur" heet "Huur" — maar sinds ronde 71 kan je
+  // er een tweede bijzetten met een eigen naam ("Autoverzekering bestelwagen"), en die
+  // was daarna op dat scherm onvindbaar: geen enkele rij herkende hem nog als de hare.
+  // Met dit veld onthoudt de app waar een kost vandaan komt, ook als je hem hernoemt.
+  // Ontbreekt het veld (alles van vóór ronde 73), dan valt de lijst terug op de oude
+  // herkenning op naam.
+  bronVoorstel: z.string().min(1).optional(),
 })
 export type TerugkerendePost = z.infer<typeof TerugkerendePostSchema>
 

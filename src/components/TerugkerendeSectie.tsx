@@ -315,6 +315,10 @@ export function TerugkerendeSectie({
           onAnnuleer={() => setBewerken(null)}
           bewerken={bewerken}
           soort={soort}
+          // Waarschuwt bij een naam die er al staat (ronde 73). `eigen` en niet `posten`:
+          // een vaste ínkomst "Huur" (kotgeld) mag geen waarschuwing geven boven een
+          // vaste LAST die ook "Huur" heet — dat zijn twee verschillende dingen.
+          bestaande={eigen}
         />
       )}
     </Kaart>

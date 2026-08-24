@@ -2290,6 +2290,7 @@ export function App() {
         overboekingen={overboekingen}
         waarderingen={waarderingen}
         transacties={transacties}
+        terugkerendePosten={terugkerendePosten}
         dossiers={dossiers}
         onTransactie={slaTransactieOp}
         onVastePost={voegTerugkerendToe}
@@ -2640,6 +2641,7 @@ export function App() {
             overboekingen={overboekingen}
             waarderingen={waarderingen}
             terugkerendePosten={terugkerendePosten}
+            categorieen={categorieen}
             leningen={leningen}
             aflossingen={aflossingen}
             gezinsleden={kinderen}
@@ -2647,6 +2649,7 @@ export function App() {
             onRekening={slaRekeningOp}
             onLening={leningOpslaan}
             onVastePost={voegTerugkerendToe}
+            onVastePostVerwijderen={verwijderTerugkerend}
             onKindToevoegen={voegKindToe}
             onKindWijzigen={wijzigKind}
             onKindVerwijderen={verwijderKindH}
