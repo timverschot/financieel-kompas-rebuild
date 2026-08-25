@@ -5,7 +5,16 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
-    "strict": true
+    "strict": true,
+    /* ⚠ RONDE 77 — HET GEBOUWDE BESTAND HOORT BUITEN DE PROJECTMAP.
+       Een composite-project kan geen `noEmit`, en zonder `outDir` laat `tsc -b`
+       hier een `vite.config.js` achter. Vite kiest zijn instellingen in de volgorde
+       `.js`, `.mjs` en pas daarna `.ts`, dus vanaf dat moment draaien zowel vitest
+       als de bouw op die bevroren kopie en heeft elke wijziging in `vite.config.ts`
+       geen effect meer — zonder één foutmelding. `.gitignore` hield dat bestand al
+       uit de repo (ronde 35), maar niet uit de werkmap: wie na een `npm run build`
+       de tests draaide, testte de oude instellingen. */
+    "outDir": "./node_modules/.tmp/tsconfig-node"
   },
   "include": ["vite.config.ts"]
 }

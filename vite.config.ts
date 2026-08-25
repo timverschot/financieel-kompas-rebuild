@@ -84,5 +84,11 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/setupTests.ts',
+    // ⚠ Nodig sinds ronde 77, en alleen voor `src/index.css.test.ts`. Vitest zet
+    // standaard élke CSS-import om in een lege string — ook `import css from
+    // './index.css?raw'`. Een test die het opmaakbestand naleest, kreeg dus nul
+    // tekens en slaagde stil op niets. Met `include` gaat het uitsluitend om dit ene
+    // bestand; alle andere CSS blijft weggelaten, zodat de reeks niet trager wordt.
+    css: { include: [/\/src\/index\.css/] },
   },
 })

@@ -73,7 +73,6 @@
   --negative: #a03f21;
   --negative-soft: #f7ded4;
   --negative-ink: #9c3e20;
-  --info: #4a6e9b;
   --info-soft: #e4e9f2;
   --info-ink: #35547a;
   --warn: #b8860b;
@@ -82,7 +81,6 @@
      haalt hij maar 2,6-3,2:1 en dat is te weinig. Precies de plek waar het het
      meest telde stond erin: "(nog € 10,00)" onder een gesplitst kassaticket. */
   --warn-tekst: #7a5a07;
-  --warn-soft: #fff8ee;
 
   --font-body: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
   --font-display: 'Bricolage Grotesque Variable', 'IBM Plex Sans', system-ui, sans-serif;
@@ -96,11 +94,9 @@
   --radius-md: 18px;
   --radius-lg: 20px;
   --radius-xl: 24px;
-  --radius-2xl: 28px;
 
   /* Het design zet schaduw enkel op zwevende dingen (knop met nadruk, FAB,
      sheet, meldingsbalk). Gewone kaarten hebben een zachte rand, geen schaduw. */
-  --shadow: 0 1px 2px rgba(80, 64, 44, 0.05), 0 12px 30px -14px rgba(80, 64, 44, 0.16);
   --shadow-knop: 0 6px 16px rgba(201, 118, 26, 0.25);
   --shadow-zwevend: 0 12px 26px rgba(201, 118, 26, 0.35);
   --shadow-sheet: 0 24px 60px rgba(80, 64, 44, 0.14);
@@ -180,9 +176,9 @@
 
      Ronde 32: de waarden gingen omhoog. Op een echt scherm was de gloed amper
      te zien — precies de melding die binnenkwam ("de ambergloed is nog niet
-     voldoende zichtbaar"). Ze is nu ongeveer anderhalf keer zo dicht, en
-     `--glans-rand` is nieuw: een zweem amber in de kaartrand, zodat een kaart
-     ook aan haar omtrek bij de familie hoort.
+     voldoende zichtbaar"). Ze is nu ongeveer anderhalf keer zo dicht.
+     (Ronde 32 bedacht er ook een `--glans-rand` bij, een zweem amber in de
+     kaartrand. Die is nooit ergens gebruikt en is in ronde 77 weggehaald.)
 
      Ronde 33: in het LICHTE thema nog een stap verder. Amber op crème is warm op
      warm — dezelfde dichtheid die op bijna-zwart meteen opvalt, verdwijnt daar
@@ -190,7 +186,6 @@
      inconsistentie maar precies de compensatie die nodig is. */
   --glans: rgba(197, 108, 12, 0.26);
   --glans-sterk: rgba(197, 108, 12, 0.5);
-  --glans-rand: rgba(201, 118, 26, 0.16);
 
   /* Zijpaneel (desktop): een donkere, warm-bruine chrome naast de crème pagina.
      Zie components/Zijbalk.tsx. In donkere modus krijgt het paneel eigen,
@@ -243,14 +238,11 @@
   --negative: #f0784e;
   --negative-soft: #3b1f16;
   --negative-ink: #f0784e;
-  --info: #6e93c4;
   --info-soft: #1e2a3b;
   --info-ink: #6e93c4;
   --warn: #e8b948;
   --warn-tekst: #e8b948;
-  --warn-soft: #262e39;
 
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
   --shadow-knop: 0 8px 22px rgba(240, 166, 60, 0.22);
   --shadow-zwevend: 0 12px 30px rgba(240, 166, 60, 0.3);
   --shadow-sheet: 0 24px 60px rgba(0, 0, 0, 0.5);
@@ -261,7 +253,6 @@
      achtergrond en het amber. */
   --glans: rgba(240, 166, 60, 0.22);
   --glans-sterk: rgba(240, 166, 60, 0.4);
-  --glans-rand: rgba(240, 166, 60, 0.22);
 
   /* Zijpaneel in donkere modus: net tussen de paginakleur (#0e1116) en de
      kaartkleur (#171c23), zodat de balk herkenbaar blijft zonder eruit te
@@ -708,13 +699,9 @@ h4 {
    Bedragen
    --------------------------------------------------------------------------- */
 
-.cijfer,
 .bedrag {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-}
-
-.bedrag {
   font-size: var(--tekst-m);
   font-weight: 500;
   white-space: nowrap;
@@ -1020,11 +1007,6 @@ h4 {
   color: var(--text);
 }
 
-.saldotegel-sub {
-  font-size: var(--tekst-s);
-  color: var(--text-muted);
-}
-
 /* ---------------------------------------------------------------------------
    Knoppen
    --------------------------------------------------------------------------- */
@@ -1053,7 +1035,6 @@ h4 {
 .knop:focus-visible,
 .chip:focus-visible,
 .rij button:focus-visible,
-.klikbaar:focus-visible,
 a:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring-sterk);
@@ -1169,22 +1150,8 @@ a:focus-visible {
 
 /* Een lijstrij die je kan aanklikken licht zacht op. `.rij` zelf krijgt niets:
      de meeste rijen zijn gewoon tekst met een bedrag. */
-  .lijst .rij:has(button):hover,
-  .rij-klikbaar:hover {
+  .lijst .rij:has(button):hover {
     background: var(--surface-2);
-  }
-}
-
-/* Een kaart die ergens naartoe leidt. Zet deze klasse er alleen op wanneer de
-   hele kaart aanklikbaar is — anders beloof je iets dat niet gebeurt. */
-.klikbaar {
-  cursor: pointer;
-  transition: transform var(--overgang), box-shadow var(--overgang), border-color var(--overgang);
-}@media (hover: hover) and (pointer: fine) {
-  .klikbaar:hover {
-    transform: translateY(-1px);
-    border-color: var(--border-strong);
-    box-shadow: var(--shadow);
   }
 }
 
@@ -2028,8 +1995,13 @@ input[type='radio']:focus-visible {
   box-shadow: none;
 }
 
+/* ⚠ `a:focus-visible` stond hier ÓÓK in (ronde 77), terwijl de groep bovenaan dit
+   bestand hem al de sterke ring geeft. Bij gelijke specificiteit wint de latere
+   regel voor `outline`, maar de `box-shadow` van de eerste bleef staan — dus een
+   link kreeg er als enige van de app een tweede ring bovenop. Deze groep is het
+   vangnet voor alles wat NIET al een eigen focusstijl heeft; een link heeft die
+   wel. */
 button:focus-visible,
-a:focus-visible,
 [tabindex]:focus-visible {
   outline: 2px solid var(--focus-rand);
   outline-offset: 2px;
@@ -2094,7 +2066,13 @@ a:focus-visible,
   background: var(--surface);
   color: var(--text);
   border: 2px solid var(--focus-rand);
-  box-shadow: var(--shadow-sheet);
+  /* ⚠ ALLEBEI (doorlichting ronde 77). Deze regel is `.skiplink:focus` en dus
+     specifieker dan de `a:focus-visible` bovenaan dit bestand; haar `box-shadow`
+     won daar altijd al van. Zolang de vangnetgroep verderop hem nog een `outline`
+     van 2 px gaf, viel dat niet op — maar die groep geldt sinds deze ronde niet meer
+     voor links, en toen bleef alleen de rand over. De ring hoort erbij; het blad
+     eronder is versiering. */
+  box-shadow: var(--focus-ring-sterk), var(--shadow-sheet);
   font-weight: 600;
   text-decoration: none;
 }
@@ -2890,7 +2868,6 @@ a {
     transform: none;
   }
 
-  .klikbaar:hover,
   .knop-primair:hover:not(:disabled):not(.knop-uit):not([aria-disabled='true']) {
     transform: none;
   }
@@ -3063,7 +3040,14 @@ a {
   border-radius: var(--radius);
   background: var(--surface);
   border: 1px solid var(--accent);
-  box-shadow: var(--schaduw-kaart, none);
+  /* ⚠ HIER STOND `box-shadow: var(--schaduw-kaart, none)` (ronde 77). Dat token
+     bestaat nergens — de Nederlandse naam is er nooit gekomen — dus viel de regel
+     terug op de reserve `none` en had deze balk in werkelijkheid geen schaduw.
+     Ze is helemaal weg in plaats van gerepareerd, en dat is met opzet: deze balk
+     staat in de gewone stroom en zweeft niet (zie NieuweVersieBalk.tsx), en de
+     ontwerpregel is "schaduw alleen op zwevende dingen" (DESIGN.md). Hem alsnog een
+     schaduw geven zou een ontwerpwijziging zijn, geen herstel van een verschrijving.
+     De rand in accentkleur doet hier het werk. */
   font-size: var(--tekst-sm);
   color: var(--text);
 }

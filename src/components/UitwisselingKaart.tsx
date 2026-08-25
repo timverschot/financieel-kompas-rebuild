@@ -440,7 +440,6 @@ export function UitwisselingKaart({
                         </span>
                         <input
                           type="text"
-                          className="veld"
                           placeholder={t('Reden (alleen bij betwisten)')}
                           value={redenen[k.id] ?? ''}
                           onChange={(e) => setRedenen((r) => ({ ...r, [k.id]: e.target.value }))}

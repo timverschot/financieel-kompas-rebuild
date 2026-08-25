@@ -26,8 +26,9 @@ hetzelfde aanvoelt en een latere designwijziging op één plek gebeurt.
    uitgave terracotta, saldo in dossiers.
 4. **Randen zijn 1 px en zacht. Schaduwen alleen op zwevende dingen** (primaire
    knop, FAB, sheet, meldingsbalk). Gewone kaarten hebben géén schaduw.
-5. **Cijfers altijd monospace en tabulair** (`.bedrag`, `.cijfer`,
-   `.stat-waarde`), rechts uitgelijnd.
+5. **Cijfers altijd monospace en tabulair** (`.bedrag`, `.stat-waarde`), rechts
+   uitgelijnd. (`.cijfer` stond hier ook, maar die klasse werd nergens gebruikt en
+   is in ronde 77 weggehaald.)
 6. **Koppen in Bricolage** (`.paginakop`, `.kaart-titel`), tekst in IBM Plex Sans.
 
 ## Klassen
