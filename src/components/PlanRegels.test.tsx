@@ -75,15 +75,13 @@ describe('PlanRegels', () => {
 
   it('waarschuwt wanneer de budgetten samen meer vragen dan er overblijft', () => {
     toon([huur], [{ id: 'b1', categorieId: 'ov-voeding', bedrag: 200000 }])
-    expect(
-      screen.getByText(/dat is meer dan er te verdelen valt/),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/Je budgetten vragen samen € 2.000,00, en dat is meer/)).toBeInTheDocument()
   })
 
   it('meldt gewoon hoeveel de budgetten opeisen wanneer het past', () => {
     toon([huur], [{ id: 'b1', categorieId: 'ov-voeding', bedrag: 40000 }])
-    expect(screen.getByText(/Je budgetten vragen samen/)).toBeInTheDocument()
-    expect(screen.queryByText(/meer dan er te verdelen valt/)).not.toBeInTheDocument()
+    expect(screen.getByText(/vragen je budgetten samen/)).toBeInTheDocument()
+    expect(screen.queryByText(/en dat is meer/)).not.toBeInTheDocument()
   })
 
   // Ronde 62. Dit is de ENIGE plek die budgetten optelt, en dus de plek waar een
@@ -99,7 +97,7 @@ describe('PlanRegels', () => {
       '2026-07',
     )
     // Alleen de uitzondering telt: € 500, niet € 900.
-    expect(screen.getByText(/Je budgetten vragen samen/)).toHaveTextContent(/500/)
+    expect(screen.getByText(/vragen je budgetten samen/)).toHaveTextContent(/500/)
     expect(screen.queryByText(/900/)).not.toBeInTheDocument()
   })
 
@@ -112,7 +110,7 @@ describe('PlanRegels', () => {
       ],
       '2026-07',
     )
-    expect(screen.getByText(/Je budgetten vragen samen/)).toHaveTextContent(/400/)
+    expect(screen.getByText(/vragen je budgetten samen/)).toHaveTextContent(/400/)
   })
 
   it('toont het jaargemiddelde apart van het bedrag van deze maand', () => {
@@ -286,5 +284,153 @@ describe('PlanRegels — een vaste last met een spaardoel (ronde 74)', () => {
       { ...doelVoorPremie, maandbedrag: 7500 },
     ])
     expect(screen.getByText('Opzij voor later')).toBeInTheDocument()
+  })
+})
+
+// ── Ronde 80 — "van je inkomen staat € X nog nergens ondergebracht" ─────────────
+//
+// Het getal waarop je stuurt, en dat de kaart je zelf liet uitrekenen.
+describe('PlanRegels — wat er nog nergens in zit (ronde 80)', () => {
+  function badge(): string {
+    return document.querySelector('[data-nog-nergens] .badge')?.textContent ?? ''
+  }
+  function zin(): string {
+    return document.querySelector('[data-nog-nergens] .rij-meta')?.textContent ?? ''
+  }
+
+  it('trekt de budgetten van het te verdelen bedrag af en noemt de rest', () => {
+    // € 2.400 − € 950 huur = € 1.450 te verdelen, min € 400 budget = € 1.050
+    toon([huur], [{ id: 'b1', categorieId: 'ov-voeding', bedrag: 40000 }])
+    expect(badge()).toMatch(/1[.\s]?050/)
+    expect(badge()).toMatch(/nog nergens ondergebracht/)
+  })
+
+  it('zegt erbij dat nul geen doel is', () => {
+    // Bij YNAB moet dit bedrag naar nul; hier kan het gewoon je buffer zijn. Zonder
+    // deze zin leest het cijfer als een opdracht in plaats van een vaststelling.
+    toon([huur], [{ id: 'b1', categorieId: 'ov-voeding', bedrag: 40000 }])
+    expect(zin()).toMatch(/Dat hoeft ook niet/)
+    expect(zin()).toMatch(/geld vrij houden/)
+  })
+
+  it('schrijft de hele aftrekking uit, zodat het cijfer na te rekenen is', () => {
+    toon([huur], [{ id: 'b1', categorieId: 'ov-voeding', bedrag: 40000 }])
+    // € 1.450 te verdelen − € 400 budgetten = € 1.050 in de badge. Staat "te
+    // verdelen" er niet bij, dan rekent de lezer inkomsten − vaste lasten −
+    // budgetten na en mist hij "Opzij voor later" — een derde bak.
+    expect(zin()).toMatch(/1[.\s]?450/)
+    expect(zin()).toMatch(/400/)
+  })
+
+  it('zegt "alles ondergebracht" wanneer er precies niets overblijft', () => {
+    // € 1.450 te verdelen, € 1.450 aan budgetten.
+    toon([huur], [{ id: 'b1', categorieId: 'ov-voeding', bedrag: 145000 }])
+    expect(badge()).toMatch(/Alles ondergebracht/)
+    expect(zin()).not.toMatch(/geld vrij houden/)
+  })
+
+  it('noemt het tekort wanneer de budgetten te veel vragen', () => {
+    // € 1.450 te verdelen, € 2.000 aan budgetten → € 550 te veel.
+    toon([huur], [{ id: 'b1', categorieId: 'ov-voeding', bedrag: 200000 }])
+    expect(badge()).toMatch(/550/)
+    expect(badge()).toMatch(/te veel ondergebracht/)
+  })
+
+  it('toont niets zolang er geen enkel budget staat', () => {
+    // Zonder budgetten is dit cijfer exact "Te verdelen" hierboven, en dan zou de
+    // regel hetzelfde getal een tweede keer zeggen.
+    toon([huur], [])
+    expect(document.querySelector('[data-nog-nergens]')).toBeNull()
+  })
+
+  it('vergelijkt niets zolang de app je inkomsten niet kent', () => {
+    // Zonder inkomsten bestaat "te verdelen" niet. De oude zin zei hier toch "dat is
+    // meer dan er te verdelen valt" — tegen iemand die nog niets ingevuld had.
+    toon([huur], [{ id: 'b1', categorieId: 'ov-voeding', bedrag: 200000 }], '2026-07', 0)
+    expect(document.querySelector('[data-nog-nergens]')).toBeNull()
+    const kaal = document.querySelector('[data-budgetten-zonder-inkomsten]')?.textContent ?? ''
+    expect(kaal).toMatch(/Je budgetten vragen samen/)
+    expect(kaal).not.toMatch(/te verdelen/)
+  })
+
+  it('waarschuwt wanneer een vaste last ook binnen een budget valt', () => {
+    // Dan gaat die kost er twee keer af: één keer als vaste last, één keer via het
+    // budget. De app corrigeert dat niet — ze kan niet weten hoe je het budget
+    // bedoeld hebt — maar ze zwijgt er ook niet over.
+    const huurMetCategorie = { ...huur, categorieId: 'ov-woning-en-vaste-lasten' }
+    toon([huurMetCategorie], [{ id: 'b1', categorieId: 'ov-woning-en-vaste-lasten', bedrag: 100000 }])
+    expect(zin()).toMatch(/mogelijk twee keer in/)
+    expect(zin()).toMatch(/Huur/)
+  })
+
+  // ⚠ DEZE DRIE TESTEN KOMEN UIT EEN NAKIJKRONDE. Ze bestonden niet, en drie mutaties
+  // overleefden daardoor de volledige suite: "opzij" uit de aftrekking laten vallen,
+  // de kale budgettenlijst gebruiken in plaats van de geldende, en de gestopte posten
+  // niet uitsluiten. Alle drie raken ze precies waar deze ronde over gaat.
+  it('trekt ook "Opzij voor later" van het cijfer af', () => {
+    // € 2.400 − € 950 huur − € 100 opzij voor de premie = € 1.350, min € 400 budget
+    // = € 950. Vergeet je de opzij, dan staat er € 1.050.
+    toon([huur, premie], [{ id: 'b1', categorieId: 'ov-voeding', bedrag: 40000 }], '2026-07')
+    expect(badge()).toMatch(/950/)
+    expect(badge()).not.toMatch(/1[.\s]?050/)
+  })
+
+  it('waarschuwt niet voor dubbeltelling op grond van een budget voor een ANDERE maand', () => {
+    // Het decemberbudget geldt in juli niet, dus het kan de huur van juli ook niet
+    // dubbel tellen. Zonder `geldendeBudgetten` zou de waarschuwing hier wél staan.
+    //
+    // ⚠ Er staat OOK een gewoon budget bij, en dat is de hele test. Zonder dat budget
+    // is `gebudgetteerd` nul, verdwijnt het hele blok en slaagt deze test ook mét de
+    // fout erin — precies wat een mutatietest liet zien voor ik dit budget toevoegde.
+    const huurMetCategorie = { ...huur, categorieId: 'ov-woning-en-vaste-lasten' }
+    toon(
+      [huurMetCategorie],
+      [
+        { id: 'b1', categorieId: 'ov-voeding', bedrag: 40000 },
+        { id: 'b2', categorieId: 'ov-woning-en-vaste-lasten', bedrag: 100000, maand: '2026-12' },
+      ],
+      '2026-07',
+    )
+    expect(document.querySelector('[data-nog-nergens]')).not.toBeNull()
+    expect(zin()).not.toMatch(/mogelijk twee keer in/)
+  })
+
+  it('kapt de namenlijst af in plaats van er acht achter elkaar te zetten', () => {
+    // De grens ligt in `namenlijst` (utils/namenlijst.ts). Zonder haar groeit deze
+    // grijze regel met elke vaste last die in een budget valt.
+    const posten = ['Huur', 'Elektriciteit', 'Water', 'Internet', 'Verzekering'].map((naam, i) => ({
+      ...huur,
+      id: `p${i}`,
+      omschrijving: naam,
+      categorieId: 'ov-woning-en-vaste-lasten',
+    }))
+    toon(posten, [{ id: 'b1', categorieId: 'ov-woning-en-vaste-lasten', bedrag: 100000 }])
+    expect(zin()).toMatch(/en 2 andere/)
+    expect(zin()).not.toMatch(/Verzekering/)
+  })
+
+  it('houdt de badge neutraal zolang er een dubbeltelling in kan zitten', () => {
+    // € 1.450 te verdelen, € 1.450 aan budgetten → zonder overlap groen "Alles
+    // ondergebracht". Mét overlap kan dat cijfer te laag staan, en dan mag de badge
+    // geen "in orde" beloven dat ze niet kan waarmaken.
+    const huurMetCategorie = { ...huur, categorieId: 'ov-woning-en-vaste-lasten' }
+    toon([huurMetCategorie], [{ id: 'b1', categorieId: 'ov-woning-en-vaste-lasten', bedrag: 145000 }])
+    expect(document.querySelector('[data-nog-nergens] .badge')?.className).toContain('badge-info')
+    expect(document.querySelector('[data-nog-nergens] .badge')?.className).not.toContain('badge-ok')
+  })
+
+  it('schrijft bij meer dan één post een meervoudszin', () => {
+    // "Huur, Elektriciteit valt ook onder een van je budgetten" zou fout staan.
+    const huurMetCategorie = { ...huur, categorieId: 'ov-woning-en-vaste-lasten' }
+    const elek = { ...huur, id: 'e', omschrijving: 'Elektriciteit', categorieId: 'cat-energie-en-nutsvoorzieningen' }
+    toon([huurMetCategorie, elek], [{ id: 'b1', categorieId: 'ov-woning-en-vaste-lasten', bedrag: 100000 }])
+    expect(zin()).toMatch(/vallen ook onder je budgetten/)
+    expect(zin()).not.toMatch(/valt ook onder een van je budgetten/)
+  })
+
+  it('zwijgt over dubbeltelling wanneer het budget een andere categorie is', () => {
+    const huurMetCategorie = { ...huur, categorieId: 'ov-woning-en-vaste-lasten' }
+    toon([huurMetCategorie], [{ id: 'b1', categorieId: 'ov-voeding', bedrag: 40000 }])
+    expect(zin()).not.toMatch(/mogelijk twee keer in/)
   })
 })

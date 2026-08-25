@@ -78,7 +78,7 @@ describe('VooruitblikSectie — een vaste last meteen inboeken', () => {
     const user = userEvent.setup()
     const { onBoekVasteLast } = toon()
     await user.click(telregel())
-    await user.click(screen.getByRole('button', { name: 'Boek Huur in' }))
+    await user.click(screen.getByRole('button', { name: /^Boek in/ }))
     expect(onBoekVasteLast).toHaveBeenCalledWith('Huur', volgendeMaand)
   })
 
@@ -91,7 +91,7 @@ describe('VooruitblikSectie — een vaste last meteen inboeken', () => {
       periode: { van: `${vorigeMaand}-01`, tot: `${vorigeMaand}-31` },
     })
     await user.click(screen.getByRole('button', { name: /achterstallig/ }))
-    await user.click(screen.getByRole('button', { name: 'Boek Huur in' }))
+    await user.click(screen.getByRole('button', { name: /^Boek in/ }))
     expect(onBoekVasteLast).toHaveBeenCalledWith('Huur', vorigeMaand)
   })
 
@@ -124,8 +124,11 @@ describe('VooruitblikSectie — een vaste last meteen inboeken', () => {
     await user.click(telregel())
     expect(screen.getByText('Huur')).toBeInTheDocument()
     expect(screen.getByText('Netflix')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Boek Huur in' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Boek Netflix in' })).toBeInTheDocument()
+    // ⚠ RONDE 82 — elke knop draagt de naam van zijn post, met de zichtbare tekst
+    // vooraan. Vroeger heette hij "Boek Huur in", en dan komt "Boek in" er niet
+    // aaneengesloten in voor: een WCAG 2.5.3-fout.
+    expect(screen.getByRole('button', { name: 'Boek in — Huur' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Boek in — Netflix' })).toBeInTheDocument()
     const metas = [...document.querySelectorAll('.rij-meta')].map((el) => el.textContent ?? '')
     expect(metas).toContain('dag 12')
   })
@@ -200,7 +203,7 @@ describe('VooruitblikSectie — waar het verwachte cijfer vandaan komt', () => {
     // leest "+ € 900 verwacht in september" als geld dat je overhoudt.
     toonDezeMaand()
     expect(document.querySelector('[data-vooruitblikbron]')?.textContent).toBe(
-      'Hierin zit wat er deze maand al geboekt is, plus de terugkerende posten die déze maand vervallen — ook de te late. Losse uitgaven die nog komen — boodschappen, tanken — zitten er niet in.',
+      'Hierin zit wat er deze maand al geboekt is, plus de vaste lasten die déze maand vervallen — ook de te late. Losse uitgaven die nog komen — boodschappen, tanken — zitten er niet in.',
     )
   })
 

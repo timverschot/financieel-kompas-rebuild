@@ -776,6 +776,19 @@ export function TransactieFormulier({
                       omschrijving: r.omschrijving.trim() || hoofdNaam,
                     })
                   }
+                  // ⚠ De weg terug (ronde 78). Sinds deze ronde verdwijnt de knop
+                  // "Hoofdcategorie: …" zodra er een subcategorie op de regel staat —
+                  // want die knop verving je keuze stil door een brede categorie.
+                  // Zonder "wissen" zou je daarna niet meer breed kunnen taggen.
+                  // De OMSCHRIJVING blijft staan: dat is je eigen tekst, en je wil
+                  // hoogstwaarschijnlijk gewoon een andere categorie kiezen.
+                  // ⚠ De lege string en niet `undefined` (doorlichting ronde 78):
+                  // `KassaRegel.categorieId` is een `string`, en overal elders in dit
+                  // bestand is "leeg" ook `''`. Twee voorstellingen van hetzelfde lege
+                  // veld in één toestand is een leugen in het type — en TypeScript is
+                  // hier net het vangnet dat we gekozen hebben.
+                  onWis={() => wijzigRegel(r.sleutel, { categorieId: '' })}
+                  nummer={i + 1}
                   onNieuweSubcategorie={onNieuweSubcategorie}
                   registerInput={(el) => {
                     zoekRefs.current[r.sleutel] = el

@@ -35,9 +35,9 @@ const en: Record<string, string> = {
   'Stel je gezinsleden in': 'Set up your household members',
   'Je hebt nog geen gezinsleden ingesteld. Zodra ze er zijn, kan je ze bij een boeking of bij een gedeelde kost aanduiden — en verschijnt hier per gezinslid wat het kost.':
     'You have not set up any household members yet. Once they exist you can tag them on an entry or on a shared cost — and this page will show what each of them costs.',
-  'Maak eerst een rekening aan — een vaste kost moet ergens vanaf gaan.':
+  'Maak eerst een rekening aan — een vaste last moet ergens vanaf gaan.':
     'Create an account first — a fixed cost has to come out of something.',
-  'Maak eerst een rekening aan — een vaste kost of inkomst moet ergens vanaf gaan of op binnenkomen.':
+  'Maak eerst een rekening aan — een vaste last of een vaste inkomst moet ergens vanaf gaan of op binnenkomen.':
     'Create an account first — a fixed cost or income has to come out of, or into, something.',
   // Ronde 66 — slotronde, derde reeks
   'Er staat nog geen enkele boeking in de app. Zodra je er een ingeeft — zelf of via een uittreksel — zie je hier waar je geld naartoe gaat.':
@@ -98,6 +98,8 @@ const en: Record<string, string> = {
   'Verwijder beweging {naam} van {datum}': 'Delete movement {naam} of {datum}',
   'beweging': 'movement',
   'Deelbedrag {n}': 'Part amount {n}',
+  // Ronde 78 — één per kassaticketregel, dus mét het nummer erbij.
+  'Categorie van regel {n} wissen': 'Clear the category of line {n}',
   'Je hebt minstens twee rekeningen nodig om over te boeken.': 'You need at least two accounts to transfer between them.',
   // Ronde 67 — een nieuwe tak aanmaken vanuit het boekingsvenster
   'Kies eerst een hoofdcategorie.': 'Pick a main category first.',
@@ -182,7 +184,6 @@ const en: Record<string, string> = {
   'Zo verschijnt ze straks in je lijst met boekingen.': 'This is how it will appear in your list of entries.',
   'Je rekeningen, boekingen en documenten zitten in de database van deze browser, op dit toestel. Er is geen account nodig en er staat geen kopie op een server van ons — die server bestaat niet.':
     'Your accounts, entries and documents sit in this browser’s database, on this device. No account is needed and there is no copy on a server of ours — that server does not exist.',
-  'Uitboeken: wis de boeking van {naam}': 'Unbook: erase the entry for {naam}',
   'Geen boekingen gevonden.': 'No entries found.',
   'alle boekingen': 'all entries',
   // Ronde 66 — elk scherm zegt wat het is
@@ -269,7 +270,7 @@ const en: Record<string, string> = {
   'Zet je eerste budget': 'Set your first budget',
   'Maak een rekening aan': 'Create an account',
   'Vul je vaste lasten in': 'Enter your fixed costs',
-  'Loop de blokken hieronder door: je rekeningen, je vaste kosten en je abonnementen. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is — nog vóór je één boeking ingeeft.':
+  'Loop de blokken hieronder door: je rekeningen, je vaste lasten en je abonnementen. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is — nog vóór je één boeking ingeeft.':
     'Work through the blocks below: your accounts, your fixed costs and your subscriptions. After ten minutes you know what is committed every month and what you are worth — before you enter a single entry.',
   'Nog geen gezinsleden ingesteld. Vul hieronder een naam in; daarna kan je er kosten, doelen en garanties aan koppelen.':
     'No family members set up yet. Enter a name below; after that you can attach costs, goals and warranties to them.',
@@ -324,7 +325,7 @@ const en: Record<string, string> = {
   '{naam} verwijderen?': 'Delete {naam}?',
   'Liever archiveren': 'Archive instead',
   // Ronde 76 — de vraag vóór het verwijderen van een vaste last.
-  'Vaste post verwijderen?': 'Delete recurring item?',
+  'Vaste last verwijderen?': 'Delete fixed cost?',
   'Liever opzeggen': 'End it instead',
   'Hier hangt nog dit aan:': 'This is still attached to it:',
   'Er hangt niets aan deze kost.': 'Nothing is attached to this cost.',
@@ -563,7 +564,7 @@ const en: Record<string, string> = {
   'Onderdeel': 'Section',
   'Je geld': 'Your money',
   'Voor later': 'For later',
-  'Vaste kosten': 'Fixed costs',
+  'Vaste lasten': 'Fixed costs',
   'Sluipende kosten': 'Small subscriptions',
   'Je gezin': 'Your family',
   'Delen': 'Sharing',
@@ -578,7 +579,7 @@ const en: Record<string, string> = {
   'Wat staat er voor later?': 'What is set aside for later?',
   'Beleggingen, een termijnrekening, pensioensparen. Kies bij Type "Effectenrekening" of "Termijnrekening"; je kan de waarde later bijwerken bij de rekening zelf.': 'Investments, a term account, pension savings. Pick "Securities account" or "Term account" under Type; you can update the value later on the account itself.',
   'Nog niets voor later ingegeven.': 'Nothing set aside for later yet.',
-  'Je vaste kosten': 'Your fixed costs',
+  'Je vaste lasten': 'Your fixed costs',
   'Je sluipende kosten': 'Your small subscriptions',
   'Naar Dossiers': 'To Cases',
   'Deel je kosten met iemand?': 'Do you share costs with someone?',
@@ -590,7 +591,7 @@ const en: Record<string, string> = {
   'Nog geen inkomsten deze maand.': 'No income this month yet.',
   'Zodra je een rekening hebt toegevoegd, zie je hier hoe je bezit evolueert.': 'Once you have added an account, you will see how your assets evolve here.',
   'Je hebt nog geen vaste lasten ingesteld. Zonder die weet de app niet wat er nog moet komen.': 'You have not set up any fixed costs yet. Without them the app cannot know what is still coming.',
-  'Loop "Je situatie" door: je rekeningen, je vaste kosten en je abonnementen. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is — nog vóór je één boeking ingeeft.':
+  'Loop "Je situatie" door: je rekeningen, je vaste lasten en je abonnementen. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is — nog vóór je één boeking ingeeft.':
     'Work through "Your situation": your accounts, your fixed costs and your subscriptions. After ten minutes you will know what is committed each month and what you are worth — before you enter a single entry.',
   'Voor "zo lang kom je toe" heeft de app een spaarrekening of cash nodig. Voeg er een toe bij "Je geld".':
     'For "how long you can get by" the app needs a savings account or cash. Add one under "Your money".',
@@ -642,7 +643,10 @@ const en: Record<string, string> = {
     '{jaar} is still running: this amount will keep growing until 31 December.',
   'In {jaar} staat er nog niets op naam van een gezinslid. Zet een gezinslid bij een boeking, of hang een kost in een dossier aan een kind.':
     'Nothing is assigned to a family member in {jaar} yet. Add a family member to an entry, or attach a cost in a case to a child.',
-  'Per gezinslid': 'Per family member',
+  // ⚠ 'By …' en niet 'Per …' (ronde 81): sinds deze sleutel ook een chip is, staat ze
+  // naast 'By subcategory' en 'By store'. Drie knoppen die dezelfde soort keuze zijn,
+  // hoorden niet twee verschillende voorzetsels te dragen.
+  'Per gezinslid': 'By family member',
   '{bedrag} uit je boekingen': '{bedrag} from your own entries',
   '{bedrag} uit gedeelde kosten': '{bedrag} from shared costs',
   'Wat hier NIET in zit': 'What is NOT included here',
@@ -945,7 +949,10 @@ const en: Record<string, string> = {
     '{bedrag} a month more expensive than before, across {n} item(s).',
   '{bedrag} per maand goedkoper dan voorheen.': '{bedrag} a month cheaper than before.',
   '{oud} → {nieuw} sinds {datum}': '{oud} → {nieuw} since {datum}',
-  'per maand': 'a month',
+  // ⚠ 'per month' en niet 'a month' (ronde 82): sinds deze tabel in élke knopnaam van
+  // drie schermen zit, stond "€ 12,99 a month" naast "€ 620,00 per year" in dezelfde
+  // lijst — twee registers voor hetzelfde soort feit.
+  'per maand': 'per month',
   'vaste last': 'fixed cost',
   'nog onzeker': 'not certain yet',
   'Je vaste last staat op een ander bedrag dan wat je nu betaalt. Pas ze aan bij Budget.':
@@ -953,7 +960,7 @@ const en: Record<string, string> = {
   'Nog {n} andere, kleinere wijzigingen.': '{n} more, smaller changes.',
   'De app vergelijkt het bedrag dat bij dezelfde handelaar elke keer terugkomt. Ze kijkt achttien maanden terug, vraagt minstens zes betalingen, en zwijgt over winkels waar je bedrag elke keer anders is.':
     'The app compares the amount that recurs with the same merchant. It looks eighteen months back, asks for at least six payments, and stays quiet about shops where your amount differs every time.',
-  'Je terugkerende kosten liggen intussen {bedrag} per maand hoger dan voorheen. Op Analyse staat wat er precies duurder werd.':
+  'Je vaste lasten liggen intussen {bedrag} per maand hoger dan voorheen. Op Analyse staat wat er precies duurder werd.':
     'Your recurring costs are now {bedrag} a month higher than before. Analysis shows exactly what got more expensive.',
   'Verberg': 'Hide',
   'Toon': 'Show',
@@ -1153,7 +1160,7 @@ const en: Record<string, string> = {
   'Deze drie cijfers gaan over de boekingen vanaf {maand}; oudere boekingen tellen niet mee.': 'These three figures cover the entries from {maand} onwards; older entries do not count.',
   'Het laatste punt is de stand aan het einde van de maand. Eén boeking van later deze maand telt er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.': 'The last point is the position at the end of the month. One entry dated later this month is already included, while the balance on your Overview counts up to today.',
   'Het laatste punt is de stand aan het einde van de maand. {n} boekingen van later deze maand tellen er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.': 'The last point is the position at the end of the month. {n} entries dated later this month are already included, while the balance on your Overview counts up to today.',
-  'Hierin zit wat er deze maand al geboekt is, plus de terugkerende posten die déze maand vervallen — ook de te late. Losse uitgaven die nog komen — boodschappen, tanken — zitten er niet in.': 'This covers what has already been booked this month, plus the recurring entries that fall due this particular month — the late ones included. Loose spending still to come — groceries, fuel — is not in it.',
+  'Hierin zit wat er deze maand al geboekt is, plus de vaste lasten die déze maand vervallen — ook de te late. Losse uitgaven die nog komen — boodschappen, tanken — zitten er niet in.': 'This covers what has already been booked this month, plus the recurring entries that fall due this particular month — the late ones included. Loose spending still to come — groceries, fuel — is not in it.',
   'Eén ervan is betwist door de andere ouder en telt hier toch mee.': 'One of them is disputed by the other parent and still counts here.',
   '{n} ervan zijn betwist door de andere ouder en tellen hier toch mee.': '{n} of them are disputed by the other parent and still count here.',
   '1 betaling valt buiten deze periode en telt niet mee': '1 payment falls outside this period and does not count',
@@ -1317,8 +1324,10 @@ const en: Record<string, string> = {
     'Enter a bank or shop above as free text; if it concerns someone in the family, pick them here.',
   'Van wie is dit?': 'Whose is this?',
   'voor {naam}': 'for {naam}',
-  'Uitgaven per gezinslid': 'Spending per family member',
-  'Inkomsten per gezinslid': 'Income per family member',
+  // ⚠ 'by' en niet 'per' (ronde 81): de chip die deze kaart aan- en uitzet heet
+  // 'By family member', en de regel is dat een chip het kopwoord van haar kaart draagt.
+  'Uitgaven per gezinslid': 'Spending by family member',
+  'Inkomsten per gezinslid': 'Income by family member',
   'Het gezin': 'The family',
   'Onbekend gezinslid': 'Unknown family member',
   'Nieuw dossier': 'New case',
@@ -1546,20 +1555,33 @@ const en: Record<string, string> = {
   'Doel wijzigen': 'Update goal',
   'Doel toevoegen': 'Add goal',
   // Vaste lasten
-  'Vaste lasten': 'Fixed costs',
   'Inboeken voor {maand}': 'Book for {maand}',
   '{bedrag} · dag {dag}': '{bedrag} · day {dag}',
   'Geboekt ✓': 'Booked ✓',
   'Boek in': 'Book',
-  'Bewerk vaste post {naam}': 'Edit recurring item {naam}',
-  'Verwijder vaste post {naam}': 'Delete recurring item {naam}',
+  // Ronde 82 — de knopnamen op de drie schermen met vaste lasten dragen nu het kortste
+  // kenmerk dat volstaat. Zie utils/postkenmerk.ts. Vervallen sleutels: 'Bewerk vaste
+  // post {naam}', 'Verwijder vaste post {naam}', 'Uitboeken: wis de boeking van
+  // {naam}', 'Losmaken: {naam} telt dan weer als niet geboekt' en 'Boek {naam} in'.
+  '{actie} — {naam}': '{actie} — {naam}',
+  '{details} ({n} van {totaal})': '{details} ({n} of {totaal})',
+  'Het gaat over de kost van {details}.': 'This is the cost of {details}.',
   'Vaste omschrijving': 'Recurring description',
   'Vast bedrag (€)': 'Fixed amount (€)',
   'Vaste rekening': 'Recurring account',
   'Vaste categorie': 'Recurring category',
   'Dag van de maand': 'Day of the month',
-  'Vaste post wijzigen': 'Update recurring item',
-  'Vaste post toevoegen': 'Add recurring item',
+  // ⚠ RONDE 83 — "vaste post" is weg uit de app: de kaart heet "Vaste lasten", de rij
+  // spreekt over "deze kost". Drie woorden voor één ding.
+  'Vaste last wijzigen': 'Update fixed cost',
+  'Vaste inkomst wijzigen': 'Update fixed income',
+  // ⚠ Een zelfstandig naamwoord: dit is de naam van een REGIO, geen bevel. En 'fixed'
+  // overal, ook waar de kaart erboven nog 'Recurring' zei.
+  'Nieuwe vaste last': 'New fixed cost',
+  'Nieuwe vaste inkomst': 'New fixed income',
+  'Deze vaste last': 'This fixed cost',
+  'Deze vaste inkomst': 'This fixed income',
+  '{actie} — {formulier}': '{actie} — {formulier}',
   // Indexatie
   'Geïndexeerd bedrag = basisbedrag × nieuwe index / aanvangsindex (Belgische formule).':
     'Indexed amount = base amount × new index / initial index (Belgian formula).',
@@ -2105,9 +2127,31 @@ const en: Record<string, string> = {
   'Vaste lasten deze maand': 'Fixed costs this month',
   'Opzij voor later': 'Set aside for later',
   'Te verdelen': 'Left to allocate',
-  'Je budgetten vragen samen {gebudgetteerd} hiervan.': 'Your budgets claim {gebudgetteerd} of this.',
-  'Je budgetten vragen samen {gebudgetteerd} — dat is meer dan er te verdelen valt.':
-    'Your budgets claim {gebudgetteerd} together — more than there is to allocate.',
+  // Ronde 81 — welke verdelingskaarten je op Analyse wil zien
+  'Welke kaarten wil je hier zien?': 'Which cards do you want here?',
+  // ⚠ 'By store' en niet 'By shop': de kaart die deze chip bedient heet
+  // 'Expenses by store'. Twee woorden voor hetzelfde ding op één scherm.
+  'Per winkel': 'By store',
+  'Per bron': 'By source',
+  'De kaart {kaart} staat nu uit.': 'The {kaart} card is now off.',
+  'De kaart {kaart} staat nu aan.': 'The {kaart} card is now on.',
+  'Kaarten waarvoor in deze periode niets te tonen valt, staan hier niet bij.':
+    'Cards with nothing to show in this period are not listed here.',
+  // Ronde 80 — wat er van je inkomen nog nergens in zit
+  'Je budgetten vragen samen {gebudgetteerd}.': 'Your budgets together claim {gebudgetteerd}.',
+  '{bedrag} nog nergens ondergebracht': '{bedrag} not put anywhere yet',
+  'Alles ondergebracht': 'Everything has a place',
+  '{bedrag} te veel ondergebracht': '{bedrag} more than you have',
+  'Er viel {teverdelen} te verdelen. Daarvan vragen je budgetten samen {gebudgetteerd}. De rest gaf je nog aan niets: geen vaste last, geen budget. Dat hoeft ook niet — je mag geld vrij houden.':
+    'There was {teverdelen} to allocate. Your budgets together claim {gebudgetteerd} of that. The rest you have not given to anything yet: no fixed cost, no budget. That is fine — you are allowed to keep money free.',
+  'Er viel {teverdelen} te verdelen, en je budgetten vragen samen precies dat.':
+    'There was {teverdelen} to allocate, and your budgets together claim exactly that.',
+  'Er viel {teverdelen} te verdelen. Je budgetten vragen samen {gebudgetteerd}, en dat is meer.':
+    'There was {teverdelen} to allocate. Your budgets together claim {gebudgetteerd}, which is more.',
+  'Let op: {naam} valt ook onder een van je budgetten. Dan zit die kost hier mogelijk twee keer in — één keer als vaste last, één keer via dat budget.':
+    'Note: {naam} also falls under one of your budgets. That cost may then be counted twice here — once as a fixed cost, once through that budget.',
+  'Let op: {namen} vallen ook onder je budgetten. Dan zitten die kosten hier mogelijk twee keer in — één keer als vaste last, één keer via een budget.':
+    'Note: {namen} also fall under your budgets. Those costs may then be counted twice here — once as a fixed cost, once through a budget.',
   'Over het hele jaar kosten je vaste lasten gemiddeld {bedrag} per maand.':
     'Across the year, your fixed costs average {bedrag} a month.',
   '{naam} staat nog niet ingeboekt deze maand': '{naam} has not been recorded this month yet',
@@ -2123,8 +2167,12 @@ const en: Record<string, string> = {
   'Gedeeld in een dossier': 'Shared in a case',
   'gedeeld': 'shared',
   // Ronde 25 — vaste inkomsten, budgetdiepte en inboeken ongedaan maken
-  'Vaste inkomsten': 'Recurring income',
-  'Vaste inkomst toevoegen': 'Add recurring income',
+  // ⚠ RONDE 83 — 'Fixed income' en niet 'Recurring income': deze kaarttitel staat pal
+  // boven de knop 'Add fixed income'. Eén woord per ding geldt ook in het Engels.
+  'Vaste inkomsten': 'Fixed income',
+  // ⚠ RONDE 83 — 'fixed income' naast 'fixed cost', niet 'recurring income': de twee
+  // knoppen staan onder elkaar op hetzelfde scherm.
+  'Vaste inkomst toevoegen': 'Add fixed income',
   'Je loon en alles wat elke maand binnenkomt. Hierop rekent je plan.':
     'Your salary and everything that comes in every month. This is what your plan is based on.',
   'Nog geen vaste inkomsten. Vul hieronder je loon in, anders weet je plan niet wat er te verdelen valt.':
@@ -2260,7 +2308,6 @@ const en: Record<string, string> = {
   'Bekijk de boekingen van {naam} — {bedrag}': 'View the entries for {naam} — {bedrag}',
   '{label} — open het dossier van {oms}': '{label} — open the case for {oms}',
   '{label} — open het garantiebewijs van {oms}': '{label} — open the warranty for {oms}',
-  'Boek {naam} in': 'Record {naam}',
   '{n} treffer(s) in {m} hoofdcategorie(ën)': '{n} match(es) in {m} main category/ies',
   'Zoek een categorie of subcategorie (vanaf {n} letters)…': 'Search for a category or subcategory (from {n} letters)…',
   '{n} vaste last(en) nog in te boeken in {maand}': '{n} fixed cost(s) still to record in {maand}',
@@ -2499,7 +2546,6 @@ const en: Record<string, string> = {
     'This tab works out what is left of your income. For that it needs to know what comes in and what is fixed each month — you enter that under "Fixed".',
   'Naar je vaste inkomsten en lasten': 'To your fixed income and costs',
   'Losmaken': 'Unlink',
-  'Losmaken: {naam} telt dan weer als niet geboekt': 'Unlink: {naam} counts as not booked again',
   'Je plan voor deze maand: wat er binnenkomt, wat vastligt, en waar je zelf een grens op zet.':
     'Your plan for this month: what comes in, what is fixed, and where you set your own limit.',
   'Onderdeel van je budget': 'Part of your budget',
@@ -2637,8 +2683,11 @@ const en: Record<string, string> = {
   'De kleine abonnementen waar je nooit meer naar omkijkt. Samen zijn ze vaak groter dan je denkt.':
     'The small subscriptions you never look at again. Together they are often bigger than you think.',
   'Toevoegen — {naam}': 'Add — {naam}',
-  'Bewerken — {naam}, {details}': 'Edit — {naam}, {details}',
-  'Verwijderen — {naam}, {details}': 'Delete — {naam}, {details}',
+  // ⚠ RONDE 82 — één sleutel voor alle vijf de knoppen op een rij met vaste lasten,
+  // in plaats van 'Bewerken — …' en 'Verwijderen — …' apart. De zichtbare tekst komt
+  // als parameter binnen en is zelf al vertaald; zo krijgen "Boek in", "Uitboeken" en
+  // "Losmaken" er gratis dezelfde vorm bij, zonder drie nieuwe sleutels.
+  '{actie} — {naam}, {details}': '{actie} — {naam}, {details}',
   'Er staat al een vaste last die zo heet. Is dit een tweede, geef ze dan een eigen naam — dan zie je later welke welke is.':
     'There is already a fixed cost by that name. If this is a second one, give it its own name — then you can tell them apart later.',
   // Ronde 74 — een spaardoel dat weet welke vaste last het dient
@@ -2658,6 +2707,15 @@ const en: Record<string, string> = {
     'That cost is {bedrag}; your target amount says something else.',
   'Je doeldatum ligt ná die betaling, dus aan dit tempo ben je te laat.':
     'Your target date falls after that payment, so at this pace you will be late.',
+  // Ronde 79 — de twee knoppen naast die vaststellingen. De doelnaam staat erachter,
+  // want elk doel in de lijst draagt dezelfde twee knoppen.
+  'Neem dat bedrag over': 'Use that amount',
+  'Neem dat bedrag over voor {naam}': 'Use that amount for {naam}',
+  'Neem die datum over': 'Use that date',
+  'Neem die datum over voor {naam}': 'Use that date for {naam}',
+  'Het doelbedrag van {naam} staat nu op {bedrag}.': 'The target amount for {naam} is now {bedrag}.',
+  'De doeldatum van {naam} staat nu op {datum}.': 'The target date for {naam} is now {datum}.',
+  'Even geduld — je vorige wijziging wordt nog bewaard.': 'One moment — your previous change is still being saved.',
   'Voor {namen} rekent dit met je spaardoel, niet met een deling van het jaarbedrag.':
     'For {namen} this uses your savings goal, not a division of the yearly amount.',
   'De kost waaraan dit doel hangt': 'The cost this goal is attached to',
@@ -2724,9 +2782,9 @@ const fr: Record<string, string> = {
   'Stel je gezinsleden in': 'Configure les membres de ton foyer',
   'Je hebt nog geen gezinsleden ingesteld. Zodra ze er zijn, kan je ze bij een boeking of bij een gedeelde kost aanduiden — en verschijnt hier per gezinslid wat het kost.':
     'Tu n’as encore configuré aucun membre du foyer. Dès qu’ils existent, tu peux les associer à une écriture ou à un frais partagé — et cette page montrera ce que chacun coûte.',
-  'Maak eerst een rekening aan — een vaste kost moet ergens vanaf gaan.':
+  'Maak eerst een rekening aan — een vaste last moet ergens vanaf gaan.':
     'Crée d’abord un compte — une charge fixe doit bien partir de quelque part.',
-  'Maak eerst een rekening aan — een vaste kost of inkomst moet ergens vanaf gaan of op binnenkomen.':
+  'Maak eerst een rekening aan — een vaste last of een vaste inkomst moet ergens vanaf gaan of op binnenkomen.':
     'Crée d’abord un compte — une charge ou un revenu fixe doit bien partir de quelque part, ou y arriver.',
   // Ronde 66 — dernière relecture, troisième série
   'Er staat nog geen enkele boeking in de app. Zodra je er een ingeeft — zelf of via een uittreksel — zie je hier waar je geld naartoe gaat.':
@@ -2787,6 +2845,8 @@ const fr: Record<string, string> = {
   'Verwijder beweging {naam} van {datum}': 'Supprimer le mouvement {naam} du {datum}',
   'beweging': 'mouvement',
   'Deelbedrag {n}': 'Montant partiel {n}',
+  // Ronde 78
+  'Categorie van regel {n} wissen': 'Effacer la catégorie de la ligne {n}',
   'Je hebt minstens twee rekeningen nodig om over te boeken.': 'Il te faut au moins deux comptes pour faire un virement.',
   // Ronde 67 — créer une nouvelle branche depuis la fenêtre d’écriture
   'Kies eerst een hoofdcategorie.': 'Choisis d’abord une catégorie principale.',
@@ -2872,7 +2932,6 @@ const fr: Record<string, string> = {
   'Zo verschijnt ze straks in je lijst met boekingen.': 'Voici comment elle apparaîtra dans ta liste d’écritures.',
   'Je rekeningen, boekingen en documenten zitten in de database van deze browser, op dit toestel. Er is geen account nodig en er staat geen kopie op een server van ons — die server bestaat niet.':
     'Tes comptes, tes écritures et tes documents se trouvent dans la base de données de ce navigateur, sur cet appareil. Aucun compte n’est nécessaire et il n’existe aucune copie sur un serveur à nous — ce serveur n’existe pas.',
-  'Uitboeken: wis de boeking van {naam}': 'Annuler l’encodage : efface l’écriture de {naam}',
   'Geen boekingen gevonden.': 'Aucune écriture trouvée.',
   'alle boekingen': 'toutes les écritures',
   // Ronde 66 — chaque écran dit ce qu'il est
@@ -2959,7 +3018,7 @@ const fr: Record<string, string> = {
   'Zet je eerste budget': 'Fixe ton premier budget',
   'Maak een rekening aan': 'Crée un compte',
   'Vul je vaste lasten in': 'Encode tes charges fixes',
-  'Loop de blokken hieronder door: je rekeningen, je vaste kosten en je abonnementen. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is — nog vóór je één boeking ingeeft.':
+  'Loop de blokken hieronder door: je rekeningen, je vaste lasten en je abonnementen. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is — nog vóór je één boeking ingeeft.':
     'Parcours les blocs ci-dessous : tes comptes, tes charges fixes et tes abonnements. Après dix minutes, tu sais ce qui est fixe chaque mois et ce que tu vaux — avant même d’encoder une seule écriture.',
   'Nog geen gezinsleden ingesteld. Vul hieronder een naam in; daarna kan je er kosten, doelen en garanties aan koppelen.':
     'Aucun membre du foyer encodé. Entre un nom ci-dessous ; ensuite tu pourras y rattacher des frais, des objectifs et des garanties.',
@@ -3014,7 +3073,7 @@ const fr: Record<string, string> = {
   '{naam} verwijderen?': 'Supprimer {naam} ?',
   'Liever archiveren': 'Plutôt archiver',
   // Ronde 76
-  'Vaste post verwijderen?': 'Supprimer le poste fixe ?',
+  'Vaste last verwijderen?': 'Supprimer la charge fixe ?',
   'Liever opzeggen': 'Plutôt résilier',
   'Hier hangt nog dit aan:': 'Voici ce qui y est encore lié :',
   'Er hangt niets aan deze kost.': 'Rien n’est lié à cette charge.',
@@ -3054,7 +3113,6 @@ const fr: Record<string, string> = {
     'Cet onglet calcule ce qu’il te reste de tes revenus. Pour ça, il doit savoir ce qui rentre et ce qui est fixe chaque mois — tu encodes ça dans « Fixe ».',
   'Naar je vaste inkomsten en lasten': 'Vers tes revenus et charges fixes',
   'Losmaken': 'Détacher',
-  'Losmaken: {naam} telt dan weer als niet geboekt': 'Détacher : {naam} compte à nouveau comme non encodé',
   'Je plan voor deze maand: wat er binnenkomt, wat vastligt, en waar je zelf een grens op zet.':
     'Ton plan pour ce mois : ce qui rentre, ce qui est fixe, et là où tu poses toi-même une limite.',
   'Onderdeel van je budget': 'Partie de ton budget',
@@ -3326,7 +3384,7 @@ const fr: Record<string, string> = {
   'Onderdeel': 'Section',
   'Je geld': 'Ton argent',
   'Voor later': 'Pour plus tard',
-  'Vaste kosten': 'Charges fixes',
+  'Vaste lasten': 'Charges fixes',
   'Sluipende kosten': 'Dépenses discrètes',
   'Je gezin': 'Ta famille',
   'Delen': 'Partage',
@@ -3341,7 +3399,7 @@ const fr: Record<string, string> = {
   'Wat staat er voor later?': 'Qu’y a-t-il pour plus tard ?',
   'Beleggingen, een termijnrekening, pensioensparen. Kies bij Type "Effectenrekening" of "Termijnrekening"; je kan de waarde later bijwerken bij de rekening zelf.': 'Placements, compte à terme, épargne-pension. Choisis « Compte-titres » ou « Compte à terme » sous Type ; tu pourras mettre la valeur à jour plus tard sur le compte lui-même.',
   'Nog niets voor later ingegeven.': 'Rien de prévu pour plus tard.',
-  'Je vaste kosten': 'Tes charges fixes',
+  'Je vaste lasten': 'Tes charges fixes',
   'Je sluipende kosten': 'Tes dépenses discrètes',
   'Naar Dossiers': 'Vers Dossiers',
   'Deel je kosten met iemand?': 'Partages-tu des frais avec quelqu’un ?',
@@ -3353,7 +3411,7 @@ const fr: Record<string, string> = {
   'Nog geen inkomsten deze maand.': 'Pas encore de revenus ce mois-ci.',
   'Zodra je een rekening hebt toegevoegd, zie je hier hoe je bezit evolueert.': 'Dès que tu auras ajouté un compte, tu verras ici l’évolution de tes avoirs.',
   'Je hebt nog geen vaste lasten ingesteld. Zonder die weet de app niet wat er nog moet komen.': 'Tu n’as encore défini aucune charge fixe. Sans elles, l’app ne peut pas savoir ce qui doit encore arriver.',
-  'Loop "Je situatie" door: je rekeningen, je vaste kosten en je abonnementen. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is — nog vóór je één boeking ingeeft.':
+  'Loop "Je situatie" door: je rekeningen, je vaste lasten en je abonnementen. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is — nog vóór je één boeking ingeeft.':
     'Parcours « Ta situation » : tes comptes, tes charges fixes et tes abonnements. Après dix minutes, tu sauras ce qui est engagé chaque mois et ce que tu possèdes — avant même de saisir une seule écriture.',
   'Voor "zo lang kom je toe" heeft de app een spaarrekening of cash nodig. Voeg er een toe bij "Je geld".':
     'Pour « combien de temps tu tiens », l’app a besoin d’un compte d’épargne ou d’espèces. Ajoutes-en un dans « Ton argent ».',
@@ -3717,7 +3775,7 @@ const fr: Record<string, string> = {
   'Nog {n} andere, kleinere wijzigingen.': '{n} autres changements, plus petits.',
   'De app vergelijkt het bedrag dat bij dezelfde handelaar elke keer terugkomt. Ze kijkt achttien maanden terug, vraagt minstens zes betalingen, en zwijgt over winkels waar je bedrag elke keer anders is.':
     'L’application compare le montant qui revient chez le même commerçant. Elle remonte dix-huit mois, exige au moins six paiements et se tait sur les commerces où ton montant diffère à chaque fois.',
-  'Je terugkerende kosten liggen intussen {bedrag} per maand hoger dan voorheen. Op Analyse staat wat er precies duurder werd.':
+  'Je vaste lasten liggen intussen {bedrag} per maand hoger dan voorheen. Op Analyse staat wat er precies duurder werd.':
     'Tes charges récurrentes sont désormais {bedrag} par mois plus élevées qu’avant. L’Analyse montre précisément ce qui a augmenté.',
   'Verberg': 'Masquer',
   'Toon': 'Afficher',
@@ -3917,7 +3975,7 @@ const fr: Record<string, string> = {
   'Deze drie cijfers gaan over de boekingen vanaf {maand}; oudere boekingen tellen niet mee.': 'Ces trois chiffres portent sur les écritures à partir de {maand} ; les écritures plus anciennes ne comptent pas.',
   'Het laatste punt is de stand aan het einde van de maand. Eén boeking van later deze maand telt er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.': 'Le dernier point est la position à la fin du mois. Une écriture datée plus tard ce mois-ci y est déjà comprise, alors que le solde sur ton Aperçu compte jusqu’à aujourd’hui.',
   'Het laatste punt is de stand aan het einde van de maand. {n} boekingen van later deze maand tellen er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.': 'Le dernier point est la position à la fin du mois. {n} écritures datées plus tard ce mois-ci y sont déjà comprises, alors que le solde sur ton Aperçu compte jusqu’à aujourd’hui.',
-  'Hierin zit wat er deze maand al geboekt is, plus de terugkerende posten die déze maand vervallen — ook de te late. Losse uitgaven die nog komen — boodschappen, tanken — zitten er niet in.': 'Cela reprend ce qui a déjà été enregistré ce mois-ci, plus les postes récurrents qui échoient ce mois-ci — les retardataires compris. Les dépenses ponctuelles encore à venir — courses, carburant — n’y sont pas.',
+  'Hierin zit wat er deze maand al geboekt is, plus de vaste lasten die déze maand vervallen — ook de te late. Losse uitgaven die nog komen — boodschappen, tanken — zitten er niet in.': 'Cela reprend ce qui a déjà été enregistré ce mois-ci, plus les postes récurrents qui échoient ce mois-ci — les retardataires compris. Les dépenses ponctuelles encore à venir — courses, carburant — n’y sont pas.',
   'Eén ervan is betwist door de andere ouder en telt hier toch mee.': 'L’un d’eux est contesté par l’autre parent et compte quand même ici.',
   '{n} ervan zijn betwist door de andere ouder en tellen hier toch mee.': '{n} d’entre eux sont contestés par l’autre parent et comptent quand même ici.',
   '1 betaling valt buiten deze periode en telt niet mee': '1 paiement tombe en dehors de cette période et ne compte pas',
@@ -4310,20 +4368,28 @@ const fr: Record<string, string> = {
   'Doel wijzigen': 'Modifier l’objectif',
   'Doel toevoegen': 'Ajouter un objectif',
   // Vaste lasten
-  'Vaste lasten': 'Charges fixes',
   'Inboeken voor {maand}': 'Comptabiliser pour {maand}',
   '{bedrag} · dag {dag}': '{bedrag} · jour {dag}',
   'Geboekt ✓': 'Comptabilisé ✓',
   'Boek in': 'Comptabiliser',
-  'Bewerk vaste post {naam}': 'Modifier le poste fixe {naam}',
-  'Verwijder vaste post {naam}': 'Supprimer le poste fixe {naam}',
+  // Ronde 82 — zie de opmerking in de Engelse tabel.
+  '{actie} — {naam}': '{actie} — {naam}',
+  '{details} ({n} van {totaal})': '{details} ({n} sur {totaal})',
+  'Het gaat over de kost van {details}.': 'Il s’agit de la charge de {details}.',
   'Vaste omschrijving': 'Description fixe',
   'Vast bedrag (€)': 'Montant fixe (€)',
   'Vaste rekening': 'Compte (fixe)',
   'Vaste categorie': 'Catégorie (fixe)',
   'Dag van de maand': 'Jour du mois',
-  'Vaste post wijzigen': 'Modifier le poste fixe',
-  'Vaste post toevoegen': 'Ajouter un poste fixe',
+  // ⚠ RONDE 83 — zie de opmerking in de Engelse tabel.
+  'Vaste last wijzigen': 'Modifier la charge fixe',
+  'Vaste inkomst wijzigen': 'Modifier le revenu fixe',
+  // ⚠ Zie de opmerking in de Engelse tabel.
+  'Nieuwe vaste last': 'Nouvelle charge fixe',
+  'Nieuwe vaste inkomst': 'Nouveau revenu fixe',
+  'Deze vaste last': 'Cette charge fixe',
+  'Deze vaste inkomst': 'Ce revenu fixe',
+  '{actie} — {formulier}': '{actie} — {formulier}',
   // Indexatie
   'Geïndexeerd bedrag = basisbedrag × nieuwe index / aanvangsindex (Belgische formule).':
     'Montant indexé = montant de base × nouvel indice / indice initial (formule belge).',
@@ -4870,9 +4936,32 @@ const fr: Record<string, string> = {
   'Vaste lasten deze maand': 'Charges fixes ce mois-ci',
   'Opzij voor later': 'Mis de côté pour plus tard',
   'Te verdelen': 'À répartir',
-  'Je budgetten vragen samen {gebudgetteerd} hiervan.': 'Tes budgets en réclament {gebudgetteerd}.',
-  'Je budgetten vragen samen {gebudgetteerd} — dat is meer dan er te verdelen valt.':
-    "Tes budgets réclament {gebudgetteerd} au total — plus qu’il n’y a à répartir.",
+  // Ronde 81 — welke verdelingskaarten je op Analyse wil zien
+  'Welke kaarten wil je hier zien?': 'Quelles cartes veux-tu voir ici ?',
+  'Per winkel': 'Par magasin',
+  'Per bron': 'Par source',
+  // ⚠ MÉT "la carte": {kaart} is altijd een voorzetselgroep ("Par magasin"), en het
+  // Frans slikt zo'n groep niet als onderwerp. Het zelfstandig naamwoord legt meteen
+  // ook het geslacht vast — anders zou "Par sous-catégorie" om `désactivée` vragen.
+  'De kaart {kaart} staat nu uit.': 'La carte {kaart} est maintenant masquée.',
+  'De kaart {kaart} staat nu aan.': 'La carte {kaart} est maintenant affichée.',
+  'Kaarten waarvoor in deze periode niets te tonen valt, staan hier niet bij.':
+    'Les cartes qui n’ont rien à montrer sur cette période ne sont pas reprises ici.',
+  // Ronde 80 — wat er van je inkomen nog nergens in zit
+  'Je budgetten vragen samen {gebudgetteerd}.': 'Tes budgets réclament {gebudgetteerd} au total.',
+  '{bedrag} nog nergens ondergebracht': '{bedrag} pas encore répartis',
+  'Alles ondergebracht': 'Tout est réparti',
+  '{bedrag} te veel ondergebracht': '{bedrag} répartis en trop',
+  'Er viel {teverdelen} te verdelen. Daarvan vragen je budgetten samen {gebudgetteerd}. De rest gaf je nog aan niets: geen vaste last, geen budget. Dat hoeft ook niet — je mag geld vrij houden.':
+    'Il y avait {teverdelen} à répartir. Tes budgets en réclament {gebudgetteerd} au total. Le reste, tu ne l’as encore donné à rien du tout : ni à une charge fixe, ni à un budget. Ce n’est pas obligé — tu as le droit de garder de l’argent libre.',
+  'Er viel {teverdelen} te verdelen, en je budgetten vragen samen precies dat.':
+    'Il y avait {teverdelen} à répartir, et tes budgets en réclament exactement autant.',
+  'Er viel {teverdelen} te verdelen. Je budgetten vragen samen {gebudgetteerd}, en dat is meer.':
+    'Il y avait {teverdelen} à répartir. Tes budgets réclament {gebudgetteerd} au total, soit davantage.',
+  'Let op: {naam} valt ook onder een van je budgetten. Dan zit die kost hier mogelijk twee keer in — één keer als vaste last, één keer via dat budget.':
+    'Attention : {naam} relève aussi d’un de tes budgets. Ce coût est alors peut-être compté deux fois ici — une fois comme charge fixe, une fois via ce budget.',
+  'Let op: {namen} vallen ook onder je budgetten. Dan zitten die kosten hier mogelijk twee keer in — één keer als vaste last, één keer via een budget.':
+    'Attention : {namen} relèvent aussi de tes budgets. Ces coûts sont alors peut-être comptés deux fois ici — une fois comme charge fixe, une fois via un budget.',
   'Over het hele jaar kosten je vaste lasten gemiddeld {bedrag} per maand.':
     'Sur toute l’année, tes charges fixes reviennent en moyenne à {bedrag} par mois.',
   '{naam} staat nog niet ingeboekt deze maand': "{naam} n’a pas encore été enregistré ce mois-ci",
@@ -4888,8 +4977,10 @@ const fr: Record<string, string> = {
   'Gedeeld in een dossier': 'Partagé dans un dossier',
   'gedeeld': 'partagé',
   // Ronde 25 — vaste inkomsten, budgetdiepte en inboeken ongedaan maken
-  'Vaste inkomsten': 'Revenus réguliers',
-  'Vaste inkomst toevoegen': 'Ajouter un revenu régulier',
+  // ⚠ RONDE 83 — zie de opmerking in de Engelse tabel.
+  'Vaste inkomsten': 'Revenus fixes',
+  // ⚠ RONDE 83 — zie de opmerking in de Engelse tabel.
+  'Vaste inkomst toevoegen': 'Ajouter un revenu fixe',
   'Je loon en alles wat elke maand binnenkomt. Hierop rekent je plan.':
     "Ton salaire et tout ce qui rentre chaque mois. C’est la base de ton plan.",
   'Nog geen vaste inkomsten. Vul hieronder je loon in, anders weet je plan niet wat er te verdelen valt.':
@@ -5027,7 +5118,6 @@ const fr: Record<string, string> = {
   'Bekijk de boekingen van {naam} — {bedrag}': 'Voir les écritures de {naam} — {bedrag}',
   '{label} — open het dossier van {oms}': '{label} — ouvrir le dossier de {oms}',
   '{label} — open het garantiebewijs van {oms}': '{label} — ouvrir la garantie de {oms}',
-  'Boek {naam} in': 'Comptabiliser {naam}',
   '{n} treffer(s) in {m} hoofdcategorie(ën)': '{n} résultat(s) dans {m} catégorie(s) principale(s)',
   'Zoek een categorie of subcategorie (vanaf {n} letters)…': 'Rechercher une catégorie ou sous-catégorie (à partir de {n} lettres)…',
   '{n} vaste last(en) nog in te boeken in {maand}': '{n} charge(s) fixe(s) encore à comptabiliser en {maand}',
@@ -5330,8 +5420,8 @@ const fr: Record<string, string> = {
   'De kleine abonnementen waar je nooit meer naar omkijkt. Samen zijn ze vaak groter dan je denkt.':
     'Les petits abonnements que tu ne regardes plus jamais. Ensemble, ils pèsent souvent plus lourd que tu ne le crois.',
   'Toevoegen — {naam}': 'Ajouter — {naam}',
-  'Bewerken — {naam}, {details}': 'Modifier — {naam}, {details}',
-  'Verwijderen — {naam}, {details}': 'Supprimer — {naam}, {details}',
+  // ⚠ RONDE 82 — zie de opmerking in de Engelse tabel.
+  '{actie} — {naam}, {details}': '{actie} — {naam}, {details}',
   'Er staat al een vaste last die zo heet. Is dit een tweede, geef ze dan een eigen naam — dan zie je later welke welke is.':
     'Une charge fixe porte déjà ce nom. Si c’est une deuxième, donne-lui un nom à elle — tu les distingueras plus tard.',
   // Ronde 74 — un objectif d’épargne qui sait quelle charge fixe il sert
@@ -5351,6 +5441,14 @@ const fr: Record<string, string> = {
     'Cette charge est de {bedrag} ; ton montant cible indique autre chose.',
   'Je doeldatum ligt ná die betaling, dus aan dit tempo ben je te laat.':
     'Ta date cible tombe après ce paiement, donc à ce rythme tu seras en retard.',
+  // Ronde 79
+  'Neem dat bedrag over': 'Reprendre ce montant',
+  'Neem dat bedrag over voor {naam}': 'Reprendre ce montant pour {naam}',
+  'Neem die datum over': 'Reprendre cette date',
+  'Neem die datum over voor {naam}': 'Reprendre cette date pour {naam}',
+  'Het doelbedrag van {naam} staat nu op {bedrag}.': 'Le montant cible de {naam} est maintenant de {bedrag}.',
+  'De doeldatum van {naam} staat nu op {datum}.': 'La date cible de {naam} est maintenant le {datum}.',
+  'Even geduld — je vorige wijziging wordt nog bewaard.': 'Un instant — ta modification précédente est encore en cours d’enregistrement.',
   'Voor {namen} rekent dit met je spaardoel, niet met een deling van het jaarbedrag.':
     'Pour {namen}, ce calcul suit ton objectif d’épargne, pas une division du montant annuel.',
   'De kost waaraan dit doel hangt': 'La charge à laquelle cet objectif est rattaché',

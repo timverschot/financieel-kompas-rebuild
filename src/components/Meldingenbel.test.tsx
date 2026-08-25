@@ -112,18 +112,33 @@ describe('Meldingenbel — een vaste last meteen inboeken', () => {
     render(<Meldingenbel meldingen={[melding]} onGaNaar={onGaNaar} onBoekVasteLast={onBoekVasteLast} />)
 
     await user.click(screen.getByRole('button', { name: 'Meldingen (1)' }))
-    await user.click(screen.getByRole('button', { name: 'Boek in' }))
+    // ⚠ RONDE 82 — elke "Boek in" in de bel draagt nu de naam van zijn eigen post: er
+    // staat één melding per achterstallige kost, en vijf knoppen die allemaal "Boek in"
+    // heetten boekten elk iets anders.
+    await user.click(screen.getByRole('button', { name: /^Boek in/ }))
 
     expect(onBoekVasteLast).toHaveBeenCalledWith('p1')
     // Navigeren is precies wat we wilden vermijden.
     expect(onGaNaar).not.toHaveBeenCalled()
   })
 
+  it('geeft elke "Boek in" de naam van zijn eigen post (ronde 82)', async () => {
+    // ⚠ Er staat één melding PER achterstallige kost. Vijf knoppen die allemaal "Boek
+    // in" heetten boekten elk iets anders, en één tik boekt geld — dat was erger dan
+    // het gelijknamigheidsprobleem waar deze ronde over gaat.
+    const user = userEvent.setup()
+    const tweede: Melding = { ...melding, id: 'vastelast-p2', params: { naam: 'Netflix' }, actie: { soort: 'boek-vastelast', postId: 'p2' } }
+    render(<Meldingenbel meldingen={[melding, tweede]} onGaNaar={vi.fn()} onBoekVasteLast={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Meldingen (2)' }))
+    expect(screen.getByRole('button', { name: 'Boek in — Huur' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Boek in — Netflix' })).toBeInTheDocument()
+  })
+
   it('toont geen knop wanneer de app er geen meegeeft', async () => {
     const user = userEvent.setup()
     render(<Meldingenbel meldingen={[melding]} onGaNaar={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Meldingen (1)' }))
-    expect(screen.queryByRole('button', { name: 'Boek in' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Boek in/ })).not.toBeInTheDocument()
   })
 
   // Ronde 32 — "het alarmbelicoontje moet duidelijker zijn. Nu is het te klein en

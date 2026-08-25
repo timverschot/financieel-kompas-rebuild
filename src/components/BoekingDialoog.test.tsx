@@ -63,11 +63,38 @@ describe('BoekingDialoog', () => {
     expect(onTransactie).toHaveBeenCalledWith(expect.objectContaining({ bedrag: 240000 }))
   })
 
-  it('verbergt de radiobolletjes voor uitgave/inkomst, want de soortknoppen doen dat al', () => {
+  it('verbergt de radiobolletjes voor uitgave/inkomst op de transactietabbladen', () => {
     toon()
     // Zou de keuze op twee plaatsen staan, dan kan ze uit elkaar lopen: je klikt
     // 'Inkomst' bovenaan en het bolletje onderaan staat nog op 'Uitgave'.
     expect(screen.queryByRole('radio')).toBeNull()
+  })
+
+  it('houdt onder "Vaste last" de bolletjes wél, en de knop volgt ze (ronde 83)', async () => {
+    // ⚠ Deze test bestond niet, en de test hierboven meette het verkeerde tabblad: ze
+    // opende op "Uitgave", waar sowieso geen bolletje staat. Onder "Vaste last" zijn er
+    // er twee — dat is de enige plek in de app waar de soort niet van buiten vastligt.
+    const user = userEvent.setup()
+    toon()
+    await user.click(screen.getByRole('button', { name: 'Vaste last' }))
+    expect(screen.getByRole('form', { name: 'Nieuwe vaste last' })).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: 'Inkomst' }))
+    expect(screen.getByRole('form', { name: 'Nieuwe vaste inkomst' })).toBeInTheDocument()
+  })
+
+  it('zegt in de popup niet twee keer hetzelfde, en spreekt zichzelf niet tegen', async () => {
+    // ⚠ MIJN EIGEN FOUT VAN RONDE 83, gevonden door een nakijkronde. De knop heette
+    // even "Vaste last toevoegen" — dezelfde vier woorden als de vensterkop erboven —
+    // en zodra je het bolletje op "Inkomst" zette, stond er boven "Vaste last
+    // toevoegen" en onder "Vaste inkomst toevoegen". Nu heet de knop hier gewoon
+    // "Toevoegen": de kop zegt al waarover het gaat.
+    const user = userEvent.setup()
+    toon()
+    await user.click(screen.getByRole('button', { name: 'Vaste last' }))
+    expect(screen.getByRole('button', { name: 'Toevoegen' })).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: 'Inkomst' }))
+    expect(screen.getByRole('button', { name: 'Toevoegen' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Vaste (last|inkomst) toevoegen/ })).toBeNull()
   })
 
   it('maakt bij "Vaste last" een terugkerende post en niet een transactie', async () => {
@@ -76,7 +103,7 @@ describe('BoekingDialoog', () => {
     await user.click(screen.getByRole('button', { name: 'Vaste last' }))
     await user.type(screen.getByLabelText('Vaste omschrijving'), 'Huur')
     await user.type(screen.getByLabelText('Vast bedrag (€)'), '950')
-    await user.click(screen.getByRole('button', { name: 'Vaste post toevoegen' }))
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
     expect(onVastePost).toHaveBeenCalledWith(expect.objectContaining({ omschrijving: 'Huur', bedrag: -95000, dag: 1 }))
     expect(onTransactie).not.toHaveBeenCalled()
   })
@@ -101,7 +128,7 @@ describe('BoekingDialoog', () => {
     await user.type(screen.getByLabelText('Handelaar / winkel'), 'Boek')
     await user.type(screen.getByLabelText('Bedrag (€)'), '15')
 
-    await user.click(screen.getByRole('button', { name: 'Opslaan + volgende' }))
+    await user.click(screen.getByRole('button', { name: /^Opslaan \+ volgende/ }))
     expect(onSluiten).not.toHaveBeenCalled()
 
     await user.type(screen.getByLabelText('Handelaar / winkel'), 'Krant')
@@ -120,7 +147,7 @@ describe('BoekingDialoog', () => {
     await user.click(screen.getByRole('button', { name: 'Sparen' }))
 
     // Nog geen rekeningen gekozen: deze klik hoort niets te doen.
-    await user.click(screen.getByRole('button', { name: 'Opslaan + volgende' }))
+    await user.click(screen.getByRole('button', { name: /^Opslaan \+ volgende/ }))
     expect(onOverboeking).not.toHaveBeenCalled()
 
     await user.selectOptions(screen.getByLabelText('Van rekening'), 'r1')
@@ -142,12 +169,12 @@ describe('BoekingDialoog', () => {
     await user.click(screen.getByRole('button', { name: 'Vaste last' }))
 
     // Nog niets ingevuld: deze klik hoort niets te doen.
-    await user.click(screen.getByRole('button', { name: 'Opslaan + volgende' }))
+    await user.click(screen.getByRole('button', { name: /^Opslaan \+ volgende/ }))
     expect(onVastePost).not.toHaveBeenCalled()
 
     await user.type(screen.getByLabelText('Vaste omschrijving'), 'Huur')
     await user.type(screen.getByLabelText('Vast bedrag (€)'), '950')
-    await user.click(screen.getByRole('button', { name: 'Vaste post toevoegen' }))
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
     expect(onVastePost).toHaveBeenCalledTimes(1)
     expect(onSluiten).toHaveBeenCalled()
   })

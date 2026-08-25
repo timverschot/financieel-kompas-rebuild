@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { BUDGETDREMPELS, STANDAARD_BUDGETDREMPEL } from './utils/meldingen'
 import { keurVerborgen } from './utils/appOnderdelen'
+import { keurVerborgenKaarten, type AnalyseKaartId } from './utils/analysekaarten'
 import type { Pagina } from './components/navigatie'
 
 // Kleine, per-toestel voorkeuren die géén gegevens zijn maar wél bewaard moeten
@@ -14,6 +15,11 @@ import type { Pagina } from './components/navigatie'
 
 const OPSLAG_SLEUTEL = 'fk_budgetdrempel'
 const ONDERDELEN_SLEUTEL = 'fk_verborgen_paginas'
+// ⚠ Een EIGEN sleutel en geen tweede lijst in dezelfde (ronde 81). De ene gaat over
+// pagina's en de andere over kaarten binnen één pagina; ze samen bewaren zou
+// betekenen dat `keurVerborgen` en `keurVerborgenKaarten` elkaars waarden moeten
+// wegfilteren, en dan drukt een tikfout in de ene lijst iets weg in de andere.
+const ANALYSEKAARTEN_SLEUTEL = 'fk_verborgen_analysekaarten'
 
 // Leest de bewaarde drempel. Alles wat geen geldige keuze is (oude waarde,
 // handmatig gerommel, kapotte localStorage) valt terug op de standaard.
@@ -53,6 +59,22 @@ function leesVerborgen(): Pagina[] {
   return []
 }
 
+/**
+ * Welke verdelingskaarten je op Analyse uitgezet hebt (ronde 81).
+ *
+ * Zelfde keuze en zelfde terugval als `leesVerborgen` hierboven: een
+ * weergavevoorkeur per toestel, en bij twijfel toont de app alles.
+ */
+function leesVerborgenKaarten(): AnalyseKaartId[] {
+  try {
+    const ruw = localStorage.getItem(ANALYSEKAARTEN_SLEUTEL)
+    if (ruw !== null) return keurVerborgenKaarten(JSON.parse(ruw))
+  } catch {
+    // localStorage niet beschikbaar, of geen geldige JSON: alles blijft zichtbaar.
+  }
+  return []
+}
+
 type InstellingenContextType = {
   /** Vanaf welk percentage een budget een waarschuwing geeft. */
   budgetDrempel: number
@@ -60,6 +82,9 @@ type InstellingenContextType = {
   /** De pagina's die je uitgezet hebt. Zie utils/appOnderdelen.ts. */
   verborgenPaginas: Pagina[]
   zetVerborgenPaginas: (p: Pagina[]) => void
+  /** De verdelingskaarten die je uitgezet hebt. Zie utils/analysekaarten.ts. */
+  verborgenAnalysekaarten: AnalyseKaartId[]
+  zetVerborgenAnalysekaarten: (k: AnalyseKaartId[]) => void
 }
 
 // Standaardwaarde zodat componenten ook zonder Provider werken (bv. in tests).
@@ -70,6 +95,8 @@ const standaard: InstellingenContextType = {
   // rechtstreeks rendert, ziet daardoor de app zoals ze standaard is.
   verborgenPaginas: [],
   zetVerborgenPaginas: () => {},
+  verborgenAnalysekaarten: [],
+  zetVerborgenAnalysekaarten: () => {},
 }
 
 const InstellingenContext = createContext<InstellingenContextType>(standaard)
@@ -77,6 +104,7 @@ const InstellingenContext = createContext<InstellingenContextType>(standaard)
 export function InstellingenProvider({ children }: { children: ReactNode }) {
   const [budgetDrempel, setBudgetDrempel] = useState<number>(leesDrempel)
   const [verborgenPaginas, setVerborgenPaginas] = useState<Pagina[]>(leesVerborgen)
+  const [verborgenAnalysekaarten, setVerborgenAnalysekaarten] = useState<AnalyseKaartId[]>(leesVerborgenKaarten)
 
   useEffect(() => {
     try {
@@ -94,9 +122,24 @@ export function InstellingenProvider({ children }: { children: ReactNode }) {
     }
   }, [verborgenPaginas])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(ANALYSEKAARTEN_SLEUTEL, JSON.stringify(verborgenAnalysekaarten))
+    } catch {
+      // stil negeren
+    }
+  }, [verborgenAnalysekaarten])
+
   return (
     <InstellingenContext.Provider
-      value={{ budgetDrempel, zetBudgetDrempel: setBudgetDrempel, verborgenPaginas, zetVerborgenPaginas: setVerborgenPaginas }}
+      value={{
+        budgetDrempel,
+        zetBudgetDrempel: setBudgetDrempel,
+        verborgenPaginas,
+        zetVerborgenPaginas: setVerborgenPaginas,
+        verborgenAnalysekaarten,
+        zetVerborgenAnalysekaarten: setVerborgenAnalysekaarten,
+      }}
     >
       {children}
     </InstellingenContext.Provider>

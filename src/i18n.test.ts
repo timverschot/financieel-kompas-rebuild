@@ -123,6 +123,65 @@ describe('vertaaltabellen', () => {
     expect([...fr].filter((k) => !en.has(k))).toEqual([])
   })
 
+  it('vertaalt de nieuwe teksten van ronde 83', () => {
+    expect(vertaal('fr', 'Vaste last verwijderen?')).toBe('Supprimer la charge fixe ?')
+    expect(vertaal('en', 'Nieuwe vaste last')).toBe('New fixed cost')
+    expect(vertaal('fr', 'Nieuwe vaste inkomst')).toBe('Nouveau revenu fixe')
+    // ⚠ ÉÉN register per soort, ook in het Engels — daar sluipt de drift binnen, want
+    // `woordenschat.test.ts` leest alleen de NEDERLANDSE sleutels. Vóór deze ronde stond
+    // "Recurring income" (de kaarttitel) pal boven "Add fixed income" (de knop).
+    for (const sleutel of ['Vaste last toevoegen', 'Vaste last wijzigen', 'Nieuwe vaste last', 'Deze vaste last']) {
+      expect(vertaal('en', sleutel)).toMatch(/fixed cost$/i)
+      expect(vertaal('fr', sleutel)).toMatch(/charge fixe$/i)
+    }
+    for (const sleutel of [
+      'Vaste inkomst toevoegen',
+      'Vaste inkomst wijzigen',
+      'Nieuwe vaste inkomst',
+      'Deze vaste inkomst',
+      'Vaste inkomsten',
+    ]) {
+      expect(vertaal('en', sleutel)).toMatch(/fixed income$/i)
+      expect(vertaal('fr', sleutel)).toMatch(/revenus? fixes?$/i)
+    }
+    expect(vertaal('en', '{actie} — {formulier}', { actie: 'Cancel', formulier: 'X' })).toBe('Cancel — X')
+  })
+
+  it('vertaalt de nieuwe teksten van ronde 82', () => {
+    expect(vertaal('en', '{actie} — {naam}, {details}', { actie: 'Delete', naam: 'X', details: 'Y' })).toBe(
+      'Delete — X, Y',
+    )
+    expect(vertaal('fr', '{details} ({n} van {totaal})', { details: 'X', n: 1, totaal: 2 })).toBe('X (1 sur 2)')
+    expect(vertaal('en', 'Het gaat over de kost van {details}.', { details: 'X' })).toBe('This is the cost of X.')
+    // ⚠ Eén register voor de periodes: "per month" naast "per quarter" en "per year",
+    // niet "a month". Ze staan sinds deze ronde allemaal in dezelfde knopnaam.
+    for (const sleutel of ['per maand', 'per kwartaal', 'per half jaar', 'per jaar']) {
+      expect(vertaal('en', sleutel).startsWith('per ')).toBe(true)
+    }
+  })
+
+  it('vertaalt de nieuwe teksten van ronde 81', () => {
+    expect(vertaal('en', 'Welke kaarten wil je hier zien?')).toBe('Which cards do you want here?')
+    // ⚠ De chip draagt het kopwoord van de kaart die ze bedient, ook in het Engels:
+    // 'By store' hoort bij 'Expenses by store', 'By family member' bij 'Spending by
+    // family member'. Twee woorden voor hetzelfde ding op één scherm is precies wat
+    // woordenschat.test.ts in het Nederlands verbiedt — dat bestand leest alleen de
+    // Nederlandse sleutels, dus het Engels en het Frans staan hier.
+    expect(vertaal('en', 'Per winkel')).toBe('By store')
+    expect(vertaal('en', 'Uitgaven per winkel')).toContain('by store')
+    expect(vertaal('en', 'Per bron')).toBe('By source')
+    expect(vertaal('en', 'Inkomsten per bron')).toContain('by source')
+    expect(vertaal('en', 'Per gezinslid')).toBe('By family member')
+    expect(vertaal('en', 'Uitgaven per gezinslid')).toContain('by family member')
+    expect(vertaal('en', 'Inkomsten per gezinslid')).toContain('by family member')
+    expect(vertaal('en', 'Per subcategorie')).toBe('By subcategory')
+    // ⚠ "La carte" hoort erbij: {kaart} is een voorzetselgroep en het Frans slikt die
+    // niet als onderwerp — en het legt meteen het geslacht vast.
+    expect(vertaal('fr', 'De kaart {kaart} staat nu uit.', { kaart: 'Par sous-catégorie' })).toBe(
+      'La carte Par sous-catégorie est maintenant masquée.',
+    )
+  })
+
   it('vertaalt de nieuwe teksten van ronde 44', () => {
     expect(vertaal('en', 'Uitwisselen met de andere ouder')).toBe('Exchange with the other parent')
     expect(vertaal('fr', 'Neem over')).toBe('Appliquer')
@@ -157,7 +216,10 @@ describe('vertaaltabellen', () => {
   it('vertaalt de nieuwe teksten van ronde 40', () => {
     expect(vertaal('en', 'Bekijk bij Boekingen ›')).toBe('View under Entries ›')
     expect(vertaal('fr', 'Toon opbouw')).toBe('Afficher le détail')
-    expect(vertaal('en', 'Boek {naam} in', { naam: 'Rent' })).toBe('Record Rent')
+    // ⚠ De sleutel 'Boek {naam} in' is in ronde 82 vervallen: de zichtbare tekst
+    // "Boek in" kwam er niet aaneengesloten in voor, en dat is een WCAG 2.5.3-fout.
+    // De knop gaat nu langs `knopnaamVoorPost`, net als op de twee andere schermen.
+    expect(vertaal('en', '{actie} — {naam}', { actie: 'Record', naam: 'Rent' })).toBe('Record — Rent')
     expect(vertaal('fr', '{n} treffer(s) in {m} hoofdcategorie(ën)', { n: 3, m: 1 })).toBe(
       '3 résultat(s) dans 1 catégorie(s) principale(s)',
     )
@@ -174,7 +236,9 @@ describe('vertaaltabellen', () => {
   })
 
   it('vertaalt de nieuwe teksten van ronde 25', () => {
-    expect(vertaal('en', 'Vaste inkomsten')).toBe('Recurring income')
+    // ⚠ RONDE 83 — was 'Recurring income'. Deze kaarttitel staat pal boven de knop
+    // "Add fixed income"; twee woorden voor één ding, in twaalf centimeter scherm.
+    expect(vertaal('en', 'Vaste inkomsten')).toBe('Fixed income')
     expect(vertaal('fr', 'Uitboeken')).toBe('Annuler l’écriture')
     expect(vertaal('en', 'Zoek een categorie')).toBe('Search for a category')
     expect(vertaal('fr', 'Nog geen vaste lasten.')).toBe('Pas encore de charges fixes.')

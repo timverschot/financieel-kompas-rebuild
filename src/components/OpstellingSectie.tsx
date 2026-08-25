@@ -33,6 +33,7 @@ import { BackupKaart } from './BackupKaart'
 import type { OpslagToestand } from '../data/opslag'
 import { versVangnet } from '../utils/backupherinnering'
 import type { BudgetTab } from '../utils/budgettab'
+import { bedragMetPeriode, knopnaamVoorPost, postNaamMetKenmerk } from '../utils/postkenmerk'
 import { bepaalBuffer } from '../utils/buffer'
 import { nettoVermogen } from '../utils/vermogen'
 import { openstaandKapitaal } from '../utils/lening'
@@ -186,11 +187,6 @@ function ritmeVan(t: Vertaler, post: TerugkerendePost): string {
   })
 }
 
-/** Het bedrag van een post met de periode erachter: "€ 620,00 per jaar". */
-function bedragMetPeriode(t: Vertaler, post: TerugkerendePost): string {
-  return `${formatEuro(Math.abs(post.bedrag))} ${t(PERIODE_SLEUTELS[post.frequentie ?? 'maand'])}`
-}
-
 /**
  * Eén regel uit de lijst met voorstellen.
  *
@@ -210,6 +206,7 @@ function KostRegel({
   voorstel,
   t,
   eigen,
+  alle,
   open,
   onWissel,
   onToevoegen,
@@ -220,6 +217,16 @@ function KostRegel({
   t: Vertaler
   /** De posten die onder dit voorstel vallen; leeg wanneer je hier nog niets hebt. */
   eigen: TerugkerendePost[]
+  /**
+   * ÁLLE vaste lasten van dit scherm (ronde 82), om te weten of een naam ook elders
+   * voorkomt.
+   *
+   * ⚠ Niet `eigen`, hoe verleidelijk ook. Twee posten die allebei "Autoverzekering"
+   * heten hoeven niet onder hetzelfde voorstel te hangen — één kan je zelf toegevoegd
+   * hebben en de andere uit "Verzekeringen" komen. De regel is "twee bedieningen op
+   * één SCHERM mogen niet dezelfde naam dragen", en dit scherm toont ze allemaal.
+   */
+  alle: TerugkerendePost[]
   open: boolean
   onWissel: () => void
   onToevoegen: () => void
@@ -281,14 +288,16 @@ function KostRegel({
                       twee knoppen exact dezelfde naam, en wist een schermlezergebruiker
                       niet welke van de twee hij wiste. Het bedrag en de dag erbij maken
                       ze uit elkaar te houden. De zichtbare tekst staat er vooraan in,
-                      zoals WCAG 2.5.3 vraagt. */}
+                      zoals WCAG 2.5.3 vraagt.
+
+                      ⚠ RONDE 82 — via `knopnaamVoorPost`, en niet meer met de hand. Deze
+                      regel stond hier twee keer uitgeschreven, en Budget → Vast — het
+                      andere scherm met dezelfde lijst — had hem nooit gekregen. Nu lezen
+                      allebei de schermen dezelfde functie. */}
                   <button
                     type="button"
                     className="knop knop-ghost knop-klein"
-                    aria-label={t('Bewerken — {naam}, {details}', {
-                      naam: post.omschrijving,
-                      details: `${bedragMetPeriode(t, post)}, ${t('dag {dag}', { dag: post.dag })}`,
-                    })}
+                    aria-label={knopnaamVoorPost(t, t('Bewerken'), post, alle)}
                     onClick={() => onWijzig(post)}
                   >
                     {t('Bewerken')}
@@ -297,10 +306,7 @@ function KostRegel({
                     <button
                       type="button"
                       className="knop knop-ghost knop-klein"
-                      aria-label={t('Verwijderen — {naam}, {details}', {
-                        naam: post.omschrijving,
-                        details: `${bedragMetPeriode(t, post)}, ${t('dag {dag}', { dag: post.dag })}`,
-                      })}
+                      aria-label={knopnaamVoorPost(t, t('Verwijderen'), post, alle)}
                       // ⚠ De focus meteen verzetten, VOOR de regel verdwijnt (ronde 73,
                       // doorlichting). Zonder dit viel hij naar `<body>` en stond je met
                       // je toetsenbord weer bovenaan de pagina. De knop "Toevoegen" van
@@ -431,7 +437,7 @@ function KostenLijst({
           exact dezelfde naam zijn voor een schermlezer niet uit elkaar te houden. */}
       {!heeftRekening && (
         <Leeg actie={<EersteStapKnop onClick={onNaarRekeningen}>{t('Maak een rekening aan')}</EersteStapKnop>}>
-          {t('Maak eerst een rekening aan — een vaste kost moet ergens vanaf gaan.')}
+          {t('Maak eerst een rekening aan — een vaste last moet ergens vanaf gaan.')}
         </Leeg>
       )}
 
@@ -471,6 +477,7 @@ function KostenLijst({
               voorstel={v}
               t={t}
               eigen={eigenVan(v)}
+              alle={posten}
               open={openRijen.has(v.sleutel)}
               onWissel={() =>
                 setOpenRijen((vorig) => {
@@ -789,7 +796,7 @@ export function OpstellingSectie({
     {
       id: 'vast',
       teken: '🏠',
-      label: t('Vaste kosten'),
+      label: t('Vaste lasten'),
       klaar: ingevuldKlassiek.length > 0,
       telling: ingevuldKlassiek.length,
     },
@@ -1209,7 +1216,7 @@ export function OpstellingSectie({
 
         {blok === 'vast' && (
           <KostenLijst
-            titel={t('Je vaste kosten')}
+            titel={t('Je vaste lasten')}
             uitleg={t('Klik op een kost om te zien wat je al hebt, of voeg er een toe. Het invulvenster vraagt alles in één keer.')}
             voorstellen={KLASSIEKE_VASTE_KOSTEN}
             posten={ingevuld}
@@ -1331,7 +1338,11 @@ export function OpstellingSectie({
         <Dialoog
           titel={
             formulier.bewerken
-              ? t('{naam} wijzigen', { naam: formulier.bewerken.omschrijving })
+              ? // ⚠ RONDE 82 — mét het kenmerk bij een naamgenoot. Klikte je "Bewerken"
+                // op één van twee identieke rijen, dan opende er een venster dat alleen
+                // "Autoverzekering wijzigen" zei. Het risico is hier groter dan bij
+                // verwijderen: dat heeft een ongedaan-balk, een bewerkscherm overschrijft.
+                t('{naam} wijzigen', { naam: postNaamMetKenmerk(t, formulier.bewerken, terugkerendePosten) })
               : t('{naam} toevoegen', { naam: t(formulier.voorstel?.naam ?? '') })
           }
           open

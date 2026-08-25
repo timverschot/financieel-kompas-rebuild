@@ -422,8 +422,51 @@ export function TerugkerendePostFormulier({
     onOpgeslagen?.({ blijfOpen: nog })
   }
 
+  // ⚠ RONDE 83 — WELK VAN DE TWEE FORMULIEREN IS DIT?
+  // Op Budget → Vast staan er twee onder elkaar: één voor je vaste inkomsten en één
+  // voor je vaste lasten. Hun velden heten allemaal hetzelfde — nageteld: NEGEN paren
+  // in de gewone toestand ("Vaste omschrijving", "Vast bedrag (€)", "Dag van de
+  // maand", "Hoe vaak?", "Loopt tot en met", "Zit hier een contract achter?", "Vaste
+  // rekening", "Zoek een categorie", "Vaste categorie"), en tot VEERTIEN zodra je in
+  // allebei een ritme en een contract invult. Dat is exact de huisregel die ronde 82
+  // in de LIJST kwam handhaven, twintig regels lager geschonden.
+  //
+  // ⚠ EEN NAAM OP HET `<form>` EN NIET OP ELK VELD. Een formulier met een naam is in
+  // HTML een LANDMARK: een schermlezer kondigt het aan zodra de focus erin komt
+  // ("Nieuwe vaste last, formulier") en kan er rechtstreeks naartoe springen. Negen
+  // tot veertien velden elk een eigen achtervoegsel geven zou twee vertaalsleutels per
+  // veld kosten en de labels langer maken voor iedereen die gewoon kijkt.
+  //
+  // ⚠ MAAR HET LOST NIET ALLES OP, en dat hoort erbij te staan. Het helpt wie
+  // DOORTABT. Het helpt níét wie de app met zijn STEM bedient ("klik Vaste
+  // omschrijving" vindt er nog altijd twee, want stembediening kent geen landmarks),
+  // en ook niet wie de veldenlijst van zijn schermlezer opent — die somt de
+  // bedieningen op zonder hun landmark. Die twee wegen blijven open.
+  //
+  // ⚠ EEN ZELFSTANDIG NAAMWOORD, geen bevel. Elke andere regio in de app heet
+  // "Hoofdnavigatie", "Weergave", "Meer pagina's", "Hoofdcategorieën" of "Wat wil je
+  // boeken?" — een plek of een vraag. "Vaste last invullen" stond daar als enige
+  // gebiedende wijs tussen, en dat leest als een opdracht die de app je geeft.
+  //
+  // ⚠ En de naam volgt of je BEWERKT of TOEVOEGT. Anders kondigt een schermlezer
+  // "nieuwe vaste last" aan boven een formulier waarin je je bestaande huur zit te
+  // wijzigen — met een knop eronder die "Vaste last wijzigen" heet.
+  //
+  // ⚠ `soort` en niet `soortVanBuiten`: staat de soort niet van buiten vast (dat is
+  // alleen zo in de ➕-invoerpopup, onder de knop "Vaste last"), dan kiest de gebruiker
+  // hem zelf met de twee bolletjes onderaan — en dan hoort de naam mee te veranderen
+  // met wat hij aan het maken is.
+  const isInkomst = soort === 'inkomst'
+  const formuliernaam = bewerken
+    ? isInkomst
+      ? t('Deze vaste inkomst')
+      : t('Deze vaste last')
+    : isInkomst
+      ? t('Nieuwe vaste inkomst')
+      : t('Nieuwe vaste last')
+
   return (
-    <form onSubmit={verzend} className="stapel">
+    <form onSubmit={verzend} className="stapel" aria-label={formuliernaam}>
       <div className="veldgroep">
         <label className="label-caps" htmlFor={`${veldId}-vaste-omschrijving`}>
           {t('Vaste omschrijving')}
@@ -745,11 +788,28 @@ export function TerugkerendePostFormulier({
           aria-describedby={geldig ? undefined : redenId}
           className={onOpgeslagen ? 'knop knop-primair' : 'knop knop-secundair'}
         >
+          {/* ⚠ RONDE 83 — "vaste post" bestond nergens anders in de app: de kaart heet
+              "Vaste lasten" en de rij spreekt over "deze kost". En het maakte meteen de
+              twee knoppen onderscheidbaar: met twee open bewerkvensters stond er twee
+              keer "Vaste post wijzigen".
+
+              ⚠ IN DE POPUP GEWOON "TOEVOEGEN", en dat is een correctie op mezelf. Daar
+              staat de naam van het ding al in de vensterkop ("Vaste last toevoegen"),
+              dus een knop met diezelfde vier woorden zegt hetzelfde twee keer. Erger:
+              in die popup kiest de gebruiker de soort met de bolletjes onderaan terwijl
+              de kop vastligt — zette hij die op "Inkomst", dan stond er boven "Vaste
+              last toevoegen" en onder "Vaste inkomst toevoegen". Die tegenspraak had ik
+              er zelf in gezet. Dat de kop en de inleidende zin dáár de bolletjes niet
+              volgen, is ouder dan deze ronde en staat op de open lijst. */}
           {bewerken
-            ? t('Vaste post wijzigen')
-            : soortVanBuiten === 'inkomst'
-              ? t('Vaste inkomst toevoegen')
-              : t('Vaste post toevoegen')}
+            ? isInkomst
+              ? t('Vaste inkomst wijzigen')
+              : t('Vaste last wijzigen')
+            : onOpgeslagen
+              ? t('Toevoegen')
+              : isInkomst
+                ? t('Vaste inkomst toevoegen')
+                : t('Vaste last toevoegen')}
         </button>
         {onOpgeslagen && !bewerken && (
           <button
@@ -765,7 +825,14 @@ export function TerugkerendePostFormulier({
           </button>
         )}
         {bewerken && onAnnuleer && (
-          <button type="button" className="knop knop-ghost" onClick={onAnnuleer}>
+          <button
+            type="button"
+            className="knop knop-ghost"
+            /* ⚠ Twee open bewerkvensters gaven twee keer "Annuleer". De zichtbare tekst
+               staat vooraan in de naam, zoals WCAG 2.5.3 vraagt. */
+            aria-label={t('{actie} — {formulier}', { actie: t('Annuleer'), formulier: formuliernaam })}
+            onClick={onAnnuleer}
+          >
             {t('Annuleer')}
           </button>
         )}

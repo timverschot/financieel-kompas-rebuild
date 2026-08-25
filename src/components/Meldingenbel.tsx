@@ -223,6 +223,22 @@ export function Meldingenbel({
                           type="button"
                           className="knop knop-secundair knop-klein"
                           style={{ flexShrink: 0 }}
+                          /* ⚠ RONDE 82 — er staat één melding PER post, elk met zo'n
+                             knop. Vijf achterstallige vaste lasten gaven vijf knoppen
+                             die allemaal "Boek in" heetten en elk een ándere post
+                             boekten. Dat is niet het gelijknamigheidsprobleem van deze
+                             ronde maar iets ergers: zelfs bij vijf verschillende namen
+                             was er geen enkel onderscheid, en één tik boekt geld.
+
+                             ⚠ De naam komt uit `m.params.naam` en niet uit de post
+                             zelf: de bel kent alleen meldingen, geen vaste lasten. Zo
+                             hoeft ze daar ook niets van te weten (zie het commentaar
+                             boven `onBoek`). */
+                          aria-label={
+                            typeof m.params?.naam === 'string'
+                              ? t('{actie} — {naam}', { actie: t('Boek in'), naam: m.params.naam })
+                              : undefined
+                          }
                           onClick={() => boek(m.actie!.postId)}
                         >
                           {t('Boek in')}

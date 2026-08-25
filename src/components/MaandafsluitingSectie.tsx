@@ -315,7 +315,7 @@ export function MaandafsluitingSectie({
             waarop je er iets mee kan doen. */}
         {prijsbeeld.duurderPerMaand > 0 && (
           <p className="rij-meta" style={{ margin: '10px 0 0' }}>
-            {t('Je terugkerende kosten liggen intussen {bedrag} per maand hoger dan voorheen. Op Analyse staat wat er precies duurder werd.', {
+            {t('Je vaste lasten liggen intussen {bedrag} per maand hoger dan voorheen. Op Analyse staat wat er precies duurder werd.', {
               bedrag: formatEuro(prijsbeeld.duurderPerMaand),
             })}
           </p>

@@ -1155,3 +1155,80 @@ describe('TransactieFormulier — garantiebewijs, de scherpe randen', () => {
     expect(onDossierKost.mock.calls[0][0].id).toBe(onDossierKost.mock.calls[1][0].id)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 78 — de bedrading van de vermelding op een kassaticketregel
+// ---------------------------------------------------------------------------
+describe('TransactieFormulier — een gekozen subcategorie op een ticketregel', () => {
+  async function ticketMetBrood(user: ReturnType<typeof userEvent.setup>) {
+    renderForm()
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Colruyt')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '23')
+    await user.click(screen.getByLabelText(/Kassaticket splitsen/))
+    await user.type(screen.getAllByLabelText('Subcategorie zoeken')[0], 'witbrood')
+    await user.keyboard('{Enter}')
+  }
+
+  it('haalt de knop "Hoofdcategorie" weg zodra de regel een subcategorie draagt', async () => {
+    // ⚠ DE FOUT UIT TIMOTHY'S EIGEN GEBRUIK. Die knop bleef staan én aanklikbaar, en
+    // één tik erop verving "Brood (wit)" stil door de brede hoofdcategorie "Drank".
+    const user = userEvent.setup()
+    await ticketMetBrood(user)
+
+    expect(screen.queryByRole('button', { name: /hoofdcategorie/i })).toBeNull()
+    expect(screen.getByText('Voeding › Broodwaren')).toBeInTheDocument()
+  })
+
+  it('geeft elke regel een eigen naam voor "wissen"', async () => {
+    // ⚠ Huisregel sinds ronde 66. De buren op dezelfde rij dragen hun nummer al
+    // ("Deelbedrag 2", "Verwijder regel 2"); zonder dit was "wissen" de enige
+    // ongenummerde bediening van de rij, en met drie ticketregels onder elkaar zijn er
+    // dan drie knoppen die allemaal hetzelfde heten.
+    const user = userEvent.setup()
+    await ticketMetBrood(user)
+    await user.click(screen.getByRole('button', { name: '+ Regel toevoegen' }))
+    await user.type(screen.getAllByLabelText('Subcategorie zoeken')[1], 'cola')
+    await user.keyboard('{Enter}')
+
+    expect(screen.getByRole('button', { name: 'Categorie van regel 1 wissen' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Categorie van regel 2 wissen' })).toBeInTheDocument()
+  })
+
+  it('zet met "wissen" de regel weer vrij, zonder je tekst te verliezen', async () => {
+    const user = userEvent.setup()
+    await ticketMetBrood(user)
+
+    await user.click(screen.getByRole('button', { name: 'Categorie van regel 1 wissen' }))
+
+    // De keuzeknop is er weer, de vermelding weg, en de omschrijving staat er nog.
+    expect(screen.getByRole('button', { name: /hoofdcategorie/i })).toBeInTheDocument()
+    expect(screen.queryByText('Voeding › Broodwaren')).toBeNull()
+    expect(screen.getAllByLabelText('Subcategorie zoeken')[0]).toHaveValue('Brood (wit)')
+  })
+
+  it('laat na "wissen" wél weer breed taggen', async () => {
+    // De weg terug moet ook écht ergens heen leiden.
+    const user = userEvent.setup()
+    const onOpslaan = vi.fn()
+    render(
+      <TransactieFormulier onOpslaan={onOpslaan} rekeningen={rekeningen} categorieen={[]} handelaars={[]} />,
+    )
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Colruyt')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '23')
+    await user.click(screen.getByLabelText(/Kassaticket splitsen/))
+    await user.type(screen.getAllByLabelText('Subcategorie zoeken')[0], 'witbrood')
+    await user.keyboard('{Enter}')
+    await user.click(screen.getByRole('button', { name: 'Categorie van regel 1 wissen' }))
+
+    await user.click(screen.getByRole('button', { name: /hoofdcategorie/i }))
+    await user.click(await screen.findByRole('button', { name: /Drank/ }))
+    await user.type(screen.getAllByLabelText(/^Deelbedrag /)[0], '23')
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+
+    expect(onOpslaan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        regels: [expect.objectContaining({ categorieId: 'ov-drank' })],
+      }),
+    )
+  })
+})

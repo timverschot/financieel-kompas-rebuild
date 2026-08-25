@@ -5,6 +5,7 @@ import type { Periode } from '../utils/analyse'
 import { formatEuro } from '../utils/format'
 import { EersteStapKnop, Kaart, Leeg } from '../ui/basis'
 import { useT, type Vertaler } from '../i18n'
+import { knopnaamVoorPost } from '../utils/postkenmerk'
 import { Opslagfout } from '../ui/Opslagfout'
 import { useOpslagpoging } from '../ui/opslagpoging'
 import { huidigeMaand, vandaag, maandVoluit } from '../utils/datum'
@@ -103,7 +104,14 @@ function TeBoeken({
                   className="knop knop-secundair knop-klein"
                   // Drie keer "Boek in" in dezelfde lijst is voor een schermlezer
                   // niet te onderscheiden; de naam van de post hoort erbij.
-                  aria-label={t('Boek {naam} in', { naam: p.omschrijving })}
+                  //
+                  // ⚠ RONDE 82 — WCAG 2.5.3, en dat was hier een échte fout. Er stond
+                  // "Boek {naam} in", en de zichtbare tekst "Boek in" komt daar niet
+                  // aaneengesloten in voor: wie de app met zijn stem bedient en "klik
+                  // Boek in" zegt, vond deze knop niet. Nu langs dezelfde functie als
+                  // Budget → Vast en Je situatie — één functie, drie schermen — en
+                  // daarmee draagt hij meteen ook het kenmerk bij een naamgenoot.
+                  aria-label={knopnaamVoorPost(t, t('Boek in'), p, posten)}
                   onClick={() => void opslag.probeer(() => onBoekVasteLast(p.id, maand))}
                 >
                   {t('Boek in')}
@@ -237,7 +245,7 @@ export function VooruitblikSectie({
         {maand === huidigeMaand(nu) ? (
           <p className="rij-meta" data-vooruitblikbron style={{ margin: 0 }}>
             {t(
-              'Hierin zit wat er deze maand al geboekt is, plus de terugkerende posten die déze maand vervallen — ook de te late. Losse uitgaven die nog komen — boodschappen, tanken — zitten er niet in.',
+              'Hierin zit wat er deze maand al geboekt is, plus de vaste lasten die déze maand vervallen — ook de te late. Losse uitgaven die nog komen — boodschappen, tanken — zitten er niet in.',
             )}
           </p>
         ) : null}

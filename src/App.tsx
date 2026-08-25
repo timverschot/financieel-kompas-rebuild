@@ -179,6 +179,7 @@ import { kostenVoorAfrekening, type AfrekeningFilter } from './utils/afrekening'
 import { kostenOmTeHeropenen, kostenVanAfrekening } from './utils/afrekeningverwijdering'
 import { telGezinslidGebruik } from './utils/gezinslidverwijdering'
 import { telVasteLastVerwijzingen, vasteLastUndoTekst } from './utils/vastelastverwijdering'
+import { postNaamMetKenmerk } from './utils/postkenmerk'
 import { categorieUndoTekst, telCategorieVerwijderen } from './utils/categorieverwijdering'
 import { nieuwId } from './data/sync/id'
 import { inkomstenPerCategorie, maandInkomsten, maandUitgaven, uitgavenPerCategorie, type CategorieUitgave } from './utils/overzicht'
@@ -1507,12 +1508,29 @@ export function App() {
     // deze functie niet veranderen, en het wissen raakt de boekingen en de doelen
     // sowieso niet aan. Vóór of ná het wissen tellen geeft hier hetzelfde antwoord.
     const tel = telVasteLastVerwijzingen(id, { transacties: transacties ?? [], spaardoelen })
+    // ⚠ RONDE 82 — de naam VÓÓR het wissen berekenen, en niet erna. Vandaag zou het
+    // erna ook kloppen (`terugkerendePosten` is de state van deze render en verandert
+    // binnen deze functie niet), maar dat is een eigenschap van een closure die
+    // nergens staat opgeschreven. Verhuist dit ooit naar een effect of naar een verse
+    // lezing uit de database, dan valt het kenmerk stil weg precies wanneer het nodig
+    // is. Hier is de afhankelijkheid zichtbaar.
+    //
+    // ⚠ Alleen de posten met hetzelfde TEKEN tellen als naamgenoot: een vaste inkomst
+    // "Huur" (kotgeld) is geen naamgenoot van een vaste last "Huur" — dezelfde
+    // afweging die `TerugkerendeSectie` bij `bestaande={eigen}` maakt.
+    const naam = oud
+      ? postNaamMetKenmerk(
+          t,
+          oud,
+          terugkerendePosten.filter((p) => p.bedrag < 0 === oud.bedrag < 0),
+        )
+      : ''
     await verwijderTerugkerendePost(id)
     await herlaad()
     // ⚠ De balk zei "Vaste post verwijderd" — vier woorden die niet zeggen wélke post
     // weg is en niet dat er iets aan hing. Wie er drie na elkaar wist, las drie keer
     // hetzelfde en wist bij "Ongedaan maken" niet wat hij terughaalde.
-    if (oud) toonUndo(vasteLastUndoTekst(t, oud.omschrijving, tel), () => bewaarTerugkerendePost(oud))
+    if (oud) toonUndo(vasteLastUndoTekst(t, naam, tel), () => bewaarTerugkerendePost(oud))
   }
 
   // Vanuit het meldingenpaneel komt alleen een id binnen; de post zelf zoeken we
@@ -3206,7 +3224,7 @@ export function App() {
                         </EersteStapKnop>
                       }
                     >
-                      {t('Maak eerst een rekening aan — een vaste kost of inkomst moet ergens vanaf gaan of op binnenkomen.')}
+                      {t('Maak eerst een rekening aan — een vaste last of een vaste inkomst moet ergens vanaf gaan of op binnenkomen.')}
                     </Leeg>
                   </Kaart>
                 )}

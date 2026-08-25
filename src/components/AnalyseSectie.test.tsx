@@ -1,8 +1,9 @@
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi } from 'vitest'
+import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { AnalyseSectie } from './AnalyseSectie'
 import { TaalProvider } from '../i18n'
+import { InstellingenProvider } from '../instellingen'
 import type { TerugkerendePost, Transactie } from '../data/schema'
 import { vandaag, huidigeMaand, maandJaarLabel } from '../utils/datum'
 import { verschuifMaand } from '../utils/maandverloop'
@@ -819,5 +820,275 @@ describe('AnalyseSectie — elk "Totaal" zegt wat het optelt', () => {
     // En de eigen zin van de kaart blijft ervoor staan; de tweede komt erbij, ze
     // vervangt niet.
     expect(totaalBron('Uitgaven per winkel')).toContain('Alleen uitgaven met een omschrijving')
+  })
+})
+
+
+// --- Ronde 81: "Minder tegelijk", deel twee ------------------------------------
+//
+// Met volledige gegevens staan er op Verdeling VIER donutkaarten onder elkaar. Ronde
+// 75 bouwde de schakelaar voor hele pagina's; deze chiprij doet hetzelfde één laag
+// dieper. Ze staat ná de vaste eerste kaart en vóór de drie kaarten die ze bedient:
+// boven de eerste grafiek stonden er al twaalf bedieningen in vier rijen. Zie
+// utils/analysekaarten.ts.
+
+describe('AnalyseSectie — kaarten aan- en uitzetten (ronde 81)', () => {
+  const metPersoon = (id: string, personen: string[], bedrag: number): Transactie => ({
+    ...tx(id, 'i-brood--wit-9238', bedrag, 'Colruyt'),
+    persoonIds: personen,
+  })
+
+  function toonMetVoorkeur(
+    transacties: Transactie[],
+    over: Partial<React.ComponentProps<typeof AnalyseSectie>> = {},
+  ) {
+    render(
+      <InstellingenProvider>
+        <AnalyseSectie
+          transacties={transacties}
+          categorieen={[]}
+          rekeningen={rekeningen}
+          overboekingen={[]}
+          waarderingen={[]}
+          terugkerendePosten={[]}
+          {...over}
+        />
+      </InstellingenProvider>,
+    )
+  }
+
+  function keuzeblok(): HTMLElement | null {
+    return document.querySelector('[data-kaartkeuze]')
+  }
+
+  // ⚠ In een `beforeEach`, niet aan het einde van een testbody (les van ronde 75):
+  // faalt een test halverwege, dan lekt de voorkeur anders naar de volgende.
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('zet de chiprij ná de vaste eerste kaart en vóór de kaarten die ze bedient', () => {
+    toonMetVoorkeur([boodschappen, tanken])
+    const blok = keuzeblok() as HTMLElement
+    const vaste = kaart('Verdeling uitgaven')
+    const winkelkaart = kaart('Uitgaven per winkel')
+    // ⚠ Boven de eerste grafiek stonden er al dertien bedieningen; een veertiende rij
+    // daarbovenop zou het tegenovergestelde zijn van wat deze ronde wil. Helemaal
+    // onderaan stond de rij op 320 px op 3.551 pixels van de bovenkant — gemeten —
+    // en dan moet je drieënhalf scherm scrollen om het scrollen in te korten.
+    expect(vaste.compareDocumentPosition(blok) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(blok.compareDocumentPosition(winkelkaart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('geeft alleen een chip aan een kaart die er ook kán staan', () => {
+    // Geen enkel gezinslid ingesteld, dus die kaart bestaat hier niet — en dan hoort
+    // er ook geen schakelaar voor te staan.
+    toonMetVoorkeur([boodschappen, tanken])
+    const groep = screen.getByRole('group', { name: 'Welke kaarten wil je hier zien?' })
+    expect(within(groep).getByRole('button', { name: 'Per subcategorie' })).toBeInTheDocument()
+    expect(within(groep).getByRole('button', { name: 'Per winkel' })).toBeInTheDocument()
+    expect(within(groep).queryByRole('button', { name: 'Per gezinslid' })).toBeNull()
+  })
+
+  it('geeft de gezinslidkaart wél een chip zodra er iets aan hangt', () => {
+    toonMetVoorkeur([metPersoon('p', ['k1'], -4000)], { gezinsleden: [{ id: 'k1', naam: 'Emma' }] })
+    expect(screen.getByRole('button', { name: 'Per gezinslid' })).toBeInTheDocument()
+  })
+
+  it('biedt GEEN chip voor de verdeling per hoofdcategorie', () => {
+    // Daarvoor dient dit tabblad. Kan je ze uitzetten, dan hou je een leeg tabblad
+    // over — dezelfde veiligheidsregel als bij de pagina's in ronde 75.
+    toonMetVoorkeur([boodschappen, tanken])
+    const groep = screen.getByRole('group', { name: 'Welke kaarten wil je hier zien?' })
+    expect(within(groep).getAllByRole('button')).toHaveLength(2)
+    expect(kaart('Verdeling uitgaven')).toBeInTheDocument()
+  })
+
+  it('blijft helemaal weg op een app zonder boekingen', () => {
+    // Er valt dan niets te kiezen, en de eerste stap van ronde 66 mag niet achter
+    // drie schakelaars komen te staan.
+    toonMetVoorkeur([])
+    expect(keuzeblok()).toBeNull()
+  })
+
+  it('staat standaard alles aan', () => {
+    toonMetVoorkeur([boodschappen, tanken])
+    for (const naam of ['Per subcategorie', 'Per winkel']) {
+      expect(screen.getByRole('button', { name: naam })).toHaveAttribute('aria-pressed', 'true')
+    }
+    expect(screen.getByText('Uitgaven per winkel')).toBeInTheDocument()
+  })
+
+  it('haalt de kaart weg zodra je de chip uitzet, en houdt de chip', async () => {
+    const user = userEvent.setup()
+    toonMetVoorkeur([boodschappen, tanken])
+    await user.click(screen.getByRole('button', { name: 'Per winkel' }))
+    expect(screen.queryByText('Uitgaven per winkel')).toBeNull()
+    // ⚠ De chip blijft staan, anders verdwijnt de knop waarmee je hem terugzet
+    // precies op het moment dat je hem indrukt.
+    expect(screen.getByRole('button', { name: 'Per winkel' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByText('Verdeling per subcategorie')).toBeInTheDocument()
+    expect(kaart('Verdeling uitgaven')).toBeInTheDocument()
+  })
+
+  it('zet ze ook weer terug', async () => {
+    const user = userEvent.setup()
+    toonMetVoorkeur([boodschappen, tanken])
+    await user.click(screen.getByRole('button', { name: 'Per winkel' }))
+    await user.click(screen.getByRole('button', { name: 'Per winkel' }))
+    expect(screen.getByText('Uitgaven per winkel')).toBeInTheDocument()
+  })
+
+  it('zegt wat er net veranderde', async () => {
+    const user = userEvent.setup()
+    // De kaarten die verschijnen of verdwijnen staan ONDER deze rij, op een telefoon
+    // dus buiten beeld.
+    toonMetVoorkeur([boodschappen, tanken])
+    const melding = () => (keuzeblok() as HTMLElement).querySelector('[role="status"]')?.textContent
+    expect(melding()).toBe('')
+    await user.click(screen.getByRole('button', { name: 'Per winkel' }))
+    expect(melding()).toBe('De kaart Per winkel staat nu uit.')
+    await user.click(screen.getByRole('button', { name: 'Per winkel' }))
+    expect(melding()).toBe('De kaart Per winkel staat nu aan.')
+  })
+
+  it('hangt de belofte aan elke chip', () => {
+    // Wie de app hóórt, kreeg anders alleen "Per winkel, knop, ingedrukt".
+    toonMetVoorkeur([boodschappen, tanken])
+    const chip = screen.getByRole('button', { name: 'Per winkel' })
+    const id = chip.getAttribute('aria-describedby') as string
+    expect(document.getElementById(id)?.textContent).toBe(
+      'Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren.',
+    )
+  })
+
+  it('onthoudt je keuze op dit toestel', async () => {
+    const user = userEvent.setup()
+    toonMetVoorkeur([boodschappen, tanken])
+    await user.click(screen.getByRole('button', { name: 'Per winkel' }))
+    cleanup()
+    toonMetVoorkeur([boodschappen, tanken])
+    expect(screen.queryByText('Uitgaven per winkel')).toBeNull()
+  })
+
+  it('haalt ook de gezinslidkaart weg zodra je die chip uitzet', async () => {
+    const user = userEvent.setup()
+    toonMetVoorkeur([metPersoon('p', ['k1'], -4000)], { gezinsleden: [{ id: 'k1', naam: 'Emma' }] })
+    expect(screen.getByText('Uitgaven per gezinslid')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Per gezinslid' }))
+    expect(screen.queryByText('Uitgaven per gezinslid')).toBeNull()
+  })
+
+  it('trekt zich niets aan van een bewaarde voorkeur die geen lijst is', () => {
+    // ⚠ Zonder `keurVerborgenKaarten` zou de kale tekst "winkel" hier als lijst
+    // gelezen worden — `'winkel'.includes('winkel')` is waar — en dan verdwijnt die
+    // kaart door een waarde die nooit een keuze van jou was.
+    localStorage.setItem('fk_verborgen_analysekaarten', '"winkel"')
+    toonMetVoorkeur([boodschappen, tanken])
+    expect(screen.getByText('Uitgaven per winkel')).toBeInTheDocument()
+  })
+
+  it('toont alles wanneer de bewaarde voorkeur kapot is', () => {
+    // ⚠ De veilige kant op: bij twijfel toont de app alles.
+    localStorage.setItem('fk_verborgen_analysekaarten', '{kapot')
+    toonMetVoorkeur([boodschappen, tanken])
+    expect(screen.getByRole('button', { name: 'Per winkel' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('noemt de winkelkaart bij inkomsten een BRON', async () => {
+    const user = userEvent.setup()
+    toonMetVoorkeur([tx('i', 'ov-inkomsten', 240000, 'Werkgever')])
+    await user.click(screen.getByRole('button', { name: 'Inkomsten' }))
+    expect(screen.getByRole('button', { name: 'Per bron' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Per winkel' })).toBeNull()
+  })
+
+  it('wist de melding wanneer je van richting wisselt', async () => {
+    // "Per winkel staat nu uit" zou blijven staan terwijl diezelfde chip aan de
+    // andere kant van de knop "Per bron" heet.
+    const user = userEvent.setup()
+    toonMetVoorkeur([boodschappen, tanken, tx('i', 'ov-inkomsten', 240000, 'Werkgever')])
+    await user.click(screen.getByRole('button', { name: 'Per winkel' }))
+    await user.click(screen.getByRole('button', { name: 'Inkomsten' }))
+    expect((keuzeblok() as HTMLElement).querySelector('[role="status"]')?.textContent).toBe('')
+  })
+
+  it('wist de melding wanneer je dit tabblad verlaat', async () => {
+    // ⚠ Het hele keuzeblok is voorwaardelijk, dus bij terugkomst zou het live-gebied
+    // opnieuw aangemaakt worden MÉT tekst erin — en dan leest een schermlezer "De
+    // kaart Per winkel staat nu uit" voor aan iemand die alleen van tabblad wisselde.
+    const user = userEvent.setup()
+    toonMetVoorkeur([boodschappen, tanken])
+    await user.click(screen.getByRole('button', { name: 'Per winkel' }))
+    await user.click(screen.getByRole('tab', { name: /Vooruit/ }))
+    await user.click(screen.getByRole('tab', { name: /Verdeling/ }))
+    expect((keuzeblok() as HTMLElement).querySelector('[role="status"]')?.textContent).toBe('')
+  })
+
+  it('laat de melding staan bij een periodewissel', async () => {
+    // Die verandert niets aan je keuze en niets aan de naam van de chip, dus de zin
+    // blijft gewoon waar. Wissen zou hier informatie weggooien zonder reden.
+    const user = userEvent.setup()
+    toonMetVoorkeur([boodschappen, tanken])
+    await user.click(screen.getByRole('button', { name: 'Per winkel' }))
+    await user.click(screen.getByRole('button', { name: 'Dit jaar' }))
+    expect((keuzeblok() as HTMLElement).querySelector('[role="status"]')?.textContent).toContain(
+      'staat nu uit',
+    )
+  })
+
+  it('laat de winkelkaart en haar chip weg wanneer geen enkele boeking een omschrijving heeft', () => {
+    // ⚠ `perWinkel` groepeert op de omschrijving en slaat een boeking zonder er een
+    // over. Het invoerformulier eist een omschrijving, maar het schema niet — een
+    // herstelde of ingelezen boeking kan er zonder zitten.
+    toonMetVoorkeur([tx('z', 'i-brood--wit-9238', -5000, ''), tx('z2', 'ov-vervoer-en-mobiliteit', -2500, '')])
+    expect(screen.queryByText('Uitgaven per winkel')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Per winkel' })).toBeNull()
+    expect(document.querySelector('[data-niet-kiesbaar]')).not.toBeNull()
+  })
+
+  it('zegt dat kaarten zonder gegevens er niet bij staan', () => {
+    // Zonder deze zin verdwijnt "per gezinslid" hier stil — precies waar ronde 75 mee
+    // begon: "je ontdekte dus nooit dat de app iets kón".
+    toonMetVoorkeur([boodschappen, tanken])
+    expect(document.querySelector('[data-niet-kiesbaar]')?.textContent).toMatch(
+      /niets te tonen valt, staan hier niet bij/,
+    )
+  })
+
+  it('zwijgt daarover wanneer elke kaart er wél bij staat', () => {
+    toonMetVoorkeur([metPersoon('p', ['k1'], -4000)], { gezinsleden: [{ id: 'k1', naam: 'Emma' }] })
+    expect(document.querySelector('[data-niet-kiesbaar]')).toBeNull()
+  })
+
+  it('zet met "Per winkel" ook de kaart "Inkomsten per bron" uit', async () => {
+    // ⚠ Één voorkeur voor één kaart die per richting anders heet. Dat is een KEUZE en
+    // geen vergetelheid: het is dezelfde verdeling, en twee aparte voorkeuren zouden
+    // betekenen dat je dezelfde kaart twee keer moet wegklikken.
+    const user = userEvent.setup()
+    toonMetVoorkeur([boodschappen, tanken, tx('i', 'ov-inkomsten', 240000, 'Werkgever')])
+    await user.click(screen.getByRole('button', { name: 'Per winkel' }))
+    await user.click(screen.getByRole('button', { name: 'Inkomsten' }))
+    expect(screen.queryByText('Inkomsten per bron')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Per bron' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('toont de chiprij niet op een ander tabblad', async () => {
+    const user = userEvent.setup()
+    toonMetVoorkeur([boodschappen, tanken])
+    await user.click(screen.getByRole('tab', { name: /Vooruit/ }))
+    expect(keuzeblok()).toBeNull()
+  })
+
+  it('laat de drilldown bewust met rust', async () => {
+    // Doorklikken op een hoofdcategorie is een ándere vraag dan "wat wil ik op dit
+    // tabblad zien". De kaart die daar "Per subcategorie" heet, luistert dus niet
+    // naar de chip — en dat is een keuze, geen vergetelheid.
+    const user = userEvent.setup()
+    toonMetVoorkeur([boodschappen, tanken])
+    await user.click(screen.getByRole('button', { name: 'Per subcategorie' }))
+    expect(screen.queryByText('Verdeling per subcategorie')).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Toon details van Voeding' }))
+    expect(screen.getByText('Per subcategorie')).toBeInTheDocument()
   })
 })

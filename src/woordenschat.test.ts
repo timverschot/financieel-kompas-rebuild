@@ -41,6 +41,21 @@ describe('woordenschat — één woord per ding', () => {
     expect(met(/transacti/i)).toEqual([])
   })
 
+  it('noemt een terugkerende kost overal een "vaste last"', () => {
+    // ⚠ RONDE 83. De kaart heet "Vaste lasten", maar daarnaast liepen er "vaste post",
+    // "vaste kost" en "terugkerende post/kost" rond — vier woorden voor één ding, en
+    // twee ervan stonden op Budget → Vast zelf.
+    //
+    // ⚠ De eerste versie van deze test toetste alléén op "vaste post", terwijl haar naam
+    // "overal" beloofde. Een nakijkronde wees erop: een test die geruststelt zonder te
+    // bewaken, is precies wat de volgende ronde laat ontsporen.
+    expect(met(/vaste post|vaste kost|terugkerende (post|kost)/i)).toEqual([])
+    // ⚠ En een POSITIEVE controle erbij (nakijkronde): zonder haar zou deze test ook
+    // slagen op een lege tabel — en dan bewaakt ze niets.
+    expect(schermteksten()).toContain('Vaste last wijzigen')
+    expect(schermteksten()).toContain('Vaste lasten')
+  })
+
   it('gebruikt "Saldo" alleen nog voor de stand van een rekening', () => {
     // ⚠ "Saldo" is voortaan ALTIJD een rekeningstand. Het verschil tussen inkomsten
     // en uitgaven heet "Netto", en het verschil tussen twee ouders "te verrekenen".

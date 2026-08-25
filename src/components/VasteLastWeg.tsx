@@ -4,6 +4,7 @@ import { Dialoog } from '../ui/Dialoog'
 import { Opslagfout } from '../ui/Opslagfout'
 import { useOpslagpoging } from '../ui/opslagpoging'
 import { useT } from '../i18n'
+import { postKenmerk } from '../utils/postkenmerk'
 
 // "Water verwijderen?" — de vraag vóór het kruisje wist (ronde 76).
 //
@@ -35,6 +36,7 @@ export function VasteLastWeg({
   onVerwijderen,
   onOpzeggen,
   telGebruik,
+  alle = [],
 }: {
   /** De post waarover de vraag gaat, of `null` wanneer het venster dicht hoort. */
   post: TerugkerendePost | null
@@ -54,6 +56,12 @@ export function VasteLastWeg({
    * beweren dat er niets hangt.
    */
   telGebruik?: (id: string) => Gebruiksregel[]
+  /**
+   * De posten waar deze naast staat, om te weten of er een naamgenoot bij is
+   * (ronde 82). Optioneel en standaard leeg: dan gedraagt het venster zich zoals
+   * vóór die ronde en zegt het niets extra.
+   */
+  alle?: readonly TerugkerendePost[]
 }) {
   const { t } = useT()
   const opslag = useOpslagpoging()
@@ -63,12 +71,22 @@ export function VasteLastWeg({
   // al ingevuld hebt. Bewust een toets op het RECORD en niet op `isGestopt`: die
   // laatste heeft de dag van vandaag nodig, en dan zou dit venster zelf een klok
   // moeten raadplegen.
+  // ⚠ Leeg zolang er geen naamgenoot is; zie `postKenmerk`. `alle` is bewust een
+  // prop en geen vaste lijst: alleen de aanroeper weet naast welke posten deze staat.
+  const kenmerk = post ? postKenmerk(t, post, alle) : ''
+
   const toonOpzegzin = post !== null && post.eindMaand === undefined
   const kanOpzeggen = toonOpzegzin && onOpzeggen !== undefined
 
   return (
     <Dialoog
-      titel={post ? t('{naam} verwijderen?', { naam: post.omschrijving }) : t('Vaste post verwijderen?')}
+      /* ⚠ RONDE 82 — de titel houdt de vorm van de twee andere verwijdervensters van
+         de app (een gezinslid, een categorie): een KOP stelt de vraag, ze draagt geen
+         gegevens. Mijn eerste opzet zette het kenmerk hier tussen haakjes achter, en
+         dan staat het vraagteken middenin een kop die op 320 px van twee naar vier
+         regels groeit. Het kenmerk staat nu in de eerste regel van de body — en
+         alleen wanneer er iets te onderscheiden valt. */
+      titel={post ? t('{naam} verwijderen?', { naam: post.omschrijving }) : t('Vaste last verwijderen?')}
       open={post !== null}
       onSluiten={() => {
         opslag.wis()
@@ -121,6 +139,12 @@ export function VasteLastWeg({
     >
       {post && (
         <div className="stapel" style={{ gap: 10 }}>
+          {/* ⚠ RONDE 82 — WÉLKE van de twee. Heet er een andere post net zo, dan zegt
+              deze regel welke je op het punt staat te wissen. Heet er niets anders zo,
+              dan staat er niets: dan is de naam in de kop al ondubbelzinnig, en een
+              bedrag erbij zou de gewone gevallen — de overgrote meerderheid — met
+              gegevens opzadelen die niets toevoegen. Zie `postKenmerk`. */}
+          {kenmerk !== '' && <p style={{ margin: 0 }}>{t('Het gaat over de kost van {details}.', { details: kenmerk })}</p>}
           {/* ⚠ Zonder telfunctie mag hier geen "er hangt niets aan" staan: dat is een
               bewering, en het venster weet het dan niet. Niet weten en niets vinden
               zijn twee verschillende dingen (ronde 65). */}

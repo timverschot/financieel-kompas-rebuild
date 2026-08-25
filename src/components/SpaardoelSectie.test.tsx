@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
@@ -306,7 +307,11 @@ const premie: TerugkerendePost = {
 
 const huur: TerugkerendePost = { id: 'vl2', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 3 }
 
-function toonMetLasten(spaardoelen: Spaardoel[], vasteLasten: TerugkerendePost[] = [premie, huur]) {
+function toonMetLasten(
+  spaardoelen: Spaardoel[],
+  vasteLasten: TerugkerendePost[] = [premie, huur],
+  onOpslaan: (d: Spaardoel) => void = vi.fn(),
+) {
   render(
     <SpaardoelSectie
       spaardoelen={spaardoelen}
@@ -314,10 +319,11 @@ function toonMetLasten(spaardoelen: Spaardoel[], vasteLasten: TerugkerendePost[]
       rekeningen={rekeningen}
       transacties={[]}
       waarderingen={[]}
-      onOpslaan={vi.fn()}
+      onOpslaan={onOpslaan}
       onVerwijderen={vi.fn()}
     />,
   )
+  return onOpslaan
 }
 
 describe('SpaardoelSectie — waarvoor spaar je?', () => {
@@ -329,6 +335,32 @@ describe('SpaardoelSectie — waarvoor spaar je?', () => {
     const namen = [...keuze.querySelectorAll('option')].map((o) => o.textContent)
     expect(namen).toContain('Autoverzekering')
     expect(namen).not.toContain('Huur')
+  })
+
+  it('houdt twee gelijknamige kosten in de keuzelijst uit elkaar (ronde 82)', () => {
+    // ⚠ Dit is de enige plek waar je je fout daarna niet KAN zien. De koppeling stuurt
+    // `opzijVolgensSpaardoelen` aan: kies je de verkeerde, dan verschuift "Opzij voor
+    // later" op Budget naar de verkeerde kost, en de rij daar zegt "via je spaardoel X"
+    // bij de post waar niet voor gespaard wordt.
+    const tweede: TerugkerendePost = { ...premie, id: 'vl3', bedrag: -84000, dag: 12 }
+    toonMetLasten([], [premie, tweede])
+    const namen = [...screen.getByLabelText('Waarvoor spaar je? (optioneel)').querySelectorAll('option')].map(
+      (o) => o.textContent ?? '',
+    )
+    const autos = namen.filter((n) => n.startsWith('Autoverzekering'))
+    expect(autos).toHaveLength(2)
+    expect(new Set(autos).size).toBe(2)
+    expect(autos.some((n) => n.includes('620'))).toBe(true)
+    expect(autos.some((n) => n.includes('840'))).toBe(true)
+  })
+
+  it('laat een unieke naam kaal staan in de keuzelijst', () => {
+    // Het gewone geval: geen bedragen in een keuzelijst waar niets te onderscheiden valt.
+    toonMetLasten([])
+    const namen = [...screen.getByLabelText('Waarvoor spaar je? (optioneel)').querySelectorAll('option')].map(
+      (o) => o.textContent ?? '',
+    )
+    expect(namen).toContain('Autoverzekering')
   })
 
   it('toont het veld helemaal niet zonder spaarbare kosten', () => {
@@ -594,5 +626,256 @@ describe('SpaardoelSectie — te laat, en dubbel sparen (ronde 74, doorlichting)
       />,
     )
     expect(screen.getAllByText(/je spaart er dus dubbel voor/)).toHaveLength(2)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 79 — de vaststelling krijgt er één tik naast
+// ---------------------------------------------------------------------------
+describe('SpaardoelSectie — het bedrag en de datum van de kost overnemen', () => {
+  const doel = (over: Partial<Spaardoel> = {}): Spaardoel => ({
+    id: 'd1',
+    naam: 'Autoverzekering 2099',
+    doelbedrag: 62000,
+    huidigBedrag: 10000,
+    vasteLastId: 'vl1',
+    ...over,
+  })
+
+  it('zet het doelbedrag op het bedrag van de kost', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = toonMetLasten([doel({ doelbedrag: 68000 })], undefined, vi.fn())
+
+    await user.click(screen.getByRole('button', { name: 'Neem dat bedrag over voor Autoverzekering 2099' }))
+
+    expect(onOpslaan).toHaveBeenCalledWith(expect.objectContaining({ id: 'd1', doelbedrag: 62000 }))
+  })
+
+  it('laat de rest van het doel ongemoeid', async () => {
+    // ⚠ Eén veld verandert; alles wat jij verder ingevuld hebt, blijft staan. Een
+    // formulier dat zijn record van nul opbouwt, gooit elk veld weg dat het niet kent
+    // (huisregel sinds ronde 64) — deze knop doet dat niet.
+    const user = userEvent.setup()
+    const onOpslaan = toonMetLasten(
+      [doel({ doelbedrag: 68000, doeldatum: '2099-03-05', maandbedrag: 5000, kleur: '#123456' })],
+      undefined,
+      vi.fn(),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Neem dat bedrag over voor Autoverzekering 2099' }))
+
+    expect(onOpslaan).toHaveBeenCalledWith(
+      expect.objectContaining({ doelbedrag: 62000, doeldatum: '2099-03-05', maandbedrag: 5000, kleur: '#123456' }),
+    )
+  })
+
+  it('zet de doeldatum op de eerstvolgende vervaldag', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = toonMetLasten([doel({ doeldatum: '2099-06-01' })], undefined, vi.fn())
+
+    await user.click(screen.getByRole('button', { name: 'Neem die datum over voor Autoverzekering 2099' }))
+
+    expect(onOpslaan).toHaveBeenCalledWith(expect.objectContaining({ id: 'd1', doeldatum: '2099-03-05' }))
+  })
+
+  it('biedt niets aan wanneer er niets te corrigeren valt', () => {
+    // Geen knop zonder vaststelling: een knop die niets doet is erger dan geen knop.
+    toonMetLasten([doel()])
+    expect(screen.queryByRole('button', { name: /Neem dat bedrag over/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Neem die datum over/ })).toBeNull()
+  })
+
+  it('biedt niets aan wanneer de kost niet meer bestaat', () => {
+    toonMetLasten([doel({ doelbedrag: 68000, doeldatum: '2099-06-01' })], [huur])
+    expect(screen.queryByRole('button', { name: /Neem dat bedrag over/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Neem die datum over/ })).toBeNull()
+  })
+
+  it('geeft elk doel in de lijst een eigen knopnaam', async () => {
+    // ⚠ Huisregel sinds ronde 66: twee bedieningen met dezelfde toegankelijke naam op
+    // één scherm zijn een fout, en deze twee knoppen staan bij élk gekoppeld doel.
+    toonMetLasten([
+      doel({ doelbedrag: 68000 }),
+      doel({ id: 'd2', naam: 'Reservepot', doelbedrag: 70000 }),
+    ])
+    expect(screen.getByRole('button', { name: 'Neem dat bedrag over voor Autoverzekering 2099' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Neem dat bedrag over voor Reservepot' })).toBeInTheDocument()
+  })
+
+  it('koppelt elke knop aan de zin die hem verklaart', () => {
+    // Wie de app laat voorlezen, hoort anders alleen "Neem dat bedrag over" — zonder
+    // waarvoor. Een reden hoort te wijzen naar iets wat je kan zien (ronde 71).
+    toonMetLasten([doel({ doelbedrag: 68000 })])
+    const knop = screen.getByRole('button', { name: 'Neem dat bedrag over voor Autoverzekering 2099' })
+    const id = knop.getAttribute('aria-describedby')
+    expect(id).toBeTruthy()
+    expect(document.getElementById(id as string)?.textContent).toMatch(/doelbedrag staat op iets anders/)
+  })
+
+  it('draagt de zichtbare tekst die haar naam belooft', () => {
+    // ⚠ WCAG 2.5.3 (huisregel sinds ronde 73): de zichtbare tekst hoort vooraan in de
+    // toegankelijke naam. Alle andere tests zoeken op die naam, dus zonder deze test kan
+    // de tekst op de knop iets heel anders gaan zeggen zonder dat één test rood wordt.
+    toonMetLasten([doel({ doelbedrag: 68000, doeldatum: '2099-06-01' })])
+    expect(screen.getByRole('button', { name: 'Neem dat bedrag over voor Autoverzekering 2099' })).toHaveTextContent(
+      'Neem dat bedrag over',
+    )
+    expect(screen.getByRole('button', { name: 'Neem die datum over voor Autoverzekering 2099' })).toHaveTextContent(
+      'Neem die datum over',
+    )
+  })
+
+  it('zet elke knop NAAST de zin die hem verklaart, niet eronder', async () => {
+    // ⚠ Anders wijst geen van beide knoppen nog naar iets: een reden hoort te wijzen
+    // naar wat je kan zien (huisregel sinds ronde 71). Met twee vaststellingen tegelijk
+    // is de volgorde het bewijs.
+    toonMetLasten([doel({ doelbedrag: 68000, doeldatum: '2099-06-01' })])
+    const bedragKnop = screen.getByRole('button', { name: /Neem dat bedrag over/ })
+    const datumKnop = screen.getByRole('button', { name: /Neem die datum over/ })
+    expect(bedragKnop.parentElement?.textContent).toMatch(/doelbedrag staat op iets anders/)
+    expect(datumKnop.parentElement?.textContent).toMatch(/aan dit tempo ben je te laat/)
+  })
+
+  it('haalt de knop weg zodra het gelukt is, en zegt wat er veranderde', async () => {
+    // ⚠ De lus sluiten: alle andere tests gebruiken een mock die de lijst niet bijwerkt,
+    // en dan is nergens aangetoond dat de knop na een geslaagde tik écht verdwijnt — de
+    // belofte van deze hele ronde.
+    const user = userEvent.setup()
+    function Schil() {
+      const [doelen, setDoelen] = useState<Spaardoel[]>([doel({ doelbedrag: 68000 })])
+      return (
+        <SpaardoelSectie
+          spaardoelen={doelen}
+          vasteLasten={[premie, huur]}
+          rekeningen={rekeningen}
+          transacties={[]}
+          waarderingen={[]}
+          onOpslaan={(d) => setDoelen([d])}
+          onVerwijderen={vi.fn()}
+        />
+      )
+    }
+    render(<Schil />)
+
+    await user.click(screen.getByRole('button', { name: 'Neem dat bedrag over voor Autoverzekering 2099' }))
+
+    expect(screen.queryByRole('button', { name: /Neem dat bedrag over/ })).toBeNull()
+    expect(screen.queryByText(/doelbedrag staat op iets anders/)).toBeNull()
+    expect(
+      screen.getAllByRole('status').map((el) => el.textContent).join(' '),
+    ).toContain('Het doelbedrag van Autoverzekering 2099 staat nu op')
+  })
+
+  it('laat de focus niet naar <body> vallen wanneer de knop verdwijnt', async () => {
+    const user = userEvent.setup()
+    function Schil() {
+      const [doelen, setDoelen] = useState<Spaardoel[]>([doel({ doelbedrag: 68000 })])
+      return (
+        <SpaardoelSectie
+          spaardoelen={doelen}
+          vasteLasten={[premie, huur]}
+          rekeningen={rekeningen}
+          transacties={[]}
+          waarderingen={[]}
+          onOpslaan={(d) => setDoelen([d])}
+          onVerwijderen={vi.fn()}
+        />
+      )
+    }
+    render(<Schil />)
+
+    await user.click(screen.getByRole('button', { name: 'Neem dat bedrag over voor Autoverzekering 2099' }))
+
+    expect(document.activeElement).not.toBe(document.body)
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Bewerk doel Autoverzekering 2099' }))
+  })
+
+  it('werkt ook het formulier bij wanneer dit doel daar openstaat', async () => {
+    // ⚠ Anders toont het formulier rechts nog het OUDE bedrag naast een lijst met het
+    // nieuwe — twee getallen voor hetzelfde doel, tegelijk op één scherm — en schrijft
+    // de eerstvolgende "Doel wijzigen" jouw overname stil terug.
+    const user = userEvent.setup()
+    function Schil() {
+      const [doelen, setDoelen] = useState<Spaardoel[]>([doel({ doelbedrag: 68000 })])
+      return (
+        <SpaardoelSectie
+          spaardoelen={doelen}
+          vasteLasten={[premie, huur]}
+          rekeningen={rekeningen}
+          transacties={[]}
+          waarderingen={[]}
+          onOpslaan={(d) => setDoelen([d])}
+          onVerwijderen={vi.fn()}
+        />
+      )
+    }
+    render(<Schil />)
+
+    await user.click(screen.getByRole('button', { name: 'Bewerk doel Autoverzekering 2099' }))
+    expect(screen.getByLabelText('Doelbedrag (€)')).toHaveValue('680,00')
+
+    await user.click(screen.getByRole('button', { name: 'Neem dat bedrag over voor Autoverzekering 2099' }))
+
+    expect(screen.getByLabelText('Doelbedrag (€)')).toHaveValue('620,00')
+  })
+
+  it('neemt niet twee dingen tegelijk over, en zegt waarom niet', async () => {
+    // ⚠ Het wegschrijven gaat langs een volledige herlading. Tik je de twee knoppen
+    // snel na elkaar, dan schrijft de tweede het doel weg zoals het bij díé tekening
+    // was — en is je eerste overname stil ongedaan gemaakt. Een grendel die zwijgt is
+    // een nieuwe stille mislukking (ronde 68), dus deze zegt het.
+    const user = userEvent.setup()
+    let los: () => void = () => {}
+    const onOpslaan = vi.fn().mockImplementation(() => new Promise<void>((r) => { los = r }))
+    toonMetLasten([doel({ doelbedrag: 68000, doeldatum: '2099-06-01' })], undefined, onOpslaan)
+
+    await user.click(screen.getByRole('button', { name: /Neem dat bedrag over/ }))
+    await user.click(screen.getByRole('button', { name: /Neem die datum over/ }))
+
+    expect(onOpslaan).toHaveBeenCalledTimes(1)
+    expect(
+      screen.getAllByRole('status').map((el) => el.textContent).join(' '),
+    ).toContain('Even geduld')
+    los()
+  })
+
+  it('biedt de datum NIET aan wanneer de vervaldag vandaag valt', () => {
+    // ⚠ Dan zou de knop je doeldatum op vandaag zetten, en zegt de rekenkern "nul
+    // maanden": de rode badge "Datum voorbij" verschijnt pal onder de zin dat de
+    // betaling nog moet komen.
+    const vandaagPost: TerugkerendePost = {
+      ...premie,
+      dag: Number(vandaag().slice(8, 10)),
+      frequentie: 'jaar',
+      startMaand: vandaag().slice(0, 7),
+    }
+    toonMetLasten([doel({ doeldatum: '2099-06-01' })], [vandaagPost, huur])
+    expect(screen.queryByRole('button', { name: /Neem die datum over/ })).toBeNull()
+  })
+
+  it('biedt niets aan wanneer de kost intussen een INKOMST geworden is', () => {
+    // ⚠ De koppeling blijft bestaan (keuze van ronde 74), maar er valt niets meer voor
+    // te sparen — en de knop zou je doelbedrag op een inkomstbedrag zetten.
+    toonMetLasten([doel({ doelbedrag: 68000 })], [{ ...premie, bedrag: 62000 }, huur])
+    expect(screen.queryByRole('button', { name: /Neem dat bedrag over/ })).toBeNull()
+  })
+
+  it('biedt niets aan wanneer de kost intussen MAANDELIJKS geworden is', () => {
+    // Een maandelijkse kost betaal je uit het loon van diezelfde maand; daar vooraf voor
+    // sparen is een pot die elke maand weer leeg is.
+    toonMetLasten([doel({ doelbedrag: 68000 })], [{ ...premie, frequentie: 'maand' }, huur])
+    expect(screen.queryByRole('button', { name: /Neem dat bedrag over/ })).toBeNull()
+  })
+
+  it('zegt het wanneer het overnemen mislukt, in plaats van te doen alsof', async () => {
+    // Huisregel sinds ronde 68: een mislukte opslag mag nooit stil blijven.
+    const user = userEvent.setup()
+    toonMetLasten([doel({ doelbedrag: 68000 })], undefined, () => {
+      throw new Error('schijf vol')
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Neem dat bedrag over voor Autoverzekering 2099' }))
+
+    expect(await screen.findByText(/Dat is niet gelukt/)).toBeInTheDocument()
   })
 })

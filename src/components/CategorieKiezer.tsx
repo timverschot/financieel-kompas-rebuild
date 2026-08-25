@@ -4,6 +4,7 @@ import type { Categorie } from '../data/schema'
 import { zoekItems, zoekMidCategorieen, midsVanHoofd, itemsVanMid, midPerId, itemPerId, ZOEK_VANAF } from '../data/categorieen/zoek'
 import { groepVanCategorie, labelVanCategorie, type EigenCategorie } from '../data/categorieen/resolve'
 import { alleHoofdcategorieen, opVolgorde } from '../utils/categorieVolgorde'
+import { subcategoriePad } from '../utils/subcategoriepad'
 import { useHoofdvolgorde } from '../categorievolgorde'
 import { useT } from '../i18n'
 import { schoneNaam } from '../utils/categorietak'
@@ -825,13 +826,18 @@ export function CategorieKiezer({
    * staan zoals ze is — net als in de chiplagen van de trap, en omdat de ingebouwde
    * middenlaag sowieso geen vertalingen heeft.
    */
-  const subcategoriePad = useMemo(() => {
-    if (!waarde) return undefined
-    const item = itemPerId(waarde)
-    if (!item) return undefined
-    const hoofd = eigenHoofd.has(item.hoofdId) ? item.hoofdNaam : t(item.hoofdNaam)
-    return `${hoofd} › ${item.categorieNaam}`
-  }, [waarde, eigenHoofd, t])
+  // ⚠ Sinds ronde 78 uit `utils/subcategoriepad.ts`, want dit scherm is niet het enige
+  // dat deze regel toepast: het zoekveld van een kassaticketregel doet hetzelfde. Daar
+  // stond hij NIET, en dat kostte drie dagen later een verkeerd ingedeelde boeking.
+  // Eén regel, één plek.
+  //
+  // ⚠ En zonder `useMemo` (doorlichting ronde 78). De boom waaruit deze functie leest
+  // is een register buiten React (`stelCategorieboomIn`), dus een hernoemde
+  // subcategorie verandert geen van de afhankelijkheden — met een memo bleef de oude
+  // naam staan zolang het formulier open was. Het is één opzoeking in een Map; er valt
+  // niets te besparen. `ItemZoeker` doet het al zo, en de twee schermen die deze ronde
+  // gelijk wil trekken, horen ook hierin gelijk te lopen.
+  const padOnderKeuze = subcategoriePad(waarde, eigenHoofd, t)
 
   // Bouw de voorstellenlijst (plat, zodat toetsenbordnavigatie er vlot doorheen
   // gaat). De hoofdcategorieën zelf staan hier niet meer in: die staan nu
@@ -982,7 +988,7 @@ export function CategorieKiezer({
         {/* De padregel onderaan beschrijft déze waarde. Zonder deze koppeling hoort
             wie de app laat voorlezen die regel als een losse zin, drie elementen
             verderop, zonder dat iets zegt waar ze bij hoort. */}
-        <strong aria-describedby={subcategoriePad && nieuweNaam === null ? padId : undefined}>
+        <strong aria-describedby={padOnderKeuze && nieuweNaam === null ? padId : undefined}>
           {gekozenLabel ?? t('Geen')}
         </strong>
         {/* ⚠ Ook deze knop verdwijnt zolang het paneeltje openstaat. Hij doet exact
@@ -1131,9 +1137,9 @@ export function CategorieKiezer({
           dat het paneeltje opengaat, schoof het hele formulier eronder omhoog, en
           sprong het bij Annuleer weer terug. */}
       <div data-keuzevak style={{ visibility: nieuweNaam === null ? 'visible' : 'hidden' }}>
-        {subcategoriePad ? (
+        {padOnderKeuze ? (
           <p className="rij-meta" id={padId} style={{ margin: 0 }} data-categoriepad>
-            {subcategoriePad}
+            {padOnderKeuze}
           </p>
         ) : (
           <>

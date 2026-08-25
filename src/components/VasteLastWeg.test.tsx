@@ -26,7 +26,7 @@ function toon(over: Partial<Parameters<typeof VasteLastWeg>[0]> = {}) {
 describe('VasteLastWeg', () => {
   it('noemt de post bij naam in de titel', () => {
     toon()
-    expect(screen.getByRole('heading', { name: 'Water verwijderen?' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^Water verwijderen\?/ })).toBeInTheDocument()
   })
 
   it('toont niets wanneer er geen post is', () => {

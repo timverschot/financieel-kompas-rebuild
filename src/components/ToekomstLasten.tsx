@@ -11,6 +11,7 @@ import {
 } from '../utils/toekomstlasten'
 import { intervalVan, verschuifMaand } from '../utils/vastelast'
 import { formatEuro } from '../utils/format'
+import { namenlijst } from '../utils/namenlijst'
 import { maandKort, maandJaarLabel, maandVoluit } from '../utils/datum'
 import { EersteStapKnop, Kaart, Leeg } from '../ui/basis'
 import { useT, type Vertaler } from '../i18n'
@@ -217,30 +218,6 @@ function piekZin(t: Vertaler, reeks: Toekomstmaand[], ontbreektIets: boolean): s
 
 function vensterLabel(vanaf: string): string {
   return `${maandJaarLabel(`${vanaf}-01`)} – ${maandJaarLabel(`${verschuifMaand(vanaf, VENSTER_MAANDEN - 1)}-01`)}`
-}
-
-/** Hoeveel namen er hoogstens uitgeschreven worden voor de rest samengevat wordt. */
-const MAX_NAMEN = 3
-
-/**
- * Een opsomming van namen met een bovengrens.
- *
- * ⚠ Zonder grens somde de zin over ontbrekende posten er veertig achter elkaar op —
- * gemeten: 1.845 tekens in één alinea — en één lijstrij kon met zestig kwartaalposten
- * 2.731 tekens breed worden, waardoor het bedrag rechts de kaart uit geduwd werd. Wat
- * wegvalt wordt geteld en genoemd; stil afkappen zou lezen als "dit is alles".
- *
- * De grens ligt op het AANTAL namen, niet op hun lengte. Eén omschrijving van
- * driehonderd tekens zonder spatie loopt nog steeds uit de rij — maar dat is een
- * eigenschap van de hele app (geen enkel omschrijvingsveld heeft een maximum) en geen
- * probleem van deze kaart alleen.
- */
-function namenlijst(t: Vertaler, namen: string[]): string {
-  if (namen.length <= MAX_NAMEN) return namen.join(', ')
-  return t('{namen} en {n} andere', {
-    namen: namen.slice(0, MAX_NAMEN).join(', '),
-    n: namen.length - MAX_NAMEN,
-  })
 }
 
 /** De zin over de posten die de app niet in de tijd kan plaatsen, of null. */

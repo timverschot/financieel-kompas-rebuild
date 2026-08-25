@@ -644,6 +644,20 @@ h4 {
   border-radius: var(--radius-sm);
 }
 
+/* ⚠ RONDE 79 — DEZELFDE VAL, ZESDE KEER. De twee knoppen "Neem dat bedrag over" en
+   "Neem die datum over" staan in een spaardoelrij, en die rij staat in een `.lijst` met
+   `overflow: hidden`. Zonder eigen regel erven ze `.rij button:focus-visible`, dat een
+   box-shadow van 4 px naar BUITEN zet — en omdat `.kaart .rij` geen horizontale
+   binnenruimte heeft, raakt de knop de linkerrand en verdwijnt de linkerhelft van die
+   ring in de rand. `.rij .doelknop:focus-visible` telt (0,3,0) en wint dus van
+   `.rij button:focus-visible` (0,2,1); ze staat bovendien LATER in dit bestand. */
+.rij .doelknop:focus-visible {
+  outline: 3px solid var(--focus-rand);
+  outline-offset: -3px;
+  box-shadow: none;
+  border-radius: var(--radius-sm);
+}
+
 @media (min-width: 560px) {
   .rij-kost > .rij-midden {
     flex: 1 1 0;
@@ -2957,6 +2971,18 @@ a {
 
    ⚠ Deze regel staat LATER in het bestand dan `.knop-kaal` (en is bovendien
    specifieker), dus ze wint. */
+/* ⚠ RONDE 82 — EEN LANGE VENSTERTITEL MAG DE KOP NIET UITDUWEN. In een flexrij
+   krimpt een item niet onder zijn min-content-breedte, en die is hier het langste
+   WOORD: "Hospitalisatieverzekering" is breder dan de ~226 px die er op 320 px voor de
+   titel overblijft naast het kruisje van 44 px (dat hierboven bewust niet mag krimpen).
+   Zonder `min-width: 0` puilt de kop dan naar buiten in plaats van af te breken.
+   `overflow-wrap: anywhere` doet de app al bij `.categorietegel-naam`, om precies
+   dezelfde reden: een omschrijvingsveld heeft nergens een maximum. */
+.dialoog-kop > .kaart-titel {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .dialoog-kop > .knop {
   flex-shrink: 0;
 }

@@ -152,7 +152,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
   // en verwijderen.
 
   async function naarVasteKosten(gebruiker: ReturnType<typeof userEvent.setup>) {
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste lasten/ }))
   }
 
   it('laat de rij rustig: geen invoerveld en geen periodewoord meer', async () => {
@@ -193,7 +193,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
 
     const venster = screen.getByRole('dialog')
     await gebruiker.type(within(venster).getByLabelText('Vast bedrag (€)'), '950')
-    await gebruiker.click(within(venster).getByRole('button', { name: 'Vaste post toevoegen' }))
+    await gebruiker.click(within(venster).getByRole('button', { name: 'Toevoegen' }))
 
     expect(onVastePost).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -294,7 +294,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     toon({ rekeningen: [rekening], terugkerendePosten: [post] })
     await naarVasteKosten(gebruiker)
     await gebruiker.click(screen.getByRole('button', { name: /^Huur/ }))
-    await gebruiker.click(screen.getByRole('button', { name: /^Bewerken — Huur,/ }))
+    await gebruiker.click(screen.getByRole('button', { name: new RegExp('^Bewerken — Huur($|,)') }))
 
     const venster = screen.getByRole('dialog')
     expect(within(venster).getByLabelText('Vaste omschrijving')).toHaveValue('Huur')
@@ -308,7 +308,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     toon({ rekeningen: [rekening], terugkerendePosten: [post] }, { onVastePostVerwijderen })
     await naarVasteKosten(gebruiker)
     await gebruiker.click(screen.getByRole('button', { name: /^Huur/ }))
-    await gebruiker.click(screen.getByRole('button', { name: /^Verwijderen — Huur,/ }))
+    await gebruiker.click(screen.getByRole('button', { name: new RegExp('^Verwijderen — Huur($|,)') }))
 
     expect(onVastePostVerwijderen).toHaveBeenCalledWith('p1')
   })
@@ -322,8 +322,8 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     await naarVasteKosten(gebruiker)
     await gebruiker.click(screen.getByRole('button', { name: /^Huur/ }))
 
-    expect(screen.getByRole('button', { name: /^Bewerken — Huur,/ })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^Verwijderen — Huur,/ })).toBeNull()
+    expect(screen.getByRole('button', { name: new RegExp('^Bewerken — Huur($|,)') })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: new RegExp('^Verwijderen — Huur($|,)') })).toBeNull()
   })
 
   it('klapt alles open en weer dicht', async () => {
@@ -331,11 +331,11 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     toon({ rekeningen: [rekening] })
     await naarVasteKosten(gebruiker)
 
-    await gebruiker.click(screen.getByRole('button', { name: /Klap alles open — Je vaste kosten/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /Klap alles open — Je vaste lasten/ }))
     expect(screen.getByRole('button', { name: /^Huur/ })).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('button', { name: /^Hypotheek/ })).toHaveAttribute('aria-expanded', 'true')
 
-    await gebruiker.click(screen.getByRole('button', { name: /Klap alles dicht — Je vaste kosten/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /Klap alles dicht — Je vaste lasten/ }))
     expect(screen.getByRole('button', { name: /^Huur/ })).toHaveAttribute('aria-expanded', 'false')
   })
 
@@ -344,7 +344,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     toon({ rekeningen: [rekening], terugkerendePosten: [{ id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 3 }] })
     await naarVasteKosten(gebruiker)
 
-    const filter = screen.getByRole('button', { name: /Toon alleen wat ik al heb — Je vaste kosten/ })
+    const filter = screen.getByRole('button', { name: /Toon alleen wat ik al heb — Je vaste lasten/ })
     expect(filter).toHaveAttribute('aria-pressed', 'false')
     await gebruiker.click(filter)
 
@@ -357,7 +357,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     const gebruiker = userEvent.setup()
     toon({ rekeningen: [rekening] })
     await naarVasteKosten(gebruiker)
-    await gebruiker.click(screen.getByRole('button', { name: /Toon alleen wat ik al heb — Je vaste kosten/ }))
+    await gebruiker.click(screen.getByRole('button', { name: /Toon alleen wat ik al heb — Je vaste lasten/ }))
 
     expect(screen.getByText(/Zet de filter uit om alle voorstellen te zien/)).toBeInTheDocument()
   })
@@ -377,7 +377,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     await naarVasteKosten(gebruiker)
 
     expect(screen.queryByText(/Je vulde er/)).toBeNull()
-    expect(screen.getByText(/een vaste kost moet ergens vanaf gaan/)).toBeInTheDocument()
+    expect(screen.getByText(/een vaste last moet ergens vanaf gaan/)).toBeInTheDocument()
   })
 
   it('laat je niet beginnen zonder rekening, en brengt je naar het juiste blok', async () => {
@@ -470,7 +470,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
 
     const venster = screen.getByRole('dialog')
     await gebruiker.type(within(venster).getByLabelText('Vast bedrag (€)'), '950')
-    await gebruiker.click(within(venster).getByRole('button', { name: 'Opslaan + volgende' }))
+    await gebruiker.click(within(venster).getByRole('button', { name: /^Opslaan \+ volgende/ }))
 
     // Het venster blijft open en staat nu op het VOLGENDE voorstel, met zijn eigen naam.
     expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -489,7 +489,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     await naarVasteKosten(gebruiker)
     await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Huur' }))
     await gebruiker.type(screen.getByLabelText('Vast bedrag (€)'), '950')
-    await gebruiker.click(screen.getByRole('button', { name: 'Opslaan + volgende' }))
+    await gebruiker.click(screen.getByRole('button', { name: /^Opslaan \+ volgende/ }))
 
     expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true)
     // En wel in het veld waar je meteen verder tikt.
@@ -505,7 +505,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     await naarVasteKosten(gebruiker)
     await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Huur' }))
     await gebruiker.type(screen.getByLabelText('Vast bedrag (€)'), '950')
-    await gebruiker.click(screen.getByRole('button', { name: 'Opslaan + volgende' }))
+    await gebruiker.click(screen.getByRole('button', { name: /^Opslaan \+ volgende/ }))
 
     // ⚠ `within(dialog)`: buiten het venster staat dezelfde zin op de pagina, en die is
     // niet wat hier bewezen moet worden.
@@ -523,7 +523,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     await gebruiker.click(screen.getByRole('tab', { name: /Sluipende kosten/ }))
     await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Luisterboeken' }))
     await gebruiker.type(screen.getByLabelText('Vast bedrag (€)'), '9,99')
-    await gebruiker.click(screen.getByRole('button', { name: 'Opslaan + volgende' }))
+    await gebruiker.click(screen.getByRole('button', { name: /^Opslaan \+ volgende/ }))
 
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByText(/Luisterboeken bewaard/)).toBeInTheDocument()
@@ -540,13 +540,13 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     toon({ rekeningen: [rekening], terugkerendePosten: [oud] }, { onVastePost })
     await naarVasteKosten(gebruiker)
     await gebruiker.click(screen.getByRole('button', { name: /^Huur/ }))
-    await gebruiker.click(screen.getByRole('button', { name: /^Bewerken — Huur,/ }))
+    await gebruiker.click(screen.getByRole('button', { name: new RegExp('^Bewerken — Huur($|,)') }))
 
     const venster = screen.getByRole('dialog')
     const naam = within(venster).getByLabelText('Vaste omschrijving')
     await gebruiker.clear(naam)
     await gebruiker.type(naam, 'Huur appartement')
-    await gebruiker.click(within(venster).getByRole('button', { name: 'Vaste post wijzigen' }))
+    await gebruiker.click(within(venster).getByRole('button', { name: 'Vaste last wijzigen' }))
 
     expect(onVastePost).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'p1', omschrijving: 'Huur appartement', bronVoorstel: 'huur' }),
@@ -604,7 +604,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     await gebruiker.click(screen.getByRole('button', { name: /^Netflix/ }))
 
     const namen = screen
-      .getAllByRole('button', { name: /^Verwijderen — Netflix,/ })
+      .getAllByRole('button', { name: new RegExp('^Verwijderen — Netflix($|,)') })
       .map((k) => k.getAttribute('aria-label'))
     expect(namen).toHaveLength(2)
     expect(new Set(namen).size).toBe(2)
@@ -620,7 +620,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     await naarVasteKosten(gebruiker)
     await gebruiker.click(screen.getByRole('button', { name: /^Toon alleen wat ik al heb/ }))
     await gebruiker.click(screen.getByRole('button', { name: /^Huur/ }))
-    await gebruiker.click(screen.getByRole('button', { name: /^Verwijderen — Huur,/ }))
+    await gebruiker.click(screen.getByRole('button', { name: new RegExp('^Verwijderen — Huur($|,)') }))
     expect(onVastePostVerwijderen).toHaveBeenCalledWith('p1')
 
     // De app haalt de post weg; de rij hoort te blijven staan omdat ze openstaat.
@@ -652,7 +652,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     toon({ rekeningen: [rekening], terugkerendePosten: [huurpost] }, { onVastePostVerwijderen })
     await naarVasteKosten(gebruiker)
     await gebruiker.click(screen.getByRole('button', { name: /^Huur/ }))
-    await gebruiker.click(screen.getByRole('button', { name: /^Verwijderen — Huur,/ }))
+    await gebruiker.click(screen.getByRole('button', { name: new RegExp('^Verwijderen — Huur($|,)') }))
 
     expect(await screen.findByText(/niet gelukt/)).toBeInTheDocument()
   })
@@ -667,7 +667,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     await naarVasteKosten(gebruiker)
     await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Autoverzekering' }))
     await gebruiker.type(screen.getByLabelText('Vast bedrag (€)'), '620')
-    await gebruiker.click(screen.getByRole('button', { name: 'Vaste post toevoegen' }))
+    await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen' }))
 
     const nu = new Date()
     const volgende = new Date(nu.getFullYear(), nu.getMonth() + 1, 1)
@@ -689,7 +689,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     expect(within(venster).getByText(/al een vaste last die zo heet/)).toBeInTheDocument()
     // De opslaanknop blijft gewoon bruikbaar.
     await gebruiker.type(within(venster).getByLabelText('Vast bedrag (€)'), '400')
-    expect(within(venster).getByRole('button', { name: 'Vaste post toevoegen' })).not.toHaveAttribute(
+    expect(within(venster).getByRole('button', { name: 'Toevoegen' })).not.toHaveAttribute(
       'aria-disabled',
       'true',
     )
@@ -711,7 +711,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
       startMaand: '2099-03',
     }
     toon({ rekeningen: [rekening], terugkerendePosten: [later] })
-    expect(screen.getByRole('tab', { name: /Vaste kosten/ })).toHaveTextContent('1')
+    expect(screen.getByRole('tab', { name: /Vaste lasten/ })).toHaveTextContent('1')
     await naarVasteKosten(gebruiker)
     expect(screen.getByText(/Je vulde er 1 van de 19 in/)).toBeInTheDocument()
   })
@@ -1220,7 +1220,7 @@ describe('OpstellingSectie — verwijderen vraagt wat eraan hangt', () => {
   }
 
   async function openUitklap(gebruiker: ReturnType<typeof userEvent.setup>) {
-    await gebruiker.click(screen.getByRole('tab', { name: /Vaste kosten/ }))
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste lasten/ }))
     await gebruiker.click(screen.getByRole('button', { name: /^Huur/ }))
   }
 
@@ -1231,7 +1231,7 @@ describe('OpstellingSectie — verwijderen vraagt wat eraan hangt', () => {
     const onVastePostVerwijderen = vi.fn()
     toon({ rekeningen: [rekening], terugkerendePosten: [post] }, { onVastePostVerwijderen })
     await openUitklap(gebruiker)
-    await gebruiker.click(screen.getByRole('button', { name: /^Verwijderen — Huur,/ }))
+    await gebruiker.click(screen.getByRole('button', { name: new RegExp('^Verwijderen — Huur($|,)') }))
     expect(onVastePostVerwijderen).toHaveBeenCalledWith('p1')
   })
 
@@ -1243,9 +1243,9 @@ describe('OpstellingSectie — verwijderen vraagt wat eraan hangt', () => {
       { onVastePostVerwijderen },
     )
     await openUitklap(gebruiker)
-    await gebruiker.click(screen.getByRole('button', { name: /^Verwijderen — Huur,/ }))
+    await gebruiker.click(screen.getByRole('button', { name: new RegExp('^Verwijderen — Huur($|,)') }))
     expect(onVastePostVerwijderen).not.toHaveBeenCalled()
-    expect(screen.getByRole('heading', { name: 'Huur verwijderen?' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^Huur verwijderen\?/ })).toBeInTheDocument()
 
     await gebruiker.click(screen.getByRole('button', { name: 'Ja, verwijder' }))
     expect(onVastePostVerwijderen).toHaveBeenCalledWith('p1')
@@ -1260,8 +1260,8 @@ describe('OpstellingSectie — verwijderen vraagt wat eraan hangt', () => {
       { onVastePostVerwijderen: vi.fn() },
     )
     await openUitklap(gebruiker)
-    await gebruiker.click(screen.getByRole('button', { name: /^Verwijderen — Huur,/ }))
-    expect(screen.getByRole('heading', { name: 'Huur verwijderen?' })).toBeInTheDocument()
+    await gebruiker.click(screen.getByRole('button', { name: new RegExp('^Verwijderen — Huur($|,)') }))
+    expect(screen.getByRole('heading', { name: /^Huur verwijderen\?/ })).toBeInTheDocument()
 
     rerender(
       <OpstellingSectie
@@ -1279,7 +1279,7 @@ describe('OpstellingSectie — verwijderen vraagt wat eraan hangt', () => {
         onNaarPagina={vi.fn()}
       />,
     )
-    expect(screen.queryByRole('heading', { name: 'Huur verwijderen?' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: /^Huur verwijderen\?/ })).toBeNull()
   })
 
   it('zegt in het venster WAT er aan de kost hangt', async () => {
@@ -1292,7 +1292,7 @@ describe('OpstellingSectie — verwijderen vraagt wat eraan hangt', () => {
       { onVastePostVerwijderen: vi.fn() },
     )
     await openUitklap(gebruiker)
-    await gebruiker.click(screen.getByRole('button', { name: /^Verwijderen — Huur,/ }))
+    await gebruiker.click(screen.getByRole('button', { name: new RegExp('^Verwijderen — Huur($|,)') }))
 
     expect(screen.getByText('Hier hangt nog dit aan:')).toBeInTheDocument()
     expect(screen.getByText('1 boeking(en) die je hier inboekte')).toBeInTheDocument()
@@ -1309,7 +1309,7 @@ describe('OpstellingSectie — verwijderen vraagt wat eraan hangt', () => {
       { onVastePostVerwijderen: vi.fn() },
     )
     await openUitklap(gebruiker)
-    await gebruiker.click(screen.getByRole('button', { name: /^Verwijderen — Huur,/ }))
+    await gebruiker.click(screen.getByRole('button', { name: new RegExp('^Verwijderen — Huur($|,)') }))
 
     expect(screen.getByText('1 spaardoel(en) sparen hiervoor')).toBeInTheDocument()
   })
@@ -1322,7 +1322,7 @@ describe('OpstellingSectie — verwijderen vraagt wat eraan hangt', () => {
       { onVastePostVerwijderen },
     )
     await openUitklap(gebruiker)
-    await gebruiker.click(screen.getByRole('button', { name: /^Verwijderen — Huur,/ }))
+    await gebruiker.click(screen.getByRole('button', { name: new RegExp('^Verwijderen — Huur($|,)') }))
     await gebruiker.click(screen.getByRole('button', { name: 'Liever opzeggen' }))
 
     expect(onVastePostVerwijderen).not.toHaveBeenCalled()

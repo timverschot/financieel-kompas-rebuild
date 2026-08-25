@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { Categorie, Kind, Overboeking, Rekening, TerugkerendePost, Transactie, Waardering } from '../data/schema'
 import { Vermogensevolutie } from './Vermogensevolutie'
 import { TrendsSectie } from './TrendsSectie'
@@ -27,6 +27,8 @@ import { Balk, Bedrag, EersteStapKnop, Kaart, Leeg, PaginaKop, Stat } from '../u
 import { Subtabs } from '../ui/Subtabs'
 import { type AnalyseTab } from '../utils/analysetab'
 import { useT } from '../i18n'
+import { useInstellingen } from '../instellingen'
+import { ANALYSE_KAART_IDS, kaartLabel, kiesbareKaarten, toontKaart, wisselKaart } from '../utils/analysekaarten'
 import { naarDatumTekst, huidigeMaand, maandJaarLabel } from '../utils/datum'
 import { verschuifMaand } from '../utils/maandverloop'
 import { isOmgekeerdBereik, filterVoorCategorie, type TxFilter } from '../utils/transactieFilter'
@@ -365,11 +367,22 @@ export function AnalyseSectie({
   onNaarBoekingen?: () => void
 }) {
   const { t } = useT()
+  // ⚠ RONDE 81 — welke verdelingskaarten je wil zien. Per toestel in localStorage,
+  // net als de uitgezette pagina's van ronde 75; zie utils/analysekaarten.ts.
+  const { verborgenAnalysekaarten, zetVerborgenAnalysekaarten } = useInstellingen()
   const [richting, setRichting] = useState<Richting>(beginRichting)
   const [keuze, setKeuze] = useState<'maand' | 'vorige' | 'jaar' | 'alles' | 'aangepast'>('maand')
   const [van, setVan] = useState('')
   const [tot, setTot] = useState('')
   const [drill, setDrill] = useState<{ sleutel: string; naam: string } | null>(null)
+  // Wat er net veranderde aan de kaartkeuze (ronde 81). Zie het live-gebied onderaan
+  // het keuzeblok, tussen de eerste kaart en de drie kaarten eronder.
+  const [kaartMelding, setKaartMelding] = useState('')
+  // ⚠ Eigen id's en geen vaste tekst: dit blok kan in principe twee keer bestaan (een
+  // tweede instantie in een test, een toekomstig scherm), en twee elementen met
+  // dezelfde id laten `aria-labelledby` naar het verkeerde wijzen.
+  const kaartkeuzeKopId = useId()
+  const belofteId = useId()
   const [tab, setTab] = useState<AnalyseTab>(beginTab ?? 'verdeling')
   // De tab uit het webadres blijft gelden zolang de pagina openstaat (ronde 60).
   // Een beginwaarde wordt maar één keer gelezen; kwam je daarna via de terugknop of
@@ -378,6 +391,16 @@ export function AnalyseSectie({
   useEffect(() => {
     if (beginTab) setTab(beginTab)
   }, [beginTab])
+
+  // ⚠ RONDE 81 — de melding gaat over wat je NET deed. Verlaat je dit tabblad, ga je
+  // de drilldown in, of wissel je van richting, dan is ze geen nieuws meer. En het
+  // hele keuzeblok is voorwaardelijk, dus bij terugkomst zou het live-gebied opnieuw
+  // aangemaakt worden MÉT tekst erin — en dan leest een schermlezer "Per winkel staat
+  // nu uit" voor aan iemand die alleen maar van tabblad wisselde.
+  //
+  // ⚠ Een PERIODEwissel staat hier bewust niet bij: die verandert niets aan je keuze
+  // en niets aan de naam van de chip, dus de zin blijft gewoon waar.
+  useEffect(() => setKaartMelding(''), [tab, drill, richting])
 
   // Een aangepast bereik waarvan de einddatum vóór de begindatum ligt, levert
   // nergens resultaten op. Vroeger bleef het scherm dan zwijgend leeg (en werd het
@@ -479,6 +502,20 @@ export function AnalyseSectie({
       ),
     [perPersoon],
   )
+
+  // ⚠ RONDE 81 — voor welke kaarten er een chip komt: die waarvoor er in deze
+  // periode en deze richting iets te tonen valt. Zie utils/analysekaarten.ts.
+  // ⚠ ÉÉN BRON, en niet dezelfde drie uitdrukkingen twee keer geschreven. De belofte
+  // van deze ronde — "er is alleen een chip voor een kaart die er ook kán staan" —
+  // hangt erop dat de chiprij en de kaarten dezelfde vraag stellen. Stonden ze los,
+  // dan levert één aanpassing later een chip op die niets doet, of een kaart zonder
+  // schakelaar, en niets vangt dat.
+  const gevuld = {
+    subcategorie: byItem.length > 0,
+    winkel: byWinkel.length > 0,
+    gezinslid: perPersoonGekleurd.length > 0,
+  }
+  const kiesbaar = kiesbareKaarten(gevuld)
 
   const drillTxs = useMemo(
     () => (drill && !bereikOmgekeerd ? drillTransacties(transacties, categorieen, periode, richting, drill.sleutel) : []),
@@ -832,7 +869,92 @@ export function AnalyseSectie({
             </Kaart>
           ))}
 
-          {tab === 'verdeling' && byItem.length > 0 && (
+          {/* ⚠ RONDE 81 — "MINDER TEGELIJK", DEEL TWEE: KAARTEN BINNEN ÉÉN PAGINA.
+              Met volledige gegevens staan hier VIER donutkaarten onder elkaar, elk met
+              een grafiek én een lijst. Wie er maar één van gebruikt, scrolt drie keer
+              langs iets wat hij nooit nodig heeft. Ronde 75 bouwde deze schakelaar voor
+              hele pagina's; dit is dezelfde bouwsteen, één laag dieper.
+
+              ⚠ NA DE EERSTE KAART, EN NIET HELEMAAL BOVENAAN ZOALS BIJ DE
+              DOSSIERONDERDELEN (ronde 60). Een nakijkronde telde na wat er op dit
+              tabblad al vóór de eerste grafiek staat: de twee pijlen van de
+              maandschakelaar, twee richtingknoppen, vijf periodeknoppen en drie
+              tabbladen — twaalf bedieningen, verdeeld over vier rijen. Een vijfde rij
+              daarbovenop zetten in de ronde die minder op het scherm moet zetten, is
+              het tegenovergestelde van wat ze wil.
+
+              Helemaal onderaan zetten was de eerste poging, en in de browser gemeten
+              stond de rij dan op een scherm van 320 × 900 op 3.551 pixels van de
+              bovenkant — met deze plaatsing op 1.198. Hier leest het tabblad ook
+              zoals het bedoeld is: eerst de verdeling waarvoor je kwam, dan de vraag
+              welke extra verdelingen je erbij wil.
+
+              ⚠ EN ER STAAT ALLEEN EEN CHIP VOOR EEN KAART DIE ER OOK KAN STAAN. Zie
+              `kiesbareKaarten`: op een verse app is er dus geen enkele chip en blijft
+              dit blok helemaal weg, ook al staat er verder niets uit. */}
+          {tab === 'verdeling' && kiesbaar.length > 0 && (
+            <Kaart
+              compact
+              titel={<span id={kaartkeuzeKopId}>{t('Welke kaarten wil je hier zien?')}</span>}
+              data-kaartkeuze
+            >
+              <div className="chiprooster" role="group" aria-labelledby={kaartkeuzeKopId}>
+                {kiesbaar.map((id) => {
+                  const aan = toontKaart(id, verborgenAnalysekaarten)
+                  const naam = t(kaartLabel(id, richting))
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-pressed={aan}
+                      /* ⚠ De belofte hangt aan élke chip (ronde 75, werkafspraak):
+                         wie de app hóórt, kreeg anders alleen "Per winkel, knop,
+                         ingedrukt" en nooit de zin die zegt dat er niets verloren
+                         gaat — en dan durf je zo'n schakelaar niet aan te raken. */
+                      aria-describedby={belofteId}
+                      className={aan ? 'chip chip-actief' : 'chip'}
+                      onClick={() => {
+                        zetVerborgenAnalysekaarten(wisselKaart(verborgenAnalysekaarten, id))
+                        setKaartMelding(
+                          aan
+                            ? t('De kaart {kaart} staat nu uit.', { kaart: naam })
+                            : t('De kaart {kaart} staat nu aan.', { kaart: naam }),
+                        )
+                      }}
+                    >
+                      {naam}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="rij-meta" style={{ margin: 0 }} id={belofteId}>
+                {t('Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren.')}
+              </p>
+              {/* ⚠ HET GAT DAT `kiesbareKaarten` ANDERS LAAT VALLEN. Ronde 75 begon met
+                  de vaststelling dat drie van de vier verdelingskaarten STIL verdwenen
+                  zodra er geen gegevens waren, "je ontdekte dus nooit dat de app iets
+                  kón". Zonder deze zin doet deze ronde precies dat opnieuw, nu ook met
+                  de chip erbij. Ze noemt bewust géén namen: welke kaart leeg is, kan
+                  per periode verschillen, en de vorige opzet ging juist onderuit op
+                  zinnen die per kaart iets beweerden wat niet waar te maken viel. */}
+              {kiesbaar.length < ANALYSE_KAART_IDS.length && (
+                <p className="rij-meta" style={{ margin: 0 }} data-niet-kiesbaar>
+                  {t('Kaarten waarvoor in deze periode niets te tonen valt, staan hier niet bij.')}
+                </p>
+              )}
+              {/* ⚠ De kaart die verschijnt of verdwijnt staat ONDER deze rij, en op een
+                  telefoon dus buiten beeld. Zonder deze regel merkt wie de app hoort —
+                  en wie op een klein scherm kijkt — alleen dat de knop van stand
+                  wisselde. Het live-gebied staat er altijd, ook leeg: een
+                  `role="status"` die pas mét zijn tekst verschijnt, wordt vaak niet
+                  voorgelezen (les van ronde 56). */}
+              <p className="rij-meta" style={{ margin: 0 }} role="status">
+                {kaartMelding}
+              </p>
+            </Kaart>
+          )}
+
+          {tab === 'verdeling' && toontKaart('subcategorie', verborgenAnalysekaarten) && gevuld.subcategorie && (
             <DonutKaart
               titel={t('Verdeling per subcategorie')}
               subtitel={t('Subcategorieën — brood, koffiekoeken, elektriciteit… Klik je door, dan zie je de volledige boeking, dus een gesplitst kassaticket komt in zijn geheel in beeld.')}
@@ -865,7 +987,7 @@ export function AnalyseSectie({
               }
             />
           )}
-          {tab === 'verdeling' && byWinkel.length > 0 && (
+          {tab === 'verdeling' && toontKaart('winkel', verborgenAnalysekaarten) && gevuld.winkel && (
             <DonutKaart
               titel={richting === 'uitgave' ? t('Uitgaven per winkel') : t('Inkomsten per bron')}
               subtitel={t('Gebaseerd op de omschrijving bij elke boeking')}
@@ -891,7 +1013,7 @@ export function AnalyseSectie({
             />
           )}
 
-          {tab === 'verdeling' && perPersoonGekleurd.length > 0 && (
+          {tab === 'verdeling' && toontKaart('gezinslid', verborgenAnalysekaarten) && gevuld.gezinslid && (
             <DonutKaart
               titel={richting === 'uitgave' ? t('Uitgaven per gezinslid') : t('Inkomsten per gezinslid')}
               subtitel={t('Wat aan niemand persoonlijk hangt, staat bij "Het gezin". Een kost voor meerdere gezinsleden wordt gelijk verdeeld; zo\u2019n aandeel bestaat niet als aparte boeking, dus die rij klikt niet door.')}

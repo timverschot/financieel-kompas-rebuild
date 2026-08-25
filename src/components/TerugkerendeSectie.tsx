@@ -11,6 +11,7 @@ import { Kaart, Leeg } from '../ui/basis'
 import { VasteLastWeg } from './VasteLastWeg'
 import { hangtErIetsAan, telVasteLastGebruik } from '../utils/vastelastverwijdering'
 import { useT } from '../i18n'
+import { knopnaamVoorPost } from '../utils/postkenmerk'
 import { Opslagfout } from '../ui/Opslagfout'
 import { useOpslagpoging } from '../ui/opslagpoging'
 
@@ -112,6 +113,17 @@ export function TerugkerendeSectie({
   const opslag = useOpslagpoging()
   // Elke sectie toont enkel haar eigen soort.
   const eigen = posten.filter((p) => (soort === 'inkomst' ? p.bedrag > 0 : p.bedrag < 0))
+  // ⚠ RONDE 83 — DE KNOPNAMEN LEZEN `posten`, DE WAARSCHUWING LEEST `eigen`, en dat is
+  // geen slordigheid maar een ander soort vraag.
+  //
+  // De duplicaatwaarschuwing vraagt "is dit dezelfde KOST?" — en een vaste inkomst
+  // "Huur" (kotgeld) is niet dezelfde kost als je huur. Vandaar `bestaande={eigen}`.
+  //
+  // Een knopnaam vraagt iets anders: "kan ik deze twee knoppen uit elkaar houden?" Op
+  // Budget → Vast staan de twee secties ONDER ELKAAR op één scherm, dus met `eigen`
+  // heetten er twee knoppen allebei "Verwijderen — Huur". Ronde 82 had dit op "Je
+  // situatie" al zo geredeneerd ("de regel is: twee bedieningen op één SCHERM"), maar
+  // gaf hier per ongeluk `eigen` mee. Een nakijkronde rekende het na.
   // Zie `wegPostId`: het venster leest het record uit de HUIDIGE lijst, niet uit een
   // bevroren kopie. Uit `eigen` en niet uit `posten`: verandert een post van uitgave
   // naar inkomst, dan hoort zijn rij hier te verdwijnen en het venster mee.
@@ -306,7 +318,7 @@ export function TerugkerendeSectie({
                             'Uitboeken' is bovendien het spiegelbeeld van 'Boek in'. */}
                         <button
                           className="knop knop-ghost knop-klein"
-                          aria-label={t('Uitboeken: wis de boeking van {naam}', { naam: p.omschrijving })}
+                          aria-label={knopnaamVoorPost(t, t('Uitboeken'), p, posten)}
                           onClick={() => void opslag.probeer(() => onOngedaan(p))}
                         >
                           {t('Uitboeken')}
@@ -317,7 +329,7 @@ export function TerugkerendeSectie({
                         <span className="badge badge-ok">{t('Geboekt ✓')}</span>
                         <button
                           className="knop knop-ghost knop-klein"
-                          aria-label={t('Losmaken: {naam} telt dan weer als niet geboekt', { naam: p.omschrijving })}
+                          aria-label={knopnaamVoorPost(t, t('Losmaken'), p, posten)}
                           onClick={() => void opslag.probeer(() => onLosmaken(gekoppeld.get(p.id) as Transactie))}
                         >
                           {t('Losmaken')}
@@ -327,7 +339,18 @@ export function TerugkerendeSectie({
                       <span className="badge badge-ok">{t('Geboekt ✓')}</span>
                     )
                   ) : (
-                    <button className="knop knop-secundair knop-klein" onClick={() => void opslag.probeer(() => onBoek(p))}>
+                    <button
+                      className="knop knop-secundair knop-klein"
+                      // ⚠ RONDE 82 — deze knop droeg alleen zijn eigen woord, op élke rij
+                      // hetzelfde. Met tien vaste lasten hoorde je tien keer "Boek in,
+                      // knop" en moest je zelf onthouden bij welke rij je was. Van de
+                      // vijf knoppen op deze rij noemde het open punt er maar één (de
+                      // verwijderknop); deze was de ergste van de vier die er niet in
+                      // stonden, want hij verandert je gegevens en heeft geen venster
+                      // dat nog eens vraagt of je het zeker weet.
+                      aria-label={knopnaamVoorPost(t, t('Boek in'), p, posten)}
+                      onClick={() => void opslag.probeer(() => onBoek(p))}
+                    >
                       {t('Boek in')}
                     </button>
                   )}
@@ -336,7 +359,7 @@ export function TerugkerendeSectie({
                   {kanBewerken && (
                     <button
                       className="knop knop-kaal"
-                      aria-label={t('Bewerk vaste post {naam}', { naam: p.omschrijving })}
+                      aria-label={knopnaamVoorPost(t, t('Bewerken'), p, posten)}
                       onClick={() => setBewerken(p)}
                     >
                       ✎
@@ -344,7 +367,7 @@ export function TerugkerendeSectie({
                   )}
                   <button
                     className="knop knop-kaal knop-gevaar"
-                    aria-label={t('Verwijder vaste post {naam}', { naam: p.omschrijving })}
+                    aria-label={knopnaamVoorPost(t, t('Verwijderen'), p, posten)}
                     // ⚠ Eerst de focus verzetten, dán handelen (ronde 73). Deze knop
                     // haalt zichzelf uit het scherm — of hij opent een venster dat
                     // straks naar deze knop wil terugkeren. Allebei de gevallen zijn
@@ -419,6 +442,10 @@ export function TerugkerendeSectie({
           rekening rendert de app het niet, en dan zou de knop je naar niets sturen. */}
       <VasteLastWeg
         post={wegPost}
+        // ⚠ `eigen` en niet `posten` (ronde 82): een vaste inkomst "Huur" (kotgeld) is
+        // geen naamgenoot van een vaste last "Huur" — dezelfde afweging als bij
+        // `bestaande={eigen}` hieronder.
+        alle={eigen}
         onSluiten={() => setWegPostId(null)}
         onVerwijderen={onVerwijderen}
         onOpzeggen={

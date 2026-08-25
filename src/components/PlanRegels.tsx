@@ -3,7 +3,10 @@ import { formatEuro } from '../utils/format'
 import { isGestopt, opzijPerMaand, plancijfers, valtInMaand } from '../utils/vastelast'
 import { opzijVolgensSpaardoelen } from '../utils/spaardoel'
 import { geldendeBudgetten } from '../utils/budget'
+import { vasteLastenInEenBudget } from '../utils/teverdelen'
 import { EersteStapKnop, Kaart, Leeg } from '../ui/basis'
+import { Herkomstregel } from '../ui/Herkomstregel'
+import { namenlijst } from '../utils/namenlijst'
 import { useT } from '../i18n'
 
 // "Wat ligt al vast, en wat blijft er over om te verdelen?"
@@ -26,8 +29,13 @@ import { useT } from '../i18n'
 //    jaarrekening valt, betaal je ze — dan zet je er niet ook nog voor opzij.
 //
 // Wat de app bewust NIET doet: een echte pot bijhouden. Ze zegt hoeveel je opzij
-// hoort te zetten; waar dat geld staat, weet ze niet. Een koppeling met een
-// spaardoel zou dat gat dichten, maar dat is een eigen ronde waard.
+// hoort te zetten; waar dat geld staat, weet ze niet.
+//
+// ⚠ Hier stond tot ronde 80: "een koppeling met een spaardoel zou dat gat dichten,
+// maar dat is een eigen ronde waard". Die ronde is er sinds ronde 74 en staat vijftig
+// regels lager in dit bestand (`opzijVolgensSpaardoelen`). De app houdt nog altijd
+// geen pot bij, maar hangt er een spaardoel aan een vaste last, dan bepaalt dát doel
+// het bedrag onder "Opzij voor later" in plaats van een deling van het jaarbedrag.
 
 export function PlanRegels({
   posten,
@@ -99,7 +107,21 @@ export function PlanRegels({
   // met zowel een standaardbudget als een uitzondering hier tweemaal meetellen — en
   // dan staat er gewoon een te hoog getal in "je budgetten vragen samen …", zonder
   // dubbele regel die je erop wijst. Precies het soort fout dat maanden meegaat.
-  const gebudgetteerd = geldendeBudgetten(budgetten, maand).reduce((som, b) => som + b.bedrag, 0)
+  const geldend = geldendeBudgetten(budgetten, maand)
+  const gebudgetteerd = geldend.reduce((som, b) => som + b.bedrag, 0)
+  // ⚠ RONDE 80 — het getal waar je op stuurt, en dat nergens stond.
+  // De kaart zei wat er te verdelen viel, en zei daarna los daarvan dat je budgetten
+  // er samen zoveel van vroegen. De aftrekking daartussen — wat er van je inkomen
+  // deze maand nog nergens in zit — moest je zelf maken.
+  //
+  // Als VASTSTELLING geformuleerd, en dat is een bewuste keuze. Bij YNAB is dit
+  // bedrag een probleem dat je moet oplossen tot het op nul staat; hier mag je geld
+  // gewoon vrij houden. De app zegt wat ze ziet, ze geeft je geen opdracht.
+  const nogNergens = teVerdelen - gebudgetteerd
+  // Welke vaste last deze maand óók binnen een budget valt, en dus mogelijk twee keer
+  // van het cijfer hierboven afgaat. Zie utils/teverdelen.ts voor waarom de app dat
+  // meldt in plaats van corrigeert.
+  const dubbel = vasteLastenInEenBudget(posten, geldend, maand)
   // Zonder vaste inkomst weet de app niet waarop je plan gebaseerd is. Dan een
   // groot rood negatief bedrag tonen is erger dan niets: het lijkt een oordeel
   // over je situatie, terwijl het gewoon betekent dat er nog niets ingevuld is.
@@ -181,10 +203,100 @@ export function PlanRegels({
         </p>
       )}
 
-      {/* De knop staat ONDER de zin en is een gewone knop, geen tekstknop middenin
+      {/* ⚠ RONDE 80 — DE BRUG NAAR JE BUDGETTEN, NU MÉT HAAR UITKOMST.
+          Hier stond één grijze zin: "je budgetten vragen samen € 400 hiervan". Waar
+          en nuttig, maar het rekensommetje eronder — wat blijft er dan over? — moest
+          je zelf maken, terwijl dat net het getal is waarop je stuurt.
+
+          Als `Herkomstregel` (het patroon van ronde 69): de uitkomst in de badge, de
+          verantwoording ernaast.
+
+          ⚠ DE ZIN NOEMT ALLE DRIE DE BEDRAGEN, en dat is geen breedsprakigheid. De
+          eerste versie zei alleen "je budgetten vragen samen € 400 van wat er te
+          verdelen valt". Wie dan zelf narekende, kwam op inkomsten min vaste lasten
+          min budgetten uit — en miste "Opzij voor later", een derde bak die er óók af
+          gaat. De badge en de zin verantwoordden dus twee verschillende getallen. Nu
+          staat de hele aftrekking er: {teverdelen} − {gebudgetteerd} = de badge.
+
+          BEWUST GEEN OPDRACHT. Bij YNAB is dit bedrag iets wat naar nul moet; hier
+          mag je geld gewoon vrij houden, en dat staat er met zoveel woorden bij. */}
+      {gebudgetteerd > 0 &&
+        (kentInkomsten ? (
+          <Herkomstregel
+            badge={
+              nogNergens > 0
+                ? t('{bedrag} nog nergens ondergebracht', { bedrag: formatEuro(nogNergens) })
+                : nogNergens === 0
+                  ? t('Alles ondergebracht')
+                  : t('{bedrag} te veel ondergebracht', { bedrag: formatEuro(-nogNergens) })
+            }
+            /* ⚠ Valt er een vaste last binnen een budget, dan is dit cijfer onzeker en
+               mag de badge geen oordeel dragen — geen groene "alles in orde" en geen
+               rode "je zit te hoog", want allebei kunnen ze puur uit de dubbeltelling
+               komen. Dan blijft het bij de neutrale toon en zegt de zin waarom. */
+            toon={dubbel.length > 0 ? 'info' : nogNergens < 0 ? 'let-op' : nogNergens === 0 ? 'ok' : 'info'}
+            /* ⚠ NIET `kaal`, en dat is gemeten. Op 320 px valt de zin onder de badge,
+               en dan staat ze tussen twee andere grijze `.rij-meta`-regels in dezelfde
+               kleur en maat — met 12 px tussen badge en zin en 14 px tussen de blokken
+               van de kaart. Niets zei dan nog welke grijze tekst bij welk cijfer hoort.
+               Het eigen kaartvlak maakt van badge en zin één blok. */
+            data-nog-nergens="1"
+          >
+            {nogNergens > 0
+              ? t('Er viel {teverdelen} te verdelen. Daarvan vragen je budgetten samen {gebudgetteerd}. De rest gaf je nog aan niets: geen vaste last, geen budget. Dat hoeft ook niet — je mag geld vrij houden.', {
+                  teverdelen: formatEuro(teVerdelen),
+                  gebudgetteerd: formatEuro(gebudgetteerd),
+                })
+              : nogNergens === 0
+                ? t('Er viel {teverdelen} te verdelen, en je budgetten vragen samen precies dat.', {
+                    teverdelen: formatEuro(teVerdelen),
+                  })
+                : t('Er viel {teverdelen} te verdelen. Je budgetten vragen samen {gebudgetteerd}, en dat is meer.', {
+                    teverdelen: formatEuro(teVerdelen),
+                    gebudgetteerd: formatEuro(gebudgetteerd),
+                  })}
+            {/* ⚠ Zonder deze zin kan het cijfer hierboven te laag staan, en dat is de
+                belangrijkste regel van deze ronde. Zie utils/teverdelen.ts: een vaste
+                last die óók binnen een van je budgetten valt, gaat er mogelijk twee
+                keer af — "mogelijk", want of je dat budget mét of zonder die kost
+                bedoeld hebt, kan de app niet weten.
+
+                ⚠ Enkelvoud én meervoud, net als bij `BufferRegel` (ronde 69). De eerste
+                versie plakte de namen met een komma aan elkaar in een enkelvoudszin, en
+                dan stond er letterlijk "Huur, Elektriciteit valt ook onder een van je
+                budgetten. Die kost gaat …". En `namenlijst` en geen kale `join`, zodat
+                acht vaste lasten hier geen alinea van worden. */}
+            {dubbel.length > 0 &&
+              ' ' +
+                (dubbel.length === 1
+                  ? t('Let op: {naam} valt ook onder een van je budgetten. Dan zit die kost hier mogelijk twee keer in — één keer als vaste last, één keer via dat budget.', {
+                      naam: dubbel[0].omschrijving,
+                    })
+                  : t('Let op: {namen} vallen ook onder je budgetten. Dan zitten die kosten hier mogelijk twee keer in — één keer als vaste last, één keer via een budget.', {
+                      namen: namenlijst(t, dubbel.map((p) => p.omschrijving)),
+                    }))}
+          </Herkomstregel>
+        ) : (
+          /* ⚠ Kent de app je inkomsten niet, dan bestaat "te verdelen" niet en mag er
+             ook niets mee vergeleken worden. De oude zin deed dat wél: ze zei
+             "dat is meer dan er te verdelen valt" tegen iemand die alleen nog maar
+             vaste lasten had ingevuld. Dan is er niets te veel — er is nog niets
+             ingevuld. */
+          <p className="rij-meta" style={{ margin: 0 }} data-budgetten-zonder-inkomsten>
+            {t('Je budgetten vragen samen {gebudgetteerd}.', { gebudgetteerd: formatEuro(gebudgetteerd) })}
+          </p>
+        ))}
+
+      {/* De knop staat ONDER de zinnen en is een gewone knop, geen tekstknop middenin
           de regel: een raakvlak van 44 px in een lopende tekstregel duwt die regel
           uit elkaar (zie `.badge-knop` in index.css voor hetzelfde probleem). En je
-          leest eerst waar het over gaat, dan pas wat je ermee kan. */}
+          leest eerst waar het over gaat, dan pas wat je ermee kan.
+
+          ⚠ RONDE 80 — DE KNOP STAAT NU ONDERAAN. Ze stond tussen de inkomstenzin en
+          de regel die zegt wat er nog nergens ondergebracht staat. Wie klikte, zag dat
+          cijfer dus nooit, en wie met Tab van knop naar knop springt evenmin. Dezelfde
+          redenering als hierboven — eerst lezen waar het over gaat, dan pas wat je
+          ermee kan — maar dan toegepast op de hele kaart in plaats van op één zin. */}
       {cijfers.vasteInkomsten > 0 && geboekteInkomsten > 0 && onGaNaarTransacties && (
         <div className="knoprij">
           <button
@@ -198,17 +310,6 @@ export function PlanRegels({
             {t('Bekijk die boekingen')}
           </button>
         </div>
-      )}
-
-      {/* De brug naar de budgetten eronder: eisen ze samen meer op dan er is? */}
-      {gebudgetteerd > 0 && (
-        <p className="rij-meta" style={{ margin: 0 }}>
-          {gebudgetteerd > teVerdelen
-            ? t('Je budgetten vragen samen {gebudgetteerd} — dat is meer dan er te verdelen valt.', {
-                gebudgetteerd: formatEuro(gebudgetteerd),
-              })
-            : t('Je budgetten vragen samen {gebudgetteerd} hiervan.', { gebudgetteerd: formatEuro(gebudgetteerd) })}
-        </p>
       )}
 
       {/* Een ander soort getal, en daarom apart: niet "deze maand", maar "gemiddeld".

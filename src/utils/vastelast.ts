@@ -132,6 +132,24 @@ export function valtInMaand(post: TerugkerendePost, maand: string): boolean {
 }
 
 /**
+ * Telt deze post mee in "Vaste lasten deze maand"? (ronde 80)
+ *
+ * ⚠ ÉÉN DEFINITIE, EN DAAROM STAAT ZE HIER. `plancijfers` hieronder bepaalde die
+ * verzameling met de hand, en ronde 80 had er een tweede handmatige kopie naast
+ * gezet in utils/teverdelen.ts — met dezelfde voorwaarden, maar zonder enige band
+ * tussen de twee. Dat is precies het patroon dat ronde 72 al aanwees ("drie
+ * definities van vaste lasten per maand staan naast elkaar"): vandaag lopen ze
+ * gelijk, en de dag dat iemand er één bijstelt, waarschuwt de app over een kost die
+ * in het cijfer waarover ze waarschuwt niet eens meetelt.
+ *
+ * `valtInMaand` controleert zelf al of de post gestopt is; een eigen `isGestopt`
+ * ervoor zou niets kunnen uitsluiten.
+ */
+export function teltAlsVasteLastInMaand(post: TerugkerendePost, maand: string): boolean {
+  return post.bedrag < 0 && valtInMaand(post, maand)
+}
+
+/**
  * Het bedrag omgerekend naar één maand, met hetzelfde teken als het origineel.
  * Voor het buffercijfer en voor "wat kost dit mij gemiddeld per maand".
  */
@@ -273,7 +291,10 @@ export function plancijfers(
     // het geld dat je nú opzijzet om ze straks te kunnen betalen.
     if (p.bedrag < 0 && !isNogNietBegonnen(p, maand)) gemiddeldPerMaand += -maandbedrag(p)
     if (valtInMaand(p, maand)) {
-      if (p.bedrag < 0) vastDezeMaand += -p.bedrag
+      // ⚠ Het predicaat en niet `p.bedrag < 0` (ronde 80), zodat deze optelling en de
+      // dubbeltellingscontrole in utils/teverdelen.ts letterlijk dezelfde verzameling
+      // posten bedoelen en niet twee kopieën van dezelfde regel zijn.
+      if (teltAlsVasteLastInMaand(p, maand)) vastDezeMaand += -p.bedrag
       else if (p.bedrag > 0) vasteInkomsten += p.bedrag
     } else {
       // ⚠ Het BEDRAG kan uit een spaardoel komen, maar de post blijft meetellen — en

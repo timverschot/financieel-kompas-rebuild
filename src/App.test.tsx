@@ -176,7 +176,7 @@ describe('App', () => {
     await openBoeking(user, 'Uitgave')
     await user.type(screen.getByLabelText('Handelaar / winkel'), 'Boek')
     await user.type(screen.getByLabelText('Bedrag (€)'), '15')
-    await user.click(screen.getByRole('button', { name: 'Opslaan + volgende' }))
+    await user.click(screen.getByRole('button', { name: /^Opslaan \+ volgende/ }))
 
     // Nog steeds open, maar leeg: zo tik je een stapel bonnetjes achter elkaar in.
     expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -299,9 +299,9 @@ describe('App', () => {
     const lasten = kaart('Vaste lasten')
     await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
     await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
-    await user.click(within(lasten).getByRole('button', { name: 'Vaste post toevoegen' }))
+    await user.click(within(lasten).getByRole('button', { name: 'Vaste last toevoegen' }))
 
-    await user.click(await screen.findByRole('button', { name: 'Boek in' }))
+    await user.click(await screen.findByRole('button', { name: /^Boek in/ }))
 
     expect(await screen.findByText('Geboekt ✓')).toBeInTheDocument()
   })
@@ -329,10 +329,10 @@ describe('App', () => {
     // dan plots rood in de CI.
     const maandwaarde = vorigeMaand(huidigeMaand())
     fireEvent.change(within(lasten).getByLabelText('Loopt tot en met'), { target: { value: maandwaarde } })
-    await user.click(within(lasten).getByRole('button', { name: 'Vaste post toevoegen' }))
+    await user.click(within(lasten).getByRole('button', { name: 'Vaste last toevoegen' }))
 
     expect(await screen.findByText('Gestopt')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Boek in' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Boek in/ })).not.toBeInTheDocument()
   })
 
   it('boekt een vaste last in en maakt dat weer ongedaan', async () => {
@@ -344,13 +344,13 @@ describe('App', () => {
     const lasten = kaart('Vaste lasten')
     await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
     await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
-    await user.click(within(lasten).getByRole('button', { name: 'Vaste post toevoegen' }))
-    await user.click(await screen.findByRole('button', { name: 'Boek in' }))
+    await user.click(within(lasten).getByRole('button', { name: 'Vaste last toevoegen' }))
+    await user.click(await screen.findByRole('button', { name: /^Boek in/ }))
     await screen.findByText('Geboekt ✓')
 
     // Inboeken maakt een echte transactie; die moet je hier weer los kunnen maken.
     await user.click(screen.getByRole('button', { name: /^Uitboeken/ }))
-    expect(await screen.findByRole('button', { name: 'Boek in' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^Boek in/ })).toBeInTheDocument()
   })
 
   it('zet een vaste inkomst in de inkomstenkaart, niet bij de lasten', async () => {
@@ -661,13 +661,13 @@ describe('App', () => {
     const lasten = kaart('Vaste lasten')
     await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
     await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
-    await user.click(within(lasten).getByRole('button', { name: 'Vaste post toevoegen' }))
+    await user.click(within(lasten).getByRole('button', { name: 'Vaste last toevoegen' }))
 
-    await user.click(await screen.findByRole('button', { name: 'Bewerk vaste post Netflix' }))
+    await user.click(await screen.findByRole('button', { name: new RegExp('^Bewerken — Netflix($|,)') }))
     const oms = within(kaart('Vaste lasten')).getByLabelText('Vaste omschrijving')
     await user.clear(oms)
     await user.type(oms, 'Disney')
-    await user.click(within(kaart('Vaste lasten')).getByRole('button', { name: 'Vaste post wijzigen' }))
+    await user.click(within(kaart('Vaste lasten')).getByRole('button', { name: 'Vaste last wijzigen' }))
 
     expect(await screen.findByText('Disney')).toBeInTheDocument()
   })
@@ -1914,7 +1914,7 @@ describe('de Budget-pagina na ronde 64', () => {
     await screen.findByText('Saldo')
     await gaBudget(user, 'Vast')
 
-    await user.click(await screen.findByRole('button', { name: 'Boek in' }))
+    await user.click(await screen.findByRole('button', { name: /^Boek in/ }))
 
     // De app maakt niets bij, maar legt de twee naast elkaar.
     const vraag = await screen.findByRole('dialog')
@@ -1934,7 +1934,7 @@ describe('de Budget-pagina na ronde 64', () => {
     await screen.findByText('Saldo')
     await gaBudget(user, 'Vast')
 
-    await user.click(await screen.findByRole('button', { name: 'Boek in' }))
+    await user.click(await screen.findByRole('button', { name: /^Boek in/ }))
     const vraag = await screen.findByRole('dialog')
     await user.click(within(vraag).getByRole('button', { name: /^Nee, boek/ }))
 
@@ -2007,7 +2007,7 @@ describe('de Budget-pagina na ronde 64', () => {
     await screen.findByText('Saldo')
 
     await gaMeer(user, 'Je situatie')
-    await user.click(await screen.findByRole('tab', { name: /Vaste kosten/ }))
+    await user.click(await screen.findByRole('tab', { name: /Vaste lasten/ }))
     await user.click(await screen.findByRole('button', { name: 'Naar je vaste lasten' }))
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Budget' })).toBeInTheDocument()
@@ -2044,7 +2044,7 @@ describe('de Budget-pagina na ronde 64', () => {
     await gaBudget(user, 'Vast')
 
     // Deze maand staat Water gewoon weer open.
-    expect(await screen.findByRole('button', { name: 'Boek in' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^Boek in/ })).toBeInTheDocument()
     expect(screen.queryByText('Geboekt ✓')).not.toBeInTheDocument()
   })
 
@@ -2106,7 +2106,7 @@ describe('de Budget-pagina na ronde 64', () => {
     await waitFor(async () => expect((await db.transacties.get('t-water'))?.vasteLastId).toBeUndefined())
     // De boeking zelf blijft staan — losmaken is geen wissen.
     expect(await db.transacties.get('t-water')).toBeDefined()
-    expect(await screen.findByRole('button', { name: 'Boek in' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^Boek in/ })).toBeInTheDocument()
   })
 
   // ⚠ De hele wegwijzer-belofte hing aan één ongeteste regel in App.
@@ -2164,7 +2164,7 @@ describe('de Budget-pagina na ronde 64', () => {
     await screen.findByText('Saldo')
     await gaBudget(user, 'Vast')
 
-    await user.click(await screen.findByRole('button', { name: 'Boek in' }))
+    await user.click(await screen.findByRole('button', { name: /^Boek in/ }))
     await screen.findByText(/Er staat deze maand al een boeking van/)
     await user.keyboard('{Escape}')
 
@@ -2198,7 +2198,7 @@ describe('de Budget-pagina na ronde 64', () => {
     await screen.findByText('Saldo')
     await gaBudget(user, 'Vast')
 
-    await user.click(await screen.findByRole('button', { name: 'Boek in' }))
+    await user.click(await screen.findByRole('button', { name: /^Boek in/ }))
     await user.click(await screen.findByRole('button', { name: 'Ja, dit is die betaling' }))
     await waitFor(async () => expect((await db.transacties.get('t-water'))?.vasteLastId).toBe('p-water'))
 
@@ -2258,7 +2258,7 @@ describe('de Budget-pagina na ronde 64', () => {
     await gaBudget(user, 'Vast')
 
     expect(await screen.findByText('Geboekt ✓')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Boek in' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Boek in/ })).not.toBeInTheDocument()
   })
 })
 
@@ -2690,6 +2690,29 @@ describe('Overzicht — Wat komt eraan', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Ronde 83 — de twee formulieren op Budget → Vast
+// ---------------------------------------------------------------------------
+describe('de twee formulieren op Budget → Vast (ronde 83)', () => {
+  it('geeft elk formulier een eigen naam, zodat hun velden uit elkaar te houden zijn', async () => {
+    // ⚠ Negen paren velden met dezelfde labels in de gewone toestand — twee keer "Vaste
+    // omschrijving", twee keer "Vast bedrag (€)" — en tot veertien met een contract
+    // erbij. Precies de huisregel die ronde 82 in de lijst kwam handhaven, twintig
+    // regels lager geschonden. Een formulier met een naam is een landmark; een
+    // schermlezer kondigt het aan zodra de focus erin komt.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+
+    expect(await screen.findByRole('form', { name: 'Nieuwe vaste inkomst' })).toBeInTheDocument()
+    expect(screen.getByRole('form', { name: 'Nieuwe vaste last' })).toBeInTheDocument()
+    // En de twee opslaanknoppen heten niet meer allebei hetzelfde.
+    expect(screen.getByRole('button', { name: 'Vaste inkomst toevoegen' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Vaste last toevoegen' })).toBeInTheDocument()
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Ronde 76 — een vaste last verwijderen die ergens aan hangt
 // ---------------------------------------------------------------------------
 describe('een vaste last verwijderen die ergens aan hangt (ronde 76)', () => {
@@ -2721,8 +2744,8 @@ describe('een vaste last verwijderen die ergens aan hangt (ronde 76)', () => {
     await screen.findByText('Saldo')
     await gaBudget(user, 'Vast')
 
-    await user.click(await screen.findByRole('button', { name: 'Verwijder vaste post Huur' }))
-    expect(await screen.findByRole('heading', { name: 'Huur verwijderen?' })).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: new RegExp('^Verwijderen — Huur($|,)') }))
+    expect(await screen.findByRole('heading', { name: /^Huur verwijderen\?/ })).toBeInTheDocument()
     expect(screen.getByText('1 boeking(en) die je hier inboekte')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Ja, verwijder' }))
@@ -2732,6 +2755,40 @@ describe('een vaste last verwijderen die ergens aan hangt (ronde 76)', () => {
     // De boeking is NIET mee weg: dat is precies wat het venster beloofde.
     await waitFor(async () => expect(await db.terugkerendePosten.count()).toBe(0))
     expect(await db.transacties.get(`tk-p-huur-${MAAND}`)).toBeDefined()
+  })
+
+  it('zegt op de ongedaan-balk WELKE van twee gelijknamige kosten weg is (ronde 82)', async () => {
+    // ⚠ De bedrading, niet de functie. `postNaamMetKenmerk` is apart getest; deze test
+    // bewijst dat App.tsx haar de juiste lijst geeft. Zonder haar bleef de volledige
+    // reeks groen met een lege lijst als argument — en dan verschijnt het kenmerk
+    // nooit, precies het open punt dat deze ronde afvinkt.
+    for (const [id, bedrag, dag] of [
+      ['p-auto', -62000, 5],
+      ['p-bestel', -84000, 12],
+    ] as const) {
+      await bewaarTerugkerendePost({
+        id,
+        omschrijving: 'Autoverzekering',
+        bedrag,
+        rekeningId: 'r1',
+        dag,
+        frequentie: 'jaar',
+        startMaand: MAAND,
+      })
+    }
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+
+    // ⚠ Er hangt niets aan deze kosten, dus er komt geen venster tussen (ronde 76):
+    // één tik en de balk verschijnt.
+    await user.click(
+      await screen.findByRole('button', { name: new RegExp('^Verwijderen — Autoverzekering, .*620') }),
+    )
+
+    const balken = await screen.findAllByText(/^Autoverzekering \(.*620.*\) verwijderd/)
+    expect(balken.length).toBeGreaterThan(0)
   })
 
   it('zet met "Ongedaan maken" de kost én de koppeling terug', async () => {
@@ -2757,7 +2814,7 @@ describe('een vaste last verwijderen die ergens aan hangt (ronde 76)', () => {
     await screen.findByText('Saldo')
     await gaBudget(user, 'Vast')
 
-    await user.click(await screen.findByRole('button', { name: 'Verwijder vaste post Huur' }))
+    await user.click(await screen.findByRole('button', { name: new RegExp('^Verwijderen — Huur($|,)') }))
     await user.click(await screen.findByRole('button', { name: 'Ja, verwijder' }))
     await screen.findAllByText('Huur verwijderd, 1 boeking(en) blijven staan')
 
@@ -2794,7 +2851,7 @@ describe('een vaste last verwijderen die ergens aan hangt (ronde 76)', () => {
     await screen.findByText('Saldo')
     await gaBudget(user, 'Vast')
 
-    await user.click(await screen.findByRole('button', { name: 'Verwijder vaste post Autoverzekering' }))
+    await user.click(await screen.findByRole('button', { name: new RegExp('^Verwijderen — Autoverzekering($|,)') }))
     expect(screen.getByText('1 spaardoel(en) sparen hiervoor')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Ja, verwijder' }))
 
@@ -2855,7 +2912,7 @@ describe('een vaste last verwijderen die ergens aan hangt (ronde 76)', () => {
     await screen.findByText('Saldo')
     await gaBudget(user, 'Vast')
 
-    await user.click(await screen.findByRole('button', { name: 'Verwijder vaste post Netflix' }))
+    await user.click(await screen.findByRole('button', { name: new RegExp('^Verwijderen — Netflix($|,)') }))
 
     expect(await screen.findAllByText('Netflix verwijderd')).not.toHaveLength(0)
     await waitFor(async () => expect(await db.terugkerendePosten.count()).toBe(0))

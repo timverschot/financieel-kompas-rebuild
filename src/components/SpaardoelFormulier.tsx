@@ -8,6 +8,7 @@ import { volgendeVervaldag } from '../utils/vastelast'
 import { dagJaar, vandaag } from '../utils/datum'
 import { GezinslidKiezer } from './GezinslidKiezer'
 import { heeftKiesbareLeden } from '../utils/persoon'
+import { postNaamMetKenmerk } from '../utils/postkenmerk'
 import { useT } from '../i18n'
 import { Opslagfout } from '../ui/Opslagfout'
 import { useOpslagpoging } from '../ui/opslagpoging'
@@ -229,9 +230,16 @@ export function SpaardoelFormulier({
             onChange={(e) => kiesVasteLast(e.target.value)}
           >
             <option value="">{t('Voor niets in het bijzonder')}</option>
+            {/* ⚠ RONDE 82 — MÉT het kenmerk bij een naamgenoot. Twee posten die allebei
+                "Autoverzekering" heten gaven hier twee letterlijk identieke regels, en
+                dit is de enige plek waar de gebruiker zijn fout daarna niet kán zien:
+                de koppeling stuurt `opzijVolgensSpaardoelen` aan, dus de verkeerde
+                keuze verschuift "Opzij voor later" op Budget naar de verkeerde kost en
+                zegt op de rij "via je spaardoel X" bij de post waar niet voor
+                gespaard wordt. Zie utils/postkenmerk.ts. */}
             {vasteLasten.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.omschrijving}
+                {postNaamMetKenmerk(t, p, vasteLasten)}
               </option>
             ))}
             {ontbrekendeKoppeling && (

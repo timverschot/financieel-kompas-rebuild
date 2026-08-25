@@ -3,6 +3,17 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { TerugkerendeSectie } from './TerugkerendeSectie'
 import type { Spaardoel, TerugkerendePost, Transactie } from '../data/schema'
+import { vertaal } from '../i18n'
+import { knopnaamVoorPost } from '../utils/postkenmerk'
+
+// ⚠ RONDE 82 — de toegankelijke naam van elke knop op een rij draagt sinds deze ronde
+// het bedrag en de dag erbij, zodat twee posten die allebei "Autoverzekering" heten uit
+// elkaar te houden zijn. Deze hulpfunctie bouwt hem uit dezelfde bron als het scherm.
+// Dat is bewust geen kopie van de verwachte tekst: WAT er in die naam staat, wordt
+// getest in utils/postkenmerk.test.ts; de tests hieronder moeten alleen de juiste knop
+// kunnen vinden, en die zoektocht hoort niet om te vallen bij een woordwijziging.
+const knopnaam = (actie: string, post: TerugkerendePost, alle: TerugkerendePost[] = [post]) =>
+  knopnaamVoorPost((sleutel, params) => vertaal('nl', sleutel, params), actie, post, alle)
 
 const rekeningen = [{ id: 'r1', naam: 'Zicht', beginsaldo: 0 }]
 
@@ -45,20 +56,20 @@ function toon(posten: TerugkerendePost[], maand = '2026-07', vandaagISO = VANDAA
 describe('TerugkerendeSectie — andere termijnen', () => {
   it('biedt "Boek in" aan voor een maandelijkse post', () => {
     toon([huur])
-    expect(screen.getByRole('button', { name: 'Boek in' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Boek in/ })).toBeInTheDocument()
   })
 
   it('biedt geen "Boek in" aan in een maand waarin de post niet vervalt', () => {
     // Halfjaarlijks vanaf augustus: in juli valt er niets te boeken. Zonder deze
     // regel zou je dezelfde jaarpremie twaalf keer kunnen inboeken.
     toon([premie], '2026-07')
-    expect(screen.queryByRole('button', { name: 'Boek in' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Boek in/ })).not.toBeInTheDocument()
     expect(screen.getByText('Niet deze maand')).toBeInTheDocument()
   })
 
   it('biedt "Boek in" wél aan in de vervalmaand', () => {
     toon([premie], '2026-08')
-    expect(screen.getByRole('button', { name: 'Boek in' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Boek in/ })).toBeInTheDocument()
   })
 
   // De keuzelijst van het formulier eronder bevat dezelfde woorden, dus zoeken we
@@ -329,7 +340,7 @@ describe('TerugkerendeSectie — het contractformulier', () => {
     })
     fireEvent.change(screen.getByLabelText('Verlengt of loopt af op'), { target: { value: '2027-01-15' } })
     fireEvent.change(screen.getByLabelText('Je eigen opzegtermijn (optioneel)'), { target: { value: '3' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Vaste post toevoegen' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Vaste last toevoegen' }))
     const bewaard = onOpslaan.mock.calls[0][0]
     expect(bewaard.opzegtermijnMaanden).toBe(3)
     expect('opzegtermijnDagen' in bewaard).toBe(false)
@@ -394,7 +405,7 @@ describe('TerugkerendeSectie — een kost waar een spaardoel aan hangt (ronde 74
     // dit venster iets anders dan het scherm eronder — over dezelfde kost.
     const gebruiker = userEvent.setup()
     toonMetDoel([{ ...doel, maandbedrag: 7500 }])
-    await gebruiker.click(screen.getByRole('button', { name: /Bewerk vaste post Autoverzekering/ }))
+    await gebruiker.click(screen.getByRole('button', { name: knopnaam('Bewerken', premie) }))
 
     expect(screen.getByText(/rekent hiervoor met je spaardoel Autoverzekering 2027/)).toHaveTextContent(/75,00 per maand/)
   })
@@ -416,7 +427,7 @@ describe('TerugkerendeSectie — het formulier leest wat er staat (ronde 73)', (
     fireEvent.change(screen.getByLabelText('Vast bedrag (€)'), { target: { value: '10' } })
     fireEvent.change(screen.getByLabelText('Dag van de maand'), { target: { value: '12abc' } })
 
-    expect(screen.getByRole('button', { name: 'Vaste post toevoegen' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'Vaste last toevoegen' })).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('laat een gewone dag gewoon door', () => {
@@ -425,7 +436,7 @@ describe('TerugkerendeSectie — het formulier leest wat er staat (ronde 73)', (
     fireEvent.change(screen.getByLabelText('Vast bedrag (€)'), { target: { value: '10' } })
     fireEvent.change(screen.getByLabelText('Dag van de maand'), { target: { value: '12' } })
 
-    expect(screen.getByRole('button', { name: 'Vaste post toevoegen' })).not.toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'Vaste last toevoegen' })).not.toHaveAttribute('aria-disabled', 'true')
   })
 
   it('waarschuwt bij een naam die al bestaat, zonder het opslaan te blokkeren', () => {
@@ -437,12 +448,12 @@ describe('TerugkerendeSectie — het formulier leest wat er staat (ronde 73)', (
     fireEvent.change(screen.getByLabelText('Vast bedrag (€)'), { target: { value: '10' } })
 
     expect(screen.getByText(/al een vaste last die zo heet/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Vaste post toevoegen' })).not.toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'Vaste last toevoegen' })).not.toHaveAttribute('aria-disabled', 'true')
   })
 
   it('waarschuwt niet tegen de post die je zelf aan het bewerken bent', () => {
     toon([huur])
-    fireEvent.click(screen.getByRole('button', { name: /Bewerk vaste post Huur/ }))
+    fireEvent.click(screen.getByRole('button', { name: knopnaam('Bewerken', huur) }))
 
     expect(screen.queryByText(/al een vaste last die zo heet/)).toBeNull()
   })
@@ -476,7 +487,7 @@ describe('TerugkerendeSectie — zonder rekening', () => {
     // kon zien. De weg naar een rekening staat één keer bovenaan het tabblad.
     toonZonderRekening()
     expect(screen.queryByLabelText('Vaste omschrijving')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Bewerk vaste post Huur' })).toBeNull()
+    expect(screen.queryByRole('button', { name: knopnaam('Bewerken', huur) })).toBeNull()
   })
 
   it('houdt je bestaande posten wél zichtbaar en verwijderbaar', () => {
@@ -485,7 +496,7 @@ describe('TerugkerendeSectie — zonder rekening', () => {
     // waar je ze ziet staan. Alleen invullen en bewerken kan even niet.
     toonZonderRekening()
     expect(screen.getByText('Huur')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Verwijder vaste post Huur' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: knopnaam('Verwijderen', huur) })).toBeInTheDocument()
   })
 })
 
@@ -568,16 +579,16 @@ describe('TerugkerendeSectie — verwijderen vraagt wat eraan hangt', () => {
     // ⚠ Bewust geen venster in dit geval. Er valt niets te vertellen, en de
     // ongedaan-balk is het vangnet — precies zoals vóór deze ronde.
     const { onVerwijderen } = toonMet()
-    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    await userEvent.click(screen.getByRole('button', { name: knopnaam('Verwijderen', huur) }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(onVerwijderen).toHaveBeenCalledWith('huur')
   })
 
   it('vraagt eerst wanneer er een ingeboekte betaling aan hangt', async () => {
     const { onVerwijderen } = toonMet({ transacties: [geboekt] })
-    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    await userEvent.click(screen.getByRole('button', { name: knopnaam('Verwijderen', huur) }))
     expect(onVerwijderen).not.toHaveBeenCalled()
-    expect(screen.getByRole('heading', { name: 'Huur verwijderen?' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^Huur verwijderen\?/ })).toBeInTheDocument()
     expect(screen.getByText('1 boeking(en) die je hier inboekte')).toBeInTheDocument()
     expect(screen.getByText(/Ze blijven staan als gewone boeking/)).toBeInTheDocument()
 
@@ -587,7 +598,7 @@ describe('TerugkerendeSectie — verwijderen vraagt wat eraan hangt', () => {
 
   it('vraagt eerst wanneer er een spaardoel aan hangt', async () => {
     const { onVerwijderen } = toonMet({ spaardoelen: [doelVoorHuur] })
-    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    await userEvent.click(screen.getByRole('button', { name: knopnaam('Verwijderen', huur) }))
     expect(onVerwijderen).not.toHaveBeenCalled()
     expect(screen.getByText('1 spaardoel(en) sparen hiervoor')).toBeInTheDocument()
   })
@@ -598,13 +609,13 @@ describe('TerugkerendeSectie — verwijderen vraagt wat eraan hangt', () => {
         { id: 'zelf', datum: '2026-07-03', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', vasteLastId: 'huur' },
       ],
     })
-    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    await userEvent.click(screen.getByRole('button', { name: knopnaam('Verwijderen', huur) }))
     expect(screen.getByText('1 boeking(en) waarvan je zei dat ze deze kost zijn')).toBeInTheDocument()
   })
 
   it('houdt de kost wanneer je "Nee, behouden" kiest', async () => {
     const { onVerwijderen } = toonMet({ transacties: [geboekt] })
-    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    await userEvent.click(screen.getByRole('button', { name: knopnaam('Verwijderen', huur) }))
     await userEvent.click(screen.getByRole('button', { name: 'Nee, behouden' }))
     expect(onVerwijderen).not.toHaveBeenCalled()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -614,11 +625,11 @@ describe('TerugkerendeSectie — verwijderen vraagt wat eraan hangt', () => {
     // ⚠ Anders is het een knop die zichtbaar niets doet. Het formulier staat in
     // bewerkstand zodra er een "Annuleer" naast de opslaanknop verschijnt.
     const { onVerwijderen } = toonMet({ transacties: [geboekt] })
-    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    await userEvent.click(screen.getByRole('button', { name: knopnaam('Verwijderen', huur) }))
     await userEvent.click(screen.getByRole('button', { name: 'Liever opzeggen' }))
     expect(onVerwijderen).not.toHaveBeenCalled()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Annuleer' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Annuleer/ })).toBeInTheDocument()
     expect(screen.getByLabelText('Vaste omschrijving')).toHaveValue('Huur')
   })
 
@@ -626,7 +637,7 @@ describe('TerugkerendeSectie — verwijderen vraagt wat eraan hangt', () => {
     // ⚠ Huisregel sinds ronde 73: een knop die zichzelf uit het scherm haalt, laat de
     // focus vallen — en dan sta je met je toetsenbord weer bovenaan de pagina.
     toonMet()
-    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    await userEvent.click(screen.getByRole('button', { name: knopnaam('Verwijderen', huur) }))
     expect(document.activeElement).not.toBe(document.body)
     expect(document.activeElement?.textContent).toBe('Vaste lasten')
   })
@@ -664,26 +675,26 @@ describe('TerugkerendeSectie — het venster in bewegende toestanden (ronde 76)'
     // "Ja, verwijder" zichtbaar niets — er is geen record meer om te herstellen, dus
     // ook geen ongedaan-balk.
     const { rerender } = render(schil([huur]))
-    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
-    expect(screen.getByRole('heading', { name: 'Huur verwijderen?' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: knopnaam('Verwijderen', huur) }))
+    expect(screen.getByRole('heading', { name: /^Huur verwijderen\?/ })).toBeInTheDocument()
 
     rerender(schil([]))
-    expect(screen.queryByRole('heading', { name: 'Huur verwijderen?' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /^Huur verwijderen\?/ })).not.toBeInTheDocument()
   })
 
   it('volgt een naamswijziging die van een ander toestel binnenkomt', async () => {
     const { rerender } = render(schil([huur]))
-    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    await userEvent.click(screen.getByRole('button', { name: knopnaam('Verwijderen', huur) }))
 
     rerender(schil([{ ...huur, omschrijving: 'Huur appartement' }]))
-    expect(screen.getByRole('heading', { name: 'Huur appartement verwijderen?' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^Huur appartement verwijderen\?/ })).toBeInTheDocument()
   })
 
   it('geeft de focus terug aan het kruisje na "Nee, behouden"', async () => {
     // ⚠ Dat is wat `Dialoog` belooft: de focus komt terug naar de knop waarmee je de
     // popup opende. Die knop staat er nog — er is immers niets gewist.
     render(schil([huur]))
-    const kruisje = screen.getByRole('button', { name: 'Verwijder vaste post Huur' })
+    const kruisje = screen.getByRole('button', { name: knopnaam('Verwijderen', huur) })
     await userEvent.click(kruisje)
     await userEvent.click(screen.getByRole('button', { name: 'Nee, behouden' }))
     expect(document.activeElement).toBe(kruisje)
@@ -701,18 +712,18 @@ describe('TerugkerendeSectie — het venster in bewegende toestanden (ronde 76)'
     // Van een vaste last een vaste inkomst maken (op een ander toestel) haalt de rij
     // uit déze sectie. Dan hoort het venster erover ook hier weg te zijn.
     const { rerender } = render(schil([huur]))
-    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
-    expect(screen.getByRole('heading', { name: 'Huur verwijderen?' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: knopnaam('Verwijderen', huur) }))
+    expect(screen.getByRole('heading', { name: /^Huur verwijderen\?/ })).toBeInTheDocument()
 
     rerender(schil([{ ...huur, bedrag: 95000 }]))
-    expect(screen.queryByRole('heading', { name: 'Huur verwijderen?' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /^Huur verwijderen\?/ })).not.toBeInTheDocument()
   })
 
   it('verzet de cursor NIET wanneer je gewoon op het potloodje klikt', async () => {
     // ⚠ De tegenhanger van de test hieronder: het formulier mag niet bij élke
     // bewerkbeurt naar het einddatumveld springen — alleen wanneer je erom vroeg.
     render(schil([huur]))
-    const potlood = screen.getByRole('button', { name: 'Bewerk vaste post Huur' })
+    const potlood = screen.getByRole('button', { name: knopnaam('Bewerken', huur) })
     await userEvent.click(potlood)
     expect(document.activeElement).not.toBe(screen.getByLabelText('Loopt tot en met'))
   })
@@ -721,8 +732,322 @@ describe('TerugkerendeSectie — het venster in bewegende toestanden (ronde 76)'
     // ⚠ Zonder dit gebeurde er zichtbaar niets: het formulier staat gewoon op de
     // pagina, soms tien vaste lasten naar beneden.
     render(schil([huur]))
-    await userEvent.click(screen.getByRole('button', { name: 'Verwijder vaste post Huur' }))
+    await userEvent.click(screen.getByRole('button', { name: knopnaam('Verwijderen', huur) }))
     await userEvent.click(screen.getByRole('button', { name: 'Liever opzeggen' }))
     expect(document.activeElement).toBe(screen.getByLabelText('Loopt tot en met'))
+  })
+})
+
+
+// --- Ronde 82: twee gelijknamige vaste lasten uit elkaar houden -----------------
+//
+// Ronde 73 koos bewust voor een waarschuwing in plaats van een blokkade bij een dubbele
+// naam, dus twee posten die allebei "Autoverzekering" heten zijn uitdrukkelijk
+// toegestaan. Ronde 73 gaf de knoppen op "Je situatie" daarom bedrag en dag mee; dit
+// scherm was nooit meegegaan, en het punt stond sinds ronde 76 op de open lijst.
+
+describe('TerugkerendeSectie — knopnamen bij gelijknamige posten (ronde 82)', () => {
+  const auto: TerugkerendePost = {
+    id: 'a',
+    omschrijving: 'Autoverzekering',
+    bedrag: -62000,
+    rekeningId: 'r1',
+    dag: 5,
+    frequentie: 'jaar',
+    startMaand: '2026-07',
+  }
+  const bestelwagen: TerugkerendePost = { ...auto, id: 'b', bedrag: -84000, dag: 12 }
+  const paar = [auto, bestelwagen]
+
+  it('geeft twee gelijknamige posten twee verschillende knopnamen', () => {
+    toon(paar)
+    // Twee knoppen met exact dezelfde naam zijn voor een schermlezer niet uit elkaar te
+    // houden — dan wis je de verkeerde. `getByRole` in het ENKELVOUD doet hier het
+    // eigenlijke werk: droegen ze dezelfde naam, dan gooit Testing Library
+    // "found multiple elements".
+    for (const actie of ['Bewerken', 'Verwijderen']) {
+      expect(screen.getByRole('button', { name: knopnaam(actie, auto, paar) })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: knopnaam(actie, bestelwagen, paar) })).toBeInTheDocument()
+    }
+  })
+
+  it('zet het bedrag en de dag in de knopnaam zodra dat nodig is', () => {
+    toon(paar)
+    const knop = screen.getByRole('button', { name: knopnaam('Verwijderen', auto, paar) })
+    expect(knop.getAttribute('aria-label')).toContain('620')
+    expect(knop.getAttribute('aria-label')).toContain('dag 5')
+  })
+
+  it('houdt de knopnaam KORT wanneer er niets te onderscheiden valt', () => {
+    // Het gewone geval. Een schermlezer leest dit label bij élke knop op élke rij voor.
+    toon([auto])
+    const knop = screen.getByRole('button', { name: 'Verwijderen — Autoverzekering' })
+    expect(knop.getAttribute('aria-label')).not.toContain('620')
+  })
+
+  it('zet de zichtbare tekst vooraan in de knopnaam (WCAG 2.5.3)', () => {
+    toon([auto])
+    const knop = screen.getByRole('button', { name: /^Boek in/ })
+    expect(knop.getAttribute('aria-label')?.startsWith('Boek in')).toBe(true)
+  })
+
+  it('geeft élke knop op de rij een eigen naam — vijf keer, niet één', () => {
+    // ⚠ Deze test bestaat omdat een mutatietest liet zien dat `Uitboeken`, `Losmaken`
+    // en `Bewerken` nergens op hun toegankelijke naam getoetst werden: het `aria-label`
+    // eraf halen bleef groen, want de tests zochten op een prefix die de zichtbare
+    // tekst zelf ook levert.
+    const een: TerugkerendePost = { id: 'x', omschrijving: 'Netflix', bedrag: -1600, rekeningId: 'r1', dag: 8 }
+    const twee: TerugkerendePost = { ...een, id: 'y', bedrag: -2400, dag: 20 }
+    toon([een, twee])
+    const namen = screen
+      .getAllByRole('button')
+      .map((k) => k.getAttribute('aria-label'))
+      .filter((n): n is string => n !== null && / — Netflix/.test(n))
+    // Twee rijen × (Boek in, Bewerken, Verwijderen) = zes namen, allemaal verschillend.
+    expect(namen).toHaveLength(6)
+    expect(new Set(namen).size).toBe(6)
+  })
+
+  it('geeft ook "Uitboeken" en "Losmaken" een naam per rij', () => {
+    // ⚠ Deze twee kwamen in geen enkele test op hun toegankelijke naam voor: het
+    // `aria-label` weghalen bleef groen, want de tests zochten op een prefix die de
+    // zichtbare tekst zelf ook levert. Gevonden met een mutatietest.
+    const een: TerugkerendePost = { id: 'x', omschrijving: 'Netflix', bedrag: -1600, rekeningId: 'r1', dag: 8 }
+    const twee: TerugkerendePost = { ...een, id: 'y', bedrag: -2400, dag: 20 }
+    const boekingVan = (post: TerugkerendePost): Transactie => ({
+      // Het vaste id van "Boek in" — dan biedt de rij "Uitboeken" aan.
+      id: `tk-${post.id}-2026-07`,
+      datum: `2026-07-0${post.dag === 8 ? '8' : '1'}`,
+      omschrijving: post.omschrijving,
+      bedrag: post.bedrag,
+      rekeningId: 'r1',
+    })
+    render(
+      <TerugkerendeSectie
+        posten={[een, twee]}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        transacties={[boekingVan(een), boekingVan(twee)]}
+        maand="2026-07"
+        maandLabel="juli 2026"
+        vandaagISO={VANDAAG}
+        onOpslaan={vi.fn()}
+        onVerwijderen={vi.fn()}
+        onBoek={vi.fn()}
+        onOngedaan={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('button', { name: knopnaam('Uitboeken', een, [een, twee]) })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: knopnaam('Uitboeken', twee, [een, twee]) })).toBeInTheDocument()
+  })
+
+  it('geeft "Losmaken" een naam per rij', () => {
+    const een: TerugkerendePost = { id: 'x', omschrijving: 'Netflix', bedrag: -1600, rekeningId: 'r1', dag: 8 }
+    const twee: TerugkerendePost = { ...een, id: 'y', bedrag: -2400, dag: 20 }
+    // Een boeking die JIJ aanduidde als deze vaste last (ronde 64) — geen vast id, dus
+    // de rij biedt "Losmaken" aan in plaats van "Uitboeken".
+    const aangeduid = (post: TerugkerendePost, id: string): Transactie => ({
+      id,
+      datum: '2026-07-08',
+      omschrijving: post.omschrijving,
+      bedrag: post.bedrag,
+      rekeningId: 'r1',
+      vasteLastId: post.id,
+    })
+    render(
+      <TerugkerendeSectie
+        posten={[een, twee]}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        transacties={[aangeduid(een, 't1'), aangeduid(twee, 't2')]}
+        maand="2026-07"
+        maandLabel="juli 2026"
+        vandaagISO={VANDAAG}
+        onOpslaan={vi.fn()}
+        onVerwijderen={vi.fn()}
+        onBoek={vi.fn()}
+        onLosmaken={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('button', { name: knopnaam('Losmaken', een, [een, twee]) })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: knopnaam('Losmaken', twee, [een, twee]) })).toBeInTheDocument()
+  })
+
+  it('noemt in het bevestigingsvenster wélke van de twee je wist', async () => {
+    const user = userEvent.setup()
+    const geboekt: Transactie = {
+      id: 'tk-a-2026-07',
+      datum: '2026-07-05',
+      omschrijving: 'Autoverzekering',
+      bedrag: -62000,
+      rekeningId: 'r1',
+    }
+    render(
+      <TerugkerendeSectie
+        posten={paar}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        transacties={[geboekt]}
+        maand="2026-07"
+        maandLabel="juli 2026"
+        vandaagISO={VANDAAG}
+        onOpslaan={vi.fn()}
+        onVerwijderen={vi.fn()}
+        onBoek={vi.fn()}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: knopnaam('Verwijderen', auto, paar) }))
+    // ⚠ De KOP stelt de vraag en draagt geen gegevens — dezelfde vorm als de twee andere
+    // verwijdervensters van de app. Het kenmerk staat in de body.
+    expect(await screen.findByRole('heading', { name: 'Autoverzekering verwijderen?' })).toBeInTheDocument()
+    const zin = await screen.findByText(/Het gaat over de kost van/)
+    expect(zin.textContent).toContain('620')
+    expect(zin.textContent).toContain('dag 5')
+  })
+
+  it('zegt niets extra in het venster wanneer de naam al ondubbelzinnig is', async () => {
+    const user = userEvent.setup()
+    const geboekt: Transactie = {
+      id: 'tk-a-2026-07',
+      datum: '2026-07-05',
+      omschrijving: 'Autoverzekering',
+      bedrag: -62000,
+      rekeningId: 'r1',
+    }
+    render(
+      <TerugkerendeSectie
+        posten={[auto]}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        transacties={[geboekt]}
+        maand="2026-07"
+        maandLabel="juli 2026"
+        vandaagISO={VANDAAG}
+        onOpslaan={vi.fn()}
+        onVerwijderen={vi.fn()}
+        onBoek={vi.fn()}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: knopnaam('Verwijderen', auto) }))
+    expect(await screen.findByRole('heading', { name: 'Autoverzekering verwijderen?' })).toBeInTheDocument()
+    expect(screen.queryByText(/Het gaat over de kost van/)).toBeNull()
+  })
+})
+
+
+// --- Ronde 83: de twee formulieren op Budget → Vast zijn uit elkaar te houden ----
+//
+// Op dat scherm staan twee `TerugkerendePostFormulier`'s onder elkaar, één per soort.
+// Hun twaalf velden heten allemaal hetzelfde. Een formulier met een NAAM is in HTML een
+// landmark: een schermlezer kondigt het aan zodra je erin komt.
+
+describe('TerugkerendeSectie — welk formulier is dit? (ronde 83)', () => {
+  it('geeft het formulier een naam die zegt waar je bent', () => {
+    // ⚠ Een zelfstandig naamwoord, geen bevel: elke andere regio in de app heet
+    // "Hoofdnavigatie", "Weergave" of "Wat wil je boeken?". Een schermlezer maakt
+    // hiervan "Nieuwe vaste last, formulier".
+    toon([huur])
+    expect(screen.getByRole('form', { name: 'Nieuwe vaste last' })).toBeInTheDocument()
+  })
+
+  it('noemt een BEWERKformulier niet "nieuw"', async () => {
+    // ⚠ Anders kondigt een schermlezer "nieuwe vaste last" aan boven een formulier
+    // waarin je je bestaande huur zit te wijzigen — met een knop eronder die "Vaste
+    // last wijzigen" heet.
+    const user = userEvent.setup()
+    toon([huur])
+    await user.click(screen.getByRole('button', { name: knopnaam('Bewerken', huur) }))
+    expect(screen.getByRole('form', { name: 'Deze vaste last' })).toBeInTheDocument()
+    expect(screen.queryByRole('form', { name: 'Nieuwe vaste last' })).toBeNull()
+  })
+
+  it('noemt het inkomstenformulier anders dan het lastenformulier', () => {
+    render(
+      <TerugkerendeSectie
+        soort="inkomst"
+        posten={[]}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        transacties={[]}
+        maand="2026-07"
+        maandLabel="juli 2026"
+        onOpslaan={vi.fn()}
+        onVerwijderen={vi.fn()}
+        onBoek={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('form', { name: 'Nieuwe vaste inkomst' })).toBeInTheDocument()
+    expect(screen.queryByRole('form', { name: 'Nieuwe vaste last' })).toBeNull()
+  })
+
+  it('houdt een gelijknamige INKOMST en LAST op één scherm uit elkaar', () => {
+    // ⚠ Kotgeld-"Huur" als inkomst naast je eigen "Huur" als last. De twee secties
+    // staan onder elkaar op Budget → Vast, dus met alleen de posten van de eigen soort
+    // heetten er twee knoppen allebei "Verwijderen — Huur". Gevonden door een
+    // nakijkronde: ronde 82 redeneerde het op "Je situatie" al goed, maar gaf hier de
+    // verkeerde lijst mee.
+    const kotgeld: TerugkerendePost = { id: 'k', omschrijving: 'Huur', bedrag: 40000, rekeningId: 'r1', dag: 1 }
+    const beide = [huur, kotgeld]
+    render(
+      <TerugkerendeSectie
+        posten={beide}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        transacties={[]}
+        maand="2026-07"
+        maandLabel="juli 2026"
+        vandaagISO={VANDAAG}
+        onOpslaan={vi.fn()}
+        onVerwijderen={vi.fn()}
+        onBoek={vi.fn()}
+      />,
+    )
+    // Deze sectie toont alleen de LAST, maar haar knopnaam houdt rekening met de
+    // inkomst die op hetzelfde scherm staat.
+    const knop = screen.getByRole('button', { name: knopnaam('Verwijderen', huur, beide) })
+    expect(knop.getAttribute('aria-label')).toContain('950')
+  })
+
+  it('noemt de opslaanknop naar de soort, niet "vaste post"', () => {
+    toon([huur])
+    expect(screen.getByRole('button', { name: 'Vaste last toevoegen' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /vaste post/i })).toBeNull()
+  })
+
+  it('noemt het bewerken van een vaste INKOMST ook zo', async () => {
+    // ⚠ Deze test bestond niet: de knoptekst hard op "Vaste last wijzigen" zetten bleef
+    // groen, want geen enkele test bewerkte een inkomst. Gevonden met een mutatietest.
+    const user = userEvent.setup()
+    const loon: TerugkerendePost = { id: 'l', omschrijving: 'Loon', bedrag: 240000, rekeningId: 'r1', dag: 25 }
+    render(
+      <TerugkerendeSectie
+        soort="inkomst"
+        posten={[loon]}
+        rekeningen={rekeningen}
+        categorieen={[]}
+        transacties={[]}
+        maand="2026-07"
+        maandLabel="juli 2026"
+        vandaagISO={VANDAAG}
+        onOpslaan={vi.fn()}
+        onVerwijderen={vi.fn()}
+        onBoek={vi.fn()}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: knopnaam('Bewerken', loon) }))
+    expect(screen.getByRole('button', { name: 'Vaste inkomst wijzigen' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Vaste last wijzigen' })).toBeNull()
+    expect(screen.getByRole('form', { name: 'Deze vaste inkomst' })).toBeInTheDocument()
+  })
+
+  it('geeft "Annuleer" een eigen naam per formulier', async () => {
+    // Met twee open bewerkvensters stond er anders twee keer exact "Annuleer".
+    const user = userEvent.setup()
+    toon([huur])
+    await user.click(screen.getByRole('button', { name: knopnaam('Bewerken', huur) }))
+    const annuleer = screen.getByRole('button', { name: /^Annuleer/ })
+    expect(annuleer.getAttribute('aria-label')).toBe('Annuleer — Deze vaste last')
+    // ⚠ De zichtbare tekst staat vooraan (WCAG 2.5.3).
+    expect(annuleer.textContent).toBe('Annuleer')
   })
 })
