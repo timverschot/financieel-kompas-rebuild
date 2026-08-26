@@ -64,10 +64,11 @@ hetzelfde aanvoelt en een latere designwijziging op één plek gebeurt.
 | `knop knop-primair` | dé hoofdactie van het scherm (amber, met schaduw) |
 | `knop knop-secundair` | gewone actie (omlijnd) |
 | `knop knop-ghost` | tekstknop |
-| `knop knop-klein` | compacte maat (13 px) |
-| `knop knop-icoon` | vierkante 34 px icoonknop met rand (‹ › ⋯) |
+| `knop knop-klein` | compacte maat (14 px tekst; op een aanraakscherm 44 px raakgebied) |
+| `knop knop-icoon` | vierkante 44 px icoonknop met rand (‹ › ⋯) |
 | `knop knop-kaal` | icoonknop zonder rand, voor acties in een lijstrij (✎ ×) |
-| `knop knop-gevaar` | verwijderen (terracotta); combineer met kaal/secundair |
+| `knop knop-gevaar` | er gaat iets BEWAARDS weg (terracotta); combineer met kaal/secundair |
+| `knop knop-terzijde` | een knop die iets rechtzet naast een regel informatie — gewicht 500, niet rood (ronde 86) |
 | `knoprij` | rij knoppen onder een formulier (flex, wrap, 10 px) |
 
 ### Formulieren
@@ -250,9 +251,28 @@ smalle versie terwijl daar ruimte zat is.
 
 - Geen hexkleuren, geen `#fff`, geen `rgba(...)` behalve in `index.css`.
 - Geen eigen kaart-look nabouwen met inline stijlen — gebruik `Kaart`.
-- Geen zichtbare tekst, `aria-label` of veldlabel wijzigen: de tests en de
-  vertalingen hangen eraan.
+- Geen zichtbare tekst, `aria-label` of veldlabel wijzigen **zonder de tests en de
+  vertalingen mee te nemen** — die hangen eraan (`i18nDekking.test.ts` bewaakt beide
+  richtingen, `woordenschat.test.ts` bewaakt de woordkeuze).
 - Geen schaduw op gewone kaarten.
+
+## Een veldlabel heet gewoon wat het veld is (ronde 88)
+
+Een invoerveld heet **"Omschrijving"**, **"Bedrag (€)"**, **"Rekening"**, **"Categorie"** —
+niet "Vaste omschrijving" of "Vast bedrag". Zet geen voorvoegsel voor een veldnaam om hem
+van een gelijknamig veld elders te onderscheiden: dat levert geen Nederlands op ("een
+rekening die vást is"?) en het werkt meestal niet, want het staat dan in álle exemplaren
+van dat formulier.
+
+Twee formulieren op één scherm houd je uit elkaar met een **naam op het `<form>`** — dat is
+in HTML een landmark, en een schermlezer kondigt hem aan (ronde 83). Die naam is een plek of
+een vraag, nooit een bevel: *"Nieuwe vaste last"*, niet *"Vaste last invullen"*.
+
+⚠ Wat een landmark NIET oplost: stembediening kent er geen, en de veldenlijst van een
+schermlezer somt de bedieningen op zonder hun landmark. Twee velden met dezelfde naam op één
+scherm blijven daar dus twee velden met dezelfde naam.
+
+`woordenschat.test.ts` bewaakt deze vier namen.
 
 ## Toevoegen staat bovenaan (ronde 36)
 
@@ -278,4 +298,33 @@ onderdelen van een dossier) zit **niet** achter een knop. Wat je niet ziet, ga j
 niet gebruiken. Zet er een vraag boven als `label-caps` met een `id`, en verwijs
 er vanuit `role="group"` naar met `aria-labelledby` — niet met een `aria-label`,
 want dan staat dezelfde tekst twee keer.
+
+### De uitzondering, en waar ze ophoudt (ronde 90)
+
+De kop van deze regel zegt het al: *die je vaak nodig hebt*. Een rij die je één
+keer instelt en daarna jaren laat staan, hoeft niet permanent ruimte in te nemen
+op een scherm waar je elke dag komt. Een chiprij mag dus dichtgeklapt staan
+wanneer **alle drie** deze dingen waar zijn:
+
+1. het is een pagina waar je **landt**, niet een die je zelf opzoekt;
+2. de rij is **opgemeten** in een echte browser op een breedte van 360 px en is
+   daar hoger dan pakweg 200 px (het Overzicht: 269 px, vier rijen chips — op een
+   telefoon van 640 px hoog is dat vier tienden van het beeld);
+3. je stelt ze in de praktijk **één keer** in.
+
+Dichtklappen doe je dan met een echte `<details>`/`<summary>`, dezelfde als
+`UitlegBlok` — nooit met een icoonknop en nooit met eigen `useState`. De
+`<summary>` draagt de vráág in gewone woorden ("Welke kaarten wil je hier
+zien?"), zodat wie ze leest weet wat erachter zit; dát is wat "wat je niet ziet,
+ga je niet gebruiken" hierboven afdekt. Geen `aria-controls`: de browser doet het
+open- en dichtklappen zelf.
+
+Voorbeelden: **Analyse › Verdeling** (ronde 81) staat **open** — drie korte chips,
+en je zoekt dat tabblad zelf op. Het **Overzicht** (ronde 90) staat **dicht** —
+zes chips, opgemeten 269 px, op de pagina waar je landt.
+
+⚠ Let op bij het testen: jsdom kent `<details>` wel, maar **verbergt de inhoud van
+een dicht blok niet**. `getByRole` vindt de chips daar dus ook wanneer een echte
+browser ze niet toont. Elke test die een chip aanraakt, moet het blok eerst
+openklappen — en één test moet vastleggen dat het standaard dícht staat.
 

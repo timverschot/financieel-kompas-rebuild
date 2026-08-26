@@ -5,6 +5,7 @@ import { App } from './App'
 import { db } from './data/db'
 import { bewaarBudget, bewaarCategorie, bewaarRekening, bewaarTransactie } from './data/repository'
 import { herstelSchermbreedte, zetSchermbreedte } from './test/schermbreedte'
+import { InstellingenProvider } from './instellingen'
 import { huidigeMaand, vandaag } from './utils/datum'
 
 // De desktopweergave (zijpaneel + brede rasters) werd tot nu toe nooit getest:
@@ -96,7 +97,7 @@ describe('App op een breed scherm', () => {
 
     // De recente transacties staan sinds ronde 31 in de HOOFDkolom (ze waren op een
     // telefoon anders nergens te zien); de zijkolom houdt de budgetstatus.
-    expect(screen.getByText('Recente boekingen')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Recente boekingen' })).toBeInTheDocument()
     expect(screen.getByText('Budgetstatus')).toBeInTheDocument()
     // De voorbeelddata bevat een transactie 'Loon'.
     expect(await screen.findByText('Loon')).toBeInTheDocument()
@@ -105,7 +106,7 @@ describe('App op een breed scherm', () => {
   it('springt vanuit de recente transacties naar de transactiepagina', async () => {
     const user = userEvent.setup()
     render(<App />)
-    await screen.findByText('Recente boekingen')
+    await screen.findByRole('heading', { name: 'Recente boekingen' })
 
     // ⚠ RONDE 66, slotronde: deze knop heette gewoon "Alle", net als die in de
     // zijkolom ernaast — twee knoppen met exact dezelfde naam op één scherm. Ze heten
@@ -132,7 +133,7 @@ describe('App op een breed scherm', () => {
     const popup = await screen.findByRole('dialog')
     expect(within(popup).getByLabelText('Handelaar / winkel')).toBeInTheDocument()
     // We staan nog steeds op het Overzicht — deze knop verplaatste je vroeger.
-    expect(screen.getByText('Recente boekingen')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Recente boekingen' })).toBeInTheDocument()
   })
 
   // Ronde 61. Tel eens mee wat je op een pc met het toetsenbord passeert vóór je bij
@@ -209,7 +210,7 @@ describe('App op een breed scherm', () => {
 
   it('zet de recente transacties en de maandgrafiek over de volle breedte', async () => {
     render(<App />)
-    await screen.findByText('Recente boekingen')
+    await screen.findByRole('heading', { name: 'Recente boekingen' })
 
     // Ze stonden in de LINKERkolom van het hoofdraster, dus naast de zijkolom en
     // maar twee derde breed — met een leeg vak rechts ernaast. Nu staan ze buiten
@@ -307,6 +308,73 @@ describe('App (desktop) — doorklikken vanaf de budgetstatus in de zijkolom', (
     const zijkolom = screen.getByText('Budgetstatus').closest('section.kaart') as HTMLElement
     await user.click(within(zijkolom).getByRole('button', { name: 'Alle budgetten' }))
     expect(await screen.findByRole('heading', { name: 'Budget instellen' })).toBeInTheDocument()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 90 — de kaartkeuze op een BREED scherm
+// ---------------------------------------------------------------------------
+//
+// ⚠ Deze twee tests kunnen alleen hier staan. Op een telefoon bestaat de zijkolom niet,
+// dus de belofte "de zijkolom is bewust niet uitzetbaar" is in App.test.tsx niet waar te
+// maken — daar verdwijnt ze sowieso.
+describe('welke kaarten je op het Overzicht wil zien, op een breed scherm (ronde 90)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+  afterEach(() => {
+    localStorage.clear()
+  })
+
+  async function klapOpen(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByText('Welke kaarten wil je hier zien?'))
+    expect((document.querySelector('[data-kaartkeuze]') as HTMLDetailsElement).open).toBe(true)
+  }
+
+  it('laat de zijkolom staan, wat je ook uitzet', async () => {
+    const user = userEvent.setup()
+    await bewaarBudget({ id: 'b1', categorieId: 'cat-voeding', bedrag: 40000 })
+    render(
+      <InstellingenProvider>
+        <App />
+      </InstellingenProvider>,
+    )
+    await screen.findByText('Saldo')
+    await klapOpen(user)
+
+    const groep = screen.getByRole('group', { name: 'Welke kaarten wil je hier zien?' })
+    // ⚠ Geen chip voor de zijkolom: die bestaat alleen hier, en een schakelaar voor iets
+    // wat op je telefoon niet bestaat, doet daar niets.
+    expect(within(groep).queryByRole('button', { name: 'Budgetstatus' })).toBeNull()
+    for (const chip of within(groep).getAllByRole('button')) await user.click(chip)
+
+    expect(screen.getByRole('heading', { name: 'Budgetstatus' })).toBeInTheDocument()
+    expect(document.querySelector('[data-maandblok]')).not.toBeNull()
+  })
+
+  it('geeft de zijkolom de volle breedte zodra allebei de donuts uitstaan', async () => {
+    // ⚠ Dit raster is hier `2fr 1fr` met de zijkolom rechts. Zonder de twee donuts bleef
+    // de linkerkolom van twee derde leeg naast een smalle zijkolom — zichtbaar het
+    // tegenovergestelde van wat deze ronde wil.
+    const user = userEvent.setup()
+    render(
+      <InstellingenProvider>
+        <App />
+      </InstellingenProvider>,
+    )
+    await screen.findByText('Saldo')
+    await klapOpen(user)
+    const raster = document.querySelector('.raster-hoofd') as HTMLElement
+    expect(raster.hasAttribute('data-hoofd-leeg')).toBe(false)
+
+    await user.click(screen.getByRole('button', { name: 'Uitgaven per categorie' }))
+    expect(raster.hasAttribute('data-hoofd-leeg')).toBe(false)
+    await user.click(screen.getByRole('button', { name: 'Inkomsten per categorie' }))
+    expect(raster.hasAttribute('data-hoofd-leeg')).toBe(true)
+
+    // En terug.
+    await user.click(screen.getByRole('button', { name: 'Uitgaven per categorie' }))
+    expect(raster.hasAttribute('data-hoofd-leeg')).toBe(false)
   })
 })
 

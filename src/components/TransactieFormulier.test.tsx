@@ -1179,9 +1179,9 @@ describe('TransactieFormulier — een gekozen subcategorie op een ticketregel', 
     expect(screen.getByText('Voeding › Broodwaren')).toBeInTheDocument()
   })
 
-  it('geeft elke regel een eigen naam voor "wissen"', async () => {
+  it('geeft elke regel een eigen naam voor "opnieuw kiezen"', async () => {
     // ⚠ Huisregel sinds ronde 66. De buren op dezelfde rij dragen hun nummer al
-    // ("Deelbedrag 2", "Verwijder regel 2"); zonder dit was "wissen" de enige
+    // ("Deelbedrag 2", "Verwijder regel 2"); zonder dit was "opnieuw kiezen" de enige
     // ongenummerde bediening van de rij, en met drie ticketregels onder elkaar zijn er
     // dan drie knoppen die allemaal hetzelfde heten.
     const user = userEvent.setup()
@@ -1190,15 +1190,15 @@ describe('TransactieFormulier — een gekozen subcategorie op een ticketregel', 
     await user.type(screen.getAllByLabelText('Subcategorie zoeken')[1], 'cola')
     await user.keyboard('{Enter}')
 
-    expect(screen.getByRole('button', { name: 'Categorie van regel 1 wissen' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Categorie van regel 2 wissen' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Categorie van regel 1 opnieuw kiezen' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Categorie van regel 2 opnieuw kiezen' })).toBeInTheDocument()
   })
 
-  it('zet met "wissen" de regel weer vrij, zonder je tekst te verliezen', async () => {
+  it('zet met "opnieuw kiezen" de regel weer vrij, zonder je tekst te verliezen', async () => {
     const user = userEvent.setup()
     await ticketMetBrood(user)
 
-    await user.click(screen.getByRole('button', { name: 'Categorie van regel 1 wissen' }))
+    await user.click(screen.getByRole('button', { name: 'Categorie van regel 1 opnieuw kiezen' }))
 
     // De keuzeknop is er weer, de vermelding weg, en de omschrijving staat er nog.
     expect(screen.getByRole('button', { name: /hoofdcategorie/i })).toBeInTheDocument()
@@ -1206,7 +1206,7 @@ describe('TransactieFormulier — een gekozen subcategorie op een ticketregel', 
     expect(screen.getAllByLabelText('Subcategorie zoeken')[0]).toHaveValue('Brood (wit)')
   })
 
-  it('laat na "wissen" wél weer breed taggen', async () => {
+  it('laat na "opnieuw kiezen" wél weer breed taggen', async () => {
     // De weg terug moet ook écht ergens heen leiden.
     const user = userEvent.setup()
     const onOpslaan = vi.fn()
@@ -1218,7 +1218,7 @@ describe('TransactieFormulier — een gekozen subcategorie op een ticketregel', 
     await user.click(screen.getByLabelText(/Kassaticket splitsen/))
     await user.type(screen.getAllByLabelText('Subcategorie zoeken')[0], 'witbrood')
     await user.keyboard('{Enter}')
-    await user.click(screen.getByRole('button', { name: 'Categorie van regel 1 wissen' }))
+    await user.click(screen.getByRole('button', { name: 'Categorie van regel 1 opnieuw kiezen' }))
 
     await user.click(screen.getByRole('button', { name: /hoofdcategorie/i }))
     await user.click(await screen.findByRole('button', { name: /Drank/ }))

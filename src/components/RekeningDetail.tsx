@@ -30,7 +30,7 @@ function nieuwsteEerst<T extends { datum: string }>(rijen: T[]): T[] {
 }
 
 /**
- * "Waarde bijwerken" — een waardering vastleggen voor deze rekening.
+ * "Waarde bewerken" — een waardering vastleggen voor deze rekening.
  *
  * Waarom dit geen gewone transactie is: de waarde van een effectenrekening of een
  * pensioenspaarplan verandert zonder dat er geld binnenkomt. Boekte je het verschil
@@ -142,7 +142,7 @@ function WaardeBijwerken({
   return (
     <details>
       <summary className="rij-titel" style={{ cursor: 'pointer' }}>
-        {t('Waarde bijwerken')}
+        {t('Waarde bewerken')}
       </summary>
       <div className="stapel" style={{ gap: 12, marginTop: 12 }}>
         <p className="rij-meta" style={{ margin: 0 }}>

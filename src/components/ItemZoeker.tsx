@@ -91,8 +91,9 @@ export function ItemZoeker({
    */
   onWis?: () => void
   /**
-   * Het nummer van deze ticketregel (1, 2, 3 …), alleen om de knop "wissen" een eigen
-   * toegankelijke naam te geven. Ontbreekt het, dan heet die knop gewoon "wissen".
+   * Het nummer van deze ticketregel (1, 2, 3 …), alleen om de knop "opnieuw kiezen" een
+   * eigen toegankelijke naam te geven. Ontbreekt het, dan heet die knop gewoon "opnieuw
+   * kiezen".
    */
   nummer?: number
   onNieuweSubcategorie?: (plan: NieuweTak) => Promise<string>
@@ -280,8 +281,8 @@ export function ItemZoeker({
           // ónder je eigen keuze een lijst met diezelfde "Brood (wit)" én "+ toevoegen
           // aan …", een uitnodiging om een duplicaat van jezelf te maken; en omdat Tab
           // in een open lijst het gemarkeerde voorstel KIEST in plaats van door te
-          // gaan, veranderde de eerste Tab op weg naar "wissen" je categorie — en zette
-          // de eerste Tab ná "wissen" hem weer terug.
+          // gaan, veranderde de eerste Tab op weg naar "opnieuw kiezen" je categorie — en zette
+          // de eerste Tab ná "opnieuw kiezen" hem weer terug.
           //
           // ⚠ Bewust op de NAAM en niet op "er staat een categorie". Wijkt de tekst af
           // van je keuze, dan ben je juist iets anders aan het zoeken en hoort de lijst
@@ -327,19 +328,27 @@ export function ItemZoeker({
           {/* ⚠ Het `id` staat op de SPAN en niet op de alinea (doorlichting ronde 78).
               Een toegankelijke beschrijving wordt platgeslagen tot tekst: wees hij naar
               de alinea, dan las voorleessoftware dit veld voor als "… Voeding ›
-              Broodwaren wissen" — het woord "wissen" plakte aan de vermelding vast
+              Broodwaren wissen" — het woord "opnieuw kiezen" plakte aan de vermelding vast
               alsof het erbij hoorde, en de knop werd daarna nóg eens aangekondigd. */}
           <span id={padId}>{pad}</span>
           {onWis && (
             <button
               type="button"
-              className="knop knop-ghost knop-klein knop-gevaar"
+              // ⚠ RONDE 86 — `knop-terzijde` en NIET `knop-gevaar`. Deze knop gooit niets
+              // weg: ze zet je categoriekeuze terug op leeg, en het zoekveld eronder staat
+              // meteen klaar om opnieuw te kiezen. In deze app is rood de kleur van
+              // verwijderen — vrijwel elke andere knop met `knop-gevaar` heet
+              // "Verwijderen" of "Ja, verwijder". Timothy zag het meteen: de wegwerpknop
+              // woog zwaarder dan de informatie ernaast. Zie `.knop-terzijde` in index.css.
+              className="knop knop-ghost knop-klein knop-terzijde"
               // ⚠ Mét het regelnummer (doorlichting ronde 78). Een gesplitst kassaticket
-              // heeft er meerdere onder elkaar, en drie knoppen die allemaal "wissen"
+              // heeft er meerdere onder elkaar, en drie knoppen die allemaal "opnieuw kiezen"
               // heten zijn voor wie de app laat voorlezen niet uit elkaar te houden —
               // huisregel sinds ronde 66. De buren op dezelfde rij dragen hun nummer al
               // ("Deelbedrag 2", "Verwijder regel 2").
-              aria-label={nummer === undefined ? undefined : t('Categorie van regel {n} wissen', { n: nummer })}
+              aria-label={
+                nummer === undefined ? undefined : t('Categorie van regel {n} opnieuw kiezen', { n: nummer })
+              }
               // Meteen weer in het zoekveld, net als op het gewone formulier: wie zich
               // vergist heeft, wil doortypen en niet eerst een veld aanwijzen.
               onMouseDown={(e) => e.preventDefault()}
@@ -359,7 +368,7 @@ export function ItemZoeker({
                 setOpen(false)
               }}
             >
-              {t('wissen')}
+              {t('opnieuw kiezen')}
             </button>
           )}
         </p>

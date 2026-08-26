@@ -38,7 +38,7 @@ describe('CategorieBoom', () => {
     const fns = renderBoom()
     await user.click(screen.getByRole('button', { name: /Voeding/ }))
     await user.click(await screen.findByRole('button', { name: /Zuivel en Kaas/ }))
-    await user.click(screen.getByRole('button', { name: 'Wijzig Eieren' }))
+    await user.click(screen.getByRole('button', { name: 'Bewerk Eieren' }))
     const input = screen.getByLabelText('Nieuwe naam voor Eieren')
     await user.clear(input)
     await user.type(input, 'Bio-eieren')
@@ -344,7 +344,7 @@ describe('CategorieBoom — een mislukte opslag', () => {
 
     await user.click(screen.getByRole('button', { name: /Voeding/ }))
     await user.click(await screen.findByRole('button', { name: /Zuivel en Kaas/ }))
-    await user.click(screen.getByRole('button', { name: 'Wijzig Eieren' }))
+    await user.click(screen.getByRole('button', { name: 'Bewerk Eieren' }))
     const veld = screen.getByLabelText('Nieuwe naam voor Eieren')
     await user.clear(veld)
     await user.type(veld, 'Eitjes')

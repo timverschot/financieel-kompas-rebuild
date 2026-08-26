@@ -31,6 +31,15 @@ export type Kostvoorstel = {
   frequentie?: Frequentie
   /** Korte toelichting wanneer de naam alleen niet volstaat. */
   toelichting?: string
+  /**
+   * De naam is een KOP en geen voorinvulling (ronde 84).
+   *
+   * Bij elk gewoon voorstel is de naam ook meteen de omschrijving van de post die je
+   * ermee maakt: klik je "Toevoegen" bij Netflix, dan staat "Netflix" al in het veld.
+   * Bij "Een andere sluipende last" is de naam een uitnodiging, geen antwoord — die
+   * moet je juist zelf invullen.
+   */
+  vrijeNaam?: boolean
 }
 
 /**
@@ -119,7 +128,7 @@ export const KLASSIEKE_VASTE_KOSTEN: Kostvoorstel[] = [
 ]
 
 /**
- * De sluipende kosten: kleine abonnementen die je nooit meer bekijkt.
+ * De sluipende lasten: kleine abonnementen die je nooit meer bekijkt.
  *
  * Twee dingen om te weten wanneer je deze lijst uitbreidt:
  *  - de categorieboom kent GEEN item voor muziekstreaming, dus Spotify en Apple
@@ -148,6 +157,45 @@ export const SLUIPENDE_KOSTEN: Kostvoorstel[] = [
   { sleutel: 'opleiding', naam: 'Online opleiding', icoon: '🎓', categorieId: 'i-cursussen-en-opleidingen-8133' },
   { sleutel: 'luisterboeken', naam: 'Luisterboeken', icoon: '🎙️', categorieId: 'i-x-luisterboeken' },
 ]
+
+/**
+ * De rij onderaan de sluipende lasten waar je er zelf een toevoegt (ronde 84).
+ *
+ * ⚠ WAAROM DIT ER KOMT. Timothy: *"waarom kan ik enkel vaste lasten maar geen sluipende
+ * lasten toevoegen? als ik een sluipende last wil toevoegen lijkt het dat ik het enkel
+ * als een vaste last kan toevoegen."* Hij had gelijk, en het was erger dan het leek.
+ *
+ * Er bestaat geen apart soort: een sluipende last ÍS een vaste last. Wat haar sluipend
+ * maakt, is haar CATEGORIE (zie `isSluipendeLast` in utils/sluipend.ts). De achttien
+ * voorstellen hierboven vullen die categorie voor je in — daarom werkt dat wel. Maar
+ * voegde je er zelf een toe, dan zei de app alleen "Staat het er niet bij? Voeg het zelf
+ * toe bij je vaste lasten", en op dát scherm staat nergens dat de categorie beslist. Twee
+ * dingen gingen dan mis: koos je een categorie buiten de lijst, dan telde je abonnement
+ * STIL niet mee; koos je er wel een uit de lijst, dan telde het mee in "Waarvan sluipend"
+ * maar stond het onder GEEN ENKELE rij — het cijfer telde hem, de lijst verzweeg hem.
+ *
+ * ⚠ GEEN CATEGORIE VOORINGEVULD, en dat is de kern van de oplossing. Zou deze rij er een
+ * kiezen, dan raadt de app iets over jouw abonnement en moet jij het achteraf rechtzetten.
+ * In plaats daarvan schrijft ze `bronVoorstel: 'sluipend-anders'` mee, en dát is een
+ * geldige reden om als sluipend te tellen. Jij zei dat het er een is; de app hoeft het
+ * niet af te leiden.
+ *
+ * ⚠ EN DAT GELDT VOOR ELK SLUIPEND VOORSTEL, niet alleen voor deze rij (doorlichting).
+ * Anders bleef precies dezelfde klacht één rij hoger staan: klik je "Toevoegen" bij
+ * Netflix maar wis je de voorgestelde categorie, dan telde je abonnement stil niet mee —
+ * op de rij waar je het net op zette. Zie `isSluipendeLast` in utils/sluipend.ts.
+ *
+ * ⚠ BEWUST NIET IN `SLUIPENDE_KOSTEN`. Deze rij is geen voorstel maar een uitnodiging: ze
+ * heeft geen categorie-id dat tegen de boom te houden valt, en ze hoort niet mee te tellen
+ * wanneer de app zegt "je vulde er 3 van de 18 in".
+ */
+export const SLUIPEND_ANDERS: Kostvoorstel = {
+  sleutel: 'sluipend-anders',
+  naam: 'Een andere sluipende last',
+  icoon: '➕',
+  categorieId: '',
+  vrijeNaam: true,
+}
 
 /** Alle categorie-id's uit beide lijsten, voor de test die ze tegen de boom houdt. */
 export const OPSTELLING_CATEGORIE_IDS: string[] = [...KLASSIEKE_VASTE_KOSTEN, ...SLUIPENDE_KOSTEN].map(

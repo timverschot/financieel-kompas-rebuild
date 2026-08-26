@@ -8,6 +8,7 @@ import {
   VENSTER_MAANDEN,
   zwaarsteMaanden,
   type Toekomstmaand,
+  heeftToekomstlasten,
 } from '../utils/toekomstlasten'
 import { intervalVan, verschuifMaand } from '../utils/vastelast'
 import { formatEuro } from '../utils/format'
@@ -479,6 +480,10 @@ export function ToekomstlastenWidget({
   )
   const totaal = reeks.reduce((som, m) => som + m.bedrag, 0)
   const gemiddelde = Math.round(totaal / reeks.length)
+  // ⚠ RONDE 90 — dezelfde vraag als de chiprij op het Overzicht, uit één functie. Zie
+  // `heeftToekomstlasten` in utils/toekomstlasten.ts: stond de voorwaarde alleen hier,
+  // dan kon er een chip boven deze kaart staan terwijl ze zwijgt.
+  const heeftIets = heeftToekomstlasten(terugkerendePosten, beginMaand)
 
   // Op een lege app zwijgt deze kaart volledig. Ze staat op de startpagina tussen
   // andere kaarten; een lege grafiek met een uitnodiging erbij is daar ruis, en de
@@ -489,7 +494,7 @@ export function ToekomstlastenWidget({
   // dan is het totaal nul en verdween deze kaart spoorloos — juist op het moment dat
   // ze iets te melden had. De waarschuwing stond dan alleen op Analyse, waar je zelf
   // naartoe moest.
-  if (totaal === 0 && ontbreken.length === 0) return null
+  if (!heeftIets) return null
 
   return (
     <Kaart

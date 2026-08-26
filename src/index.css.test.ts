@@ -339,6 +339,110 @@ function klassenInCode(): Map<string, string> {
 const CSS_KLASSEN = klassenInCss()
 const CODE_KLASSEN = klassenInCode()
 
+/**
+ * RONDE 86 — ROOD IS DE KLEUR VAN WEGGOOIEN.
+ *
+ * Timothy, over de knop naast een gekozen subcategorie op een kassaticketregel: *"De
+ * knop is rood en vet naast een grijze regel van 13 px — de wegwerpknop weegt visueel
+ * zwaarder dan de informatie ernaast."* De oorzaak zat dieper dan de opmaak: die knop
+ * droeg `knop-gevaar`, de klasse waarmee deze app VERWIJDEREN aanduidt.
+ *
+ * ⚠ DE KNOP HEET SINDS DEZE RONDE "OPNIEUW KIEZEN" EN NIET MEER "WISSEN". Het woord
+ * botste: "Alles wissen" bij Begin opnieuw gooit werkelijk élk gegeven weg, en "wissen"
+ * naast je categorie zette één veld terug op leeg. Eén werkwoord voor twee tegengestelde
+ * dingen is precies wat ronde 83 uitroeide. "Ander bestand kiezen" — de derde knop van
+ * deze ronde — zei het al goed; nu zeggen alle drie het zo.
+ *
+ * ⚠ DE PARSER LEEST DE KOP VAN DE KNOP MET `sluit()` EN `teksten()`, en niet met een
+ * regex op dubbele aanhalingstekens (doorlichting ronde 86). Met die regex gaf een
+ * `className={…}` met accolades gewoon een lege klassenlijst terug — en dan slaagde
+ * uitgerekend de controle "draagt geen `knop-gevaar`" stil.
+ */
+function knoppenMetTekst(tekst: string): { pad: string; klassen: string[] }[] {
+  const uit: { pad: string; klassen: string[] }[] = []
+  const naald = `{t('${tekst}')}`
+  for (const [pad, inhoud] of BRONBESTANDEN) {
+    let i = inhoud.indexOf(naald)
+    while (i !== -1) {
+      const start = inhoud.lastIndexOf('<button', i)
+      if (start !== -1) {
+        // Alleen de KOP van deze knop: van `<button` tot zijn eigen sluitende `>`.
+        // Zonder die grens zou een `className` op een genest element meetellen.
+        let j = start
+        let diep = 0
+        while (j < inhoud.length) {
+          const c = inhoud[j]
+          if (c === '{') { j = sluit(inhoud, j, '{', '}'); diep = 0 }
+          else if (c === '>' && diep === 0) break
+          j++
+        }
+        const kop = inhoud.slice(start, j)
+        const m = kop.match(/className\s*=\s*/)
+        const klassen: string[] = []
+        if (m) {
+          const k = m.index! + m[0].length
+          const ruw = kop[k] === '{' ? kop.slice(k, sluit(kop, k, '{', '}') + 1) : kop.slice(k, kop.indexOf(kop[k], k + 1) + 1)
+          const stukken: string[] = []
+          teksten(ruw, stukken)
+          for (const stuk of stukken) for (const w of stuk.split(/\s+/)) if (w) klassen.push(w)
+        }
+        uit.push({ pad, klassen })
+      }
+      i = inhoud.indexOf(naald, i + 1)
+    }
+  }
+  return uit
+}
+
+describe('een knop die iets RECHTZET draagt niet de kleur van weggooien', () => {
+  const KNOPPEN = knoppenMetTekst('opnieuw kiezen')
+
+  it('vindt de knoppen waar het over gaat, mét hun klassen', () => {
+    // ⚠ Zonder deze ondergrens slaagt de reeks hieronder op een lege lijst — precies de
+    // val die ronde 77 in vier van haar eigen controles vond. En de tweede regel vangt
+    // de val van de oude parser: een knop gevonden, maar met een lege klassenlijst.
+    expect(KNOPPEN.length).toBeGreaterThanOrEqual(2)
+    expect(KNOPPEN.filter((k) => k.klassen.length === 0)).toEqual([])
+  })
+
+  it('zet `knop-gevaar` op geen enkele van die knoppen', () => {
+    expect(KNOPPEN.filter((k) => k.klassen.includes('knop-gevaar'))).toEqual([])
+  })
+
+  it('geeft ze allemaal `knop-terzijde`, zodat ze de regel ernaast niet overstemmen', () => {
+    expect(KNOPPEN.filter((k) => !k.klassen.includes('knop-terzijde'))).toEqual([])
+  })
+
+  it('laat `knop-klein` staan — die draagt op een aanraakscherm de 44 px-regel', () => {
+    expect(KNOPPEN.filter((k) => !k.klassen.includes('knop-klein'))).toEqual([])
+  })
+
+  it('laat `.knop-terzijde` het gewicht ook echt terugbrengen', () => {
+    // ⚠ Zonder deze regel kan de klasse leeg worden of alleen nog een kleur zetten, en
+    // dan staat de knop wéér op gewicht 600 uit `.knop` — de helft van de klacht.
+    // In de browser gemeten (393 px): knop 500 / 14 px in de accentkleur, de regel
+    // ernaast 400 / 13 px in de gedempte tekstkleur, raakgebied 44 px.
+    const regel = REGELS.find((r) => r.selector.trim() === '.knop-terzijde')
+    expect(regel).toBeDefined()
+    expect(regel?.body).toMatch(/font-weight\s*:\s*500\s*[;}]/)
+  })
+
+  it('zet `.knop-terzijde` ná elke knopklasse waarvan ze moet winnen', () => {
+    // ⚠ Bij gelijke specificiteit wint de LATERE regel — de meest voorkomende oorzaak van
+    // "mijn CSS doet niets" in dit project (rondes 70 en 71). `.knop` zet gewicht 600;
+    // stond `.knop-terzijde` ervóór, dan deed ze niets en bleef de knop vet, zonder dat
+    // één test iets merkte (doorlichting ronde 86). Ook `.knop-gevaar` staat in de lijst:
+    // zet een volgende ronde daar ooit een gewicht op, dan hoort terzijde te winnen.
+    const index = (sel: string) => REGELS.findIndex((r) => r.selector.trim() === sel)
+    const terzijde = index('.knop-terzijde')
+    expect(terzijde).toBeGreaterThan(-1)
+    for (const eerder of ['.knop', '.knop-ghost', '.knop-klein', '.knop-gevaar']) {
+      expect(index(eerder)).toBeGreaterThan(-1)
+      expect(terzijde).toBeGreaterThan(index(eerder))
+    }
+  })
+})
+
 describe('index.css — het bestand wordt echt gelezen', () => {
   it('vindt het opmaakbestand en de broncode', () => {
     // ⚠ Zonder deze test kan de hele reeks stil slagen op een lege string, en dan

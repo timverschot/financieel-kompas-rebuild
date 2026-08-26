@@ -779,7 +779,7 @@ export function TransactieFormulier({
                   // ⚠ De weg terug (ronde 78). Sinds deze ronde verdwijnt de knop
                   // "Hoofdcategorie: …" zodra er een subcategorie op de regel staat —
                   // want die knop verving je keuze stil door een brede categorie.
-                  // Zonder "wissen" zou je daarna niet meer breed kunnen taggen.
+                  // Zonder "opnieuw kiezen" zou je daarna niet meer breed kunnen taggen.
                   // De OMSCHRIJVING blijft staan: dat is je eigen tekst, en je wil
                   // hoogstwaarschijnlijk gewoon een andere categorie kiezen.
                   // ⚠ De lege string en niet `undefined` (doorlichting ronde 78):

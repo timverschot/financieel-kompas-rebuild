@@ -278,7 +278,7 @@ function ChipLaag({
  *
  * Een tik op een chip die al actief is, gaat een laag terug (de categorie wordt
  * de keuze in plaats van de subcategorie). Zonder dat zou je een te diepe keuze
- * alleen met "wissen" kunnen rechtzetten en helemaal opnieuw moeten beginnen.
+ * alleen met "opnieuw kiezen" kunnen rechtzetten en helemaal opnieuw moeten beginnen.
  */
 export function CategorieTrap({
   waarde,
@@ -997,7 +997,9 @@ export function CategorieKiezer({
         {waarde && nieuweNaam === null && (
           <button
             type="button"
-            className="knop knop-ghost knop-klein knop-gevaar"
+            // ⚠ RONDE 86 — dezelfde correctie als in `ItemZoeker`, en om dezelfde reden:
+            // wissen is hier RECHTZETTEN, niet weggooien. Zie `.knop-terzijde` in index.css.
+            className="knop knop-ghost knop-klein knop-terzijde"
             // Meteen weer in het zoekveld staan. Wie zich vergist ("Brood (wit)"
             // moest "Brood (bruin)" zijn) kan zo doortypen in plaats van eerst het
             // veld te moeten aanwijzen.
@@ -1006,7 +1008,7 @@ export function CategorieKiezer({
               zoekRef.current?.focus()
             }}
           >
-            {t('wissen')}
+            {t('opnieuw kiezen')}
           </button>
         )}
       </p>

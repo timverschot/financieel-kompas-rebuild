@@ -290,7 +290,11 @@ export function Documentkluis({
                 />
               )}
               {bestandsnaam && <span className="rij-meta">{bestandsnaam}</span>}
-              <button type="button" className="knop knop-ghost knop-klein knop-gevaar" onClick={() => { setBestand(''); setBestandsnaam('') }}>
+              {/* ⚠ RONDE 86 — deze knop droeg `knop-gevaar` en gooit niets weg: ze maakt
+                  de bestandskeuze leeg zodat het keuzeveld terugkomt. Je document staat op
+                  dat moment nog niet in de kluis. Rood is in deze app de kleur van
+                  verwijderen; zie `.knop-terzijde` in index.css. */}
+              <button type="button" className="knop knop-ghost knop-klein knop-terzijde" onClick={() => { setBestand(''); setBestandsnaam('') }}>
                 {t('Ander bestand kiezen')}
               </button>
             </div>

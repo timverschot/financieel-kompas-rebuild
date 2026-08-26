@@ -24,7 +24,27 @@ export function rekeningSaldo(
   return saldoOpDatum(rekeningId, begin, transacties, overboekingen, waarderingen, vandaag())
 }
 
-export type SpaardoelVoortgang = { huidig: number; doel: number; resterend: number; fractie: number }
+export type SpaardoelVoortgang = {
+  huidig: number
+  doel: number
+  /** Wat er nog bij moet. Nooit negatief; zie `over`. */
+  resterend: number
+  /** Tussen 0 en 1, ook wanneer je er ruim over zit. Voedt de balk. */
+  fractie: number
+  /**
+   * Hoeveel je er OVER zit (ronde 85). Nul zolang je het doel niet gehaald hebt.
+   *
+   * ⚠ WAAROM DIT ERBIJ MOEST. `resterend` en `fractie` worden allebei afgekapt, en dat
+   * is voor een voortgangsbalk ook juist: een balk van 116 % bestaat niet. Maar de rij
+   * zei daardoor "nog € 0,00" bij wie € 720 opzij had staan voor een doel van € 620 —
+   * precies hetzelfde als bij wie exact € 620 had. De twee getallen stonden er wél al
+   * naast elkaar ("€ 720,00 van € 620,00"); het VERSCHIL moest je zelf maken, en de
+   * regel eronder deed alsof er niets aan de hand was. Timothy: *"als er in dat
+   * spaardoel gespaard wordt en je gaat dan over het doel, staat er simpelweg het bedrag
+   * dat je er over aan 't gaan bent."*
+   */
+  over: number
+}
 
 // De voortgang van een spaardoel. Is er een rekening aan gekoppeld, dan komt het
 // huidige bedrag uit het saldo van die rekening; anders uit het manueel
@@ -41,7 +61,14 @@ export function spaardoelVoortgang(
     : doel.huidigBedrag
   const resterend = Math.max(doel.doelbedrag - huidig, 0)
   const fractie = doel.doelbedrag > 0 ? Math.min(Math.max(huidig / doel.doelbedrag, 0), 1) : 0
-  return { huidig, doel: doel.doelbedrag, resterend, fractie }
+  // ⚠ Een VANGNET, geen bereikbaar geval (ronde 85, doorlichting). Een doel van € 0 kan
+  // je niet bewaren: het formulier eist `doelCenten > 0` en `SpaardoelSchema` eist
+  // `positive()`, gecontroleerd bij élke schrijfactie én bij élk inlezen. Deze regel
+  // staat er voor gegevens die langs een ouder logboek binnenkomen — dan is élke euro
+  // "meer dan nodig", en zou de app roepen dat je te veel gespaard hebt voor een doel
+  // dat nog geen bedrag heeft.
+  const over = doel.doelbedrag > 0 ? Math.max(huidig - doel.doelbedrag, 0) : 0
+  return { huidig, doel: doel.doelbedrag, resterend, fractie, over }
 }
 
 // ---------------------------------------------------------------------------

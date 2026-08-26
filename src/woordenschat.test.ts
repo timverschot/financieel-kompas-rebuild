@@ -56,6 +56,54 @@ describe('woordenschat — één woord per ding', () => {
     expect(schermteksten()).toContain('Vaste lasten')
   })
 
+  it('noemt de vier velden van het vaste-lastformulier zonder "vast" ervoor (ronde 88)', () => {
+    // ⚠ Tot ronde 88 heetten de velden van het formulier voor een vaste last "Vaste
+    // omschrijving", "Vast bedrag (€)", "Vaste rekening" en "Vaste categorie". Dat is
+    // geen Nederlands — een rekening die vást is? — en het voorvoegsel stond er alleen om
+    // botsingen met velden elders te vermijden.
+    //
+    // ⚠ Het deed dat nooit waar het nodig was: op Budget → Vast staan twee exemplaren van
+    // dat formulier onder elkaar, en die zeiden allebei "Vaste omschrijving". Wat die twee
+    // uit elkaar houdt, is de naam van het FORMULIER (ronde 83).
+    //
+    // ⚠ "Vaste last(en)", "Vaste inkomst(en)" en "Vaste kosten per maand" blijven staan:
+    // daar hoort "vast" bij het ding zelf en niet bij het veld.
+    // ⚠ ALLE VIER DE TAKKEN AAN BEIDE KANTEN VERANKERD (doorlichting). De eerste versie
+    // liet `^Vast bedrag` los lopen: dan glipte "Vaste rekening voor deze post" er langs,
+    // én viel élke toekomstige tegel die met "Vast bedrag" begint er ten onrechte onder.
+    //
+    // ⚠ EN DE NAAM VAN DEZE TEST BELOOFT PRECIES DEZE VIER, niet "elk veld dat met vast
+    // begint". Een test die meer belooft dan ze toetst, is precies wat de test hierboven
+    // over zichzelf opmerkte.
+    expect(met(/^Vaste (omschrijving|rekening|categorie)$|^Vast bedrag \(€\)$/i)).toEqual([])
+    // ⚠ En de POSITIEVE controle: zonder haar slaagt dit ook op een lege tabel. ⚠ Ze
+    // bindt dit FORMULIER niet — die vier sleutels worden ook door de boeking, de
+    // overboeking en het rekeningdetail gebruikt. De echte bewaking staat in
+    // `TerugkerendeSectie.test.tsx`; leun niet op deze.
+    expect(schermteksten()).toContain('Omschrijving')
+    expect(schermteksten()).toContain('Bedrag (€)')
+    expect(schermteksten()).toContain('Rekening')
+    expect(schermteksten()).toContain('Categorie')
+  })
+
+  it('laat geen schermtekst met "Wijzig " beginnen — die knop heet "Bewerk…" (ronde 89)', () => {
+    // ⚠ Twee families, en ze horen elk hun eigen woord te houden:
+    //   • "Bewerken" / "Bewerk {ding} {naam}" — de knop op een RIJ die het scherm opent;
+    //   • "{Ding} wijzigen" / "Wijzigen"      — de knop op het FORMULIER die opslaat.
+    // Negen rijknoppen heetten al "Bewerk …"; drie zeiden "Wijzig …" ("Wijzig {naam}",
+    // "Wijzig gezinslid {naam}", "Wijzig de regeling"). Die drie zijn omgezet.
+    // ⚠ De NAAM van deze test zegt precies wat ze toetst (doorlichting ronde 89): één
+    // verboden voorvoegsel, niet "overal". `\bWijzig\b(?!en)` laat "Wijzigen" en
+    // "wijzigingen" met rust en vangt "Wijzig" waar het ook staat.
+    expect(met(/\bWijzig\b(?!en)/)).toEqual([])
+    // ⚠ POSITIEF: zonder deze regels slaagt dit ook op een lege tabel — én ze leggen vast
+    // dat de opslaanfamilie WÉL blijft bestaan, zodat niemand haar "opruimt".
+    expect(schermteksten()).toContain('Bewerken')
+    expect(schermteksten()).toContain('Bewerk de regeling')
+    expect(schermteksten()).toContain('Wijzigen')
+    expect(schermteksten()).toContain('Vaste last wijzigen')
+  })
+
   it('gebruikt "Saldo" alleen nog voor de stand van een rekening', () => {
     // ⚠ "Saldo" is voortaan ALTIJD een rekeningstand. Het verschil tussen inkomsten
     // en uitgaven heet "Netto", en het verschil tussen twee ouders "te verrekenen".

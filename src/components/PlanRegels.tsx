@@ -78,8 +78,10 @@ export function PlanRegels({
    * De spaardoelen, alleen om te weten welke vaste last er al een heeft (ronde 74).
    *
    * ⚠ Optioneel en standaard leeg, zodat elke bestaande aanroep zich gedraagt zoals
-   * vóór deze ronde. Hangt er een doel aan een vaste last, dan vraagt "Opzij voor
-   * later" er niet meer om: dat geld zet je al weg in die pot.
+   * vóór deze ronde. Hangt er een doel aan een vaste last, dan VERVANGT jouw
+   * streefbedrag het bedrag onder "Opzij voor later" — het valt er niet uit weg (ronde
+   * 85, doorlichting: hier stond "dan vraagt Opzij voor later er niet meer om", en dat
+   * spreekt regel 36 hierboven én `opzijVolgensSpaardoelen` zelf tegen).
    */
   spaardoelen?: Spaardoel[]
 }) {

@@ -367,7 +367,7 @@ describe('CategorieKiezer — doorklikken in plaats van typen', () => {
   })
 
   it('gaat een laag terug wanneer je de actieve chip nog eens aantikt', async () => {
-    // Anders kan je een te diepe keuze alleen met "wissen" rechtzetten en moet je
+    // Anders kan je een te diepe keuze alleen met "opnieuw kiezen" rechtzetten en moet je
     // helemaal opnieuw beginnen.
     const user = userEvent.setup()
     const onKies = vi.fn()
@@ -808,7 +808,7 @@ describe('CategorieKiezer — het toevoegpaneeltje in een echt formulier', () =>
     expect((screen.getByLabelText('Naam van de nieuwe hoofdcategorie') as HTMLInputElement).value).toBe('Huisraad')
   })
 
-  it('haalt ook de knop "wissen" weg zolang het paneeltje openstaat', async () => {
+  it('haalt ook de knop "opnieuw kiezen" weg zolang het paneeltje openstaat', async () => {
     // ⚠ De chips en de trap werden verborgen, maar déze knop niet — terwijl hij
     // precies hetzelfde doet: één tik en je nieuwe tak is weg, plus je zoekterm, en
     // er wordt niets gezegd.
@@ -821,11 +821,28 @@ describe('CategorieKiezer — het toevoegpaneeltje in een echt formulier', () =>
         onNieuweSubcategorie={vi.fn()}
       />,
     )
-    expect(screen.getByRole('button', { name: 'wissen' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'opnieuw kiezen' })).toBeInTheDocument()
 
     await open(user, 'roggebrood')
 
-    expect(screen.queryByRole('button', { name: 'wissen' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'opnieuw kiezen' })).toBeNull()
+  })
+
+  it('draagt op "opnieuw kiezen" geen wegwerpkleur (ronde 86)', () => {
+    // ⚠ Dezelfde correctie als in `ItemZoeker`, en om dezelfde reden: rood is in deze
+    // app de kleur van verwijderen, en deze knop zet alleen je keuze terug op leeg.
+    render(
+      <CategorieKiezer
+        waarde="cat-broodwaren"
+        onKies={vi.fn()}
+        gebruikerCategorieen={[]}
+        onNieuweSubcategorie={vi.fn()}
+      />,
+    )
+    const knop = screen.getByRole('button', { name: 'opnieuw kiezen' })
+    expect(knop.classList.contains('knop-gevaar')).toBe(false)
+    expect(knop.classList.contains('knop-terzijde')).toBe(true)
+    expect(knop.classList.contains('knop-klein')).toBe(true)
   })
 
   it('sluit met Escape vanuit het zoekveld ook alleen het paneeltje', async () => {

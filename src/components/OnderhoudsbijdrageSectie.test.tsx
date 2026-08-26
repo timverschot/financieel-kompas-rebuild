@@ -242,7 +242,7 @@ describe('OnderhoudsbijdrageSectie — de regeling wijzigen', () => {
   it('bewaart bedrag, datum en richting', async () => {
     const user = userEvent.setup()
     const { onOpslaan } = toon()
-    await user.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
+    await user.click(screen.getByRole('button', { name: 'Bewerk de regeling' }))
     const bedrag = screen.getByLabelText('Bedrag uit de regeling')
     await user.clear(bedrag)
     await user.type(bedrag, '300,00')
@@ -256,14 +256,14 @@ describe('OnderhoudsbijdrageSectie — de regeling wijzigen', () => {
     // niet enkel in de documentatie.
     const user = userEvent.setup()
     toon()
-    await user.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
+    await user.click(screen.getByRole('button', { name: 'Bewerk de regeling' }))
     expect(document.querySelector('[data-regeling]')?.textContent).toContain('basis 2013 = 100')
   })
 
   it('laat indexeren uitzetten wanneer de akte dat bepaalt', async () => {
     const user = userEvent.setup()
     const { onOpslaan } = toon()
-    await user.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
+    await user.click(screen.getByRole('button', { name: 'Bewerk de regeling' }))
     await user.click(screen.getByLabelText(/Jaarlijks indexeren/))
     await user.click(screen.getByRole('button', { name: 'Bewaar de regeling' }))
     expect(onOpslaan.mock.calls[0][0].geindexeerd).toBe(false)
@@ -272,7 +272,7 @@ describe('OnderhoudsbijdrageSectie — de regeling wijzigen', () => {
   it('voegt een eigen indexcijfer toe voor een maand die de app niet kent', async () => {
     const user = userEvent.setup()
     const { onOpslaan } = toon()
-    await user.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
+    await user.click(screen.getByRole('button', { name: 'Bewerk de regeling' }))
     await user.type(screen.getByLabelText('Maand'), '2026-08')
     await user.type(screen.getByLabelText('Consumptieprijsindex'), '140,50')
     await user.click(screen.getByRole('button', { name: 'Indexcijfer toevoegen' }))
@@ -284,7 +284,7 @@ describe('OnderhoudsbijdrageSectie — de regeling wijzigen', () => {
     // van de ronde is: een akte die de gezondheidsindex noemt, moet die ook krijgen.
     const user = userEvent.setup()
     const { onOpslaan } = toon()
-    await user.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
+    await user.click(screen.getByRole('button', { name: 'Bewerk de regeling' }))
     await user.selectOptions(screen.getByLabelText('Welke index staat er in je akte?'), 'gezondheid')
     await user.click(screen.getByRole('button', { name: 'Bewaar de regeling' }))
     expect(onOpslaan.mock.calls[0][0].indexreeks).toBe('gezondheid')
@@ -295,7 +295,7 @@ describe('OnderhoudsbijdrageSectie — de regeling wijzigen', () => {
     // reeks noemen met een getal dat er niet in staat.
     const user = userEvent.setup()
     const { onOpslaan } = toon()
-    await user.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
+    await user.click(screen.getByRole('button', { name: 'Bewerk de regeling' }))
     await user.type(screen.getByLabelText('Maand'), '2026-08')
     await user.type(screen.getByLabelText('Consumptieprijsindex'), '140,50')
     await user.click(screen.getByRole('button', { name: 'Indexcijfer toevoegen' }))
@@ -309,7 +309,7 @@ describe('OnderhoudsbijdrageSectie — de regeling wijzigen', () => {
     // van € 383 om naar € 283, met een geloofwaardige brief eronder.
     const user = userEvent.setup()
     const { onOpslaan } = toon()
-    await user.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
+    await user.click(screen.getByRole('button', { name: 'Bewerk de regeling' }))
     await user.type(screen.getByLabelText('Maand'), '2026-08')
     await user.type(screen.getByLabelText('Consumptieprijsindex'), '103,60')
     await user.click(screen.getByRole('button', { name: 'Indexcijfer toevoegen' }))
@@ -320,7 +320,7 @@ describe('OnderhoudsbijdrageSectie — de regeling wijzigen', () => {
   it('weigert een eigen indexcijfer zonder maand', async () => {
     const user = userEvent.setup()
     const { onOpslaan } = toon()
-    await user.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
+    await user.click(screen.getByRole('button', { name: 'Bewerk de regeling' }))
     await user.type(screen.getByLabelText('Consumptieprijsindex'), '140,50')
     await user.click(screen.getByRole('button', { name: 'Indexcijfer toevoegen' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Kies een maand')
@@ -431,7 +431,7 @@ describe('OnderhoudsbijdrageSectie — een afgelopen regeling', () => {
   it('laat de einddatum instellen', async () => {
     const user = userEvent.setup()
     const { onOpslaan } = toon()
-    await user.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
+    await user.click(screen.getByRole('button', { name: 'Bewerk de regeling' }))
     await user.type(screen.getByLabelText('Loopt tot (optioneel)'), '2030-06-30')
     await user.click(screen.getByRole('button', { name: 'Bewaar de regeling' }))
     expect(onOpslaan.mock.calls[0][0].eindDatum).toBe('2030-06-30')
@@ -444,7 +444,7 @@ describe('OnderhoudsbijdrageSectie — een ongeldige aanvangsindex', () => {
     // vermenging van basisjaren waar de waarschuwing ernaast voor bestaat.
     const user = userEvent.setup()
     const { onOpslaan } = toon()
-    await user.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
+    await user.click(screen.getByRole('button', { name: 'Bewerk de regeling' }))
     await user.type(screen.getByLabelText('Aanvangsindex uit de akte (optioneel)'), 'abc')
     await user.click(screen.getByRole('button', { name: 'Bewaar de regeling' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('geen geldig getal')
@@ -454,7 +454,7 @@ describe('OnderhoudsbijdrageSectie — een ongeldige aanvangsindex', () => {
   it('aanvaardt een leeg veld gewoon', async () => {
     const user = userEvent.setup()
     const { onOpslaan } = toon()
-    await user.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
+    await user.click(screen.getByRole('button', { name: 'Bewerk de regeling' }))
     await user.click(screen.getByRole('button', { name: 'Bewaar de regeling' }))
     expect(onOpslaan).toHaveBeenCalledTimes(1)
     expect(onOpslaan.mock.calls[0][0].aanvangsindexHandmatig).toBeUndefined()
@@ -519,7 +519,7 @@ describe('OnderhoudsbijdrageSectie — indexcijfers uit twee reeksen', () => {
     // de euro's die als centen gelezen werden.
     const gebruiker = userEvent.setup()
     const props = toon()
-    await gebruiker.click(screen.getByRole('button', { name: 'Wijzig de regeling' }))
+    await gebruiker.click(screen.getByRole('button', { name: 'Bewerk de regeling' }))
     await gebruiker.type(screen.getByLabelText('Aanvangsindex uit de akte (optioneel)'), '112,83')
     await gebruiker.click(screen.getByRole('button', { name: 'Bewaar de regeling' }))
     expect(props.onOpslaan).toHaveBeenCalled()

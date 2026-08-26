@@ -105,7 +105,7 @@ describe('KinderenSectie — een mislukte opslag', () => {
     const user = userEvent.setup()
     toon({ onWijzigen: vi.fn().mockRejectedValue(new Error('database geweigerd')) })
 
-    await user.click(screen.getByRole('button', { name: 'Wijzig gezinslid Ella' }))
+    await user.click(screen.getByRole('button', { name: 'Bewerk gezinslid Ella' }))
     const veld = screen.getByLabelText('Nieuwe naam voor Ella')
     await user.clear(veld)
     await user.type(veld, 'Elise')

@@ -333,8 +333,8 @@ describe('TerugkerendeSectie — het contractformulier', () => {
         onBoek={vi.fn()}
       />,
     )
-    fireEvent.change(screen.getByLabelText('Vaste omschrijving'), { target: { value: 'Autoverzekering' } })
-    fireEvent.change(screen.getByLabelText('Vast bedrag (€)'), { target: { value: '60' } })
+    fireEvent.change(screen.getByLabelText('Omschrijving'), { target: { value: 'Autoverzekering' } })
+    fireEvent.change(screen.getByLabelText('Bedrag (€)'), { target: { value: '60' } })
     fireEvent.change(screen.getByLabelText('Zit hier een contract achter? (optioneel)'), {
       target: { value: 'verzekering' },
     })
@@ -423,8 +423,8 @@ describe('TerugkerendeSectie — het formulier leest wat er staat (ronde 73)', (
     // formulier las er 12 van. Ronde 73 voegde de twee invulwegen samen tot dít
     // formulier, dus de losse regel zou anders stil gewonnen hebben.
     toon([huur])
-    fireEvent.change(screen.getByLabelText('Vaste omschrijving'), { target: { value: 'Test' } })
-    fireEvent.change(screen.getByLabelText('Vast bedrag (€)'), { target: { value: '10' } })
+    fireEvent.change(screen.getByLabelText('Omschrijving'), { target: { value: 'Test' } })
+    fireEvent.change(screen.getByLabelText('Bedrag (€)'), { target: { value: '10' } })
     fireEvent.change(screen.getByLabelText('Dag van de maand'), { target: { value: '12abc' } })
 
     expect(screen.getByRole('button', { name: 'Vaste last toevoegen' })).toHaveAttribute('aria-disabled', 'true')
@@ -432,8 +432,8 @@ describe('TerugkerendeSectie — het formulier leest wat er staat (ronde 73)', (
 
   it('laat een gewone dag gewoon door', () => {
     toon([huur])
-    fireEvent.change(screen.getByLabelText('Vaste omschrijving'), { target: { value: 'Test' } })
-    fireEvent.change(screen.getByLabelText('Vast bedrag (€)'), { target: { value: '10' } })
+    fireEvent.change(screen.getByLabelText('Omschrijving'), { target: { value: 'Test' } })
+    fireEvent.change(screen.getByLabelText('Bedrag (€)'), { target: { value: '10' } })
     fireEvent.change(screen.getByLabelText('Dag van de maand'), { target: { value: '12' } })
 
     expect(screen.getByRole('button', { name: 'Vaste last toevoegen' })).not.toHaveAttribute('aria-disabled', 'true')
@@ -444,8 +444,8 @@ describe('TerugkerendeSectie — het formulier leest wat er staat (ronde 73)', (
     // dat blok. Nu staat ze in het formulier, dus ze geldt op élk scherm. Bewust een
     // waarschuwing: twee gezinsauto's met allebei "Autoverzekering" bestaan echt.
     toon([huur])
-    fireEvent.change(screen.getByLabelText('Vaste omschrijving'), { target: { value: 'Huur' } })
-    fireEvent.change(screen.getByLabelText('Vast bedrag (€)'), { target: { value: '10' } })
+    fireEvent.change(screen.getByLabelText('Omschrijving'), { target: { value: 'Huur' } })
+    fireEvent.change(screen.getByLabelText('Bedrag (€)'), { target: { value: '10' } })
 
     expect(screen.getByText(/al een vaste last die zo heet/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Vaste last toevoegen' })).not.toHaveAttribute('aria-disabled', 'true')
@@ -480,13 +480,13 @@ describe('TerugkerendeSectie — zonder rekening', () => {
   }
 
   it('laat het formulier weg — het kon toch niet opgeslagen worden', () => {
-    // ⚠ WAT HIER MIS WAS. Zonder rekening had de keuzelijst "Vaste rekening" geen
+    // ⚠ WAT HIER MIS WAS. Zonder rekening had de keuzelijst "Rekening" geen
     // enkele optie, bleef `rekeningId` leeg, en stond de opslaanknop dus voor altijd
     // uit — met als reden "Geef een naam en een geldig bedrag om op te slaan.", ook
     // nadat je naam én bedrag had ingevuld. Je zocht je blind naar iets wat je niet
     // kon zien. De weg naar een rekening staat één keer bovenaan het tabblad.
     toonZonderRekening()
-    expect(screen.queryByLabelText('Vaste omschrijving')).toBeNull()
+    expect(screen.queryByLabelText('Omschrijving')).toBeNull()
     expect(screen.queryByRole('button', { name: knopnaam('Bewerken', huur) })).toBeNull()
   })
 
@@ -528,7 +528,7 @@ describe('TerugkerendeSectie — de lege tekst volgt het formulier', () => {
   it('wijst mét rekening wél naar het formulier eronder', () => {
     toonInkomsten(rekeningen)
     expect(screen.getByText(/Vul hieronder je loon in/)).toBeInTheDocument()
-    expect(screen.getByLabelText('Vaste omschrijving')).toBeInTheDocument()
+    expect(screen.getByLabelText('Omschrijving')).toBeInTheDocument()
   })
 })
 
@@ -630,7 +630,7 @@ describe('TerugkerendeSectie — verwijderen vraagt wat eraan hangt', () => {
     expect(onVerwijderen).not.toHaveBeenCalled()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Annuleer/ })).toBeInTheDocument()
-    expect(screen.getByLabelText('Vaste omschrijving')).toHaveValue('Huur')
+    expect(screen.getByLabelText('Omschrijving')).toHaveValue('Huur')
   })
 
   it('laat de focus niet naar <body> vallen wanneer de rij verdwijnt', async () => {
@@ -938,8 +938,33 @@ describe('TerugkerendeSectie — knopnamen bij gelijknamige posten (ronde 82)', 
 // --- Ronde 83: de twee formulieren op Budget → Vast zijn uit elkaar te houden ----
 //
 // Op dat scherm staan twee `TerugkerendePostFormulier`'s onder elkaar, één per soort.
-// Hun twaalf velden heten allemaal hetzelfde. Een formulier met een NAAM is in HTML een
-// landmark: een schermlezer kondigt het aan zodra je erin komt.
+// Hun negen tot veertien velden heten allemaal hetzelfde. Een formulier met een NAAM is
+// in HTML een landmark: een schermlezer kondigt het aan zodra je erin komt.
+
+describe('TerugkerendeSectie — de velden heten gewoon bij hun naam (ronde 88)', () => {
+  it('noemt ze zonder "vast" ervoor', () => {
+    // ⚠ Tot ronde 88 heetten ze "Vaste omschrijving", "Vast bedrag (€)", "Vaste rekening"
+    // en "Vaste categorie". Het voorvoegsel stond er om botsingen te vermijden — en deed
+    // dat nooit waar het nodig was: op dít scherm droegen ALLEBEI de formulieren precies
+    // dezelfde vier namen. Wat ze uit elkaar houdt, is de naam van het formulier.
+    toon([huur])
+    const form = screen.getByRole('form', { name: 'Nieuwe vaste last' })
+    for (const naam of ['Omschrijving', 'Bedrag (€)', 'Rekening', 'Categorie']) {
+      expect(within(form).getByLabelText(naam)).toBeInTheDocument()
+    }
+  })
+
+  it('laat het oude label nergens op het scherm staan', () => {
+    // ⚠ OVER HET HELE SCHERM en niet binnen het formulier (doorlichting ronde 88). Binnen
+    // het formulier kon deze regel niet falen: draai je één label terug, dan valt de lus
+    // hierboven al om. Buiten het formulier vangt ze wél iets — een kaarttitel, een
+    // bijschrift of een tweede formulier dat het oude woord terugbrengt.
+    toon([huur])
+    for (const oud of ['Vaste omschrijving', 'Vast bedrag (€)', 'Vaste rekening', 'Vaste categorie']) {
+      expect(screen.queryByText(oud)).toBeNull()
+    }
+  })
+})
 
 describe('TerugkerendeSectie — welk formulier is dit? (ronde 83)', () => {
   it('geeft het formulier een naam die zegt waar je bent', () => {

@@ -237,7 +237,7 @@ export function OnderhoudsbijdrageSectie({
         {bijdrage.geindexeerd !== false && o.indexConflict === null && (
           <span className="rij-meta" data-reeks>
             {bijdrage.indexreeks === undefined
-              ? t('Gerekend met de {reeks}, de wettelijke reeks. Tot augustus 2026 gebruikte Kompal hier de gezondheidsindex; daardoor kan dit bedrag iets verschillen van vroeger. Noemt je akte uitdrukkelijk de gezondheidsindex, zet ze dan om bij "Wijzig de regeling".', {
+              ? t('Gerekend met de {reeks}, de wettelijke reeks. Tot augustus 2026 gebruikte Kompal hier de gezondheidsindex; daardoor kan dit bedrag iets verschillen van vroeger. Noemt je akte uitdrukkelijk de gezondheidsindex, zet ze dan om bij "Bewerk de regeling".', {
                   reeks: t(reeksinfo(o.reeks).naamInZin),
                 })
               : t('Gerekend met de {reeks}.', { reeks: t(reeksinfo(o.reeks).naamInZin) })}
@@ -261,13 +261,13 @@ export function OnderhoudsbijdrageSectie({
           die pas mét de melding in het document verschijnt, wordt door sommige
           schermlezers niet voorgelezen (zie RapportKaart.tsx). */}
       {/* ⚠ RONDE 66, slotronde: de zin zei "hieronder" terwijl het invulveld ín het
-          dichtgeklapte blok "Wijzig de regeling" zit. De app zei dus precies wat je
+          dichtgeklapte blok "Bewerk de regeling" zit. De app zei dus precies wat je
           moest doen en verzweeg de enige plek waar het kan. Nu noemt ze die plek, en
           staat er een knop die hem in één tik opent. */}
       <p className={kentAlles ? 'rij-meta' : 'foutregel'} role="status" style={{ margin: 0 }}>
         {kentAlles
           ? ''
-          : t('De app kent nog geen indexcijfer voor {maanden}. Ze kent cijfers tot {laatste}. Vul het ontbrekende cijfer zelf in via "Wijzig de regeling", dan is de berekening volledig.', {
+          : t('De app kent nog geen indexcijfer voor {maanden}. Ze kent cijfers tot {laatste}. Vul het ontbrekende cijfer zelf in via "Bewerk de regeling", dan is de berekening volledig.', {
               maanden: o.ontbrekendeMaanden.map((m) => maandJaarLabel(`${m}-01`)).join(', '),
               laatste: maandJaarLabel(`${laatsteIndexmaand(bijdrage.indexreeks)}-01`),
             })}
@@ -314,7 +314,7 @@ export function OnderhoudsbijdrageSectie({
           aria-expanded={toonAfspraak}
           onClick={() => setToonAfspraak((aan) => !aan)}
         >
-          {toonAfspraak ? t('Sluit de regeling') : t('Wijzig de regeling')}
+          {toonAfspraak ? t('Sluit de regeling') : t('Bewerk de regeling')}
         </button>
       </div>
 

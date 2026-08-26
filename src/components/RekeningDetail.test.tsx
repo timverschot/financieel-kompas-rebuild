@@ -265,7 +265,7 @@ describe('RekeningDetail — waarde bijwerken (ronde 38)', () => {
     const onWaardering = vi.fn()
     toon({ onWaardering })
 
-    await gebruiker.click(screen.getByText('Waarde bijwerken'))
+    await gebruiker.click(screen.getByText('Waarde bewerken'))
     await gebruiker.clear(screen.getByLabelText('Op welke dag?'))
     await gebruiker.type(screen.getByLabelText('Op welke dag?'), '2026-07-15')
     await gebruiker.type(screen.getByLabelText('Werkelijke waarde (€)'), '1234,56')
@@ -280,7 +280,7 @@ describe('RekeningDetail — waarde bijwerken (ronde 38)', () => {
   it('houdt de knop uit zolang er geen bedrag staat, en zegt waarom', async () => {
     const gebruiker = userEvent.setup()
     toon()
-    await gebruiker.click(screen.getByText('Waarde bijwerken'))
+    await gebruiker.click(screen.getByText('Waarde bewerken'))
 
     // Bewust aria-disabled en niet disabled: een echt uitgeschakelde knop krijgt
     // geen focus, dus wie met een toetsenbord werkt zou nooit horen waaróm hij niet
@@ -301,7 +301,7 @@ describe('RekeningDetail — waarde bijwerken (ronde 38)', () => {
   it('somt eerder vastgelegde waarderingen op', async () => {
     const gebruiker = userEvent.setup()
     toon({ waarderingen: [{ id: 'w1', rekeningId: 'r1', datum: '2026-01-01', saldo: 5000, notitie: 'start' }] })
-    await gebruiker.click(screen.getByText('Waarde bijwerken'))
+    await gebruiker.click(screen.getByText('Waarde bewerken'))
     expect(screen.getByText('Eerder vastgelegd')).toBeInTheDocument()
     expect(screen.getByText('start')).toBeInTheDocument()
   })

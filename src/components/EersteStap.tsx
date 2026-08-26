@@ -33,8 +33,8 @@ export function EersteStap({
             toekomt" heeft een spaarrekening of cash nodig, en die heeft niet
             iedereen. */}
         {hier
-          ? t('Loop de blokken hieronder door: je rekeningen, je vaste lasten en je abonnementen. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is — nog vóór je één boeking ingeeft.')
-          : t('Loop "Je situatie" door: je rekeningen, je vaste lasten en je abonnementen. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is — nog vóór je één boeking ingeeft.')}
+          ? t('Loop de blokken hieronder door: je rekeningen, je vaste lasten en je sluipende lasten — de kleine abonnementen waar je niet meer naar omkijkt. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is, nog vóór je één boeking ingeeft.')
+          : t('Loop "Je situatie" door: je rekeningen, je vaste lasten en je sluipende lasten — de kleine abonnementen waar je niet meer naar omkijkt. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is, nog vóór je één boeking ingeeft.')}
       </p>
       <div className="knoprij">
         {/* ⚠ Op de pagina waar je toch al staat is dit NIET de gevulde knop: het

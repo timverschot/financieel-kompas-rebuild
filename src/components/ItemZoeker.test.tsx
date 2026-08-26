@@ -289,7 +289,7 @@ describe('ItemZoeker — de keuzeknop naast een gekozen subcategorie', () => {
     expect(screen.getByRole('button', { name: /hoofdcategorie/i })).toBeInTheDocument()
   })
 
-  it('geeft met "wissen" de weg terug, en houdt je getypte tekst', async () => {
+  it('geeft met "opnieuw kiezen" de weg terug, en houdt je getypte tekst', async () => {
     // ⚠ Zonder deze knop zou "een afgemaakte keuze is geen vraag meer" veranderd zijn
     // in "een afgemaakte keuze is definitief": breed taggen kon dan niet meer.
     const user = userEvent.setup()
@@ -297,7 +297,7 @@ describe('ItemZoeker — de keuzeknop naast een gekozen subcategorie', () => {
     const onTekst = vi.fn()
     zetNeer({ waarde: 'Brood (wit)', categorieId: BROOD, onKiesHoofdcategorie: vi.fn(), onWis, onTekst })
 
-    await user.click(screen.getByRole('button', { name: 'wissen' }))
+    await user.click(screen.getByRole('button', { name: 'opnieuw kiezen' }))
 
     expect(onWis).toHaveBeenCalled()
     // De omschrijving is jouw eigen tekst en blijft staan.
@@ -305,11 +305,30 @@ describe('ItemZoeker — de keuzeknop naast een gekozen subcategorie', () => {
     expect(screen.getByLabelText('Subcategorie zoeken')).toHaveValue('Brood (wit)')
   })
 
-  it('zet de cursor na "wissen" meteen terug in het zoekveld', async () => {
+  // ⚠ RONDE 86 — ROOD IS VOOR WEGGOOIEN, NIET VOOR RECHTZETTEN.
+  //
+  // Timothy, na echt gebruik: *"De knop is rood en vet naast een grijze regel van 13 px
+  // — de wegwerpknop weegt visueel zwaarder dan de informatie ernaast."* De oorzaak zat
+  // dieper dan de opmaak: de knop droeg `knop-gevaar`, de klasse waarmee deze app
+  // VERWIJDEREN aanduidt. Nageteld droegen drieënveertig van de zesenveertig knoppen met
+  // die klasse een naam als "Verwijderen", "Ja, verwijder" of "Weggooien". Deze knop
+  // gooit niets weg: ze zet je keuze terug op leeg en het zoekveld staat meteen klaar.
+  it('draagt geen wegwerpkleur — opnieuw kiezen zet iets terug, het gooit niets weg', () => {
+    zetNeer({ waarde: 'Brood (wit)', categorieId: BROOD, onKiesHoofdcategorie: vi.fn(), onWis: vi.fn() })
+    const knop = screen.getByRole('button', { name: 'opnieuw kiezen' })
+    expect(knop.classList.contains('knop-gevaar')).toBe(false)
+    expect(knop.classList.contains('knop-terzijde')).toBe(true)
+    // ⚠ En `knop-klein` blijft staan: díé klasse draagt op een aanraakscherm de
+    // 44 px-regel (`@media (pointer: coarse)` in index.css). Zonder haar zou deze knop
+    // op een telefoon terugvallen naar ~33 px — de meting van ronde 78 ongedaan.
+    expect(knop.classList.contains('knop-klein')).toBe(true)
+  })
+
+  it('zet de cursor na "opnieuw kiezen" meteen terug in het zoekveld', async () => {
     const user = userEvent.setup()
     zetNeer({ waarde: 'Brood (wit)', categorieId: BROOD, onKiesHoofdcategorie: vi.fn(), onWis: vi.fn() })
 
-    await user.click(screen.getByRole('button', { name: 'wissen' }))
+    await user.click(screen.getByRole('button', { name: 'opnieuw kiezen' }))
 
     expect(document.activeElement).toBe(screen.getByLabelText('Subcategorie zoeken'))
   })
@@ -339,7 +358,7 @@ describe('ItemZoeker — de keuzeknop naast een gekozen subcategorie', () => {
     expect(screen.getByLabelText('Subcategorie zoeken')).not.toHaveAttribute('aria-describedby')
   })
 
-  it('geeft elke ticketregel een eigen naam voor "wissen"', () => {
+  it('geeft elke ticketregel een eigen naam voor "opnieuw kiezen"', () => {
     // ⚠ Huisregel sinds ronde 66: twee bedieningen met dezelfde toegankelijke naam op
     // één scherm zijn een fout. Een gesplitst kassaticket heeft er meerdere onder
     // elkaar, en de buren op dezelfde rij dragen hun nummer al.
@@ -349,13 +368,13 @@ describe('ItemZoeker — de keuzeknop naast een gekozen subcategorie', () => {
         <ItemZoeker waarde="Brood (wit)" categorieId={BROOD} nummer={2} onTekst={vi.fn()} onKiesItem={vi.fn()} onWis={vi.fn()} onKiesHoofdcategorie={vi.fn()} />
       </>,
     )
-    expect(screen.getByRole('button', { name: 'Categorie van regel 1 wissen' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Categorie van regel 2 wissen' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Categorie van regel 1 opnieuw kiezen' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Categorie van regel 2 opnieuw kiezen' })).toBeInTheDocument()
   })
 
   it('haalt de vermelding weg zolang het toevoegpaneeltje openstaat', async () => {
     // ⚠ Zwevend is niet hetzelfde als weg. Het paneeltje zweeft over deze regel heen,
-    // en één tik op "wissen" die je niet meer zag, haalt je categorie weg terwijl je
+    // en één tik op "opnieuw kiezen" die je niet meer zag, haalt je categorie weg terwijl je
     // een nieuwe aan het maken bent.
     const user = userEvent.setup()
     zetNeer({ waarde: 'roggebrood', categorieId: BROOD, nummer: 1, onWis: vi.fn(), onKiesHoofdcategorie: vi.fn() })
@@ -376,7 +395,7 @@ describe('ItemZoeker — de voorstellenlijst bij een afgemaakte keuze (ronde 78)
     // ⚠ Twee stille gevolgen als ze dat wél deed. (1) Je kreeg onder je eigen keuze een
     // lijst met diezelfde "Brood (wit)" én "+ toevoegen aan …" — een uitnodiging om een
     // duplicaat van jezelf te maken. (2) Tab KIEST in een open lijst; de eerste Tab op
-    // weg naar "wissen" veranderde dus je categorie.
+    // weg naar "opnieuw kiezen" veranderde dus je categorie.
     const user = userEvent.setup()
     zetNeer({ waarde: 'Brood (wit)', categorieId: BROOD, nummer: 1, onWis: vi.fn(), onKiesHoofdcategorie: vi.fn() })
 
@@ -393,7 +412,7 @@ describe('ItemZoeker — de voorstellenlijst bij een afgemaakte keuze (ronde 78)
     expect(await screen.findByRole('listbox')).toBeInTheDocument()
   })
 
-  it('brengt Tab naar "wissen" in plaats van je keuze te veranderen', async () => {
+  it('brengt Tab naar "opnieuw kiezen" in plaats van je keuze te veranderen', async () => {
     const user = userEvent.setup()
     const onKiesItem = vi.fn()
     zetNeer({ waarde: 'Brood (wit)', categorieId: BROOD, nummer: 1, onKiesItem, onWis: vi.fn(), onKiesHoofdcategorie: vi.fn() })
@@ -402,11 +421,11 @@ describe('ItemZoeker — de voorstellenlijst bij een afgemaakte keuze (ronde 78)
     await user.tab()
 
     expect(onKiesItem).not.toHaveBeenCalled()
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Categorie van regel 1 wissen' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Categorie van regel 1 opnieuw kiezen' }))
   })
 
-  it('sluit met "wissen" ook een lijst die al openstond', async () => {
-    // Wijkt je tekst af van je keuze, dan staat de lijst open. Bleef ze na "wissen"
+  it('sluit met "opnieuw kiezen" ook een lijst die al openstond', async () => {
+    // Wijkt je tekst af van je keuze, dan staat de lijst open. Bleef ze na "opnieuw kiezen"
     // staan, dan koos de eerstvolgende Tab er alsnog iets uit.
     const user = userEvent.setup()
     function Schil() {
@@ -428,7 +447,7 @@ describe('ItemZoeker — de voorstellenlijst bij een afgemaakte keuze (ronde 78)
     await user.click(screen.getByLabelText('Subcategorie zoeken'))
     expect(await screen.findByRole('listbox')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Categorie van regel 1 wissen' }))
+    await user.click(screen.getByRole('button', { name: 'Categorie van regel 1 opnieuw kiezen' }))
     expect(screen.queryByRole('listbox')).toBeNull()
   })
 
@@ -473,8 +492,8 @@ describe('ItemZoeker — de voorstellenlijst bij een afgemaakte keuze (ronde 78)
     expect(screen.queryByRole('button', { name: /hoofdcategorie/i })).toBeNull()
   })
 
-  it('zet na "wissen" niet meteen terug wat je net wiste', async () => {
-    // ⚠ "wissen" zet de cursor terug in het veld. Opende dat de lijst weer, dan koos de
+  it('zet na "opnieuw kiezen" niet meteen terug wat je net wiste', async () => {
+    // ⚠ "opnieuw kiezen" zet de cursor terug in het veld. Opende dat de lijst weer, dan koos de
     // eerstvolgende Tab precies het item dat je zonet had weggehaald — en dan is de weg
     // terug geen weg terug.
     //
@@ -500,7 +519,7 @@ describe('ItemZoeker — de voorstellenlijst bij een afgemaakte keuze (ronde 78)
     }
     render(<Schil />)
 
-    await user.click(screen.getByRole('button', { name: 'Categorie van regel 1 wissen' }))
+    await user.click(screen.getByRole('button', { name: 'Categorie van regel 1 opnieuw kiezen' }))
     expect(screen.queryByRole('listbox')).toBeNull()
     await user.tab()
     expect(onKiesItem).not.toHaveBeenCalled()

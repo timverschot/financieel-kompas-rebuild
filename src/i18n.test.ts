@@ -502,3 +502,87 @@ describe('vertaaltabellen — wat kost elk gezinslid', () => {
     ).toContain('TA part')
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 89 — één woord per ding, óók in het Engels en het Frans
+//
+// ⚠ `woordenschat.test.ts` leest alleen de NEDERLANDSE sleutels, en dat is precies
+// de opening waar dit project al drie rondes tegenaan liep (81, 83, 88): in het
+// Nederlands stond overal "vaste last", terwijl de Engelse tabel er intussen
+// *recurring income* (vijf keer), *recurring costs*, *recurring entries* én
+// *recurring item* van maakte, náást het gewone *fixed cost* — en "entry" is in deze
+// app het woord voor een BOEKING. Tien vertalingen in totaal, acht Engelse en twee
+// Franse. Deze controles lezen de WAARDEN, niet de sleutels.
+// ---------------------------------------------------------------------------
+
+describe('vertaaltabellen — één woord per ding in EN en FR (ronde 89)', () => {
+  /** Elke vertaling in één taal, om er een patroon overheen te leggen. */
+  const waarden = (taal: 'en' | 'fr') => vertaalSleutels(taal).map((k) => vertaal(taal, k))
+
+  it('noemt een vaste last in het Engels overal "fixed cost", nooit "recurring"', () => {
+    expect(waarden('en').filter((v) => /recurring/i.test(v))).toEqual([])
+    // ⚠ EN POSITIEF, PER SLEUTEL (doorlichting ronde 89). Alleen het woord "recurring"
+    // verbieden laat "standing charge" of "regular cost" gewoon door — en dan is het
+    // probleem terug onder een andere naam. Élke sleutel die in het Nederlands "vaste
+    // last" zegt, moet in het Engels "fixed cost" zeggen. Nageteld: dat zijn er
+    // zevenenzeventig, en alle zevenenzeventig halen het vandaag.
+    const zonder = vertaalSleutels('en')
+      .filter((k) => /vaste last/i.test(k))
+      .filter((k) => !/fixed cost/i.test(vertaal('en', k)))
+    expect(zonder).toEqual([])
+    expect(vertaalSleutels('en').filter((k) => /vaste last/i.test(k)).length).toBeGreaterThan(50)
+  })
+
+  it('noemt een vaste last in het Frans overal "charge fixe", nooit "récurrent"', () => {
+    expect(waarden('fr').filter((v) => /récurrent/i.test(v))).toEqual([])
+    const zonder = vertaalSleutels('fr')
+      .filter((k) => /vaste last/i.test(k))
+      .filter((k) => !/charges? ?(\(s\))? ?fixes?(\(s\))?/i.test(vertaal('fr', k)))
+    expect(zonder).toEqual([])
+  })
+
+  it('zet in het Engels "Update" op een opslaanknop en "Edit" op een openknop', () => {
+    // ⚠ Het Nederlands maakt dat onderscheid al: "{Ding} wijzigen" slaat op, "Bewerk
+    // {ding} {naam}" en "{Ding} bewerken" openen. VIER Engelse waarden zeiden "Change" —
+    // "Hoofdcategorie wijzigen", "Beweging wijzigen", "Lening wijzigen" en "Garantie
+    // wijzigen" — een derde werkwoord voor dezelfde beweging.
+    //
+    // ⚠ ALLEBEI DE KANTEN VAN ELKE SLEUTEL (doorlichting ronde 89). De eerste versie keek
+    // alleen naar `/^Bewerk/` en `/ wijzigen$/`, en liet daardoor de twee GROOTSTE groepen
+    // ongemoeid: het kale "Wijzigen" (de opslaanknop onder élk boekingsformulier, die geen
+    // spatie vóór "wijzigen" heeft) en de zeven venstertitels op "… bewerken".
+    const fout: string[] = []
+    for (const k of vertaalSleutels('en')) {
+      const en = vertaal('en', k)
+      if (/(^|\s)wijzigen$/i.test(k) && !/^Update\b/.test(en)) fout.push(`${k} → ${en}`)
+      if (/^Bewerk(en)?\b|\sbewerken$/i.test(k) && !/^Edit\b/.test(en)) fout.push(`${k} → ${en}`)
+    }
+    expect(fout).toEqual([])
+    // ⚠ POSITIEF: allebei de families bestaan écht, dus deze test loopt niet over niets —
+    // en het kale "Wijzigen" staat er apart bij, want dat is de enige sleutel van de
+    // opslaanfamilie zonder voorvoegsel.
+    expect(vertaal('en', 'Vaste last wijzigen')).toBe('Update fixed cost')
+    expect(vertaal('en', 'Wijzigen')).toBe('Update')
+    expect(vertaal('en', 'Bewerken')).toBe('Edit')
+    expect(vertaal('en', 'Boeking bewerken')).toBe('Edit entry')
+  })
+
+  it('gebruikt in het Frans overal "Modifier" voor allebei die families', () => {
+    // Het Frans onderscheidt ze niet, en dat is daar de gewone vorm — maar dan wel
+    // consequent: geen "Changer" of "Éditer" ertussen.
+    // ⚠ ALLEEN `Modifier` (doorlichting ronde 89). De eerste versie liet ook `Mettre`
+    // toe, en die tak ving niets: geen enkele sleutel in dit bereik begon ermee. Ze liet
+    // wél toe dat iemand morgen "Mettre à jour la charge fixe" schrijft — precies waar de
+    // naam van deze test "overal Modifier" belooft.
+    const fout: string[] = []
+    for (const k of vertaalSleutels('fr')) {
+      const fr = vertaal('fr', k)
+      if ((/(^|\s)wijzigen$/i.test(k) || /^Bewerk(en)?\b|\sbewerken$/i.test(k)) && !/^Modifier\b/.test(fr)) {
+        fout.push(`${k} → ${fr}`)
+      }
+    }
+    expect(fout).toEqual([])
+    expect(vertaal('fr', 'Vaste last wijzigen')).toBe('Modifier la charge fixe')
+    expect(vertaal('fr', 'Wijzigen')).toBe('Modifier')
+  })
+})

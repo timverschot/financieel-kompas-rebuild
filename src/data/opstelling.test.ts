@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { INGEBOUWDE_CATEGORIEEN } from './categorieen/ingebouwd'
-import { KLASSIEKE_VASTE_KOSTEN, OPSTELLING_CATEGORIE_IDS, SLUIPENDE_KOSTEN } from './opstelling'
+import { KLASSIEKE_VASTE_KOSTEN, OPSTELLING_CATEGORIE_IDS, SLUIPEND_ANDERS, SLUIPENDE_KOSTEN } from './opstelling'
 import { vertaalSleutels } from '../i18n'
 
 // Alle id's die in de echte boom voorkomen, op alle drie de niveaus.
@@ -69,7 +69,7 @@ describe('de aanvinklijsten van De Opstelling', () => {
   it('laat de categorieën van de twee lijsten elkaar niet overlappen', () => {
     // "Waarvan sluipend" herkent een post aan haar categorie. Zat een klassieke
     // kost in dezelfde categorie als een abonnement, dan telde je huur mee als
-    // sluipende kost.
+    // sluipende last.
     const vast = new Set(KLASSIEKE_VASTE_KOSTEN.map((k) => k.categorieId))
     expect(SLUIPENDE_KOSTEN.filter((k) => vast.has(k.categorieId))).toEqual([])
   })
@@ -77,5 +77,40 @@ describe('de aanvinklijsten van De Opstelling', () => {
   it('houdt de twee lijsten gescheiden', () => {
     const vast = new Set(KLASSIEKE_VASTE_KOSTEN.map((k) => k.sleutel))
     expect(SLUIPENDE_KOSTEN.filter((k) => vast.has(k.sleutel))).toEqual([])
+  })
+
+  // ⚠ RONDE 84, doorlichting — DE VRIJE RIJ VIEL BUITEN ELKE CONTROLE HIERBOVEN.
+  // `SLUIPEND_ANDERS` staat bewust niet in `SLUIPENDE_KOSTEN`, en elke test hierboven
+  // loopt over die twee lijsten. Gevolg: zij was de enige rij van dit scherm zonder
+  // vangnet — geen naamcontrole, geen unieke sleutel, geen vertaalcontrole. Precies de
+  // rij die deze ronde toevoegde. Ze verschijnt op het scherm naast de andere achttien,
+  // dus ze hoort aan dezelfde eisen te voldoen.
+  describe('de rij "Een andere sluipende last"', () => {
+    it('heeft een naam en een teken', () => {
+      expect(SLUIPEND_ANDERS.naam.trim()).not.toBe('')
+      expect(SLUIPEND_ANDERS.icoon.trim()).not.toBe('')
+    })
+
+    it('draagt een sleutel die nergens anders voorkomt', () => {
+      const alle = new Set([...KLASSIEKE_VASTE_KOSTEN, ...SLUIPENDE_KOSTEN].map((k) => k.sleutel))
+      expect(alle.has(SLUIPEND_ANDERS.sleutel)).toBe(false)
+    })
+
+    it('bestaat in het Engels en het Frans', () => {
+      expect(new Set(vertaalSleutels('en')).has(SLUIPEND_ANDERS.naam)).toBe(true)
+      expect(new Set(vertaalSleutels('fr')).has(SLUIPEND_ANDERS.naam)).toBe(true)
+    })
+
+    it('vult GEEN categorie voor je in — dat is de kern van de oplossing', () => {
+      // ⚠ Zou deze rij een categorie kiezen, dan raadt de app iets over jouw abonnement
+      // en moet jij het achteraf rechtzetten. Het lege veld is hier de functie, niet een
+      // vergetelheid; zonder deze test verdwijnt dat verschil bij de eerste opruimbeurt.
+      expect(SLUIPEND_ANDERS.categorieId).toBe('')
+    })
+
+    it('is de enige rij waarvan de naam een kop is en geen voorinvulling', () => {
+      expect(SLUIPEND_ANDERS.vrijeNaam).toBe(true)
+      expect([...KLASSIEKE_VASTE_KOSTEN, ...SLUIPENDE_KOSTEN].filter((k) => k.vrijeNaam)).toEqual([])
+    })
   })
 })

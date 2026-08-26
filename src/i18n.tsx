@@ -32,9 +32,9 @@ const en: Record<string, string> = {
   'Nog geen boekingen. Hier komt elke uitgave en elke inkomst te staan die je ingeeft.':
     'No entries yet. Every expense and every bit of income you enter will appear here.',
   // Ronde 66 — slotronde, tweede reeks
-  'Stel je gezinsleden in': 'Set up your household members',
+  'Stel je gezinsleden in': 'Set up your family members',
   'Je hebt nog geen gezinsleden ingesteld. Zodra ze er zijn, kan je ze bij een boeking of bij een gedeelde kost aanduiden — en verschijnt hier per gezinslid wat het kost.':
-    'You have not set up any household members yet. Once they exist you can tag them on an entry or on a shared cost — and this page will show what each of them costs.',
+    'You have not set up any family members yet. Once they exist you can tag them on an entry or on a shared cost — and this page will show what each of them costs.',
   'Maak eerst een rekening aan — een vaste last moet ergens vanaf gaan.':
     'Create an account first — a fixed cost has to come out of something.',
   'Maak eerst een rekening aan — een vaste last of een vaste inkomst moet ergens vanaf gaan of op binnenkomen.':
@@ -78,11 +78,11 @@ const en: Record<string, string> = {
   'Kosten delen met een co-ouder': 'Share costs with a co-parent',
   'Een lening bijhouden': 'Track a loan',
   'Een aankoop met garantie bijhouden': 'Track a purchase with a warranty',
-  'De app kent nog geen indexcijfer voor {maanden}. Ze kent cijfers tot {laatste}. Vul het ontbrekende cijfer zelf in via "Wijzig de regeling", dan is de berekening volledig.':
-    'The app does not know an index figure for {maanden} yet. It knows figures up to {laatste}. Enter the missing figure yourself via "Change the arrangement" and the calculation will be complete.',
+  'De app kent nog geen indexcijfer voor {maanden}. Ze kent cijfers tot {laatste}. Vul het ontbrekende cijfer zelf in via "Bewerk de regeling", dan is de berekening volledig.':
+    'The app does not know an index figure for {maanden} yet. It knows figures up to {laatste}. Enter the missing figure yourself via "Edit the arrangement" and the calculation will be complete.',
   'Vul het indexcijfer in': 'Enter the index figure',
   'Nog geen vaste inkomsten. Zodra je een rekening hebt, vul je hier je loon in.':
-    'No recurring income yet. As soon as you have an account, you enter your salary here.',
+    'No fixed income yet. As soon as you have an account, you enter your salary here.',
   // Ronde 66 — slotronde, zesde reeks
   'Afrekening {datum} is overgemaakt': 'Settlement of {datum} has been transferred',
   'Kopieer de afrekening van {datum}': 'Copy the settlement of {datum}',
@@ -99,7 +99,7 @@ const en: Record<string, string> = {
   'beweging': 'movement',
   'Deelbedrag {n}': 'Part amount {n}',
   // Ronde 78 — één per kassaticketregel, dus mét het nummer erbij.
-  'Categorie van regel {n} wissen': 'Clear the category of line {n}',
+  'Categorie van regel {n} opnieuw kiezen': 'Pick the category of line {n} again',
   'Je hebt minstens twee rekeningen nodig om over te boeken.': 'You need at least two accounts to transfer between them.',
   // Ronde 67 — een nieuwe tak aanmaken vanuit het boekingsvenster
   'Kies eerst een hoofdcategorie.': 'Pick a main category first.',
@@ -197,7 +197,7 @@ const en: Record<string, string> = {
   // De uitlegblokken
   'Wat betekenen deze vier cijfers?': 'What do these four figures mean?',
   'Saldo is de stand van al je rekeningen samen, vandaag. Dat cijfer verandert niet mee met de maand die je bovenaan koos — het is wat er nú staat.':
-    'Balance is the standing of all your accounts together, today. That figure does not follow the month you picked at the top — it is what is there right now.',
+    'Balance is what all your accounts hold together, today. That figure does not follow the month you picked at the top — it is what is there right now.',
   'Inkomsten, Uitgaven en Netto gaan wél over de gekozen maand. Netto is inkomsten min uitgaven: wat je die maand overhield of tekortkwam. Tik op een van de drie om de boekingen erachter te zien.':
     'Income, Expenses and Net do follow the month you picked. Net is income minus expenses: what you had left over or fell short that month. Tap any of the three to see the entries behind it.',
   'Wat kan je hier bijhouden?': 'What can you keep track of here?',
@@ -236,7 +236,7 @@ const en: Record<string, string> = {
   // De drie lagen van de categorieboom
   'Naam hoofdcategorie': 'Main category name',
   'Hoofdcategorie toevoegen': 'Add main category',
-  'Hoofdcategorie wijzigen': 'Change main category',
+  'Hoofdcategorie wijzigen': 'Update main category',
   'Hoofdcategorie bewerken': 'Edit main category',
   'Nieuwe hoofdcategorie': 'New main category',
   'Bewerk hoofdcategorie {naam}': 'Edit main category {naam}',
@@ -270,8 +270,8 @@ const en: Record<string, string> = {
   'Zet je eerste budget': 'Set your first budget',
   'Maak een rekening aan': 'Create an account',
   'Vul je vaste lasten in': 'Enter your fixed costs',
-  'Loop de blokken hieronder door: je rekeningen, je vaste lasten en je abonnementen. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is — nog vóór je één boeking ingeeft.':
-    'Work through the blocks below: your accounts, your fixed costs and your subscriptions. After ten minutes you know what is committed every month and what you are worth — before you enter a single entry.',
+  'Loop de blokken hieronder door: je rekeningen, je vaste lasten en je sluipende lasten — de kleine abonnementen waar je niet meer naar omkijkt. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is, nog vóór je één boeking ingeeft.':
+    'Work through the blocks below: your accounts, your fixed costs and your small subscriptions — the little ones you stop looking at. After ten minutes you know what is committed every month and what you are worth, before you enter a single entry.',
   'Nog geen gezinsleden ingesteld. Vul hieronder een naam in; daarna kan je er kosten, doelen en garanties aan koppelen.':
     'No family members set up yet. Enter a name below; after that you can attach costs, goals and warranties to them.',
   'Nog geen budgetten ingesteld. Op de Budget-pagina zet je een grens op een categorie.':
@@ -294,7 +294,7 @@ const en: Record<string, string> = {
   'per half jaar': 'per half-year',
   '{n} vaste last(en) verliezen hun categorie.': '{n} fixed cost(s) lose their category.',
   '{n} gedeelde kost(en) in een dossier verliezen hun categorie.': '{n} shared cost(s) in a case lose their category.',
-  '{n} post(en) op een kindrekening verliezen hun categorie.': '{n} movement(s) on a child account lose their category.',
+  '{n} post(en) op een kindrekening verliezen hun categorie.': '{n} movement(s) on a children’s account lose their category.',
   '{n} dossier(s) hebben hiervoor een eigen verdeelsleutel — die valt terug op de dossierstandaard, en dan verandert je afrekeningsbedrag.':
     '{n} case(s) have their own split for this — that falls back to the case default, and then your settlement amount changes.',
   // Ronde 65 — fouten die zichzelf verbergen
@@ -344,7 +344,7 @@ const en: Record<string, string> = {
     'If you delete the member, it stays as a nameless reference everywhere it is already used. Archiving only takes it out of the pickers and leaves every name in place.',
   '{n} gedeelde kost(en) in een dossier': '{n} shared cost(s) in a case',
   '{n} afrekening(en)': '{n} settlement(s)',
-  '{n} post(en) op een kindrekening': '{n} movement(s) on a child account',
+  '{n} post(en) op een kindrekening': '{n} movement(s) on a children’s account',
   '{n} spaardoel(en)': '{n} savings goal(s)',
   '{n} lening(en)': '{n} loan(s)',
   '{n} garantie(s)': '{n} warranty/warranties',
@@ -369,7 +369,7 @@ const en: Record<string, string> = {
   'Vooruit': 'Ahead',
   'Af en toe': 'Now and then',
   // Een dossier verwijderen, met de vraag ervóór (ronde 59)
-  '{n} kindrekening(en)': '{n} child account(s)',
+  '{n} kindrekening(en)': '{n} children’s account(s)',
   'Dit dossier verwijderen?': 'Delete this case?',
   'Nee, behouden': 'No, keep it',
   'Je staat op het punt {naam} te verwijderen, met alles wat eraan hangt:': 'You are about to delete {naam}, along with everything attached to it:',
@@ -377,14 +377,14 @@ const en: Record<string, string> = {
   'Er staat nog niets in dit dossier.': 'There is nothing in this case yet.',
   '{n} gedeelde kost(en)': '{n} shared cost(s)',
   '{n} verrekening(en)': '{n} settlement(s)',
-  '{n} post(en) op de kindrekening': '{n} movement(s) on the child account',
+  '{n} post(en) op de kindrekening': '{n} movement(s) on the children’s account',
   '{n} regeling(en) voor de onderhoudsbijdrage': '{n} maintenance arrangement(s)',
   '{n} betaling(en) van de onderhoudsbijdrage': '{n} maintenance payment(s)',
   '{n} bewaard(e) document(en) — bonnen, scans, overeenkomsten': '{n} stored document(s) — receipts, scans, agreements',
   // Indexreeksen bij de onderhoudsbijdrage (ronde 58)
   'Kompal rekende de onderhoudsbijdrage van {dossier} vroeger met de gezondheidsindex. De wet noemt de consumptieprijzen, en daar rekent de app nu mee — het bedrag kan daardoor verschillen. Open de regeling en bevestig welke index in je akte staat.': 'Kompal used to calculate the maintenance contribution for {dossier} with the health index. The law names the consumer price index, which the app now uses — so the amount may differ. Open the arrangement and confirm which index your deed names.',
   'Gerekend met de {reeks}.': 'Calculated with the {reeks}.',
-  'Gerekend met de {reeks}, de wettelijke reeks. Tot augustus 2026 gebruikte Kompal hier de gezondheidsindex; daardoor kan dit bedrag iets verschillen van vroeger. Noemt je akte uitdrukkelijk de gezondheidsindex, zet ze dan om bij "Wijzig de regeling".': 'Calculated with the {reeks}, the series the law prescribes. Until August 2026 Kompal used the health index here, so this amount may differ slightly from before. If your deed explicitly names the health index, switch it under "Change the arrangement".',
+  'Gerekend met de {reeks}, de wettelijke reeks. Tot augustus 2026 gebruikte Kompal hier de gezondheidsindex; daardoor kan dit bedrag iets verschillen van vroeger. Noemt je akte uitdrukkelijk de gezondheidsindex, zet ze dan om bij "Bewerk de regeling".': 'Calculated with the {reeks}, the series the law prescribes. Until August 2026 Kompal used the health index here, so this amount may differ slightly from before. If your deed explicitly names the health index, switch it under "Edit the arrangement".',
   'Je eigen indexcijfers stonden in de vorige reeks en zijn verwijderd. Zet ze opnieuw met cijfers uit de {nieuw}.': 'Your own index figures were in the previous series and have been removed. Enter them again using figures from the {nieuw}.',
   'Je eerdere indexcijfers kwamen uit de {oud} en zijn verwijderd. Zet ze opnieuw met cijfers uit de {nieuw}.': 'Your earlier index figures came from the {oud} and have been removed. Enter them again using figures from the {nieuw}.',
   'Zodra je bewaart, rekent de app alle bedragen opnieuw met deze reeks. Je eigen indexcijfers stonden in de vorige reeks en worden dan verwijderd.': 'Once you save, the app recalculates every amount with this series. Your own index figures were in the previous series and will be removed.',
@@ -470,7 +470,7 @@ const en: Record<string, string> = {
   'Inkomsten': 'Income',
   'Uitgaven': 'Expenses',
   'Netto': 'Net',
-  'Inkomsten per categorie': 'Income per category',
+  'Inkomsten per categorie': 'Income by category',
   // App — rekeningen
   'Rekeningen': 'Accounts',
   'startsaldo {saldo}': 'starting balance {saldo}',
@@ -556,7 +556,7 @@ const en: Record<string, string> = {
   'Zo lang kom je toe': 'How long you can get by',
   'Netto vermogen': 'Net worth',
   '{n} maanden': '{n} months',
-  'Je sluipende kosten zijn {maand} per maand, oftewel {jaar} per jaar.': 'Your small subscriptions come to {maand} a month, or {jaar} a year.',
+  'Je sluipende lasten zijn {maand} per maand, oftewel {jaar} per jaar.': 'Your small subscriptions come to {maand} a month, or {jaar} a year.',
   'Ingevulde blokken': 'Blocks filled in',
   'Je hebt alle blokken ingevuld. Je kan hier altijd terugkomen om iets bij te werken.': 'You have filled in every block. You can always come back here to update something.',
   '{klaar} van {totaal} blokken ingevuld. Wat je overslaat, kan je later nog aanvullen.': '{klaar} of {totaal} blocks filled in. Whatever you skip, you can add later.',
@@ -565,7 +565,7 @@ const en: Record<string, string> = {
   'Je geld': 'Your money',
   'Voor later': 'For later',
   'Vaste lasten': 'Fixed costs',
-  'Sluipende kosten': 'Small subscriptions',
+  'Sluipende lasten': 'Small subscriptions',
   'Je gezin': 'Your family',
   'Delen': 'Sharing',
   'Waar staat je geld?': 'Where is your money?',
@@ -580,7 +580,9 @@ const en: Record<string, string> = {
   'Beleggingen, een termijnrekening, pensioensparen. Kies bij Type "Effectenrekening" of "Termijnrekening"; je kan de waarde later bijwerken bij de rekening zelf.': 'Investments, a term account, pension savings. Pick "Securities account" or "Term account" under Type; you can update the value later on the account itself.',
   'Nog niets voor later ingegeven.': 'Nothing set aside for later yet.',
   'Je vaste lasten': 'Your fixed costs',
-  'Je sluipende kosten': 'Your small subscriptions',
+  // Ronde 84 — je eigen abonnement toevoegen
+  'Je sluipende lasten': 'Your small subscriptions',
+  'Een andere sluipende last': 'Another small subscription',
   'Naar Dossiers': 'To Cases',
   'Deel je kosten met iemand?': 'Do you share costs with someone?',
   'Bijvoorbeeld met de andere ouder van je kinderen. Kompal houdt dan bij wie wat betaalde en rekent het voor je af.': 'With the other parent of your children, for instance. Kompal then tracks who paid what and settles it for you.',
@@ -591,8 +593,8 @@ const en: Record<string, string> = {
   'Nog geen inkomsten deze maand.': 'No income this month yet.',
   'Zodra je een rekening hebt toegevoegd, zie je hier hoe je bezit evolueert.': 'Once you have added an account, you will see how your assets evolve here.',
   'Je hebt nog geen vaste lasten ingesteld. Zonder die weet de app niet wat er nog moet komen.': 'You have not set up any fixed costs yet. Without them the app cannot know what is still coming.',
-  'Loop "Je situatie" door: je rekeningen, je vaste lasten en je abonnementen. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is — nog vóór je één boeking ingeeft.':
-    'Work through "Your situation": your accounts, your fixed costs and your subscriptions. After ten minutes you will know what is committed each month and what you are worth — before you enter a single entry.',
+  'Loop "Je situatie" door: je rekeningen, je vaste lasten en je sluipende lasten — de kleine abonnementen waar je niet meer naar omkijkt. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is, nog vóór je één boeking ingeeft.':
+    'Work through "Your situation": your accounts, your fixed costs and your small subscriptions — the little ones you stop looking at. After ten minutes you will know what is committed each month and what you are worth, before you enter a single entry.',
   'Voor "zo lang kom je toe" heeft de app een spaarrekening of cash nodig. Voeg er een toe bij "Je geld".':
     'For "how long you can get by" the app needs a savings account or cash. Add one under "Your money".',
   'Hypotheek': 'Mortgage',
@@ -814,7 +816,7 @@ const en: Record<string, string> = {
   'De app rekent niet met deze regeling. Je vulde de aanvangsindex zelf in, maar de jaarlijkse cijfers zou de app uit haar eigen tabel halen (basis {tabel} = 100). Staat je akte in een oudere reeks, dan zit het bedrag er tientallen procenten naast. Vul daarom ook de indexcijfers van {maanden} zelf in, uit dezelfde reeks als je akte.':
     'The app does not calculate with this arrangement. You entered the starting index yourself, but the app would take the yearly figures from its own table (base {tabel} = 100). If your deed uses an older series, the amount is tens of percent off. So also enter the index figures for {maanden} yourself, from the same series as your deed.',
   'De onderhoudsbijdrage van {dossier} wordt niet meer geïndexeerd: de indexcijfers komen uit twee verschillende reeksen. Open de regeling om het op te lossen.':
-    'The maintenance payment for {dossier} is no longer being indexed: the index figures come from two different series. Open the arrangement to resolve it.',
+    'The maintenance contribution for {dossier} is no longer being indexed: the index figures come from two different series. Open the arrangement to resolve it.',
   'De indexatie kon niet berekend worden omdat de gebruikte indexcijfers niet uit dezelfde reeks komen. Hieronder staat daarom nog het bedrag uit de regeling zelf: {basis} per maand.':
     'The indexation could not be calculated because the index figures used do not come from the same series. Below is therefore still the amount from the arrangement itself: {basis} per month.',
   'De verjaardagen zijn niet berekend, omdat de gebruikte indexcijfers niet uit dezelfde reeks komen.':
@@ -961,7 +963,7 @@ const en: Record<string, string> = {
   'De app vergelijkt het bedrag dat bij dezelfde handelaar elke keer terugkomt. Ze kijkt achttien maanden terug, vraagt minstens zes betalingen, en zwijgt over winkels waar je bedrag elke keer anders is.':
     'The app compares the amount that recurs with the same merchant. It looks eighteen months back, asks for at least six payments, and stays quiet about shops where your amount differs every time.',
   'Je vaste lasten liggen intussen {bedrag} per maand hoger dan voorheen. Op Analyse staat wat er precies duurder werd.':
-    'Your recurring costs are now {bedrag} a month higher than before. Analysis shows exactly what got more expensive.',
+    'Your fixed costs are now {bedrag} a month higher than before. Analysis shows exactly what got more expensive.',
   'Verberg': 'Hide',
   'Toon': 'Show',
   // De maandafsluiting (ronde 43)
@@ -1118,7 +1120,7 @@ const en: Record<string, string> = {
   'Kredietkaart of kredietopening': 'Credit card or credit line',
   'Kredietlimiet (€)': 'Credit limit (€)',
   '1-28, optioneel': '1-28, optional',
-  'Waarde bijwerken': 'Update value',
+  'Waarde bewerken': 'Edit value',
   'Voor rekeningen die van waarde veranderen zonder boeking, zoals beleggingen of pensioensparen. Je geschiedenis blijft staan; de app rekent vanaf deze dag verder met het bedrag dat je hier invult.': 'For accounts whose value changes without any entry, such as investments or pension savings. Your history stays intact; from this day on the app continues from the amount you enter here.',
   'Op welke dag?': 'On which day?',
   'Werkelijke waarde (€)': 'Actual value (€)',
@@ -1148,7 +1150,7 @@ const en: Record<string, string> = {
   'Alleen inkomsten met een omschrijving; een boeking zonder omschrijving staat hier niet in. Daardoor kan dit totaal lager zijn dan dat van de verdeling per categorie.': 'Only income with a description; an entry without one is not in here. This total can therefore be lower than the one for the breakdown by category.',
   'Alleen uitgaven met een omschrijving; een boeking zonder omschrijving staat hier niet in. Daardoor kan dit totaal lager zijn dan dat van de verdeling per categorie.': 'Only spending with a description; an entry without one is not in here. This total can therefore be lower than the one for the breakdown by category.',
   'betwist': 'disputed',
-  'Alle kosten in dit dossier die nog niet afgerekend zijn, ongeacht de periode. Wat ingetrokken is telt niet mee; wat al in een afrekening staat die je nog niet als overgemaakt aanvinkte, telt hier nog wel mee.': 'Every cost in this file that has not been settled yet, whatever the period. Anything withdrawn does not count; anything already in a settlement you have not ticked as transferred still counts here.',
+  'Alle kosten in dit dossier die nog niet afgerekend zijn, ongeacht de periode. Wat ingetrokken is telt niet mee; wat al in een afrekening staat die je nog niet als overgemaakt aanvinkte, telt hier nog wel mee.': 'Every cost in this case that has not been settled yet, whatever the period. Anything withdrawn does not count; anything already in a settlement you have not ticked as transferred still counts here.',
   'Alleen het openstaande kapitaal: hoofdsom min wat er terugbetaald is. Interest zit er niet in, en een afgesloten lening telt niet meer mee.': 'Only the outstanding capital: principal minus what has been repaid. Interest is not included, and a closed loan no longer counts.',
   'Alleen het openstaande kapitaal: hoofdsom min wat je al afbetaalde. De interest die je nog betaalt zit er niet in, en een afgesloten lening telt niet meer mee.': 'Only the outstanding capital: principal minus what you have already paid off. The interest you still pay is not included, and a closed loan no longer counts.',
   'Omgerekend naar één maand: een jaarpremie van € 1.200 telt hier als € 100. Op Budget staat daarnaast wat er in déze maand effectief vervalt — bij een post per kwartaal of per jaar is dat een ander bedrag.': 'Converted to one month: a yearly premium of €1,200 counts as €100 here. Budget also shows what actually falls due this particular month — for a quarterly or yearly entry that is a different amount.',
@@ -1160,12 +1162,53 @@ const en: Record<string, string> = {
   'Deze drie cijfers gaan over de boekingen vanaf {maand}; oudere boekingen tellen niet mee.': 'These three figures cover the entries from {maand} onwards; older entries do not count.',
   'Het laatste punt is de stand aan het einde van de maand. Eén boeking van later deze maand telt er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.': 'The last point is the position at the end of the month. One entry dated later this month is already included, while the balance on your Overview counts up to today.',
   'Het laatste punt is de stand aan het einde van de maand. {n} boekingen van later deze maand tellen er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.': 'The last point is the position at the end of the month. {n} entries dated later this month are already included, while the balance on your Overview counts up to today.',
-  'Hierin zit wat er deze maand al geboekt is, plus de vaste lasten die déze maand vervallen — ook de te late. Losse uitgaven die nog komen — boodschappen, tanken — zitten er niet in.': 'This covers what has already been booked this month, plus the recurring entries that fall due this particular month — the late ones included. Loose spending still to come — groceries, fuel — is not in it.',
+  'Hierin zit wat er deze maand al geboekt is, plus de vaste lasten die déze maand vervallen — ook de te late. Losse uitgaven die nog komen — boodschappen, tanken — zitten er niet in.': 'This covers what has already been booked this month, plus the fixed costs that fall due this particular month — the late ones included. Loose spending still to come — groceries, fuel — is not in it.',
   'Eén ervan is betwist door de andere ouder en telt hier toch mee.': 'One of them is disputed by the other parent and still counts here.',
   '{n} ervan zijn betwist door de andere ouder en tellen hier toch mee.': '{n} of them are disputed by the other parent and still count here.',
   '1 betaling valt buiten deze periode en telt niet mee': '1 payment falls outside this period and does not count',
   '{n} betalingen vallen buiten deze periode en tellen niet mee': '{n} payments fall outside this period and do not count',
-  'Alleen de posten in de categorieën uit de lijst “Sluipende kosten” hieronder. Een eigen categorie telt hier niet mee.': 'Only the entries in the categories from the “Creeping costs” list below. A category of your own does not count here.',
+  // ⚠ RONDE 84 — deze zin klopte niet meer op twee punten: er is nu een tweede reden om
+  // als sluipend te tellen (je voegde hem zelf toe onder die lijst), en de lijst heette
+  // in het Engels "Creeping costs" terwijl haar eigen kop "Your small subscriptions" zegt.
+  'Sluipende lasten zijn de kleine abonnementen waar je niet meer naar omkijkt. Meegeteld: alles wat je hieronder bij “Je sluipende lasten” toevoegde, plus elke andere vaste last die op een abonnementscategorie staat — streaming, fitness, krant, cloudopslag en dergelijke.':
+    'Small subscriptions are the little ones you stop looking at. Counted here: everything you added under “Your small subscriptions” below, plus every other fixed cost sitting on a subscription category — streaming, gym, newspaper, cloud storage and the like.',
+  'Je sluipende lasten beginnen pas later. Zodra de eerste betaling er is, staat hier een bedrag.':
+    'Your small subscriptions only start later. As soon as the first payment is due, an amount appears here.',
+  'Al je vaste lasten staan samen op één plek.': 'All your fixed costs sit together in one place.',
+  'Voeg er zelf een toe': 'Add one yourself',
+  'Staat je abonnement niet in de lijst hierboven? Voeg het hier toe — het telt dan gewoon mee bij je sluipende lasten.':
+    'Is your subscription not in the list above? Add it here — it will simply count towards your small subscriptions.',
+  'Een abonnement toevoegen': 'Add a subscription',
+  'Geef je abonnement een naam en een bedrag. Een categorie kiezen mag, maar hoeft niet: wat je hier toevoegt telt sowieso mee bij je sluipende lasten.':
+    'Give your subscription a name and an amount. Picking a category is allowed but not required: whatever you add here counts towards your small subscriptions either way.',
+  '{bedrag} meer dan nodig': '{bedrag} more than needed',
+  'Die kost is {bedrag}; jouw doelbedrag staat op {doel}.': 'That cost is {bedrag}; your target amount is set to {doel}.',
+  'Dit is {over} meer dan {naam} kost ({bedrag}).': 'That is {over} more than {naam} costs ({bedrag}).',
+  'Budget houdt hierdoor {streef} per maand apart voor {naam} in plaats van {standaard} — het volle bedrag gedeeld over de maanden tot de betaling.':
+    'Because of this, Budget holds back {streef} a month for {naam} instead of {standaard} — the full amount spread over the months up to the payment.',
+  'Budget houdt hierdoor {streef} per maand apart voor {naam}. Zonder dit streefbedrag zou dat niets zijn: bij die kost staat "hier maandelijks voor opzijzetten" uit.':
+    'Because of this, Budget holds back {streef} a month for {naam}. Without this target it would be nothing: that cost has "set money aside for this monthly" switched off.',
+  '{naam} kost {bedrag} en valt de volgende keer op {datum}. Zolang dit doel eraan hangt, rekent Budget onder "Opzij voor later" met jouw streefbedrag in plaats van met het volle bedrag gedeeld over de maanden.':
+    '{naam} costs {bedrag} and falls due next on {datum}. As long as this goal is linked to it, "Set aside for later" uses your monthly target instead of the full amount spread over the months.',
+  'Toon de lijst': 'Show the list',
+  'Verberg de lijst': 'Hide the list',
+  'regel {n}': 'line {n}',
+  'Even nakijken': 'Worth a second look',
+  'Dit komt uit een oudere versie van de app: op een regel van een kassaticket kon één tik je gekozen subcategorie vervangen door een brede hoofdcategorie. Dat kan niet meer gebeuren, maar de boekingen van toen staan er nog. De app verandert er niets aan.':
+    'This comes from an older version of the app: on a receipt line, one tap could replace your chosen subcategory with a broad main category. That can no longer happen, but the entries from back then are still there. The app changes nothing.',
+  'Eén boeking heeft een ticketregel die precies naar een subcategorie heet maar onder een andere hoofdcategorie staat. Zolang dat zo staat, telt dat bedrag mee bij die andere hoofdcategorie — in je Analyse, in de donut en in elk budget daarop.':
+    'One entry has a receipt line named exactly after a subcategory but filed under a different main category. As long as it stays that way, that amount counts towards the other main category — in your Analysis, in the donut, and in every budget on it.',
+  '{n} boekingen hebben een ticketregel die precies naar een subcategorie heet maar onder een andere hoofdcategorie staat. Zolang dat zo staat, telt dat bedrag mee bij die andere hoofdcategorie — in je Analyse, in de donut en in elk budget daarop.':
+    '{n} entries have a receipt line named exactly after a subcategory but filed under a different main category. As long as it stays that way, that amount counts towards the other main category — in your Analysis, in the donut, and in every budget on it.',
+  'Samen gaat het om {n} regels.': 'That is {n} lines in total.',
+  'Staat nu in de categorie {staat}.': 'Currently in the category {staat}.',
+  'Staat nu in de hoofdcategorie {staat}.': 'Currently in the main category {staat}.',
+  'De subcategorie die zo heet, hangt onder {pad}.': 'The subcategory with that name sits under {pad}.',
+  'Boeking openen': 'Open entry',
+  'Boeking openen — {naam}, {regel}, {datum}, {winkel}': 'Open entry — {naam}, {regel}, {datum}, {winkel}',
+  'Hier staan de eerste {n} van {totaal}.': 'These are the first {n} of {totaal}.',
+  'Toon alle {n}': 'Show all {n}',
+  'Boekingen nakijken': 'Checking your entries',
   'Er hangt nog een doel aan diezelfde rekening: hetzelfde geld telt bij allebei mee.': 'Another goal is linked to that same account: the same money counts towards both.',
   'Er hangen nog {n} doelen aan diezelfde rekening: hetzelfde geld telt bij allemaal mee.': '{n} other goals are linked to that same account: the same money counts towards all of them.',
   'Deze drie cijfers gaan over de {n} boekingen die je filters overhouden, en over niets anders.': 'These three figures cover the {n} entries your filters leave, and nothing else.',
@@ -1216,14 +1259,14 @@ const en: Record<string, string> = {
   // Categoriekiezer
   'Categorie:': 'Category:',
   'Geen': 'None',
-  'wissen': 'clear',
+  'opnieuw kiezen': 'pick again',
   'Typ om te zoeken (vanaf 2 letters)…': 'Type to search (from 2 letters)…',
   'eigen': 'own',
   // Itemzoeker
   // Categorieboom
   'Alle categorieën': 'All categories',
   'Nieuwe naam voor {naam}': 'New name for {naam}',
-  'Wijzig {naam}': 'Edit {naam}',
+  'Bewerk {naam}': 'Edit {naam}',
   'Verwijder {naam}': 'Delete {naam}',
   'Nieuwe subcategorie in {naam}': 'New subcategory in {naam}',
   'Naam subcategorie': 'Subcategory name',
@@ -1310,7 +1353,7 @@ const en: Record<string, string> = {
   'Naam gezinslid': 'Family member name',
   'Gezinslid toevoegen': 'Add family member',
   'Rol van {naam}': 'Role of {naam}',
-  'Wijzig gezinslid {naam}': 'Edit family member {naam}',
+  'Bewerk gezinslid {naam}': 'Edit family member {naam}',
   'Archiveer gezinslid {naam}': 'Archive family member {naam}',
   'Heropen gezinslid {naam}': 'Reopen family member {naam}',
   'Verwijder gezinslid {naam}': 'Delete family member {naam}',
@@ -1336,8 +1379,8 @@ const en: Record<string, string> = {
   // een dossier je toont.
   'Soort dossier': 'Type of case',
   'Facturen & garantiebewijzen': 'Invoices & warranties',
-  'Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren.':
-    'What you switch off only disappears from view — nothing is lost.',
+  'Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren, en je zet het hier met één tik terug.':
+    'What you switch off only disappears from view — nothing is lost, and the same tap brings it back.',
   'Gedeelde kosten': 'Shared expenses',
   'Kosten verdelen met een co-ouder of ex-partner, met een verdeelsleutel en afrekeningen.':
     'Split expenses with a co-parent or ex-partner, with a split key and settlements.',
@@ -1542,7 +1585,7 @@ const en: Record<string, string> = {
   ' · tegen {datum}': ' · by {datum}',
   'Huidig bedrag {naam}': 'Current amount {naam}',
   'Huidig bedrag': 'Current amount',
-  'Bedrag bijwerken': 'Update amount',
+  'Bedrag wijzigen': 'Update amount',
   'Doelnaam': 'Goal name',
   'Bv. Communie Kind 1': 'E.g. Communion Child 1',
   'Doelbedrag (€)': 'Target amount (€)',
@@ -1566,10 +1609,6 @@ const en: Record<string, string> = {
   '{actie} — {naam}': '{actie} — {naam}',
   '{details} ({n} van {totaal})': '{details} ({n} of {totaal})',
   'Het gaat over de kost van {details}.': 'This is the cost of {details}.',
-  'Vaste omschrijving': 'Recurring description',
-  'Vast bedrag (€)': 'Fixed amount (€)',
-  'Vaste rekening': 'Recurring account',
-  'Vaste categorie': 'Recurring category',
   'Dag van de maand': 'Day of the month',
   // ⚠ RONDE 83 — "vaste post" is weg uit de app: de kaart heet "Vaste lasten", de rij
   // spreekt over "deze kost". Drie woorden voor één ding.
@@ -1749,7 +1788,7 @@ const en: Record<string, string> = {
   'Bedrag pot (€)': 'Amount pot (€)',
   'Omschrijving (optioneel)': 'Description (optional)',
   'Gestort door:': 'Deposited by:',
-  'Beweging wijzigen': 'Change movement',
+  'Beweging wijzigen': 'Update movement',
   'Beweging toevoegen': 'Add movement',
   'Beweging verwijderd': 'Movement deleted',
   'door {wie}': 'by {wie}',
@@ -1780,7 +1819,7 @@ const en: Record<string, string> = {
   'Nieuwe lening': 'New loan',
   'Lening bewerken': 'Edit loan',
   'Lening toevoegen': 'Add loan',
-  'Lening wijzigen': 'Change loan',
+  'Lening wijzigen': 'Update loan',
   'Lening verwijderd': 'Loan deleted',
   'Soort': 'Type',
   'Ik leende uit (iemand is mij verschuldigd)': 'I lent out (someone owes me)',
@@ -1825,7 +1864,7 @@ const en: Record<string, string> = {
   'Nieuwe aankoop': 'New purchase',
   'Aankoop bewerken': 'Edit purchase',
   'Garantie toevoegen': 'Add warranty',
-  'Garantie wijzigen': 'Change warranty',
+  'Garantie wijzigen': 'Update warranty',
   'Garantie verwijderd': 'Warranty deleted',
   'Niet gekoppeld': 'Not linked',
   'Product': 'Product',
@@ -2022,7 +2061,7 @@ const en: Record<string, string> = {
   'Waarschuw vanaf': 'Warn from',
   '{n}% verbruikt': '{n}% used',
   'Een overschreden budget, een garantie die bijna verloopt en een vaste last die nog niet geboekt is, meldt de app altijd — die staan los van deze keuze.':
-    'An exceeded budget, a warranty about to expire and an unrecorded recurring item are always reported — those do not depend on this setting.',
+    'An exceeded budget, a warranty about to expire and an unrecorded fixed cost are always reported — those do not depend on this setting.',
   'Je gegevens en je privacy': 'Your data and your privacy',
   'Waar je cijfers staan, en wat de app wel en niet verstuurt.':
     'Where your figures live, and what the app does and does not send.',
@@ -2137,6 +2176,10 @@ const en: Record<string, string> = {
   'De kaart {kaart} staat nu aan.': 'The {kaart} card is now on.',
   'Kaarten waarvoor in deze periode niets te tonen valt, staan hier niet bij.':
     'Cards with nothing to show in this period are not listed here.',
+  // Ronde 90 — op het Overzicht kan er maar ÉÉN kaart ontbreken, dus noemt de zin ze bij
+  // naam in het enkelvoud, in plaats van de algemene meervoudszin hierboven.
+  'De kaart {kaart} staat er niet bij: daar valt nu nog niets te tonen.':
+    'The card {kaart} is not listed: there is nothing to show there yet.',
   // Ronde 80 — wat er van je inkomen nog nergens in zit
   'Je budgetten vragen samen {gebudgetteerd}.': 'Your budgets together claim {gebudgetteerd}.',
   '{bedrag} nog nergens ondergebracht': '{bedrag} not put anywhere yet',
@@ -2176,14 +2219,14 @@ const en: Record<string, string> = {
   'Je loon en alles wat elke maand binnenkomt. Hierop rekent je plan.':
     'Your salary and everything that comes in every month. This is what your plan is based on.',
   'Nog geen vaste inkomsten. Vul hieronder je loon in, anders weet je plan niet wat er te verdelen valt.':
-    'No recurring income yet. Add your salary below, otherwise your plan cannot tell what there is to allocate.',
+    'No fixed income yet. Add your salary below, otherwise your plan cannot tell what there is to allocate.',
   'Nog geen vaste lasten.': 'No fixed costs yet.',
   'Er kwam deze maand {gekregen} binnen — precies je vaste inkomsten.':
-    '{gekregen} came in this month — exactly your recurring income.',
+    '{gekregen} came in this month — exactly your fixed income.',
   'Er kwam deze maand {gekregen} binnen — {verschil} meer dan je vaste inkomsten.':
-    '{gekregen} came in this month — {verschil} more than your recurring income.',
+    '{gekregen} came in this month — {verschil} more than your fixed income.',
   'Er kwam deze maand {gekregen} binnen — {verschil} minder dan je vaste inkomsten.':
-    '{gekregen} came in this month — {verschil} less than your recurring income.',
+    '{gekregen} came in this month — {verschil} less than your fixed income.',
   'Uitboeken': 'Unrecord',
   'Inboeken ongedaan gemaakt': 'Recording undone',
   '{naam} ingeboekt': '{naam} recorded',
@@ -2338,6 +2381,8 @@ const en: Record<string, string> = {
   'Een kassaticket dat over meerdere categorieën verdeeld is, staat hierboven per categorie apart — het totaal blijft daardoor gelijk aan de kengetallen.':
     'A receipt split across several categories appears above per category — so the total still matches the key figures.',
   'Per maand': 'Per month',
+  // Ronde 90 — de chipnaam van de kaart 'Rapport en print' op het Overzicht.
+  'Rapport': 'Report',
   'Boekingen': 'Entries',
   'Er staan geen boekingen in deze periode.': 'There are no entries in this period.',
   'zonder omschrijving': 'without description',
@@ -2410,7 +2455,7 @@ const en: Record<string, string> = {
   'Toon wat er betaald is': 'Show what has been paid',
   'Brief met de berekening': 'Letter with the calculation',
   'Sluit de regeling': 'Close the arrangement',
-  'Wijzig de regeling': 'Change the arrangement',
+  'Bewerk de regeling': 'Edit the arrangement',
   'Hoe dit bedrag tot stand komt': 'How this amount is arrived at',
   'Elke verjaardag rekent opnieuw vanaf het bedrag uit de regeling, niet vanaf dat van vorig jaar — zo stapelen afrondingen zich niet op.':
     'Every anniversary is calculated afresh from the amount in the arrangement, not from last year’s — that way rounding does not accumulate.',
@@ -2677,7 +2722,7 @@ const en: Record<string, string> = {
     'You have not filled anything in here yet. Turn the filter off to see every suggestion.',
   '{naam} bewaard: {bedrag} {periode}.': '{naam} saved: {bedrag} {periode}.',
   '{naam} toevoegen': 'Add {naam}',
-  '{naam} wijzigen': 'Edit {naam}',
+  '{naam} bewerken': 'Edit {naam}',
   'Klik op een kost om te zien wat je al hebt, of voeg er een toe. Het invulvenster vraagt alles in één keer.':
     'Click a cost to see what you already have there, or add one. The form asks for everything in one go.',
   'De kleine abonnementen waar je nooit meer naar omkijkt. Samen zijn ze vaak groter dan je denkt.':
@@ -2693,8 +2738,6 @@ const en: Record<string, string> = {
   // Ronde 74 — een spaardoel dat weet welke vaste last het dient
   'Waarvoor spaar je? (optioneel)': 'What are you saving for? (optional)',
   'Voor niets in het bijzonder': 'Nothing in particular',
-  '{naam} kost {bedrag} en valt de volgende keer op {datum}. Zolang dit doel eraan hangt, vraagt Budget er niet meer apart geld voor opzij te zetten.':
-    '{naam} costs {bedrag} and falls due next on {datum}. While this goal is attached to it, Budget no longer asks you to set money aside for it separately.',
   '{naam} kost {bedrag}, maar er komt geen betaling meer.':
     '{naam} costs {bedrag}, but no further payment is coming.',
   'Hang dit doel aan een vaste last die niet elke maand valt — een jaarpremie bijvoorbeeld. Dan weet de app waarvoor je spaart en vraagt ze het geld geen tweede keer.':
@@ -2703,8 +2746,6 @@ const en: Record<string, string> = {
   'De vaste last waarvoor je spaarde, staat niet meer in je vaste lasten. Het doel blijft gewoon lopen.':
     'The fixed cost you were saving for is no longer among your fixed costs. The goal simply carries on.',
   'Voor {naam}, de volgende keer op {datum}.': 'For {naam}, next due on {datum}.',
-  'Die kost is {bedrag}; je doelbedrag staat op iets anders.':
-    'That cost is {bedrag}; your target amount says something else.',
   'Je doeldatum ligt ná die betaling, dus aan dit tempo ben je te laat.':
     'Your target date falls after that payment, so at this pace you will be late.',
   // Ronde 79 — de twee knoppen naast die vaststellingen. De doelnaam staat erachter,
@@ -2785,7 +2826,7 @@ const fr: Record<string, string> = {
   'Maak eerst een rekening aan — een vaste last moet ergens vanaf gaan.':
     'Crée d’abord un compte — une charge fixe doit bien partir de quelque part.',
   'Maak eerst een rekening aan — een vaste last of een vaste inkomst moet ergens vanaf gaan of op binnenkomen.':
-    'Crée d’abord un compte — une charge ou un revenu fixe doit bien partir de quelque part, ou y arriver.',
+    'Crée d’abord un compte — une charge fixe ou un revenu fixe doit bien partir de quelque part, ou y arriver.',
   // Ronde 66 — dernière relecture, troisième série
   'Er staat nog geen enkele boeking in de app. Zodra je er een ingeeft — zelf of via een uittreksel — zie je hier waar je geld naartoe gaat.':
     'Il n’y a pas encore la moindre écriture dans l’app. Dès que tu en saisis une — toi-même ou via un extrait — tu verras ici où va ton argent.',
@@ -2825,7 +2866,7 @@ const fr: Record<string, string> = {
   'Kosten delen met een co-ouder': 'Partager des frais avec un coparent',
   'Een lening bijhouden': 'Suivre un prêt',
   'Een aankoop met garantie bijhouden': 'Suivre un achat sous garantie',
-  'De app kent nog geen indexcijfer voor {maanden}. Ze kent cijfers tot {laatste}. Vul het ontbrekende cijfer zelf in via "Wijzig de regeling", dan is de berekening volledig.':
+  'De app kent nog geen indexcijfer voor {maanden}. Ze kent cijfers tot {laatste}. Vul het ontbrekende cijfer zelf in via "Bewerk de regeling", dan is de berekening volledig.':
     'L’app ne connaît pas encore d’indice pour {maanden}. Elle connaît les indices jusqu’à {laatste}. Encode toi-même l’indice manquant via « Modifier l’accord » et le calcul sera complet.',
   'Vul het indexcijfer in': 'Encode l’indice',
   'Nog geen vaste inkomsten. Zodra je een rekening hebt, vul je hier je loon in.':
@@ -2846,7 +2887,7 @@ const fr: Record<string, string> = {
   'beweging': 'mouvement',
   'Deelbedrag {n}': 'Montant partiel {n}',
   // Ronde 78
-  'Categorie van regel {n} wissen': 'Effacer la catégorie de la ligne {n}',
+  'Categorie van regel {n} opnieuw kiezen': 'Rechoisir la catégorie de la ligne {n}',
   'Je hebt minstens twee rekeningen nodig om over te boeken.': 'Il te faut au moins deux comptes pour faire un virement.',
   // Ronde 67 — créer une nouvelle branche depuis la fenêtre d’écriture
   'Kies eerst een hoofdcategorie.': 'Choisis d’abord une catégorie principale.',
@@ -3018,8 +3059,8 @@ const fr: Record<string, string> = {
   'Zet je eerste budget': 'Fixe ton premier budget',
   'Maak een rekening aan': 'Crée un compte',
   'Vul je vaste lasten in': 'Encode tes charges fixes',
-  'Loop de blokken hieronder door: je rekeningen, je vaste lasten en je abonnementen. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is — nog vóór je één boeking ingeeft.':
-    'Parcours les blocs ci-dessous : tes comptes, tes charges fixes et tes abonnements. Après dix minutes, tu sais ce qui est fixe chaque mois et ce que tu vaux — avant même d’encoder une seule écriture.',
+  'Loop de blokken hieronder door: je rekeningen, je vaste lasten en je sluipende lasten — de kleine abonnementen waar je niet meer naar omkijkt. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is, nog vóór je één boeking ingeeft.':
+    'Parcours les blocs ci-dessous : tes comptes, tes charges fixes et tes dépenses discrètes — les petits abonnements que tu ne regardes plus. Après dix minutes, tu sais ce qui est fixe chaque mois et ce que tu vaux, avant même d’encoder une seule écriture.',
   'Nog geen gezinsleden ingesteld. Vul hieronder een naam in; daarna kan je er kosten, doelen en garanties aan koppelen.':
     'Aucun membre du foyer encodé. Entre un nom ci-dessous ; ensuite tu pourras y rattacher des frais, des objectifs et des garanties.',
   'Nog geen budgetten ingesteld. Op de Budget-pagina zet je een grens op een categorie.':
@@ -3047,7 +3088,7 @@ const fr: Record<string, string> = {
     '{n} dossier(s) ont une clé de répartition propre pour cela — elle retombe sur la valeur par défaut du dossier, et ton montant de décompte change alors.',
   // Ronde 65 — les erreurs qui se cachent elles-mêmes
   'De periode hierboven geldt op deze tab alleen voor je spaarquote. De rest volgt de maand die je bovenaan koos — behalve "Wat komt eraan", dat vertrekt van de lopende maand.':
-    'Sur cet onglet, la période ci-dessus ne vaut que pour ton taux d’épargne. Le reste suit le mois que tu as choisi en haut — sauf « Ce qui arrive », qui part du mois en cours.',
+    'Sur cet onglet, la période ci-dessus ne vaut que pour ton taux d’épargne. Le reste suit le mois que tu as choisi en haut — sauf « Ce qui arrive », qui part du mois en cours.',
   'Alle overboekingen': 'Tous les virements',
   'Overboekingen van deze rekening': 'Virements de ce compte',
   'per jaar': 'par an',
@@ -3204,7 +3245,7 @@ const fr: Record<string, string> = {
   // Indexreeksen bij de onderhoudsbijdrage (ronde 58)
   'Kompal rekende de onderhoudsbijdrage van {dossier} vroeger met de gezondheidsindex. De wet noemt de consumptieprijzen, en daar rekent de app nu mee — het bedrag kan daardoor verschillen. Open de regeling en bevestig welke index in je akte staat.': 'Kompal calculait auparavant la contribution alimentaire de {dossier} avec l’indice santé. La loi vise l’indice des prix à la consommation, que l’app utilise désormais ; le montant peut donc différer. Ouvre l’accord et confirme quel indice figure dans ton acte.',
   'Gerekend met de {reeks}.': 'Calculé avec l’{reeks}.',
-  'Gerekend met de {reeks}, de wettelijke reeks. Tot augustus 2026 gebruikte Kompal hier de gezondheidsindex; daardoor kan dit bedrag iets verschillen van vroeger. Noemt je akte uitdrukkelijk de gezondheidsindex, zet ze dan om bij "Wijzig de regeling".': 'Calculé avec l’{reeks}, la série prévue par la loi. Jusqu’en août 2026, Kompal utilisait ici l’indice santé ; ce montant peut donc légèrement différer de celui d’avant. Si ton acte mentionne expressément l’indice santé, modifie-le sous « Modifier l’accord ».',
+  'Gerekend met de {reeks}, de wettelijke reeks. Tot augustus 2026 gebruikte Kompal hier de gezondheidsindex; daardoor kan dit bedrag iets verschillen van vroeger. Noemt je akte uitdrukkelijk de gezondheidsindex, zet ze dan om bij "Bewerk de regeling".': 'Calculé avec l’{reeks}, la série prévue par la loi. Jusqu’en août 2026, Kompal utilisait ici l’indice santé ; ce montant peut donc légèrement différer de celui d’avant. Si ton acte mentionne expressément l’indice santé, modifie-le sous « Modifier l’accord ».',
   'Je eigen indexcijfers stonden in de vorige reeks en zijn verwijderd. Zet ze opnieuw met cijfers uit de {nieuw}.': 'Tes propres indices figuraient dans la série précédente et ont été supprimés. Encode-les à nouveau avec des chiffres de l’{nieuw}.',
   'Je eerdere indexcijfers kwamen uit de {oud} en zijn verwijderd. Zet ze opnieuw met cijfers uit de {nieuw}.': 'Tes indices précédents provenaient de l’{oud} et ont été supprimés. Encode-les à nouveau avec des chiffres de l’{nieuw}.',
   'Zodra je bewaart, rekent de app alle bedragen opnieuw met deze reeks. Je eigen indexcijfers stonden in de vorige reeks en worden dan verwijderd.': 'Dès que tu enregistres, l’app recalcule tous les montants avec cette série. Tes propres indices figuraient dans la série précédente et seront supprimés.',
@@ -3376,7 +3417,7 @@ const fr: Record<string, string> = {
   'Zo lang kom je toe': 'Combien de temps tu tiens',
   'Netto vermogen': 'Patrimoine net',
   '{n} maanden': '{n} mois',
-  'Je sluipende kosten zijn {maand} per maand, oftewel {jaar} per jaar.': 'Tes dépenses discrètes s’élèvent à {maand} par mois, soit {jaar} par an.',
+  'Je sluipende lasten zijn {maand} per maand, oftewel {jaar} per jaar.': 'Tes dépenses discrètes s’élèvent à {maand} par mois, soit {jaar} par an.',
   'Ingevulde blokken': 'Blocs complétés',
   'Je hebt alle blokken ingevuld. Je kan hier altijd terugkomen om iets bij te werken.': 'Tu as complété tous les blocs. Tu peux toujours revenir ici pour mettre quelque chose à jour.',
   '{klaar} van {totaal} blokken ingevuld. Wat je overslaat, kan je later nog aanvullen.': '{klaar} blocs sur {totaal} complétés. Ce que tu sautes, tu peux l’ajouter plus tard.',
@@ -3385,7 +3426,7 @@ const fr: Record<string, string> = {
   'Je geld': 'Ton argent',
   'Voor later': 'Pour plus tard',
   'Vaste lasten': 'Charges fixes',
-  'Sluipende kosten': 'Dépenses discrètes',
+  'Sluipende lasten': 'Dépenses discrètes',
   'Je gezin': 'Ta famille',
   'Delen': 'Partage',
   'Waar staat je geld?': 'Où se trouve ton argent ?',
@@ -3400,7 +3441,9 @@ const fr: Record<string, string> = {
   'Beleggingen, een termijnrekening, pensioensparen. Kies bij Type "Effectenrekening" of "Termijnrekening"; je kan de waarde later bijwerken bij de rekening zelf.': 'Placements, compte à terme, épargne-pension. Choisis « Compte-titres » ou « Compte à terme » sous Type ; tu pourras mettre la valeur à jour plus tard sur le compte lui-même.',
   'Nog niets voor later ingegeven.': 'Rien de prévu pour plus tard.',
   'Je vaste lasten': 'Tes charges fixes',
-  'Je sluipende kosten': 'Tes dépenses discrètes',
+  // Ronde 84 — je eigen abonnement toevoegen
+  'Je sluipende lasten': 'Tes dépenses discrètes',
+  'Een andere sluipende last': 'Une autre dépense discrète',
   'Naar Dossiers': 'Vers Dossiers',
   'Deel je kosten met iemand?': 'Partages-tu des frais avec quelqu’un ?',
   'Bijvoorbeeld met de andere ouder van je kinderen. Kompal houdt dan bij wie wat betaalde en rekent het voor je af.': 'Par exemple avec l’autre parent de tes enfants. Kompal note alors qui a payé quoi et fait le décompte pour toi.',
@@ -3411,8 +3454,8 @@ const fr: Record<string, string> = {
   'Nog geen inkomsten deze maand.': 'Pas encore de revenus ce mois-ci.',
   'Zodra je een rekening hebt toegevoegd, zie je hier hoe je bezit evolueert.': 'Dès que tu auras ajouté un compte, tu verras ici l’évolution de tes avoirs.',
   'Je hebt nog geen vaste lasten ingesteld. Zonder die weet de app niet wat er nog moet komen.': 'Tu n’as encore défini aucune charge fixe. Sans elles, l’app ne peut pas savoir ce qui doit encore arriver.',
-  'Loop "Je situatie" door: je rekeningen, je vaste lasten en je abonnementen. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is — nog vóór je één boeking ingeeft.':
-    'Parcours « Ta situation » : tes comptes, tes charges fixes et tes abonnements. Après dix minutes, tu sauras ce qui est engagé chaque mois et ce que tu possèdes — avant même de saisir une seule écriture.',
+  'Loop "Je situatie" door: je rekeningen, je vaste lasten en je sluipende lasten — de kleine abonnementen waar je niet meer naar omkijkt. Na tien minuten weet je wat er elke maand vastligt en wat je vermogen is, nog vóór je één boeking ingeeft.':
+    'Parcours « Ta situation » : tes comptes, tes charges fixes et tes dépenses discrètes — les petits abonnements que tu ne regardes plus. Après dix minutes, tu sauras ce qui est engagé chaque mois et ce que tu possèdes, avant même de saisir une seule écriture.',
   'Voor "zo lang kom je toe" heeft de app een spaarrekening of cash nodig. Voeg er een toe bij "Je geld".':
     'Pour « combien de temps tu tiens », l’app a besoin d’un compte d’épargne ou d’espèces. Ajoutes-en un dans « Ton argent ».',
   'Hypotheek': 'Crédit logement',
@@ -3625,25 +3668,25 @@ const fr: Record<string, string> = {
   'Netto vermogen {bedrag} — bekijk het op je overzicht': 'Patrimoine net {bedrag} — le voir sur ton aperçu',
   // Deux séries d’indices mélangées (ronde 47)
   'De app rekent niet meer met deze regeling. De indexcijfers die je zelf bijzette staan in basis {eigen} = 100, en de tabel in de app staat nu in basis {tabel} = 100. Dat zijn twee verschillende maatstaven; ze combineren geeft een bedrag dat er tientallen procenten naast zit. Verwijder je eigen cijfers hieronder en zet ze opnieuw met de cijfers uit de huidige reeks.':
-    'L’app ne calcule plus avec cet arrangement. Les indices que tu as ajoutés toi-même sont exprimés en base {eigen} = 100, alors que la table de l’app est désormais en base {tabel} = 100. Ce sont deux étalons différents ; les combiner donne un montant erroné de plusieurs dizaines de pour cent. Supprime tes propres indices ci-dessous et réencode-les d’après la série actuelle.',
+    'L’app ne calcule plus avec cet accord. Les indices que tu as ajoutés toi-même sont exprimés en base {eigen} = 100, alors que la table de l’app est désormais en base {tabel} = 100. Ce sont deux étalons différents ; les combiner donne un montant erroné de plusieurs dizaines de pour cent. Supprime tes propres indices ci-dessous et réencode-les d’après la série actuelle.',
   'De app rekent niet met deze regeling. Je vulde zelf aanvangsindex {eigen} in, maar voor {maand} kent de app {tabel}. Dat verschil wijst erop dat je cijfer uit een oudere indexreeks komt (de index wordt om de zoveel jaar herbaseerd). Combineren met de tabel geeft een bedrag dat er tientallen procenten naast zit. Klopt {tabel} met je akte, laat het veld dan leeg. Klopt het niet, vul dan ook de cijfers van {maanden} zelf in, uit dezelfde reeks als je akte.':
-    'L’app ne calcule pas avec cet arrangement. Tu as encodé toi-même l’indice de départ {eigen}, mais pour {maand} l’app connaît {tabel}. Cet écart indique que ton chiffre provient d’une série d’indices plus ancienne (l’indice est rebasé tous les quelques années). Le combiner avec la table donne un montant erroné de plusieurs dizaines de pour cent. Si {tabel} correspond à ton acte, laisse le champ vide. Sinon, encode aussi toi-même les indices de {maanden}, issus de la même série que ton acte.',
+    'L’app ne calcule pas avec cet accord. Tu as encodé toi-même l’indice de départ {eigen}, mais pour {maand} l’app connaît {tabel}. Cet écart indique que ton chiffre provient d’une série d’indices plus ancienne (l’indice est rebasé tous les quelques années). Le combiner avec la table donne un montant erroné de plusieurs dizaines de pour cent. Si {tabel} correspond à ton acte, laisse le champ vide. Sinon, encode aussi toi-même les indices de {maanden}, issus de la même série que ton acte.',
   'De app rekent niet met deze regeling. Je vulde de aanvangsindex zelf in, maar de jaarlijkse cijfers zou de app uit haar eigen tabel halen (basis {tabel} = 100). Staat je akte in een oudere reeks, dan zit het bedrag er tientallen procenten naast. Vul daarom ook de indexcijfers van {maanden} zelf in, uit dezelfde reeks als je akte.':
-    'L’app ne calcule pas avec cet arrangement. Tu as encodé toi-même l’indice de départ, mais l’app prendrait les indices annuels dans sa propre table (base {tabel} = 100). Si ton acte utilise une série plus ancienne, le montant est erroné de plusieurs dizaines de pour cent. Encode donc aussi toi-même les indices de {maanden}, issus de la même série que ton acte.',
+    'L’app ne calcule pas avec cet accord. Tu as encodé toi-même l’indice de départ, mais l’app prendrait les indices annuels dans sa propre table (base {tabel} = 100). Si ton acte utilise une série plus ancienne, le montant est erroné de plusieurs dizaines de pour cent. Encode donc aussi toi-même les indices de {maanden}, issus de la même série que ton acte.',
   'De onderhoudsbijdrage van {dossier} wordt niet meer geïndexeerd: de indexcijfers komen uit twee verschillende reeksen. Open de regeling om het op te lossen.':
-    'La contribution alimentaire de {dossier} n’est plus indexée : les indices proviennent de deux séries différentes. Ouvre l’arrangement pour résoudre le problème.',
+    'La contribution alimentaire de {dossier} n’est plus indexée : les indices proviennent de deux séries différentes. Ouvre l’accord pour résoudre le problème.',
   'De indexatie kon niet berekend worden omdat de gebruikte indexcijfers niet uit dezelfde reeks komen. Hieronder staat daarom nog het bedrag uit de regeling zelf: {basis} per maand.':
-    'L’indexation n’a pas pu être calculée parce que les indices utilisés ne proviennent pas de la même série. Ci-dessous figure donc encore le montant de l’arrangement lui-même : {basis} par mois.',
+    'L’indexation n’a pas pu être calculée parce que les indices utilisés ne proviennent pas de la même série. Ci-dessous figure donc encore le montant de l’accord lui-même : {basis} par mois.',
   'De verjaardagen zijn niet berekend, omdat de gebruikte indexcijfers niet uit dezelfde reeks komen.':
     'Les anniversaires n’ont pas été calculés, parce que les indices utilisés ne proviennent pas de la même série.',
   'het bedrag uit de regeling van {datum}; de indexatie is niet berekend':
-    'le montant de l’arrangement du {datum} ; l’indexation n’a pas été calculée',
+    'le montant de l’accord du {datum} ; l’indexation n’a pas été calculée',
   'De opbouw is niet berekend, want de indexcijfers komen niet uit dezelfde reeks. Bovenaan de kaart staat wat er moet gebeuren.':
     'Le détail n’a pas été calculé, car les indices ne proviennent pas de la même série. Ce qu’il faut faire est indiqué en haut de la fiche.',
   'De brief staat uit zolang de indexcijfers niet uit dezelfde reeks komen: ze zou een bedrag bevatten dat de app niet kan verantwoorden.':
     'La lettre est désactivée tant que les indices ne proviennent pas de la même série : elle contiendrait un montant que l’app ne peut pas justifier.',
   'Wat er openstaat is niet te berekenen: elke maand zou hier aan het bedrag uit de regeling geteld worden, zonder de indexatie. Het echte bedrag ligt hoger. Los eerst de indexcijfers bovenaan op.':
-    'Ce qui reste dû n’est pas calculable : chaque mois serait compté ici au montant de l’arrangement, sans l’indexation. Le montant réel est plus élevé. Résous d’abord les indices en haut.',
+    'Ce qui reste dû n’est pas calculable : chaque mois serait compté ici au montant de l’accord, sans l’indexation. Le montant réel est plus élevé. Résous d’abord les indices en haut.',
   'Je eerdere indexcijfers stonden in basis {oud} = 100 en zijn verwijderd. Zet ze opnieuw met de cijfers uit de huidige reeks.':
     'Tes indices précédents étaient exprimés en base {oud} = 100 et ont été supprimés. Réencode-les avec les chiffres de la série actuelle.',
   'Kies eerst van welke rekening naar welke rekening je overboekt.':
@@ -3776,7 +3819,7 @@ const fr: Record<string, string> = {
   'De app vergelijkt het bedrag dat bij dezelfde handelaar elke keer terugkomt. Ze kijkt achttien maanden terug, vraagt minstens zes betalingen, en zwijgt over winkels waar je bedrag elke keer anders is.':
     'L’application compare le montant qui revient chez le même commerçant. Elle remonte dix-huit mois, exige au moins six paiements et se tait sur les commerces où ton montant diffère à chaque fois.',
   'Je vaste lasten liggen intussen {bedrag} per maand hoger dan voorheen. Op Analyse staat wat er precies duurder werd.':
-    'Tes charges récurrentes sont désormais {bedrag} par mois plus élevées qu’avant. L’Analyse montre précisément ce qui a augmenté.',
+    'Tes charges fixes sont désormais {bedrag} par mois plus élevées qu’avant. L’Analyse montre précisément ce qui a augmenté.',
   'Verberg': 'Masquer',
   'Toon': 'Afficher',
   // La clôture mensuelle (ronde 43)
@@ -3933,7 +3976,7 @@ const fr: Record<string, string> = {
   'Kredietkaart of kredietopening': 'Carte de crédit ou ouverture de crédit',
   'Kredietlimiet (€)': 'Limite de crédit (€)',
   '1-28, optioneel': '1-28, facultatif',
-  'Waarde bijwerken': 'Mettre la valeur à jour',
+  'Waarde bewerken': 'Modifier la valeur',
   'Voor rekeningen die van waarde veranderen zonder boeking, zoals beleggingen of pensioensparen. Je geschiedenis blijft staan; de app rekent vanaf deze dag verder met het bedrag dat je hier invult.': 'Pour les comptes dont la valeur change sans écriture, comme les placements ou l’épargne-pension. Ton historique reste intact ; à partir de ce jour, l’app poursuit avec le montant que tu indiques ici.',
   'Op welke dag?': 'À quelle date ?',
   'Werkelijke waarde (€)': 'Valeur réelle (€)',
@@ -3975,12 +4018,51 @@ const fr: Record<string, string> = {
   'Deze drie cijfers gaan over de boekingen vanaf {maand}; oudere boekingen tellen niet mee.': 'Ces trois chiffres portent sur les écritures à partir de {maand} ; les écritures plus anciennes ne comptent pas.',
   'Het laatste punt is de stand aan het einde van de maand. Eén boeking van later deze maand telt er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.': 'Le dernier point est la position à la fin du mois. Une écriture datée plus tard ce mois-ci y est déjà comprise, alors que le solde sur ton Aperçu compte jusqu’à aujourd’hui.',
   'Het laatste punt is de stand aan het einde van de maand. {n} boekingen van later deze maand tellen er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.': 'Le dernier point est la position à la fin du mois. {n} écritures datées plus tard ce mois-ci y sont déjà comprises, alors que le solde sur ton Aperçu compte jusqu’à aujourd’hui.',
-  'Hierin zit wat er deze maand al geboekt is, plus de vaste lasten die déze maand vervallen — ook de te late. Losse uitgaven die nog komen — boodschappen, tanken — zitten er niet in.': 'Cela reprend ce qui a déjà été enregistré ce mois-ci, plus les postes récurrents qui échoient ce mois-ci — les retardataires compris. Les dépenses ponctuelles encore à venir — courses, carburant — n’y sont pas.',
+  'Hierin zit wat er deze maand al geboekt is, plus de vaste lasten die déze maand vervallen — ook de te late. Losse uitgaven die nog komen — boodschappen, tanken — zitten er niet in.': 'Cela reprend ce qui a déjà été enregistré ce mois-ci, plus les charges fixes qui échoient ce mois-ci — les retardataires compris. Les dépenses ponctuelles encore à venir — courses, carburant — n’y sont pas.',
   'Eén ervan is betwist door de andere ouder en telt hier toch mee.': 'L’un d’eux est contesté par l’autre parent et compte quand même ici.',
   '{n} ervan zijn betwist door de andere ouder en tellen hier toch mee.': '{n} d’entre eux sont contestés par l’autre parent et comptent quand même ici.',
   '1 betaling valt buiten deze periode en telt niet mee': '1 paiement tombe en dehors de cette période et ne compte pas',
   '{n} betalingen vallen buiten deze periode en tellen niet mee': '{n} paiements tombent en dehors de cette période et ne comptent pas',
-  'Alleen de posten in de categorieën uit de lijst “Sluipende kosten” hieronder. Een eigen categorie telt hier niet mee.': 'Uniquement les postes des catégories de la liste « Frais qui grignotent » ci-dessous. Une catégorie que tu as créée toi-même ne compte pas ici.',
+  // ⚠ RONDE 84 — zie de opmerking in de Engelse tabel.
+  'Sluipende lasten zijn de kleine abonnementen waar je niet meer naar omkijkt. Meegeteld: alles wat je hieronder bij “Je sluipende lasten” toevoegde, plus elke andere vaste last die op een abonnementscategorie staat — streaming, fitness, krant, cloudopslag en dergelijke.':
+    'Les dépenses discrètes sont les petits abonnements que tu ne regardes plus. Sont comptés ici : tout ce que tu as ajouté ci-dessous sous « Tes dépenses discrètes », plus chaque autre charge fixe rangée dans une catégorie d’abonnement — streaming, fitness, journal, stockage en ligne et similaires.',
+  'Je sluipende lasten beginnen pas later. Zodra de eerste betaling er is, staat hier een bedrag.':
+    'Tes dépenses discrètes ne commencent que plus tard. Dès le premier paiement, un montant apparaîtra ici.',
+  'Al je vaste lasten staan samen op één plek.': 'Toutes tes charges fixes sont réunies au même endroit.',
+  'Voeg er zelf een toe': 'Ajoutes-en une toi-même',
+  'Staat je abonnement niet in de lijst hierboven? Voeg het hier toe — het telt dan gewoon mee bij je sluipende lasten.':
+    'Ton abonnement ne figure pas dans la liste ci-dessus ? Ajoute-le ici — il comptera tout simplement parmi tes dépenses discrètes.',
+  'Een abonnement toevoegen': 'Ajouter un abonnement',
+  'Geef je abonnement een naam en een bedrag. Een categorie kiezen mag, maar hoeft niet: wat je hier toevoegt telt sowieso mee bij je sluipende lasten.':
+    'Donne un nom et un montant à ton abonnement. Choisir une catégorie est possible mais pas nécessaire : ce que tu ajoutes ici compte de toute façon parmi tes dépenses discrètes.',
+  '{bedrag} meer dan nodig': '{bedrag} de plus que nécessaire',
+  'Die kost is {bedrag}; jouw doelbedrag staat op {doel}.': 'Cette charge est de {bedrag} ; ton montant cible est de {doel}.',
+  'Dit is {over} meer dan {naam} kost ({bedrag}).': 'C’est {over} de plus que ce que coûte {naam} ({bedrag}).',
+  'Budget houdt hierdoor {streef} per maand apart voor {naam} in plaats van {standaard} — het volle bedrag gedeeld over de maanden tot de betaling.':
+    'De ce fait, Budget réserve {streef} par mois pour {naam} au lieu de {standaard} — le montant complet réparti sur les mois jusqu’au paiement.',
+  'Budget houdt hierdoor {streef} per maand apart voor {naam}. Zonder dit streefbedrag zou dat niets zijn: bij die kost staat "hier maandelijks voor opzijzetten" uit.':
+    'De ce fait, Budget réserve {streef} par mois pour {naam}. Sans ce montant mensuel, ce ne serait rien : pour cette charge, « mettre de l’argent de côté chaque mois » est désactivé.',
+  '{naam} kost {bedrag} en valt de volgende keer op {datum}. Zolang dit doel eraan hangt, rekent Budget onder "Opzij voor later" met jouw streefbedrag in plaats van met het volle bedrag gedeeld over de maanden.':
+    '{naam} coûte {bedrag} et arrive à échéance le {datum}. Tant que cet objectif y est lié, « Mettre de côté pour plus tard » utilise ton montant mensuel au lieu du montant complet réparti sur les mois.',
+  'Toon de lijst': 'Afficher la liste',
+  'Verberg de lijst': 'Masquer la liste',
+  'regel {n}': 'ligne {n}',
+  'Even nakijken': 'À revoir un instant',
+  'Dit komt uit een oudere versie van de app: op een regel van een kassaticket kon één tik je gekozen subcategorie vervangen door een brede hoofdcategorie. Dat kan niet meer gebeuren, maar de boekingen van toen staan er nog. De app verandert er niets aan.':
+    'Cela vient d’une version plus ancienne de l’app : sur une ligne de ticket de caisse, un seul clic pouvait remplacer ta sous-catégorie par une catégorie principale large. Cela ne peut plus arriver, mais les écritures de l’époque sont toujours là. L’app n’y change rien.',
+  'Eén boeking heeft een ticketregel die precies naar een subcategorie heet maar onder een andere hoofdcategorie staat. Zolang dat zo staat, telt dat bedrag mee bij die andere hoofdcategorie — in je Analyse, in de donut en in elk budget daarop.':
+    'Une écriture a une ligne de ticket qui porte exactement le nom d’une sous-catégorie mais qui est classée sous une autre catégorie principale. Tant que c’est le cas, ce montant compte pour cette autre catégorie principale — dans ton Analyse, dans le donut et dans chaque budget qui s’y trouve.',
+  '{n} boekingen hebben een ticketregel die precies naar een subcategorie heet maar onder een andere hoofdcategorie staat. Zolang dat zo staat, telt dat bedrag mee bij die andere hoofdcategorie — in je Analyse, in de donut en in elk budget daarop.':
+    '{n} écritures ont une ligne de ticket qui porte exactement le nom d’une sous-catégorie mais qui est classée sous une autre catégorie principale. Tant que c’est le cas, ce montant compte pour cette autre catégorie principale — dans ton Analyse, dans le donut et dans chaque budget qui s’y trouve.',
+  'Samen gaat het om {n} regels.': 'Cela représente {n} lignes au total.',
+  'Staat nu in de categorie {staat}.': 'Actuellement dans la catégorie {staat}.',
+  'Staat nu in de hoofdcategorie {staat}.': 'Actuellement dans la catégorie principale {staat}.',
+  'De subcategorie die zo heet, hangt onder {pad}.': 'La sous-catégorie qui porte ce nom se trouve sous {pad}.',
+  'Boeking openen': 'Ouvrir l’écriture',
+  'Boeking openen — {naam}, {regel}, {datum}, {winkel}': 'Ouvrir l’écriture — {naam}, {regel}, {datum}, {winkel}',
+  'Hier staan de eerste {n} van {totaal}.': 'Voici les {n} premières sur {totaal}.',
+  'Toon alle {n}': 'Afficher les {n}',
+  'Boekingen nakijken': 'Vérification de tes écritures',
   'Er hangt nog een doel aan diezelfde rekening: hetzelfde geld telt bij allebei mee.': 'Un autre objectif est lié à ce même compte : le même argent compte pour les deux.',
   'Er hangen nog {n} doelen aan diezelfde rekening: hetzelfde geld telt bij allemaal mee.': '{n} autres objectifs sont liés à ce même compte : le même argent compte pour tous.',
   'Deze drie cijfers gaan over de {n} boekingen die je filters overhouden, en over niets anders.': 'Ces trois chiffres portent sur les {n} écritures que tes filtres laissent, et sur rien d’autre.',
@@ -4032,14 +4114,14 @@ const fr: Record<string, string> = {
   // Categoriekiezer
   'Categorie:': 'Catégorie :',
   'Geen': 'Aucune',
-  'wissen': 'effacer',
+  'opnieuw kiezen': 'rechoisir',
   'Typ om te zoeken (vanaf 2 letters)…': 'Tape pour rechercher (à partir de 2 lettres)…',
   'eigen': 'perso',
   // Itemzoeker
   // Categorieboom
   'Alle categorieën': 'Toutes les catégories',
   'Nieuwe naam voor {naam}': 'Nouveau nom pour {naam}',
-  'Wijzig {naam}': 'Modifier {naam}',
+  'Bewerk {naam}': 'Modifier {naam}',
   'Verwijder {naam}': 'Supprimer {naam}',
   'Nieuwe subcategorie in {naam}': 'Nouvelle sous-catégorie dans {naam}',
   'Naam subcategorie': 'Nom de la sous-catégorie',
@@ -4126,7 +4208,7 @@ const fr: Record<string, string> = {
   'Naam gezinslid': 'Nom du membre',
   'Gezinslid toevoegen': 'Ajouter un membre',
   'Rol van {naam}': 'Rôle de {naam}',
-  'Wijzig gezinslid {naam}': 'Modifier le membre {naam}',
+  'Bewerk gezinslid {naam}': 'Modifier le membre {naam}',
   'Archiveer gezinslid {naam}': 'Archiver le membre {naam}',
   'Heropen gezinslid {naam}': 'Rouvrir le membre {naam}',
   'Verwijder gezinslid {naam}': 'Supprimer le membre {naam}',
@@ -4148,8 +4230,8 @@ const fr: Record<string, string> = {
   // Ronde 29 — les sous-onglets de la page Dossiers.
   'Soort dossier': 'Type de dossier',
   'Facturen & garantiebewijzen': 'Factures & garanties',
-  'Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren.':
-    'Ce que tu désactives disparaît seulement de l’écran — rien n’est perdu.',
+  'Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren, en je zet het hier met één tik terug.':
+    'Ce que tu désactives disparaît seulement de l’écran — rien n’est perdu, et la même touche le remet.',
   'Wat wil je bijhouden?': 'Que veux-tu suivre ?',
   'Gedeelde kosten': 'Frais partagés',
   'Kosten verdelen met een co-ouder of ex-partner, met een verdeelsleutel en afrekeningen.':
@@ -4355,7 +4437,7 @@ const fr: Record<string, string> = {
   ' · tegen {datum}': ' · pour {datum}',
   'Huidig bedrag {naam}': 'Montant actuel {naam}',
   'Huidig bedrag': 'Montant actuel',
-  'Bedrag bijwerken': 'Mettre à jour le montant',
+  'Bedrag wijzigen': 'Modifier le montant',
   'Doelnaam': 'Nom de l’objectif',
   'Bv. Communie Kind 1': 'Ex. Communion Enfant 1',
   'Doelbedrag (€)': 'Montant cible (€)',
@@ -4376,10 +4458,6 @@ const fr: Record<string, string> = {
   '{actie} — {naam}': '{actie} — {naam}',
   '{details} ({n} van {totaal})': '{details} ({n} sur {totaal})',
   'Het gaat over de kost van {details}.': 'Il s’agit de la charge de {details}.',
-  'Vaste omschrijving': 'Description fixe',
-  'Vast bedrag (€)': 'Montant fixe (€)',
-  'Vaste rekening': 'Compte (fixe)',
-  'Vaste categorie': 'Catégorie (fixe)',
   'Dag van de maand': 'Jour du mois',
   // ⚠ RONDE 83 — zie de opmerking in de Engelse tabel.
   'Vaste last wijzigen': 'Modifier la charge fixe',
@@ -4947,6 +5025,10 @@ const fr: Record<string, string> = {
   'De kaart {kaart} staat nu aan.': 'La carte {kaart} est maintenant affichée.',
   'Kaarten waarvoor in deze periode niets te tonen valt, staan hier niet bij.':
     'Les cartes qui n’ont rien à montrer sur cette période ne sont pas reprises ici.',
+  // Ronde 90 — op het Overzicht kan er maar ÉÉN kaart ontbreken, dus noemt de zin ze bij
+  // naam in het enkelvoud, in plaats van de algemene meervoudszin hierboven.
+  'De kaart {kaart} staat er niet bij: daar valt nu nog niets te tonen.':
+    'La carte {kaart} n’est pas reprise : il n’y a encore rien à y montrer.',
   // Ronde 80 — wat er van je inkomen nog nergens in zit
   'Je budgetten vragen samen {gebudgetteerd}.': 'Tes budgets réclament {gebudgetteerd} au total.',
   '{bedrag} nog nergens ondergebracht': '{bedrag} pas encore répartis',
@@ -5148,6 +5230,8 @@ const fr: Record<string, string> = {
   'Een kassaticket dat over meerdere categorieën verdeeld is, staat hierboven per categorie apart — het totaal blijft daardoor gelijk aan de kengetallen.':
     'Un ticket ventilé sur plusieurs catégories figure ci-dessus par catégorie — le total reste donc égal aux chiffres clés.',
   'Per maand': 'Par mois',
+  // Ronde 90 — de chipnaam van de kaart 'Rapport en print' op het Overzicht.
+  'Rapport': 'Rapport',
   'Boekingen': 'Écritures',
   'Er staan geen boekingen in deze periode.': 'Il n’y a aucune écriture dans cette période.',
   'zonder omschrijving': 'sans description',
@@ -5220,7 +5304,7 @@ const fr: Record<string, string> = {
   'Toon wat er betaald is': 'Afficher ce qui a été payé',
   'Brief met de berekening': 'Lettre avec le calcul',
   'Sluit de regeling': 'Fermer l’accord',
-  'Wijzig de regeling': 'Modifier l’accord',
+  'Bewerk de regeling': 'Modifier l’accord',
   'Hoe dit bedrag tot stand komt': 'Comment ce montant est obtenu',
   'Elke verjaardag rekent opnieuw vanaf het bedrag uit de regeling, niet vanaf dat van vorig jaar — zo stapelen afrondingen zich niet op.':
     'Chaque anniversaire est calculé à partir du montant de l’accord, et non de celui de l’an dernier — ainsi les arrondis ne s’accumulent pas.',
@@ -5414,7 +5498,7 @@ const fr: Record<string, string> = {
     'Tu n’as encore rien rempli ici. Désactive le filtre pour voir toutes les suggestions.',
   '{naam} bewaard: {bedrag} {periode}.': 'Enregistré : {naam} — {bedrag} {periode}.',
   '{naam} toevoegen': 'Ajouter {naam}',
-  '{naam} wijzigen': 'Modifier {naam}',
+  '{naam} bewerken': 'Modifier {naam}',
   'Klik op een kost om te zien wat je al hebt, of voeg er een toe. Het invulvenster vraagt alles in één keer.':
     'Clique sur une charge pour voir ce que tu y as déjà, ou ajoutes-en une. La fenêtre demande tout en une fois.',
   'De kleine abonnementen waar je nooit meer naar omkijkt. Samen zijn ze vaak groter dan je denkt.':
@@ -5427,8 +5511,6 @@ const fr: Record<string, string> = {
   // Ronde 74 — un objectif d’épargne qui sait quelle charge fixe il sert
   'Waarvoor spaar je? (optioneel)': 'Pour quoi épargnes-tu ? (optionnel)',
   'Voor niets in het bijzonder': 'Pour rien en particulier',
-  '{naam} kost {bedrag} en valt de volgende keer op {datum}. Zolang dit doel eraan hangt, vraagt Budget er niet meer apart geld voor opzij te zetten.':
-    '{naam} coûte {bedrag} et tombe la prochaine fois le {datum}. Tant que cet objectif y est rattaché, Budget ne te demande plus de mettre de l’argent de côté séparément.',
   '{naam} kost {bedrag}, maar er komt geen betaling meer.':
     '{naam} coûte {bedrag}, mais plus aucun paiement ne vient.',
   'Hang dit doel aan een vaste last die niet elke maand valt — een jaarpremie bijvoorbeeld. Dan weet de app waarvoor je spaart en vraagt ze het geld geen tweede keer.':
@@ -5437,8 +5519,6 @@ const fr: Record<string, string> = {
   'De vaste last waarvoor je spaarde, staat niet meer in je vaste lasten. Het doel blijft gewoon lopen.':
     'La charge fixe pour laquelle tu épargnais ne figure plus parmi tes charges fixes. L’objectif continue simplement.',
   'Voor {naam}, de volgende keer op {datum}.': 'Pour {naam}, la prochaine fois le {datum}.',
-  'Die kost is {bedrag}; je doelbedrag staat op iets anders.':
-    'Cette charge est de {bedrag} ; ton montant cible indique autre chose.',
   'Je doeldatum ligt ná die betaling, dus aan dit tempo ben je te laat.':
     'Ta date cible tombe après ce paiement, donc à ce rythme tu seras en retard.',
   // Ronde 79
@@ -5454,7 +5534,7 @@ const fr: Record<string, string> = {
   'De kost waaraan dit doel hangt': 'La charge à laquelle cet objectif est rattaché',
   'Onbekende kost': 'Charge inconnue',
   'Dit doel hangt aan een kost die niet meer in je lijst staat, of die niet meer om vooraf sparen vraagt. Kies "Voor niets in het bijzonder" om de koppeling los te maken.':
-    'Cet objectif est rattaché à une charge qui ne figure plus dans ta liste, ou qui ne demande plus d’épargne préalable. Choisis « Pour rien en particulier » pour le détacher.',
+    'Cet objectif est rattaché à une charge qui ne figure plus dans ta liste, ou qui ne demande plus d’épargne préalable. Choisis « Pour rien en particulier » pour le détacher.',
   'Je spaarde voor {naam}, maar daar komt geen betaling meer van.':
     'Tu épargnais pour {naam}, mais plus aucun paiement n’en viendra.',
   'Aan je huidige tempo heb je pas ná die betaling genoeg bij elkaar.':

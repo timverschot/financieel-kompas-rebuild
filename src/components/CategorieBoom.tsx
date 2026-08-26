@@ -550,7 +550,7 @@ export function CategorieBoom({
                                       <button
                                         type="button"
                                         className="knop knop-kaal"
-                                        aria-label={t('Wijzig {naam}', { naam: it.naam })}
+                                        aria-label={t('Bewerk {naam}', { naam: it.naam })}
                                         onClick={() => {
                                           setBewerkId(it.id)
                                           setBewerkTekst(it.naam)

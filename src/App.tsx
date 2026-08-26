@@ -114,6 +114,10 @@ import { synchroniseer } from './data/sync/sync'
 import { DriveBackend } from './data/sync/drive/driveBackend'
 import { vraagToken, heeftOoitVerbonden, meldAf } from './data/sync/drive/auth'
 import { TransactieFormulier } from './components/TransactieFormulier'
+import { VerkeerdGetagd } from './components/VerkeerdGetagd'
+import { OverzichtKaartkeuze } from './components/OverzichtKaartkeuze'
+import { toontOverzichtKaart, type OverzichtKaartId } from './utils/overzichtkaarten'
+import { heeftToekomstlasten } from './utils/toekomstlasten'
 import { TransactieLijst } from './components/TransactieLijst'
 import { ImportSectie } from './components/ImportSectie'
 import { RekeningFormulier, REKENING_TYPE_LABEL } from './components/RekeningFormulier'
@@ -570,7 +574,7 @@ export function App() {
     undoKlok.current.start()
   }
   const { t, taal, zetTaal } = useT()
-  const { budgetDrempel } = useInstellingen()
+  const { budgetDrempel, verborgenOverzichtkaarten } = useInstellingen()
 
   async function herlaad() {
     const [tx, rk, cat, bud, dos, kos, ver, tkp, sp, subc, ob, ki, kr, krp, ln, afl, gar, ord, docs, wrd, obd, obt, maf] = await Promise.all([
@@ -2293,6 +2297,23 @@ export function App() {
   const gekozenRekening = rekeningen.find((r) => r.id === gekozenRekeningId) ?? null
   const maandPaar = inkomstenUitgavenPerMaand(transacties, maand, 6)
 
+  // ⚠ RONDE 90 — welke Overzicht-kaarten er ÜBERHAUPT kunnen staan, en dus een chip
+  // verdienen. Zie de kopregels van utils/overzichtkaarten.ts: vijf van de zes kaarten
+  // blijven staan zonder cijfers (met een lege toestand die uitlegt hoe je begint), want
+  // anders ontdekt een nieuwe gebruiker niet eens dat ze bestaan. Alleen "Wat komt eraan"
+  // tekent zichzelf niet op een lege app — en dat is precies dezelfde voorwaarde die de
+  // widget zelf gebruikt, uit één gedeelde functie, zodat chip en kaart niet uit elkaar
+  // kunnen lopen.
+  const overzichtKaartenGevuld: Record<OverzichtKaartId, boolean> = {
+    uitgaven: true,
+    inkomsten: true,
+    recent: true,
+    maandgrafiek: true,
+    toekomst: heeftToekomstlasten(terugkerendePosten, huidigeMaand()),
+    rapport: true,
+  }
+  const toontKaartOverzicht = (id: OverzichtKaartId) => toontOverzichtKaart(id, verborgenOverzichtkaarten)
+
   // Eén maand-schakelaar, hergebruikt op de pagina's die per maand tonen
   // (Overzicht en Budget). Zo hoeft de gebruiker niet terug naar Overzicht.
   const maandNav = (
@@ -2857,8 +2878,31 @@ export function App() {
             </UitlegBlok>
           </Kaart>
 
+          {/* ⚠ RONDE 90 — "MINDER TEGELIJK", DEEL DRIE. Ronde 75 zette pagina's uit,
+              ronde 81 kaarten binnen Analyse › Verdeling, en die nota noemde het
+              Overzicht als wat er nog lag. Op een telefoon stonden hier vóór deze
+              ronde ZEVEN blokken onder elkaar (het maandblok en zes kaarten, geteld in de
+              DOM) — op de pagina waar je LANDT.
+
+              ⚠ En de rij staat DICHTGEKLAPT: open beslaat ze daar 269 px, gemeten. Zie de
+              kopregels van `OverzichtKaartkeuze`.
+
+              ⚠ NÁ het maandblok en niet ervoor: eerst waarvoor je kwam, dan de vraag wat
+              je er nog bij wil. Zie de kopregels van `OverzichtKaartkeuze`. */}
+          <OverzichtKaartkeuze gevuld={overzichtKaartenGevuld} />
+
           <ErrorBoundary naam="Overzicht">
-            <div className="raster-hoofd">
+            {/* ⚠ RONDE 90 — `data-hoofd-leeg` wanneer je ALLEBEI de donuts uitzet. Op een
+                breed scherm is dit raster `2fr 1fr` met de zijkolom rechts; zonder donuts
+                bleef de linkerkolom van twee derde leeg naast een smalle zijkolom. Het
+                attribuut zet het raster dan op één kolom, zodat de zijkolom de breedte
+                krijgt. Zie `[data-hoofd-leeg]` in index.css. */}
+            <div
+              className="raster-hoofd"
+              data-hoofd-leeg={
+                !toontKaartOverzicht('uitgaven') && !toontKaartOverzicht('inkomsten') ? '' : undefined
+              }
+            >
               <div className="stapel">
                 {/* Twee grote donuts. Geen lijst met alle categorieën eronder meer:
                     hang je met de muis over een schijf (of tik je erop), dan komt
@@ -2868,7 +2912,9 @@ export function App() {
                 <div className="raster-twee">
                   {/* De kaart blijft staan, ook zonder cijfers. Verdween ze, dan zag
                       een nieuwe gebruiker niet eens DÁT er een uitgavengrafiek bestaat
-                      — en dan lijkt de app op dag één simpeler dan ze is. */}
+                      — en dan lijkt de app op dag één simpeler dan ze is. Zet JIJ haar
+                      uit (ronde 90), dan is dat een keuze en geen stilte. */}
+                  {toontKaartOverzicht('uitgaven') && (
                   <Kaart titel={t('Uitgaven per categorie')} bijschrift={maandJaarLabel(maand)}>
                     {/* ⚠ RONDE 66. Deze zin NOEMDE twee handelingen maar bood er geen
                         enkele aan — je stond op je startscherm en moest zelf uitzoeken
@@ -2910,7 +2956,11 @@ export function App() {
                       </>
                     )}
                   </Kaart>
+                  )}
 
+                  {/* Zelfde afweging als hierboven: de kaart blijft staan zonder cijfers,
+                      tenzij jij haar uitzet. */}
+                  {toontKaartOverzicht('inkomsten') && (
                   <Kaart titel={t('Inkomsten per categorie')} bijschrift={maandJaarLabel(maand)}>
                     {perInkomsten.length === 0 ? (
                       <Leeg>{t('Nog geen inkomsten deze maand.')}</Leeg>
@@ -2933,6 +2983,7 @@ export function App() {
                       </>
                     )}
                   </Kaart>
+                  )}
                 </div>
 
               </div>
@@ -2963,6 +3014,7 @@ export function App() {
             <div className="stapel" data-volle-breedte>
               {/* Je laatste boekingen. Stonden alleen in de zijkolom, dus op een
                   telefoon zag je ze op de startpagina helemaal niet. */}
+              {toontKaartOverzicht('recent') && (
               <RecenteTransacties
                 transacties={transacties}
                 categorieen={categorieen}
@@ -2970,7 +3022,9 @@ export function App() {
                 onBewerk={setBewerkTransactie}
                 onNieuw={nieuweTransactie}
               />
+              )}
 
+              {toontKaartOverzicht('maandgrafiek') && (
               <Kaart
                 titel={t('Inkomsten en uitgaven per maand')}
                 // Het tijdvak staat er letterlijk bij. "De laatste zes maanden"
@@ -2987,10 +3041,12 @@ export function App() {
                   onKiesMaand={(m) => gaNaarTransacties({ maand: m })}
                 />
               </Kaart>
+              )}
 
               {/* Ronde 72. De grafiek hierboven kijkt zes maanden TERUG; deze twaalf
                   maanden VOORUIT. Ze horen naast elkaar: eerst wat er gebeurd is,
                   dan wat eraan komt. Op een lege app tekent de widget zichzelf niet. */}
+              {toontKaartOverzicht('toekomst') && (
               <ToekomstlastenWidget
                 terugkerendePosten={terugkerendePosten}
                 beginMaand={huidigeMaand()}
@@ -2999,9 +3055,11 @@ export function App() {
                   brengToekomstInBeeld()
                 }}
               />
+              )}
 
               {/* Onderaan, bewust: je exporteert een maand nadat je ze bekeken hebt,
                   niet ervoor. De kaart volgt de maandschakelaar bovenaan. */}
+              {toontKaartOverzicht('rapport') && (
               <RapportKaart
                 maand={maand}
                 transacties={transacties}
@@ -3010,6 +3068,7 @@ export function App() {
                 overboekingen={overboekingen}
                 waarderingen={waarderingen}
               />
+              )}
             </div>
           </ErrorBoundary>
         </>
@@ -3040,6 +3099,22 @@ export function App() {
               zodat je je eigen transacties niet zag zonder te scrollen. Toevoegen
               gaat via de popup (de ➕), bewerken via het potloodje in de lijst — in
               dezelfde popup, zodat er één vorm is om een boeking in te vullen. */}
+          {/* ⚠ RONDE 87 — OPSPOREN, NOOIT HERSTELLEN. Ronde 78 dichtte de weg waarlangs
+              een gekozen subcategorie stil door een brede hoofdcategorie vervangen werd;
+              de boekingen die je er vóór die ronde mee maakte, staan er nog. Deze kaart
+              wijst ze aan en verandert niets — de knop opent de boeking, en jij beslist.
+              Staat er niets, dan staat de kaart er niet. */}
+          <ErrorBoundary naam="Boekingen nakijken">
+            <VerkeerdGetagd
+              transacties={transacties}
+              // ⚠ Deze twee worden niet gelezen; ze houden de memo in de kaart vers. Zie
+              // daar: de categorieboom staat in een register buiten React.
+              categorieen={categorieen}
+              subcategorieen={subcategorieen}
+              onBekijk={setBewerkTransactie}
+            />
+          </ErrorBoundary>
+
           <ErrorBoundary naam="Boekingen">
             <TransactieLijst
               // Elke doorklik krijgt een nieuwe sleutel, zodat de lijst het nieuwe

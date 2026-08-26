@@ -29,6 +29,12 @@ import { zachteAchtergrond } from './TransactieLijst'
 function PlanRegel({ doel, plan, teLaat }: { doel: Spaardoel; plan: SpaardoelPlan; teLaat: boolean }) {
   const { t } = useT()
 
+  // ⚠ RONDE 85 — HIER STAAT BEWUST GEEN BEDRAG BIJ. Mijn eerste opzet zette naast deze
+  // badge een zin "Je hebt € 100,00 meer opzij staan dan dit doel vraagt". Toen stond
+  // hetzelfde verschil op DRIE plaatsen in één rij: "€ 720,00 van € 620,00" bovenaan,
+  // "€ 100,00 meer dan nodig" twee regels lager, en die zin. Eén plek volstaat, en dat
+  // is de regel die vroeger "nog € 0,00" zei — daar was de leugen, dus daar hoort het
+  // antwoord.
   if (plan.alBereikt) {
     return (
       <div>
@@ -98,16 +104,24 @@ function PlanRegel({ doel, plan, teLaat }: { doel: Spaardoel; plan: SpaardoelPla
 /**
  * Wat dit doel met een vaste last te maken heeft (ronde 74).
  *
- * ⚠ Deze regel MAG NOOIT NIETS ZEGGEN wanneer er een koppeling is. Een doel dat aan
- * een vaste last hangt, haalt die kost weg uit "Opzij voor later" op Budget; wie dat
- * bedrag daar ziet verdwijnen zonder dat hier iets staat, ziet een app die uit
- * zichzelf getallen verandert.
+ * ⚠ Deze regel MAG NOOIT NIETS ZEGGEN wanneer er een koppeling is. Een doel dat aan een
+ * vaste last hangt, VERANDERT het bedrag onder "Opzij voor later" op Budget: jouw
+ * streefbedrag komt daar in de plaats van het volle bedrag gedeeld over de maanden. Wie
+ * dat bedrag daar ziet springen zonder dat hier iets staat, ziet een app die uit zichzelf
+ * getallen verandert.
+ *
+ * ⚠ "haalt die kost weg uit Opzij voor later" stond hier tot ronde 85, en dat was onwaar
+ * — `utils/spaardoel.ts` legt sinds ronde 74 uitdrukkelijk uit dat de koppeling het
+ * bedrag VERVANGT en niet weghaalt. Dezelfde onwaarheid stond ook in het formulier en in
+ * `PlanRegels.tsx`.
  */
 function KoppelingRegel({
   dekking,
   teLaat,
   medeDoelen,
   doelnaam,
+  doelbedrag,
+  bedragVergelijkbaar,
   bezig,
   onNeemBedrag,
   onNeemDatum,
@@ -119,6 +133,19 @@ function KoppelingRegel({
   medeDoelen: number
   /** Alleen om de knoppen hieronder een eigen naam te geven; zie daar. */
   doelnaam: string
+  /** Het doelbedrag van dit doel, in centen — om het naast de kost te kunnen noemen. */
+  doelbedrag: number
+  /**
+   * Mag de app die twee bedragen naast elkaar zetten? (ronde 85, doorlichting)
+   *
+   * ⚠ `doeldekking` kijkt niet naar het teken en niet naar het ritme, en dit scherm
+   * krijgt ÁLLE terugkerende posten mee. Werd de gekoppelde kost intussen een INKOMST of
+   * MAANDELIJKS, dan zei deze zin sinds ronde 85 "Die kost is € 950,00; jouw doelbedrag
+   * staat op € 620,00" — met je huurbedrag of je loon erin. Ronde 79 hield de KNOP daar
+   * al buiten om precies die reden; sinds de zin de getallen noemt, geldt hetzelfde
+   * voor de zin.
+   */
+  bedragVergelijkbaar: boolean
   /** Loopt er een vorige wijziging? Dan wachten de knoppen even; zie `neemOver`. */
   bezig: boolean
   /**
@@ -202,10 +229,15 @@ function KoppelingRegel({
           de zinnen samengevoegd en de knoppen eronder, dan wees geen van beide knoppen
           nog naar iets — en een reden hoort te wijzen naar wat je kan zien (huisregel
           sinds ronde 71). */}
-      {dekking.bedragWijktAf && (
+      {dekking.bedragWijktAf && bedragVergelijkbaar && (
         <Vaststelling
-          zin={t('Die kost is {bedrag}; je doelbedrag staat op iets anders.', {
+          // ⚠ RONDE 85 — MÉT JOUW EIGEN GETAL. "je doelbedrag staat op iets anders" liet
+          // je zelf terugbladeren naar het formulier om te zien wát dat andere was, en
+          // stond dat als open punt van ronde 79 in de voortgangsnota. Nu staan allebei
+          // de bedragen er, en zie je meteen welke kant het op moet.
+          zin={t('Die kost is {bedrag}; jouw doelbedrag staat op {doel}.', {
             bedrag: formatEuro(dekking.bedrag),
+            doel: formatEuro(doelbedrag),
           })}
           knop={t('Neem dat bedrag over')}
           // ⚠ Mét de doelnaam erachter. Er staan meerdere doelen onder elkaar, en die
@@ -552,7 +584,28 @@ export function SpaardoelSectie({
                   ) : null}
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                    <span className="rij-meta">{t('nog {bedrag}', { bedrag: formatEuro(v.resterend) })}</span>
+                    {/* ⚠ RONDE 85 — "nog € 0" is geen stand van zaken. Zat je over je
+                        doel, dan stond hier "nog € 0,00" omdat `resterend` afgekapt
+                        wordt; het bedrag dat je er écht over zit, stond nergens.
+
+                        ⚠ "meer dan nodig" en niet "te veel" (doorlichting). Meer sparen
+                        dan het doel vraagt is geen vergissing, en "te veel" betekent in
+                        deze app elders wél een échte fout ("€ 12,00 te veel
+                        ondergebracht" op een kassaticket dat niet klopt).
+
+                        ⚠ EN NIET BIJ EEN GEDEELDE REKENING (doorlichting). Bij een
+                        gekoppeld doel is `huidig` het VOLLE saldo van die rekening — dat
+                        zegt de zin hierboven zelf. Hangen er twee doelen aan, dan zou
+                        "€ 80,00 meer dan nodig" bij allebei staan terwijl er in totaal
+                        geld tekort is. Dan zwijgt deze plek liever dan iets te beweren
+                        dat de regel erboven meteen weerlegt. */}
+                    <span className="rij-meta">
+                      {v.over > 0
+                        ? medeDoelen > 0
+                          ? ''
+                          : t('{bedrag} meer dan nodig', { bedrag: formatEuro(v.over) })
+                        : t('nog {bedrag}', { bedrag: formatEuro(v.resterend) })}
+                    </span>
                     <span className="rij-meta">
                       {d.maandbedrag ? t('{bedrag}/mnd', { bedrag: formatEuro(d.maandbedrag) }) : ''}
                       {d.doeldatum ? t(' · tegen {datum}', { datum: d.doeldatum }) : ''}
@@ -567,6 +620,8 @@ export function SpaardoelSectie({
                     teLaat={teLaat}
                     medeDoelen={d.vasteLastId ? spaardoelenVoorVasteLast(d.vasteLastId, spaardoelen).length - 1 : 0}
                     doelnaam={d.naam}
+                    doelbedrag={d.doelbedrag}
+                    bedragVergelijkbaar={spaarbaar}
                     bezig={opslag.bezig}
                     onNeemBedrag={
                       loopt
@@ -593,7 +648,7 @@ export function SpaardoelSectie({
                         onChange={(e) => setBedragInvoer((m) => ({ ...m, [d.id]: e.target.value }))}
                       />
                       <button type="button" className="knop knop-secundair knop-klein" onClick={() => werkBedragBij(d)}>
-                        {t('Bedrag bijwerken')}
+                        {t('Bedrag wijzigen')}
                       </button>
                     </div>
                   )}

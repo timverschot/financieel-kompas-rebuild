@@ -119,6 +119,21 @@ export function toekomstlasten(
  * geld klaarzette voor september liep in maart tegen exact hetzelfde bedrag aan,
  * zonder dat de app het ooit genoemd had.
  */
+/**
+ * Heeft de widget op het Overzicht iets te tonen? (ronde 90)
+ *
+ * ⚠ HIER EN NIET TWEE KEER. `ToekomstlastenWidget` bepaalde dit zelf, in de component:
+ * `if (totaal === 0 && ontbreken.length === 0) return null`. Ronde 90 zet een chip boven
+ * die kaart, en een chip die er staat terwijl de kaart eronder zwijgt is een schakelaar
+ * die niets lijkt te doen. De chiprij en de kaart moeten dus DEZELFDE vraag stellen —
+ * huisregel sinds ronde 81, waar die twee anders uit elkaar zouden lopen bij de eerste
+ * volgende aanpassing.
+ */
+export function heeftToekomstlasten(posten: TerugkerendePost[], beginMaand: string): boolean {
+  const totaal = toekomstlasten(posten, beginMaand).reduce((som, m) => som + m.bedrag, 0)
+  return totaal !== 0 || onplaatsbareLasten(posten, beginMaand).length > 0
+}
+
 export function zwaarsteMaanden(reeks: Toekomstmaand[]): Toekomstmaand[] {
   let hoogste = 0
   for (const m of reeks) if (m.bedrag > hoogste) hoogste = m.bedrag

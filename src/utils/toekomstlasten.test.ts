@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { TerugkerendePost } from '../data/schema'
 import {
+  heeftToekomstlasten,
   isPlaatsbaar,
   kanVooruit,
   onplaatsbareLasten,
@@ -128,6 +129,45 @@ describe('toekomstlasten', () => {
   it('noemt een onplaatsbare post die al gestopt is niet meer', () => {
     const weg = post({ id: 'weg', frequentie: 'jaar', eindMaand: '2026-07' })
     expect(onplaatsbareLasten([weg], NU)).toEqual([])
+  })
+})
+
+describe('heeftToekomstlasten (ronde 90)', () => {
+  // ⚠ Dezelfde vraag als de widget zelf stelt, uit ÉÉN functie: ronde 90 zet een chip
+  // boven die kaart, en een chip die er staat terwijl de kaart eronder zwijgt is een
+  // schakelaar die niets lijkt te doen.
+  it('zegt nee op een lege app', () => {
+    expect(heeftToekomstlasten([], NU)).toBe(false)
+  })
+
+  it('zegt ja zodra er een vaste last in het venster valt', () => {
+    expect(heeftToekomstlasten([huur], NU)).toBe(true)
+  })
+
+  it('zegt ja voor een last die de app niet in de tijd kan plaatsen', () => {
+    // ⚠ Die telt niet mee in het TOTAAL, maar de kaart noemt hem wel — onderaan, als
+    // een post die buiten de grafiek valt. Zou de chip hier nee zeggen, dan verdween de
+    // enige plek waar zo'n post ooit genoemd wordt.
+    const ritmeloos = post({ id: 'los', bedrag: -50000, frequentie: 'jaar', startMaand: undefined })
+    expect(toekomstlasten([ritmeloos], NU).reduce((som, m) => som + m.bedrag, 0)).toBe(0)
+    expect(onplaatsbareLasten([ritmeloos], NU)).toHaveLength(1)
+    expect(heeftToekomstlasten([ritmeloos], NU)).toBe(true)
+  })
+
+  it('zegt nee voor een plaatsbare last die pas ná het venster valt', () => {
+    // ⚠ En dat is GOED: de kaart zwijgt daar zelf ook over, want ze kijkt twaalf maanden
+    // vooruit. Chip en kaart stellen dezelfde vraag — dat is de hele reden dat deze
+    // functie bestaat.
+    const ver = post({ id: 'ver', bedrag: -50000, frequentie: 'jaar', startMaand: '2030-01' })
+    expect(onplaatsbareLasten([ver], NU)).toEqual([])
+    expect(heeftToekomstlasten([ver], NU)).toBe(false)
+  })
+
+  it('zegt nee wanneer alle posten inkomsten zijn die niets kosten', () => {
+    // Een vaste INKOMST is geen last; de kaart heet "Wat komt eraan" en gaat over wat
+    // je nog moet betalen.
+    const loon = post({ id: 'loon', omschrijving: 'Loon', bedrag: 240000 })
+    expect(heeftToekomstlasten([loon], NU)).toBe(false)
   })
 })
 

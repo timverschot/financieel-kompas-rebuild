@@ -4,7 +4,7 @@ import type { Kind, Rekening, Spaardoel, TerugkerendePost } from '../data/schema
 import { nieuwId } from '../data/sync/id'
 import { rekeningLabel } from '../utils/rekening'
 import { invoerNaarCenten, centenNaarInvoer, formatEuro } from '../utils/format'
-import { volgendeVervaldag } from '../utils/vastelast'
+import { opzijPerMaand, volgendeVervaldag } from '../utils/vastelast'
 import { dagJaar, vandaag } from '../utils/datum'
 import { GezinslidKiezer } from './GezinslidKiezer'
 import { heeftKiesbareLeden } from '../utils/persoon'
@@ -150,6 +150,50 @@ export function SpaardoelFormulier({
   // De id van de regel die zegt wat er nog ontbreekt. De knop wijst ernaar met
   // `aria-describedby`, zodat wie erop landt de reden hoort (ronde 61).
   const redenId = useId()
+
+  /**
+   * RONDE 85 — DE TWEE VELDEN DIE IETS MET DE GEKOZEN KOST TE MAKEN HEBBEN.
+   *
+   * Timothy: *"kan je het spaardoel niet beperken tot het bedrag van de vaste last?"*
+   *
+   * ⚠ WAAROM AAN HET VELD EN NIET ERNA. Sinds ronde 74 zag de app een verschil al, en
+   * sinds ronde 79 stond er een knop naast — maar allebei pas in de LIJST, ná het
+   * bewaren. Je vulde € 720 in bij een premie van € 620, drukte op bewaren, en pas
+   * daarna zei een regel dat het niet klopte. De vraag hoort gesteld te worden waar het
+   * getal ontstaat.
+   *
+   * ⚠ EN WAAROM DE APP HET NIET TEGENHOUDT — een correctie op mezelf, uit de
+   * doorlichting. De eerste versie van deze ronde WEIGERDE te bewaren, met als reden dat
+   * een te hoog doelbedrag Budget elke maand te veel zou laten apart houden. **Dat is
+   * niet waar.** `opzijVolgensSpaardoelen` rekent met `d.maandbedrag ?? opzijPerMaand(post)`;
+   * `doelbedrag` komt in die som niet voor. Een doel van € 720 reserveert bij Budget
+   * exact evenveel als een doel van € 620. De schade die de weigering rechtvaardigde,
+   * bestond niet — en ondertussen verbood ze wél de gevallen die ronde 79 uitdrukkelijk
+   * open hield (je verwacht een indexering, je spaart twee jaar vooruit). Nu doet dit
+   * scherm wat de rest van de app doet: het zegt wat het ziet en zet er één tik naast.
+   *
+   * ⚠ EN HET VELD DAT WÉL STUURT, KRIJGT DEZELFDE BEHANDELING. `maandbedrag` is het
+   * enige veld van een spaardoel dat Budget onder "Opzij voor later" verandert. Daar
+   * stond niets. Nu staat er wat Budget met jouw getal doet, en wat het zonder dat getal
+   * zou doen.
+   *
+   * ⚠ ALLEBEI ALLEEN wanneer de app de kost KENT. Hangt het doel aan een post die niet
+   * (meer) in de lijst staat, dan is `gekozenLast` null en zwijgen ze: raden over een
+   * bedrag dat we niet zien, zou erger zijn dan niets zeggen.
+   */
+  const kostVanLast = gekozenLast ? Math.abs(gekozenLast.bedrag) : null
+  const overKost = kostVanLast !== null && doelCenten > kostVanLast ? doelCenten - kostVanLast : 0
+  const teHoogId = useId()
+
+  // Wat Budget elke maand voor deze kost apart houdt ZONDER streefbedrag: het
+  // jaarbedrag gedeeld door twaalf. Nul wanneer het vinkje "hier maandelijks voor
+  // opzijzetten" uit staat — dan reserveert Budget er vandaag niets voor.
+  const maandCentenNu = invoerNaarCenten(maandbedrag)
+  const standaardOpzij = gekozenLast ? opzijPerMaand(gekozenLast) : 0
+  const opzijWijktAf =
+    gekozenLast !== null && maandCentenNu > 0 && maandCentenNu !== standaardOpzij
+  const opzijId = useId()
+
   const geldig = naam.trim().length > 0 && Number.isFinite(doelCenten) && doelCenten > 0
 
   async function verzend(e: FormEvent) {
@@ -203,7 +247,17 @@ export function SpaardoelFormulier({
           <label className="label-caps" htmlFor="doelbedrag">
             {t('Doelbedrag (€)')}
           </label>
-          <input id="doelbedrag" inputMode="decimal" placeholder="0,00" value={doelbedrag} onChange={(e) => setDoelbedrag(e.target.value)} />
+          <input
+            id="doelbedrag"
+            inputMode="decimal"
+            placeholder="0,00"
+            value={doelbedrag}
+            // ⚠ Naar de TEKST, nooit naar het blok met de knop erin (huisregel sinds
+            // ronde 78): een beschrijving wordt platgeslagen, en dan plakt "Zet op
+            // € 620,00" aan de zin vast.
+            aria-describedby={overKost > 0 ? teHoogId : undefined}
+            onChange={(e) => setDoelbedrag(e.target.value)}
+          />
         </div>
         {!gekoppeldeRekeningId && (
           <div className="veldgroep">
@@ -214,6 +268,35 @@ export function SpaardoelFormulier({
           </div>
         )}
       </div>
+
+      {/* ⚠ RONDE 85 — PAL ONDER HET VELD, want daar ontstaat het getal. Exact de vorm die
+          `LeningSectie` al gebruikt voor "je vult meer in dan er nog openstaat": één korte
+          zin in de waarschuwingskleur, één ghost-knop, uitgelijnd op de basislijn zodat
+          een zin die op een telefoon over twee regels valt niet naast een zwevende knop
+          komt te staan. Ook de knoptekst is dezelfde vertaalsleutel — één beweging, één
+          naam (huisregel sinds ronde 82/83).
+
+          ⚠ De zin heeft een eigen id en bevat GEEN knop: hij is de beschrijving van het
+          invoerveld én van de knop (huisregel sinds ronde 78). */}
+      {overKost > 0 && kostVanLast !== null && gekozenLast && (
+        <div className="knoprij" style={{ alignItems: 'baseline' }}>
+          <span id={teHoogId} className="rij-meta" style={{ color: 'var(--warn-tekst)' }}>
+            {t('Dit is {over} meer dan {naam} kost ({bedrag}).', {
+              over: formatEuro(overKost),
+              naam: postNaamMetKenmerk(t, gekozenLast, vasteLasten),
+              bedrag: formatEuro(kostVanLast),
+            })}
+          </span>
+          <button
+            type="button"
+            className="knop knop-ghost knop-klein"
+            aria-describedby={teHoogId}
+            onClick={() => setDoelbedrag(centenNaarInvoer(kostVanLast))}
+          >
+            {t('Zet op {open}', { open: formatEuro(kostVanLast) })}
+          </button>
+        </div>
+      )}
 
       {/* ⚠ Alleen wanneer er iets te kiezen valt (ronde 74). Een lege keuzelijst met
           "Geen" erin is een veld dat een vraag stelt die niemand kan beantwoorden —
@@ -253,7 +336,12 @@ export function SpaardoelFormulier({
               ? t('Dit doel hangt aan een kost die niet meer in je lijst staat, of die niet meer om vooraf sparen vraagt. Kies "Voor niets in het bijzonder" om de koppeling los te maken.')
               : gekozenLast
               ? vervaldag
-                ? t('{naam} kost {bedrag} en valt de volgende keer op {datum}. Zolang dit doel eraan hangt, vraagt Budget er niet meer apart geld voor opzij te zetten.', {
+                ? // ⚠ RONDE 85 — DEZE ZIN WAS ONWAAR, en `utils/spaardoel.ts` zegt sinds
+                  // ronde 74 letterlijk waarom: de koppeling VERVANGT het bedrag onder
+                  // "Opzij voor later", ze haalt het er niet weg. Budget blijft er dus
+                  // wel degelijk geld voor apart houden — de vaste-lastenrij toont het
+                  // zelfs met zoveel woorden ("via je spaardoel X").
+                  t('{naam} kost {bedrag} en valt de volgende keer op {datum}. Zolang dit doel eraan hangt, rekent Budget onder "Opzij voor later" met jouw streefbedrag in plaats van met het volle bedrag gedeeld over de maanden.', {
                     naam: gekozenLast.omschrijving,
                     bedrag: formatEuro(Math.abs(gekozenLast.bedrag)),
                     datum: dagJaar(vervaldag),
@@ -292,9 +380,50 @@ export function SpaardoelFormulier({
           <label className="label-caps" htmlFor="maandbedrag">
             {t('Maandelijks streefbedrag (€, optioneel)')}
           </label>
-          <input id="maandbedrag" inputMode="decimal" placeholder="0,00" value={maandbedrag} onChange={(e) => setMaandbedrag(e.target.value)} />
+          <input
+            id="maandbedrag"
+            inputMode="decimal"
+            placeholder="0,00"
+            value={maandbedrag}
+            aria-describedby={opzijWijktAf ? opzijId : undefined}
+            onChange={(e) => setMaandbedrag(e.target.value)}
+          />
         </div>
       </div>
+
+      {/* ⚠ RONDE 85, doorlichting — DIT IS HET VELD DAT ÉCHT IETS DOET. Van alle velden
+          van een spaardoel is `maandbedrag` het enige dat een cijfer op een ánder scherm
+          verandert: `opzijVolgensSpaardoelen` legt het onder "Opzij voor later" op Budget
+          in de plaats van het jaarbedrag gedeeld door twaalf. Dat stond nergens, terwijl
+          het formulier honderd regels hoger wél een grendel had op een veld dat daar niets
+          mee te maken heeft. Geen oordeel, geen weigering: één zin die zegt wat er gebeurt,
+          en de weg terug naar wat de app zelf zou rekenen. */}
+      {opzijWijktAf && gekozenLast && (
+        <div className="knoprij" style={{ alignItems: 'baseline' }}>
+          <span id={opzijId} className="rij-meta">
+            {standaardOpzij > 0
+              ? t('Budget houdt hierdoor {streef} per maand apart voor {naam} in plaats van {standaard} — het volle bedrag gedeeld over de maanden tot de betaling.', {
+                  streef: formatEuro(maandCentenNu),
+                  naam: postNaamMetKenmerk(t, gekozenLast, vasteLasten),
+                  standaard: formatEuro(standaardOpzij),
+                })
+              : t('Budget houdt hierdoor {streef} per maand apart voor {naam}. Zonder dit streefbedrag zou dat niets zijn: bij die kost staat "hier maandelijks voor opzijzetten" uit.', {
+                  streef: formatEuro(maandCentenNu),
+                  naam: postNaamMetKenmerk(t, gekozenLast, vasteLasten),
+                })}
+          </span>
+          {standaardOpzij > 0 && (
+            <button
+              type="button"
+              className="knop knop-ghost knop-klein"
+              aria-describedby={opzijId}
+              onClick={() => setMaandbedrag(centenNaarInvoer(standaardOpzij))}
+            >
+              {t('Zet op {open}', { open: formatEuro(standaardOpzij) })}
+            </button>
+          )}
+        </div>
+      )}
 
       {heeftKiesbareLeden(gezinsleden, persoonId) && (
         <GezinslidKiezer

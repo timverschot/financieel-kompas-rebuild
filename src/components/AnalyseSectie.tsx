@@ -928,7 +928,7 @@ export function AnalyseSectie({
                 })}
               </div>
               <p className="rij-meta" style={{ margin: 0 }} id={belofteId}>
-                {t('Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren.')}
+                {t('Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren, en je zet het hier met één tik terug.')}
               </p>
               {/* ⚠ HET GAT DAT `kiesbareKaarten` ANDERS LAAT VALLEN. Ronde 75 begon met
                   de vaststelling dat drie van de vier verdelingskaarten STIL verdwenen

@@ -7,6 +7,7 @@ import { SpaardoelSectie } from './SpaardoelSectie'
 import type { Overboeking, Rekening, Spaardoel, TerugkerendePost, Transactie } from '../data/schema'
 import { vandaag } from '../utils/datum'
 import { voegMaandenToe } from '../utils/rekenhulp'
+import { formatEuro } from '../utils/format'
 
 const rekeningen = [{ id: 'r1', naam: 'Betaalrekening', beginsaldo: 0 }]
 
@@ -431,14 +432,20 @@ describe('SpaardoelSectie — wat de koppeling op de lijst zegt', () => {
     expect(screen.getByText(/Voor Autoverzekering, de volgende keer op/)).toBeInTheDocument()
   })
 
-  it('merkt op dat je doelbedrag iets anders zegt dan de kost', () => {
+  it('merkt op dat je doelbedrag iets anders zegt dan de kost, en noemt allebei de getallen', () => {
+    // ⚠ RONDE 85 — "je doelbedrag staat op iets anders" liet je zelf terugbladeren om te
+    // zien wát dat andere was. Dit stond als open punt van ronde 79 in de voortgangsnota.
     toonMetLasten([doel({ doelbedrag: 68000 })])
-    expect(screen.getByText(/doelbedrag staat op iets anders/)).toBeInTheDocument()
+    // ⚠ `toBe` op de hele zin, niet twee losse `toContain` (doorlichting ronde 85): met
+    // twee `toContain` blijft de test groen wanneer de twee bedragen omgewisseld zijn —
+    // en dat is precies wat deze zin moet uitsluiten (je moet zien welke kant het op moet).
+    const zin = screen.getByText(/jouw doelbedrag staat op/)
+    expect(zin.textContent).toBe(`Die kost is ${formatEuro(62000)}; jouw doelbedrag staat op ${formatEuro(68000)}.`)
   })
 
   it('zwijgt over het bedrag wanneer de twee gelijk zijn', () => {
     toonMetLasten([doel()])
-    expect(screen.queryByText(/doelbedrag staat op iets anders/)).toBeNull()
+    expect(screen.queryByText(/jouw doelbedrag staat op/)).toBeNull()
   })
 
   it('waarschuwt wanneer je doeldatum ná de betaling ligt', () => {
@@ -709,7 +716,7 @@ describe('SpaardoelSectie — het bedrag en de datum van de kost overnemen', () 
     const knop = screen.getByRole('button', { name: 'Neem dat bedrag over voor Autoverzekering 2099' })
     const id = knop.getAttribute('aria-describedby')
     expect(id).toBeTruthy()
-    expect(document.getElementById(id as string)?.textContent).toMatch(/doelbedrag staat op iets anders/)
+    expect(document.getElementById(id as string)?.textContent).toMatch(/jouw doelbedrag staat op/)
   })
 
   it('draagt de zichtbare tekst die haar naam belooft', () => {
@@ -732,7 +739,7 @@ describe('SpaardoelSectie — het bedrag en de datum van de kost overnemen', () 
     toonMetLasten([doel({ doelbedrag: 68000, doeldatum: '2099-06-01' })])
     const bedragKnop = screen.getByRole('button', { name: /Neem dat bedrag over/ })
     const datumKnop = screen.getByRole('button', { name: /Neem die datum over/ })
-    expect(bedragKnop.parentElement?.textContent).toMatch(/doelbedrag staat op iets anders/)
+    expect(bedragKnop.parentElement?.textContent).toMatch(/jouw doelbedrag staat op/)
     expect(datumKnop.parentElement?.textContent).toMatch(/aan dit tempo ben je te laat/)
   })
 
@@ -760,7 +767,7 @@ describe('SpaardoelSectie — het bedrag en de datum van de kost overnemen', () 
     await user.click(screen.getByRole('button', { name: 'Neem dat bedrag over voor Autoverzekering 2099' }))
 
     expect(screen.queryByRole('button', { name: /Neem dat bedrag over/ })).toBeNull()
-    expect(screen.queryByText(/doelbedrag staat op iets anders/)).toBeNull()
+    expect(screen.queryByText(/jouw doelbedrag staat op/)).toBeNull()
     expect(
       screen.getAllByRole('status').map((el) => el.textContent).join(' '),
     ).toContain('Het doelbedrag van Autoverzekering 2099 staat nu op')
@@ -877,5 +884,234 @@ describe('SpaardoelSectie — het bedrag en de datum van de kost overnemen', () 
     await user.click(screen.getByRole('button', { name: 'Neem dat bedrag over voor Autoverzekering 2099' }))
 
     expect(await screen.findByText(/Dat is niet gelukt/)).toBeInTheDocument()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 85 — het doel en de kost waaraan het hangt
+//
+// Timothy: *"kan je het spaardoel niet beperken tot het bedrag van de vaste last? als er
+// in dat spaardoel gespaard wordt en je gaat dan over het doel, staat er simpelweg het
+// bedrag dat je er over aan 't gaan bent."*
+//
+// ⚠ De eerste opzet van deze ronde WEIGERDE te bewaren. Dat is teruggedraaid: het
+// doelbedrag komt in geen enkele rekenkern voor die Budget voedt, dus de schade die de
+// weigering rechtvaardigde bestond niet — en ze verbood wél de gevallen die ronde 79
+// uitdrukkelijk open hield. De app zegt nu wat ze ziet en zet er één tik naast, zoals
+// `LeningSectie` al deed bij "meer dan er nog openstaat".
+// ---------------------------------------------------------------------------
+
+describe('SpaardoelSectie — het doelbedrag naast de kost (ronde 85)', () => {
+  it('zegt het bij het veld zelf, niet pas na het bewaren', async () => {
+    const user = userEvent.setup()
+    toonMetLasten([])
+    await user.type(screen.getByLabelText('Doelnaam'), 'Premie')
+    await user.type(screen.getByLabelText('Doelbedrag (€)'), '680')
+    await user.selectOptions(screen.getByLabelText('Waarvoor spaar je? (optioneel)'), 'vl1')
+    // ⚠ Via `textContent`: `getByText` normaliseert witruimte, en `formatEuro` zet een
+    // VASTE spatie na de € — dan matcht een regex met dat teken erin nooit.
+    const zin = screen.getByText(/meer dan Autoverzekering kost/)
+    expect(zin.textContent).toBe(`Dit is ${formatEuro(6000)} meer dan Autoverzekering kost (${formatEuro(62000)}).`)
+  })
+
+  it('hangt die zin aan het INVOERVELD én aan de knop, en niet aan een blok met een knop erin', async () => {
+    // ⚠ Huisregel sinds ronde 78: `aria-describedby` wijst naar TEKST. En de knop draagt
+    // hem óók: wie de app laat voorlezen hoorde anders alleen "Zet op € 620,00" zonder
+    // waarvoor — precies wat `Vaststelling` in de lijst al goed doet.
+    const user = userEvent.setup()
+    toonMetLasten([])
+    await user.type(screen.getByLabelText('Doelbedrag (€)'), '680')
+    await user.selectOptions(screen.getByLabelText('Waarvoor spaar je? (optioneel)'), 'vl1')
+    const id = screen.getByLabelText('Doelbedrag (€)').getAttribute('aria-describedby')
+    expect(id).toBeTruthy()
+    expect(screen.getByRole('button', { name: `Zet op ${formatEuro(62000)}` })).toHaveAttribute('aria-describedby', id)
+    expect(document.getElementById(id as string)?.textContent).not.toMatch(/Zet op/)
+  })
+
+  it('houdt het bewaren NIET tegen — de app zegt het, ze verbiedt het niet', async () => {
+    // ⚠ Ronde 79 hield dit uitdrukkelijk open: misschien verwacht je een indexering, of
+    // spaar je twee jaar vooruit. Een grendel zou dat verbieden op grond van een gevolg
+    // dat er niet is (`doelbedrag` voedt geen enkele Budget-rekenkern).
+    const user = userEvent.setup()
+    const onOpslaan = vi.fn()
+    toonMetLasten([], [premie, huur], onOpslaan)
+    await user.type(screen.getByLabelText('Doelnaam'), 'Premie')
+    await user.type(screen.getByLabelText('Doelbedrag (€)'), '680')
+    await user.selectOptions(screen.getByLabelText('Waarvoor spaar je? (optioneel)'), 'vl1')
+    const knop = screen.getByRole('button', { name: 'Doel toevoegen' })
+    expect(knop).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(knop)
+    expect(onOpslaan).toHaveBeenCalledWith(expect.objectContaining({ doelbedrag: 68000, vasteLastId: 'vl1' }))
+  })
+
+  it('zet het met één tik gelijk', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = vi.fn()
+    toonMetLasten([], [premie, huur], onOpslaan)
+    await user.type(screen.getByLabelText('Doelnaam'), 'Premie')
+    await user.type(screen.getByLabelText('Doelbedrag (€)'), '680')
+    await user.selectOptions(screen.getByLabelText('Waarvoor spaar je? (optioneel)'), 'vl1')
+    await user.click(screen.getByRole('button', { name: `Zet op ${formatEuro(62000)}` }))
+    expect(screen.getByLabelText('Doelbedrag (€)')).toHaveValue('620,00')
+    expect(screen.queryByText(/meer dan Autoverzekering kost/)).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Doel toevoegen' }))
+    expect(onOpslaan).toHaveBeenCalledWith(expect.objectContaining({ doelbedrag: 62000 }))
+  })
+
+  it('zwijgt op de grens en één cent eronder', async () => {
+    const user = userEvent.setup()
+    toonMetLasten([])
+    await user.type(screen.getByLabelText('Doelbedrag (€)'), '620')
+    await user.selectOptions(screen.getByLabelText('Waarvoor spaar je? (optioneel)'), 'vl1')
+    expect(screen.queryByText(/meer dan Autoverzekering kost/)).toBeNull()
+  })
+
+  it('spreekt één cent erboven wél', async () => {
+    const user = userEvent.setup()
+    toonMetLasten([])
+    await user.type(screen.getByLabelText('Doelbedrag (€)'), '620,01')
+    await user.selectOptions(screen.getByLabelText('Waarvoor spaar je? (optioneel)'), 'vl1')
+    expect(screen.getByText(/meer dan Autoverzekering kost/).textContent).toContain(formatEuro(1))
+  })
+
+  it('zwijgt zolang er geen kost aan hangt', async () => {
+    const user = userEvent.setup()
+    toonMetLasten([])
+    await user.type(screen.getByLabelText('Doelbedrag (€)'), '5000')
+    expect(screen.queryByText(/meer dan/)).toBeNull()
+  })
+
+  it('zwijgt over een kost die de app niet KENT', async () => {
+    // Hangt het doel aan een post die niet meer in de lijst staat, dan weet de app niet
+    // wat ze kost. Raden over een bedrag dat we niet zien, is erger dan niets zeggen.
+    const user = userEvent.setup()
+    toonMetLasten([{ id: 'd9', naam: 'Oud', doelbedrag: 99900, huidigBedrag: 0, vasteLastId: 'weg' }], [premie, huur])
+    await user.click(screen.getByRole('button', { name: 'Bewerk doel Oud' }))
+    expect(screen.queryByText(/meer dan/)).toBeNull()
+  })
+
+  it('zet die twee bedragen NIET naast elkaar bij een maandelijkse kost', async () => {
+    // ⚠ `doeldekking` kijkt niet naar het teken en niet naar het ritme, en dit scherm
+    // krijgt ÁLLE terugkerende posten mee. Hangt je doel aan een post die intussen
+    // maandelijks werd, dan zei de zin "Die kost is € 950,00; jouw doelbedrag staat op
+    // € 620,00" — met je huurbedrag erin. Ronde 79 hield de KNOP daar al buiten; sinds de
+    // zin de getallen noemt, geldt hetzelfde voor de zin.
+    toonMetLasten([{ id: 'd1', naam: 'Premie', doelbedrag: 62000, huidigBedrag: 0, vasteLastId: 'vl2' }])
+    expect(screen.queryByText(/jouw doelbedrag staat op/)).toBeNull()
+  })
+})
+
+describe('SpaardoelSectie — het streefbedrag stuurt Budget (ronde 85)', () => {
+  it('zegt wat Budget hierdoor apart houdt, en wat het anders zou zijn', async () => {
+    // ⚠ Dit is het veld dat écht iets doet: `opzijVolgensSpaardoelen` legt het onder
+    // "Opzij voor later" op Budget in de plaats van het volle bedrag gedeeld over de
+    // maanden. Tot deze ronde stond daar geen letter over.
+    const user = userEvent.setup()
+    toonMetLasten([])
+    await user.selectOptions(screen.getByLabelText('Waarvoor spaar je? (optioneel)'), 'vl1')
+    await user.type(screen.getByLabelText('Maandelijks streefbedrag (€, optioneel)'), '500')
+    const zin = screen.getByText(/Budget houdt hierdoor/)
+    expect(zin.textContent).toContain(formatEuro(50000))
+    // € 620 per jaar = € 51,67 per maand.
+    expect(zin.textContent).toContain(formatEuro(5167))
+  })
+
+  it('hangt die zin aan het streefbedragveld', async () => {
+    const user = userEvent.setup()
+    toonMetLasten([])
+    await user.selectOptions(screen.getByLabelText('Waarvoor spaar je? (optioneel)'), 'vl1')
+    await user.type(screen.getByLabelText('Maandelijks streefbedrag (€, optioneel)'), '500')
+    const id = screen.getByLabelText('Maandelijks streefbedrag (€, optioneel)').getAttribute('aria-describedby')
+    expect(id).toBeTruthy()
+    expect(document.getElementById(id as string)?.textContent).toMatch(/Budget houdt hierdoor/)
+  })
+
+  it('zegt het ook wanneer je streefbedrag LAGER ligt — dan reserveert Budget te weinig', async () => {
+    const user = userEvent.setup()
+    toonMetLasten([])
+    await user.selectOptions(screen.getByLabelText('Waarvoor spaar je? (optioneel)'), 'vl1')
+    await user.type(screen.getByLabelText('Maandelijks streefbedrag (€, optioneel)'), '10')
+    expect(screen.getByText(/Budget houdt hierdoor/).textContent).toContain(formatEuro(1000))
+  })
+
+  it('zet het met één tik terug op wat de app zelf zou rekenen', async () => {
+    const user = userEvent.setup()
+    toonMetLasten([])
+    await user.selectOptions(screen.getByLabelText('Waarvoor spaar je? (optioneel)'), 'vl1')
+    await user.type(screen.getByLabelText('Maandelijks streefbedrag (€, optioneel)'), '500')
+    await user.click(screen.getByRole('button', { name: `Zet op ${formatEuro(5167)}` }))
+    expect(screen.getByLabelText('Maandelijks streefbedrag (€, optioneel)')).toHaveValue('51,67')
+    expect(screen.queryByText(/Budget houdt hierdoor/)).toBeNull()
+  })
+
+  it('zwijgt zonder streefbedrag en zonder gekozen kost', async () => {
+    const user = userEvent.setup()
+    toonMetLasten([])
+    await user.selectOptions(screen.getByLabelText('Waarvoor spaar je? (optioneel)'), 'vl1')
+    expect(screen.queryByText(/Budget houdt hierdoor/)).toBeNull()
+    await user.type(screen.getByLabelText('Maandelijks streefbedrag (€, optioneel)'), '100')
+    await user.selectOptions(screen.getByLabelText('Waarvoor spaar je? (optioneel)'), '')
+    expect(screen.queryByText(/Budget houdt hierdoor/)).toBeNull()
+  })
+})
+
+describe('SpaardoelSectie — wat je er OVER spaart (ronde 85)', () => {
+  const overDoel: Spaardoel = { id: 'd1', naam: 'Premie', doelbedrag: 62000, huidigBedrag: 72000 }
+
+  it('zegt "{bedrag} meer dan nodig" waar anders "nog € 0,00" stond', () => {
+    // ⚠ `resterend` wordt afgekapt op nul, dus daar stond letterlijk "nog € 0,00" —
+    // hetzelfde als bij wie precies genoeg heeft.
+    toonMetLasten([overDoel], [])
+    expect(screen.getByText(/meer dan nodig$/).textContent).toBe(`${formatEuro(10000)} meer dan nodig`)
+    expect(screen.queryByText(/^nog /)).toBeNull()
+  })
+
+  it('beschuldigt je niet: geen "te veel"', () => {
+    // Meer sparen dan het doel vraagt is geen vergissing, en "te veel" betekent in deze
+    // app elders wél een échte fout.
+    toonMetLasten([overDoel], [])
+    expect(screen.queryByText(/te veel/)).toBeNull()
+  })
+
+  it('zegt het maar op ÉÉN plaats in de rij', () => {
+    // ⚠ Mijn eerste opzet zette het ook naast "Doel gehaald". Dan stond hetzelfde
+    // verschil drie keer in vier regels.
+    toonMetLasten([overDoel], [])
+    expect(screen.getByText('Doel gehaald')).toBeInTheDocument()
+    // ⚠ Op de tekst van de hele rij tellen: `getAllByText` normaliseert de vaste spatie
+    // die `formatEuro` na de € zet, en dan matcht geen enkele regex met dat teken erin.
+    const rij = document.querySelector('.lijst li') as HTMLElement
+    const stukken = rij.textContent?.split(formatEuro(10000)) ?? []
+    expect(stukken).toHaveLength(2)
+  })
+
+  it('houdt de balk op honderd procent — een balk van 116 % bestaat niet', () => {
+    toonMetLasten([overDoel], [])
+    expect(screen.getByRole('progressbar', { name: 'Premie' })).toHaveAttribute('aria-valuenow', '100')
+  })
+
+  it('zwijgt wanneer je precies genoeg hebt', () => {
+    toonMetLasten([{ id: 'd1', naam: 'Premie', doelbedrag: 62000, huidigBedrag: 62000 }], [])
+    expect(screen.getByText('Doel gehaald')).toBeInTheDocument()
+    expect(screen.queryByText(/meer dan nodig/)).toBeNull()
+  })
+
+  it('zwijgt wanneer twee doelen dezelfde rekening delen', () => {
+    // ⚠ Bij een gekoppeld doel is `huidig` het VOLLE saldo van die rekening — dat zegt de
+    // zin erboven zelf. Hangen er twee doelen aan, dan zou "€ 80,00 meer dan nodig" bij
+    // allebei staan terwijl er in totaal geld tekort is.
+    const a: Spaardoel = { id: 'd1', naam: 'A', doelbedrag: 10000, huidigBedrag: 0, gekoppeldeRekeningId: 'r1' }
+    const b: Spaardoel = { id: 'd2', naam: 'B', doelbedrag: 10000, huidigBedrag: 0, gekoppeldeRekeningId: 'r1' }
+    render(
+      <SpaardoelSectie
+        spaardoelen={[a, b]}
+        rekeningen={[{ id: 'r1', naam: 'Spaar', beginsaldo: 15000 }]}
+        transacties={[]}
+        waarderingen={[]}
+        onOpslaan={vi.fn()}
+        onVerwijderen={vi.fn()}
+      />,
+    )
+    expect(screen.queryByText(/meer dan nodig/)).toBeNull()
   })
 })

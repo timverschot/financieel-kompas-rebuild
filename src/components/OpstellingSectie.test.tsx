@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { Aflossing, Categorie, Lening, Rekening, TerugkerendePost, Transactie } from '../data/schema'
 import { OpstellingSectie, type VeiligInvoer } from './OpstellingSectie'
+import { SLUIPENDE_KOSTEN } from '../data/opstelling'
 import { formatEuro } from '../utils/format'
 import { zetOpmaaktaal } from '../utils/opmaaktaal'
 
@@ -73,7 +74,7 @@ describe('OpstellingSectie — het slotscherm staat bovenaan en groeit mee', () 
     expect(tegel('Netto vermogen')).toContain('-')
   })
 
-  it('telt de sluipende kosten apart en zet ze om naar een jaarbedrag', () => {
+  it('telt de sluipende lasten apart en zet ze om naar een jaarbedrag', () => {
     // Netflix hangt aan een categorie uit de sluipende lijst; huur niet.
     const netflix: TerugkerendePost = {
       id: 'p1',
@@ -174,7 +175,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Autoverzekering' }))
 
     const venster = screen.getByRole('dialog')
-    expect(within(venster).getByLabelText('Vaste omschrijving')).toHaveValue('Autoverzekering')
+    expect(within(venster).getByLabelText('Omschrijving')).toHaveValue('Autoverzekering')
     // ⚠ Het ritme komt uit het voorstel: de autoverzekering is een jaarpost. Zonder deze
     // voorinvulling zou je hem als maandelijks wegschrijven en twaalf keer te veel in je
     // vaste lasten zetten.
@@ -192,7 +193,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Huur' }))
 
     const venster = screen.getByRole('dialog')
-    await gebruiker.type(within(venster).getByLabelText('Vast bedrag (€)'), '950')
+    await gebruiker.type(within(venster).getByLabelText('Bedrag (€)'), '950')
     await gebruiker.click(within(venster).getByRole('button', { name: 'Toevoegen' }))
 
     expect(onVastePost).toHaveBeenCalledWith(
@@ -297,8 +298,8 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     await gebruiker.click(screen.getByRole('button', { name: new RegExp('^Bewerken — Huur($|,)') }))
 
     const venster = screen.getByRole('dialog')
-    expect(within(venster).getByLabelText('Vaste omschrijving')).toHaveValue('Huur')
-    expect(within(venster).getByLabelText('Vast bedrag (€)')).toHaveValue('950,00')
+    expect(within(venster).getByLabelText('Omschrijving')).toHaveValue('Huur')
+    expect(within(venster).getByLabelText('Bedrag (€)')).toHaveValue('950,00')
   })
 
   it('verwijdert een kost vanuit de uitklap', async () => {
@@ -403,7 +404,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     await naarVasteKosten(gebruiker)
     await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Huur' }))
 
-    expect(within(screen.getByRole('dialog')).getByLabelText('Vaste rekening')).toHaveValue('bt')
+    expect(within(screen.getByRole('dialog')).getByLabelText('Rekening')).toHaveValue('bt')
   })
 
   it('hangt een vaste kost nooit aan een gearchiveerde rekening', async () => {
@@ -416,7 +417,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     await naarVasteKosten(gebruiker)
     await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Huur' }))
 
-    expect(within(screen.getByRole('dialog')).getByLabelText('Vaste rekening')).toHaveValue('nw')
+    expect(within(screen.getByRole('dialog')).getByLabelText('Rekening')).toHaveValue('nw')
   })
 
   it('biedt een opgezegd abonnement gewoon opnieuw aan', async () => {
@@ -432,7 +433,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
       eindMaand: '2020-01',
     }
     toon({ rekeningen: [rekening], terugkerendePosten: [gestopt] })
-    await gebruiker.click(screen.getByRole('tab', { name: /Sluipende kosten/ }))
+    await gebruiker.click(screen.getByRole('tab', { name: /Sluipende lasten/ }))
 
     expect(screen.getByRole('button', { name: /^Netflix/ })).toHaveTextContent('Nog niets toegevoegd')
   })
@@ -469,14 +470,14 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Huur' }))
 
     const venster = screen.getByRole('dialog')
-    await gebruiker.type(within(venster).getByLabelText('Vast bedrag (€)'), '950')
+    await gebruiker.type(within(venster).getByLabelText('Bedrag (€)'), '950')
     await gebruiker.click(within(venster).getByRole('button', { name: /^Opslaan \+ volgende/ }))
 
     // Het venster blijft open en staat nu op het VOLGENDE voorstel, met zijn eigen naam.
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByLabelText('Vaste omschrijving')).toHaveValue('Hypotheek')
+    expect(screen.getByLabelText('Omschrijving')).toHaveValue('Hypotheek')
     // En het bedrag is leeg: anders schrijf je de huur nog eens weg onder een andere naam.
-    expect(screen.getByLabelText('Vast bedrag (€)')).toHaveValue('')
+    expect(screen.getByLabelText('Bedrag (€)')).toHaveValue('')
   })
 
   it('houdt de cursor in het venster na "Opslaan + volgende"', async () => {
@@ -488,12 +489,12 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     toon({ rekeningen: [rekening] }, { onVastePost: vi.fn() })
     await naarVasteKosten(gebruiker)
     await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Huur' }))
-    await gebruiker.type(screen.getByLabelText('Vast bedrag (€)'), '950')
+    await gebruiker.type(screen.getByLabelText('Bedrag (€)'), '950')
     await gebruiker.click(screen.getByRole('button', { name: /^Opslaan \+ volgende/ }))
 
     expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true)
     // En wel in het veld waar je meteen verder tikt.
-    expect(document.activeElement).toBe(screen.getByLabelText('Vast bedrag (€)'))
+    expect(document.activeElement).toBe(screen.getByLabelText('Bedrag (€)'))
   })
 
   it('bevestigt de opslag BINNEN het venster, niet alleen erachter', async () => {
@@ -504,7 +505,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     toon({ rekeningen: [rekening] }, { onVastePost: vi.fn() })
     await naarVasteKosten(gebruiker)
     await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Huur' }))
-    await gebruiker.type(screen.getByLabelText('Vast bedrag (€)'), '950')
+    await gebruiker.type(screen.getByLabelText('Bedrag (€)'), '950')
     await gebruiker.click(screen.getByRole('button', { name: /^Opslaan \+ volgende/ }))
 
     // ⚠ `within(dialog)`: buiten het venster staat dezelfde zin op de pagina, en die is
@@ -520,9 +521,9 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     toon({ rekeningen: [rekening] }, { onVastePost: vi.fn() })
     // "Luisterboeken" is het LAATSTE voorstel van de sluipende lijst: daarna is er niets
     // meer om naar te springen.
-    await gebruiker.click(screen.getByRole('tab', { name: /Sluipende kosten/ }))
+    await gebruiker.click(screen.getByRole('tab', { name: /Sluipende lasten/ }))
     await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Luisterboeken' }))
-    await gebruiker.type(screen.getByLabelText('Vast bedrag (€)'), '9,99')
+    await gebruiker.type(screen.getByLabelText('Bedrag (€)'), '9,99')
     await gebruiker.click(screen.getByRole('button', { name: /^Opslaan \+ volgende/ }))
 
     expect(screen.queryByRole('dialog')).toBeNull()
@@ -543,7 +544,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     await gebruiker.click(screen.getByRole('button', { name: new RegExp('^Bewerken — Huur($|,)') }))
 
     const venster = screen.getByRole('dialog')
-    const naam = within(venster).getByLabelText('Vaste omschrijving')
+    const naam = within(venster).getByLabelText('Omschrijving')
     await gebruiker.clear(naam)
     await gebruiker.type(naam, 'Huur appartement')
     await gebruiker.click(within(venster).getByRole('button', { name: 'Vaste last wijzigen' }))
@@ -569,7 +570,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     await naarVasteKosten(gebruiker)
     expect(screen.getByRole('button', { name: /^Huur/ })).toHaveTextContent('Nog niets toegevoegd')
 
-    await gebruiker.click(screen.getByRole('tab', { name: /Sluipende kosten/ }))
+    await gebruiker.click(screen.getByRole('tab', { name: /Sluipende lasten/ }))
     expect(screen.getByRole('button', { name: /^Netflix/ })).toHaveTextContent(/15,99/)
   })
 
@@ -600,7 +601,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
       { id: 'p2', omschrijving: 'Netflix', bedrag: -799, rekeningId: 'r1', dag: 20, bronVoorstel: 'netflix' },
     ]
     toon({ rekeningen: [rekening], terugkerendePosten: posten }, { onVastePostVerwijderen: vi.fn() })
-    await gebruiker.click(screen.getByRole('tab', { name: /Sluipende kosten/ }))
+    await gebruiker.click(screen.getByRole('tab', { name: /Sluipende lasten/ }))
     await gebruiker.click(screen.getByRole('button', { name: /^Netflix/ }))
 
     const namen = screen
@@ -666,7 +667,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     toon({ rekeningen: [rekening] }, { onVastePost })
     await naarVasteKosten(gebruiker)
     await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Autoverzekering' }))
-    await gebruiker.type(screen.getByLabelText('Vast bedrag (€)'), '620')
+    await gebruiker.type(screen.getByLabelText('Bedrag (€)'), '620')
     await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen' }))
 
     const nu = new Date()
@@ -688,7 +689,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     const venster = screen.getByRole('dialog')
     expect(within(venster).getByText(/al een vaste last die zo heet/)).toBeInTheDocument()
     // De opslaanknop blijft gewoon bruikbaar.
-    await gebruiker.type(within(venster).getByLabelText('Vast bedrag (€)'), '400')
+    await gebruiker.type(within(venster).getByLabelText('Bedrag (€)'), '400')
     expect(within(venster).getByRole('button', { name: 'Toevoegen' })).not.toHaveAttribute(
       'aria-disabled',
       'true',
@@ -864,7 +865,7 @@ describe('OpstellingSectie — de blokken', () => {
     const onNaarPagina = vi.fn()
     toon({ rekeningen: [rekening] }, { onNaarPagina })
 
-    await gebruiker.click(screen.getByRole('tab', { name: /Sluipende kosten/ }))
+    await gebruiker.click(screen.getByRole('tab', { name: /Sluipende lasten/ }))
     await gebruiker.click(screen.getByRole('button', { name: 'Naar je vaste lasten' }))
     expect(onNaarPagina).toHaveBeenCalledWith('budget')
   })
@@ -1139,7 +1140,11 @@ describe('OpstellingSectie — elke tegel verantwoordt haar cijfer', () => {
     // Vaste lasten: het verschil met het gelijknamige label op Budget ("deze maand"
     // in plaats van "gemiddeld per maand") stond alleen in de broncode.
     expect(bron('Vaste lasten per maand')).toContain('Omgerekend naar één maand')
-    expect(bron('Waarvan sluipend')).toContain('Sluipende kosten')
+    // ⚠ RONDE 84 — de zin noemt nu twee redenen: wat je zelf onder die lijst toevoegde,
+    // én elke vaste last in een van die categorieën. Vroeger zei ze "een eigen categorie
+    // telt hier niet mee", en dat is sinds de rij "Een andere sluipende last" onwaar.
+    expect(bron('Waarvan sluipend')).toContain('Je sluipende lasten')
+    expect(bron('Waarvan sluipend')).toContain('op een abonnementscategorie staat')
     expect(bron('Zo lang kom je toe')).toContain('gedeeld door je vaste lasten per maand')
     expect(bron('Netto vermogen')).toContain('Alleen het openstaande kapitaal van een lening')
     // Vier tegels, vier zinnen — geen enkele die er stilletjes bij of af valt.
@@ -1327,7 +1332,207 @@ describe('OpstellingSectie — verwijderen vraagt wat eraan hangt', () => {
 
     expect(onVastePostVerwijderen).not.toHaveBeenCalled()
     const venster = screen.getByRole('dialog')
-    expect(within(venster).getByLabelText('Vaste omschrijving')).toHaveValue('Huur')
+    expect(within(venster).getByLabelText('Omschrijving')).toHaveValue('Huur')
     expect(within(venster).getByLabelText('Loopt tot en met')).toBeInTheDocument()
+  })
+})
+
+
+// --- Ronde 84: een andere sluipende last -----------------------------------------
+//
+// Timothy: "waarom kan ik enkel vaste lasten maar geen sluipende lasten toevoegen?"
+// Er bestaat geen apart soort — wat een last sluipend maakt is haar categorie — maar de
+// app zei nergens hoe je er zelf een toevoegt, en het resultaat was onzichtbaar.
+
+describe('OpstellingSectie — een andere sluipende last (ronde 84)', () => {
+  async function naarSluipend() {
+    const gebruiker = userEvent.setup()
+    await gebruiker.click(screen.getByRole('tab', { name: /Sluipende lasten/ }))
+    return gebruiker
+  }
+
+  it('zet de rij onderaan de lijst', async () => {
+    toon({ rekeningen: [rekening] })
+    await naarSluipend()
+    expect(screen.getByRole('button', { name: /^Een andere sluipende last/ })).toBeInTheDocument()
+  })
+
+  it('zegt bij het openklappen wat die rij is, en niet dat je iets vergat', async () => {
+    // ⚠ Bij een voorstel is "Hier heb je nog niets toegevoegd" een stand van zaken; bij
+    // een uitnodiging leest het als een gebrek — terwijl leeg daar het normale geval is.
+    toon({ rekeningen: [rekening] })
+    const gebruiker = await naarSluipend()
+    await gebruiker.click(screen.getByRole('button', { name: /^Een andere sluipende last/ }))
+    expect(screen.getByText(/Staat je abonnement niet in de lijst hierboven\?/)).toBeInTheDocument()
+  })
+
+  it('opent een LEEG formulier — de naam is een kop, geen antwoord', async () => {
+    const gebruiker = await (async () => {
+      toon({ rekeningen: [rekening] })
+      return naarSluipend()
+    })()
+    await gebruiker.click(screen.getByRole('button', { name: /^Een andere sluipende last/ }))
+    await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Een andere sluipende last' }))
+    // ⚠ Bij elk gewoon voorstel staat de naam al in het veld; hier moet je hem juist
+    // zelf invullen. En de categorie blijft leeg: de app raadt niet welk abonnement je
+    // bedoelt — `bronVoorstel` draagt al dat het een sluipende last is.
+    expect(screen.getByLabelText('Omschrijving')).toHaveValue('')
+  })
+
+  it('telt je eigen abonnement mee, ook zonder categorie uit de lijst', async () => {
+    const eigen: TerugkerendePost = {
+      id: 'p1',
+      omschrijving: 'Le Soir',
+      bedrag: -2500,
+      rekeningId: 'r1',
+      dag: 8,
+      bronVoorstel: 'sluipend-anders',
+    }
+    toon({ rekeningen: [rekening], terugkerendePosten: [eigen] })
+    // De tegel telt hem — dat is waar de hele onderscheiding voor bestaat.
+    expect(tegel('Waarvan sluipend')).toMatch(/25,00/)
+  })
+
+  it('toont een zelf toegevoegd abonnement ONDER die rij', async () => {
+    // ⚠ Het gat dat er al langer zat: het cijfer telde hem, de lijst verzweeg hem.
+    const eigen: TerugkerendePost = {
+      id: 'p1',
+      omschrijving: 'Le Soir',
+      bedrag: -2500,
+      rekeningId: 'r1',
+      dag: 8,
+      bronVoorstel: 'sluipend-anders',
+    }
+    toon({ rekeningen: [rekening], terugkerendePosten: [eigen] })
+    const gebruiker = await naarSluipend()
+    const rij = screen.getByRole('button', { name: /^Een andere sluipende last/ })
+    // Bij één post toont de rij het bedrag zelf — dat is wat je wil zien zonder open
+    // te klappen; pas vanaf twee toont ze het aantal.
+    expect(rij).toHaveTextContent(/25,00/)
+    await gebruiker.click(rij)
+    expect(screen.getByText('Le Soir')).toBeInTheDocument()
+  })
+
+  it('vangt ook een oud abonnement op dat nog geen bronVoorstel draagt', async () => {
+    // Voegde je vóór deze ronde zelf "Le Soir" toe met de categorie van een krant, dan
+    // telde hij wél mee maar stond hij onder geen enkele rij.
+    const oud: TerugkerendePost = {
+      id: 'p1',
+      omschrijving: 'Le Soir',
+      bedrag: -2500,
+      rekeningId: 'r1',
+      dag: 8,
+      categorieId: 'i-x-krantenabonnement',
+    }
+    toon({ rekeningen: [rekening], terugkerendePosten: [oud] })
+    const gebruiker = await naarSluipend()
+    await gebruiker.click(screen.getByRole('button', { name: /^Een andere sluipende last/ }))
+    expect(screen.getByText('Le Soir')).toBeInTheDocument()
+  })
+
+  it('laat een abonnement dat WÉL bij een voorstel hoort aan dat voorstel', async () => {
+    const netflix: TerugkerendePost = { id: 'p1', omschrijving: 'Netflix', bedrag: -1599, rekeningId: 'r1', dag: 5 }
+    toon({ rekeningen: [rekening], terugkerendePosten: [netflix] })
+    await naarSluipend()
+    expect(screen.getByRole('button', { name: /^Netflix/ })).toHaveTextContent(/€/)
+    expect(screen.getByRole('button', { name: /^Een andere sluipende last/ })).toHaveTextContent('Voeg er zelf een toe')
+  })
+
+  it('telt de rij niet mee in "je vulde er zoveel in"', async () => {
+    // Ze is geen vraag ("heb je Netflix?") maar een uitnodiging ("is er nog iets?").
+    //
+    // ⚠ RONDE 84, doorlichting — DEZE TEST MAT HET VERKEERDE. Ze keek naar het cijfertje
+    // op het TABBLAD (dat telt je posten, niet de voorstellen) en klapte het blok niet
+    // eens open. Ze kon dus nooit falen, ook niet toen de noemer hier echt op 19 stond.
+    // Nu leest ze de zin zelf, en de noemer komt uit de lijst in plaats van uit mijn
+    // hoofd — zodat ze blijft kloppen wanneer er een negentiende voorstel bij komt.
+    toon({ rekeningen: [rekening] })
+    await naarSluipend()
+    expect(screen.getByText(new RegExp(`Je vulde er 0 van de ${SLUIPENDE_KOSTEN.length} in`))).toBeInTheDocument()
+  })
+
+  it('houdt die noemer ook staand wanneer je er zelf een toevoegde', async () => {
+    // Je kan nooit "19 van de 19" halen: die rij is geen vakje om af te vinken.
+    const eigen: TerugkerendePost = {
+      id: 'p1', omschrijving: 'Le Soir', bedrag: -2500, rekeningId: 'r1', dag: 8, bronVoorstel: 'sluipend-anders',
+    }
+    toon({ rekeningen: [rekening], terugkerendePosten: [eigen] })
+    await naarSluipend()
+    expect(screen.getByText(new RegExp(`Je vulde er 0 van de ${SLUIPENDE_KOSTEN.length} in`))).toBeInTheDocument()
+  })
+
+  // ⚠ DE KLACHT STOND ÉÉN RIJ HOGER NOG ALTIJD OVEREIND (doorlichting).
+  it('telt een abonnement mee dat van de rij Netflix komt zonder categorie', async () => {
+    const eigen: TerugkerendePost = {
+      id: 'p1', omschrijving: 'Mijn eigen streaming', bedrag: -1599, rekeningId: 'r1', dag: 5, bronVoorstel: 'netflix',
+    }
+    toon({ rekeningen: [rekening], terugkerendePosten: [eigen] })
+    expect(tegel('Waarvan sluipend')).toMatch(/15,99/)
+  })
+
+  it('geeft de vensterkop een eigen zin in plaats van de rijnaam', async () => {
+    // "Een andere sluipende last toevoegen" werd in het Engels "Add Another small
+    // subscription": een hoofdletter middenin en een uitnodiging als lijdend voorwerp.
+    toon({ rekeningen: [rekening] })
+    const gebruiker = await naarSluipend()
+    await gebruiker.click(screen.getByRole('button', { name: /^Een andere sluipende last/ }))
+    await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Een andere sluipende last' }))
+    expect(screen.getByRole('heading', { name: 'Een abonnement toevoegen' })).toBeInTheDocument()
+  })
+
+  it('zegt in het venster wat er van je verwacht wordt en wat de app onthoudt', async () => {
+    toon({ rekeningen: [rekening] })
+    const gebruiker = await naarSluipend()
+    await gebruiker.click(screen.getByRole('button', { name: /^Een andere sluipende last/ }))
+    await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Een andere sluipende last' }))
+    expect(screen.getByText(/Een categorie kiezen mag, maar hoeft niet/)).toBeInTheDocument()
+  })
+
+  it('herhaalt de vraag niet onderaan de lijst', async () => {
+    // "Staat het er niet bij? Voeg het zelf toe bij je vaste lasten" stond er nog,
+    // pal onder de rij die diezelfde vraag beantwoordt — en stuurde je naar het scherm
+    // waarover de klacht ging.
+    toon({ rekeningen: [rekening] })
+    await naarSluipend()
+    expect(screen.queryByText(/Staat het er niet bij\? Voeg het zelf toe/)).not.toBeInTheDocument()
+  })
+
+  it('houdt die zin WÉL bij de klassieke vaste lasten, waar geen vrije rij staat', async () => {
+    toon({ rekeningen: [rekening] })
+    const gebruiker = userEvent.setup()
+    await gebruiker.click(screen.getByRole('tab', { name: /Vaste lasten/ }))
+    expect(screen.getByText(/Staat het er niet bij\? Voeg het zelf toe/)).toBeInTheDocument()
+  })
+
+  it('blijft na "Opslaan + volgende" op die rij staan, met een leeg formulier', async () => {
+    // ⚠ RONDE 84, doorlichting — TWEE KNOPPEN MET DEZELFDE UITWERKING. Deze rij wordt
+    // overgeslagen wanneer "Opslaan + volgende" de lijst afloopt, dus er was nooit een
+    // volgende: het venster sloot, precies zoals bij "Toevoegen". Wie drie onbekende
+    // abonnementen heeft, moest dus drie keer opnieuw beginnen. Nu blijf je staan.
+    const gebruiker = await (async () => {
+      toon({ rekeningen: [rekening] }, { onVastePost: vi.fn() })
+      return naarSluipend()
+    })()
+    await gebruiker.click(screen.getByRole('button', { name: /^Een andere sluipende last/ }))
+    await gebruiker.click(screen.getByRole('button', { name: 'Toevoegen — Een andere sluipende last' }))
+    await gebruiker.type(screen.getByLabelText('Omschrijving'), 'Le Soir')
+    await gebruiker.type(screen.getByLabelText('Bedrag (€)'), '25')
+    await gebruiker.click(screen.getByRole('button', { name: /^Opslaan \+ volgende/ }))
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(within(screen.getByRole('dialog')).getByText(/Le Soir bewaard/)).toBeInTheDocument()
+    // Leeg, en niet met "Le Soir" blijven staan: dan maak je hem per ongeluk twee keer.
+    expect(screen.getByLabelText('Omschrijving')).toHaveValue('')
+    expect(screen.getByRole('heading', { name: 'Een abonnement toevoegen' })).toBeInTheDocument()
+  })
+
+  it('legt uit waarom er een streepje staat wanneer je abonnement pas later begint', async () => {
+    const later: TerugkerendePost = {
+      id: 'p1', omschrijving: 'Le Soir', bedrag: -6000, rekeningId: 'r1', dag: 8,
+      frequentie: 'jaar', bronVoorstel: 'sluipend-anders', startMaand: '2099-01',
+    }
+    toon({ rekeningen: [rekening], terugkerendePosten: [later] })
+    expect(tegel('Waarvan sluipend')).toMatch(/—/)
+    expect(screen.getByText(/Je sluipende lasten beginnen pas later/)).toBeInTheDocument()
   })
 })

@@ -13,7 +13,8 @@ import type {
   Transactie,
   Waardering,
 } from '../data/schema'
-import { KLASSIEKE_VASTE_KOSTEN, SLUIPENDE_KOSTEN, type Kostvoorstel } from '../data/opstelling'
+import { KLASSIEKE_VASTE_KOSTEN, SLUIPEND_ANDERS, SLUIPENDE_KOSTEN, type Kostvoorstel } from '../data/opstelling'
+import { isSluipendeLast, overigeSluipendeLasten } from '../utils/sluipend'
 import { Dialoog } from '../ui/Dialoog'
 import { VasteLastWeg } from './VasteLastWeg'
 import { hangtErIetsAan, telVasteLastGebruik } from '../utils/vastelastverwijdering'
@@ -113,14 +114,6 @@ export type VeiligInvoer = {
 const TYPES_GELD: Rekening['type'][] = ['betaal', 'spaar', 'cash']
 const TYPES_LATER: Rekening['type'][] = ['effecten', 'termijn']
 
-/** De categorieën van de sluipende kosten, om ze in je vaste lasten terug te vinden. */
-const SLUIPENDE_CATEGORIEEN = new Set(SLUIPENDE_KOSTEN.map((k) => k.categorieId))
-
-function isSluipend(post: TerugkerendePost): boolean {
-  return post.categorieId !== undefined && SLUIPENDE_CATEGORIEEN.has(post.categorieId)
-}
-
-
 
 /**
  * Welke voorstelnaam hoort bij welke sleutel — in alle drie de talen.
@@ -130,6 +123,10 @@ function isSluipend(post: TerugkerendePost): boolean {
  * precies de tabel die een bestaande post terugvindt.
  */
 const SLEUTEL_PER_NAAM = new Map<string, string>()
+// ⚠ `SLUIPEND_ANDERS` staat hier BEWUST niet bij (ronde 84). Zou "Een andere sluipende
+// last" in deze tabel staan, dan zou een post die je toevallig zo noemt onder die rij
+// belanden op grond van zijn naam — en, erger, zou de rij zichzelf als voorstel
+// herkennen. De rij vindt haar posten via `bronVoorstel` en via `overigeSluipendeLasten`.
 for (const v of [...KLASSIEKE_VASTE_KOSTEN, ...SLUIPENDE_KOSTEN]) {
   for (const taal of TALEN) SLEUTEL_PER_NAAM.set(vertaal(taal.waarde, v.naam).trim().toLowerCase(), v.sleutel)
 }
@@ -240,9 +237,15 @@ function KostRegel({
   // De samenvatting op de rij. Bij één post het bedrag zelf — dat is wat je wil zien
   // zonder open te klappen. Bij meer dan één alleen het aantal: twee bedragen met
   // verschillende periodes optellen zou een getal geven dat nergens op slaat.
+  // ⚠ RONDE 84, doorlichting — DE VRIJE RIJ IS NOOIT "NOG NIETS TOEGEVOEGD". Bij een
+  // voorstel is dat een stand van zaken ("je hebt nog geen Netflix"); bij een
+  // uitnodiging leest het als een gebrek dat je zou moeten wegwerken, terwijl leeg daar
+  // het normale geval is. Er staat nu wat de rij dóét.
   const samenvatting =
     eigen.length === 0
-      ? t('Nog niets toegevoegd')
+      ? voorstel.vrijeNaam
+        ? t('Voeg er zelf een toe')
+        : t('Nog niets toegevoegd')
       : eigen.length === 1
         ? bedragMetPeriode(t, eigen[0])
         : t('{n} kosten toegevoegd', { n: eigen.length })
@@ -269,7 +272,9 @@ function KostRegel({
           <ul className="lijst kost-eigen">
             {eigen.length === 0 && (
               <li className="rij-meta" style={{ padding: '6px 0' }}>
-                {t('Hier heb je nog niets toegevoegd. Gebruik de knop hiernaast.')}
+                {voorstel.vrijeNaam
+                  ? t('Staat je abonnement niet in de lijst hierboven? Voeg het hier toe — het telt dan gewoon mee bij je sluipende lasten.')
+                  : t('Hier heb je nog niets toegevoegd. Gebruik de knop hiernaast.')}
               </li>
             )}
             {eigen.map((post) => (
@@ -410,8 +415,20 @@ function KostenLijst({
   // geeft het totaalbeeld op één scherm.
   const [alleenEigen, setAlleenEigen] = useState(false)
 
-  const eigenVan = (v: Kostvoorstel) => postenVan(v, posten)
-  const gedaan = voorstellen.filter((v) => eigenVan(v).length > 0).length
+  // ⚠ RONDE 84 — de rij "Een andere sluipende last" verzamelt ánders dan de rest. Een
+  // gewoon voorstel toont wat er onder zijn eigen sleutel hangt; deze rij toont élke
+  // sluipende last die onder geen enkel voorstel valt — ook die van vóór deze ronde,
+  // die geen `bronVoorstel` dragen. Zonder die uitzondering blijft precies het gat open
+  // dat deze ronde dicht: het cijfer telt hem, de lijst verzwijgt hem.
+  const eigenVan = (v: Kostvoorstel) =>
+    v.sleutel === SLUIPEND_ANDERS.sleutel ? overigeSluipendeLasten(posten, sleutelVan) : postenVan(v, posten)
+  // ⚠ RONDE 84, doorlichting — DE VRIJE RIJ TELT HIER NIET MEE, en dat stond eerst
+  // alleen in drie opmerkingen. De teller rekende gewoon met `voorstellen.length`, dus
+  // "Je vulde er 3 van de 18 in" werd "3 van de 19" zodra de rij "Een andere sluipende
+  // last" erbij kwam — een noemer die telt hoeveel VRAGEN er zijn, terwijl die rij geen
+  // vraag is maar een uitnodiging. Je kan er nooit klaar mee zijn.
+  const telbaar = voorstellen.filter((v) => !v.vrijeNaam)
+  const gedaan = telbaar.filter((v) => eigenVan(v).length > 0).length
   // ⚠ Een OPENSTAANDE rij blijft staan, ook als de filter hem niet meer zou tonen
   // (ronde 73, doorlichting). Wis je de laatste kost onder een rij terwijl de filter
   // aanstaat, dan verdween anders de hele rij onder je vingers — met je focus erin, en
@@ -428,7 +445,7 @@ function KostenLijst({
       // is een stand van iets wat er niet staat.
       bijschrift={
         heeftRekening
-          ? `${uitleg} ${t('Je vulde er {gedaan} van de {totaal} in.', { gedaan, totaal: voorstellen.length })}`
+          ? `${uitleg} ${t('Je vulde er {gedaan} van de {totaal} in.', { gedaan, totaal: telbaar.length })}`
           : uitleg
       }
     >
@@ -511,8 +528,16 @@ function KostenLijst({
           rekening aan" en je met een knop terugsturen naar dit scherm. Een rondje. */}
       {heeftRekening && (
         <p className="rij-meta" style={{ margin: 0 }}>
-          {/* ⚠ Deze zin wees naar een pagina en niet naar een plek (ronde 64). */}
-          {t('Staat het er niet bij? Voeg het zelf toe bij je vaste lasten.')}{' '}
+          {/* ⚠ Deze zin wees naar een pagina en niet naar een plek (ronde 64).
+
+              ⚠ RONDE 84, doorlichting — NIET TWEE ANTWOORDEN OP ÉÉN VRAAG. Draagt deze
+              lijst een vrije rij, dan staat het antwoord op "staat het er niet bij?" al
+              in de lijst zelf. Deze zin herhaalde de vraag en stuurde je naar het
+              andere scherm — precies het scherm waarover Timothy schreef dat het je
+              abonnement stil niet meetelt. Dan is de knop alleen nog een doorsteek. */}
+          {voorstellen.some((v) => v.vrijeNaam)
+            ? t('Al je vaste lasten staan samen op één plek.')
+            : t('Staat het er niet bij? Voeg het zelf toe bij je vaste lasten.')}{' '}
           <button type="button" className="knop knop-ghost knop-klein" onClick={onNaarBudget}>
             {t('Naar je vaste lasten')}
           </button>
@@ -732,15 +757,15 @@ export function OpstellingSectie({
   // een tweede identieke post — zonder één waarschuwing.
   const ingevuld = terugkerendePosten.filter((p) => p.bedrag < 0 && !isGestopt(p, dezeMaand))
   const lasten = ingevuld.filter((p) => !isNogNietBegonnen(p, dezeMaand))
-  const sluipend = lasten.filter(isSluipend)
+  const sluipend = lasten.filter(isSluipendeLast)
   // ⚠ De TELLING op het tabblad en het vinkje "blok ingevuld" stellen dezelfde vraag als
   // de lijst eronder — "heb ik dit al ingegeven?" — en horen dus op `ingevuld` te staan
   // (ronde 73, doorlichting). Met `lasten` zei het blok "Je vulde er 1 van de 19 in"
   // terwijl het tabblad geen cijfer toonde en de voortgangsbalk het blok niet aftikte,
   // enkel omdat die ene jaarpost pas volgend jaar begint. De TEGELS bovenaan blijven wél
   // op `lasten` staan: die zeggen wat je vandaag kost, en dat is een andere vraag.
-  const ingevuldSluipend = ingevuld.filter(isSluipend)
-  const ingevuldKlassiek = ingevuld.filter((p) => !isSluipend(p))
+  const ingevuldSluipend = ingevuld.filter(isSluipendeLast)
+  const ingevuldKlassiek = ingevuld.filter((p) => !isSluipendeLast(p))
 
   // De cijfers van het slotscherm. Alle vier komen uit bestaande rekenkernen, en
   // geen enkele heeft een transactie nodig — dat is het hele punt.
@@ -803,7 +828,7 @@ export function OpstellingSectie({
     {
       id: 'sluipend',
       teken: '📺',
-      label: t('Sluipende kosten'),
+      label: t('Sluipende lasten'),
       klaar: ingevuldSluipend.length > 0,
       telling: ingevuldSluipend.length,
     },
@@ -868,7 +893,7 @@ export function OpstellingSectie({
   /**
    * Het kruisje van deze twee lijsten: eerst kijken of er iets aan hangt.
    *
-   * ⚠ Één functie voor allebei de lijsten (vaste kosten én sluipende kosten), en
+   * ⚠ Één functie voor allebei de lijsten (vaste lasten én sluipende lasten), en
    * dezelfde regel als op Budget → Vast: hangt er niets aan, dan wist ze meteen —
    * precies zoals voorheen, met de ongedaan-balk als vangnet. Hangt er wél iets aan,
    * dan komt het venster ertussen. Zie `utils/vastelastverwijdering.ts`.
@@ -906,11 +931,29 @@ export function OpstellingSectie({
   const betaalRekeningen = actieveRekeningen.filter((r) => (r.type ?? 'betaal') === 'betaal' || r.type === 'cash')
   const voorkeurRekening = standaardRekening(betaalRekeningen.length > 0 ? betaalRekeningen : actieveRekeningen)
 
-  /** Het volgende voorstel uit dezelfde lijst waar nog niets onder staat. */
+  /**
+   * Het volgende voorstel uit dezelfde lijst waar nog niets onder staat.
+   *
+   * ⚠ "Een andere sluipende last" telt hier NIET mee (ronde 84). "Opslaan + volgende"
+   * loopt de aanvinklijst af — dat is een lijst met dingen die je al dan niet hebt. Die
+   * rij is geen vraag ("heb je Netflix?") maar een uitnodiging ("is er nog iets?"), en
+   * daar hoor je zelf naartoe te gaan, niet in te rollen na je laatste abonnement.
+   *
+   * ⚠ STA JE ER ZELF OP, DAN BLIJF JE EROP (ronde 84, doorlichting). Anders was er geen
+   * volgende, sloot het venster, en deed "Opslaan + volgende" op die ene rij exact
+   * hetzelfde als "Toevoegen" — twee knoppen naast elkaar met dezelfde uitwerking. Het
+   * formulier maakt zichzelf na elke opslag leeg, dus je kan meteen aan het tweede
+   * onbekende abonnement beginnen. Precies waar die knop voor dient.
+   */
   function volgendVoorstel(lijst: Kostvoorstel[], na: Kostvoorstel): Kostvoorstel | null {
+    if (na.vrijeNaam) return na
     const i = lijst.findIndex((v) => v.sleutel === na.sleutel)
     if (i < 0) return null
-    return lijst.slice(i + 1).find((v) => postenVan(v, ingevuld).length === 0) ?? null
+    return (
+      lijst
+        .slice(i + 1)
+        .find((v) => v.sleutel !== SLUIPEND_ANDERS.sleutel && postenVan(v, ingevuld).length === 0) ?? null
+    )
   }
 
   async function bewaarUitFormulier(post: TerugkerendePost) {
@@ -1007,12 +1050,21 @@ export function OpstellingSectie({
           >
             {buffer.vasteLastenPerMaand > 0 ? formatEuro(buffer.vasteLastenPerMaand) : '—'}
           </Stat>
+          {/* ⚠ RONDE 84, doorlichting — DRIE DINGEN IN ÉÉN ZIN, en alle drie waren ze
+              stuk. (1) Het woord "sluipend" werd nergens uitgelegd op de plek waar je
+              het voor het eerst leest. (2) "in een van die categorieën" verwees naar
+              categorieën die nergens op dit scherm genoemd worden. (3) De zin klopte
+              niet: sinds deze ronde telt óók het voorstel waarop je klikte mee, ook
+              zonder categorie. En stond er een streepje omdat je enige abonnement pas
+              volgend jaar begint, dan zei niets waarom. */}
           <Stat
             label={t('Waarvan sluipend')}
             bron={
               sluipendPerMaand > 0
-                ? t('Alleen de posten in de categorieën uit de lijst “Sluipende kosten” hieronder. Een eigen categorie telt hier niet mee.')
-                : undefined
+                ? t('Sluipende lasten zijn de kleine abonnementen waar je niet meer naar omkijkt. Meegeteld: alles wat je hieronder bij “Je sluipende lasten” toevoegde, plus elke andere vaste last die op een abonnementscategorie staat — streaming, fitness, krant, cloudopslag en dergelijke.')
+                : ingevuldSluipend.length > 0
+                  ? t('Je sluipende lasten beginnen pas later. Zodra de eerste betaling er is, staat hier een bedrag.')
+                  : undefined
             }
           >
             {sluipendPerMaand > 0 ? formatEuro(sluipendPerMaand) : '—'}
@@ -1084,7 +1136,7 @@ export function OpstellingSectie({
 
         {sluipendPerMaand > 0 && (
           <p className="rij-meta" style={{ margin: 0 }}>
-            {t('Je sluipende kosten zijn {maand} per maand, oftewel {jaar} per jaar.', {
+            {t('Je sluipende lasten zijn {maand} per maand, oftewel {jaar} per jaar.', {
               maand: formatEuro(sluipendPerMaand),
               jaar: formatEuro(Math.round(sluipendPerJaar)),
             })}
@@ -1232,9 +1284,12 @@ export function OpstellingSectie({
 
         {blok === 'sluipend' && (
           <KostenLijst
-            titel={t('Je sluipende kosten')}
+            titel={t('Je sluipende lasten')}
             uitleg={t('De kleine abonnementen waar je nooit meer naar omkijkt. Samen zijn ze vaak groter dan je denkt.')}
-            voorstellen={SLUIPENDE_KOSTEN}
+            // ⚠ RONDE 84 — de rij "Een andere sluipende last" hangt er onderaan bij, en
+            // staat bewust NIET in `SLUIPENDE_KOSTEN` zelf: ze is geen voorstel maar een
+            // uitnodiging, en ze hoort niet mee te tellen in "je vulde er 3 van de 18 in".
+            voorstellen={[...SLUIPENDE_KOSTEN, SLUIPEND_ANDERS]}
             posten={ingevuld}
             t={t}
             onToevoegen={(voorstel, lijst) => openVenster({ voorstel, lijst, bewerken: null })}
@@ -1342,8 +1397,16 @@ export function OpstellingSectie({
                 // op één van twee identieke rijen, dan opende er een venster dat alleen
                 // "Autoverzekering wijzigen" zei. Het risico is hier groter dan bij
                 // verwijderen: dat heeft een ongedaan-balk, een bewerkscherm overschrijft.
-                t('{naam} wijzigen', { naam: postNaamMetKenmerk(t, formulier.bewerken, terugkerendePosten) })
-              : t('{naam} toevoegen', { naam: t(formulier.voorstel?.naam ?? '') })
+                t('{naam} bewerken', { naam: postNaamMetKenmerk(t, formulier.bewerken, terugkerendePosten) })
+              : // ⚠ RONDE 84, doorlichting — DE VRIJE RIJ KRIJGT EEN EIGEN KOP. Met de
+                // gewone vorm las de kop "Een andere sluipende last toevoegen", en in het
+                // Engels en het Frans werd dat "Add Another small subscription" /
+                // "Ajouter Un autre petit abonnement": een hoofdletter middenin en een
+                // rijnaam die als voorwerp gebruikt wordt terwijl hij als uitnodiging
+                // geschreven is. Twee van de drie talen stonden er verkeerd.
+                formulier.voorstel?.vrijeNaam
+                ? t('Een abonnement toevoegen')
+                : t('{naam} toevoegen', { naam: t(formulier.voorstel?.naam ?? '') })
           }
           open
           bewaakInvoer
@@ -1359,6 +1422,17 @@ export function OpstellingSectie({
               {vensterMelding}
             </p>
           )}
+          {/* ⚠ RONDE 84, doorlichting — HET VENSTER ZWEEG OVER ZIJN EIGEN AFSPRAAK. Bij
+              elk gewoon voorstel staat de naam al ingevuld en zie je meteen wat er van je
+              verwacht wordt; hier stond alles leeg, inclusief de categorie, zonder één
+              woord waarom. En wat de app achter de schermen onthoudt — dat je dit als
+              sluipende last opgaf, ook als je later een andere categorie kiest — was
+              nergens te zien. Nu staat het er, vóór je begint. */}
+          {formulier.voorstel?.vrijeNaam && !formulier.bewerken && (
+            <p className="rij-meta" style={{ margin: '0 0 12px' }}>
+              {t('Geef je abonnement een naam en een bedrag. Een categorie kiezen mag, maar hoeft niet: wat je hier toevoegt telt sowieso mee bij je sluipende lasten.')}
+            </p>
+          )}
           <TerugkerendePostFormulier
             key={formulier.bewerken ? formulier.bewerken.id : (formulier.voorstel?.sleutel ?? 'nieuw')}
             rekeningen={actieveRekeningen}
@@ -1372,7 +1446,11 @@ export function OpstellingSectie({
             beginwaarden={
               formulier.voorstel
                 ? {
-                    omschrijving: t(formulier.voorstel.naam),
+                    // ⚠ RONDE 84 — bij "Een andere sluipende last" is de naam een KOP en
+                    // geen antwoord: die moet je juist zelf invullen. En dan blijft ook de
+                    // categorie leeg, want de app raadt niet welk abonnement je bedoelt —
+                    // `bronVoorstel` hieronder draagt al dat het een sluipende last is.
+                    omschrijving: formulier.voorstel.vrijeNaam ? '' : t(formulier.voorstel.naam),
                     categorieId: formulier.voorstel.categorieId,
                     frequentie: formulier.voorstel.frequentie ?? 'maand',
                     // De dag van VANDAAG en niet de 1e: met dag 1 stond élke post die je

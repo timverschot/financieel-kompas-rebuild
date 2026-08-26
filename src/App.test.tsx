@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach } from 'vitest'
 import { App } from './App'
+import { InstellingenProvider } from './instellingen'
 import { db } from './data/db'
 import {
   bewaarBudget,
@@ -297,8 +298,8 @@ describe('App', () => {
 
     await gaBudget(user, 'Vast')
     const lasten = kaart('Vaste lasten')
-    await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
-    await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
+    await user.type(within(lasten).getByLabelText('Omschrijving'), 'Netflix')
+    await user.type(within(lasten).getByLabelText('Bedrag (€)'), '15')
     await user.click(within(lasten).getByRole('button', { name: 'Vaste last toevoegen' }))
 
     await user.click(await screen.findByRole('button', { name: /^Boek in/ }))
@@ -317,8 +318,8 @@ describe('App', () => {
 
     await gaBudget(user, 'Vast')
     const lasten = kaart('Vaste lasten')
-    await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
-    await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
+    await user.type(within(lasten).getByLabelText('Omschrijving'), 'Netflix')
+    await user.type(within(lasten).getByLabelText('Bedrag (€)'), '15')
     // "Loopt tot en met" de maand vóór deze: de post is dus nu al gestopt.
     //
     // Bewust via `vorigeMaand` en NIET via `new Date().setMonth(m - 1)`. Dat laatste
@@ -342,8 +343,8 @@ describe('App', () => {
 
     await gaBudget(user, 'Vast')
     const lasten = kaart('Vaste lasten')
-    await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
-    await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
+    await user.type(within(lasten).getByLabelText('Omschrijving'), 'Netflix')
+    await user.type(within(lasten).getByLabelText('Bedrag (€)'), '15')
     await user.click(within(lasten).getByRole('button', { name: 'Vaste last toevoegen' }))
     await user.click(await screen.findByRole('button', { name: /^Boek in/ }))
     await screen.findByText('Geboekt ✓')
@@ -360,8 +361,8 @@ describe('App', () => {
 
     await gaBudget(user, 'Vast')
     const inkomsten = kaart('Vaste inkomsten')
-    await user.type(within(inkomsten).getByLabelText('Vaste omschrijving'), 'Loon')
-    await user.type(within(inkomsten).getByLabelText('Vast bedrag (€)'), '2400')
+    await user.type(within(inkomsten).getByLabelText('Omschrijving'), 'Loon')
+    await user.type(within(inkomsten).getByLabelText('Bedrag (€)'), '2400')
     await user.click(within(inkomsten).getByRole('button', { name: 'Vaste inkomst toevoegen' }))
 
     // Ze hoort bij de inkomsten te staan — de keuze uitgave/inkomst zit niet meer
@@ -659,12 +660,12 @@ describe('App', () => {
 
     await gaBudget(user, 'Vast')
     const lasten = kaart('Vaste lasten')
-    await user.type(within(lasten).getByLabelText('Vaste omschrijving'), 'Netflix')
-    await user.type(within(lasten).getByLabelText('Vast bedrag (€)'), '15')
+    await user.type(within(lasten).getByLabelText('Omschrijving'), 'Netflix')
+    await user.type(within(lasten).getByLabelText('Bedrag (€)'), '15')
     await user.click(within(lasten).getByRole('button', { name: 'Vaste last toevoegen' }))
 
     await user.click(await screen.findByRole('button', { name: new RegExp('^Bewerken — Netflix($|,)') }))
-    const oms = within(kaart('Vaste lasten')).getByLabelText('Vaste omschrijving')
+    const oms = within(kaart('Vaste lasten')).getByLabelText('Omschrijving')
     await user.clear(oms)
     await user.type(oms, 'Disney')
     await user.click(within(kaart('Vaste lasten')).getByRole('button', { name: 'Vaste last wijzigen' }))
@@ -1247,7 +1248,7 @@ describe('App — het Overzicht', () => {
     await screen.findByText('Saldo')
 
     // Dit stond alleen in de zijkolom, en die bestaat pas vanaf 1024 px.
-    expect(await screen.findByText('Recente boekingen')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Recente boekingen' })).toBeInTheDocument()
     expect(screen.getByText('Boodschappen')).toBeInTheDocument()
   })
 
@@ -1255,7 +1256,7 @@ describe('App — het Overzicht', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    const kaart = screen.getByText('Uitgaven per categorie').closest('section.kaart') as HTMLElement
+    const kaart = screen.getByRole('heading', { name: 'Uitgaven per categorie' }).closest('section.kaart') as HTMLElement
     // Twee uitgavencategorieën in de startgegevens, dus geen 'alle {n}'-variant.
     // Bewust op 'in Analyse': sinds ronde 40 draagt elke top-drie-regel óók een
     // knop die met "Bekijk de boekingen van …" begint.
@@ -1268,7 +1269,7 @@ describe('App — het Overzicht', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    const kaart = screen.getByText('Inkomsten per categorie').closest('section.kaart') as HTMLElement
+    const kaart = screen.getByRole('heading', { name: 'Inkomsten per categorie' }).closest('section.kaart') as HTMLElement
     await user.click(within(kaart).getByRole('button', { name: /in Analyse/ }))
 
     // Niet op de uitgaven landen: dat is precies waar je NIET naar vroeg.
@@ -1280,7 +1281,7 @@ describe('App — het Overzicht', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    expect(screen.getByText('Inkomsten en uitgaven per maand')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Inkomsten en uitgaven per maand' })).toBeInTheDocument()
     expect(screen.getByText('* Deze maand loopt nog, dus die staaf is nog niet volledig.')).toBeInTheDocument()
   })
 
@@ -1332,7 +1333,7 @@ describe('App — doorklikken van een cijfer naar zijn boekingen', () => {
     render(<App />)
     await screen.findByText('Saldo')
 
-    await user.click(screen.getByRole('button', { name: /^Uitgaven / }))
+    await user.click(screen.getByRole('button', { name: /^Uitgaven €/ }))
 
     // De lijst staat op uitgaven van deze maand: 'Boodschappen' hoort erbij, en het
     // filter is zichtbaar zodat je het weer kan wegklikken.
@@ -2013,7 +2014,7 @@ describe('de Budget-pagina na ronde 64', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Budget' })).toBeInTheDocument()
     // Met het formulier van je vaste LASTEN in beeld, niet vijf blokken lager.
     const lasten = (await screen.findByText('Vaste lasten')).closest('section, .kaart') as HTMLElement
-    expect(within(lasten).getByLabelText('Vaste omschrijving')).toBeInTheDocument()
+    expect(within(lasten).getByLabelText('Omschrijving')).toBeInTheDocument()
     await waitFor(() => expect(window.location.hash).toBe('#/budget/vast'))
   })
 
@@ -2330,7 +2331,7 @@ describe('vangnetten bij verwijderen en verbergen', () => {
       (b) => !(b.textContent ?? '').includes('zoet'),
     ) as HTMLElement
     await user.click(brood)
-    await user.click(await screen.findByRole('button', { name: 'Wijzig Stokbrood' }))
+    await user.click(await screen.findByRole('button', { name: 'Bewerk Stokbrood' }))
     const veld = screen.getByLabelText('Nieuwe naam voor Stokbrood')
     await user.clear(veld)
     await user.type(veld, 'Frans brood')
@@ -2350,7 +2351,7 @@ describe('vangnetten bij verwijderen en verbergen', () => {
     })
 
     await user.click(screen.getByRole('button', { name: 'Ongedaan maken' }))
-    expect(await screen.findByRole('button', { name: 'Wijzig Stokbrood' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Bewerk Stokbrood' })).toBeInTheDocument()
   })
 
   it('zegt het wanneer een rekening uit de keuzelijsten verdwijnt, en biedt de weg terug', async () => {
@@ -2613,7 +2614,7 @@ describe('de uitleg staat waar je hem nodig hebt', () => {
 describe('Overzicht — Wat komt eraan', () => {
   it('zwijgt zolang er geen vaste lasten zijn', async () => {
     render(<App />)
-    expect(await screen.findByText('Recente boekingen')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Recente boekingen' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Wat komt eraan' })).toBeNull()
   })
 
@@ -2690,12 +2691,174 @@ describe('Overzicht — Wat komt eraan', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Ronde 90 — "Minder tegelijk", deel drie: het Overzicht
+// ---------------------------------------------------------------------------
+//
+// Ronde 75 zette PAGINA'S uit, ronde 81 KAARTEN binnen Analyse - Verdeling, en die nota
+// noemde het Overzicht als wat er nog lag. Op een telefoon stonden daar voor deze ronde
+// ZEVEN blokken onder elkaar - het maandblok en zes kaarten, geteld in de DOM; op een breed
+// scherm staan de twee donuts naast elkaar en komt de zijkolom erbij. Het is bovendien de
+// pagina waar je LANDT.
+describe('welke kaarten je op het Overzicht wil zien (ronde 90)', () => {
+  // ⚠ Mét provider, anders staat er wel een chiprij maar doet indrukken niets: de
+  // context valt dan terug op haar standaardwaarden en de setter is een lege functie.
+  function toonApp() {
+    render(
+      <InstellingenProvider>
+        <App />
+      </InstellingenProvider>,
+    )
+  }
+
+  // ⚠ In een `beforeEach` én een `afterEach`: de voorkeur staat in localStorage, en de
+  // andere blokken in dit bestand rekenen erop dat er niets verborgen is.
+  beforeEach(() => {
+    localStorage.clear()
+  })
+  afterEach(() => {
+    localStorage.clear()
+  })
+
+  /**
+   * Klapt de chiprij open, zoals een gebruiker dat doet.
+   *
+   * ⚠ ONMISBAAR IN ELKE TEST DIE EEN CHIP AANRAAKT. jsdom kent wél `<details>`, maar
+   * VERBERGT de inhoud van een dicht blok niet — `getByRole` vindt de chips daar dus ook
+   * wanneer een echte browser ze niet toont.
+   */
+  async function klapOpen(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByText('Welke kaarten wil je hier zien?'))
+    expect((document.querySelector('[data-kaartkeuze]') as HTMLDetailsElement).open).toBe(true)
+  }
+
+  it('zet de chiprij NÁ het maandblok en VÓÓR de kaarten die ze bedient, en houdt ze dicht', async () => {
+    toonApp()
+    await screen.findByText('Saldo')
+    const blok = document.querySelector('[data-kaartkeuze]') as HTMLDetailsElement
+    expect(blok).not.toBeNull()
+    // ⚠ Dicht. Open beslaat de rij op een telefoon van 360 px 269 px — gemeten in
+    // Chromium — en dan voegt de knop die het scherm moet inkorten er zelf een derde
+    // scherm aan toe, elke keer dat je de app opent.
+    expect(blok.open).toBe(false)
+    const maandblok = document.querySelector('[data-maandblok]') as HTMLElement
+    const donut = screen.getByRole('heading', { name: 'Uitgaven per categorie' }).closest('section.kaart') as HTMLElement
+    // ⚠ Eerst waarvoor je kwam, dan de vraag wat je er nog bij wil. Helemaal bovenaan
+    // zou de eerste rij van je startpagina een BEDIENING zijn in plaats van je cijfers.
+    expect(maandblok.compareDocumentPosition(blok) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(blok.compareDocumentPosition(donut) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('haalt de kaart écht van de pagina zodra je haar chip uitzet', async () => {
+    const user = userEvent.setup()
+    toonApp()
+    await screen.findByRole('heading', { name: 'Recente boekingen' })
+    await klapOpen(user)
+
+    await user.click(screen.getByRole('button', { name: 'Recente boekingen' }))
+
+    // De kop van de kaart is weg; de chip staat er nog, uitgedrukt.
+    expect(screen.queryByRole('heading', { name: 'Recente boekingen' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Recente boekingen' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    // En de rest van de pagina staat er nog.
+    expect(screen.getByText('Saldo')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Uitgaven per categorie' })).toBeInTheDocument()
+  })
+
+  it('zet ze ook weer terug', async () => {
+    const user = userEvent.setup()
+    toonApp()
+    await screen.findByRole('heading', { name: 'Recente boekingen' })
+    await klapOpen(user)
+    await user.click(screen.getByRole('button', { name: 'Recente boekingen' }))
+    await user.click(screen.getByRole('button', { name: 'Recente boekingen' }))
+    expect(screen.getByRole('heading', { name: 'Recente boekingen' })).toBeInTheDocument()
+  })
+
+  it('laat het maandblok staan, wat je ook uitzet', async () => {
+    const user = userEvent.setup()
+    toonApp()
+    await screen.findByText('Saldo')
+    await klapOpen(user)
+    const groep = screen.getByRole('group', { name: 'Welke kaarten wil je hier zien?' })
+    const chips = within(groep).getAllByRole('button')
+    // Zonder vaste lasten tekent "Wat komt eraan" zichzelf niet, dus vijf chips.
+    expect(chips).toHaveLength(5)
+    for (const chip of chips) await user.click(chip)
+
+    // ⚠ Saldo, Inkomsten, Uitgaven en Netto zijn waarvoor deze pagina bestaat. Wie die
+    // kan uitzetten, houdt een lege startpagina over.
+    expect(document.querySelector('[data-maandblok]')).not.toBeNull()
+    expect(screen.getByText('Saldo')).toBeInTheDocument()
+    // ⚠ Alle VIJF de kaarten die er stonden, stuk voor stuk. Werd er eentje overgeslagen,
+    // dan mocht haar voorwaarde in App.tsx verdwijnen zonder dat een test het merkte.
+    for (const kop of [
+      'Uitgaven per categorie',
+      'Inkomsten per categorie',
+      'Recente boekingen',
+      'Inkomsten en uitgaven per maand',
+      'Rapport en print',
+    ]) {
+      expect(screen.queryByRole('heading', { name: kop }), kop).toBeNull()
+    }
+  })
+
+  it('geeft "Wat komt eraan" pas een chip wanneer die kaart er ook kán staan', async () => {
+    // ⚠ Als enige van de zes tekent deze widget zichzelf niet op een lege app — en een
+    // schakelaar voor iets wat er toch niet staat, is een knop die niets doet.
+    const user = userEvent.setup()
+    toonApp()
+    await screen.findByText('Saldo')
+    await klapOpen(user)
+    expect(screen.queryByRole('button', { name: 'Wat komt eraan' })).toBeNull()
+    // En dat wordt gezegd MET NAAM, in plaats van stil weggelaten (les van ronde 75).
+    expect(document.querySelector('[data-niet-kiesbaar]')?.textContent).toBe(
+      'De kaart Wat komt eraan staat er niet bij: daar valt nu nog niets te tonen.',
+    )
+  })
+
+  it('geeft haar wél een chip zodra er een vaste last staat', async () => {
+    await bewaarTerugkerendePost({
+      id: 'vast1',
+      omschrijving: 'Huur',
+      bedrag: -95000,
+      rekeningId: 'r1',
+      dag: 3,
+    })
+    const user = userEvent.setup()
+    toonApp()
+    await screen.findByRole('heading', { name: 'Wat komt eraan' })
+    await klapOpen(user)
+    expect(document.querySelector('[data-niet-kiesbaar]')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Wat komt eraan' }))
+    expect(screen.queryByRole('heading', { name: 'Wat komt eraan' })).toBeNull()
+  })
+
+  it('laat de andere pagina\'s met rust', async () => {
+    // ⚠ De chips gaan over HET OVERZICHT. Zetten ze ook iets uit op Transacties of
+    // Analyse, dan is dat een schakelaar die meer doet dan hij belooft.
+    const user = userEvent.setup()
+    toonApp()
+    await screen.findByRole('heading', { name: 'Recente boekingen' })
+    await klapOpen(user)
+    await user.click(screen.getByRole('button', { name: 'Recente boekingen' }))
+
+    await user.click(screen.getByRole('button', { name: 'Boekingen' }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Boekingen' })).toBeInTheDocument()
+    expect(screen.getByText('Boodschappen')).toBeInTheDocument()
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Ronde 83 — de twee formulieren op Budget → Vast
 // ---------------------------------------------------------------------------
 describe('de twee formulieren op Budget → Vast (ronde 83)', () => {
   it('geeft elk formulier een eigen naam, zodat hun velden uit elkaar te houden zijn', async () => {
     // ⚠ Negen paren velden met dezelfde labels in de gewone toestand — twee keer "Vaste
-    // omschrijving", twee keer "Vast bedrag (€)" — en tot veertien met een contract
+    // omschrijving", twee keer "Bedrag (€)" — en tot veertien met een contract
     // erbij. Precies de huisregel die ronde 82 in de lijst kwam handhaven, twintig
     // regels lager geschonden. Een formulier met een naam is een landmark; een
     // schermlezer kondigt het aan zodra de focus erin komt.

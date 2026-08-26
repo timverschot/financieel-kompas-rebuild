@@ -1470,6 +1470,42 @@ a:focus-visible {
   }
 }
 
+/* Een knop die iets RECHTZET in plaats van iets weg te gooien (ronde 86).
+
+   Timothy, over de knop naast een gekozen subcategorie op een kassaticketregel:
+   *"De knop is rood en vet naast een grijze regel van 13 px — de wegwerpknop weegt
+   visueel zwaarder dan de informatie ernaast."* Hij had gelijk, en het ging verder dan
+   de opmaak: die knop droeg `knop-gevaar`, en dat is in deze app de kleur van
+   WEGGOOIEN. Vrijwel elke andere knop met die klasse heet "Verwijderen", "Ja,
+   verwijder" of "Weggooien"; deze gooide niets weg.
+
+   ⚠ WAAR DE GRENS LIGT — en dat is scherper dan "wist het iets?". Rood blijft staan
+   zodra er iets BEWAARDS weggaat. De knop "verwijderen" bij een bonnetje in vijf
+   formulieren (garantie, gedeelde kost, kindrekeningpost, lening, boeking) maakt óók
+   maar een veld leeg, maar die formulieren kunnen in BEWERKmodus openen: dan zit er een
+   bewaarde bon in, en na opslaan is die weg. Die vijf houden dus terecht hun rood. De
+   drie knoppen met `knop-terzijde` kunnen dat niet — hun keuze staat op dat moment nog
+   nergens, en je kan meteen opnieuw kiezen.
+
+   ⚠ DE KLEUR DRAAGT DE BETEKENIS NIET ALLEEN, en dat kan ze ook niet: in het lichte
+   thema zijn `--negative` (#a03f21) en `--accent-tekst` (#95520a) vrijwel even donker —
+   nagerekend een luminantieverhouding van 1,08 : 1. Ze verschillen in TINT, niet in
+   gewicht. Daarom heet een knop die iets weggooit ook altijd "Verwijderen" en niet "×"
+   zonder naam: de TEKST is wat het zegt, de kleur is een steun.
+
+   Wat deze klasse doet: het gewicht terugbrengen van 600 naar 500. ⚠ Bewust NIET ook de
+   maat: 14 px tegen de 13 px van `.rij-meta` ernaast is wat er dan nog overblijft om
+   deze knop als knop te herkennen — hij heeft geen rand, geen achtergrond en geen
+   onderstreping. Ging ook dat weg, dan bleef alleen de kleur over, en die draagt hier
+   (zie hierboven) juist te weinig.
+
+   ⚠ STAAT BEWUST NA `.knop-gevaar`. Bij gelijke specificiteit wint de latere regel;
+   zou een volgende ronde een `font-weight` op `.knop-gevaar` zetten, dan won die stil
+   van deze klasse. `index.css.test.ts` bewaakt die volgorde. */
+.knop-terzijde {
+  font-weight: 500;
+}
+
 /* ⚠ Elke hover-regel sluit ook `[aria-disabled='true']` uit (nakijkronde ronde 61).
    Sinds ronde 61 dragen negentien opslaanknoppen die vlag in plaats van `disabled`, en
    zonder deze uitsluiting lichtte zo'n knop op een pc tóch op, sprong hij omhoog en
@@ -2353,6 +2389,14 @@ a {
 
   .raster-hoofd {
     grid-template-columns: 2fr 1fr;
+  }
+
+  /* ⚠ RONDE 90. Zet je op het Overzicht ALLEBEI de donuts uit, dan is het eerste kind
+     van dit raster een lege `div` en hield de zijkolom haar smalle rechterderde, met een
+     leeg vlak van twee derde ernaast. Eén kolom: de zijkolom krijgt dan de volle breedte.
+     Het attribuut staat in App.tsx en is er alleen in dat ene geval. */
+  .raster-hoofd[data-hoofd-leeg] {
+    grid-template-columns: 1fr;
   }
 
   .raster-twee {

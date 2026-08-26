@@ -53,6 +53,33 @@ describe('spaardoelVoortgang', () => {
     expect(v.fractie).toBe(1)
     expect(v.resterend).toBe(0)
   })
+
+  // ⚠ RONDE 85 — `resterend` en `fractie` worden afgekapt, en dat is voor een balk ook
+  // juist. Maar daardoor las de rij "nog € 0,00" bij wie er ruim over zat: hetzelfde
+  // beeld als bij wie exact genoeg had. `over` draagt dat verschil.
+  describe('over — hoeveel er MEER staat dan het doel vraagt', () => {
+    it('noemt het bedrag wanneer je er ruim over zit', () => {
+      // Doel € 3.000, gespaard € 4.000.
+      const v = spaardoelVoortgang(doel({ huidigBedrag: 400000 }), rekeningen, transacties, [], [])
+      expect(v.over).toBe(100000)
+    })
+
+    it('is nul wanneer je precies genoeg hebt', () => {
+      const v = spaardoelVoortgang(doel({ huidigBedrag: 300000 }), rekeningen, transacties, [], [])
+      expect(v.over).toBe(0)
+      expect(v.resterend).toBe(0)
+    })
+
+    it('is nul zolang je er nog niet bent', () => {
+      const v = spaardoelVoortgang(doel({ huidigBedrag: 150000 }), rekeningen, transacties, [], [])
+      expect(v.over).toBe(0)
+    })
+
+    it('is nul bij een doel zonder bedrag — anders is élke euro "meer dan nodig"', () => {
+      const v = spaardoelVoortgang(doel({ doelbedrag: 0, huidigBedrag: 5000 }), rekeningen, transacties, [], [])
+      expect(v.over).toBe(0)
+    })
+  })
 })
 
 // Ronde 18: een spaardoel zegt nu zelf wat er per maand nodig is, hoe snel je
@@ -113,6 +140,7 @@ describe('spaardoelPlan', () => {
     doel: doelbedrag,
     resterend: Math.max(doelbedrag - huidig, 0),
     fractie: Math.min(huidig / doelbedrag, 1),
+    over: Math.max(huidig - doelbedrag, 0),
   })
 
   it('zegt hoeveel er per maand bij moet om de doeldatum te halen', () => {

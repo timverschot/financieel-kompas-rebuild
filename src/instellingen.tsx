@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { BUDGETDREMPELS, STANDAARD_BUDGETDREMPEL } from './utils/meldingen'
 import { keurVerborgen } from './utils/appOnderdelen'
 import { keurVerborgenKaarten, type AnalyseKaartId } from './utils/analysekaarten'
+import { keurVerborgenOverzichtKaarten, type OverzichtKaartId } from './utils/overzichtkaarten'
 import type { Pagina } from './components/navigatie'
 
 // Kleine, per-toestel voorkeuren die géén gegevens zijn maar wél bewaard moeten
@@ -20,6 +21,11 @@ const ONDERDELEN_SLEUTEL = 'fk_verborgen_paginas'
 // betekenen dat `keurVerborgen` en `keurVerborgenKaarten` elkaars waarden moeten
 // wegfilteren, en dan drukt een tikfout in de ene lijst iets weg in de andere.
 const ANALYSEKAARTEN_SLEUTEL = 'fk_verborgen_analysekaarten'
+// ⚠ En om precies dezelfde reden een DERDE sleutel (ronde 90). De kaarten van het
+// Overzicht en die van Analyse › Verdeling zijn twee verzamelingen met eigen id's; in
+// één lijst zouden `keurVerborgenKaarten` en `keurVerborgenOverzichtKaarten` elkaars
+// waarden moeten wegfilteren.
+const OVERZICHTKAARTEN_SLEUTEL = 'fk_verborgen_overzichtkaarten'
 
 // Leest de bewaarde drempel. Alles wat geen geldige keuze is (oude waarde,
 // handmatig gerommel, kapotte localStorage) valt terug op de standaard.
@@ -75,6 +81,22 @@ function leesVerborgenKaarten(): AnalyseKaartId[] {
   return []
 }
 
+/**
+ * Welke kaarten van het Overzicht je uitgezet hebt (ronde 90).
+ *
+ * Zelfde keuze en zelfde terugval als de twee lezers hierboven: een weergavevoorkeur per
+ * toestel, en bij twijfel toont de app alles.
+ */
+function leesVerborgenOverzichtKaarten(): OverzichtKaartId[] {
+  try {
+    const ruw = localStorage.getItem(OVERZICHTKAARTEN_SLEUTEL)
+    if (ruw !== null) return keurVerborgenOverzichtKaarten(JSON.parse(ruw))
+  } catch {
+    // localStorage niet beschikbaar, of geen geldige JSON: alles blijft zichtbaar.
+  }
+  return []
+}
+
 type InstellingenContextType = {
   /** Vanaf welk percentage een budget een waarschuwing geeft. */
   budgetDrempel: number
@@ -85,6 +107,9 @@ type InstellingenContextType = {
   /** De verdelingskaarten die je uitgezet hebt. Zie utils/analysekaarten.ts. */
   verborgenAnalysekaarten: AnalyseKaartId[]
   zetVerborgenAnalysekaarten: (k: AnalyseKaartId[]) => void
+  /** De kaarten van het Overzicht die je uitgezet hebt. Zie utils/overzichtkaarten.ts. */
+  verborgenOverzichtkaarten: OverzichtKaartId[]
+  zetVerborgenOverzichtkaarten: (k: OverzichtKaartId[]) => void
 }
 
 // Standaardwaarde zodat componenten ook zonder Provider werken (bv. in tests).
@@ -97,6 +122,8 @@ const standaard: InstellingenContextType = {
   zetVerborgenPaginas: () => {},
   verborgenAnalysekaarten: [],
   zetVerborgenAnalysekaarten: () => {},
+  verborgenOverzichtkaarten: [],
+  zetVerborgenOverzichtkaarten: () => {},
 }
 
 const InstellingenContext = createContext<InstellingenContextType>(standaard)
@@ -105,6 +132,8 @@ export function InstellingenProvider({ children }: { children: ReactNode }) {
   const [budgetDrempel, setBudgetDrempel] = useState<number>(leesDrempel)
   const [verborgenPaginas, setVerborgenPaginas] = useState<Pagina[]>(leesVerborgen)
   const [verborgenAnalysekaarten, setVerborgenAnalysekaarten] = useState<AnalyseKaartId[]>(leesVerborgenKaarten)
+  const [verborgenOverzichtkaarten, setVerborgenOverzichtkaarten] =
+    useState<OverzichtKaartId[]>(leesVerborgenOverzichtKaarten)
 
   useEffect(() => {
     try {
@@ -130,6 +159,14 @@ export function InstellingenProvider({ children }: { children: ReactNode }) {
     }
   }, [verborgenAnalysekaarten])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(OVERZICHTKAARTEN_SLEUTEL, JSON.stringify(verborgenOverzichtkaarten))
+    } catch {
+      // stil negeren
+    }
+  }, [verborgenOverzichtkaarten])
+
   return (
     <InstellingenContext.Provider
       value={{
@@ -139,6 +176,8 @@ export function InstellingenProvider({ children }: { children: ReactNode }) {
         zetVerborgenPaginas: setVerborgenPaginas,
         verborgenAnalysekaarten,
         zetVerborgenAnalysekaarten: setVerborgenAnalysekaarten,
+        verborgenOverzichtkaarten,
+        zetVerborgenOverzichtkaarten: setVerborgenOverzichtkaarten,
       }}
     >
       {children}

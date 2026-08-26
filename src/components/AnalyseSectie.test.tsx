@@ -958,7 +958,7 @@ describe('AnalyseSectie — kaarten aan- en uitzetten (ronde 81)', () => {
     const chip = screen.getByRole('button', { name: 'Per winkel' })
     const id = chip.getAttribute('aria-describedby') as string
     expect(document.getElementById(id)?.textContent).toBe(
-      'Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren.',
+      'Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren, en je zet het hier met één tik terug.',
     )
   })
 

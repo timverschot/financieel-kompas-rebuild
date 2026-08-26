@@ -186,6 +186,22 @@ describe('Documentkluis', () => {
     ).toBeInTheDocument()
   })
 
+  it('draagt op "Ander bestand kiezen" geen wegwerpkleur (ronde 86)', async () => {
+    // ⚠ Deze knop droeg `knop-gevaar` — de kleur waarmee deze app VERWIJDEREN aanduidt —
+    // en gooit niets weg: ze maakt de bestandskeuze leeg zodat het keuzeveld terugkomt.
+    // Je document staat op dat moment nog nergens: `bestand` begint altijd leeg, dit
+    // formulier kent geen bewerkmodus. Dat onderscheidt haar van de "verwijderen"-knop
+    // bij een bonnetje in de vijf formulieren die wél in bewerkmodus kunnen openen; die
+    // houden terecht hun rood. Zie `.knop-terzijde` in index.css.
+    const user = userEvent.setup()
+    toon()
+    await user.upload(screen.getByLabelText('Bestand (foto of PDF)'), pdf('vonnis.pdf'))
+    const knop = await screen.findByRole('button', { name: 'Ander bestand kiezen' })
+    expect(knop.classList.contains('knop-gevaar')).toBe(false)
+    expect(knop.classList.contains('knop-terzijde')).toBe(true)
+    expect(knop.classList.contains('knop-klein')).toBe(true)
+  })
+
   it('toont enkel de documenten van deze lening, niet die van een dossier met dezelfde id', () => {
     toon(
       [

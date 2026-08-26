@@ -598,7 +598,7 @@ export function DossierSectie({
               })}
             </div>
             <p className="rij-meta" style={{ margin: 0 }}>
-              {t('Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren.')}
+              {t('Wat je uitzet, verdwijnt alleen uit beeld — er gaat niets verloren, en je zet het hier met één tik terug.')}
             </p>
             {/* `role="alert"` en niet `role="status"`: dit is een mislukking meteen ná
                 iets wat je zelf deed, en dan mag een schermlezer het niet overslaan —

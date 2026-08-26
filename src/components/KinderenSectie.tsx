@@ -135,7 +135,7 @@ export function KinderenSectie({
               <button
                 type="button"
                 className="knop knop-kaal"
-                aria-label={t('Wijzig gezinslid {naam}', { naam: k.naam })}
+                aria-label={t('Bewerk gezinslid {naam}', { naam: k.naam })}
                 onClick={() => startBewerken(k)}
               >
                 ✎

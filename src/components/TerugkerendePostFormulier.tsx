@@ -425,11 +425,18 @@ export function TerugkerendePostFormulier({
   // ⚠ RONDE 83 — WELK VAN DE TWEE FORMULIEREN IS DIT?
   // Op Budget → Vast staan er twee onder elkaar: één voor je vaste inkomsten en één
   // voor je vaste lasten. Hun velden heten allemaal hetzelfde — nageteld: NEGEN paren
-  // in de gewone toestand ("Vaste omschrijving", "Vast bedrag (€)", "Dag van de
-  // maand", "Hoe vaak?", "Loopt tot en met", "Zit hier een contract achter?", "Vaste
-  // rekening", "Zoek een categorie", "Vaste categorie"), en tot VEERTIEN zodra je in
-  // allebei een ritme en een contract invult. Dat is exact de huisregel die ronde 82
-  // in de LIJST kwam handhaven, twintig regels lager geschonden.
+  // in de gewone toestand ("Omschrijving", "Bedrag (€)", "Dag van de maand", "Hoe
+  // vaak?", "Loopt tot en met", "Zit hier een contract achter? (optioneel)",
+  // "Rekening", "Zoek een categorie", "Categorie"), en tot VEERTIEN zodra je in allebei
+  // een ritme en een contract invult. (⚠ Die vier heetten tot ronde 88 "Vaste
+  // omschrijving", "Vast bedrag (€)", "Vaste rekening" en "Vaste categorie" — met
+  // precies dezelfde botsing: het voorvoegsel stond in ALLEBEI de formulieren.)
+  //
+  // ⚠ PAREN, GEEN BEDIENINGEN. Het vinkje "Hier maandelijks voor opzijzetten" staat er
+  // bij een ritme óók, maar alleen in het UITGAVEformulier — dus het is een tiende
+  // bediening en geen tiende paar. Wie bedieningen telt komt op vijftien uit en denkt
+  // dat dit getal misteld is. Dat is exact de huisregel die ronde 82
+  // in de LIJST kwam handhaven, zestig regels lager geschonden.
   //
   // ⚠ EEN NAAM OP HET `<form>` EN NIET OP ELK VELD. Een formulier met een naam is in
   // HTML een LANDMARK: een schermlezer kondigt het aan zodra de focus erin komt
@@ -438,8 +445,8 @@ export function TerugkerendePostFormulier({
   // veld kosten en de labels langer maken voor iedereen die gewoon kijkt.
   //
   // ⚠ MAAR HET LOST NIET ALLES OP, en dat hoort erbij te staan. Het helpt wie
-  // DOORTABT. Het helpt níét wie de app met zijn STEM bedient ("klik Vaste
-  // omschrijving" vindt er nog altijd twee, want stembediening kent geen landmarks),
+  // DOORTABT. Het helpt níét wie de app met zijn STEM bedient ("klik Omschrijving"
+  // vindt er nog altijd twee, want stembediening kent geen landmarks),
   // en ook niet wie de veldenlijst van zijn schermlezer opent — die somt de
   // bedieningen op zonder hun landmark. Die twee wegen blijven open.
   //
@@ -467,9 +474,38 @@ export function TerugkerendePostFormulier({
 
   return (
     <form onSubmit={verzend} className="stapel" aria-label={formuliernaam}>
+      {/* ⚠ RONDE 88 — DE VELDEN HETEN WEER GEWOON WAT ZE ZIJN.
+          Tot deze ronde stond er "Vaste omschrijving", "Vast bedrag (€)", "Vaste
+          rekening" en "Vaste categorie". Dat is geen Nederlands — een rekening die vást
+          is? — en het voorvoegsel stond er alleen om de velden van dit formulier uit
+          elkaar te houden van velden elders.
+
+          ⚠ EN HET DEED DAT NOOIT WAAR HET NODIG WAS. Op Budget → Vast staan twee
+          exemplaren van dit formulier onder elkaar (inkomsten en lasten), en die zeiden
+          allebei "Vaste omschrijving": het voorvoegsel hielp daar precies niets. Wat die
+          twee wél uit elkaar houdt, is de naam van het formulier zelf (`aria-label`
+          hierboven, ronde 83): een `<form>` met een naam is een landmark, en een
+          schermlezer kondigt hem aan zodra je erin komt.
+
+          ⚠ WAT ER NOG ALTIJD NIET DOOR OPGELOST IS, en dat stond al in de nota van ronde
+          83: een landmark helpt wie doortabt, niet wie de app met zijn STEM bedient en
+          niet wie de veldenlijst van zijn schermlezer opent. Daar heten die twee velden
+          nog steeds allebei "Omschrijving" — net zoals ze vóór deze ronde allebei "Vaste
+          omschrijving" heetten. Deze ronde maakt dat dus niet erger; ze maakt alleen de
+          taal weer normaal.
+
+          ⚠ EN DE ➕-POPUP DAN? (doorlichting ronde 88) Dat venster hangt buiten de
+          pagina-inhoud, dus dit formulier kan bovenop élk scherm komen — ook op Boekingen
+          met de filterbalk open ("Rekening"), op Rekeningen naast een overboeking
+          ("Omschrijving") of naast het afrekenblok ("Bedrag (€)"). Die vier samenlopen
+          bestonden vóór deze ronde niet. Ze doen er in de praktijk niet toe: `Dialoog`
+          zet `role="dialog"` met `aria-modal`, en dan bestaat alles erbuiten voor een
+          schermlezer niet meer. ⚠ Maar Testing Library trekt zich daar níéts van aan en
+          zoekt over de hele `document.body`: een `getByLabelText('Rekening')` zonder
+          `within(…)` kan er sinds deze ronde twee vinden. */}
       <div className="veldgroep">
         <label className="label-caps" htmlFor={`${veldId}-vaste-omschrijving`}>
-          {t('Vaste omschrijving')}
+          {t('Omschrijving')}
         </label>
         <input id={`${veldId}-vaste-omschrijving`} value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} />
         {/* ⚠ Een WAARSCHUWING, geen fout: de opslaanknop blijft gewoon werken. Twee
@@ -487,7 +523,7 @@ export function TerugkerendePostFormulier({
       <div className="veldrij">
         <div className="veldgroep">
           <label className="label-caps" htmlFor={`${veldId}-vast-bedrag`}>
-            {t('Vast bedrag (€)')}
+            {t('Bedrag (€)')}
           </label>
           <input
             id={`${veldId}-vast-bedrag`}
@@ -730,7 +766,7 @@ export function TerugkerendePostFormulier({
 
       <div className="veldgroep">
         <label className="label-caps" htmlFor={`${veldId}-vaste-rekening`}>
-          {t('Vaste rekening')}
+          {t('Rekening')}
         </label>
         <select id={`${veldId}-vaste-rekening`} value={rekeningId} onChange={(e) => setRekeningId(e.target.value)}>
           {rekeningen.map((r) => (
@@ -743,7 +779,7 @@ export function TerugkerendePostFormulier({
 
       <div className="veldgroep">
         <label className="label-caps" htmlFor={`${veldId}-vaste-categorie`}>
-          {t('Vaste categorie')}
+          {t('Categorie')}
         </label>
         {/* Alle drie de niveaus, met een zoekveld. Tot ronde 27 kon je hier alleen
             een hoofdcategorie kiezen, dus stond je huur op "Woning en vaste lasten"
