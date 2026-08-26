@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { namenlijst } from '../utils/namenlijst'
 import type { Dossier, GedeeldeKost, Kind } from '../data/schema'
 import type { EigenCategorie } from '../data/categorieen/resolve'
 import {
@@ -16,6 +17,8 @@ import {
   type UitwisselBestand,
   type Uitwisseloverzicht,
   type Vergelijking,
+  groepeerVergelijkingen,
+  andereDossiernamen,
 } from '../utils/uitwisseling'
 import { kostIdsInOpenAfrekening } from '../utils/afrekening'
 import { downloadTekst, veiligeBestandsnaam } from '../utils/download'
@@ -601,13 +604,10 @@ function Voorstel({
 }) {
   const { t } = useT()
   const v = overzicht.vergelijkingen
-  const nieuw = v.filter((x) => x.oordeel === 'nieuw')
-  const gewijzigd = v.filter((x) => x.oordeel === 'gewijzigd')
-  const dubbel = v.filter((x) => x.oordeel === 'dubbel')
-  const ongewijzigd = v.filter((x) => x.oordeel === 'ongewijzigd')
-  const vast = v.filter((x) => x.oordeel === 'vast')
-  const elders = v.filter((x) => x.anderDossier)
-  const anderePct = v.filter((x) => x.anderePctDanDossier && (x.oordeel === 'nieuw' || x.oordeel === 'gewijzigd'))
+  // ⚠ RONDE 96 — de indeling zit in `groepeerVergelijkingen` (utils/uitwisseling.ts), niet
+  // hier. Zie de uitleg daar: `elders` is een deelverzameling van `ongewijzigd`, en dat
+  // liet dezelfde kost twee keer in de samenvatting opduiken.
+  const { nieuw, gewijzigd, dubbel, ongewijzigd, vast, elders, anderePct } = groepeerVergelijkingen(v)
   const verschil =
     typeof overzicht.saldoAfzender === 'number' ? overzicht.saldoJij - overzicht.saldoAfzender : 0
 
@@ -678,9 +678,12 @@ function Voorstel({
         {elders.length > 0 && (
           <li className="rij">
             <span className="rij-meta">
+              {/* ⚠ RONDE 96 — elke vergelijking draagt haar EIGEN `anderDossier`. De zin nam
+                  gewoon de naam van de eerste, dus bij kosten uit twee dossiers wees het
+                  getal naar meer dossiers dan de naam noemde. Nu worden de namen opgesomd. */}
               {t('{n} kost(en) staan in een ander dossier ({naam}) en worden hier niet nog eens ingelezen.', {
                 n: elders.length,
-                naam: elders[0].anderDossier ?? '',
+                naam: namenlijst(t, andereDossiernamen(elders)),
               })}
             </span>
           </li>

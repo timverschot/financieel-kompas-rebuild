@@ -144,19 +144,19 @@ export function VasteLastWeg({
               dan staat er niets: dan is de naam in de kop al ondubbelzinnig, en een
               bedrag erbij zou de gewone gevallen — de overgrote meerderheid — met
               gegevens opzadelen die niets toevoegen. Zie `postKenmerk`. */}
-          {kenmerk !== '' && <p style={{ margin: 0 }}>{t('Het gaat over de kost van {details}.', { details: kenmerk })}</p>}
+          {kenmerk !== '' && <p style={{ margin: 0 }}>{t('Het gaat over de vaste last van {details}.', { details: kenmerk })}</p>}
           {/* ⚠ Zonder telfunctie mag hier geen "er hangt niets aan" staan: dat is een
               bewering, en het venster weet het dan niet. Niet weten en niets vinden
               zijn twee verschillende dingen (ronde 65). */}
           {(() => {
             if (!telGebruik) {
-              return <p style={{ margin: 0 }}>{t('De app kan hier niet nakijken wat er aan deze kost hangt.')}</p>
+              return <p style={{ margin: 0 }}>{t('De app kan hier niet nakijken wat er aan deze vaste last hangt.')}</p>
             }
             const regels = telGebruik(post.id)
             // De kop wisselt mee met wat er staat: zo leest het scherm nooit "Hier
             // hangt nog dit aan: • er hangt niets aan".
             if (regels.length === 0) {
-              return <p style={{ margin: 0 }}>{t('Er hangt niets aan deze kost.')}</p>
+              return <p style={{ margin: 0 }}>{t('Er hangt niets aan deze vaste last.')}</p>
             }
             return (
               <>
@@ -184,7 +184,7 @@ export function VasteLastWeg({
               over hetzelfde veld horen niet iets anders te zeggen. */}
           {toonOpzegzin && (
             <p className="rij-meta" style={{ margin: 0 }}>
-              {t('Zet je hem stop? Vul dan "Loopt tot en met" in — de maand die je daar kiest, is de laatste keer dat hij meetelt. De kost blijft in je historiek staan.')}
+              {t('Zet je hem stop? Vul dan "Loopt tot en met" in — de maand die je daar kiest, is de laatste keer dat hij meetelt. De vaste last blijft in je historiek staan.')}
             </p>
           )}
           {/* ⚠ Deze zin is nagerekend en geen troostwoord: "Ongedaan maken" bewaart de
@@ -192,7 +192,7 @@ export function VasteLastWeg({
               wijzen zijn bij het verwijderen niet aangeraakt. De koppelingen komen dus
               écht terug. */}
           <p className="rij-meta" style={{ margin: 0 }}>
-            {t('Bedenk je je meteen, dan zet "Ongedaan maken" onderaan het scherm de kost terug — mét al deze koppelingen.')}
+            {t('Bedenk je je meteen, dan zet "Ongedaan maken" onderaan het scherm de vaste last terug — mét al deze koppelingen.')}
           </p>
           <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Er is niets veranderd.')} />
         </div>

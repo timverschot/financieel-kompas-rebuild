@@ -189,7 +189,7 @@ export function RekeningFormulier({
       <div className="veldrij">
         <div className="veldgroep">
           <label className="label-caps" htmlFor="rekeningtype">
-            {t('Type')}
+            {t('Soort')}
           </label>
           <select id="rekeningtype" value={type} onChange={(e) => wisselType(e.target.value as RekeningType)}>
             {REKENING_TYPES.map((tp) => (

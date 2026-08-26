@@ -524,7 +524,7 @@ describe('AnalyseSectie — "Zonder categorie" in een andere taal', () => {
         />
       </TaalProvider>,
     )
-    const kaartje = screen.getByText('Breakdown by subcategory').closest('section.kaart') as HTMLElement
+    const kaartje = screen.getByText('Distribution by subcategory').closest('section.kaart') as HTMLElement
     expect(within(kaartje).getByText('Uncategorised')).toBeInTheDocument()
     expect(within(kaartje).queryByText('Zonder categorie')).toBeNull()
     // De winkelnaam blijft staan zoals ze op je afschrift stond.

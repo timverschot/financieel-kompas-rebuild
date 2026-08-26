@@ -76,7 +76,7 @@ export function BesparenKaart({
       bijschrift={samenvatting(t, domeinen, totaal)}
       actie={
         <button type="button" className="knop knop-ghost knop-klein" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-          {open ? t('Verberg details') : t('Toon details')}
+          {open ? t('Verberg de opbouw') : t('Toon de opbouw')}
         </button>
       }
     >

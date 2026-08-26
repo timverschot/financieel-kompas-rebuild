@@ -243,7 +243,7 @@ describe('OnderhoudsbijdrageSectie — de regeling wijzigen', () => {
     const user = userEvent.setup()
     const { onOpslaan } = toon()
     await user.click(screen.getByRole('button', { name: 'Bewerk de regeling' }))
-    const bedrag = screen.getByLabelText('Bedrag uit de regeling')
+    const bedrag = screen.getByLabelText('Bedrag in de regeling')
     await user.clear(bedrag)
     await user.type(bedrag, '300,00')
     await user.selectOptions(screen.getByLabelText('Richting'), 'jij-betaalt')

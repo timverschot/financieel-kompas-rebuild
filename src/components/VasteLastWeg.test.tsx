@@ -45,14 +45,14 @@ describe('VasteLastWeg', () => {
     // ⚠ Anders leest het scherm "Hier hangt nog dit aan: • er hangt niets aan".
     toon({ telGebruik: () => [] })
     expect(screen.queryByText('Hier hangt nog dit aan:')).not.toBeInTheDocument()
-    expect(screen.getByText('Er hangt niets aan deze kost.')).toBeInTheDocument()
+    expect(screen.getByText('Er hangt niets aan deze vaste last.')).toBeInTheDocument()
   })
 
   it('beweert NIETS wanneer het niet kan nakijken', () => {
     // ⚠ Niet weten en niets vinden zijn twee verschillende dingen (ronde 65).
     toon({ telGebruik: undefined })
-    expect(screen.queryByText('Er hangt niets aan deze kost.')).not.toBeInTheDocument()
-    expect(screen.getByText('De app kan hier niet nakijken wat er aan deze kost hangt.')).toBeInTheDocument()
+    expect(screen.queryByText('Er hangt niets aan deze vaste last.')).not.toBeInTheDocument()
+    expect(screen.getByText('De app kan hier niet nakijken wat er aan deze vaste last hangt.')).toBeInTheDocument()
   })
 
   it('verwijdert pas na "Ja, verwijder", en sluit dan', async () => {

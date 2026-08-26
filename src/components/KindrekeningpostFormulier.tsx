@@ -107,6 +107,16 @@ export function KindrekeningpostFormulier({
   // De id van de regel die zegt wat er nog ontbreekt. De knop wijst ernaar met
   // `aria-describedby`, zodat wie erop landt de reden hoort (ronde 61).
   const redenId = useId()
+  const veldId = useId()
+
+  // ⚠ RONDE 95 — dit formulier staat op dezelfde pagina als dat van de gedeelde kosten,
+  // en dan heten "Datum", "Bon/factuur (optioneel)" en het zoekveld van de
+  // categoriekiezer daar allebei hetzelfde. Ook "Bedrag pot (€)" droeg een voorvoegsel
+  // dat er alleen stond om die botsing te ontlopen — precies wat ronde 88 wegdeed.
+  // De naam op het `<form>` (een landmark) plus een onzichtbare toevoeging aan elk
+  // dubbel veld lossen het op; de zichtbare tekst blijft vooraan (WCAG 2.5.3).
+  const soortId = `${veldId}-soort-toevoeging`
+  const formuliernaam = bewerken ? t('Deze beweging') : t('Nieuwe beweging')
   const geldig = Number.isFinite(bedragCenten) && bedragCenten > 0
 
   async function kiesBonnetje(bestand: File) {
@@ -151,7 +161,11 @@ export function KindrekeningpostFormulier({
   }
 
   return (
-    <form onSubmit={verzend} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <form onSubmit={verzend} aria-label={formuliernaam} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* De toevoeging waar de velden hieronder naar wijzen (ronde 95). Buiten beeld: wie
+          kijkt, ziet de kaarttitel "Kindrekening (gezamenlijke pot)" al boven dit
+          formulier staan. */}
+      <span id={soortId} className="alleen-voorlezen">{t('(kindrekening)')}</span>
       <div className="veldgroep">
         <label className="label-caps" htmlFor="krp-soort">{t('Soort beweging')}</label>
         <select id="krp-soort" value={soort} onChange={(e) => setSoort(e.target.value as 'storting' | 'uitgave')}>
@@ -160,22 +174,36 @@ export function KindrekeningpostFormulier({
         </select>
       </div>
       <div className="veldgroep">
-        <label className="label-caps" htmlFor="krp-bedrag">{t('Bedrag pot (€)')}</label>
-        <input id="krp-bedrag" inputMode="decimal" placeholder="0,00" value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
+        <label className="label-caps" id={`${veldId}-bedrag-label`} htmlFor="krp-bedrag">{t('Bedrag (€)')}</label>
+        <input id="krp-bedrag" aria-labelledby={`${veldId}-bedrag-label ${soortId}`} inputMode="decimal" placeholder="0,00" value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
       </div>
       <div className="veldgroep">
         <label className="label-caps" htmlFor="krp-omschrijving">{t('Omschrijving (optioneel)')}</label>
         <input id="krp-omschrijving" value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} />
       </div>
       {soort === 'storting' && (
-        <div className="veldgroep">
-          <span className="label-caps">{t('Gestort door:')}</span>
+        <div className="veldgroep" role="group" aria-labelledby={`${veldId}-gestort-label ${soortId}`}>
+          <span className="label-caps" id={`${veldId}-gestort-label`}>{t('Gestort door:')}</span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
             <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <input type="radio" name="krp-door" checked={door === 'jij'} onChange={() => setDoor('jij')} /> {t('Jij')}
+              <input
+                type="radio"
+                name="krp-door"
+                aria-labelledby={`${veldId}-gestort-jij ${soortId}`}
+                checked={door === 'jij'}
+                onChange={() => setDoor('jij')}
+              />{' '}
+              <span id={`${veldId}-gestort-jij`}>{t('Jij')}</span>
             </label>
             <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <input type="radio" name="krp-door" checked={door === 'partner'} onChange={() => setDoor('partner')} /> {t('Partner')}
+              <input
+                type="radio"
+                name="krp-door"
+                aria-labelledby={`${veldId}-gestort-partner ${soortId}`}
+                checked={door === 'partner'}
+                onChange={() => setDoor('partner')}
+              />{' '}
+              <span id={`${veldId}-gestort-partner`}>{t('Partner')}</span>
             </label>
           </div>
         </div>
@@ -188,6 +216,7 @@ export function KindrekeningpostFormulier({
           onKies={(id) => setCategorieId(id ?? '')}
           gebruikerCategorieen={categorieen}
           onNieuweSubcategorie={onNieuweSubcategorie}
+          naamToevoeging={t('(kindrekening)')}
         />
           </div>
           {/* Dezelfde gedeelde kiezer als in het transactieformulier en bij de gedeelde
@@ -198,9 +227,10 @@ export function KindrekeningpostFormulier({
             waarden={kindIds}
             onWijzig={setKindIds}
             gezinsleden={kinderen}
+            naamToevoeging={t('(kindrekening)')}
           />
           <div className="veldgroep">
-            <label className="label-caps" htmlFor="krp-bon">{t('Bon/factuur (optioneel)')}</label>
+            <label className="label-caps" id={`${veldId}-bon-label`} htmlFor="krp-bon">{t('Bon/factuur (optioneel)')}</label>
             {bonnetje ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {bonnetje.startsWith('data:image') && (
@@ -214,6 +244,7 @@ export function KindrekeningpostFormulier({
             ) : (
               <input
                 id="krp-bon"
+                aria-labelledby={`${veldId}-bon-label ${soortId}`}
                 type="file"
                 accept="image/*,application/pdf"
                 onChange={(e) => {
@@ -228,8 +259,8 @@ export function KindrekeningpostFormulier({
         </>
       )}
       <div className="veldgroep">
-        <label className="label-caps" htmlFor="krp-datum">{t('Datum')}</label>
-        <input id="krp-datum" type="date" value={datum} onChange={(e) => setDatum(e.target.value)} />
+        <label className="label-caps" id={`${veldId}-datum-label`} htmlFor="krp-datum">{t('Datum')}</label>
+        <input id="krp-datum" aria-labelledby={`${veldId}-datum-label ${soortId}`} type="date" value={datum} onChange={(e) => setDatum(e.target.value)} />
       </div>
       <div className="knoprij">
         <button

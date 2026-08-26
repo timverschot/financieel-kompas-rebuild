@@ -1190,7 +1190,7 @@ export function App() {
       waarderingen.filter((w) => w.rekeningId === id).length
     if (aantal > 0) {
       meld(
-        t('Deze rekening heeft nog {n} boeking(en). Archiveer ze in plaats van ze te verwijderen.', { n: aantal }),
+        t('Aan deze rekening hangen nog {n} boekingen, overboekingen of waarderingen. Archiveer de rekening in plaats van ze te verwijderen.', { n: aantal }),
         'fout',
       )
       return

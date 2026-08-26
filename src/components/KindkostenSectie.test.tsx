@@ -195,6 +195,31 @@ describe('KindkostenSectie — wat de app niet zeker weet', () => {
     expect(melding).toContain(String(DUBBEL_SPELING_DAGEN))
   })
 
+  it('zegt erbij dat de tegenhanger ook één ticketregel kan zijn (ronde 97)', () => {
+    // ⚠ Sinds ronde 55 vergelijkt de app óók met de REGELS van een gesplitst kassaticket:
+    // koop je voor € 90 waarvan € 45 school, en staat die € 45 ook als gedeelde kost, dan
+    // hoort dat opgemerkt te worden. De zin zei alleen "een losse boeking", dus wie ging
+    // zoeken vond geen boeking van dat bedrag en kon de melding niet plaatsen.
+    toon({
+      transacties: [
+        tx({
+          id: 'a',
+          datum: '2026-05-04',
+          bedrag: -9000,
+          persoonIds: ['emma'],
+          regels: [
+            { bedrag: -4500, categorieId: 'cat-school' },
+            { bedrag: -4500, categorieId: 'cat-voeding' },
+          ],
+        }),
+      ],
+      gedeeldeKosten: [kost({ id: 'k1', kindIds: ['emma'], datum: '2026-05-04', bedrag: 4500 })],
+    })
+    const melding = document.querySelector('[data-dubbels]')?.textContent ?? ''
+    expect(melding).toMatch(/dit bedrag te hoog/)
+    expect(melding).toMatch(/één regel van een gesplitst kassaticket/)
+  })
+
   it('zwijgt daarover wanneer de kost aan die boeking gekoppeld is', () => {
     toon({
       transacties: [tx({ id: 'a', datum: '2026-05-04', bedrag: -9000, persoonIds: ['emma'] })],

@@ -326,8 +326,7 @@ describe('welke kaarten je op het Overzicht wil zien, op een breed scherm (ronde
     localStorage.clear()
   })
 
-  async function klapOpen(user: ReturnType<typeof userEvent.setup>) {
-    await user.click(screen.getByText('Welke kaarten wil je hier zien?'))
+  function staatOpen() {
     expect((document.querySelector('[data-kaartkeuze]') as HTMLDetailsElement).open).toBe(true)
   }
 
@@ -340,7 +339,7 @@ describe('welke kaarten je op het Overzicht wil zien, op een breed scherm (ronde
       </InstellingenProvider>,
     )
     await screen.findByText('Saldo')
-    await klapOpen(user)
+    staatOpen()
 
     const groep = screen.getByRole('group', { name: 'Welke kaarten wil je hier zien?' })
     // ⚠ Geen chip voor de zijkolom: die bestaat alleen hier, en een schakelaar voor iets
@@ -363,7 +362,7 @@ describe('welke kaarten je op het Overzicht wil zien, op een breed scherm (ronde
       </InstellingenProvider>,
     )
     await screen.findByText('Saldo')
-    await klapOpen(user)
+    staatOpen()
     const raster = document.querySelector('.raster-hoofd') as HTMLElement
     expect(raster.hasAttribute('data-hoofd-leeg')).toBe(false)
 

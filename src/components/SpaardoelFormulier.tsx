@@ -327,13 +327,13 @@ export function SpaardoelFormulier({
             ))}
             {ontbrekendeKoppeling && (
               <option value={vasteLastId}>
-                {bewerken?.vasteLastId === vasteLastId ? t('De kost waaraan dit doel hangt') : t('Onbekende kost')}
+                {bewerken?.vasteLastId === vasteLastId ? t('De vaste last waaraan dit doel hangt') : t('Onbekende vaste last')}
               </option>
             )}
           </select>
           <p id={uitlegId} className="leeg" style={{ padding: '4px 0 0', textAlign: 'left' }}>
             {ontbrekendeKoppeling
-              ? t('Dit doel hangt aan een kost die niet meer in je lijst staat, of die niet meer om vooraf sparen vraagt. Kies "Voor niets in het bijzonder" om de koppeling los te maken.')
+              ? t('Dit doel hangt aan een vaste last die niet meer in je lijst staat, of die niet meer om vooraf sparen vraagt. Kies "Voor niets in het bijzonder" om de koppeling los te maken.')
               : gekozenLast
               ? vervaldag
                 ? // ⚠ RONDE 85 — DEZE ZIN WAS ONWAAR, en `utils/spaardoel.ts` zegt sinds
@@ -407,7 +407,7 @@ export function SpaardoelFormulier({
                   naam: postNaamMetKenmerk(t, gekozenLast, vasteLasten),
                   standaard: formatEuro(standaardOpzij),
                 })
-              : t('Budget houdt hierdoor {streef} per maand apart voor {naam}. Zonder dit streefbedrag zou dat niets zijn: bij die kost staat "hier maandelijks voor opzijzetten" uit.', {
+              : t('Budget houdt hierdoor {streef} per maand apart voor {naam}. Zonder dit streefbedrag zou dat niets zijn: bij die vaste last staat "hier maandelijks voor opzijzetten" uit.', {
                   streef: formatEuro(maandCentenNu),
                   naam: postNaamMetKenmerk(t, gekozenLast, vasteLasten),
                 })}

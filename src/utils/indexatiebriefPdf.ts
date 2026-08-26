@@ -107,7 +107,7 @@ export async function exporteerIndexatiebriefPDF(
   blad.kop(gestopt ? t('Bijdrage bij het einde van de regeling') : t('De bijdrage vandaag'))
   blad.besluit(formatEuro(opbouw.huidigBedrag))
   if (bijdrage.geindexeerd === false) {
-    blad.alinea(t('De regeling sluit indexatie uit; het bedrag blijft dus ongewijzigd.'))
+    blad.alinea(t('De regeling sluit indexatie uit, dus het bedrag blijft ongewijzigd.'))
   }
 
   // ---- Hoe het berekend is ------------------------------------------------

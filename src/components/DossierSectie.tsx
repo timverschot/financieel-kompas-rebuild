@@ -205,6 +205,9 @@ export function DossierSectie({
   const [bewijsmapFout, setBewijsmapFout] = useState('')
   const [bewijsmapKlaar, setBewijsmapKlaar] = useState('')
 
+  // ⚠ RONDE 93 — om de chiprij open te zetten wanneer "Toon het" de focus naar een chip
+  // erin stuurt. Zonder dat kan de focus in een dichtgeklapt blok verdwijnen.
+  const keuzeblok = useRef<HTMLDetailsElement | null>(null)
   const dossier = dossiers.find((d) => d.id === geselecteerd) ?? (dossiers[0] ?? null)
   const dossierId = dossier?.id ?? ''
 
@@ -572,8 +575,18 @@ export function DossierSectie({
             kaarten die je nooit nodig had. De vakjes staan nu gewoon open, met een
             vraag als titel in plaats van een zelfstandig naamwoord. */}
         {dossier && (
-          <div className="veldgroep">
-            <span className="label-caps" id="dossier-onderdelen-kop">{t('Wat toon je in dit dossier?')}</span>
+          /* ⚠ RONDE 93 — OPEN, MAAR WEG TE KLAPPEN. Gemeten in Chromium op een scherm van
+             360 px: dit blok besloeg 459 px, met acht rijen chips, bovenaan élk dossier.
+             Vijf kortere chipnamen brachten dat op 300 px (vijf rijen). Wie het daarna nog altijd
+             te veel vindt, klapt het weg — dezelfde `<details open>` als op het Overzicht
+             (ronde 90). ⚠ OPEN blijft de beginstand: dat is een beslissing van Timothy, niet
+             van mij (zie DESIGN.md, "Dichtklappen mag, standaard dicht niet").
+
+             ⚠ `data-geen-print`: een rij schakelaars zegt op papier niets. De printopmaak
+             verbergt `.knop` maar met opzet niet `.chip`. */
+          <details className="uitleg" ref={keuzeblok} data-onderdeelkeuze data-geen-print open>
+            <summary id="dossier-onderdelen-kop">{t('Wat toon je in dit dossier?')}</summary>
+            <div className="uitleg-inhoud">
             <div
               className="chiprooster"
               role="group"
@@ -608,57 +621,76 @@ export function DossierSectie({
                 {chipFout}
               </p>
             )}
-            {/* ⚠ RONDE 68 — de melding voor al het ándere op dit scherm: een verdeling
-                bewaren of wissen, het grondslagdocument aanduiden, een gedeelde kost
-                opslaan, een afrekening genereren. Die deden tot nu toe allemaal
-                zichtbaar niets wanneer het wegschrijven mislukte, en het gaat hier over
-                geld dat tussen twee ouders verdeeld wordt. */}
-            <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Er is niets veranderd.')} />
-            {/* ⚠ Een uitgezet onderdeel waar tóch iets in staat (ronde 60). Dat kan
-                echt gebeuren: de rekenhulp "Indexatie" bewaart een onderhoudsbijdrage
-                rechtstreeks in een dossier. Zonder deze regel zou je die gegevens
-                nergens meer zien, zonder dat iets je dat vertelt.
-
-                Bewust GEEN `role="alert"` of `role="status"`: deze regel staat er al
-                zodra je het dossier opent, ze is geen antwoord op een handeling. Een
-                schermlezer die je bij elke dossierwissel onderbreekt om iets voor te
-                lezen dat gewoon in de leesvolgorde staat, is luider dan nuttig. De
-                melding hieronder over een MISLUKTE opslag is dat wél, en draagt
-                daarom `role="alert"`. */}
-            {verborgenMetInhoud(dossier.id, verborgen, {
-              verrekeningen,
-              kindrekeningen,
-              onderhoudsbijdragen,
-              documenten: dossierDocumenten,
-              categorieAandelen: dossier.categorieAandelen,
-              typeAandelen: dossier.typeAandelen,
-            }).map((id) => {
-              const naam = t(DOSSIER_ONDERDELEN.find((o) => o.id === id)?.label ?? id)
-              return (
-                <p key={id} className="foutregel" style={{ margin: 0 }}>
-                  {t('{onderdeel} staat uit, maar er staat wel iets in.', { onderdeel: naam })}{' '}
-                  {/* De knop draagt de naam van het onderdeel, niet alleen "Toon het":
-                      staan er twee van deze regels, dan hoor je anders twee keer
-                      exact hetzelfde en weet je niet welke bij welke hoort. En na de
-                      klik verdwijnt de regel — mét de knop erin — dus zetten we de
-                      focus op de chip van datzelfde onderdeel in plaats van hem naar
-                      het begin van de pagina te laten terugvallen. */}
-                  <button
-                    type="button"
-                    className="knop knop-ghost knop-klein"
-                    aria-label={t('Toon {onderdeel}', { onderdeel: naam })}
-                    onClick={() => {
-                      chipKnoppen.current[id]?.focus()
-                      void zetOnderdeel(id, true)
-                    }}
-                  >
-                    {t('Toon het')}
-                  </button>
-                </p>
-              )
-            })}
-          </div>
+            </div>
+          </details>
         )}
+
+        {/* ⚠ RONDE 93 — DEZE TWEE STAAN BUITEN HET DICHTKLAPBARE BLOK, en dat is geen
+            opmaakkeuze maar een correctie op mijn eigen eerste opzet (doorlichting).
+
+            ⚠ RONDE 68 — de melding voor al het ándere op dit scherm: een verdeling bewaren
+            of wissen, het grondslagdocument aanduiden, een gedeelde kost opslaan, een
+            afrekening genereren, een afrekening als overgemaakt markeren. Die deden tot ronde
+            68 allemaal zichtbaar niets wanneer het wegschrijven mislukte, en het gaat hier
+            over geld dat tussen twee ouders verdeeld wordt. Al die knoppen staan honderden
+            regels ONDER de chiprij. Stond deze melding erin, dan zou wie het blok één keer
+            wegklapt op "Genereer afrekening" duwen, niets zien gebeuren, en nergens lezen
+            waarom — en een schermlezer leest een `role="alert"` in een dicht `<details>`
+            helemaal niet voor, want die inhoud staat niet in de toegankelijkheidsboom.
+
+            ⚠ `chipFout` hierboven mag wél binnen blijven: die kan alleen ontstaan door een
+            tik op een chip, en dan staat het blok per definitie open. */}
+        {dossier && <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Er is niets veranderd.')} />}
+
+        {/* ⚠ Een uitgezet onderdeel waar tóch iets in staat (ronde 60). Dat kan
+            echt gebeuren: de rekenhulp "Indexatie" bewaart een onderhoudsbijdrage
+            rechtstreeks in een dossier. Zonder deze regel zou je die gegevens
+            nergens meer zien, zonder dat iets je dat vertelt.
+
+            Bewust GEEN `role="alert"` of `role="status"`: deze regel staat er al
+            zodra je het dossier opent, ze is geen antwoord op een handeling. Een
+            schermlezer die je bij elke dossierwissel onderbreekt om iets voor te
+            lezen dat gewoon in de leesvolgorde staat, is luider dan nuttig. De
+            melding hieronder over een MISLUKTE opslag is dat wél, en draagt
+            daarom `role="alert"`. */}
+        {dossier &&
+          verborgenMetInhoud(dossier.id, verborgen, {
+          verrekeningen,
+          kindrekeningen,
+          onderhoudsbijdragen,
+          documenten: dossierDocumenten,
+            categorieAandelen: dossier.categorieAandelen,
+            typeAandelen: dossier.typeAandelen,
+          }).map((id) => {
+            const naam = t(DOSSIER_ONDERDELEN.find((o) => o.id === id)?.label ?? id)
+            return (
+              <p key={id} className="foutregel" style={{ margin: 0 }}>
+              {t('{onderdeel} staat uit, maar er staat wel iets in.', { onderdeel: naam })}{' '}
+              {/* De knop draagt de naam van het onderdeel, niet alleen "Toon het":
+                  staan er twee van deze regels, dan hoor je anders twee keer
+                  exact hetzelfde en weet je niet welke bij welke hoort. En na de
+                  klik verdwijnt de regel — mét de knop erin — dus zetten we de
+                  focus op de chip van datzelfde onderdeel in plaats van hem naar
+                  het begin van de pagina te laten terugvallen. */}
+                <button
+                  type="button"
+                  className="knop knop-ghost knop-klein"
+                  aria-label={t('Toon {onderdeel}', { onderdeel: naam })}
+                  onClick={() => {
+                    // ⚠ RONDE 93 — eerst het blok openzetten. Sinds deze ronde kan de
+                    // chiprij dichtgeklapt staan, en dan zou de focus naar een chip gaan
+                    // die niemand ziet: de focus verdwijnt dan in het niets.
+                    if (keuzeblok.current) keuzeblok.current.open = true
+                    chipKnoppen.current[id]?.focus()
+                    void zetOnderdeel(id, true)
+                  }}
+                >
+                  {t('Toon het')}
+                </button>
+              </p>
+            )
+          })}
+
 
         {/* Een nieuw dossier wordt meteen het gekozen dossier (ronde 60). Vóór die
             ronde bleef de keuzelijst op het vorige dossier staan: je maakte "Dossier
@@ -741,7 +773,12 @@ export function DossierSectie({
             )}
             <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <CategorieKiezer waarde={splitCat || undefined} onKies={(id) => setSplitCat(id ?? '')} gebruikerCategorieen={categorieen} />
+                <CategorieKiezer
+                  waarde={splitCat || undefined}
+                  onKies={(id) => setSplitCat(id ?? '')}
+                  gebruikerCategorieen={categorieen}
+                  naamToevoeging={t('(verdeling per categorie)')}
+                />
               </div>
               <input aria-label={t('Percentage jij')} style={{ width: 76 }} inputMode="decimal" placeholder="%" value={splitPct} onChange={(e) => setSplitPct(e.target.value)} />
               <button
@@ -920,6 +957,7 @@ export function DossierSectie({
               waarden={afrKindIds}
               onWijzig={setAfrKindIds}
               gezinsleden={kinderen}
+              naamToevoeging={t('(afrekening)')}
             />
             {/* Enkel zinvol zodra je écht op kinderen filtert: anders zitten alle
                 kosten er sowieso in. */}
@@ -1067,7 +1105,7 @@ export function DossierSectie({
                             }
                             onClick={() => setOpbouwVan(opbouwVan === v.id ? '' : v.id)}
                           >
-                            {opbouwVan === v.id ? t('Verberg opbouw') : t('Toon opbouw')}
+                            {opbouwVan === v.id ? t('Verberg de opbouw') : t('Toon de opbouw')}
                           </button>
                         )}
                         <button className="knop knop-kaal knop-gevaar" aria-label={t('Verwijder afrekening {datum}', { datum: dagJaar(v.datum) })} onClick={() => setAfrekeningWegId(v.id)}>

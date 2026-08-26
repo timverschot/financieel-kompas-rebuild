@@ -21,11 +21,49 @@ function kiesbareLeden(gezinsleden: Gezinslid[], gekozen: string[]): Gezinslid[]
 // De chip "Het gezin": aan zolang je niemand apart aanduidt, en aanklikken zet
 // de keuze weer leeg. Zo is "voor ons allemaal" een echte, zichtbare keuze in
 // plaats van iets wat je herkent aan een leeg veld.
-function GezinChip({ aan, onKies }: { aan: boolean; onKies: () => void }) {
+function GezinChip({ aan, onKies, toevoegingId }: { aan: boolean; onKies: () => void; toevoegingId?: string }) {
   const { t } = useT()
+  const eigenId = useId()
   return (
-    <button type="button" className={aan ? 'chip chip-actief' : 'chip'} aria-pressed={aan} onClick={onKies}>
+    <button
+      type="button"
+      id={eigenId}
+      className={aan ? 'chip chip-actief' : 'chip'}
+      aria-pressed={aan}
+      aria-labelledby={toevoegingId ? `${eigenId} ${toevoegingId}` : undefined}
+      onClick={onKies}
+    >
       {t('Het gezin')}
+    </button>
+  )
+}
+
+/**
+ * Eén chip per gezinslid. Een eigen component, want een chip heeft een eigen `useId`
+ * nodig om naar zichzelf te kunnen wijzen — en haken mogen niet in een lus staan.
+ */
+function ChipVanLid({
+  naam,
+  aan,
+  onKies,
+  toevoegingId,
+}: {
+  naam: string
+  aan: boolean
+  onKies: () => void
+  toevoegingId?: string
+}) {
+  const eigenId = useId()
+  return (
+    <button
+      type="button"
+      id={eigenId}
+      className={aan ? 'chip chip-actief' : 'chip'}
+      aria-pressed={aan}
+      aria-labelledby={toevoegingId ? `${eigenId} ${toevoegingId}` : undefined}
+      onClick={onKies}
+    >
+      {naam}
     </button>
   )
 }
@@ -75,6 +113,7 @@ export function GezinsledenKiezer({
   gezinsleden,
   hint,
   metGezin = false,
+  naamToevoeging,
 }: {
   /** Het zichtbare label, al vertaald door de aanroeper. */
   label: string
@@ -94,8 +133,22 @@ export function GezinsledenKiezer({
    * kost per definitie van iemand, dus daar zou "het gezin" een foute uitweg zijn.
    */
   metGezin?: boolean
+  /**
+   * Staat deze kiezer met een tweede op één scherm, dan zegt deze toevoeging bij welke
+   * van de twee hij hoort — bijvoorbeeld `(gedeelde kost)` (ronde 95).
+   *
+   * ⚠ EEN GEWONE PROP EN GEEN `aria-labelledby` OP HET COMPONENT (ronde 92): TypeScript
+   * controleert attributen met een streepje op een eigen component niet, dus zoiets
+   * compileert zonder fout en doet vervolgens niets.
+   *
+   * ⚠ De chips WIJZEN NAAR ZICHZELF én naar de toevoeging. Zo blijft de zichtbare naam
+   * van het gezinslid vooraan en aaneengesloten (WCAG 2.5.3) — wie "Ella" zegt, raakt nog
+   * altijd die chip — en staat er alleen achteraan bij uit wélke kiezer hij komt.
+   */
+  naamToevoeging?: string
 }) {
   const labelId = useId()
+  const toevoegingId = useId()
   const leden = kiesbareLeden(gezinsleden, waarden)
   if (leden.length === 0) return null
 
@@ -104,24 +157,37 @@ export function GezinsledenKiezer({
   }
 
   return (
-    <div className="veldgroep" role="group" aria-labelledby={labelId}>
+    <div
+      className="veldgroep"
+      role="group"
+      aria-labelledby={naamToevoeging ? `${labelId} ${toevoegingId}` : labelId}
+    >
       <span className="label-caps" id={labelId}>
         {label}
       </span>
+      {naamToevoeging && (
+        <span id={toevoegingId} className="alleen-voorlezen">
+          {naamToevoeging}
+        </span>
+      )}
       <div className="knoprij" style={{ gap: 8 }}>
-        {metGezin && <GezinChip aan={waarden.length === 0} onKies={() => onWijzig([])} />}
+        {metGezin && (
+          <GezinChip
+            aan={waarden.length === 0}
+            onKies={() => onWijzig([])}
+            toevoegingId={naamToevoeging ? toevoegingId : undefined}
+          />
+        )}
         {leden.map((l) => {
           const aan = waarden.includes(l.id)
           return (
-            <button
+            <ChipVanLid
               key={l.id}
-              type="button"
-              className={aan ? 'chip chip-actief' : 'chip'}
-              aria-pressed={aan}
-              onClick={() => schakel(l.id)}
-            >
-              {l.naam}
-            </button>
+              naam={l.naam}
+              aan={aan}
+              onKies={() => schakel(l.id)}
+              toevoegingId={naamToevoeging ? toevoegingId : undefined}
+            />
           )
         })}
       </div>

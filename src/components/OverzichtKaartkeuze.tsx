@@ -13,21 +13,25 @@ import { useT } from '../i18n'
 /**
  * "Welke kaarten wil je hier zien?" op het Overzicht (ronde 90).
  *
- * ⚠ DEZELFDE VRAAG ALS RONDE 81, MET ÉÉN GEMETEN VERSCHIL: hier staat ze DICHTGEKLAPT.
- * Het blok op Analyse › Verdeling draagt drie korte chips en is meteen open. Hier zijn het
- * er zes, en die rij is in Chromium op een scherm van 360 px opgemeten: open beslaat ze
- * 269 px — vier rijen chips — op de pagina waar je LANDT. Een bedieningspaneel van een
- * derde beeldscherm, elke keer opnieuw, op de plek waar je je cijfers komt halen: dat is
- * precies het struikelblok dat deze ronde moet wegnemen, niet toevoegen.
+ * ⚠ STAAT OPEN — BESLIST DOOR TIMOTHY (26 augustus 2026). Ronde 90 leverde dit blok eerst
+ * DICHT op. De aanleiding was een meting: in Chromium op een scherm van 360 px beslaat de
+ * open rij 269 px in vier rijen chips, tegenover 46 px dicht — en dit is de pagina waar je
+ * LANDT. Timothy koos, met een schermafdruk erbij, uitdrukkelijk voor open: "kaarten staan
+ * open op startpagina".
  *
- * Dichtgeklapt kost de rij 46 px — één regel, met een tikzone van 44 px — en die regel zegt
- * zelf in gewone woorden wat erachter zit. Ronde 81 kon open blijven omdat je Analyse ›
- * Verdeling zélf opzoekt; op je startpagina kom je voor je cijfers.
+ * ⚠ De meting blijft hier staan omdat ze niet ONWAAR geworden is door die keuze. Valt de
+ * hoogte op een telefoon ooit tegen, dan is het `open`-attribuut hieronder het enige dat
+ * moet wijzigen, en dan staat hier meteen waarom dat een overweging was. Wat WEL uit die eerste opzet blijft:
+ * twee van de zes chipnamen zijn ingekort, wat een hele rij scheelt (189 px → 150 px).
  *
- * ⚠ EEN ECHTE `<details>`/`<summary>`, dezelfde als `UitlegBlok` (ronde 64): die werkt met
- * een toetsenbord, een schermlezer kondigt "uitgeklapt/ingeklapt" aan, en de browser doet
- * het openklappen zelf — geen eigen toestand die met de rest uit de pas kan lopen. En dus
- * ook geen `aria-controls` naar een blok dat alleen bestaat als het open staat (ronde 67).
+ * ⚠ EN HET BLIJFT EEN ECHTE `<details>`/`<summary>`, dezelfde als `UitlegBlok` (ronde 64):
+ * open bij het laden, maar wie de rij wég wil, klapt ze dicht. Die vorm werkt met een
+ * toetsenbord, een schermlezer kondigt "uitgeklapt/ingeklapt" aan, en de browser doet het
+ * klappen zelf — geen eigen toestand die met de rest uit de pas kan lopen, en dus ook geen
+ * `aria-controls` naar een blok dat alleen bestaat als het open staat (ronde 67).
+ *
+ * ⚠ De open/dicht-stand wordt NIET onthouden, net zomin als bij `UitlegBlok`. Wat je uitzet
+ * blijft wél bewaard; het dichtklappen is een handeling van dit bezoek, zoals scrollen.
  *
  * ⚠ NÁ HET MAANDBLOK, niet erboven. Ronde 81 mat na dat de rij helemaal onderaan op een
  * telefoon 3.551 pixels van de bovenkant stond — vier schermen scrollen om de knop te
@@ -54,7 +58,7 @@ export function OverzichtKaartkeuze({ gevuld }: { gevuld: Readonly<Record<Overzi
        `.chip` (chips dragen elders een filter dat op papier moet blijven staan), dus zonder
        dit attribuut kwam er op elk afgedrukt blad een kader "Welke kaarten wil je hier
        zien?" met zes lege pillen te staan. */
-    <details className="uitleg" data-kaartkeuze data-geen-print>
+    <details className="uitleg" data-kaartkeuze data-geen-print open>
       <summary id={kopId}>{t('Welke kaarten wil je hier zien?')}</summary>
       <div className="uitleg-inhoud">
         <div className="chiprooster" role="group" aria-labelledby={kopId}>

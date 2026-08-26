@@ -28,9 +28,9 @@ describe('GedeeldeKostFormulier', () => {
     const user = userEvent.setup()
     const onOpslaan = toon()
 
-    await user.type(screen.getByLabelText('Kostomschrijving'), 'Schoolreis')
-    await user.type(screen.getByLabelText('Kostbedrag (€)'), '100')
-    await user.click(screen.getByRole('button', { name: 'Kind 1' }))
+    await user.type(screen.getByLabelText('Omschrijving'), 'Schoolreis')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '100')
+    await user.click(screen.getByRole('button', { name: 'Kind 1 (gedeelde kost)' }))
     await user.click(screen.getByRole('button', { name: 'Kost toevoegen' }))
 
     expect(onOpslaan).toHaveBeenCalledWith(
@@ -40,8 +40,8 @@ describe('GedeeldeKostFormulier', () => {
 
   it('toont gearchiveerde gezinsleden niet, tenzij ze al gekoppeld zijn', async () => {
     toon()
-    expect(screen.getByRole('button', { name: 'Kind 1' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Kind 2' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Kind 1 (gedeelde kost)' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kind 2 (gedeelde kost)' })).toBeNull()
   })
 
   it('houdt een al gekoppeld, intussen gearchiveerd gezinslid zichtbaar bij bewerken', () => {
@@ -56,7 +56,7 @@ describe('GedeeldeKostFormulier', () => {
       kindIds: ['k2'],
     }
     toon(kinderen, kost)
-    const chip = screen.getByRole('button', { name: 'Kind 2' })
+    const chip = screen.getByRole('button', { name: 'Kind 2 (gedeelde kost)' })
     expect(chip).toBeInTheDocument()
     expect(chip).toHaveAttribute('aria-pressed', 'true')
   })
@@ -73,7 +73,7 @@ describe('GedeeldeKostFormulier', () => {
     const user = userEvent.setup()
     toon()
 
-    await user.type(screen.getByLabelText('Zoek een categorie of subcategorie'), 'Orthodontie')
+    await user.type(screen.getByLabelText(/^Zoek een categorie of subcategorie/), 'Orthodontie')
     await user.click(await screen.findByRole('option', { name: /Orthodontie/ }))
 
     expect(screen.getByLabelText('Soort kost')).toHaveValue('buitengewoon')
@@ -85,14 +85,14 @@ describe('GedeeldeKostFormulier', () => {
     const user = userEvent.setup()
     const onOpslaan = toon()
 
-    await user.type(screen.getByLabelText('Zoek een categorie of subcategorie'), 'Orthodontie')
+    await user.type(screen.getByLabelText(/^Zoek een categorie of subcategorie/), 'Orthodontie')
     await user.click(await screen.findByRole('option', { name: /Orthodontie/ }))
 
     await user.selectOptions(screen.getByLabelText('Soort kost'), 'gewoon')
     expect(screen.getByText(/Je koos zelf/)).toBeInTheDocument()
 
-    await user.type(screen.getByLabelText('Kostomschrijving'), 'Beugel')
-    await user.type(screen.getByLabelText('Kostbedrag (€)'), '250')
+    await user.type(screen.getByLabelText('Omschrijving'), 'Beugel')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '250')
     await user.click(screen.getByRole('button', { name: 'Kost toevoegen' }))
 
     expect(onOpslaan).toHaveBeenCalledWith(expect.objectContaining({ kostenType: 'gewoon' }))
@@ -137,8 +137,8 @@ describe('GedeeldeKostFormulier — velden die het formulier niet kent (ronde 44
     }
     const onOpslaan = toon(kinderen, bestaand)
 
-    await user.clear(screen.getByLabelText('Kostomschrijving'))
-    await user.type(screen.getByLabelText('Kostomschrijving'), 'Turnpak Lena')
+    await user.clear(screen.getByLabelText('Omschrijving'))
+    await user.type(screen.getByLabelText('Omschrijving'), 'Turnpak Lena')
     await user.click(screen.getByRole('button', { name: 'Kost wijzigen' }))
 
     const bewaard = onOpslaan.mock.calls[0][0] as GedeeldeKost
@@ -161,7 +161,7 @@ describe('GedeeldeKostFormulier — velden die het formulier niet kent (ronde 44
       kindIds: ['k1'],
     }
     const onOpslaan = toon(kinderen, bestaand)
-    await user.click(screen.getByRole('button', { name: 'Kind 1' }))
+    await user.click(screen.getByRole('button', { name: 'Kind 1 (gedeelde kost)' }))
     await user.click(screen.getByRole('button', { name: 'Kost wijzigen' }))
 
     const bewaard = onOpslaan.mock.calls[0][0] as GedeeldeKost

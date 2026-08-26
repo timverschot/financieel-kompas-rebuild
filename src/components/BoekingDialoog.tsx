@@ -116,6 +116,10 @@ export function BoekingDialoog({
 }) {
   const { t } = useT()
   const [soort, setSoort] = useState<Boekingsoort>(beginSoort)
+  // ⚠ RONDE 92 — de kop volgt de bolletjes in het vaste-lastenformulier. Onder de knop
+  // "Vaste last" kan je daar alsnog "Inkomst" aanvinken, en dan stond er een kop
+  // "Vaste last toevoegen" boven een formulier waarin élk veld "(vaste inkomst)" heet.
+  const [vasteSoort, setVasteSoort] = useState<'uitgave' | 'inkomst'>('uitgave')
 
   // Bij elke nieuwe opening opnieuw beginnen bij de soort waarmee ze geopend werd.
   // Zonder dit onthoudt de popup je vorige keuze, en boek je bij de volgende ➕
@@ -127,6 +131,8 @@ export function BoekingDialoog({
   }
 
   const huidig = SOORTEN.find((s) => s.soort === soort) ?? SOORTEN[0]
+  const vensterTitel =
+    soort === 'vast' && vasteSoort === 'inkomst' ? t('Vaste inkomst toevoegen') : t(huidig.titel)
 
   // Na het opslaan: sluiten, tenzij je op "Opslaan + volgende" duwde. Dat tweede
   // geval is voor wie een stapel bonnetjes van de week zit in te tikken — dan is
@@ -166,7 +172,7 @@ export function BoekingDialoog({
   }
 
   return (
-    <Dialoog titel={t(huidig.titel)} open={open} onSluiten={onSluiten} bewaakInvoer schoonNa={opgeslagen}>
+    <Dialoog titel={vensterTitel} open={open} onSluiten={onSluiten} bewaakInvoer schoonNa={opgeslagen}>
       <div className="soortrij" role="group" aria-label={t('Wat wil je boeken?')}>
         {SOORTEN.map((s) => (
           <button
@@ -214,6 +220,7 @@ export function BoekingDialoog({
             onOpgeslagen={naOpslaan}
             // Alleen de LASTEN: een vaste inkomst "Huur" mag hier niet waarschuwen.
             bestaande={terugkerendePosten.filter((p) => p.bedrag < 0)}
+            onSoortGekozen={setVasteSoort}
           />
         </>
       )}

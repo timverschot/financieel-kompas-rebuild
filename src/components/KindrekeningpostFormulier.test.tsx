@@ -29,8 +29,8 @@ describe('KindrekeningpostFormulier', () => {
     const onOpslaan = toon()
 
     await user.selectOptions(screen.getByLabelText('Soort beweging'), 'uitgave')
-    await user.type(screen.getByLabelText('Bedrag pot (€)'), '25')
-    await user.click(screen.getByRole('button', { name: 'Kind 1' }))
+    await user.type(screen.getByLabelText('Bedrag (€)'), '25')
+    await user.click(screen.getByRole('button', { name: 'Kind 1 (kindrekening)' }))
     await user.click(screen.getByRole('button', { name: 'Beweging toevoegen' }))
 
     expect(onOpslaan).toHaveBeenCalledWith(
@@ -47,8 +47,8 @@ describe('KindrekeningpostFormulier', () => {
 
     await user.selectOptions(screen.getByLabelText('Soort beweging'), 'uitgave')
     expect(screen.getByText('Voor wie? (optioneel)')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Kind 1' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Kind 2' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Kind 1 (kindrekening)' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kind 2 (kindrekening)' })).toBeNull()
   })
 
   it('laat het label weg wanneer er geen gezinsleden zijn', async () => {

@@ -468,8 +468,8 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
 
     // Het dossier wordt automatisch geselecteerd; het kostformulier verschijnt.
-    await user.type(await screen.findByLabelText('Kostomschrijving'), 'Schoolreis')
-    await user.type(screen.getByLabelText('Kostbedrag (€)'), '100')
+    await user.type(await screen.findByLabelText('Omschrijving'), 'Schoolreis')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '100')
     await user.click(screen.getByRole('button', { name: 'Kost toevoegen' }))
 
     const regels = await screen.findAllByText(/Partner is jou/)
@@ -486,13 +486,13 @@ describe('App', () => {
     await zetAandeel(user, '50')
     await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
 
-    await user.type(await screen.findByLabelText('Kostomschrijving'), 'Schoolreis')
-    await user.type(screen.getByLabelText('Kostbedrag (€)'), '100')
+    await user.type(await screen.findByLabelText('Omschrijving'), 'Schoolreis')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '100')
     await user.click(screen.getByRole('button', { name: 'Kost toevoegen' }))
     await screen.findAllByText(/Partner is jou/)
 
     await user.click(screen.getByRole('button', { name: 'Genereer afrekening' }))
-    expect(await screen.findByText('Afrekeningen')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Afrekeningen' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('checkbox', { name: /^Afrekening .* is overgemaakt$/ }))
     await waitFor(() => expect(screen.getAllByText(/Niets te verrekenen/).length).toBeGreaterThan(0))
@@ -683,12 +683,12 @@ describe('App', () => {
     await zetAandeel(user, '50')
     await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
 
-    await user.type(await screen.findByLabelText('Kostomschrijving'), 'Schoolreis')
-    await user.type(screen.getByLabelText('Kostbedrag (€)'), '100')
+    await user.type(await screen.findByLabelText('Omschrijving'), 'Schoolreis')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '100')
     await user.click(screen.getByRole('button', { name: 'Kost toevoegen' }))
 
     await user.click(await screen.findByRole('button', { name: 'Bewerk kost Schoolreis' }))
-    const oms = screen.getByLabelText('Kostomschrijving')
+    const oms = screen.getByLabelText('Omschrijving')
     await user.clear(oms)
     await user.type(oms, 'Kamp')
     await user.click(screen.getByRole('button', { name: 'Kost wijzigen' }))
@@ -732,8 +732,8 @@ describe('App', () => {
     await zetAandeel(user, '50')
     await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
 
-    await user.type(await screen.findByLabelText('Kostomschrijving'), 'Schoolreis')
-    await user.type(screen.getByLabelText('Kostbedrag (€)'), '100')
+    await user.type(await screen.findByLabelText('Omschrijving'), 'Schoolreis')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '100')
     await user.click(screen.getByRole('button', { name: 'Kost toevoegen' }))
     await screen.findByText('Schoolreis')
 
@@ -1026,6 +1026,10 @@ describe('App — Dossiers met subtabs', () => {
 //
 // Let op bij het schrijven van deze tests: een kaarttitel en de chip om die kaart
 // aan of uit te zetten dragen dezelfde tekst. Zoek dus altijd op de KOP.
+//
+// ⚠ RONDE 91: dat geldt sinds die ronde óók voor 'Afrekeningen'. Die chip heette daarvoor
+// 'Verrekeningen', terwijl ze exact dezelfde kaarten bedient — twee Nederlandse woorden voor
+// één ding, en het Engels en het Frans erfden die dubbelheid met één woord voor allebei.
 function kaartkop(naam: string): HTMLElement {
   return screen.getByRole('heading', { name: naam })
 }
@@ -1062,7 +1066,7 @@ describe('App — onderdelen van een dossier aan- en uitzetten', () => {
     // "Onderdelen" meer om eerst te vinden.
     expect(screen.queryByRole('button', { name: /^Onderdelen/ })).toBeNull()
     expect(screen.getByRole('group', { name: 'Wat toon je in dit dossier?' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Verrekeningen' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Afrekeningen' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'Documentkluis' })).toHaveAttribute('aria-pressed', 'false')
   })
 
@@ -1072,7 +1076,7 @@ describe('App — onderdelen van een dossier aan- en uitzetten', () => {
     await screen.findByText('Saldo')
     await maakDossier(user)
 
-    await user.click(screen.getByRole('button', { name: 'Kindrekening (gezamenlijke pot)' }))
+    await user.click(screen.getByRole('button', { name: 'Kindrekening' }))
     await waitFor(() => expect(kaartkop('Kindrekening (gezamenlijke pot)')).toBeInTheDocument())
 
     // Het staat op het DOSSIER, niet in localStorage: zo klopt het ook op je gsm.
@@ -1088,7 +1092,7 @@ describe('App — onderdelen van een dossier aan- en uitzetten', () => {
     await screen.findByText('Saldo')
     await maakDossier(user)
 
-    await user.click(screen.getByRole('button', { name: 'Verrekeningen' }))
+    await user.click(screen.getByRole('button', { name: 'Afrekeningen' }))
 
     await waitFor(() => expect(geenKaartkop('Nieuwe afrekening')).toBe(true))
     const alle = await db.dossiers.toArray()
@@ -1390,12 +1394,12 @@ describe('App — de opbouw van een afrekening', () => {
     await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
     await zetAandeel(user, '50')
     await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
-    await user.type(await screen.findByLabelText('Kostomschrijving'), 'Schoolreis')
-    await user.type(screen.getByLabelText('Kostbedrag (€)'), '100')
+    await user.type(await screen.findByLabelText('Omschrijving'), 'Schoolreis')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '100')
     await user.click(screen.getByRole('button', { name: 'Kost toevoegen' }))
     await screen.findAllByText(/Partner is jou/)
     await user.click(screen.getByRole('button', { name: 'Genereer afrekening' }))
-    await screen.findByText('Afrekeningen')
+    await screen.findByRole('heading', { name: 'Afrekeningen' })
   }
 
   it('legt op het scherm uit waar het bedrag vandaan komt', async () => {
@@ -1437,7 +1441,7 @@ describe('App — de opbouw van een afrekening', () => {
     await maakAfrekening(user)
 
     // De chip staat in de rij "Wat toon je in dit dossier?".
-    await user.click(screen.getByRole('button', { name: 'Opbouw van een afrekening' }))
+    await user.click(screen.getByRole('button', { name: 'Opbouw' }))
     await waitFor(() => expect(screen.queryByRole('button', { name: /^Toon de opbouw van de afrekening/ })).toBeNull())
     // De kaart om een afrekening te maken blijft wél staan: de sleutel hangt niet
     // aan de vlag 'verrekeningen'.
@@ -2002,7 +2006,7 @@ describe('de Budget-pagina na ronde 64', () => {
   // ⚠ De knop in "Je situatie" wees naar een PAGINA en niet naar een plek: je
   // landde bovenaan Budget terwijl het formulier dat de zin belooft het vijfde blok
   // naar beneden stond. Timothy: "ik zie niet waar ik dan iets moet invullen."
-  it('brengt je vanuit Je situatie op het tabblad waar je een vaste kost toevoegt', async () => {
+  it('brengt je vanuit Je situatie op het tabblad waar je een vaste last toevoegt', async () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Saldo')
@@ -2383,13 +2387,13 @@ describe('een overgemaakte afrekening verwijderen', () => {
     await zetAandeel(user, '50')
     await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
 
-    await user.type(await screen.findByLabelText('Kostomschrijving'), 'Schoolreis')
-    await user.type(screen.getByLabelText('Kostbedrag (€)'), '100')
+    await user.type(await screen.findByLabelText('Omschrijving'), 'Schoolreis')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '100')
     await user.click(screen.getByRole('button', { name: 'Kost toevoegen' }))
     await screen.findAllByText(/Partner is jou/)
 
     await user.click(screen.getByRole('button', { name: 'Genereer afrekening' }))
-    await screen.findByText('Afrekeningen')
+    await screen.findByRole('heading', { name: 'Afrekeningen' })
     await user.click(screen.getByRole('checkbox', { name: /^Afrekening .* is overgemaakt$/ }))
     await waitFor(() => expect(screen.getAllByText(/Niets te verrekenen/).length).toBeGreaterThan(0))
   }
@@ -2720,26 +2724,25 @@ describe('welke kaarten je op het Overzicht wil zien (ronde 90)', () => {
   })
 
   /**
-   * Klapt de chiprij open, zoals een gebruiker dat doet.
+   * Controleert dat de chiprij OPEN staat voor de test een chip aanraakt.
    *
    * ⚠ ONMISBAAR IN ELKE TEST DIE EEN CHIP AANRAAKT. jsdom kent wél `<details>`, maar
    * VERBERGT de inhoud van een dicht blok niet — `getByRole` vindt de chips daar dus ook
    * wanneer een echte browser ze niet toont.
    */
-  async function klapOpen(user: ReturnType<typeof userEvent.setup>) {
-    await user.click(screen.getByText('Welke kaarten wil je hier zien?'))
+  function staatOpen() {
     expect((document.querySelector('[data-kaartkeuze]') as HTMLDetailsElement).open).toBe(true)
   }
 
-  it('zet de chiprij NÁ het maandblok en VÓÓR de kaarten die ze bedient, en houdt ze dicht', async () => {
+  it('zet de chiprij NÁ het maandblok en VÓÓR de kaarten die ze bedient, en zet ze open', async () => {
     toonApp()
     await screen.findByText('Saldo')
     const blok = document.querySelector('[data-kaartkeuze]') as HTMLDetailsElement
     expect(blok).not.toBeNull()
-    // ⚠ Dicht. Open beslaat de rij op een telefoon van 360 px 269 px — gemeten in
-    // Chromium — en dan voegt de knop die het scherm moet inkorten er zelf een derde
-    // scherm aan toe, elke keer dat je de app opent.
-    expect(blok.open).toBe(false)
+    // ⚠ OPEN — beslist door Timothy op 26 augustus 2026. De eerste opzet van ronde 90 zette
+    // het blok dicht, want opgemeten beslaat de rij op een telefoon van 360 px 269 px
+    // tegenover 46 px. Draait die keuze ooit terug, dan hoort deze test mee te draaien.
+    expect(blok.open).toBe(true)
     const maandblok = document.querySelector('[data-maandblok]') as HTMLElement
     const donut = screen.getByRole('heading', { name: 'Uitgaven per categorie' }).closest('section.kaart') as HTMLElement
     // ⚠ Eerst waarvoor je kwam, dan de vraag wat je er nog bij wil. Helemaal bovenaan
@@ -2752,7 +2755,7 @@ describe('welke kaarten je op het Overzicht wil zien (ronde 90)', () => {
     const user = userEvent.setup()
     toonApp()
     await screen.findByRole('heading', { name: 'Recente boekingen' })
-    await klapOpen(user)
+    staatOpen()
 
     await user.click(screen.getByRole('button', { name: 'Recente boekingen' }))
 
@@ -2771,7 +2774,7 @@ describe('welke kaarten je op het Overzicht wil zien (ronde 90)', () => {
     const user = userEvent.setup()
     toonApp()
     await screen.findByRole('heading', { name: 'Recente boekingen' })
-    await klapOpen(user)
+    staatOpen()
     await user.click(screen.getByRole('button', { name: 'Recente boekingen' }))
     await user.click(screen.getByRole('button', { name: 'Recente boekingen' }))
     expect(screen.getByRole('heading', { name: 'Recente boekingen' })).toBeInTheDocument()
@@ -2781,7 +2784,7 @@ describe('welke kaarten je op het Overzicht wil zien (ronde 90)', () => {
     const user = userEvent.setup()
     toonApp()
     await screen.findByText('Saldo')
-    await klapOpen(user)
+    staatOpen()
     const groep = screen.getByRole('group', { name: 'Welke kaarten wil je hier zien?' })
     const chips = within(groep).getAllByRole('button')
     // Zonder vaste lasten tekent "Wat komt eraan" zichzelf niet, dus vijf chips.
@@ -2808,10 +2811,9 @@ describe('welke kaarten je op het Overzicht wil zien (ronde 90)', () => {
   it('geeft "Wat komt eraan" pas een chip wanneer die kaart er ook kán staan', async () => {
     // ⚠ Als enige van de zes tekent deze widget zichzelf niet op een lege app — en een
     // schakelaar voor iets wat er toch niet staat, is een knop die niets doet.
-    const user = userEvent.setup()
     toonApp()
     await screen.findByText('Saldo')
-    await klapOpen(user)
+    staatOpen()
     expect(screen.queryByRole('button', { name: 'Wat komt eraan' })).toBeNull()
     // En dat wordt gezegd MET NAAM, in plaats van stil weggelaten (les van ronde 75).
     expect(document.querySelector('[data-niet-kiesbaar]')?.textContent).toBe(
@@ -2830,7 +2832,7 @@ describe('welke kaarten je op het Overzicht wil zien (ronde 90)', () => {
     const user = userEvent.setup()
     toonApp()
     await screen.findByRole('heading', { name: 'Wat komt eraan' })
-    await klapOpen(user)
+    staatOpen()
     expect(document.querySelector('[data-niet-kiesbaar]')).toBeNull()
 
     await user.click(screen.getByRole('button', { name: 'Wat komt eraan' }))
@@ -2843,7 +2845,7 @@ describe('welke kaarten je op het Overzicht wil zien (ronde 90)', () => {
     const user = userEvent.setup()
     toonApp()
     await screen.findByRole('heading', { name: 'Recente boekingen' })
-    await klapOpen(user)
+    staatOpen()
     await user.click(screen.getByRole('button', { name: 'Recente boekingen' }))
 
     await user.click(screen.getByRole('button', { name: 'Boekingen' }))
@@ -2872,6 +2874,114 @@ describe('de twee formulieren op Budget → Vast (ronde 83)', () => {
     // En de twee opslaanknoppen heten niet meer allebei hetzelfde.
     expect(screen.getByRole('button', { name: 'Vaste inkomst toevoegen' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Vaste last toevoegen' })).toBeInTheDocument()
+  })
+
+  // -------------------------------------------------------------------------------------
+  // Ronde 92 — wat een landmark NIET oploste
+  // -------------------------------------------------------------------------------------
+  //
+  // ⚠ Ronde 83 en ronde 88 schreven allebei eerlijk op wat er bleef staan: een landmark
+  // helpt wie DOORTABT, maar niet wie de app met zijn STEM bedient en niet wie de
+  // veldenlijst van zijn schermlezer opent. Daar heetten deze velden nog altijd allebei
+  // "Omschrijving". Timothy, 26 augustus 2026: "kies de meest logische en
+  // gebruiksvriendelijke oplossing."
+  it('geeft elk VELD een naam die op dit scherm maar één keer voorkomt', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+    await screen.findByRole('form', { name: 'Nieuwe vaste inkomst' })
+
+    // ⚠ Een hulpje dat de naam UITREKENT zoals een schermlezer dat doet: de teksten van de
+    // elementen waar `aria-labelledby` naar wijst, in die volgorde aan elkaar.
+    const naamVan = (el: HTMLElement) =>
+      (el.getAttribute('aria-labelledby') ?? '')
+        .split(' ')
+        .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
+        .join(' ')
+
+    // De vier paren die vóór deze ronde niet uit elkaar te houden waren.
+    for (const veld of ['Omschrijving', 'Bedrag (€)', 'Rekening', 'Categorie']) {
+      const bedieningen = screen.getAllByLabelText(veld)
+      // Twee velden met dezelfde ZICHTBARE tekst...
+      expect(bedieningen, veld).toHaveLength(2)
+      const namen = bedieningen.map(naamVan)
+      // ...maar met twee verschillende toegankelijke namen, allebei beginnend met het woord
+      // dat er staat.
+      expect(new Set(namen).size, veld).toBe(2)
+      expect([...namen].sort(), veld).toEqual([
+        `${veld} (vaste inkomst)`,
+        `${veld} (vaste last)`,
+      ])
+    }
+  })
+
+  it('houdt de zichtbare tekst vooraan en aaneengesloten (WCAG 2.5.3)', async () => {
+    // ⚠ Wie "Omschrijving" ZEGT, moet het veld raken dat "Omschrijving" heet. Daarom staat
+    // het bestaande label eerst in `aria-labelledby` en de toevoeging erachter — nooit
+    // andersom, en nooit een `aria-label` die de zichtbare tekst vervángt.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+    const formulier = await screen.findByRole('form', { name: 'Nieuwe vaste last' })
+
+    for (const veld of ['Omschrijving', 'Bedrag (€)']) {
+      const bediening = within(formulier).getByLabelText(veld)
+      const ids = (bediening.getAttribute('aria-labelledby') ?? '').split(' ')
+      const naam = ids.map((id) => document.getElementById(id)?.textContent?.trim() ?? '').join(' ')
+      expect(naam, veld).toBe(`${veld} (vaste last)`)
+      // En het label is nog altijd een echt `<label for>`: erop klikken focust het veld.
+      expect(document.getElementById(ids[0])?.tagName, veld).toBe('LABEL')
+      expect(bediening).not.toHaveAttribute('aria-label')
+      // ⚠ De toevoeging staat in een span die BUITEN BEELD hoort te staan, niet in een
+      // `display: none`. jsdom rekent geen CSS uit, dus `textContent` blijft ook bij
+      // `display: none` gewoon staan en zou deze reeks groen houden — terwijl een echte
+      // schermlezer zo'n element overslaat en de naam dan halveert. Gevonden met een
+      // mutatietest; alleen de klasse zelf verraadt het verschil hier.
+      expect(document.getElementById(ids[1])?.className, veld).toContain('alleen-voorlezen')
+    }
+  })
+
+  it('geeft ook het ZOEKVELD van de categoriekiezer een eigen naam', async () => {
+    // ⚠ Die kiezer draagt twee bedieningen: de keuzelijst én het zoekveld erboven. De
+    // eerste opzet van deze ronde gaf alleen de keuzelijst een toevoeging, en dan heette
+    // dat zoekveld nog altijd twee keer "Zoek een categorie" — acht van de negen paren
+    // opgelost, het negende niet.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+    await screen.findByRole('form', { name: 'Nieuwe vaste last' })
+
+    const velden = screen.getAllByLabelText('Zoek een categorie')
+    expect(velden).toHaveLength(2)
+    const namen = velden.map((el) =>
+      (el.getAttribute('aria-labelledby') ?? '')
+        .split(' ')
+        .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
+        .join(' '),
+    )
+    expect([...namen].sort()).toEqual([
+      'Zoek een categorie (vaste inkomst)',
+      'Zoek een categorie (vaste last)',
+    ])
+  })
+
+  it('laat een klik op het woord het veld nog altijd focussen', async () => {
+    // ⚠ Het praktische bewijs dat er geen `aria-label` overheen ligt: dan zou de koppeling
+    // tussen het woord en het veld verdwenen zijn, en dat merkt niemand aan de tests die
+    // op de naam zoeken.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+    const formulier = await screen.findByRole('form', { name: 'Nieuwe vaste last' })
+
+    const veld = within(formulier).getByLabelText('Omschrijving')
+    const labelId = (veld.getAttribute('aria-labelledby') ?? '').split(' ')[0]
+    await user.click(document.getElementById(labelId) as HTMLElement)
+    expect(document.activeElement).toBe(veld)
   })
 })
 
@@ -3079,5 +3189,239 @@ describe('een vaste last verwijderen die ergens aan hangt (ronde 76)', () => {
 
     expect(await screen.findAllByText('Netflix verwijderd')).not.toHaveLength(0)
     await waitFor(async () => expect(await db.terugkerendePosten.count()).toBe(0))
+  })
+})
+
+
+// ---------------------------------------------------------------------------
+// Ronde 95 — elke bediening op de dossierpagina heet maar één keer zo
+// ---------------------------------------------------------------------------
+//
+// ⚠ WAAROM DEZE RONDE ER IS. Ronde 88 deed op Budget → Vast de voorvoegsels weg ("Vaste
+// omschrijving" → "Omschrijving") en ronde 92 gaf de dubbele velden daar een eigen
+// toegankelijke naam. Op de DOSSIERPAGINA stond hetzelfde nog open: de velden heetten er
+// "Kostomschrijving", "Kostbedrag (€)" en "Bedrag pot (€)" — geen Nederlands, en alleen zo
+// genoemd om botsingen te ontlopen — terwijl het veld ernaast gewoon "Datum" heette.
+//
+// ⚠ EN DE BOTSING BESTOND ÉCHT. Staat het onderdeel "Kindrekening" aan, dan staat het
+// formulier van de pot op hetzelfde scherm als dat van de gedeelde kosten. Opgemeten met
+// de naamberekening van `dom-accessibility-api`: "Datum", "Bon/factuur (optioneel)", het
+// zoekveld en de hoofdcategorieknop van de categoriekiezer, de groep "Voor wie?
+// (optioneel)", elke gezinslidchip, en de keuzerondjes "Jij" en "Partner" — allemaal twee
+// keer dezelfde naam op één scherm.
+//
+// ⚠ EN DE EERSTE OPZET VAN DEZE BEWAKING ZAG DAT NIET. Ze keek alleen naar `input`,
+// `select` en `textarea` — knoppen en groepen vielen buiten de telling — en ze zette het
+// potformulier op "Uitgave", precies de toestand waarin de twee keuzerondjes verdwijnen.
+// Twee doorlichtingen wezen dat aan. Ze telt nu élke bediening, in BEIDE toestanden van
+// dat formulier, met alle onderdelen van de pagina aan.
+describe('elke bediening op de dossierpagina heet maar één keer zo (ronde 95)', () => {
+  /**
+   * De toegankelijke naam zoals hulpsoftware hem uitrekent.
+   *
+   * ⚠ NIET ZELF NAGEBOUWD. Een eerdere opzet las bij een omhullend `<label>` gewoon
+   * `textContent`, en plakte dan de tekst van een genest `<select>` erbij ("RichtingDe
+   * andere ouder betaalt aan jou…"). Twee bedieningen die voor hulpsoftware identiek
+   * heten, kregen zo verschillende tekenreeksen — en glipten langs de controle.
+   * `dom-accessibility-api` is de bibliotheek die Testing Library zelf gebruikt.
+   */
+  async function naamrekenaar() {
+    const { computeAccessibleName } = await import('dom-accessibility-api')
+    return (el: Element) => computeAccessibleName(el)
+  }
+
+  /** Zuiver, dus beproefbaar op verzonnen invoer. */
+  function dubbele(lijst: string[]): string[] {
+    const tel: Record<string, number> = {}
+    for (const naam of lijst) tel[naam] = (tel[naam] ?? 0) + 1
+    return [
+      ...new Set(
+        Object.entries(tel)
+          .filter(([, aantal]) => aantal > 1)
+          .map(([naam]) => naam),
+      ),
+    ].sort()
+  }
+
+  const BEDIENINGEN = 'input, select, textarea, button, [role="group"]'
+
+  /** De dossierpagina met ALLE onderdelen aan, een gezinslid, en de pot gestart. */
+  async function volleDossierpagina(user: Gebruiker) {
+    await bewaarKind({ id: 'lid-1', naam: 'Ella', rol: 'kind' })
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaMeer(user, 'Dossiers')
+    await user.type(screen.getByLabelText('Dossiernaam'), 'Kinderen')
+    await zetAandeel(user, '50')
+    await user.click(screen.getByRole('button', { name: 'Dossier toevoegen' }))
+    await screen.findByLabelText('Omschrijving')
+    // ⚠ Élk onderdeel aan, niet alleen de kindrekening: elke kaart brengt eigen velden en
+    // eigen formulieren mee, en de vraag van deze ronde gaat over de HELE pagina.
+    for (const onderdeel of nietStandaardOnderdelen()) {
+      const chip = screen.queryByRole('button', { name: onderdeel })
+      if (chip && chip.getAttribute('aria-pressed') === 'false') await user.click(chip)
+    }
+    await user.click(await screen.findByRole('button', { name: 'Kindrekening aanzetten' }))
+    await screen.findByText('Saldo van de pot')
+  }
+
+  /** De onderdelen die standaard UIT staan — die moeten aangeklikt worden. */
+  function nietStandaardOnderdelen(): string[] {
+    return DOSSIER_ONDERDELEN.filter((o) => !o.standaard).map((o) => o.label)
+  }
+
+  it('geeft geen twee bedieningen dezelfde naam, in beide toestanden van het potformulier', async () => {
+    const user = userEvent.setup()
+    const naamVan = await naamrekenaar()
+    await volleDossierpagina(user)
+    const namen = () => [...document.querySelectorAll(BEDIENINGEN)].map(naamVan)
+
+    // ⚠ POSITIEF EERST: zonder deze regel slaagt de controle ook op een leeg scherm.
+    // Gemeten op het moment van schrijven: ruim veertig bedieningen.
+    expect(namen().length).toBeGreaterThan(30)
+
+    // "Storting" is de BEGINSTAND van het potformulier — de toestand die je ziet zonder
+    // iets aan te raken, en de enige waarin de keuzerondjes "Jij"/"Partner" staan.
+    expect(screen.getByLabelText('Soort beweging')).toHaveValue('storting')
+    expect(dubbele(namen())).toEqual([])
+
+    // En "Uitgave" toont in plaats daarvan een categoriekiezer, een gezinsledenkiezer en
+    // een bonveld — allemaal dingen die het kostformulier ernaast óók heeft.
+    await user.selectOptions(screen.getByLabelText('Soort beweging'), 'uitgave')
+    expect(dubbele(namen())).toEqual([])
+  })
+
+  it('geeft elke bediening met een tweelingbroer de toevoeging van háár formulier', async () => {
+    const user = userEvent.setup()
+    const naamVanNu = await naamrekenaar()
+    await volleDossierpagina(user)
+
+    // ⚠ WAAROM DEZE TEST ERBIJ MOET. De controle hierboven kijkt naar DUBBELE namen, en
+    // die is met één toevoeging al tevreden: haal je de toevoeging van de rondjes in het
+    // POTformulier weg, dan heten ze "Jij" en "Partner" tegenover "Jij (gedeelde kost)" en
+    // "Partner (gedeelde kost)" — verschillend, dus geen botsing, dus groen. Gevonden met
+    // een mutatietest: die wijziging ontsnapte volledig.
+    //
+    // Hier staat de regel die dat wél opmerkt: heeft een bediening BINNEN een formulier
+    // een naamgenoot BUITEN dat formulier, dan hoort ze de toevoeging van haar eigen
+    // formulier te dragen — niet die van de buurman, en niet geen enkele.
+    const kaal = (naam: string) => naam.replace(/\s*\((gedeelde kost|kindrekening|afrekening)\)$/, '')
+    const fouten: string[] = []
+    for (const [formuliernaam, toevoeging] of [
+      ['Nieuwe gedeelde kost', '(gedeelde kost)'],
+      ['Nieuwe beweging', '(kindrekening)'],
+    ] as const) {
+      const formulier = screen.getByRole('form', { name: formuliernaam })
+      const alle = [...document.querySelectorAll(BEDIENINGEN)]
+      const buiten = new Set(alle.filter((el) => !formulier.contains(el)).map((el) => kaal(naamVanNu(el))))
+      for (const el of alle.filter((e) => formulier.contains(e))) {
+        const naam = naamVanNu(el)
+        if (naam === '' || !buiten.has(kaal(naam))) continue
+        if (!naam.endsWith(toevoeging)) fouten.push(`${formuliernaam}: "${naam}"`)
+      }
+    }
+    // ⚠ EN DE REGEL GELDT OOK BUITEN DIE TWEE FORMULIEREN. De filter van de afrekening
+    // draagt dezelfde gezinsledenkiezer; haal daar de toevoeging weg en de chips heten
+    // weer kaal "Ella" — verschillend van "Ella (gedeelde kost)", dus geen botsing, dus
+    // groen. Ook dat ontsnapte aan een mutatietest. Vandaar deze bredere regel: draagt een
+    // naam ergens op deze pagina een naamgenoot, dan hoort ELK exemplaar ervan een
+    // toevoeging te dragen — ook het exemplaar dat buiten een formulier staat.
+    const alleNamen = [...document.querySelectorAll(BEDIENINGEN)].map(naamVanNu).filter((n) => n !== '')
+    const kaalDubbel = new Set(dubbele(alleNamen.map(kaal)))
+    for (const naam of alleNamen) {
+      if (kaalDubbel.has(kaal(naam)) && naam === kaal(naam)) fouten.push(`zonder toevoeging: "${naam}"`)
+    }
+    expect(fouten).toEqual([])
+    // ⚠ POSITIEF: zonder deze regel slaagt de lus ook wanneer er helemaal geen
+    // naamgenoten meer zijn — en dan bewaakt ze niets. Zonder de toevoegingen zouden er
+    // op deze pagina ruim tien namen dubbel staan.
+    const zonderToevoeging = [...document.querySelectorAll(BEDIENINGEN)].map((el) => kaal(naamVanNu(el)))
+    expect(dubbele(zonderToevoeging).length).toBeGreaterThan(4)
+  })
+
+  it('zou een dubbele naam ook écht aanwijzen', () => {
+    // Een controle die alleen kán falen wanneer er al iets fout staat, bewijst niets.
+    expect(dubbele(['Datum', 'Bedrag (€)', 'Datum'])).toEqual(['Datum'])
+    expect(dubbele(['Jij', 'Jij', 'Partner', 'Partner'])).toEqual(['Jij', 'Partner'])
+    expect(dubbele(['Datum', 'Bedrag (€)'])).toEqual([])
+    expect(dubbele([])).toEqual([])
+  })
+
+  it('houdt de zichtbare tekst vooraan en aaneengesloten (WCAG 2.5.3)', async () => {
+    // ⚠ Wie "Datum" ZEGT, moet het veld raken dat "Datum" heet. Daarom staat de zichtbare
+    // tekst eerst in `aria-labelledby` en de toevoeging erachter — nooit andersom, en
+    // nooit een `aria-label` die de zichtbare tekst vervangt.
+    const user = userEvent.setup()
+    const naamVan = await naamrekenaar()
+    await volleDossierpagina(user)
+
+    // ⚠ ÉLKE bediening met een toevoeging, niet een handvol. De vorige opzet toetste er
+    // twee van de vijf; draaide je bij een van de andere de twee id's om, dan werd de
+    // naam "(gedeelde kost) Datum" zonder dat één test rood werd.
+    const metToevoeging = [...document.querySelectorAll('[aria-labelledby]')].filter((el) =>
+      (el.getAttribute('aria-labelledby') ?? '').split(' ').length > 1,
+    )
+    expect(metToevoeging.length).toBeGreaterThan(10)
+
+    for (const el of metToevoeging) {
+      const ids = (el.getAttribute('aria-labelledby') ?? '').split(' ')
+      const stukken = ids.map((id) => document.getElementById(id))
+      // Elk id wijst naar een bestaand element — een verwijzing naar niets levert stil
+      // een halve naam op.
+      expect(stukken.every(Boolean), ids.join(' ')).toBe(true)
+      const laatste = stukken[stukken.length - 1]
+      // De TOEVOEGING staat achteraan en buiten beeld. ⚠ Buiten beeld, niet
+      // `display: none`: jsdom rekent geen CSS uit, dus `textContent` blijft ook dan
+      // staan en zou deze reeks groen houden terwijl een schermlezer het overslaat.
+      // Wat die klasse dóét, ligt vast in `index.css.test.ts`.
+      expect(laatste?.className, ids.join(' ')).toContain('alleen-voorlezen')
+      // En de naam BEGINT met de zichtbare tekst waar het eerste id naar wijst.
+      // ⚠ Eerst de naamrekenaar, dan pas de kale tekst. De hoofdcategorieknop draagt een
+      // pijltje in een `aria-hidden`-span, en dat hoort niet in een naam thuis — daar geeft
+      // de rekenaar het juiste antwoord. Voor een `<label>` of een gewone `<span>` geeft
+      // hij een lege tekenreeks (die dragen geen rol), en daar is de tekst zelf het
+      // zichtbare stuk.
+      const eerste = stukken[0] as Element
+      const zichtbaar = naamVan(eerste) || (eerste.textContent?.trim() ?? '')
+      expect(zichtbaar, ids[0]).not.toBe('')
+      expect(naamVan(el).startsWith(zichtbaar), `${ids[0]} → ${naamVan(el)}`).toBe(true)
+      expect(el).not.toHaveAttribute('aria-label')
+    }
+  })
+
+  it('laat een klik op het woord het veld nog altijd focussen', async () => {
+    // ⚠ HET PRAKTISCHE BEWIJS, en de test hierboven levert het NIET (doorlichting).
+    // `expect(tagName).toBe('LABEL')` blijft groen wanneer je `htmlFor` weghaalt, en
+    // `getByLabelText` óók: Testing Library matcht bij een `aria-labelledby` met meerdere
+    // verwijzingen élke verwijzing apart, dus het veld wordt dan via het label-element
+    // zelf gevonden. Alleen een échte klik verraadt het verschil.
+    const user = userEvent.setup()
+    await volleDossierpagina(user)
+    const formulier = screen.getByRole('form', { name: 'Nieuwe gedeelde kost' })
+
+    for (const veld of ['Omschrijving', 'Bedrag (€)', 'Datum']) {
+      const bediening = within(formulier).getByLabelText(veld)
+      await user.click(within(formulier).getByText(veld))
+      expect(document.activeElement, veld).toBe(bediening)
+    }
+  })
+
+  it('geeft elk formulier op die pagina een eigen naam', async () => {
+    // Een `<form>` met een naam is een landmark: een schermlezer kondigt hem aan zodra de
+    // focus erin komt. Zonder naam heten ze allemaal "formulier".
+    //
+    // ⚠ GEEN VASTE LIJST EN GEEN VAST AANTAL (anti-verwarringsregel 1): welke formulieren
+    // er staan hangt af van welke onderdelen aanstaan. De regel is dat er GEEN naamloze
+    // bij is en dat geen twee dezelfde naam dragen.
+    const user = userEvent.setup()
+    await volleDossierpagina(user)
+
+    const namen = [...document.querySelectorAll('form')].map((f) => f.getAttribute('aria-label'))
+    expect(namen.length).toBeGreaterThan(3)
+    expect(namen.filter((n) => n === null || n === '')).toEqual([])
+    expect(dubbele(namen as string[])).toEqual([])
+    // En de twee formulieren waar deze ronde over gaat, heten wat ze zijn.
+    expect(namen).toContain('Nieuwe gedeelde kost')
+    expect(namen).toContain('Nieuwe beweging')
   })
 })

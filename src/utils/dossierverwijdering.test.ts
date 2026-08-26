@@ -95,7 +95,7 @@ describe('telVoorVerwijderen', () => {
     }
     expect(telVoorVerwijderen(t, 'd1', gegevens)).toEqual([
       '1 gedeelde kost(en)',
-      '1 verrekening(en)',
+      '1 afrekening(en)',
       '1 bewaard(e) document(en) — bonnen, scans, overeenkomsten',
     ])
   })

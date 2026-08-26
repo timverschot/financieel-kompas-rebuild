@@ -168,10 +168,12 @@ function KoppelingRegel({
   if (dekking.soort === 'verdwenen') {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span className="badge badge-laat">{t('Kost bestaat niet meer')}</span>
-        <span className="rij-meta">
-          {t('De vaste last waarvoor je spaarde, staat niet meer in je vaste lasten. Het doel blijft gewoon lopen.')}
-        </span>
+        {/* ⚠ RONDE 94 — de badge zegt het ding al. De zin ernaast begon met "De vaste last
+            waarvoor je spaarde, staat niet meer in je vaste lasten": dat is drie keer
+            "vaste last" op één regel, en de derde keer voegde niets toe. De zin zegt nu
+            alleen nog wat de badge NIET zegt — dat het doel gewoon doorloopt. */}
+        <span className="badge badge-laat">{t('Vaste last bestaat niet meer')}</span>
+        <span className="rij-meta">{t('Je spaarde hiervoor, maar die is verwijderd. Het doel blijft gewoon lopen.')}</span>
       </div>
     )
   }
@@ -210,8 +212,8 @@ function KoppelingRegel({
   // Dezelfde soort waarschuwing als bij twee doelen op één rekening (ronde 69), maar
   // dan voor de kostkant: twee potten voor één rekening betekent dat je dubbel spaart
   // — en Budget reserveert dan ook allebei de bedragen.
-  if (medeDoelen === 1) staart.push(t('Er hangt nog een doel aan diezelfde kost; je spaart er dus dubbel voor.'))
-  if (medeDoelen > 1) staart.push(t('Er hangen nog {n} doelen aan diezelfde kost; je spaart er dus meervoudig voor.', { n: medeDoelen }))
+  if (medeDoelen === 1) staart.push(t('Er hangt nog een doel aan diezelfde vaste last; je spaart er dus dubbel voor.'))
+  if (medeDoelen > 1) staart.push(t('Er hangen nog {n} doelen aan diezelfde vaste last; je spaart er dus meervoudig voor.', { n: medeDoelen }))
 
   // ⚠ Geen geleende `.stapel` (doorlichting ronde 79). Die klasse beschrijft in
   // DESIGN.md een kolom van KAARTEN met 16 px ertussen; haar hier lenen en die ene
@@ -235,7 +237,7 @@ function KoppelingRegel({
           // je zelf terugbladeren naar het formulier om te zien wát dat andere was, en
           // stond dat als open punt van ronde 79 in de voortgangsnota. Nu staan allebei
           // de bedragen er, en zie je meteen welke kant het op moet.
-          zin={t('Die kost is {bedrag}; jouw doelbedrag staat op {doel}.', {
+          zin={t('Die vaste last kost {bedrag}; jouw doelbedrag staat op {doel}.', {
             bedrag: formatEuro(dekking.bedrag),
             doel: formatEuro(doelbedrag),
           })}
@@ -607,7 +609,7 @@ export function SpaardoelSectie({
                         : t('nog {bedrag}', { bedrag: formatEuro(v.resterend) })}
                     </span>
                     <span className="rij-meta">
-                      {d.maandbedrag ? t('{bedrag}/mnd', { bedrag: formatEuro(d.maandbedrag) }) : ''}
+                      {d.maandbedrag ? t('{bedrag}/maand', { bedrag: formatEuro(d.maandbedrag) }) : ''}
                       {d.doeldatum ? t(' · tegen {datum}', { datum: d.doeldatum }) : ''}
                     </span>
                   </div>

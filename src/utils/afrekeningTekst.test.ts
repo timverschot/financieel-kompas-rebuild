@@ -142,7 +142,7 @@ describe('afrekeningSamenvatting — volledige, uitgesplitste afrekening', () =>
 
   it('maakt elke kostregel navolgbaar: datum, bedrag, betaler, percentage en bon', () => {
     expect(tekst).toContain(`• 2026-07-15 Schoolreis: ${formatEuro(10000)}`)
-    expect(tekst).toContain(`betaald door jou · jij 60% · jouw deel ${formatEuro(6000)}`)
+    expect(tekst).toContain(`betaald door jou · jij 60% · jouw aandeel ${formatEuro(6000)}`)
     expect(tekst).toContain('Emma · Voeding · bon toegevoegd')
     expect(tekst).toContain(`• 2026-07-20 Tandarts: ${formatEuro(7500)}`)
     expect(tekst).toContain('betaald door partner · jij 50%')

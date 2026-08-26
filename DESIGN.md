@@ -274,6 +274,50 @@ scherm blijven daar dus twee velden met dezelfde naam.
 
 `woordenschat.test.ts` bewaakt deze vier namen.
 
+## `aria-…` op een eigen component doet niets (ronde 92)
+
+Schrijf je `<MijnComponent aria-labelledby="…" />`, dan **compileert dat schoon en
+komt het nergens terecht**. `npx tsc --noEmit` geeft nul fouten. Dat is een
+gedocumenteerde uitzondering in TypeScript: JSX-attributen waarvan de naam geen
+geldige JavaScript-naam is — alles met een koppelteken, dus élke `aria-*` en
+`data-*` — worden op een eigen component niet gecontroleerd.
+
+- **Geef de component een eigen prop in camelCase** (`labelledBy`), en zet die
+  binnenin op het echte `<input>`, `<select>` of `<button>`. Dán controleert
+  TypeScript hem wel.
+- Een component die haar overige props doorgeeft (`{...rest}`, zoals `Kaart` in
+  `ui/basis.tsx`) is de uitzondering — daar wérkt het.
+- **Vertrouw een toegankelijke naam nooit op het oog.** Reken hem in een test uit
+  zoals een schermlezer dat doet: de teksten van de elementen waar
+  `aria-labelledby` naar wijst, in die volgorde aan elkaar. Alleen zo'n test vond
+  dit.
+
+`src/ariaOpComponent.test.ts` bewaakt het voor de hele broncode.
+
+## Een veld dat op één scherm twee keer voorkomt (ronde 92)
+
+Staan er twee exemplaren van hetzelfde formulier op één scherm — zoals op
+Budget → Vast, waar de vaste inkomsten en de vaste lasten onder elkaar staan —
+dan hebben hun velden **allebei dezelfde naam**. Een naam op het `<form>` (een
+landmark, ronde 83) lost dat op voor wie doortabt, maar **niet** voor wie de app
+met zijn stem bedient en niet voor wie de veldenlijst van zijn schermlezer opent.
+
+Geef elk veld dan een `aria-labelledby` met **eerst** het bestaande `<label>` en
+**daarna** een verborgen span (`.alleen-voorlezen`) die zegt waar het over gaat:
+"Omschrijving van deze vaste last".
+
+- **De zichtbare tekst blijft vooraan en aaneengesloten.** Dat is WCAG 2.5.3: wie
+  "Omschrijving" zégt, moet het veld raken dat "Omschrijving" heet.
+- **Het label blijft een echt `<label htmlFor>`.** Daardoor blijft een klik op het
+  woord het veld focussen — en blijft `getByLabelText('Omschrijving')` in de tests
+  werken, want die zoekt óók langs de `for`-koppeling. Nagemeten: het scheelde ruim
+  vijftig aanroeppunten.
+- **Nooit een `aria-label` die zichtbare tekst vervángt.** Op een bediening zónder
+  zichtbaar label (de `<form>` zelf, een keuzelijst naast een getal) mag hij wél —
+  maar geef zo'n bediening liever een `<label htmlFor>` met de klasse
+  `.alleen-voorlezen`: dan blijft de koppeling tussen het woord en het veld bestaan,
+  en steunt geen enkele test op een eigenaardigheid van Testing Library.
+
 ## Toevoegen staat bovenaan (ronde 36)
 
 In een lange lijst waar je zowel bladert als iets bijmaakt, staat de knop om iets
@@ -299,32 +343,161 @@ niet gebruiken. Zet er een vraag boven als `label-caps` met een `id`, en verwijs
 er vanuit `role="group"` naar met `aria-labelledby` — niet met een `aria-label`,
 want dan staat dezelfde tekst twee keer.
 
-### De uitzondering, en waar ze ophoudt (ronde 90)
+### Dichtklappen mag, standaard dicht niet (ronde 90)
 
-De kop van deze regel zegt het al: *die je vaak nodig hebt*. Een rij die je één
-keer instelt en daarna jaren laat staan, hoeft niet permanent ruimte in te nemen
-op een scherm waar je elke dag komt. Een chiprij mag dus dichtgeklapt staan
-wanneer **alle drie** deze dingen waar zijn:
+Deze regel is in ronde 90 op de proef gesteld en **is blijven staan**. De
+chiprij van het Overzicht draagt zes schakelaars, en die is opgemeten in
+Chromium: op een breedte van 360 px beslaat ze **269 px in vier rijen**,
+tegenover 46 px dichtgeklapt — op de pagina waar je *landt*. Ik leverde ze
+daarom eerst dicht op. **Timothy koos uitdrukkelijk voor open**: "kaarten staan
+open op startpagina". Zo staat het nu, en zo blijft het tot hij iets anders zegt.
 
-1. het is een pagina waar je **landt**, niet een die je zelf opzoekt;
-2. de rij is **opgemeten** in een echte browser op een breedte van 360 px en is
-   daar hoger dan pakweg 200 px (het Overzicht: 269 px, vier rijen chips — op een
-   telefoon van 640 px hoog is dat vier tienden van het beeld);
-3. je stelt ze in de praktijk **één keer** in.
+Wat je hieruit meeneemt:
 
-Dichtklappen doe je dan met een echte `<details>`/`<summary>`, dezelfde als
-`UitlegBlok` — nooit met een icoonknop en nooit met eigen `useState`. De
-`<summary>` draagt de vráág in gewone woorden ("Welke kaarten wil je hier
-zien?"), zodat wie ze leest weet wat erachter zit; dát is wat "wat je niet ziet,
-ga je niet gebruiken" hierboven afdekt. Geen `aria-controls`: de browser doet het
-open- en dichtklappen zelf.
-
-Voorbeelden: **Analyse › Verdeling** (ronde 81) staat **open** — drie korte chips,
-en je zoekt dat tabblad zelf op. Het **Overzicht** (ronde 90) staat **dicht** —
-zes chips, opgemeten 269 px, op de pagina waar je landt.
+- **Standaard dicht is geen ontwerpvrijheid.** Wil je een chiprij toch dicht
+  hebben, dan is dat een vraag aan Timothy, geen keuze die je zelf maakt — hoe
+  overtuigend de meting ook is.
+- **Kán je ze laten dichtklappen? Ja.** Gebruik dan een echte
+  `<details>`/`<summary>` met `open`, dezelfde vorm als `UitlegBlok` — nooit een
+  icoonknop en nooit eigen `useState`. De `<summary>` draagt de vráág in gewone
+  woorden ("Welke kaarten wil je hier zien?"). Geen `aria-controls`: de browser
+  doet het klappen zelf.
+- **Meet eerst, kort dan de namen in.** De echte winst zit niet in het
+  dichtklappen maar in de chipnamen. Op het Overzicht: met de zes volledige
+  kaarttitels 189 px in vijf rijen, met twee namen ingekort 150 px in vier. Op de
+  dossierpagina (ronde 93): met alle acht voluit 306 px in acht rijen — een blok
+  van 459 px — en met vijf namen ingekort 189 px in vijf, blok 300 px.
+- **Maar kort niet blind in.** Twee namen daar bleven met opzet voluit:
+  "Verdeling per categorie" zou als "Per categorie" botsen met een gelijknamig
+  kopje verderop dat die chip *niet* uitzet, en de naam draagt óók de zin
+  "{onderdeel} staat uit, maar er staat wel iets in" — daar moet ze een
+  zelfstandig naamwoord blijven.
 
 ⚠ Let op bij het testen: jsdom kent `<details>` wel, maar **verbergt de inhoud van
 een dicht blok niet**. `getByRole` vindt de chips daar dus ook wanneer een echte
-browser ze niet toont. Elke test die een chip aanraakt, moet het blok eerst
-openklappen — en één test moet vastleggen dat het standaard dícht staat.
+browser ze niet toont — een test kan dus groen staan op knoppen die niemand ziet.
+Laat elke test die een chip aanraakt éérst nagaan dat het blok openstaat, en leg
+in één test vast wat de beginstand is.
 
+
+## Een uitzonderingslijst is geen kijklijst (ronde 94)
+
+Wanneer een woord in de ene module iets anders betekent dan in de andere, is de
+verleiding om een test te schrijven die de bestanden opsomt **waar ze kijkt**.
+Doe dat niet. Zo'n lijst is vanaf haar eerste dag onvolledig, en ze wordt elke
+ronde onvollediger: een nieuw bestand valt vanzelf buiten schot, en niets wijst
+je daarop.
+
+Zet de controle **omgekeerd**: alles is verdacht, en je somt op wat er met reden
+buiten valt.
+
+- Een **bestandslijst** voor modules waar het woord per definitie klopt
+  (`DOSSIERMODULE` in `woordenschat.test.ts`), elk met de reden erbij.
+- Een **tekstlijst** voor losse zinnen daarbuiten (`KOST_MET_REDEN`), ook elk met
+  een reden — meestal "werkwoord".
+- Een **taalregel** waar de taal het zelf oplost: staat er "gedeelde kost", dan
+  benoemt het bijvoeglijk naamwoord het ding al.
+
+En laat die lijsten zichzelf bewaken: een bestand dat het woord niet meer bevat,
+of een reden voor een zin die nergens meer staat, hoort de test te laten falen.
+Een dode vrijstelling bewaakt schijn.
+
+⚠ **Lees de BRONBESTANDEN, niet alleen `t('…')`, en niet alleen `.tsx`.** De
+verwijder-hulpmodules zetten hun zinnen in een `paren`-array en geven ze later aan
+`t()` door; wie op `t('` zoekt, ziet die nooit. Neem élke enkelgequote tekenreeks
+(commentaar overgeslagen) en houd over wat ook echt een sleutel in de
+vertaaltabel is. En **maak de ontsnappingen ongedaan** (`’` → `’`): anders
+valt élke tekst met een ontsnapping stilletjes buiten de controle, want ze wordt
+dan niet als schermtekst herkend.
+
+⚠ **En zet er een vangnet naast** dat afdwingt dat élke schermtekst met dat woord
+ergens in een bronbestand terug te vinden is. Anders zou een sleutel die alleen
+in `i18n.tsx` bestaat door niemand bekeken worden.
+
+## Een negatieve assertie heeft een positieve nodig (ronde 94)
+
+`expect(zin()).not.toMatch(/…/)` bewijst niets zolang niet vaststaat dát er een
+zin is. Valt het hele blok weg, dan geeft de hulpfunctie een lege tekenreeks
+terug, en een lege tekenreeks bevat de verboden woorden ook niet — de test staat
+groen terwijl het scherm leeg is.
+
+Zet er dus altijd eerst een regel naast die vaststelt dat het blok er is **en dat
+er tekst in staat**. Het bestaan van het omhullende element alleen is niet genoeg:
+in ronde 94 stond `[data-nog-nergens]` er wél, terwijl de `.rij-meta` erin de
+zin droeg die verdwijnen kon.
+
+Dezelfde regel geldt voor `queryByText(...)).toBeNull()` in een venster: de KOP
+kan er staan terwijl de body niet gerenderd is. Anker op iets uit die body.
+
+## Twee bedieningen op één scherm heten nooit hetzelfde (ronde 95)
+
+Ronde 88 deed de voorvoegsels weg, ronde 92 gaf de dubbele velden een eigen naam, ronde 95
+deed hetzelfde voor de dossierpagina. De vorm ligt daarmee vast:
+
+- **Het `<form>` draagt een naam** (`aria-label`). Dat maakt er een landmark van; een
+  schermlezer kondigt hem aan zodra de focus erin komt.
+- **Elke bediening met een naamgenoot draagt een toevoeging**, via
+  `aria-labelledby="<zichtbare tekst> <toevoeging>"` — zichtbare tekst VOORAAN en
+  aaneengesloten (WCAG 2.5.3), toevoeging in een `<span class="alleen-voorlezen">`.
+- **Een knop of chip wijst naar ZICHZELF** plus de toevoeging: `aria-labelledby="<eigen
+  id> <toevoeging>"`. Zo blijft zijn eigen tekst vooraan.
+- **Een gedeelde bouwsteen krijgt een camelCase prop** (`naamToevoeging`), nooit een
+  `aria-*`-attribuut: dat compileert stil en doet niets (ronde 92).
+- **Een groep keuzerondjes is een echte groep** (`role="group"` met de vraag als naam) —
+  een kopje in een losse `<span>` erboven is voor hulpsoftware niet aanwezig.
+
+## Wat een bewaking op namen moet toetsen (ronde 95)
+
+Mijn eerste versie van die bewaking was op drie manieren tegelijk te smal, en elke keer
+zag ze het zelf niet:
+
+1. **Tel élke bediening.** `input, select, textarea, button, [role="group"]` — knoppen en
+   groepen dragen ook een naam.
+2. **Toets de BEGINSTAND**, niet de toestand die het beste uitkomt. Een formulier dat van
+   soort wisselt, toont in elke stand andere velden; de stand die je overslaat is precies
+   de stand waarin de fout staat.
+3. **"Geen dubbele namen" is niet genoeg.** Met één toevoeging heten twee bedieningen al
+   verschillend. Zet er een tweede regel naast: draagt een naam ergens een naamgenoot, dan
+   hoort ÉLK exemplaar ervan een toevoeging te dragen — en binnen een formulier die van
+   dát formulier.
+
+⚠ **Reken een toegankelijke naam nooit zelf na.** Gebruik `dom-accessibility-api`,
+dezelfde bibliotheek die Testing Library gebruikt. Een zelfgebouwde versie las bij een
+omhullend `<label>` gewoon `textContent` en plakte de `<option>`-teksten van een genest
+`<select>` erbij — twee bedieningen die identiek heten, kregen zo verschillende
+tekenreeksen en glipten erlangs.
+
+⚠ **`expect(tagName).toBe('LABEL')` bewijst niet dat een klik het veld focust.** Haal
+`htmlFor` weg en die regel blijft groen; `getByLabelText` óók, want Testing Library matcht
+bij een `aria-labelledby` met meerdere verwijzingen élke verwijzing apart. Wil je die
+belofte waarmaken, klik dan écht en kijk `document.activeElement` na.
+
+⚠ **En wat `.alleen-voorlezen` DOET, hoort in `index.css.test.ts`.** Zet iemand die regel
+om naar `display: none`, dan staat het element niet meer in de toegankelijkheidsboom en
+halveert élke naam die ernaar wijst — terwijl elke componenttest groen blijft, want jsdom
+rekent geen CSS uit.
+
+## Een getal telt wat het woord ernaast zegt (ronde 96)
+
+Voor je een aantal op het scherm zet, kijk je na WAT de uitdrukking erachter werkelijk
+telt. Vier verwarringen zijn in dit project echt gebeurd:
+
+- **categorieën tegenover boekingen** — `CategorieUitgave[]` is één ingang per categorie,
+  niet per uitgave. "Bekijk alle 12 uitgaven" ging over twaalf categorieën;
+- **boekingen tegenover overboekingen en waarderingen** — die drie zijn in deze app
+  verschillende dingen, met hun eigen lijsten. Drie zinnen telden ze bij elkaar op en
+  noemden het geheel "boekingen";
+- **boekingen tegenover betalingen** — de fiscale post "onderhoudsuitkeringen" leest uit
+  de Dossiers-module, niet uit je transacties;
+- **overlappende groepjes** — "staat in een ander dossier" was in de code altijd óók
+  "staat er al en is ongewijzigd". Twee zinnen onder elkaar lezen als groepen die elkaar
+  uitsluiten; is dat niet zo, dan telt hetzelfde ding twee keer.
+
+⚠ **Loopt de vertaling uiteen, dan is dat een aanwijzing.** Het Engels zei
+`expense categories` waar het Nederlands "uitgaven" zei. Wie zo'n verschil ziet, heeft
+niet een vertaalfout gevonden maar een tekst die twee dingen tegelijk beweert.
+
+⚠ **Zit de indeling in een component, haal ze eruit.** `groepeerVergelijkingen()` in
+`utils/uitwisseling.ts` is de vorm: een zuivere functie, beproefd op een verzonnen lijst.
+In de kaart zelf was diezelfde regel alleen te toetsen met een half ingelezen bestand — en
+dus in de praktijk niet.

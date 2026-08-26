@@ -75,7 +75,7 @@ export function PrijsstijgingenKaart({
           </ul>
           {beeld.wijzigingen.length > MAX_RIJEN && (
             <p className="rij-meta" style={{ margin: '8px 0 0' }}>
-              {t('Nog {n} andere, kleinere wijzigingen.', { n: beeld.wijzigingen.length - MAX_RIJEN })}
+              {t('Nog {n} andere wijzigingen.', { n: beeld.wijzigingen.length - MAX_RIJEN })}
             </p>
           )}
           <p className="rij-meta" style={{ margin: '10px 0 0' }}>
@@ -100,7 +100,7 @@ export function PrijsstijgingenKaart({
       })
     }
     if (beeld.duurderPerMaand > 0) {
-      return t('{bedrag} per maand duurder dan voorheen, over {n} post(en).', {
+      return t('{bedrag} per maand duurder dan voorheen, over {n} prijsstijging(en).', {
         bedrag: formatEuro(beeld.duurderPerMaand),
         n: duurder.length,
       })

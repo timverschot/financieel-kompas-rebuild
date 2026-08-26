@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { transactieCsvBestand, transactieCsvBestandsnaam, transactieCsvRijen } from './transactieCsv'
+import { transactieCsvBestand, transactieCsvBestandsnaam, transactieCsvRijen, telCsvRegels } from './transactieCsv'
 import { splitsCsv } from './csv'
 import { vertaal } from '../i18n'
 import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
@@ -310,5 +310,52 @@ describe('transactieCsvRijen — de kolom Gezinslid', () => {
     // "hangt aan iemand die je intussen verwijderd hebt".
     const rijen = transactieCsvRijen(t, [tx({ id: 't1', persoonIds: ['weg'] })], categorieen, rekeningen, gezinsleden)
     expect(rijen[1][GEZINSLID]).toBe('Onbekend gezinslid')
+  })
+})
+
+describe('telCsvRegels — het bestand heeft meer rijen dan boekingen (ronde 97)', () => {
+  // ⚠ De melding na een download zei alleen hoeveel BOEKINGEN meegingen, terwijl het
+  // bestand één rij per ticketregel schrijft. Wie het opende, vond er meer dan de app had
+  // aangekondigd — en kon alleen maar denken dat er iets dubbel stond.
+  const gewoon: Transactie = {
+    id: 't1',
+    datum: '2026-07-01',
+    omschrijving: 'Boodschappen',
+    bedrag: -5380,
+    rekeningId: 'r1',
+    categorieId: 'cat-voeding',
+  }
+  const gesplitst: Transactie = {
+    id: 't2',
+    datum: '2026-07-02',
+    omschrijving: 'Colruyt',
+    bedrag: -5380,
+    rekeningId: 'r1',
+    regels: [
+      { bedrag: -3000, categorieId: 'cat-voeding' },
+      { bedrag: -2380, categorieId: 'cat-huishouden' },
+    ],
+  }
+
+  it('telt een gewone boeking als één rij', () => {
+    expect(telCsvRegels([gewoon])).toBe(1)
+  })
+
+  it('telt een gesplitst kassaticket per regel', () => {
+    expect(telCsvRegels([gesplitst])).toBe(2)
+  })
+
+  it('komt op hetzelfde uit als wat er werkelijk geschreven wordt', () => {
+    // ⚠ DE ENIGE REGEL DIE ER ÉCHT TOE DOET. Een tweede telling die naast de schrijver
+    // leeft, gaat er vroeg of laat van afwijken; deze bindt de twee aan elkaar.
+    const alles = [gewoon, gesplitst]
+    const rijen = transactieCsvRijen(t, alles, [], [], [])
+    // ⚠ Min één: `transactieCsvRijen` zet de KOPPENRIJ vooraan. Die telt niet mee in wat
+    // de melding belooft, want ze bevat geen boeking.
+    expect(telCsvRegels(alles)).toBe(rijen.length - 1)
+  })
+
+  it('geeft nul op een lege lijst', () => {
+    expect(telCsvRegels([])).toBe(0)
   })
 })

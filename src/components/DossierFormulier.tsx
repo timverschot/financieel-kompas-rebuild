@@ -77,7 +77,11 @@ export function DossierFormulier({ onOpslaan }: { onOpslaan: (d: Dossier) => Pro
   }
 
   return (
-    <form onSubmit={verzend} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    // ⚠ RONDE 95 — een naam op het `<form>` maakt er een landmark van: een schermlezer
+    // kondigt hem aan zodra de focus erin komt. Op de dossierpagina staan er meerdere
+    // onder elkaar — hoeveel hangt af van welke onderdelen aanstaan — en zonder naam
+    // heten ze allemaal "formulier".
+    <form onSubmit={verzend} aria-label={t('Nieuw dossier')} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div className="veldrij">
         <div className="veldgroep">
           <label className="label-caps" htmlFor="dossiernaam">{t('Dossiernaam')}</label>

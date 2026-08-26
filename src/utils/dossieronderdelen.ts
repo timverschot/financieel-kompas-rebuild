@@ -36,20 +36,49 @@ import type {
 //
 // ⚠ Alleen voor NIEUWE dossiers. Een bestaand dossier heeft geen `verborgenOnderdelen`
 // of een eigen keuze, en verandert dus niet: wat je gisteren zag, zie je vandaag ook.
+// ⚠ RONDE 93 — `label` IS EEN CHIPNAAM, GEEN KAARTTITEL. Gemeten in Chromium op een scherm
+// van 360 px: met alle acht de volledige kaarttitels als chipnaam besloeg deze rij 306 px in
+// ACHT rijen chips, en het blok eromheen 459 px — twee derde van een telefoonscherm, bovenaan
+// élk dossier, elke keer. Met vijf namen ingekort is dat 189 px in VIJF rijen en een blok van
+// 300 px. Dezelfde les als in ronde 90: de winst zit in de namen, niet in het wegklappen.
+//
+// ⚠ ELKE NAAM KOMT LETTERLIJK VOOR IN DE TITEL VAN DE KAART DIE ZE BEDIENT — "Kindrekening"
+// in "Kindrekening (gezamenlijke pot)", "Uitwisselen" in "Uitwisselen met de andere ouder".
+// Zo weet je bij het uitzetten welk blok verdwijnt. `dossieronderdelen.test.ts` bewaakt dat,
+// met `afrekening-detail` als enige uitzondering: die bedient geen kaart maar de opbouw
+// BINNEN de afrekeningenkaart.
+//
+// ⚠ EN DE TWEE VERDEELSLEUTELS BLIJVEN VOLUIT (doorlichting). "Verdeling per categorie" leek
+// in te korten tot "Per categorie" — tot bleek dat er in de opbouw van een afrekening al een
+// kopje "Per categorie" staat dat deze chip NIET uitzet. Dan belooft de naam iets wat ze niet
+// waarmaakt. Bovendien draagt dezelfde naam de regel "{onderdeel} staat uit, maar er staat wel
+// iets in": "Per kostensoort staat uit …" is geen Nederlands, "Verdeling per kostensoort staat
+// uit …" wel. Dat kost twee rijen chips, en die zijn het waard.
+//
+// ⚠ Dezelfde naam draagt óók de knop "Toon {onderdeel}" ernaast. Bij de vijf andere werkt kort
+// daar even goed: "Kindrekening staat uit, maar er staat wel iets in."
 export const DOSSIER_ONDERDELEN = [
   { id: 'verdeling-categorie', label: 'Verdeling per categorie', standaard: false },
   { id: 'verdeling-kostensoort', label: 'Verdeling per kostensoort', standaard: false },
-  { id: 'verrekeningen', label: 'Verrekeningen', standaard: true },
+  // ⚠ RONDE 91 — HET LABEL HEET 'Afrekeningen', DE SLEUTEL BLIJFT 'verrekeningen'. Het
+  // gegevenstype heet `Verrekening`, maar wat erin zit IS een afrekening: "een momentopname
+  // van het te verrekenen bedrag over een gekozen periode" (zie `VerrekeningSchema`). Deze
+  // chip zet dan ook precies de kaarten "Nieuwe afrekening" en "Afrekeningen" aan en uit.
+  // Twee Nederlandse woorden voor één ding is precies wat ronde 66 verbood — en het Engels
+  // en het Frans erfden die dubbelheid met één woord voor allebei.
+  // ⚠ De ID verandert NIET: die staat in `Dossier.verborgenOnderdelen` op de schijf van
+  // iedereen, en is taal-onafhankelijk (anti-verwarringsregel 7).
+  { id: 'verrekeningen', label: 'Afrekeningen', standaard: true },
   // Ronde 40: een eigen sleutel, bewust NIET aan 'verrekeningen' gehangen. Die
   // vlag dekt al twee kaarten; er een derde bij zetten zou betekenen dat wie de
   // opbouw niet wil zien ook de knop kwijtraakt om een afrekening te maken.
-  { id: 'afrekening-detail', label: 'Opbouw van een afrekening', standaard: true },
+  { id: 'afrekening-detail', label: 'Opbouw', standaard: true },
   { id: 'onderhoudsbijdrage', label: 'Onderhoudsbijdrage', standaard: false },
-  { id: 'gezamenlijke-pot', label: 'Kindrekening (gezamenlijke pot)', standaard: false },
+  { id: 'gezamenlijke-pot', label: 'Kindrekening', standaard: false },
   { id: 'documentkluis', label: 'Documentkluis', standaard: false },
   // Ronde 44. Wie zijn dossier alleen bijhoudt, wisselt niets uit en hoort deze
   // kaart niet elke keer voorbij te scrollen.
-  { id: 'uitwisseling', label: 'Uitwisselen met de andere ouder', standaard: false },
+  { id: 'uitwisseling', label: 'Uitwisselen', standaard: false },
 ] as const
 
 /**

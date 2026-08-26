@@ -60,6 +60,9 @@ describe('Vermogensevolutie', () => {
   it('noemt het aantal maanden bij het verschil', () => {
     toon('2026-07')
     const metas = [...document.querySelectorAll('.rij-meta')].map((el) => el.textContent ?? '')
+    // ⚠ RONDE 91 heeft deze zin BEWUST niet samengevoegd met "over {n} maand(en)" van
+    // de onderhoudsbijdrage. Daar kan het aantal 1 zijn en is de haakjesvorm nodig; hier
+    // is het altijd twaalf, en dan is "over 12 maand(en)" alleen maar lelijker.
     expect(metas.some((m) => m.includes('over 12 maanden'))).toBe(true)
   })
 
@@ -134,7 +137,7 @@ describe('Vermogensevolutie — het verschil met de saldotegel', () => {
       transacties: [{ id: 'huur', datum: '2026-06-28', omschrijving: 'Huur', bedrag: -90000, rekeningId: 'r1' }],
     })
     expect(bron()?.textContent).toBe(
-      'Het laatste punt is de stand aan het einde van de maand. Eén boeking van later deze maand telt er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.',
+      'Het laatste punt is de stand aan het einde van de maand. Eén boeking of overboeking van later deze maand telt er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.',
     )
   })
 
@@ -154,7 +157,7 @@ describe('Vermogensevolutie — het verschil met de saldotegel', () => {
     toonOp(new Date(2026, 5, 15), {
       overboekingen: [{ id: 'o1', datum: '2026-06-28', vanRekeningId: 'r1', naarRekeningId: 'r2', bedrag: 50000 }],
     })
-    expect(bron()?.textContent).toContain('Eén boeking van later deze maand')
+    expect(bron()?.textContent).toContain('Eén boeking of overboeking van later deze maand')
   })
 
   it('telt hoeveel boekingen er nog komen wanneer het er meer dan één zijn', () => {
@@ -165,7 +168,7 @@ describe('Vermogensevolutie — het verschil met de saldotegel', () => {
       ],
     })
     expect(bron()?.textContent).toBe(
-      'Het laatste punt is de stand aan het einde van de maand. 2 boekingen van later deze maand tellen er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.',
+      'Het laatste punt is de stand aan het einde van de maand. 2 boekingen en overboekingen van later deze maand tellen er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.',
     )
   })
 

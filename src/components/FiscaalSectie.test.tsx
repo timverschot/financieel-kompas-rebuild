@@ -107,6 +107,19 @@ describe('FiscaalSectie — betaalde onderhoudsuitkeringen', () => {
     expect(regel?.textContent).toContain('60%')
     expect(regel?.textContent).toContain(formatEuro(18000))
   })
+
+  it('noemt ze BETALINGEN en geen boekingen (ronde 96)', () => {
+    // ⚠ Bij deze ene post komt de lijst niet uit je transacties maar uit je betalingen op
+    // een onderhoudsbijdrage in Dossiers. Het type zegt dat zelf, de zin eronder zegt het
+    // ("Kijkt in: je betalingen …") en elke rij in de uitklap heet "Betaling" — alleen dít
+    // getal noemde ze boekingen. En je kan er niet op doorklikken, want er hangt geen
+    // transactie aan.
+    toon({ onderhoudsbijdragen: [bijdrage], onderhoudsbetalingen: [betaling] })
+    const kaart = kaartVan('onderhoudsuitkeringen')
+    expect(kaart.textContent).toContain('1 betaling(en)')
+    expect(kaart.textContent).not.toContain('1 boeking(en)')
+    expect(within(kaart).getByRole('button', { name: 'Toon de 1 betaling(en)' })).toBeInTheDocument()
+  })
 })
 
 describe('FiscaalSectie — de boekingen erachter', () => {

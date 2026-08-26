@@ -291,7 +291,7 @@ function BewaarAlsBijdrage({
             aria-expanded={open}
             onClick={() => setOpen((aan) => !aan)}
           >
-            {open ? t('Sluit') : t('Bewaar als onderhoudsbijdrage')}
+            {open ? t('Sluiten') : t('Bewaar als onderhoudsbijdrage')}
           </button>
 
           {open && (

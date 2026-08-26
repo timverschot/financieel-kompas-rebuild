@@ -52,7 +52,7 @@ function Foutscherm({ naam, onHerstel }: { naam?: string; onHerstel: () => void 
           : t('Er ging iets mis, maar je gegevens zijn veilig. De rest van de app blijft gewoon werken.')}
       </p>
       <button type="button" className="knop knop-secundair knop-klein" onClick={onHerstel}>
-        {t('Probeer opnieuw')}
+        {t('Opnieuw proberen')}
       </button>
     </div>
   )

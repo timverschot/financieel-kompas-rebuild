@@ -248,7 +248,7 @@ function KostRegel({
         : t('Nog niets toegevoegd')
       : eigen.length === 1
         ? bedragMetPeriode(t, eigen[0])
-        : t('{n} kosten toegevoegd', { n: eigen.length })
+        : t('{n} vaste lasten toegevoegd', { n: eigen.length })
 
   return (
     <li className="rij rij-kost rij-kost-uitklap">
@@ -1026,10 +1026,10 @@ export function OpstellingSectie({
                       : '',
                     nogNietBegonnenPerMaand > 0
                       ? (nogNietBegonnen.length === 1
-                          ? t('{bedrag} telt hier nog niet mee: die kost begint pas later.', {
+                          ? t('{bedrag} telt hier nog niet mee: die vaste last begint pas later.', {
                               bedrag: formatEuro(nogNietBegonnenPerMaand),
                             })
-                          : t('{bedrag} telt hier nog niet mee: die kosten beginnen pas later.', {
+                          : t('{bedrag} telt hier nog niet mee: die vaste lasten beginnen pas later.', {
                               bedrag: formatEuro(nogNietBegonnenPerMaand),
                             })) +
                         // ⚠ Zet je er wél al voor opzij, dan gáát dat geld elke maand
@@ -1269,7 +1269,7 @@ export function OpstellingSectie({
         {blok === 'vast' && (
           <KostenLijst
             titel={t('Je vaste lasten')}
-            uitleg={t('Klik op een kost om te zien wat je al hebt, of voeg er een toe. Het invulvenster vraagt alles in één keer.')}
+            uitleg={t('Klik op een vaste last om te zien wat je al hebt, of voeg er een toe. Het invulvenster vraagt alles in één keer.')}
             voorstellen={KLASSIEKE_VASTE_KOSTEN}
             posten={ingevuld}
             t={t}

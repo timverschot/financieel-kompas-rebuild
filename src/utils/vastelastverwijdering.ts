@@ -106,8 +106,8 @@ export type Gebruiksregel = { kop: string; uitleg: string }
 export function telVasteLastGebruik(t: Vertaler, id: string, g: VasteLastGegevens): Gebruiksregel[] {
   const tel = telVasteLastVerwijzingen(id, g)
   const paren: [number, string, string][] = [
-    [tel.ingeboekt, '{n} boeking(en) die je hier inboekte', 'Ze blijven staan als gewone boeking; alleen de knop "Uitboeken" verdwijnt, want die hoort bij de kost.'],
-    [tel.aangeduid, '{n} boeking(en) waarvan je zei dat ze deze kost zijn', 'Ze blijven staan en tellen daarna weer mee als een gewone boeking — de app mag ze dus opnieuw bij een andere vaste last voorstellen.'],
+    [tel.ingeboekt, '{n} boeking(en) die je hier inboekte', 'Ze blijven staan als gewone boeking; alleen de knop "Uitboeken" verdwijnt, want die hoort bij de vaste last.'],
+    [tel.aangeduid, '{n} boeking(en) waarvan je zei dat ze deze vaste last zijn', 'Ze blijven staan en tellen daarna weer mee als een gewone boeking — de app mag ze dus opnieuw bij een andere vaste last voorstellen.'],
     // ⚠ HIER STOND EERST "en je plan zet er geen geld meer voor opzij" (doorlichting
     // ronde 76). Dat was onvoorwaardelijk gezegd terwijl het maar in één van de
     // gevallen waar is: `opzijVolgensSpaardoelen` slaat een maandelijkse of een al

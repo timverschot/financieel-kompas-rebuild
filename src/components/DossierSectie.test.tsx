@@ -343,7 +343,7 @@ describe('DossierSectie — de chips voor de onderdelen', () => {
     toon({ onDossierOpslaan: opslaan })
 
     await user.click(screen.getByRole('button', { name: 'Documentkluis' }))
-    await user.click(screen.getByRole('button', { name: 'Uitwisselen met de andere ouder' }))
+    await user.click(screen.getByRole('button', { name: 'Uitwisselen' }))
     // Tik 1 mislukt, tik 2 lukt.
     await act(async () => { doorgaan[0].fout() })
     await act(async () => { doorgaan[1].ok() })
@@ -378,7 +378,7 @@ describe('DossierSectie — de chips voor de onderdelen', () => {
     toon({ onDossierOpslaan: opslaan })
 
     await user.click(screen.getByRole('button', { name: 'Documentkluis' }))
-    await user.click(screen.getByRole('button', { name: 'Uitwisselen met de andere ouder' }))
+    await user.click(screen.getByRole('button', { name: 'Uitwisselen' }))
 
     expect(bewaard[1].verborgenOnderdelen).toEqual(['documentkluis', 'uitwisseling'])
 
@@ -403,7 +403,7 @@ describe('DossierSectie — de chips voor de onderdelen', () => {
     // En — dit is het punt — de eerstvolgende tik op een ándere chip mag die
     // wijziging niet terugdraaien: ze hoort er gewoon bij te komen.
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Uitwisselen met de andere ouder' }))
+    await user.click(screen.getByRole('button', { name: 'Uitwisselen' }))
     expect(opslaan.mock.calls[0][0].verborgenOnderdelen).toEqual(['documentkluis', 'uitwisseling'])
   })
 
@@ -675,5 +675,39 @@ describe('DossierSectie — waar "Te verrekenen" vandaan komt', () => {
     // Bewust de volledige regel: zou de bronregel helemaal verdwijnen, dan zou een
     // toets op de afwezigheid van "betwist" nog altijd slagen zonder iets te bewaken.
     expect(bron()).toBe(BASISZIN)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 93 — de chiprij is weg te klappen
+// ---------------------------------------------------------------------------
+describe('de onderdeelkeuze van een dossier (ronde 93)', () => {
+  function blok(): HTMLDetailsElement | null {
+    return document.querySelector('[data-onderdeelkeuze]')
+  }
+
+  it('staat OPEN bij het openen van een dossier', () => {
+    // ⚠ Open is de beginstand, en dat is een beslissing van Timothy (26 augustus 2026) —
+    // zie DESIGN.md, "Dichtklappen mag, standaard dicht niet". Draait die ooit terug, dan
+    // hoort deze test mee te draaien.
+    render(<DossierSectie {...eigenschappen()} />)
+    expect(blok()?.open).toBe(true)
+  })
+
+  it('is weg te klappen wanneer je hem niet nodig hebt', async () => {
+    // ⚠ Gemeten in Chromium op 360 px: dit blok besloeg 459 px met acht rijen chips, bovenaan
+    // élk dossier. Vijf kortere namen brachten dat op 300 px; wie het dan nóg te veel vindt, klapt
+    // het weg.
+    const user = userEvent.setup()
+    render(<DossierSectie {...eigenschappen()} />)
+    await user.click(screen.getByText('Wat toon je in dit dossier?'))
+    expect(blok()?.open).toBe(false)
+  })
+
+  it('gaat niet mee naar de printer', () => {
+    // Een rij schakelaars zegt op papier niets, en de printopmaak verbergt met opzet geen
+    // chips (die dragen elders een filter dat op papier moet blijven staan).
+    render(<DossierSectie {...eigenschappen()} />)
+    expect(blok()).toHaveAttribute('data-geen-print')
   })
 })

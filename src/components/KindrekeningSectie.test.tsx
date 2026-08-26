@@ -80,7 +80,7 @@ describe('KindrekeningSectie', () => {
     const user = userEvent.setup()
     const kr: Kindrekening = { id: 'kr1', dossierId: 'd1', naam: 'Pot', beginsaldo: 0 }
     const { onPostOpslaan } = toon(kr, [])
-    await user.type(screen.getByLabelText('Bedrag pot (€)'), '50')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '50')
     await user.click(screen.getByRole('button', { name: 'Beweging toevoegen' }))
     expect(onPostOpslaan).toHaveBeenCalledWith(
       expect.objectContaining({ kindrekeningId: 'kr1', soort: 'storting', bedrag: 5000, door: 'jij' }),

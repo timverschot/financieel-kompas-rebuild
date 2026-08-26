@@ -133,3 +133,139 @@ describe('volgendeVerborgenLijst', () => {
     expect(basis).toEqual(['documentkluis'])
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 93 — de chipnamen van de dossierpagina
+// ---------------------------------------------------------------------------
+//
+// ⚠ WAAROM DEZE REEKS BESTAAT. De chiprij bovenaan een dossier besloeg in Chromium op een
+// scherm van 360 px **306 px in ACHT rijen chips**, met een blok van 459 px eromheen — twee
+// derde van een telefoonscherm, bovenaan élk dossier, elke keer. De oorzaak was dat elke chip
+// de volledige kaarttitel droeg. Ingekort is dat 150 px in vier rijen.
+//
+// De prijs van inkorten is dat een chip iets ánders kan gaan heten dan het blok dat ze
+// bedient — en dan weet je bij het uitzetten niet meer wat er verdwijnt. Vandaar deze reeks.
+//
+// ⚠ Via `import.meta.glob` en niet via `node:fs`: met `node:fs` moet je zelf uitrekenen waar
+// de broncode staat, en een misrekening laat de test stil slagen op nul bestanden.
+const BRON_RUW = import.meta.glob('../**/*.tsx', { query: '?raw', import: 'default', eager: true }) as Record<
+  string,
+  string
+>
+const BRONBESTANDEN = Object.entries(BRON_RUW).filter(([pad]) => !/\.test\.tsx$/.test(pad))
+
+/** Elke `titel={t('…')}` die ergens in de app op een kaart staat. */
+function kaarttitels(): string[] {
+  const alles = BRONBESTANDEN.map(([, tekst]) => tekst).join('\n')
+  return [...alles.matchAll(/titel=\{t\('([^']+)'\)\}/g)].map((m) => m[1])
+}
+
+describe('DOSSIER_ONDERDELEN — de chipnamen (ronde 93)', () => {
+  it('leest de broncode écht', () => {
+    // ⚠ Het vangnet vóór het vangnet: vindt de glob niets, dan slaagt alles hieronder stil.
+    expect(BRONBESTANDEN.length).toBeGreaterThan(50)
+    expect(kaarttitels().length).toBeGreaterThan(20)
+  })
+
+  // ⚠ WAT DEZE CONTROLE WÉL EN NIET DOET (doorlichting ronde 93). Ze zoekt élke
+  // `titel={t('…')}` in de app, en dat is meer dan alleen kaarttitels: de helper
+  // `Uitsplitsing` in de opbouw van een afrekening gebruikt dezelfde prop. Ze toetst dus dat
+  // een chipnaam ergens in de app als titel bestaat, niet dat het de titel is van precies de
+  // kaart die deze chip bedient. Een titel die geen letterlijke tekst is
+  // (`titel={richting === 'uitgave' ? … : …}`) ziet ze evenmin. Ze vangt de gewone
+  // hernoeming; ze is geen bewijs.
+  it('noemt elke chip naar een titel die de app ergens toont', () => {
+    // ⚠ 'afrekening-detail' is de enige uitzondering, en met reden: die schakelaar bedient
+    // geen eigen kaart maar de OPBOUW binnen de afrekeningenkaart. Zie de kopregels bij
+    // DOSSIER_ONDERDELEN.
+    const titels = kaarttitels().map((s) => s.toLowerCase())
+    const fouten: string[] = []
+    for (const o of DOSSIER_ONDERDELEN) {
+      if (o.id === 'afrekening-detail') continue
+      const naam = o.label.toLowerCase()
+      if (!titels.some((titel) => titel.includes(naam))) fouten.push(`${o.id}: "${o.label}"`)
+    }
+    expect(fouten).toEqual([])
+  })
+
+  it('zou een chip die nergens op slaat ook écht aanwijzen', () => {
+    // ⚠ Zonder deze proef kan de zoeker stilletjes niets meer vinden en blijft alles groen.
+    const titels = kaarttitels().map((s) => s.toLowerCase())
+    expect(titels.some((titel) => titel.includes('een naam die nergens bestaat'))).toBe(false)
+    expect(titels.some((titel) => titel.includes('documentkluis'))).toBe(true)
+  })
+
+  // ⚠ De twee die met opzet voluit blijven, mét de reden erbij — zoals de uitzonderingen in
+  // `index.css.test.ts` en `i18nBotsing.test.ts`. Zo kunnen ze niet stil groeien.
+  const VOLUIT_MET_REDEN: Record<string, string> = {
+    'verdeling-categorie':
+      'Ingekort tot "Per categorie" zou de chip botsen met het gelijknamige kopje in de opbouw ' +
+      'van een afrekening — dat deze chip NIET uitzet. En "Per categorie staat uit, maar er ' +
+      'staat wel iets in" is geen Nederlands.',
+    'verdeling-kostensoort': 'Zelfde reden als bij de verdeling per categorie hierboven.',
+  }
+
+  /** Welke namen te lang zijn en niet in de uitzonderingenlijst staan. Zuiver, dus zelf te
+   * beproeven — een controle die alleen kán falen wanneer er al iets fout staat, bewijst
+   * niets (les uit ronde 91). */
+  function teLang(lijst: readonly { id: string; label: string }[], uitzonderingen: Record<string, string>) {
+    return lijst.filter((o) => !(o.id in uitzonderingen) && o.label.length > 20).map((o) => o.id)
+  }
+
+  /** En de andere richting: uitzonderingen die niet meer nodig zijn. */
+  function overbodigeUitzonderingen(
+    lijst: readonly { id: string; label: string }[],
+    uitzonderingen: Record<string, string>,
+  ) {
+    return Object.keys(uitzonderingen).filter((id) => {
+      const o = lijst.find((x) => x.id === id)
+      return !o || o.label.length <= 20
+    })
+  }
+
+  it('zou een te lange naam en een verouderde uitzondering ook écht aanwijzen', () => {
+    // ⚠ Deze test bestaat door twee mutatietesten: zowel de lengtecontrole als de controle op
+    // verouderde uitzonderingen bleef groen toen ze uitgeschakeld werd — niet omdat ze niets
+    // doet, maar omdat er vandaag toevallig niets fout staat.
+    const verzonnen = [
+      { id: 'kort', label: 'Kort' },
+      { id: 'lang', label: 'Een heel erg lange naam die niet past' },
+      { id: 'toegestaan', label: 'Ook een behoorlijk lange naam' },
+    ]
+    expect(teLang(verzonnen, { toegestaan: 'reden' })).toEqual(['lang'])
+    expect(teLang(verzonnen, {})).toEqual(['lang', 'toegestaan'])
+    expect(overbodigeUitzonderingen(verzonnen, { kort: 'reden' })).toEqual(['kort'])
+    expect(overbodigeUitzonderingen(verzonnen, { weg: 'reden' })).toEqual(['weg'])
+    expect(overbodigeUitzonderingen(verzonnen, { toegestaan: 'reden' })).toEqual([])
+  })
+
+  it('houdt de namen kort, op twee na die met opzet voluit blijven', () => {
+    // ⚠ WAT HIER GEMETEN IS, en wat niet. In Chromium op 360 px besloeg de chiprij met alle
+    // acht de volledige kaarttitels 306 px in ACHT rijen, met een blok van 459 px eromheen.
+    // Met vijf namen ingekort is dat 189 px in VIJF rijen en een blok van 300 px; dichtgeklapt
+    // 46 px. Twintig tekens is de grens waar de vijf ingekorte namen onder blijven — een
+    // afspraak, geen natuurwet, maar wel eentje die aan een gemeten toestand hangt.
+    //
+    // ⚠ En ze meet alleen het NEDERLANDS. De chip toont `t(o.label)`, en in het Engels is
+    // "Onderhoudsbijdrage" bijvoorbeeld "Maintenance contribution" (24 tekens). De gemeten
+    // winst geldt dus voor het Nederlands; deze grens dwingt in EN en FR niets af.
+    expect(teLang(DOSSIER_ONDERDELEN, VOLUIT_MET_REDEN)).toEqual([])
+  })
+
+  it('houdt geen uitzondering staan die niet meer nodig is', () => {
+    // ⚠ De andere richting: kort iemand zo'n naam later alsnog in, dan hoort de uitzondering
+    // mee te verdwijnen in plaats van stil te blijven staan.
+    expect(overbodigeUitzonderingen(DOSSIER_ONDERDELEN, VOLUIT_MET_REDEN)).toEqual([])
+  })
+
+  it('geeft elke uitzondering een reden die iets zegt', () => {
+    for (const [id, reden] of Object.entries(VOLUIT_MET_REDEN)) {
+      expect(reden.length, id).toBeGreaterThan(40)
+    }
+  })
+
+  it('geeft geen twee onderdelen dezelfde naam', () => {
+    const namen = DOSSIER_ONDERDELEN.map((o) => o.label)
+    expect(new Set(namen).size).toBe(namen.length)
+  })
+})

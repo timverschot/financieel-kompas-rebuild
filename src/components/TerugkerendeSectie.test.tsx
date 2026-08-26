@@ -610,7 +610,7 @@ describe('TerugkerendeSectie — verwijderen vraagt wat eraan hangt', () => {
       ],
     })
     await userEvent.click(screen.getByRole('button', { name: knopnaam('Verwijderen', huur) }))
-    expect(screen.getByText('1 boeking(en) waarvan je zei dat ze deze kost zijn')).toBeInTheDocument()
+    expect(screen.getByText('1 boeking(en) waarvan je zei dat ze deze vaste last zijn')).toBeInTheDocument()
   })
 
   it('houdt de kost wanneer je "Nee, behouden" kiest', async () => {
@@ -900,7 +900,7 @@ describe('TerugkerendeSectie — knopnamen bij gelijknamige posten (ronde 82)', 
     // ⚠ De KOP stelt de vraag en draagt geen gegevens — dezelfde vorm als de twee andere
     // verwijdervensters van de app. Het kenmerk staat in de body.
     expect(await screen.findByRole('heading', { name: 'Autoverzekering verwijderen?' })).toBeInTheDocument()
-    const zin = await screen.findByText(/Het gaat over de kost van/)
+    const zin = await screen.findByText(/Het gaat over de vaste last van/)
     expect(zin.textContent).toContain('620')
     expect(zin.textContent).toContain('dag 5')
   })
@@ -930,7 +930,11 @@ describe('TerugkerendeSectie — knopnamen bij gelijknamige posten (ronde 82)', 
     )
     await user.click(screen.getByRole('button', { name: knopnaam('Verwijderen', auto) }))
     expect(await screen.findByRole('heading', { name: 'Autoverzekering verwijderen?' })).toBeInTheDocument()
-    expect(screen.queryByText(/Het gaat over de kost van/)).toBeNull()
+    // ⚠ EERST VASTSTELLEN DAT DE BODY ER IS (doorlichting ronde 94). De kop alleen bewijst
+    // niet dat de tekst eronder gerenderd is — en in een leeg venster ontbreekt élke zin,
+    // dus ook de zin die hier niet mág staan. Deze zin staat in diezelfde body.
+    expect(screen.getByText(/hangt/)).toBeInTheDocument()
+    expect(screen.queryByText(/Het gaat over de vaste last van/)).toBeNull()
   })
 })
 

@@ -51,6 +51,7 @@ export function TerugkerendePostFormulier({
   bewerken,
   onOpgeslagen,
   soort: soortVanBuiten,
+  onSoortGekozen,
   beginwaarden,
   bestaande,
   focusBijStart = false,
@@ -69,6 +70,17 @@ export function TerugkerendePostFormulier({
    * dezelfde keuze op twee plaatsen is hoe je je loon per ongeluk als kost boekt.
    */
   soort?: 'uitgave' | 'inkomst'
+  /**
+   * Meldt welke soort er ín dit formulier gekozen staat, zodat het venster eromheen zijn
+   * kop kan laten meelopen.
+   *
+   * ⚠ WAAROM (doorlichting ronde 92). In de ➕-popup ligt `soort` NIET van buiten vast: je
+   * kiest hem met de twee bolletjes onderaan. De vensterkop stond intussen hard op "Vaste
+   * last toevoegen". Wie op "Inkomst" klikte, kreeg dus een kop die zijn keuze tegensprak —
+   * en sinds deze ronde zegt élk veld eronder "(vaste inkomst)". Dertien keer een
+   * tegenspraak in plaats van één.
+   */
+  onSoortGekozen?: (soort: 'uitgave' | 'inkomst') => void
   /**
    * Wordt aangeroepen ná een gelukte opslag. `blijfOpen` is waar wanneer je op
    * "Opslaan + volgende" duwde. Zodra deze prop meegegeven wordt, verschijnt die
@@ -464,6 +476,37 @@ export function TerugkerendePostFormulier({
   // hem zelf met de twee bolletjes onderaan — en dan hoort de naam mee te veranderen
   // met wat hij aan het maken is.
   const isInkomst = soort === 'inkomst'
+  // ⚠ RONDE 92 — ELK VELD DRAAGT ERBIJ OVER WELK FORMULIER HET GAAT.
+  //
+  // Op Budget → Vast staan dit formulier voor de INKOMSTEN en dat voor de LASTEN onder
+  // elkaar op één scherm. Ronde 83 gaf allebei een naam op het `<form>` (een landmark), en
+  // ronde 88 haalde het voorvoegsel "Vaste …" van de veldlabels omdat het geen Nederlands
+  // was. Allebei die rondes schreven er eerlijk bij wat er NIET mee opgelost was: een
+  // landmark helpt wie doortabt, maar niet wie de app met zijn STEM bedient en niet wie de
+  // veldenlijst van zijn schermlezer opent. Daar stonden negen tot veertien paren velden
+  // met exact dezelfde naam: twee keer "Omschrijving", twee keer "Bedrag (€)".
+  //
+  // De naam van elk veld is nu "Omschrijving (vaste last)" — en in het andere formulier
+  // "… (vaste inkomst)". Uniek, dus in die veldenlijst uit elkaar te houden.
+  //
+  // ⚠ TUSSEN HAAKJES, EN NIET "van deze vaste last" (doorlichting). Zes van de dertien
+  // labels zijn een VRAAG of eindigen zelf al op een toevoeging: "Hoe vaak?", "Eerste
+  // betaling in", "Zit hier een contract achter? (optioneel)". Daarachter is "van deze
+  // vaste last" geen Nederlands meer — en dat is precies de regel die ronde 88 kwam
+  // handhaven toen ze "Vaste omschrijving" wegdeed. Een verduidelijking tussen haakjes past
+  // achter een zelfstandig naamwoord én achter een vraagteken.
+  //
+  // ⚠ DE ZICHTBARE TEKST BLIJFT VOORAAN EN AANEENGESLOTEN. Dat is WCAG 2.5.3: wie
+  // "Omschrijving" zégt, moet het veld raken dat "Omschrijving" heet. Vandaar
+  // `aria-labelledby` met eerst het bestaande label en dán de toevoeging — nooit andersom,
+  // en nooit een `aria-label` die de zichtbare tekst vervangt.
+  //
+  // ⚠ EN HET LABEL BLIJFT EEN ECHT `<label htmlFor>`. Daardoor blijft een klik op het
+  // woord het veld focussen, en blijft `getByLabelText('Omschrijving')` in de tests werken:
+  // die zoekt óók langs de `for`-koppeling, niet alleen langs de toegankelijke naam.
+  // Nagemeten met een wegwerptest voor deze ronde begon — anders had dit ruim vijftig
+  // aanroeppunten omgegooid.
+  const soortId = `${veldId}-soort`
   const formuliernaam = bewerken
     ? isInkomst
       ? t('Deze vaste inkomst')
@@ -474,6 +517,11 @@ export function TerugkerendePostFormulier({
 
   return (
     <form onSubmit={verzend} className="stapel" aria-label={formuliernaam}>
+      {/* De toevoeging waar elk veld hierboven naar wijst. Buiten beeld, want wie kijkt
+          ziet de kaarttitel "Vaste lasten" al boven dit formulier staan. */}
+      <span id={soortId} className="alleen-voorlezen">
+        {isInkomst ? t('(vaste inkomst)') : t('(vaste last)')}
+      </span>
       {/* ⚠ RONDE 88 — DE VELDEN HETEN WEER GEWOON WAT ZE ZIJN.
           Tot deze ronde stond er "Vaste omschrijving", "Vast bedrag (€)", "Vaste
           rekening" en "Vaste categorie". Dat is geen Nederlands — een rekening die vást
@@ -504,10 +552,11 @@ export function TerugkerendePostFormulier({
           zoekt over de hele `document.body`: een `getByLabelText('Rekening')` zonder
           `within(…)` kan er sinds deze ronde twee vinden. */}
       <div className="veldgroep">
-        <label className="label-caps" htmlFor={`${veldId}-vaste-omschrijving`}>
+        <label className="label-caps" id={`${veldId}-vaste-omschrijving-label`} htmlFor={`${veldId}-vaste-omschrijving`}>
           {t('Omschrijving')}
         </label>
-        <input id={`${veldId}-vaste-omschrijving`} value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} />
+        <input id={`${veldId}-vaste-omschrijving`}
+            aria-labelledby={`${veldId}-vaste-omschrijving-label ${soortId}`} value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} />
         {/* ⚠ Een WAARSCHUWING, geen fout: de opslaanknop blijft gewoon werken. Twee
             gezinsauto's met allebei "Autoverzekering" bestaan, en de app hoort dat niet
             te verbieden. Ze hoort alleen te voorkomen dat je dezelfde kost twee keer
@@ -522,11 +571,12 @@ export function TerugkerendePostFormulier({
 
       <div className="veldrij">
         <div className="veldgroep">
-          <label className="label-caps" htmlFor={`${veldId}-vast-bedrag`}>
+          <label className="label-caps" id={`${veldId}-vast-bedrag-label`} htmlFor={`${veldId}-vast-bedrag`}>
             {t('Bedrag (€)')}
           </label>
           <input
             id={`${veldId}-vast-bedrag`}
+            aria-labelledby={`${veldId}-vast-bedrag-label ${soortId}`}
             inputMode="decimal"
             placeholder="0,00"
             value={bedrag}
@@ -543,10 +593,11 @@ export function TerugkerendePostFormulier({
           />
         </div>
         <div className="veldgroep">
-          <label className="label-caps" htmlFor={`${veldId}-vaste-dag`}>
+          <label className="label-caps" id={`${veldId}-vaste-dag-label`} htmlFor={`${veldId}-vaste-dag`}>
             {t('Dag van de maand')}
           </label>
-          <input id={`${veldId}-vaste-dag`} inputMode="numeric" value={dag} onChange={(e) => setDag(e.target.value)} />
+          <input id={`${veldId}-vaste-dag`}
+            aria-labelledby={`${veldId}-vaste-dag-label ${soortId}`} inputMode="numeric" value={dag} onChange={(e) => setDag(e.target.value)} />
         </div>
       </div>
 
@@ -557,11 +608,12 @@ export function TerugkerendePostFormulier({
           buffercijfer niet. */}
       <div className="veldrij">
         <div className="veldgroep">
-          <label className="label-caps" htmlFor={`${veldId}-vaste-frequentie`}>
+          <label className="label-caps" id={`${veldId}-vaste-frequentie-label`} htmlFor={`${veldId}-vaste-frequentie`}>
             {t('Hoe vaak?')}
           </label>
           <select
             id={`${veldId}-vaste-frequentie`}
+            aria-labelledby={`${veldId}-vaste-frequentie-label ${soortId}`}
             value={frequentie}
             onChange={(e) => setFrequentie(e.target.value as Frequentie)}
           >
@@ -574,13 +626,14 @@ export function TerugkerendePostFormulier({
         </div>
         {periodiek && (
           <div className="veldgroep">
-            <label className="label-caps" htmlFor={`${veldId}-vaste-start`}>
+            <label className="label-caps" id={`${veldId}-vaste-start-label`} htmlFor={`${veldId}-vaste-start`}>
               {t('Eerste betaling in')}
             </label>
             {/* Het ritme telt vanaf hier, niet vanaf het kalenderjaar: begin je in
                 augustus met een halfjaarlijkse premie, dan volgt februari. */}
             <input
               id={`${veldId}-vaste-start`}
+            aria-labelledby={`${veldId}-vaste-start-label ${soortId}`}
               type="month"
               value={startMaand}
               onChange={(e) => setStartMaand(e.target.value)}
@@ -590,12 +643,13 @@ export function TerugkerendePostFormulier({
       </div>
 
       <div className="veldgroep">
-        <label className="label-caps" htmlFor={`${veldId}-vaste-einde`}>
+        <label className="label-caps" id={`${veldId}-vaste-einde-label`} htmlFor={`${veldId}-vaste-einde`}>
           {t('Loopt tot en met')}
         </label>
         <input
           ref={eindeRef}
           id={`${veldId}-vaste-einde`}
+            aria-labelledby={`${veldId}-vaste-einde-label ${soortId}`}
           type="month"
           value={eindMaand === '' ? '' : verschuifMaand(eindMaand, -1)}
           onChange={(e) => setEindMaand(e.target.value === '' ? '' : verschuifMaand(e.target.value, 1))}
@@ -642,11 +696,12 @@ export function TerugkerendePostFormulier({
           ze zegt nooit bij wie je beter zou zitten. Een leverancier voorstellen tegen
           vergoeding is gereglementeerde bemiddeling. */}
       <div className="veldgroep">
-        <label className="label-caps" htmlFor={`${veldId}-contractsoort`}>
+        <label className="label-caps" id={`${veldId}-contractsoort-label`} htmlFor={`${veldId}-contractsoort`}>
           {t('Zit hier een contract achter? (optioneel)')}
         </label>
         <select
           id={`${veldId}-contractsoort`}
+            aria-labelledby={`${veldId}-contractsoort-label ${soortId}`}
           value={contractsoort}
           onChange={(e) => setContractsoort(e.target.value as Contractsoort | '')}
         >
@@ -672,22 +727,24 @@ export function TerugkerendePostFormulier({
         <>
           <div className="veldrij">
             <div className="veldgroep">
-              <label className="label-caps" htmlFor={`${veldId}-verlengt-op`}>
+              <label className="label-caps" id={`${veldId}-verlengt-op-label`} htmlFor={`${veldId}-verlengt-op`}>
                 {t('Verlengt of loopt af op')}
               </label>
               <input
                 id={`${veldId}-verlengt-op`}
+            aria-labelledby={`${veldId}-verlengt-op-label ${soortId}`}
                 type="date"
                 value={verlengtOp}
                 onChange={(e) => setVerlengtOp(e.target.value)}
               />
             </div>
             <div className="veldgroep">
-              <label className="label-caps" htmlFor={`${veldId}-verlengt-elke`}>
+              <label className="label-caps" id={`${veldId}-verlengt-elke-label`} htmlFor={`${veldId}-verlengt-elke`}>
                 {t('Om de hoeveel maanden? (optioneel)')}
               </label>
               <input
                 id={`${veldId}-verlengt-elke`}
+            aria-labelledby={`${veldId}-verlengt-elke-label ${soortId}`}
                 inputMode="numeric"
                 placeholder="12"
                 value={verlengtElke}
@@ -704,7 +761,7 @@ export function TerugkerendePostFormulier({
           </span>
 
           <div className="veldgroep">
-            <label className="label-caps" htmlFor={`${veldId}-opzegtermijn`}>
+            <label className="label-caps" id={`${veldId}-opzegtermijn-label`} htmlFor={`${veldId}-opzegtermijn`}>
               {t('Je eigen opzegtermijn (optioneel)')}
             </label>
             {/* ⚠ MET EEN EENHEID, en dat is de reparatie uit de tweede nakijkronde van
@@ -716,14 +773,34 @@ export function TerugkerendePostFormulier({
             <div className="termijnrij">
               <input
                 id={`${veldId}-opzegtermijn`}
+            aria-labelledby={`${veldId}-opzegtermijn-label ${soortId}`}
                 inputMode="numeric"
                 value={eigenTermijn}
                 onChange={(e) => setEigenTermijn(e.target.value)}
                 aria-describedby={`${veldId}-opzeg-uitleg`}
                 aria-invalid={!termijnGeldig}
               />
+              {/* ⚠ Deze keuzelijst heeft geen zichtbaar label — ze staat pal naast het
+                  getal en zou er anders twee woorden bij zetten. Ze krijgt haar naam dus
+                  uit een verborgen span, en niet uit een `aria-label`: zo hangt de
+                  toevoeging van ronde 92 er op dezelfde manier aan als bij de andere
+                  twaalf velden. */}
+              {/* ⚠ Een ECHT `<label htmlFor>`, alleen buiten beeld (doorlichting ronde 92).
+                  Een verborgen `<span>` als naambron werkt voor een schermlezer, maar dan
+                  steunt de koppeling tussen het woord en het veld nergens meer op — en dan
+                  slaagt `getByLabelText` alleen nog door een eigenaardigheid van Testing
+                  Library. Dit is de enige bediening in dit formulier zonder zichtbaar
+                  label; ze krijgt dezelfde behandeling als de twaalf andere. */}
+              <label
+                id={`${veldId}-opzegeenheid-label`}
+                htmlFor={`${veldId}-opzegeenheid`}
+                className="alleen-voorlezen"
+              >
+                {t('Eenheid van de opzegtermijn')}
+              </label>
               <select
-                aria-label={t('Eenheid van de opzegtermijn')}
+                id={`${veldId}-opzegeenheid`}
+                aria-labelledby={`${veldId}-opzegeenheid-label ${soortId}`}
                 value={eigenEenheid}
                 onChange={(e) => setEigenEenheid(e.target.value as 'maand' | 'dag')}
               >
@@ -765,10 +842,11 @@ export function TerugkerendePostFormulier({
       )}
 
       <div className="veldgroep">
-        <label className="label-caps" htmlFor={`${veldId}-vaste-rekening`}>
+        <label className="label-caps" id={`${veldId}-vaste-rekening-label`} htmlFor={`${veldId}-vaste-rekening`}>
           {t('Rekening')}
         </label>
-        <select id={`${veldId}-vaste-rekening`} value={rekeningId} onChange={(e) => setRekeningId(e.target.value)}>
+        <select id={`${veldId}-vaste-rekening`}
+            aria-labelledby={`${veldId}-vaste-rekening-label ${soortId}`} value={rekeningId} onChange={(e) => setRekeningId(e.target.value)}>
           {rekeningen.map((r) => (
             <option key={r.id} value={r.id}>
               {rekeningLabel(r)}
@@ -778,7 +856,7 @@ export function TerugkerendePostFormulier({
       </div>
 
       <div className="veldgroep">
-        <label className="label-caps" htmlFor={`${veldId}-vaste-categorie`}>
+        <label className="label-caps" id={`${veldId}-vaste-categorie-label`} htmlFor={`${veldId}-vaste-categorie`}>
           {t('Categorie')}
         </label>
         {/* Alle drie de niveaus, met een zoekveld. Tot ronde 27 kon je hier alleen
@@ -789,6 +867,8 @@ export function TerugkerendePostFormulier({
             zodra je de vaste last inboekt. */}
         <CategorieNiveauKiezer
           id={`${veldId}-vaste-categorie`}
+          labelledBy={`${veldId}-vaste-categorie-label ${soortId}`}
+          naamToevoegingId={soortId}
           waarde={categorieId}
           onKies={setCategorieId}
           categorieen={categorieen}
@@ -806,10 +886,28 @@ export function TerugkerendePostFormulier({
           <span className="label-caps">{t('Komt dit geld binnen of gaat het eruit?')}</span>
           <div className="veldrij" style={{ gap: 18, marginTop: -6 }}>
             <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <input type="radio" name="vastsoort" checked={soort === 'uitgave'} onChange={() => setEigenSoort('uitgave')} /> {t('Uitgave')}
+              <input
+                type="radio"
+                name="vastsoort"
+                checked={soort === 'uitgave'}
+                onChange={() => {
+                  setEigenSoort('uitgave')
+                  onSoortGekozen?.('uitgave')
+                }}
+              />{' '}
+              {t('Uitgave')}
             </label>
             <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <input type="radio" name="vastsoort" checked={soort === 'inkomst'} onChange={() => setEigenSoort('inkomst')} /> {t('Inkomst')}
+              <input
+                type="radio"
+                name="vastsoort"
+                checked={soort === 'inkomst'}
+                onChange={() => {
+                  setEigenSoort('inkomst')
+                  onSoortGekozen?.('inkomst')
+                }}
+              />{' '}
+              {t('Inkomst')}
             </label>
           </div>
         </>

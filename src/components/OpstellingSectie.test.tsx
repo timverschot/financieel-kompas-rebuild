@@ -393,7 +393,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     expect(onVastePost).not.toHaveBeenCalled()
   })
 
-  it('hangt een vaste kost aan een betaalrekening, niet aan je spaarboekje', async () => {
+  it('hangt een vaste last aan een betaalrekening, niet aan je spaarboekje', async () => {
     // `standaardRekening` geeft de rekening terug waarop je het laatst boekte; deed je
     // dat toevallig op je spaarrekening, dan hingen hier je twintig vaste lasten aan je
     // spaarboekje.
@@ -407,7 +407,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     expect(within(screen.getByRole('dialog')).getByLabelText('Rekening')).toHaveValue('bt')
   })
 
-  it('hangt een vaste kost nooit aan een gearchiveerde rekening', async () => {
+  it('hangt een vaste last nooit aan een gearchiveerde rekening', async () => {
     // Een vaste last aan een afgesloten rekening wordt nooit als betaald herkend en
     // blijft elke maand achterstallig staan.
     const gebruiker = userEvent.setup()
@@ -729,7 +729,7 @@ describe('OpstellingSectie — de lijst met voorstellen', () => {
     await naarVasteKosten(gebruiker)
 
     const rij = screen.getByRole('button', { name: /^Autoverzekering/ })
-    expect(rij).toHaveTextContent('2 kosten toegevoegd')
+    expect(rij).toHaveTextContent('2 vaste lasten toegevoegd')
     expect(rij).not.toHaveTextContent(/650,00/)
   })
 })
@@ -753,7 +753,7 @@ describe('OpstellingSectie — de blokken', () => {
   it('hergebruikt het echte rekeningformulier in plaats van een tweede te maken', () => {
     toon()
     expect(screen.getByLabelText('Rekeningnaam')).toBeInTheDocument()
-    expect(screen.getByLabelText('Type')).toBeInTheDocument()
+    expect(screen.getByLabelText('Soort')).toBeInTheDocument()
   })
 
   it('zet het rekeningformulier per blok op het juiste type', async () => {
@@ -763,13 +763,13 @@ describe('OpstellingSectie — de blokken', () => {
     const gebruiker = userEvent.setup()
     toon()
 
-    expect(screen.getByLabelText('Type')).toHaveValue('betaal')
+    expect(screen.getByLabelText('Soort')).toHaveValue('betaal')
 
     await gebruiker.click(screen.getByRole('tab', { name: /Voor later/ }))
-    expect(screen.getByLabelText('Type')).toHaveValue('effecten')
+    expect(screen.getByLabelText('Soort')).toHaveValue('effecten')
 
     await gebruiker.click(screen.getByRole('tab', { name: /Openstaand/ }))
-    expect(screen.getAllByLabelText('Type')[0]).toHaveValue('krediet')
+    expect(screen.getAllByLabelText('Soort')[0]).toHaveValue('krediet')
   })
 
   it('legt uit waarom "Zo lang kom je toe" een streepje blijft', async () => {

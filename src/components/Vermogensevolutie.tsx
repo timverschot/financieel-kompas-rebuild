@@ -149,8 +149,8 @@ export function Vermogensevolutie({
       {komtNog > 0 ? (
         <p className="rij-meta" data-evolutiebron style={{ margin: 0 }}>
           {komtNog === 1
-            ? t('Het laatste punt is de stand aan het einde van de maand. Eén boeking van later deze maand telt er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.')
-            : t('Het laatste punt is de stand aan het einde van de maand. {n} boekingen van later deze maand tellen er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.', {
+            ? t('Het laatste punt is de stand aan het einde van de maand. Eén boeking of overboeking van later deze maand telt er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.')
+            : t('Het laatste punt is de stand aan het einde van de maand. {n} boekingen en overboekingen van later deze maand tellen er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.', {
                 n: komtNog,
               })}
         </p>

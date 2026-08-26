@@ -60,14 +60,14 @@ export function csvKoppen(t: Vertaler): string[] {
   return [
     t('Datum'),
     t('Handelaar / winkel'),
-    t('Toelichting'),
+    t('Ticketregel'),
     t('Hoofdcategorie'),
     t('Categorie'),
     t('Rekening'),
     t('Gezinslid'),
     t('Bedrag'),
     t('Soort'),
-    t('Ticket'),
+    t('Ticketnummer'),
   ]
 }
 
@@ -77,6 +77,22 @@ export function csvKoppen(t: Vertaler): string[] {
  * `transacties` wordt NIET gefilterd of gesorteerd: dat is al gebeurd op het
  * scherm, en het bestand hoort daar één op één mee overeen te komen.
  */
+/**
+ * Hoeveel RIJEN het bestand krijgt — niet hoeveel boekingen erin zitten (ronde 97).
+ *
+ * ⚠ WAAROM DIT BESTAAT. De melding na een download zei "{n} boeking(en) gedownload", en
+ * het commentaar bij de knop beweerde dat daar al stond hoeveel rijen het bestand kreeg.
+ * Dat klopt niet: punt 2 hierboven schrijft één rij PER TICKETREGEL, dus een gesplitst
+ * kassaticket levert er meer dan één. Wie het bestand opende en meer regels vond dan de
+ * app had aangekondigd, kon alleen maar denken dat er iets dubbel stond.
+ *
+ * ⚠ En hij telt met dezelfde functie als het schrijven zelf (`categorieBedragen`), zodat
+ * het aantal niet kan gaan afwijken van wat er werkelijk in het bestand komt.
+ */
+export function telCsvRegels(transacties: Transactie[]): number {
+  return transacties.reduce((som, tx) => som + categorieBedragen(tx).length, 0)
+}
+
 export function transactieCsvRijen(
   t: Vertaler,
   transacties: Transactie[],

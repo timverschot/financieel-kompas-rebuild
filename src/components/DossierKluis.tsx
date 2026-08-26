@@ -254,7 +254,10 @@ export function Documentkluis({
         {t('Nieuw document')}
       </h3>
 
-      <form onSubmit={verzend} className="stapel">
+      {/* ⚠ RONDE 95 — een naam op het `<form>` maakt er een landmark van. Op de
+          dossierpagina staan er meerdere onder elkaar; zonder naam heten ze alle
+          "formulier". */}
+      <form onSubmit={verzend} className="stapel" aria-label={t('Document toevoegen')}>
         <div className="veldrij">
           <div className="veldgroep">
             <label className="label-caps" htmlFor={`${veldId}-naam`}>

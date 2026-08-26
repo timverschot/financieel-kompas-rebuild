@@ -865,12 +865,12 @@ describe('TransactieLijst — CSV exporteren', () => {
 
   it('biedt de knop aan zodra er rijen staan', () => {
     toon([tx({ id: 't1' })])
-    expect(screen.getByRole('button', { name: 'Exporteer CSV' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Exporteer als CSV' })).toBeInTheDocument()
   })
 
   it('verbergt de knop wanneer er niets te exporteren is', () => {
     toon([])
-    expect(screen.queryByRole('button', { name: 'Exporteer CSV' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Exporteer als CSV' })).toBeNull()
   })
 
   it('zet de zichtbare rijen in het bestand, in dezelfde volgorde', async () => {
@@ -883,7 +883,7 @@ describe('TransactieLijst — CSV exporteren', () => {
     ])
     const vangst = vangDownload()
     try {
-      await user.click(screen.getByRole('button', { name: 'Exporteer CSV' }))
+      await user.click(screen.getByRole('button', { name: 'Exporteer als CSV' }))
       const inhoud = await vangst.inhoud()
       expect(inhoud).toContain('-41,20')
       // De VOLGORDE, niet alleen de aanwezigheid: draai je de sortering om, dan hoort
@@ -894,15 +894,45 @@ describe('TransactieLijst — CSV exporteren', () => {
     }
   })
 
-  it('meldt hoeveel rijen er in het bestand zitten', async () => {
+  it('meldt hoeveel boekingen er meegingen', async () => {
     // Stond hier `transacties.length` in plaats van `zichtbaar.length`, dan meldt de
     // app een ander aantal dan er in het bestand staat.
     const user = userEvent.setup()
     toon([tx({ id: 't1' }), tx({ id: 't2' }), tx({ id: 't3' })])
     const vangst = vangDownload()
     try {
-      await user.click(screen.getByRole('button', { name: 'Exporteer CSV' }))
+      await user.click(screen.getByRole('button', { name: 'Exporteer als CSV' }))
       expect(await screen.findByRole('status')).toHaveTextContent('3 boeking(en) gedownload als CSV-bestand.')
+      // ⚠ Zonder gesplitst ticket zijn boekingen en rijen hetzelfde, en dan hoort de
+      // uitleg over de rijen er NIET te staan (ronde 97).
+      expect(await screen.findByRole('status')).not.toHaveTextContent('rijen')
+    } finally {
+      vangst.opruimen()
+    }
+  })
+
+  it('zegt er het aantal RIJEN bij zodra er een gesplitst kassaticket meegaat (ronde 97)', async () => {
+    // ⚠ Het bestand schrijft één rij per ticketregel, zodat een draaitabel op categorie
+    // klopt. De melding zei alleen hoeveel boekingen meegingen, en het commentaar bij de
+    // knop beweerde dat daar al stond hoeveel rijen het bestand kreeg. Wie het bestand
+    // opende, vond er meer dan aangekondigd.
+    const user = userEvent.setup()
+    toon([
+      tx({ id: 't1' }),
+      tx({
+        id: 't2',
+        regels: [
+          { bedrag: -3000, categorieId: 'cat-voeding' },
+          { bedrag: -2380, categorieId: 'cat-voeding' },
+        ],
+      }),
+    ])
+    const vangst = vangDownload()
+    try {
+      await user.click(screen.getByRole('button', { name: 'Exporteer als CSV' }))
+      const melding = await screen.findByRole('status')
+      expect(melding).toHaveTextContent('2 boeking(en) gedownload als CSV-bestand')
+      expect(melding).toHaveTextContent('3 rijen')
     } finally {
       vangst.opruimen()
     }
@@ -915,7 +945,7 @@ describe('TransactieLijst — CSV exporteren', () => {
     toon([tx({ id: 't1' })])
     const vangst = vangDownload()
     try {
-      await user.click(screen.getByRole('button', { name: 'Exporteer CSV' }))
+      await user.click(screen.getByRole('button', { name: 'Exporteer als CSV' }))
       expect(vangst.gevangen[0].soort).toBe('text/csv;charset=utf-8')
     } finally {
       vangst.opruimen()
@@ -932,7 +962,7 @@ describe('TransactieLijst — CSV exporteren', () => {
     await user.type(screen.getByLabelText(/Zoek/i), 'Colruyt')
     const vangst = vangDownload()
     try {
-      await user.click(screen.getByRole('button', { name: 'Exporteer CSV' }))
+      await user.click(screen.getByRole('button', { name: 'Exporteer als CSV' }))
       const inhoud = await vangst.inhoud()
       expect(inhoud).toContain('Colruyt')
       expect(inhoud).not.toContain('Delhaize')
@@ -948,7 +978,7 @@ describe('TransactieLijst — CSV exporteren', () => {
     await user.type(screen.getByLabelText(/Zoek/i), 'Colruyt')
     const vangst = vangDownload()
     try {
-      await user.click(screen.getByRole('button', { name: 'Exporteer CSV' }))
+      await user.click(screen.getByRole('button', { name: 'Exporteer als CSV' }))
       expect(vangst.gevangen[0].naam).toContain('colruyt')
       expect(vangst.gevangen[0].naam.endsWith('.csv')).toBe(true)
     } finally {
@@ -961,7 +991,7 @@ describe('TransactieLijst — CSV exporteren', () => {
     toon([tx({ id: 't1' })])
     const vangst = vangDownload()
     try {
-      await user.click(screen.getByRole('button', { name: 'Exporteer CSV' }))
+      await user.click(screen.getByRole('button', { name: 'Exporteer als CSV' }))
       const inhoud = await vangst.inhoud()
       // De byte-volgordemarkering wordt hier NIET nagegaan: een FileReader haalt ze
       // er bij het decoderen zelf uit. Dat ze in het bestand staat, bewijst
@@ -982,7 +1012,7 @@ describe('TransactieLijst — CSV exporteren', () => {
       throw new Error('geweigerd')
     }
     try {
-      await user.click(screen.getByRole('button', { name: 'Exporteer CSV' }))
+      await user.click(screen.getByRole('button', { name: 'Exporteer als CSV' }))
       expect(screen.getByRole('alert')).toHaveTextContent('Het bestand kon niet gedownload worden.')
     } finally {
       HTMLAnchorElement.prototype.click = echteClick

@@ -57,7 +57,7 @@ export function telVoorVerwijderen(
     // indexcijfers. Had je die net ingesteld maar nog geen post geboekt, dan zei het
     // venster "Er staat nog niets in dit dossier" terwijl al die afspraken weg gingen.
     [rekeningIds.size, '{n} kindrekening(en)'],
-    [gegevens.verrekeningen.filter((v) => v.dossierId === dossierId).length, '{n} verrekening(en)'],
+    [gegevens.verrekeningen.filter((v) => v.dossierId === dossierId).length, '{n} afrekening(en)'],
     [gegevens.kindrekeningposten.filter((p) => rekeningIds.has(p.kindrekeningId)).length, '{n} post(en) op de kindrekening'],
     [bijdrageIds.size, '{n} regeling(en) voor de onderhoudsbijdrage'],
     [

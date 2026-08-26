@@ -440,7 +440,7 @@ describe('SpaardoelSectie — wat de koppeling op de lijst zegt', () => {
     // twee `toContain` blijft de test groen wanneer de twee bedragen omgewisseld zijn —
     // en dat is precies wat deze zin moet uitsluiten (je moet zien welke kant het op moet).
     const zin = screen.getByText(/jouw doelbedrag staat op/)
-    expect(zin.textContent).toBe(`Die kost is ${formatEuro(62000)}; jouw doelbedrag staat op ${formatEuro(68000)}.`)
+    expect(zin.textContent).toBe(`Die vaste last kost ${formatEuro(62000)}; jouw doelbedrag staat op ${formatEuro(68000)}.`)
   })
 
   it('zwijgt over het bedrag wanneer de twee gelijk zijn', () => {
@@ -453,12 +453,16 @@ describe('SpaardoelSectie — wat de koppeling op de lijst zegt', () => {
     expect(screen.getByText(/aan dit tempo ben je te laat/)).toBeInTheDocument()
   })
 
-  it('zegt het wanneer de kost niet meer bestaat', () => {
+  it('zegt het wanneer de vaste last niet meer bestaat', () => {
     toonMetLasten([doel()], [huur])
-    expect(screen.getByText('Kost bestaat niet meer')).toBeInTheDocument()
+    expect(screen.getByText('Vaste last bestaat niet meer')).toBeInTheDocument()
+    // ⚠ RONDE 94 — de zin ERNAAST herhaalde het woord van de badge nog twee keer ("De
+    // vaste last waarvoor je spaarde, staat niet meer in je vaste lasten"). Ze zegt nu
+    // alleen nog wat de badge niet zegt. Zonder deze regel bewaakt niets die zin.
+    expect(screen.getByText('Je spaarde hiervoor, maar die is verwijderd. Het doel blijft gewoon lopen.')).toBeInTheDocument()
   })
 
-  it('zegt het wanneer de kost opgezegd is', () => {
+  it('zegt het wanneer de vaste last opgezegd is', () => {
     toonMetLasten([doel()], [{ ...premie, eindMaand: '2026-01' }])
     expect(screen.getByText(/daar komt geen betaling meer van/)).toBeInTheDocument()
   })
@@ -466,7 +470,7 @@ describe('SpaardoelSectie — wat de koppeling op de lijst zegt', () => {
   it('zwijgt volledig bij een doel zonder koppeling', () => {
     toonMetLasten([doel({ vasteLastId: undefined })])
     expect(screen.queryByText(/Voor Autoverzekering/)).toBeNull()
-    expect(screen.queryByText('Kost bestaat niet meer')).toBeNull()
+    expect(screen.queryByText('Vaste last bestaat niet meer')).toBeNull()
   })
 })
 
@@ -993,7 +997,7 @@ describe('SpaardoelSectie — het doelbedrag naast de kost (ronde 85)', () => {
   it('zet die twee bedragen NIET naast elkaar bij een maandelijkse kost', async () => {
     // ⚠ `doeldekking` kijkt niet naar het teken en niet naar het ritme, en dit scherm
     // krijgt ÁLLE terugkerende posten mee. Hangt je doel aan een post die intussen
-    // maandelijks werd, dan zei de zin "Die kost is € 950,00; jouw doelbedrag staat op
+    // maandelijks werd, dan zei de zin "Die vaste last kost € 950,00; jouw doelbedrag staat op
     // € 620,00" — met je huurbedrag erin. Ronde 79 hield de KNOP daar al buiten; sinds de
     // zin de getallen noemt, geldt hetzelfde voor de zin.
     toonMetLasten([{ id: 'd1', naam: 'Premie', doelbedrag: 62000, huidigBedrag: 0, vasteLastId: 'vl2' }])

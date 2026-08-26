@@ -362,7 +362,15 @@ function PostKaart({
         <Bedrag centen={regel.bedrag} groot />
       </Stat>
       <p className="rij-meta" style={{ margin: 0 }}>
-        {t('{n} boeking(en)', { n: regel.boekingen.length })}
+        {/* ⚠ RONDE 96 — bij de post "onderhoudsuitkeringen" zijn dit géén boekingen maar
+            BETALINGEN op een onderhoudsbijdrage uit de Dossiers-module. Het type zegt het
+            zelf ("een betaling op een onderhoudsbijdrage is geen boeking maar telt hier wel
+            mee"), de zin eronder zegt het ("Kijkt in: je betalingen …") en elke rij in de
+            uitklap heet letterlijk "Betaling" — alleen dít getal noemde ze boekingen. En je
+            kan er ook niet op doorklikken, want er hangt geen transactie aan. */}
+        {regel.post.uitOnderhoudsbetalingen
+          ? t('{n} betaling(en)', { n: regel.boekingen.length })
+          : t('{n} boeking(en)', { n: regel.boekingen.length })}
         {regel.metBon > 0 ? ` · ${t('{n} met bon', { n: regel.metBon })}` : ''}
       </p>
 
@@ -429,7 +437,13 @@ function PostKaart({
           aria-expanded={open}
           onClick={() => setOpen((aan) => !aan)}
         >
-          {open ? t('Verberg de boekingen') : t('Toon de {n} boeking(en)', { n: regel.boekingen.length })}
+          {regel.post.uitOnderhoudsbetalingen
+            ? open
+              ? t('Verberg de betalingen')
+              : t('Toon de {n} betaling(en)', { n: regel.boekingen.length })
+            : open
+              ? t('Verberg de boekingen')
+              : t('Toon de {n} boeking(en)', { n: regel.boekingen.length })}
         </button>
       </div>
 

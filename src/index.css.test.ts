@@ -642,3 +642,39 @@ describe('twee regels voor hetzelfde', () => {
     }
   })
 })
+
+describe('`.alleen-voorlezen` verbergt zonder te zwijgen (ronde 95)', () => {
+  // ⚠ WAAROM DIT HIER STAAT EN NIET BIJ DE COMPONENTEN. De rondes 92 en 95 hangen een
+  // onzichtbare toevoeging aan de naam van een veld ("Datum (gedeelde kost)") met
+  // `aria-labelledby` naar een `<span class="alleen-voorlezen">`. Dat werkt alleen zolang
+  // die klasse het element BUITEN BEELD zet en niet WEGHAALT: een element met
+  // `display: none` of `visibility: hidden` staat niet in de toegankelijkheidsboom, en
+  // dan halveert élke naam die ernaar wijst.
+  //
+  // ⚠ En geen enkele componenttest ziet dat, want jsdom rekent geen CSS uit: `textContent`
+  // blijft ook bij `display: none` gewoon staan. Die tests toetsen daarom de KLASSENAAM;
+  // wat die naam betekent, ligt hier vast. Zonder deze test kon iemand de regel omzetten
+  // naar `display: none` en bleef alles groen.
+  const regel = REGELS.find((r) => r.selector.trim() === '.alleen-voorlezen')
+
+  it('bestaat', () => {
+    expect(regel, 'er is geen regel `.alleen-voorlezen` in index.css').toBeDefined()
+  })
+
+  it('haalt het element niet uit de toegankelijkheidsboom', () => {
+    const d = new Map(declaraties(regel?.body ?? ''))
+    expect(d.get('display')).not.toBe('none')
+    expect(d.get('visibility')).not.toBe('hidden')
+    expect(d.get('content-visibility')).not.toBe('hidden')
+  })
+
+  it('zet het écht buiten beeld, in plaats van het gewoon te laten staan', () => {
+    // De klassieke techniek: één pixel groot, weggeknipt, absoluut gepositioneerd.
+    const d = new Map(declaraties(regel?.body ?? ''))
+    expect(d.get('position')).toBe('absolute')
+    expect(d.get('overflow')).toBe('hidden')
+    expect(d.has('clip-path') || d.has('clip')).toBe(true)
+    expect(d.get('width')).toBe('1px')
+    expect(d.get('height')).toBe('1px')
+  })
+})

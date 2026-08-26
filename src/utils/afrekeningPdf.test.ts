@@ -116,11 +116,11 @@ describe('exporteerAfrekeningPDF', () => {
     expect(tekst).toContain(formatEuro(12000))
   })
 
-  it('legt bij elke kost uit wie betaalde en wat jouw deel is', () => {
+  it('legt bij elke kost uit wie betaalde en wat jouw aandeel is', () => {
     const doorlopend = alleTekst(nep).replace(/\n/g, ' ')
     expect(doorlopend).toContain('betaald door jou')
     expect(doorlopend).toContain('betaald door partner')
-    expect(doorlopend).toContain('jouw deel')
+    expect(doorlopend).toContain('jouw aandeel')
   })
 
   it('markeert een buitengewone kost als zodanig', () => {

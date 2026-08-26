@@ -359,7 +359,7 @@ describe('PlanRegels — wat er nog nergens in zit (ronde 80)', () => {
     // bedoeld hebt — maar ze zwijgt er ook niet over.
     const huurMetCategorie = { ...huur, categorieId: 'ov-woning-en-vaste-lasten' }
     toon([huurMetCategorie], [{ id: 'b1', categorieId: 'ov-woning-en-vaste-lasten', bedrag: 100000 }])
-    expect(zin()).toMatch(/mogelijk twee keer in/)
+    expect(zin()).toMatch(/mogelijk twee keer/)
     expect(zin()).toMatch(/Huur/)
   })
 
@@ -392,7 +392,11 @@ describe('PlanRegels — wat er nog nergens in zit (ronde 80)', () => {
       '2026-07',
     )
     expect(document.querySelector('[data-nog-nergens]')).not.toBeNull()
-    expect(zin()).not.toMatch(/mogelijk twee keer in/)
+    // ⚠ EERST VASTSTELLEN DAT ER IETS STAAT (doorlichting ronde 94). `zin()` geeft een lege
+    // tekenreeks zodra `.rij-meta` er niet is, en een lege tekenreeks bevat "mogelijk twee
+    // keer" ook niet — dan slaagt de regel hieronder zonder ook maar iets te bewaken.
+    expect(zin()).toMatch(/te verdelen/)
+    expect(zin()).not.toMatch(/mogelijk twee keer/)
   })
 
   it('kapt de namenlijst af in plaats van er acht achter elkaar te zetten', () => {
@@ -431,6 +435,9 @@ describe('PlanRegels — wat er nog nergens in zit (ronde 80)', () => {
   it('zwijgt over dubbeltelling wanneer het budget een andere categorie is', () => {
     const huurMetCategorie = { ...huur, categorieId: 'ov-woning-en-vaste-lasten' }
     toon([huurMetCategorie], [{ id: 'b1', categorieId: 'ov-voeding', bedrag: 40000 }])
-    expect(zin()).not.toMatch(/mogelijk twee keer in/)
+    // ⚠ Zonder deze eerste regel bewaakt de tweede niets: staat de hele regel er niet, dan
+    // geeft `zin()` een lege tekenreeks terug en slaagt "bevat het niet" vanzelf.
+    expect(zin()).toMatch(/te verdelen/)
+    expect(zin()).not.toMatch(/mogelijk twee keer/)
   })
 })

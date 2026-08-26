@@ -240,3 +240,30 @@ describe('BoekingDialoog — zonder (genoeg) rekeningen', () => {
     expect(onNaarRekeningen).toHaveBeenCalledTimes(1)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 92 — de vensterkop spreekt de bolletjes niet meer tegen
+// ---------------------------------------------------------------------------
+describe('de kop van de invoerpopup bij een vaste post (ronde 92)', () => {
+  it('volgt de keuze "Uitgave of Inkomst" in het formulier', async () => {
+    // ⚠ Onder de knop "Vaste last" kan je alsnog "Inkomst" aanvinken. De kop stond hard op
+    // "Vaste last toevoegen" — en sinds ronde 92 zegt élk veld eronder "(vaste inkomst)".
+    const user = userEvent.setup()
+    toon()
+    await user.click(screen.getByRole('button', { name: 'Vaste last' }))
+    expect(screen.getByRole('heading', { name: 'Vaste last toevoegen' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('radio', { name: 'Inkomst' }))
+    expect(screen.getByRole('heading', { name: 'Vaste inkomst toevoegen' })).toBeInTheDocument()
+    // En de velden zeggen hetzelfde.
+    const veld = screen.getByLabelText('Omschrijving')
+    const naam = (veld.getAttribute('aria-labelledby') ?? '')
+      .split(' ')
+      .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
+      .join(' ')
+    expect(naam).toBe('Omschrijving (vaste inkomst)')
+
+    await user.click(screen.getByRole('radio', { name: 'Uitgave' }))
+    expect(screen.getByRole('heading', { name: 'Vaste last toevoegen' })).toBeInTheDocument()
+  })
+})

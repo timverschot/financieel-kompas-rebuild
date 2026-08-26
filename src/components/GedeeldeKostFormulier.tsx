@@ -131,6 +131,31 @@ export function GedeeldeKostFormulier({
   // De id van de regel die zegt wat er nog ontbreekt. De knop wijst ernaar met
   // `aria-describedby`, zodat wie erop landt de reden hoort (ronde 61).
   const redenId = useId()
+  const veldId = useId()
+
+  // ⚠ RONDE 95 — DE VELDEN VAN DIT FORMULIER HETEN GEWOON WAT ZE ZIJN.
+  //
+  // Tot deze ronde stond er "Kostomschrijving" en "Kostbedrag (€)" — precies het
+  // voorvoegsel dat ronde 88 op Budget → Vast wegdeed ("Vaste omschrijving"). Het stond
+  // er niet omdat het Nederlands is, maar om botsingen met velden elders te vermijden.
+  // Ernaast stond gewoon "Datum", dus het formulier was ook nog eens niet met zichzelf
+  // consequent.
+  //
+  // ⚠ EN OP DEZE PAGINA IS DAT NODIG. Staat het onderdeel "Kindrekening" aan, dan staat
+  // het formulier van de pot ONDER dit formulier op hetzelfde scherm. Opgemeten met de
+  // naamberekening van `dom-accessibility-api`, in beide toestanden van dat formulier:
+  // "Datum", "Bon/factuur (optioneel)", het zoekveld én de hoofdcategorieknop van de
+  // categoriekiezer, de groep "Voor wie? (optioneel)", elke gezinslidchip, de rondjes
+  // "Jij" en "Partner" — en na het weghalen van de voorvoegsels ook "Bedrag (€)".
+  //
+  // De oplossing is dezelfde als in ronde 83 en 92: het `<form>` draagt een NAAM (een
+  // landmark, dus een schermlezer kondigt hem aan zodra je erin komt), en elk veld dat
+  // een tweelingbroer heeft krijgt er onhoorbaar-zichtbaar een toevoeging bij via
+  // `aria-labelledby`. De zichtbare tekst staat daarbij VOORAAN en aaneengesloten
+  // (WCAG 2.5.3): wie "Datum" zegt, moet het veld raken dat "Datum" heet. En het label
+  // blijft een echt `<label htmlFor>`, zodat een klik erop het veld nog focust.
+  const soortId = `${veldId}-soort`
+  const formuliernaam = bewerken ? t('Deze gedeelde kost') : t('Nieuwe gedeelde kost')
   const geldig = omschrijving.trim().length > 0 && Number.isFinite(bedragCenten) && bedragCenten > 0
 
   async function verzend(e: FormEvent) {
@@ -190,14 +215,18 @@ export function GedeeldeKostFormulier({
   }
 
   return (
-    <form onSubmit={verzend} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <form onSubmit={verzend} aria-label={formuliernaam} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* De toevoeging waar de velden hieronder naar wijzen. Buiten beeld: wie kijkt, ziet
+          de lijst met kosten en de scheidingslijn erboven al en weet dus waar hij zit; wie
+          luistert, hoort alleen de veldnaam en heeft die toevoeging nodig. */}
+      <span id={soortId} className="alleen-voorlezen">{t('(gedeelde kost)')}</span>
       <div className="veldgroep">
-        <label className="label-caps" htmlFor="kostomschrijving">{t('Kostomschrijving')}</label>
-        <input id="kostomschrijving" value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} />
+        <label className="label-caps" id={`${veldId}-omschrijving-label`} htmlFor="kostomschrijving">{t('Omschrijving')}</label>
+        <input id="kostomschrijving" aria-labelledby={`${veldId}-omschrijving-label ${soortId}`} value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} />
       </div>
       <div className="veldgroep">
-        <label className="label-caps" htmlFor="kostbedrag">{t('Kostbedrag (€)')}</label>
-        <input id="kostbedrag" inputMode="decimal" placeholder="0,00" value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
+        <label className="label-caps" id={`${veldId}-bedrag-label`} htmlFor="kostbedrag">{t('Bedrag (€)')}</label>
+        <input id="kostbedrag" aria-labelledby={`${veldId}-bedrag-label ${soortId}`} inputMode="decimal" placeholder="0,00" value={bedrag} onChange={(e) => setBedrag(e.target.value)} />
       </div>
       {/* De categorie staat bewust vóór de soort kost: uit de categorie volgt het
           voorstel, dus in die volgorde lezen de twee velden als oorzaak en gevolg. */}
@@ -206,6 +235,7 @@ export function GedeeldeKostFormulier({
         onKies={(id) => setCategorieId(id ?? '')}
         gebruikerCategorieen={categorieen}
         onNieuweSubcategorie={onNieuweSubcategorie}
+        naamToevoeging={t('(gedeelde kost)')}
       />
       <div className="veldgroep">
         <label className="label-caps" htmlFor="kosttype">{t('Soort kost')}</label>
@@ -271,22 +301,43 @@ export function GedeeldeKostFormulier({
         waarden={kindIds}
         onWijzig={setKindIds}
         gezinsleden={kinderen}
+        naamToevoeging={t('(gedeelde kost)')}
       />
       <div className="veldgroep">
-        <label className="label-caps" htmlFor="kostdatum">{t('Datum')}</label>
-        <input id="kostdatum" type="date" value={datum} onChange={(e) => setDatum(e.target.value)} />
+        <label className="label-caps" id={`${veldId}-datum-label`} htmlFor="kostdatum">{t('Datum')}</label>
+        <input id="kostdatum" aria-labelledby={`${veldId}-datum-label ${soortId}`} type="date" value={datum} onChange={(e) => setDatum(e.target.value)} />
       </div>
-      <div className="veldgroep">
-        <span className="label-caps">{t('Betaald door:')}</span>
+      {/* ⚠ RONDE 95 — een echte GROEP met een naam, en een toevoeging op elk rondje.
+          Deze twee rondjes heetten "Jij" en "Partner", en die van de kindrekening
+          hieronder ook — vier rondjes, twee namen, op één scherm. Het kopje erboven was
+          een losse `<span>` die aan niets gekoppeld was, dus hulpsoftware hoorde alleen
+          "Jij, keuzerondje". Nu draagt de groep de vraag en zegt elk rondje uit welk
+          formulier het komt. */}
+      <div className="veldgroep" role="group" aria-labelledby={`${veldId}-betaald-label ${soortId}`}>
+        <span className="label-caps" id={`${veldId}-betaald-label`}>{t('Betaald door:')}</span>
         {/* `raak-label` (ronde 47): het bolletje zelf is 13 px en het label was
             23 px hoog. Dit is de enige keuze in dit formulier die de RICHTING van
             het geld bepaalt — wie hem mist, boekt een kost op de verkeerde ouder. */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
           <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <input type="radio" name="betaalddoor" checked={betaaldDoor === 'jij'} onChange={() => setBetaaldDoor('jij')} /> {t('Jij')}
+            <input
+              type="radio"
+              name="betaalddoor"
+              aria-labelledby={`${veldId}-betaald-jij ${soortId}`}
+              checked={betaaldDoor === 'jij'}
+              onChange={() => setBetaaldDoor('jij')}
+            />{' '}
+            <span id={`${veldId}-betaald-jij`}>{t('Jij')}</span>
           </label>
           <label className="raak-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <input type="radio" name="betaalddoor" checked={betaaldDoor === 'partner'} onChange={() => setBetaaldDoor('partner')} /> {t('Partner')}
+            <input
+              type="radio"
+              name="betaalddoor"
+              aria-labelledby={`${veldId}-betaald-partner ${soortId}`}
+              checked={betaaldDoor === 'partner'}
+              onChange={() => setBetaaldDoor('partner')}
+            />{' '}
+            <span id={`${veldId}-betaald-partner`}>{t('Partner')}</span>
           </label>
         </div>
       </div>
@@ -295,7 +346,7 @@ export function GedeeldeKostFormulier({
         <input id="kost-override" inputMode="decimal" placeholder={t('leeg = standaard van het dossier')} value={aandeelOverride} onChange={(e) => setAandeelOverride(e.target.value)} />
       </div>
       <div className="veldgroep">
-        <label className="label-caps" htmlFor="kost-bon">{t('Bon/factuur (optioneel)')}</label>
+        <label className="label-caps" id={`${veldId}-bon-label`} htmlFor="kost-bon">{t('Bon/factuur (optioneel)')}</label>
         {bonnetje ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {bonnetje.startsWith('data:image') && (
@@ -309,6 +360,7 @@ export function GedeeldeKostFormulier({
         ) : (
           <input
             id="kost-bon"
+            aria-labelledby={`${veldId}-bon-label ${soortId}`}
             type="file"
             accept="image/*,application/pdf"
             onChange={(e) => {

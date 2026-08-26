@@ -397,6 +397,51 @@ export type Vergelijking = {
   anderDossier?: string
 }
 
+/**
+ * De groepjes waarin de inleeskaart haar samenvatting opsomt.
+ *
+ * ⚠ WAAROM DIT HIER STAAT EN NIET IN DE KAART (ronde 96). De kaart filterde zelf, en
+ * daardoor telde ze dezelfde kost twee keer: `anderDossier` wordt hierboven op precies
+ * één plaats gezet, en daar staat het oordeel al op `'ongewijzigd'`. `elders` is dus een
+ * DEELVERZAMELING van `ongewijzigd`, terwijl de twee regels als losse punten onder elkaar
+ * stonden en lazen als groepen die elkaar uitsluiten. Bij drie kosten uit een ander
+ * dossier las je "3 kost(en) staan er al" én "3 kost(en) staan in een ander dossier" —
+ * zes vermeldingen voor drie kosten.
+ *
+ * Als zuivere functie is dat op verzonnen invoer te beproeven; in de kaart kon het alleen
+ * met een half ingelezen bestand.
+ */
+export type Uitwisselgroepen = {
+  nieuw: Vergelijking[]
+  gewijzigd: Vergelijking[]
+  dubbel: Vergelijking[]
+  /** Al gekend en ongewijzigd — maar NIET wat in een ander dossier staat. */
+  ongewijzigd: Vergelijking[]
+  vast: Vergelijking[]
+  elders: Vergelijking[]
+  anderePct: Vergelijking[]
+}
+
+export function groepeerVergelijkingen(vergelijkingen: Vergelijking[]): Uitwisselgroepen {
+  const elders = vergelijkingen.filter((x) => x.anderDossier)
+  return {
+    nieuw: vergelijkingen.filter((x) => x.oordeel === 'nieuw'),
+    gewijzigd: vergelijkingen.filter((x) => x.oordeel === 'gewijzigd'),
+    dubbel: vergelijkingen.filter((x) => x.oordeel === 'dubbel'),
+    ongewijzigd: vergelijkingen.filter((x) => x.oordeel === 'ongewijzigd' && !x.anderDossier),
+    vast: vergelijkingen.filter((x) => x.oordeel === 'vast'),
+    elders,
+    anderePct: vergelijkingen.filter(
+      (x) => x.anderePctDanDossier && (x.oordeel === 'nieuw' || x.oordeel === 'gewijzigd'),
+    ),
+  }
+}
+
+/** De namen van de andere dossiers, elk één keer. */
+export function andereDossiernamen(elders: Vergelijking[]): string[] {
+  return [...new Set(elders.map((x) => x.anderDossier).filter((naam): naam is string => !!naam))]
+}
+
 export type Uitwisseloverzicht = {
   vergelijkingen: Vergelijking[]
   reacties: { reactie: UitwisselReactie; eigen: GedeeldeKost }[]

@@ -79,6 +79,7 @@ export function HoofdcategorieChips({
   onKies,
   eigenCategorieen = [],
   voorkeurId,
+  naamToevoeging,
 }: {
   actiefId?: string
   onKies: (id: string, naam: string) => void
@@ -95,8 +96,12 @@ export function HoofdcategorieChips({
    * verschil tussen "een categorie van de app" en "een categorie van mij".
    */
   eigenCategorieen?: EigenCategorie[]
+  /** Zie `CategorieKiezer.naamToevoeging` (ronde 95). */
+  naamToevoeging?: string
 }) {
   const { t } = useT()
+  const knopId = useId()
+  const toevoegingId = useId()
   // De volgorde die de gebruiker zelf koos op de Categorieën-pagina. Komt uit een
   // context en niet als prop: deze kiezer zit vier lagen diep en op vier plaatsen.
   const volgorde = useHoofdvolgorde()
@@ -125,8 +130,18 @@ export function HoofdcategorieChips({
 
   return (
     <div className="hoofdkiezer">
+      {naamToevoeging && (
+        <span id={toevoegingId} className="alleen-voorlezen">
+          {naamToevoeging}
+        </span>
+      )}
       <button
         type="button"
+        id={knopId}
+        // ⚠ RONDE 95 — de knop wijst naar ZICHZELF én naar de toevoeging. Zo blijft zijn
+        // zichtbare tekst vooraan en aaneengesloten (WCAG 2.5.3) en staat er alleen
+        // achteraan bij welke van twee kiezers op hetzelfde scherm hij hoort.
+        aria-labelledby={naamToevoeging ? `${knopId} ${toevoegingId}` : undefined}
         className={'chip' + (actief ? ' chip-actief' : '')}
         aria-expanded={open}
         // Voorkom dat het invoerveld de focus verliest vóór de klik telt.
@@ -763,6 +778,7 @@ export function CategorieKiezer({
   gebruikerCategorieen,
   onNieuweSubcategorie,
   voorkeurId,
+  naamToevoeging,
 }: {
   waarde: string | undefined
   onKies: (id: string | undefined) => void
@@ -770,6 +786,17 @@ export function CategorieKiezer({
   onNieuweSubcategorie?: (plan: NieuweTak) => Promise<string>
   /** Hoofdcategorie die vooraan in de chiprij hoort. Zie `HoofdcategorieChips`. */
   voorkeurId?: string
+  /**
+   * Staat deze kiezer met een tweede op één scherm, dan zegt deze toevoeging bij welke
+   * van de twee het zoekveld hoort — bijvoorbeeld `(gedeelde kost)`.
+   *
+   * ⚠ EEN GEWONE PROP EN GEEN `aria-labelledby` OP HET COMPONENT (ronde 92): TypeScript
+   * controleert attributen met een streepje op een eigen component niet, dus zoiets
+   * compileert zonder één fout en doet vervolgens niets. En géén los `aria-label` dat de
+   * toevoeging vóór de zichtbare tekst zet: dit zoekveld heeft geen zichtbaar label, dus
+   * hier hoort de toevoeging gewoon achteraan in de naam zelf.
+   */
+  naamToevoeging?: string
 }) {
   const { t } = useT()
   const [zoek, setZoek] = useState('')
@@ -1018,7 +1045,11 @@ export function CategorieKiezer({
       <div style={{ position: 'relative' }}>
       <input
         ref={zoekRef}
-        aria-label={t('Zoek een categorie of subcategorie')}
+        aria-label={
+          naamToevoeging
+            ? `${t('Zoek een categorie of subcategorie')} ${naamToevoeging}`
+            : t('Zoek een categorie of subcategorie')
+        }
         autoCorrect="off"
         autoCapitalize="off"
         spellCheck={false}
@@ -1150,6 +1181,7 @@ export function CategorieKiezer({
               onKies={(id) => kies(id)}
               eigenCategorieen={gebruikerCategorieen}
               voorkeurId={voorkeurId}
+              naamToevoeging={naamToevoeging}
             />
             {/* Doorklikken in plaats van typen: zodra er een hoofdcategorie staat,
                 verschijnen de categorieën eronder, en daarna de subcategorieën. */}

@@ -528,7 +528,9 @@ function Achterstand({
         {telwijzeTekst(t)}
       </p>
 
-      <form className="stapel" onSubmit={voegToe} style={{ gap: 8 }}>
+      {/* ⚠ RONDE 95 — een naam op het `<form>`: op de dossierpagina staan meerdere
+          formulieren onder elkaar. De naam is dezelfde als het kopje erin. */}
+      <form className="stapel" onSubmit={voegToe} style={{ gap: 8 }} aria-label={t('Betaling toevoegen')}>
         <span className="label-caps">{t('Betaling toevoegen')}</span>
         <div className="veldrij">
           <label className="veldgroep">
@@ -773,11 +775,11 @@ function Regeling({
 
   return (
     <Kaart compact style={{ backgroundColor: 'var(--surface-2)', gap: 12 }} data-regeling>
-      <form className="stapel" onSubmit={bewaar} style={{ gap: 10 }}>
+      <form className="stapel" onSubmit={bewaar} style={{ gap: 10 }} aria-label={t('De regeling')}>
         <span className="label-caps">{t('De regeling')}</span>
         <div className="veldrij">
           <label className="veldgroep">
-            <span className="label-caps">{t('Bedrag uit de regeling')}</span>
+            <span className="label-caps">{t('Bedrag in de regeling')}</span>
             <input inputMode="decimal" value={basis} onChange={(e) => setBasis(e.target.value)} />
           </label>
           <label className="veldgroep">

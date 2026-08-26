@@ -192,7 +192,7 @@ function WaardeBijwerken({
         {binnenWaardering > 0 && (
           <p className="rij-meta" role="status" style={{ margin: 0, color: 'var(--warn-tekst)' }}>
             {t(
-              'De {n} boeking(en) van vóór en op deze dag tellen daarna niet meer apart mee — ze zitten al in dit bedrag. Ze blijven wel gewoon in je lijst staan.',
+              'De {n} boekingen en overboekingen van vóór en op deze dag tellen daarna niet meer apart mee — ze zitten al in dit bedrag. Ze blijven wel gewoon in je lijst staan.',
               { n: binnenWaardering },
             )}
           </p>
@@ -445,7 +445,7 @@ function KaartAfrekening({
               setOpen((aan) => !aan)
             }}
           >
-            {open ? t('Sluit') : t('Afrekening boeken')}
+            {open ? t('Sluiten') : t('Afrekening boeken')}
           </button>
 
           {open && (

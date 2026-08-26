@@ -4,7 +4,7 @@ import { INGEBOUWDE_CATEGORIEEN } from '../data/categorieen/ingebouwd'
 import { labelVanCategorie, padVanCategorie } from '../data/categorieen/resolve'
 import { filterTransacties, heeftActiefFilter, grensDatumMaandenTerug, type TxFilter } from '../utils/transactieFilter'
 import { filterDelen, type FilterNamen, type FilterSleutel } from '../utils/filterTekst'
-import { transactieCsvBestand, transactieCsvBestandsnaam } from '../utils/transactieCsv'
+import { transactieCsvBestand, transactieCsvBestandsnaam, telCsvRegels } from '../utils/transactieCsv'
 import { downloadTekst } from '../utils/download'
 import { groepenVanTransactie, isGesplitstOverCategorieen, type TransactieGroep } from '../utils/transactie'
 import { formatEuro } from '../utils/format'
@@ -389,7 +389,20 @@ export function TransactieLijst({
       setExportFout('')
       // Bij een download gebeurt er op het scherm niets. Zonder deze regel weet wie
       // met een schermlezer werkt niet of het bestand er komt.
-      setExportKlaar(t('{n} boeking(en) gedownload als CSV-bestand.', { n: zichtbaar.length }))
+      // ⚠ RONDE 97 — HET BESTAND HEEFT MEER RIJEN DAN BOEKINGEN zodra er een gesplitst
+      // kassaticket bij zit: `transactieCsvRijen` schrijft één rij PER TICKETREGEL, zodat
+      // een draaitabel op categorie klopt. Deze melding zei alleen het aantal boekingen,
+      // en het commentaar bij de knop beweerde dat daar al stond hoeveel rijen het bestand
+      // kreeg. Wie het bestand opende, vond er dan meer dan aangekondigd.
+      const regels = telCsvRegels(zichtbaar)
+      setExportKlaar(
+        regels === zichtbaar.length
+          ? t('{n} boeking(en) gedownload als CSV-bestand.', { n: zichtbaar.length })
+          : t('{n} boeking(en) gedownload als CSV-bestand — {r} rijen, want een gesplitst kassaticket krijgt een rij per regel.', {
+              n: zichtbaar.length,
+              r: regels,
+            }),
+      )
     } catch {
       setExportKlaar('')
       setExportFout(t('Het bestand kon niet gedownload worden. Probeer het opnieuw.'))
@@ -759,8 +772,10 @@ export function TransactieLijst({
               ? t('{n} boeking(en) gevonden', { n: gesorteerd.length })
               : t('{n} boeking(en) getoond', { n: zichtbaar.length })}
           </p>
-          {/* Naast de teller, bewust: daar staat al hoeveel rijen er in het bestand
-              komen, dus hoeft de knop dat niet nog eens uit te leggen. */}
+          {/* Naast de teller, bewust: daar staat al hoeveel BOEKINGEN er meegaan, dus
+              hoeft de knop dat niet nog eens uit te leggen. ⚠ Hoeveel RIJEN het bestand
+              krijgt, staat er niet — dat zijn er meer zodra er een gesplitst kassaticket
+              bij zit, en dat zegt de melding ná de download (ronde 97). */}
           {zichtbaar.length > 0 && (
             <button
               type="button"
@@ -768,7 +783,7 @@ export function TransactieLijst({
               style={{ whiteSpace: 'nowrap' }}
               onClick={exporteerCsv}
             >
-              {t('Exporteer CSV')}
+              {t('Exporteer als CSV')}
             </button>
           )}
           {/* Bewust hier en niet in de kolomkop: die kop bestaat pas vanaf 1024 px,

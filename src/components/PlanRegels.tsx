@@ -271,10 +271,10 @@ export function PlanRegels({
             {dubbel.length > 0 &&
               ' ' +
                 (dubbel.length === 1
-                  ? t('Let op: {naam} valt ook onder een van je budgetten. Dan zit die kost hier mogelijk twee keer in — één keer als vaste last, één keer via dat budget.', {
+                  ? t('Let op: {naam} valt ook onder een van je budgetten. Dan telt die uitgave hier mogelijk twee keer — één keer als vaste last, één keer via dat budget.', {
                       naam: dubbel[0].omschrijving,
                     })
-                  : t('Let op: {namen} vallen ook onder je budgetten. Dan zitten die kosten hier mogelijk twee keer in — één keer als vaste last, één keer via een budget.', {
+                  : t('Let op: {namen} vallen ook onder je budgetten. Dan tellen die uitgaven hier mogelijk twee keer — één keer als vaste last, één keer via een budget.', {
                       namen: namenlijst(t, dubbel.map((p) => p.omschrijving)),
                     }))}
           </Herkomstregel>

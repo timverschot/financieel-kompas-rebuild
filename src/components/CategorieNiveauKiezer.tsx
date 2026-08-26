@@ -30,6 +30,8 @@ export function CategorieNiveauKiezer({
   onKies,
   categorieen,
   metGeenKeuze = false,
+  labelledBy,
+  naamToevoegingId,
 }: {
   id: string
   waarde: string
@@ -37,6 +39,28 @@ export function CategorieNiveauKiezer({
   categorieen: Categorie[]
   /** Voegt bovenaan een lege keuze toe, voor velden waar geen categorie mag. */
   metGeenKeuze?: boolean
+  /**
+   * Waar de keuzelijst haar naam vandaan haalt, als `aria-labelledby` op het `<select>`.
+   *
+   * ⚠ EEN EIGEN PROP IN CAMELCASE, EN GEEN `aria-labelledby` VAN BUITEN (ronde 92).
+   * TypeScript controleert JSX-attributen die geen geldige JS-naam zijn — alles met een
+   * koppelteken, dus élke `aria-*` — NIET op een eigen component. Schrijf je
+   * `<CategorieNiveauKiezer aria-labelledby="…" />`, dan compileert dat schoon, komt het
+   * nergens terecht en merkt niemand er iets van. Precies dat is in deze ronde gebeurd, en
+   * alleen een test die de naam UITREKENDE ving het.
+   */
+  labelledBy?: string
+  /**
+   * Het id van de verduidelijking die achter ELKE naam in deze kiezer hoort — ook achter
+   * die van het zoekveld ernaast.
+   *
+   * ⚠ WAAROM APART VAN `labelledBy` (doorlichting ronde 92). Deze component draagt TWEE
+   * bedieningen: de keuzelijst én het zoekveld erboven. `labelledBy` bedient alleen de
+   * eerste. Staat deze kiezer twee keer op één scherm — en dat doet ze op Budget → Vast —
+   * dan heette dat zoekveld nog altijd twee keer "Zoek een categorie". Acht van de negen
+   * paren waren opgelost, het negende niet.
+   */
+  naamToevoegingId?: string
 }) {
   const { t } = useT()
   const [zoek, setZoek] = useState('')
@@ -84,8 +108,15 @@ export function CategorieNiveauKiezer({
 
   return (
     <div className="stapel" style={{ gap: 6 }}>
+      {/* ⚠ Geen kaal `aria-label` meer (doorlichting ronde 92): dan kan er geen
+          verduidelijking achter, en heette dit veld op Budget → Vast twee keer hetzelfde.
+          De naam komt nu uit een verborgen span, gevolgd door diezelfde toevoeging als bij
+          de keuzelijst eronder. */}
+      <span id={`${id}-zoek-label`} className="alleen-voorlezen">
+        {t('Zoek een categorie')}
+      </span>
       <input
-        aria-label={t('Zoek een categorie')}
+        aria-labelledby={naamToevoegingId ? `${id}-zoek-label ${naamToevoegingId}` : `${id}-zoek-label`}
         placeholder={t('Typ om ook subcategorieën te zoeken…')}
         value={zoek}
         onChange={(e) => setZoek(e.target.value)}
@@ -95,6 +126,7 @@ export function CategorieNiveauKiezer({
           scheelt een extra klik, en je ziet ook of er iets gevonden is. */}
       <select
         id={id}
+        aria-labelledby={labelledBy}
         value={waarde}
         onChange={(e) => onKies(e.target.value)}
         size={term.length >= ZOEK_VANAF ? Math.min(6, Math.max(2, compleet.length + (metGeenKeuze ? 1 : 0))) : 1}

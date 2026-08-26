@@ -9,7 +9,7 @@ describe('RekeningFormulier — kredietrekening (ronde 38)', () => {
     render(<RekeningFormulier onOpslaan={vi.fn()} />)
 
     expect(screen.queryByLabelText('Kredietlimiet (€)')).not.toBeInTheDocument()
-    await gebruiker.selectOptions(screen.getByLabelText('Type'), 'krediet')
+    await gebruiker.selectOptions(screen.getByLabelText('Soort'), 'krediet')
     expect(screen.getByLabelText('Kredietlimiet (€)')).toBeInTheDocument()
     expect(screen.getByLabelText('Afsluitdag van de kaart')).toBeInTheDocument()
     expect(screen.getByLabelText('Dag waarop het bedrag afgeboekt wordt')).toBeInTheDocument()
@@ -21,7 +21,7 @@ describe('RekeningFormulier — kredietrekening (ronde 38)', () => {
     render(<RekeningFormulier onOpslaan={onOpslaan} />)
 
     await gebruiker.type(screen.getByLabelText('Rekeningnaam'), 'Visa')
-    await gebruiker.selectOptions(screen.getByLabelText('Type'), 'krediet')
+    await gebruiker.selectOptions(screen.getByLabelText('Soort'), 'krediet')
     // Bij een kaart typ je wat er OPENSTAAT; de opslag houdt dat negatief.
     await gebruiker.type(screen.getByLabelText('Openstaand bij de start (€)'), '120,50')
     await gebruiker.type(screen.getByLabelText('Kredietlimiet (€)'), '2500')
@@ -40,9 +40,9 @@ describe('RekeningFormulier — kredietrekening (ronde 38)', () => {
     render(<RekeningFormulier onOpslaan={onOpslaan} />)
 
     await gebruiker.type(screen.getByLabelText('Rekeningnaam'), 'Zicht')
-    await gebruiker.selectOptions(screen.getByLabelText('Type'), 'krediet')
+    await gebruiker.selectOptions(screen.getByLabelText('Soort'), 'krediet')
     await gebruiker.type(screen.getByLabelText('Kredietlimiet (€)'), '2500')
-    await gebruiker.selectOptions(screen.getByLabelText('Type'), 'betaal')
+    await gebruiker.selectOptions(screen.getByLabelText('Soort'), 'betaal')
     await gebruiker.click(screen.getByRole('button', { name: /toevoegen/i }))
 
     const opgeslagen = onOpslaan.mock.calls[0][0]
@@ -58,7 +58,7 @@ describe('RekeningFormulier — kredietrekening (ronde 38)', () => {
     render(<RekeningFormulier onOpslaan={onOpslaan} />)
 
     await gebruiker.type(screen.getByLabelText('Rekeningnaam'), 'Visa')
-    await gebruiker.selectOptions(screen.getByLabelText('Type'), 'krediet')
+    await gebruiker.selectOptions(screen.getByLabelText('Soort'), 'krediet')
     await gebruiker.type(screen.getByLabelText('Afsluitdag van de kaart'), '31')
     await gebruiker.click(screen.getByRole('button', { name: /toevoegen/i }))
 
@@ -72,7 +72,7 @@ describe('RekeningFormulier — kredietrekening (ronde 38)', () => {
     render(<RekeningFormulier onOpslaan={onOpslaan} />)
 
     await gebruiker.type(screen.getByLabelText('Rekeningnaam'), 'Visa')
-    await gebruiker.selectOptions(screen.getByLabelText('Type'), 'krediet')
+    await gebruiker.selectOptions(screen.getByLabelText('Soort'), 'krediet')
     await gebruiker.type(screen.getByLabelText('Kredietlimiet (€)'), '0')
     await gebruiker.click(screen.getByRole('button', { name: /toevoegen/i }))
 
@@ -91,7 +91,7 @@ describe('RekeningFormulier — het teken van een kaart (ronde 43)', () => {
     render(<RekeningFormulier onOpslaan={onOpslaan} />)
 
     await gebruiker.type(screen.getByLabelText('Rekeningnaam'), 'Mastercard')
-    await gebruiker.selectOptions(screen.getByLabelText('Type'), 'krediet')
+    await gebruiker.selectOptions(screen.getByLabelText('Soort'), 'krediet')
     await gebruiker.type(screen.getByLabelText('Openstaand bij de start (€)'), '1000')
     await gebruiker.type(screen.getByLabelText('Kredietlimiet (€)'), '4000')
     await gebruiker.click(screen.getByRole('button', { name: /toevoegen/i }))
@@ -135,7 +135,7 @@ describe('RekeningFormulier — het teken van een kaart (ronde 43)', () => {
     render(<RekeningFormulier onOpslaan={onOpslaan} />)
 
     await gebruiker.type(screen.getByLabelText('Rekeningnaam'), 'Visa')
-    await gebruiker.selectOptions(screen.getByLabelText('Type'), 'krediet')
+    await gebruiker.selectOptions(screen.getByLabelText('Soort'), 'krediet')
     await gebruiker.type(screen.getByLabelText('Dag waarop het bedrag afgeboekt wordt'), '31')
     await gebruiker.click(screen.getByRole('button', { name: /toevoegen/i }))
     expect(onOpslaan).not.toHaveBeenCalled()
@@ -161,7 +161,7 @@ describe('RekeningFormulier — van type wisselen (ronde 43)', () => {
     )
 
     expect(screen.getByLabelText('Openstaand bij de start (€)')).toHaveValue('1000,00')
-    await gebruiker.selectOptions(screen.getByLabelText('Type'), 'betaal')
+    await gebruiker.selectOptions(screen.getByLabelText('Soort'), 'betaal')
     expect(screen.getByLabelText('Beginsaldo (€)')).toHaveValue('-1000,00')
     await gebruiker.click(screen.getByRole('button', { name: /bewaar|opslaan|wijzig/i }))
     expect(onOpslaan).toHaveBeenCalledWith(expect.objectContaining({ beginsaldo: -100000, type: 'betaal' }))
@@ -186,7 +186,7 @@ describe('RekeningFormulier — van type wisselen (ronde 43)', () => {
     render(<RekeningFormulier onOpslaan={onOpslaan} />)
 
     await gebruiker.type(screen.getByLabelText('Rekeningnaam'), 'Visa')
-    await gebruiker.selectOptions(screen.getByLabelText('Type'), 'krediet')
+    await gebruiker.selectOptions(screen.getByLabelText('Soort'), 'krediet')
     await gebruiker.type(screen.getByLabelText('Openstaand bij de start (€)'), '0')
     await gebruiker.click(screen.getByRole('button', { name: /toevoegen/i }))
 

@@ -152,7 +152,7 @@ describe('vertaaltabellen', () => {
       'Delete — X, Y',
     )
     expect(vertaal('fr', '{details} ({n} van {totaal})', { details: 'X', n: 1, totaal: 2 })).toBe('X (1 sur 2)')
-    expect(vertaal('en', 'Het gaat over de kost van {details}.', { details: 'X' })).toBe('This is the cost of X.')
+    expect(vertaal('en', 'Het gaat over de vaste last van {details}.', { details: 'X' })).toBe('This is about the fixed cost of X.')
     // ⚠ Eén register voor de periodes: "per month" naast "per quarter" en "per year",
     // niet "a month". Ze staan sinds deze ronde allemaal in dezelfde knopnaam.
     for (const sleutel of ['per maand', 'per kwartaal', 'per half jaar', 'per jaar']) {
@@ -197,7 +197,7 @@ describe('vertaaltabellen', () => {
   })
 
   it('vertaalt de nieuwe teksten van ronde 41', () => {
-    expect(vertaal('en', 'Exporteer CSV')).toBe('Export CSV')
+    expect(vertaal('en', 'Exporteer als CSV')).toBe('Export as CSV')
     expect(vertaal('fr', 'Bewijsmap')).toBe('Dossier de preuves')
     expect(vertaal('en', 'Maandrapport {periode}', { periode: 'March 2026' })).toBe('Monthly report March 2026')
     expect(vertaal('fr', 'Heel {jaar} als PDF', { jaar: 2026 })).toBe('Toute l’année 2026 en PDF')
@@ -215,7 +215,7 @@ describe('vertaaltabellen', () => {
 
   it('vertaalt de nieuwe teksten van ronde 40', () => {
     expect(vertaal('en', 'Bekijk bij Boekingen ›')).toBe('View under Entries ›')
-    expect(vertaal('fr', 'Toon opbouw')).toBe('Afficher le détail')
+    expect(vertaal('fr', 'Toon de opbouw')).toBe('Afficher le détail')
     // ⚠ De sleutel 'Boek {naam} in' is in ronde 82 vervallen: de zichtbare tekst
     // "Boek in" kwam er niet aaneengesloten in voor, en dat is een WCAG 2.5.3-fout.
     // De knop gaat nu langs `knopnaamVoorPost`, net als op de twee andere schermen.
@@ -230,7 +230,7 @@ describe('vertaaltabellen', () => {
 
   it('vertaalt de nieuwe teksten van ronde 21', () => {
     expect(vertaal('en', 'Vaste last')).toBe('Fixed cost')
-    expect(vertaal('fr', 'Sparen')).toBe('Épargner')
+    expect(vertaal('fr', 'Sparen')).toBe('Épargne')
     expect(vertaal('en', 'Opslaan + volgende')).toBe('Save + next')
     expect(vertaal('fr', 'Wat wil je boeken?')).toBe('Que veux-tu enregistrer ?')
   })
@@ -239,7 +239,7 @@ describe('vertaaltabellen', () => {
     // ⚠ RONDE 83 — was 'Recurring income'. Deze kaarttitel staat pal boven de knop
     // "Add fixed income"; twee woorden voor één ding, in twaalf centimeter scherm.
     expect(vertaal('en', 'Vaste inkomsten')).toBe('Fixed income')
-    expect(vertaal('fr', 'Uitboeken')).toBe('Annuler l’écriture')
+    expect(vertaal('fr', 'Uitboeken')).toBe('Décomptabiliser')
     expect(vertaal('en', 'Zoek een categorie')).toBe('Search for a category')
     expect(vertaal('fr', 'Nog geen vaste lasten.')).toBe('Pas encore de charges fixes.')
     expect(vertaal('en', '{naam} ingeboekt', { naam: 'Rent' })).toBe('Rent recorded')
@@ -415,7 +415,7 @@ describe('vertaaltabellen — het fiscale jaaroverzicht', () => {
   it('vertaalt de kolomkoppen van het CSV-bestand', () => {
     // Het bestand gaat naar een boekhouder; een kop die terugvalt op het Nederlands
     // maakt van een Franstalig bestand een half-Nederlands bestand.
-    expect(vertaal('fr', 'Totaal per post')).toBe('Total par rubrique')
+    expect(vertaal('fr', 'Totaal per post')).toBe('Total par poste')
     expect(vertaal('en', 'Komt in aanmerking')).toBe('Qualifying amount')
     expect(vertaal('fr', 'Aantal met bon')).toBe('Nombre avec justificatif')
   })
@@ -567,22 +567,26 @@ describe('vertaaltabellen — één woord per ding in EN en FR (ronde 89)', () =
     expect(vertaal('en', 'Boeking bewerken')).toBe('Edit entry')
   })
 
-  it('gebruikt in het Frans overal "Modifier" voor allebei die families', () => {
-    // Het Frans onderscheidt ze niet, en dat is daar de gewone vorm — maar dan wel
-    // consequent: geen "Changer" of "Éditer" ertussen.
-    // ⚠ ALLEEN `Modifier` (doorlichting ronde 89). De eerste versie liet ook `Mettre`
-    // toe, en die tak ving niets: geen enkele sleutel in dit bereik begon ermee. Ze liet
-    // wél toe dat iemand morgen "Mettre à jour la charge fixe" schrijft — precies waar de
-    // naam van deze test "overal Modifier" belooft.
+  it('houdt die twee families in het Frans óók uit elkaar (aangescherpt in ronde 91)', () => {
+    // ⚠ RONDE 89 LIET ZE HIER SAMENVALLEN, RONDE 91 HAALT ZE UIT ELKAAR. Ronde 89 koos
+    // bewust voor "overal `Modifier`", met als redenering dat het Frans dat onderscheid
+    // niet maakt. Dat klopt niet: het Frans heeft er wél twee woorden voor, en het is
+    // precies dezelfde tweedeling als in het Engels. Zolang ze samenvielen, droegen op
+    // Budget → Vast de knop die OPENT en de knop die OPSLAAT dezelfde naam.
+    //
+    //   NL "… bewerken" (opent een scherm)   → EN `Edit …`   → FR `Modifier …`
+    //   NL "… wijzigen"  (slaat op)           → EN `Update …` → FR `Mettre à jour …`
     const fout: string[] = []
     for (const k of vertaalSleutels('fr')) {
       const fr = vertaal('fr', k)
-      if ((/(^|\s)wijzigen$/i.test(k) || /^Bewerk(en)?\b|\sbewerken$/i.test(k)) && !/^Modifier\b/.test(fr)) {
-        fout.push(`${k} → ${fr}`)
-      }
+      if (/(^|\s)wijzigen$/i.test(k) && !/^Mettre à jour\b/.test(fr)) fout.push(`opslaan: ${k} → ${fr}`)
+      if (/^Bewerk(en)?\b|\sbewerken$/i.test(k) && !/^Modifier\b/.test(fr)) fout.push(`openen: ${k} → ${fr}`)
     }
     expect(fout).toEqual([])
-    expect(vertaal('fr', 'Vaste last wijzigen')).toBe('Modifier la charge fixe')
-    expect(vertaal('fr', 'Wijzigen')).toBe('Modifier')
+    // ⚠ POSITIEF, zodat deze test niet over niets loopt: allebei de families bestaan écht.
+    expect(vertaal('fr', 'Vaste last wijzigen')).toBe('Mettre à jour la charge fixe')
+    expect(vertaal('fr', 'Wijzigen')).toBe('Mettre à jour')
+    expect(vertaal('fr', 'Bewerken')).toBe('Modifier')
+    expect(vertaal('fr', 'Boeking bewerken')).toBe('Modifier l’écriture')
   })
 })

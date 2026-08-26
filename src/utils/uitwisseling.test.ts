@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
+  groepeerVergelijkingen,
+  andereDossiernamen,
   bouwUitwisselBestand,
   leesUitwisselBestand,
   vergelijkMetDossier,
@@ -17,6 +19,7 @@ import {
   UITWISSEL_VERSIE,
   type UitwisselBestand,
 } from './uitwisseling'
+import type { Vergelijking } from './uitwisseling'
 import type { UitwisselKost } from './uitwisseling'
 import type { Dossier, GedeeldeKost, Kind } from '../data/schema'
 import { veiligeBestandsnaam } from './download'
@@ -698,5 +701,74 @@ describe('het ingelezen aandeel apart bewaren', () => {
     const opnieuw = metWijziging(zelfAangepast, { ...binnen, aandeelAfzender: 25 })
     expect(opnieuw.aandeelJijOverride).toBe(75)
     expect(opnieuw.uitwisselAandeel).toBe(75)
+  })
+})
+
+describe('groepeerVergelijkingen — dezelfde kost staat maar in één groepje (ronde 96)', () => {
+  const v = (over: Partial<Vergelijking>): Vergelijking =>
+    ({
+      kost: { id: 'x', omschrijving: 'Schoolreis', bedrag: 1000, datum: '2026-07-01', betaaldDoorAfzender: true, aandeelAfzender: 50 },
+      oordeel: 'ongewijzigd',
+      aandeelJij: 50,
+      anderePctDanDossier: false,
+      ...over,
+    }) as Vergelijking
+
+  it('rekent een kost uit een ander dossier NIET ook bij "staat er al"', () => {
+    // ⚠ `anderDossier` wordt maar op één plaats gezet, en daar staat het oordeel al op
+    // 'ongewijzigd'. De kaart somde die twee als losse punten op: bij drie zulke kosten
+    // las je "3 staan er al" én "3 staan in een ander dossier" — zes vermeldingen voor
+    // drie kosten.
+    const groepen = groepeerVergelijkingen([
+      v({ anderDossier: 'Kinderen' }),
+      v({ anderDossier: 'Kinderen' }),
+      v({}),
+    ])
+    expect(groepen.elders).toHaveLength(2)
+    expect(groepen.ongewijzigd).toHaveLength(1)
+  })
+
+  it('laat de andere groepjes ongemoeid', () => {
+    const groepen = groepeerVergelijkingen([
+      v({ oordeel: 'nieuw' }),
+      v({ oordeel: 'gewijzigd' }),
+      v({ oordeel: 'dubbel' }),
+      v({ oordeel: 'vast', anderDossier: 'Kinderen' }),
+    ])
+    expect(groepen.nieuw).toHaveLength(1)
+    expect(groepen.gewijzigd).toHaveLength(1)
+    expect(groepen.dubbel).toHaveLength(1)
+    expect(groepen.vast).toHaveLength(1)
+    // ⚠ 'vast' met een ander dossier telt in BEIDE — dat is bedoeld, want de kaart toont
+    // die twee zinnen over verschillende dingen ("liggen vast" gaat over afgerekend zijn).
+    // Zou dat ooit veranderen, dan hoort deze regel mee te veranderen.
+    expect(groepen.elders).toHaveLength(1)
+    expect(groepen.ongewijzigd).toEqual([])
+  })
+
+  it('telt "ander percentage" alleen bij wat er ook echt bij komt', () => {
+    const groepen = groepeerVergelijkingen([
+      v({ oordeel: 'nieuw', anderePctDanDossier: true }),
+      v({ oordeel: 'gewijzigd', anderePctDanDossier: true }),
+      v({ oordeel: 'ongewijzigd', anderePctDanDossier: true }),
+      v({ oordeel: 'vast', anderePctDanDossier: true }),
+    ])
+    expect(groepen.anderePct).toHaveLength(2)
+  })
+
+  it('noemt elk ander dossier één keer', () => {
+    const namen = andereDossiernamen([
+      v({ anderDossier: 'Kinderen' }),
+      v({ anderDossier: 'Kinderen' }),
+      v({ anderDossier: 'Auto' }),
+      v({}),
+    ])
+    expect(namen).toEqual(['Kinderen', 'Auto'])
+  })
+
+  it('geeft lege groepjes terug op een lege lijst', () => {
+    const groepen = groepeerVergelijkingen([])
+    expect(Object.values(groepen).every((g) => g.length === 0)).toBe(true)
+    expect(andereDossiernamen([])).toEqual([])
   })
 })

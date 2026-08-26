@@ -231,7 +231,7 @@ export function KindkostenSectie({
             alleen laat je raden of drie weken verschil ook meetelt. */}
         {overzicht.mogelijkeDubbels > 0 && (
           <p className="statusregel" style={{ margin: 0 }} data-dubbels>
-            {t('Let op: {n} gedeelde kost(en) komen op hetzelfde bedrag uit als een losse boeking van rond dezelfde datum (hoogstens {dagen} dagen ernaast). Staat dezelfde uitgave hier twee keer, dan is dit bedrag te hoog. Koppel zo’n boeking aan het dossier in het invoervenster, dan telt ze maar één keer.', {
+            {t('Let op: {n} gedeelde kost(en) komen op hetzelfde bedrag uit als een losse boeking — of als één regel van een gesplitst kassaticket — van rond dezelfde datum (hoogstens {dagen} dagen ernaast). Staat dezelfde uitgave hier twee keer, dan is dit bedrag te hoog. Koppel zo’n boeking aan het dossier in het invoervenster, dan telt ze maar één keer.', {
               n: overzicht.mogelijkeDubbels,
               dagen: DUBBEL_SPELING_DAGEN,
             })}

@@ -96,8 +96,8 @@ export function TopDrie({
               knoppen allebei "Bekijk in Analyse ›". */}
           {rest > 0
             ? richting === 'inkomst'
-              ? t('Bekijk alle {n} inkomsten in Analyse ›', { n: posten.length })
-              : t('Bekijk alle {n} uitgaven in Analyse ›', { n: posten.length })
+              ? t('Bekijk alle {n} inkomstencategorieën in Analyse ›', { n: posten.length })
+              : t('Bekijk alle {n} uitgavencategorieën in Analyse ›', { n: posten.length })
             : richting === 'inkomst'
               ? t('Bekijk je inkomsten in Analyse ›')
               : t('Bekijk je uitgaven in Analyse ›')}

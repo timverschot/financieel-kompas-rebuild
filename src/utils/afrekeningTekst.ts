@@ -119,7 +119,7 @@ export function totaalRegels(t: Vertaler, o: AfrekeningOverzicht): { label: stri
 // leesbaar blijft.
 export function regelMeta(t: Vertaler, r: AfrekeningRegel, bonStatus?: string): string[] {
   const wie = t('betaald door {wie}', { wie: r.betaaldDoorJou ? t('jou') : t('partner') })
-  const eerste = [wie, t('jij {p}%', { p: r.percentageJij }), `${t('jouw deel')} ${formatEuro(r.jouwAandeel)}`]
+  const eerste = [wie, t('jij {p}%', { p: r.percentageJij }), `${t('jouw aandeel')} ${formatEuro(r.jouwAandeel)}`]
 
   const tweede: string[] = []
   if (r.kostenType === 'buitengewoon') tweede.push(t('buitengewoon'))
