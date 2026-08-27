@@ -93,6 +93,7 @@ export function Donut({
   toonLegende = true,
   grootte = GROOTTE,
   interactief = false,
+  percentages: gegevenPercentages,
   onKies,
 }: {
   items: DonutInvoer[]
@@ -136,6 +137,20 @@ export function Donut({
    * bestaan — en zou er met `onKies` géén weg terug naar het totaal zijn.
    */
   onKies?: (segment: DonutSegment) => void
+  /**
+   * De percentages van BUITEN, één per item, wanneer de ring niet dezelfde lijst toont
+   * als de legende ernaast (ronde 105).
+   *
+   * ⚠ WAAROM DIT BESTAAT. `DonutKaart` kapt de ring af op tien schijven plus "Overige",
+   * terwijl de legenderij ernaast over de VOLLEDIGE lijst rekent. Twee keer dezelfde
+   * grootste-restmethode op een andere verzameling verdeelt de restprocenten anders: bij
+   * twaalf winkels stond de tiende rij in de lijst op 7% en zei haar schijf 6%. Krijgt de
+   * donut de percentages van de lijst mee, dan kan dat niet meer gebeuren.
+   *
+   * Blijft de prop weg, dan rekent de donut ze zelf uit — dat is het gewone geval, waarin
+   * ring en legende dezelfde items tonen.
+   */
+  percentages?: number[]
 }) {
   const { t } = useT()
   const [gekozen, setGekozen] = useState<number | null>(null)
@@ -178,8 +193,9 @@ export function Donut({
   if (segmenten.length === 0) return null
   const totaal = segmenten.reduce((s, seg) => s + seg.bedrag, 0)
   const enkel = segmenten.length === 1
-  // Percentages in één keer berekend, zodat de legende netjes op 100% uitkomt.
-  const percentages = afgerondePercentages(segmenten.map((seg) => seg.bedrag))
+  // Percentages in één keer berekend, zodat de legende netjes op 100% uitkomt — tenzij de
+  // kaart ze meegeeft omdat haar eigen lijst langer is dan deze ring (zie de prop).
+  const percentages = gegevenPercentages ?? afgerondePercentages(segmenten.map((seg) => seg.bedrag))
 
   // Buiten bereik raken kan wanneer de lijst korter wordt terwijl er iets gekozen
   // was (bv. na een maandwissel); dan valt de keuze gewoon terug op het totaal.

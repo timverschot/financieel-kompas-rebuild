@@ -3,6 +3,7 @@ import { alleTekst, tekstVanBlad, wisNepPdf, type NepPdf } from '../test/nepPdf'
 import { ONDERGRENS, VOETTEKST_Y } from './pdfBlad'
 import { vertaal } from '../i18n'
 import { formatEuro } from './format'
+import { bouwAfrekeningOverzicht } from './afrekeningOverzicht'
 import type { Dossier, GedeeldeKost, Kind, Verrekening } from '../data/schema'
 
 // Ronde 41 verhuisde de opmaak van dit document naar `pdfBlad.ts`, dat ze met twee
@@ -150,7 +151,27 @@ describe('exporteerAfrekeningPDF — grensgevallen', () => {
   it('waarschuwt wanneer het saldo van vandaag afwijkt van wat er bewaard is', async () => {
     wisNepPdf(nep)
     await exporteerAfrekeningPDF(t, dossier, { ...afrekening, bedrag: 999 }, kosten, kinderen, [], NU)
-    expect(alleTekst(nep).replace(/\n/g, ' ')).toContain('de verdeling van het dossier is sindsdien gewijzigd')
+    const tekst = alleTekst(nep).replace(/\n/g, ' ')
+    expect(tekst).toContain('bij het genereren stond hier')
+    // ⚠ RONDE 107 — EN GEEN OORZAAK MEER DIE DE APP NIET KENT. Deze zin beweerde altijd dat
+    // de verdeling gewijzigd was; een verwijderde of aangepaste kost geeft precies hetzelfde
+    // verschil.
+    expect(tekst).not.toContain('verdeling van het dossier is sindsdien gewijzigd')
+  })
+
+  it('meldt apart dat er kosten uit de afrekening verdwenen zijn (ronde 107)', async () => {
+    // ⚠ RONDE 107. Een afrekening bewaart alleen de id’s van haar kosten; alles eronder
+    // wordt live herrekend. Verwijder je nadien een kost die je zelf voor 100% droeg, dan
+    // blijft het SALDO gelijk — en zei het document helemaal niets, terwijl "Totaal kosten"
+    // honderden euro’s lager stond dan in de PDF die de andere ouder in handen heeft.
+    wisNepPdf(nep)
+    const eenWeg = kosten.slice(1)
+    const netto = bouwAfrekeningOverzicht(dossier, { ...afrekening }, eenWeg, kinderen).netto
+    await exporteerAfrekeningPDF(t, dossier, { ...afrekening, bedrag: netto }, eenWeg, kinderen, [], NU)
+    const tekst = alleTekst(nep).replace(/\n/g, ' ')
+    expect(tekst).toContain('uit deze afrekening bestaan niet meer')
+    // Het saldo klopt in dit geval wél, dus de andere zin hoort er NIET te staan.
+    expect(tekst).not.toContain('bij het genereren stond hier')
   })
 
   it('blijft overeind bij een afrekening zonder kosten', async () => {

@@ -65,10 +65,7 @@ export async function exporteerFiscaalPDF(
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const blad = maakBlad(doc)
 
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(16)
-  doc.text(t('Fiscaal jaaroverzicht {jaar}', { jaar: overzicht.inkomstenjaar }), LINKS, blad.positie())
-  blad.verschuif(8)
+  blad.titel(t('Fiscaal jaaroverzicht {jaar}', { jaar: overzicht.inkomstenjaar }))
   blad.regel(`${t('Opgemaakt op')}: ${vandaag(nu)}`)
   blad.regel(
     t('Wat je in {jaar} betaalde, geef je aan in de aangifte van aanslagjaar {aj}.', {
@@ -105,7 +102,12 @@ export async function exporteerFiscaalPDF(
   const metIets = overzicht.regels.filter((r) => r.bedrag > 0)
   const leeg = overzicht.regels.filter((r) => r.bedrag === 0)
 
-  if (metIets.length === 0) {
+  // ⚠ RONDE 108 — "NIETS GEVONDEN" MAG NIET BOVEN EEN POST MET EEN BEDRAG STAAN. Deze zin
+  // hing alleen aan `metIets`, en `overzicht.vervallen` is een APARTE lijst. Had je in een
+  // jaar alleen boekingen onder een vervallen post staan, dan drukte het blad de ontkenning
+  // én drie regels lager "Dienstencheques — Vervallen ... € 120,00 ... 1 boeking(en)" — in
+  // het stuk dat naar je boekhouder gaat.
+  if (metIets.length === 0 && overzicht.vervallen.length === 0) {
     blad.kop(t('Niets gevonden'))
     blad.alinea(
       t('De app vond in {jaar} geen boekingen onder een fiscale post. Boek je die uitgaven onder een andere categorie, dan vindt ze hier niets — hieronder staat per post waar ze kijkt.', {
@@ -115,6 +117,17 @@ export async function exporteerFiscaalPDF(
   }
 
   for (const regel of metIets) postBlok(doc, blad, t, regel, false)
+  // ⚠ EN HET VERVALLEN-BLOK DRAAGT DE ZIN VAN HET SCHERM MEE. Daar staat "Je hebt hier nog
+  // boekingen onder staan, maar voor aanslagjaar X valt er niets meer in te vullen";
+  // in de PDF volgde "Dienstencheques — Vervallen" kaal op de vorige post.
+  if (overzicht.vervallen.length > 0) {
+    blad.kop(t('Dit bestaat niet meer'))
+    blad.alinea(
+      t('Je hebt hier nog boekingen onder staan, maar voor aanslagjaar {aj} valt er niets meer in te vullen.', {
+        aj: overzicht.aanslagjaar,
+      }),
+    )
+  }
   for (const regel of overzicht.vervallen) postBlok(doc, blad, t, regel, true)
 
   if (leeg.length > 0) {
@@ -186,12 +199,17 @@ function postBlok(
   // "7 boeking(en)" en ging je die zeven in je boekingenlijst zoeken, waar er geen enkele van
   // staat. (De rijen eronder dragen hun eigen omschrijving, en heten "Betaling" alleen
   // wanneer die leeg is — dus ook dáár stond het woord "boeking" nergens.)
-  blad.regel(
-    regel.post.uitOnderhoudsbetalingen
-      ? t('{n} betaling(en)', { n: regel.boekingen.length })
-      : t('{n} boeking(en)', { n: regel.boekingen.length }),
-    { klein: true, vet: true },
-  )
+  // ⚠ RONDE 108 — MÉT DE BONTELLER, ZOALS OP HET SCHERM. Het scherm zegt "3 boeking(en) · 2
+  // met bon" en de CSV heeft er een eigen kolom voor; van de drie weergaven liet uitgerekend
+  // de PDF het weg — terwijl bewijs bij één van deze posten een wettelijke voorwaarde is en
+  // dit het blad is dat naar de boekhouder gaat.
+  const aantal = regel.post.uitOnderhoudsbetalingen
+    ? t('{n} betaling(en)', { n: regel.boekingen.length })
+    : t('{n} boeking(en)', { n: regel.boekingen.length })
+  blad.regel(regel.metBon > 0 ? `${aantal} · ${t('{n} met bon', { n: regel.metBon })}` : aantal, {
+    klein: true,
+    vet: true,
+  })
 
   for (const b of regel.boekingen) {
     const titel = b.omschrijving || t('Betaling')

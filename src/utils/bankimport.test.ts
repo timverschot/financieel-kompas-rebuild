@@ -99,6 +99,21 @@ describe('raadKolommen', () => {
     expect(rollen).toEqual(['datum', 'tegenpartij', 'mededeling', 'bedrag'])
   })
 
+  it('herkent de kolomkoppen van ons EIGEN boekingenbestand (ronde 108)', () => {
+    // ⚠ RONDE 108. "Handelaar / winkel" valt na normaliseren uiteen tot `handelaarwinkel`, en
+    // dat woord stond in geen enkele lijst. De kolom viel door naar de lengte-heuristiek, en
+    // die verloor van "Hoofdcategorie": lees je je eigen export opnieuw in, dan heette elke
+    // boeking "Zonder categorie" of "Onbekend" en was Colruyt nergens meer te bekennen.
+    const rollen = raadKolommen(
+      ['Datum', 'Handelaar / winkel', 'Ticketregel', 'Hoofdcategorie', 'Categorie', 'Rekening', 'Gezinslid', 'Bedrag', 'Soort', 'Ticketnummer'],
+      [['2026-07-01', 'Colruyt', '', 'Voeding', 'Brood (wit)', 'Zichtrekening', '', '-53,80', 'uitgave', '']],
+    )
+    expect(rollen[1]).toBe('omschrijving')
+    expect(rollen[3]).not.toBe('omschrijving')
+    expect(rollen[0]).toBe('datum')
+    expect(rollen[7]).toBe('bedrag')
+  })
+
   it('herkent Franse kolomnamen', () => {
     const rollen = raadKolommen(
       ['Date', 'Contrepartie', 'Montant'],

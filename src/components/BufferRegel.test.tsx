@@ -57,6 +57,27 @@ describe('BufferRegel', () => {
     expect(document.querySelector('[data-buffer]')).toBeNull()
   })
 
+  it('noemt geen getal meer boven het plafond, want dan zegt het niets meer', () => {
+    // Wie net begint: € 5.000 op de spaarrekening en als eerste vaste last één abonnement
+    // van € 0,99. Dat is rekenkundig 5.050,5 maanden — ruim vierhonderd jaar.
+    const abonnement: TerugkerendePost = { ...huur, bedrag: -99 }
+    toon([spaar], [abonnement])
+    expect(screen.getByText('meer dan 24 maanden buffer')).toBeInTheDocument()
+    expect(screen.queryByText(/5\.050/)).toBeNull()
+  })
+
+  it('noemt het getal nog wel op het plafond zelf', () => {
+    // 24 x € 950 = € 22.800: precies 24 maanden, dus nog een exact getal.
+    toon([{ ...spaar, beginsaldo: 2280000 }], [huur])
+    expect(screen.getByText('24 maanden buffer')).toBeInTheDocument()
+  })
+
+  it('slaat om zodra je één maand boven het plafond komt', () => {
+    // € 22.800 + één maand = 25 maanden, de eerste stap voorbij de grens.
+    toon([{ ...spaar, beginsaldo: 2375000 }], [huur])
+    expect(screen.getByText('meer dan 24 maanden buffer')).toBeInTheDocument()
+  })
+
   it('zwijgt zonder vaste lasten', () => {
     toon([spaar], [])
     expect(document.querySelector('[data-buffer]')).toBeNull()

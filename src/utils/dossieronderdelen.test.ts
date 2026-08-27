@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import type { GedeeldeKost } from '../data/schema'
 import {
   DOSSIER_ONDERDELEN,
   verborgenBijNieuwDossier,
@@ -33,6 +34,50 @@ describe('verborgenBijNieuwDossier', () => {
 describe('verborgenMetInhoud', () => {
   it('zwijgt wanneer er niets in een uitgezet onderdeel staat', () => {
     expect(verborgenMetInhoud('d1', ['documentkluis', 'gezamenlijke-pot'], leeg)).toEqual([])
+  })
+
+  it('meldt een ingetrokken kost achter een uitgezette Uitwisselen-kaart (ronde 107)', () => {
+    // ⚠ RONDE 107. `UitwisselingKaart` is de ENIGE plek in de app die een ingetrokken kost
+    // toont, en bij een nieuw dossier staat die kaart standaard uit. Trok de andere ouder een
+    // kost van € 120 in, dan was die daarna nergens meer te zien — ook niet dát ze bestond.
+    const ingetrokken: GedeeldeKost = {
+      id: 'k1',
+      dossierId: 'd1',
+      omschrijving: 'Schoolreis',
+      bedrag: 12000,
+      betaaldDoor: 'partner',
+      datum: '2026-03-04',
+      uitwisselId: 'u1',
+      ingetrokken: true,
+    }
+    expect(verborgenMetInhoud('d1', ['uitwisseling'], { ...leeg, kosten: [ingetrokken] })).toEqual(['uitwisseling'])
+  })
+
+  it('zwijgt over Uitwisselen bij een kost die nooit uitgewisseld is', () => {
+    // De tegencontrole: een gewone kost die je zelf invoerde, hoort deze melding NIET uit te
+    // lokken — anders staat ze bij elk dossier met één kost.
+    const gewoon: GedeeldeKost = {
+      id: 'k2',
+      dossierId: 'd1',
+      omschrijving: 'Turnpak',
+      bedrag: 8000,
+      betaaldDoor: 'jij',
+      datum: '2026-03-04',
+    }
+    expect(verborgenMetInhoud('d1', ['uitwisseling'], { ...leeg, kosten: [gewoon] })).toEqual([])
+  })
+
+  it('telt alleen de kosten van dít dossier', () => {
+    const ander: GedeeldeKost = {
+      id: 'k3',
+      dossierId: 'd2',
+      omschrijving: 'Schoolreis',
+      bedrag: 12000,
+      betaaldDoor: 'partner',
+      datum: '2026-03-04',
+      ingetrokken: true,
+    }
+    expect(verborgenMetInhoud('d1', ['uitwisseling'], { ...leeg, kosten: [ander] })).toEqual([])
   })
 
   it('meldt een uitgezet onderdeel waar wél iets in staat', () => {

@@ -276,6 +276,40 @@ describe('kredietkaart — de punten uit de review', () => {
     expect(s.lopend).toBe(2500)
   })
 
+  it('blijft optellen wanneer je meer betaalde dan het afschrift vroeg', () => {
+    // Afschrift van 26 juli: € 200. Daarna € 80 aankopen, en op 5 augustus schrijf je een
+    // afgerond bedrag van € 250 over. Er staat dan € 30 open.
+    const leeg: Rekening = { ...kaart, beginsaldo: 0 }
+    const s = kaartStand(
+      leeg,
+      [tx('t1', '2026-07-20', -20000), tx('t2', '2026-08-02', -8000)],
+      [ob('o1', '2026-08-05', 25000, 'b1', 'k1')],
+      [],
+      '2026-08-10',
+    )
+    expect(s.openstaand).toBe(3000)
+    expect(s.nogTeBetalen).toBe(0)
+    // Zonder de correctie stond hier 8000 naast een openstaand bedrag van 3000.
+    expect(s.lopend).toBe(3000)
+    expect(s.nogTeBetalen + s.lopend).toBe(s.openstaand)
+    expect(s.teVeelBetaald).toBe(5000)
+  })
+
+  it('meldt geen teveel wanneer je precies het afschrift betaalde', () => {
+    const leeg: Rekening = { ...kaart, beginsaldo: 0 }
+    const s = kaartStand(
+      leeg,
+      [tx('t1', '2026-07-20', -20000), tx('t2', '2026-08-02', -8000)],
+      [ob('o1', '2026-08-05', 20000, 'b1', 'k1')],
+      [],
+      '2026-08-10',
+    )
+    expect(s.teVeelBetaald).toBe(0)
+    expect(s.nogTeBetalen).toBe(0)
+    expect(s.lopend).toBe(8000)
+    expect(s.nogTeBetalen + s.lopend).toBe(s.openstaand)
+  })
+
   it('telt een opname van de kaart mee in de lopende periode', () => {
     // Een overboeking WEG van de kaart verhoogt je schuld; ze hoort dus in het
     // cijfer van de lopende periode te zitten, anders klopt de som niet meer.

@@ -2,6 +2,7 @@ import type { Transactie } from '../data/schema'
 import { itemPerId } from '../data/categorieen/zoek'
 import { categorieBedragen } from './transactie'
 import { inPeriode, type Periode } from './analyse'
+import { percentageZinvol } from './verhouding'
 
 // De vier domeinen waar voor een gemiddeld gezin het meeste te besparen valt:
 // boodschappen, energie, telecom en verzekeringen. Het idee komt uit
@@ -150,6 +151,12 @@ export type DomeinVergelijking = DomeinUitgave & {
    * Het verschil in procent van de vorige periode. Null wanneer er geen vorige
    * periode is, of wanneer je toen niets uitgaf — dan is "oneindig procent meer"
    * een misleidend getal en tonen we liever alleen het bedrag.
+   *
+   * ⚠ RONDE 104 — EN OOK NULL WANNEER JE TOEN BIJNA NIETS UITGAF. Die redenering hierboven
+   * hield op bij nul, en dat was te vroeg: € 0,50 vorige maand tegenover € 400,00 deze
+   * maand gaf **"▲ € 399,50 (79900%)"**. Vijftig cent is even misleidend als nul. De grens
+   * staat in `utils/verhouding.ts`, samen met de twee andere schermen die dezelfde fout
+   * maakten. Het BEDRAG blijft altijd staan — dat is het cijfer dat wél klopt.
    */
   procent: number | null
 }
@@ -160,7 +167,18 @@ export function vergelijkBesparingsdomeinen(
   vorigePeriode: Periode | null,
 ): DomeinVergelijking[] {
   const nu = uitgavenPerBesparingsdomein(transacties, periode)
-  if (!vorigePeriode) return nu.map((d) => ({ ...d, vorig: null, verschil: null, procent: null }))
+  // ⚠ RONDE 106 — EEN PERIODE ZONDER ENKELE BOEKING IS GEEN VERGELIJKING. Het kalenderbereik
+  // van de vorige maand bestaat altijd, ook wanneer de app toen nog niet bestond. Bij je
+  // allereerste boeking ooit stond er dan "Sterkst gestegen: Boodschappen, € 400,00 meer" met
+  // een rood ▲ en "Houdt dit een jaar aan, dan kost het € 4.800,00 extra" — tegenover een
+  // maand waarin niets bestond. En de lege domeinen kregen "Even veel als de vorige periode",
+  // een geruststelling over datzelfde niets.
+  //
+  // ⚠ WEL ÉÉN BOEKING IS GENOEG, in welke categorie ook. Boekte je vorige maand alleen je
+  // huur, dan is "je gaf toen niets uit aan energie" een echt gegeven en hoort het te tellen.
+  // Alleen een periode waarin je HELEMAAL niets boekte, telt als "geen vorige periode".
+  const vorigeIsLeeg = vorigePeriode !== null && !transacties.some((t) => inPeriode(t.datum, vorigePeriode))
+  if (!vorigePeriode || vorigeIsLeeg) return nu.map((d) => ({ ...d, vorig: null, verschil: null, procent: null }))
 
   const toen = new Map(uitgavenPerBesparingsdomein(transacties, vorigePeriode).map((d) => [d.sleutel, d.bedrag]))
   return nu.map((d) => {
@@ -170,7 +188,7 @@ export function vergelijkBesparingsdomeinen(
       ...d,
       vorig,
       verschil,
-      procent: vorig > 0 ? Math.round((verschil / vorig) * 100) : null,
+      procent: percentageZinvol(vorig, d.bedrag) ? Math.round((verschil / vorig) * 100) : null,
     }
   })
 }

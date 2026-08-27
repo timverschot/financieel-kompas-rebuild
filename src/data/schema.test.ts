@@ -258,3 +258,103 @@ describe('AflossingSchema — transactieId', () => {
     expect(AflossingSchema.safeParse({ ...basis, transactieId: '' }).success).toBe(false)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 109 — een veld van een nieuwere app-versie mag niet stil verdwijnen
+// ---------------------------------------------------------------------------
+
+describe('de recordschema\'s bewaren wat ze niet kennen', () => {
+  it('houdt een onbekend veld staan in plaats van het weg te knippen', () => {
+    // ⚠ RONDE 109. Zod knipt standaard weg wat het niet kent. Draaide er in huis één toestel
+    // met een oudere versie, dan verloor dat toestel bij het INLEZEN elk veld dat het niet
+    // kende — en schreef het de verminkte boeking bij de eerstvolgende bewerking gewoon terug
+    // naar Drive. Het veld was dan op élk toestel weg, ook op het toestel dat het kende.
+    const uit = TransactieSchema.parse({
+      id: 't1',
+      datum: '2026-07-01',
+      omschrijving: 'Colruyt',
+      bedrag: -4200,
+      rekeningId: 'r1',
+      winkelfiliaal: 'Gent-Zuid',
+    })
+    expect((uit as Record<string, unknown>).winkelfiliaal).toBe('Gent-Zuid')
+  })
+
+  it('doet dat op élk recordschema, niet alleen op de transactie', () => {
+    const extra = { onbekendVeld: 42 }
+    expect((RekeningSchema.parse({ id: 'r1', naam: 'Zicht', beginsaldo: 0, ...extra }) as Record<string, unknown>).onbekendVeld).toBe(42)
+    expect(
+      (GedeeldeKostSchema.parse({
+        id: 'k1',
+        dossierId: 'd1',
+        omschrijving: 'Schoolreis',
+        bedrag: 12000,
+        betaaldDoor: 'jij',
+        datum: '2026-03-04',
+        ...extra,
+      }) as Record<string, unknown>).onbekendVeld,
+    ).toBe(42)
+  })
+
+  it('weigert nog altijd een BEKEND veld met een verkeerde vorm', () => {
+    // De tegencontrole, en ze is het halve punt: `.passthrough()` laat onbekende velden staan,
+    // het maakt het schema niet losser voor wat het wél kent.
+    const uit = TransactieSchema.safeParse({
+      id: 't1',
+      datum: 'gisteren',
+      omschrijving: 'Colruyt',
+      bedrag: -4200,
+      rekeningId: 'r1',
+    })
+    expect(uit.success).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 109 — de poortwachter keurt een echte kalenderdag, niet alleen de vorm
+// ---------------------------------------------------------------------------
+
+describe('datum- en maandvelden', () => {
+  const tx = (over: Record<string, unknown>) => ({
+    id: 't1',
+    datum: '2026-07-01',
+    omschrijving: 'Colruyt',
+    bedrag: -4200,
+    rekeningId: 'r1',
+    ...over,
+  })
+
+  it('weigert een dag die niet bestaat', () => {
+    // ⚠ RONDE 109. `2026-02-30` kwam gewoon door de vormcontrole. Zo'n boeking telt daarna mee
+    // in februari (de maandtotalen kijken naar `datum.startsWith('2026-02')`) en leest op het
+    // scherm als "02 mrt": hetzelfde bedrag op twee plaatsen.
+    expect(TransactieSchema.safeParse(tx({ datum: '2026-02-30' })).success).toBe(false)
+    expect(TransactieSchema.safeParse(tx({ datum: '2026-13-45' })).success).toBe(false)
+    expect(TransactieSchema.safeParse(tx({ datum: '2026-04-31' })).success).toBe(false)
+  })
+
+  it('laat een echte dag gewoon door, ook 29 februari in een schrikkeljaar', () => {
+    expect(TransactieSchema.safeParse(tx({ datum: '2026-02-28' })).success).toBe(true)
+    expect(TransactieSchema.safeParse(tx({ datum: '2028-02-29' })).success).toBe(true)
+    expect(TransactieSchema.safeParse(tx({ datum: '2026-12-31' })).success).toBe(true)
+  })
+
+  it('weigert een maand die niet bestaat in startMaand en eindMaand', () => {
+    // ⚠ Het zusterveld `Budget.maand` deed dit al streng; deze twee niet. Een `startMaand`
+    // van `2026-13` werd stil naar januari 2027 genormaliseerd, maar `volgendeVervaldag` gaf
+    // dan de TEKST `2026-13-05` terug — en `'2027-01-01' > '2026-13-05'` is als tekst waar,
+    // terwijl 1 januari 2027 in werkelijkheid vóór 5 januari 2027 ligt.
+    const post = (over: Record<string, unknown>) => ({
+      id: 'p1',
+      omschrijving: 'Verzekering',
+      bedrag: -62000,
+      rekeningId: 'r1',
+      dag: 5,
+      ...over,
+    })
+    expect(TerugkerendePostSchema.safeParse(post({ frequentie: 'jaar', startMaand: '2026-13' })).success).toBe(false)
+    expect(TerugkerendePostSchema.safeParse(post({ frequentie: 'jaar', startMaand: '2026-00' })).success).toBe(false)
+    expect(TerugkerendePostSchema.safeParse(post({ eindMaand: '2026-99' })).success).toBe(false)
+    expect(TerugkerendePostSchema.safeParse(post({ frequentie: 'jaar', startMaand: '2026-12' })).success).toBe(true)
+  })
+})

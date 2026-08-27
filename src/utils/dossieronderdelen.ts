@@ -1,4 +1,5 @@
 import type {
+  GedeeldeKost,
   DossierDocument,
   Kindrekening,
   Onderhoudsbijdrage,
@@ -144,6 +145,16 @@ export function verborgenMetInhoud(
      */
     categorieAandelen?: Record<string, number>
     typeAandelen?: Record<string, number>
+    /**
+     * De gedeelde kosten van dít dossier (ronde 107).
+     *
+     * ⚠ `uitwisseling` ontbrak in de lijst hieronder, en dat is precies het geval waarvoor
+     * deze functie bestaat: `UitwisselingKaart` is de ENIGE plek in de app die een
+     * INGETROKKEN kost toont. Trekt de andere ouder een kost van € 120 in en staat die kaart
+     * uit — en bij een nieuw dossier staat ze standaard uit — dan is die kost daarna nergens
+     * meer te zien, ook niet dát ze bestaat, en is de intrekking niet terug te draaien.
+     */
+    kosten?: GedeeldeKost[]
   },
 ): DossierOnderdeel[] {
   const heeft: Partial<Record<DossierOnderdeel, boolean>> = {
@@ -153,6 +164,11 @@ export function verborgenMetInhoud(
     documentkluis: (gegevens.documenten ?? []).some((d) => d.dossierId === dossierId),
     'verdeling-categorie': Object.keys(gegevens.categorieAandelen ?? {}).length > 0,
     'verdeling-kostensoort': Object.keys(gegevens.typeAandelen ?? {}).length > 0,
+    // Een ingetrokken kost, een antwoord van de andere ouder, of een kost die op jouw
+    // antwoord wacht: alle drie bestaan ze alleen op deze kaart.
+    uitwisseling: (gegevens.kosten ?? []).some(
+      (k) => k.dossierId === dossierId && (k.ingetrokken || Boolean(k.reactie) || Boolean(k.uitwisselId)),
+    ),
   }
   // De volgorde van `DOSSIER_ONDERDELEN` aanhouden, niet die van `verborgen`: anders
   // hangt de volgorde op het scherm af van de volgorde waarin je ooit dingen uitzette.

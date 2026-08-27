@@ -556,6 +556,11 @@ const en: Record<string, string> = {
   'Zo lang kom je toe': 'How long you can get by',
   'Netto vermogen': 'Net worth',
   '{n} maanden': '{n} months',
+  'meer dan {n} maanden': 'more than {n} months',
+  'De app kent je inkomsten voor deze maand nog niet, dus dit is geen oordeel over je maand — alleen een optelling van wat je invoerde.':
+    'The app does not know your income for this month yet, so this is not a verdict on your month — only a sum of what you entered.',
+  'Je betaalde {bedrag} meer dan het afschrift vroeg; dat is hierboven al verrekend.':
+    'You paid {bedrag} more than the statement asked for; that is already included above.',
   'Je sluipende lasten zijn {maand} per maand, oftewel {jaar} per jaar.': 'Your small subscriptions come to {maand} a month, or {jaar} a year.',
   'Ingevulde blokken': 'Blocks filled in',
   'Je hebt alle blokken ingevuld. Je kan hier altijd terugkomen om iets bij te werken.': 'You have filled in every block. You can always come back here to update something.',
@@ -841,6 +846,8 @@ const en: Record<string, string> = {
     'This file comes from an older version of the app. Its amounts cannot be read reliably; ask the other parent for a new file.',
   'Let op: van {n} regel(s) kan de app niet zien in welke eenheid de bedragen staan. Ze zijn daarom NIET ingelezen: als centen gelezen zou € 2.400 er als € 24 komen te staan. Er is niets van je huidige gegevens veranderd.':
     'Note: for {n} line(s) the app cannot tell what unit the amounts are in. They were therefore NOT imported: read as cents, € 2,400 would show up as € 24. Nothing in your current data has changed.',
+  'Let op: {n} regel(s) uit je back-up of van een ander toestel zijn niet te lezen. Ze zijn daarom NIET ingelezen. Er is niets van je huidige gegevens veranderd.':
+    'Note: {n} line(s) from your backup or from another device cannot be read. They have therefore NOT been imported. Nothing about your current data has changed.',
   'Let op: {n} regel(s) komen van een toestel met een NIEUWERE versie van de app. Deze app kan ze nog niet lezen, dus ze zijn niet ingelezen. Werk deze app bij (sluit hem helemaal af en open hem opnieuw) en probeer het dan nog eens.':
     'Note: {n} line(s) come from a device running a NEWER version of the app. This app cannot read them yet, so they were not imported. Update this app (close it completely and reopen it) and try again.',
   'Gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald, {geweigerd} niet ingelezen.':
@@ -1516,8 +1523,10 @@ const en: Record<string, string> = {
   '{n} kost(en), {bedrag}': '{n} cost(s), {bedrag}',
   '{n}, waarvan {m} met bon': '{n}, of which {m} with a receipt',
   'blad {n} van {totaal}': 'page {n} of {totaal}',
-  'Let op: bij het genereren stond hier {bedrag}; de verdeling van het dossier is sindsdien gewijzigd.':
-    'Note: when generated this was {bedrag}; the split for this case has changed since.',
+  'Let op: bij het genereren stond hier {bedrag}. De bedragen hieronder zijn opnieuw berekend uit de kosten zoals ze nu zijn.':
+    'Note: when generated this was {bedrag}. The amounts below have been recalculated from the costs as they are now.',
+  'Let op: {n} kost(en) uit deze afrekening bestaan niet meer. De bedragen hieronder zijn opnieuw berekend zonder die kosten.':
+    'Note: {n} cost(s) from this settlement no longer exist. The amounts below have been recalculated without them.',
   // Ronde 12: icoon en kleur voor eigen categorieën
   'Voorbeeld': 'Preview',
   'Icoon': 'Icon',
@@ -1763,6 +1772,10 @@ const en: Record<string, string> = {
   'Verdeling per categorie': 'Split per category',
   'Standaard draag jij {p}%. Stel hier per categorie een afwijkend percentage in.':
     'By default you bear {p}%. Set a different percentage per category here.',
+  'Je verdeling per kostensoort geldt voor élke kost, dus de standaard van dit dossier wordt niet meer gebruikt. Stel hier per categorie een afwijkend percentage in.':
+    'Your split by cost type applies to every cost, so this case’s default is no longer used. Set a different percentage per category here.',
+  '(verdeling per kostensoort)': '(split by cost type)',
+  'verdeling per kostensoort': 'split by cost type',
   'Verwijder verdeling {naam}': 'Remove split {naam}',
   'Percentage jij': 'Your percentage',
   // Modulaire afrekening (Ronde 2 · Brok C)
@@ -1812,6 +1825,8 @@ const en: Record<string, string> = {
   'Beweging verwijderd': 'Movement deleted',
   'door {wie}': 'by {wie}',
   'Maandbijdrage': 'Monthly contribution',
+  'Geteld over {n} maand(en), vanaf de maand waarin de bijdrage begon. Die maand telt volledig mee, ook als ze halverwege begon, en de lopende maand telt vanaf de eerste dag mee.':
+    'Counted over {n} month(s), from the month in which the contribution started. That month counts in full, even if it started halfway, and the current month counts from its first day.',
   'Maandbijdrage-afspraak instellen': 'Set monthly contribution',
   'Afspraak verbergen': 'Hide agreement',
   'Afspraak bewaren': 'Save agreement',
@@ -1953,6 +1968,8 @@ const en: Record<string, string> = {
   'Vooruitblik & spaarquote': 'Outlook & savings rate',
   'Spaarquote': 'Savings rate',
   'Nog geen inkomsten in deze periode': 'No income in this period yet',
+  'Te weinig inkomsten in deze periode om een spaarquote te berekenen':
+    'Too little income in this period to work out a savings rate',
   '{saldo} van {inkomsten} inkomsten overgehouden': '{saldo} of {inkomsten} income kept',
   'Vooruitblik — {maand}': 'Outlook — {maand}',
   'spaarquote': 'savings rate',
@@ -2031,6 +2048,8 @@ const en: Record<string, string> = {
     'Erases all your data on this device and starts you with a clean slate.',
   'Ook de logbestanden in je Google Drive-back-up worden opgeruimd, anders komt alles bij de volgende synchronisatie gewoon terug. Ze gaan naar de prullenbak van Drive, dus je kan ze daar nog terughalen.':
     'The log files in your Google Drive backup are cleared too, otherwise everything would simply come back at the next sync. They go to the Drive bin, so you can still recover them there.',
+  'Let op: dat geldt voor het logbestand van élk toestel, ook die van je andere toestellen. Open daarna elk van die toestellen en laat ze synchroniseren, dan staat hun back-up er weer.':
+    'Note: this applies to the log file of every device, including your other devices. Open each of those devices afterwards and let them sync, and their backup will be there again.',
   'Er is nu geen Google Drive-back-up verbonden. Gebruik je de app op meerdere toestellen, doe dit dan ook daar — anders komt hun data bij een volgende synchronisatie terug.':
     'No Google Drive backup is connected right now. If you use the app on more than one device, do this there as well — otherwise their data comes back at the next sync.',
   'Dit kan niet ongedaan gemaakt worden. Maak eerst een back-up als je je gegevens wil bewaren.':
@@ -2111,6 +2130,7 @@ const en: Record<string, string> = {
   'Koppel een rekening of zet een doeldatum om te zien of je op schema zit.':
     'Link an account or set a target date to see whether you are on track.',
   '{n} maanden buffer': '{n} months of buffer',
+  'meer dan {n} maanden buffer': 'more than {n} months of buffer',
   '1 maand buffer': '1 month of buffer',
   'Je vaste lasten zijn {last} per maand. Met {geld} op je spaar- en cashrekeningen kom je zo lang toe zonder inkomen — eten en tanken komen daar nog bij.':
     'Your fixed costs are {last} per month. With {geld} in your savings and cash accounts you would last that long without income — food and fuel come on top of that.',
@@ -2178,6 +2198,7 @@ const en: Record<string, string> = {
   'volgende keer {datum}': 'next time {datum}',
   ' · {bedrag} per maand opzij': ' · {bedrag} a month set aside',
   ' · {bedrag} per maand omgerekend': ' · {bedrag} a month when spread out',
+  ' · vanaf dan {bedrag} per maand omgerekend': ' · {bedrag} a month when spread out, from then on',
   'Wat ligt vast, wat blijft over': 'What is committed, what is left',
   'Op basis van je vaste lasten en je verwachte inkomsten deze maand.':
     'Based on your fixed costs and the income you expect this month.',
@@ -2559,8 +2580,8 @@ const en: Record<string, string> = {
     'The starting index is not a valid number. Leave the field empty to let the app look the figure up itself.',
   'Loopt tot (optioneel)': 'Runs until (optional)',
   'Voor welke kinderen (optioneel)': 'For which children (optional)',
-  'Per maand geteld vanaf de maand van de regeling, telkens met het bedrag dat op de eerste van die maand gold. Twee gevolgen die je moet kennen voor je dit cijfer gebruikt: de maand van de regeling telt volledig mee, ook als ze halverwege begon, en de maand waarin er geïndexeerd wordt telt nog aan het oude, lagere bedrag. Klopt dat niet met jouw afspraak, corrigeer het dan met een betaling.':
-    'Counted month by month from the month of the arrangement, each time with the amount that applied on the first of that month. Two consequences to know before you use this figure: the month of the arrangement counts in full, even if it started mid-month, and the month in which indexation takes effect still counts at the old, lower amount. If that does not match your agreement, correct it with a payment.',
+  'Per maand geteld vanaf de maand van de regeling, telkens met het bedrag dat op de eerste van die maand gold. Drie gevolgen die je moet kennen voor je dit cijfer gebruikt: de maand van de regeling telt volledig mee, ook als ze halverwege begon; de lopende maand telt vanaf de eerste dag volledig mee, ook als ze nog moet verstrijken; en de maand waarin er geïndexeerd wordt telt nog aan het oude, lagere bedrag. Klopt dat niet met jouw afspraak, corrigeer het dan met een betaling.':
+    'Counted per month from the month of the arrangement, each time with the amount that applied on the first of that month. Three consequences to know before you use this figure: the month of the arrangement counts in full, even if it started halfway; the current month counts in full from its first day, even if it has yet to pass; and the month in which indexation happens still counts at the old, lower amount. Does that not match your arrangement? Then correct it with a payment.',
   'Betaald door de ouder die dit overzicht opmaakte':
     'Paid by the parent who produced this overview',
   'Betaald aan de ouder die dit overzicht opmaakte':
@@ -3450,6 +3471,11 @@ const fr: Record<string, string> = {
   'Zo lang kom je toe': 'Combien de temps tu tiens',
   'Netto vermogen': 'Patrimoine net',
   '{n} maanden': '{n} mois',
+  'meer dan {n} maanden': 'plus de {n} mois',
+  'De app kent je inkomsten voor deze maand nog niet, dus dit is geen oordeel over je maand — alleen een optelling van wat je invoerde.':
+    'L’app ne connaît pas encore tes revenus pour ce mois, donc ce n’est pas un jugement sur ton mois — seulement une addition de ce que tu as saisi.',
+  'Je betaalde {bedrag} meer dan het afschrift vroeg; dat is hierboven al verrekend.':
+    'Tu as payé {bedrag} de plus que ce que demandait le relevé ; c’est déjà pris en compte ci-dessus.',
   'Je sluipende lasten zijn {maand} per maand, oftewel {jaar} per jaar.': 'Tes abonnements discrets s’élèvent à {maand} par mois, soit {jaar} par an.',
   'Ingevulde blokken': 'Blocs complétés',
   'Je hebt alle blokken ingevuld. Je kan hier altijd terugkomen om iets bij te werken.': 'Tu as complété tous les blocs. Tu peux toujours revenir ici pour mettre quelque chose à jour.',
@@ -3732,6 +3758,8 @@ const fr: Record<string, string> = {
     'Ce fichier provient d’une version plus ancienne de l’app. Ses montants ne sont pas lisibles de façon fiable ; demande un nouveau fichier à l’autre parent.',
   'Let op: van {n} regel(s) kan de app niet zien in welke eenheid de bedragen staan. Ze zijn daarom NIET ingelezen: als centen gelezen zou € 2.400 er als € 24 komen te staan. Er is niets van je huidige gegevens veranderd.':
     'Attention : pour {n} ligne(s), l’app ne peut pas déterminer l’unité des montants. Elles n’ont donc PAS été importées : lues comme des centimes, 2 400 € s’afficheraient comme 24 €. Rien n’a changé dans tes données actuelles.',
+  'Let op: {n} regel(s) uit je back-up of van een ander toestel zijn niet te lezen. Ze zijn daarom NIET ingelezen. Er is niets van je huidige gegevens veranderd.':
+    'Attention : {n} ligne(s) de ta sauvegarde ou d’un autre appareil sont illisibles. Elles n’ont donc PAS été importées. Rien n’a changé à tes données actuelles.',
   'Let op: {n} regel(s) komen van een toestel met een NIEUWERE versie van de app. Deze app kan ze nog niet lezen, dus ze zijn niet ingelezen. Werk deze app bij (sluit hem helemaal af en open hem opnieuw) en probeer het dan nog eens.':
     'Attention : {n} ligne(s) proviennent d’un appareil avec une version PLUS RÉCENTE de l’app. Cette app ne peut pas encore les lire, elles n’ont donc pas été importées. Mets cette app à jour (ferme-la complètement et rouvre-la) puis réessaie.',
   'Gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald, {geweigerd} niet ingelezen.':
@@ -4399,8 +4427,10 @@ const fr: Record<string, string> = {
   '{n} kost(en), {bedrag}': '{n} frais, {bedrag}',
   '{n}, waarvan {m} met bon': '{n}, dont {m} avec ticket',
   'blad {n} van {totaal}': 'page {n} sur {totaal}',
-  'Let op: bij het genereren stond hier {bedrag}; de verdeling van het dossier is sindsdien gewijzigd.':
-    'Attention : lors de la génération, il s’agissait de {bedrag} ; la répartition du dossier a changé depuis.',
+  'Let op: bij het genereren stond hier {bedrag}. De bedragen hieronder zijn opnieuw berekend uit de kosten zoals ze nu zijn.':
+    'Attention : lors de la génération, il s’agissait de {bedrag}. Les montants ci-dessous ont été recalculés à partir des frais tels qu’ils sont aujourd’hui.',
+  'Let op: {n} kost(en) uit deze afrekening bestaan niet meer. De bedragen hieronder zijn opnieuw berekend zonder die kosten.':
+    'Attention : {n} frais de ce décompte n’existent plus. Les montants ci-dessous ont été recalculés sans eux.',
   // Ronde 12 : icône et couleur pour les catégories personnelles
   'Voorbeeld': 'Aperçu',
   'Icoon': 'Icône',
@@ -4640,6 +4670,10 @@ const fr: Record<string, string> = {
   'Verdeling per categorie': 'Répartition par catégorie',
   'Standaard draag jij {p}%. Stel hier per categorie een afwijkend percentage in.':
     'Par défaut tu supportes {p}%. Définis ici un pourcentage différent par catégorie.',
+  'Je verdeling per kostensoort geldt voor élke kost, dus de standaard van dit dossier wordt niet meer gebruikt. Stel hier per categorie een afwijkend percentage in.':
+    'Ta répartition par type de frais s’applique à chaque frais, donc la valeur par défaut de ce dossier n’est plus utilisée. Indique ici un pourcentage différent par catégorie.',
+  '(verdeling per kostensoort)': '(répartition par type de frais)',
+  'verdeling per kostensoort': 'répartition par type de frais',
   'Verwijder verdeling {naam}': 'Supprimer la répartition {naam}',
   'Percentage jij': 'Ton pourcentage',
   // Modulaire afrekening (Ronde 2 · Brok C)
@@ -4689,6 +4723,8 @@ const fr: Record<string, string> = {
   'Beweging verwijderd': 'Mouvement supprimé',
   'door {wie}': 'par {wie}',
   'Maandbijdrage': 'Contribution mensuelle',
+  'Geteld over {n} maand(en), vanaf de maand waarin de bijdrage begon. Die maand telt volledig mee, ook als ze halverwege begon, en de lopende maand telt vanaf de eerste dag mee.':
+    'Compté sur {n} mois, à partir du mois où la contribution a commencé. Ce mois compte entièrement, même s’il a commencé à la moitié, et le mois en cours compte dès son premier jour.',
   'Maandbijdrage-afspraak instellen': 'Définir la contribution mensuelle',
   'Afspraak verbergen': 'Masquer la convention',
   'Afspraak bewaren': 'Enregistrer la convention',
@@ -4830,6 +4866,8 @@ const fr: Record<string, string> = {
   'Vooruitblik & spaarquote': 'Perspectives & taux d’épargne',
   'Spaarquote': 'Taux d’épargne',
   'Nog geen inkomsten in deze periode': 'Pas encore de revenus sur cette période',
+  'Te weinig inkomsten in deze periode om een spaarquote te berekenen':
+    'Trop peu de revenus sur cette période pour calculer un taux d’épargne',
   '{saldo} van {inkomsten} inkomsten overgehouden': '{saldo} conservés sur {inkomsten} de revenus',
   'Vooruitblik — {maand}': 'Perspectives — {maand}',
   'spaarquote': 'taux d’épargne',
@@ -4908,6 +4946,8 @@ const fr: Record<string, string> = {
     'Efface toutes tes données sur cet appareil et repart de zéro.',
   'Ook de logbestanden in je Google Drive-back-up worden opgeruimd, anders komt alles bij de volgende synchronisatie gewoon terug. Ze gaan naar de prullenbak van Drive, dus je kan ze daar nog terughalen.':
     'Les fichiers journaux de ta sauvegarde Google Drive sont également supprimés ; sinon, tout reviendrait à la prochaine synchronisation. Ils vont à la corbeille de Drive, tu peux donc encore les récupérer.',
+  'Let op: dat geldt voor het logbestand van élk toestel, ook die van je andere toestellen. Open daarna elk van die toestellen en laat ze synchroniseren, dan staat hun back-up er weer.':
+    'Attention : cela vaut pour le fichier journal de chaque appareil, y compris tes autres appareils. Ouvre ensuite chacun de ces appareils et laisse-les se synchroniser, et leur sauvegarde sera de nouveau là.',
   'Er is nu geen Google Drive-back-up verbonden. Gebruik je de app op meerdere toestellen, doe dit dan ook daar — anders komt hun data bij een volgende synchronisatie terug.':
     'Aucune sauvegarde Google Drive n’est connectée pour le moment. Si tu utilises l’application sur plusieurs appareils, fais-le aussi sur ceux-ci — sinon leurs données reviendront à la prochaine synchronisation.',
   'Dit kan niet ongedaan gemaakt worden. Maak eerst een back-up als je je gegevens wil bewaren.':
@@ -4988,6 +5028,7 @@ const fr: Record<string, string> = {
   'Koppel een rekening of zet een doeldatum om te zien of je op schema zit.':
     'Lie un compte ou fixe une date cible pour voir si tu es dans les temps.',
   '{n} maanden buffer': '{n} mois de réserve',
+  'meer dan {n} maanden buffer': 'plus de {n} mois de réserve',
   '1 maand buffer': '1 mois de réserve',
   'Je vaste lasten zijn {last} per maand. Met {geld} op je spaar- en cashrekeningen kom je zo lang toe zonder inkomen — eten en tanken komen daar nog bij.':
     'Tes charges fixes sont de {last} par mois. Avec {geld} sur tes comptes d’épargne et en liquide, tu tiendrais ce temps-là sans revenu — la nourriture et le carburant viennent en plus.',
@@ -5056,6 +5097,7 @@ const fr: Record<string, string> = {
   'volgende keer {datum}': 'prochaine fois le {datum}',
   ' · {bedrag} per maand opzij': ' · {bedrag} par mois de côté',
   ' · {bedrag} per maand omgerekend': ' · {bedrag} par mois une fois réparti',
+  ' · vanaf dan {bedrag} per maand omgerekend': ' · {bedrag} par mois une fois réparti, à partir de cette date',
   'Wat ligt vast, wat blijft over': 'Ce qui est engagé, ce qui reste',
   'Op basis van je vaste lasten en je verwachte inkomsten deze maand.':
     'Sur la base de tes charges fixes et des revenus attendus ce mois-ci.',
@@ -5435,8 +5477,8 @@ const fr: Record<string, string> = {
     'L’indice de départ n’est pas un nombre valide. Laisse le champ vide pour que l’application recherche elle-même le chiffre.',
   'Loopt tot (optioneel)': 'Court jusqu’au (facultatif)',
   'Voor welke kinderen (optioneel)': 'Pour quels enfants (facultatif)',
-  'Per maand geteld vanaf de maand van de regeling, telkens met het bedrag dat op de eerste van die maand gold. Twee gevolgen die je moet kennen voor je dit cijfer gebruikt: de maand van de regeling telt volledig mee, ook als ze halverwege begon, en de maand waarin er geïndexeerd wordt telt nog aan het oude, lagere bedrag. Klopt dat niet met jouw afspraak, corrigeer het dan met een betaling.':
-    'Compté mois par mois à partir du mois de l’accord, chaque fois avec le montant en vigueur le premier de ce mois. Deux conséquences à connaître avant d’utiliser ce chiffre : le mois de l’accord compte en entier, même s’il a commencé en cours de mois, et le mois où l’indexation prend effet compte encore à l’ancien montant, plus bas. Si cela ne correspond pas à ton accord, corrige-le par un paiement.',
+  'Per maand geteld vanaf de maand van de regeling, telkens met het bedrag dat op de eerste van die maand gold. Drie gevolgen die je moet kennen voor je dit cijfer gebruikt: de maand van de regeling telt volledig mee, ook als ze halverwege begon; de lopende maand telt vanaf de eerste dag volledig mee, ook als ze nog moet verstrijken; en de maand waarin er geïndexeerd wordt telt nog aan het oude, lagere bedrag. Klopt dat niet met jouw afspraak, corrigeer het dan met een betaling.':
+    'Compté par mois à partir du mois de l’accord, chaque fois avec le montant en vigueur le premier de ce mois. Trois conséquences à connaître avant d’utiliser ce chiffre : le mois de l’accord compte entièrement, même s’il a commencé à la moitié ; le mois en cours compte entièrement dès son premier jour, même s’il doit encore s’écouler ; et le mois de l’indexation compte encore à l’ancien montant, plus bas. Cela ne correspond pas à ton accord ? Corrige-le alors avec un paiement.',
   'Betaald door de ouder die dit overzicht opmaakte': 'Payé par le parent qui a établi cet aperçu',
   'Betaald aan de ouder die dit overzicht opmaakte': 'Payé au parent qui a établi cet aperçu',
   'Loopt tot': 'Court jusqu’au',

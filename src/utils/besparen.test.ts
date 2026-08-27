@@ -121,11 +121,31 @@ describe('vergelijkBesparingsdomeinen', () => {
     expect(domein(uit, 'energie').procent).toBe(-25)
   })
 
-  it('zwijgt over het percentage wanneer er vorige periode niets was', () => {
+  it('zwijgt over het percentage wanneer je in dit domein vorige periode niets uitgaf', () => {
     // "Oneindig procent meer" is geen bruikbaar getal; dan tonen we enkel het bedrag.
-    const uit = vergelijkBesparingsdomeinen([energie('2026-07-03', 6000)], juli, juni)
+    //
+    // ⚠ Juni moet wél een echte maand zijn: er staat een boodschappenboeking in. Zonder die
+    // ene boeking is juni een maand waarin de app nog niet bestond, en dan hoort er
+    // helemaal geen vergelijking te staan — zie de test hieronder.
+    const uit = vergelijkBesparingsdomeinen(
+      [energie('2026-07-03', 6000), tx('2026-06-05', -4000, ITEM_BROOD)],
+      juli,
+      juni,
+    )
     expect(domein(uit, 'energie').verschil).toBe(6000)
     expect(domein(uit, 'energie').procent).toBeNull()
+  })
+
+  it('vergelijkt niet met een periode waarin je helemaal niets boekte (ronde 106)', () => {
+    // ⚠ RONDE 106. Bij je allereerste boeking ooit stond er "Sterkst gestegen: Energie,
+    // € 60,00 meer" met een rood ▲ en een jaarprojectie — tegenover een maand waarin de app
+    // nog niet bestond. Het kalenderbereik van juni bestaat altijd; je gegevens niet.
+    const uit = vergelijkBesparingsdomeinen([energie('2026-07-03', 6000)], juli, juni)
+    expect(domein(uit, 'energie').vorig).toBeNull()
+    expect(domein(uit, 'energie').verschil).toBeNull()
+    expect(domein(uit, 'energie').procent).toBeNull()
+    // En de lege domeinen zeggen dan niet "Even veel als de vorige periode".
+    expect(domein(uit, 'telecom').verschil).toBeNull()
   })
 
   it('geeft geen vergelijking wanneer er geen vorige periode is', () => {
@@ -159,3 +179,49 @@ describe('naamVanBesparingsdomein', () => {
     for (const d of BESPARINGSDOMEINEN) expect(naamVanBesparingsdomein(d.sleutel)).toBe(d.naam)
   })
 })
+
+describe('vergelijkBesparingsdomeinen — het percentage moet iets betekenen (ronde 104)', () => {
+  const tx = (id: string, datum: string, bedrag: number, categorieId: string) => ({
+    id,
+    datum,
+    omschrijving: id,
+    bedrag,
+    rekeningId: 'r1',
+    categorieId,
+  })
+  const JULI = { van: '2026-07-01', tot: '2026-07-31' }
+  const JUNI = { van: '2026-06-01', tot: '2026-06-30' }
+  // `ITEM_BROOD` valt in het domein 'boodschappen' — dat legt de eerste test in dit
+  // bestand al vast, dus hier hoeft niets afgeleid te worden.
+  const domeinCat = 'boodschappen'
+
+  it('zwijgt wanneer je vorige periode bijna niets uitgaf', () => {
+    // ⚠ € 0,50 vorige maand tegenover € 400,00 deze maand gaf "▲ € 399,50 (79900%)".
+    // Het commentaar bij dit veld ving "oneindig procent" al af bij NUL; vijftig cent is
+    // even misleidend. Het BEDRAG blijft wel staan — dat klopt.
+    const r = vergelijkBesparingsdomeinen(
+      [tx('nu', '2026-07-02', -40000, ITEM_BROOD), tx('toen', '2026-06-02', -50, ITEM_BROOD)],
+      JULI,
+      JUNI,
+    ).find((d) => d.sleutel === domeinCat)
+    expect(r?.verschil).toBe(39950)
+    expect(r?.procent).toBeNull()
+  })
+
+  it('geeft het percentage wél zodra de twee in dezelfde orde van grootte liggen', () => {
+    // De positieve tegencontrole, op de grens: € 40,00 tegenover € 400,00 is precies een
+    // tiende. Eén cent minder en het percentage hoort weg te vallen.
+    const metGrens = (vorig: number) =>
+      vergelijkBesparingsdomeinen(
+        [
+          tx('nu', '2026-07-02', -40000, ITEM_BROOD),
+          tx('toen', '2026-06-02', -vorig, ITEM_BROOD),
+        ],
+        JULI,
+        JUNI,
+      ).find((d) => d.sleutel === domeinCat)
+    expect(metGrens(4000)?.procent).toBe(900)
+    expect(metGrens(3999)?.procent).toBeNull()
+  })
+})
+

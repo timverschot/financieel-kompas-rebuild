@@ -1,6 +1,7 @@
 import type { Vertaler } from '../i18n'
 import { basisjaarVan, reeksinfo, type Indexreeks } from '../data/indexreeksen'
 import { formatEuro } from './format'
+import { opmaakLocale } from './opmaaktaal'
 import { maandJaarLabel } from './datum'
 import { laatsteAanpassing, type BijdrageOpbouw, type IndexatieStap } from './onderhoudsbijdrage'
 
@@ -51,9 +52,17 @@ export function stapTekst(t: Vertaler, stap: IndexatieStap, basisbedrag: number,
   })
 }
 
-/** Een indexcijfer met twee cijfers na de komma, in Belgische notatie. */
+/**
+ * Een indexcijfer met twee cijfers na de komma, in de notatie van de gekozen taal.
+ *
+ * ⚠ RONDE 108 — DIT STOND VAST OP DE BELGISCHE KOMMA. In een Engelstalige indexatiebrief
+ * las de formule dan `€250.00 x 124,05 / 112,83 = €274.86`: een punt bij het geld en een
+ * komma bij de indexcijfers, in dezelfde regel. Wie Engels leest, kan "124,05" als
+ * honderdvierentwintigduizend lezen. `formatEuro` volgt de taal al sinds ronde 54; dit
+ * getal, dat er in élke formule pal naast staat, deed dat niet.
+ */
 export function getalTekst(waarde: number): string {
-  return waarde.toFixed(2).replace('.', ',')
+  return waarde.toLocaleString(opmaakLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 /** Waar de aanvangsindex vandaan komt — dat hoort navolgbaar te zijn. */
@@ -148,7 +157,14 @@ export function basisjaarWaarschuwing(t: Vertaler, reeks?: Indexreeks): string {
 /** Hoe de achterstand geteld is. Zonder deze zin is het getal niet te plaatsen. */
 export function telwijzeTekst(t: Vertaler): string {
   return t(
-    'Per maand geteld vanaf de maand van de regeling, telkens met het bedrag dat op de eerste van die maand gold. Twee gevolgen die je moet kennen voor je dit cijfer gebruikt: de maand van de regeling telt volledig mee, ook als ze halverwege begon, en de maand waarin er geïndexeerd wordt telt nog aan het oude, lagere bedrag. Klopt dat niet met jouw afspraak, corrigeer het dan met een betaling.',
+    // ⚠ RONDE 112 — DRIE GEVOLGEN, WANT HET WAREN ER ALTIJD DRIE. Deze zin noemde er twee en
+    // verzweeg de derde: de LOPENDE maand telt vanaf dag 1 volledig mee. Op de eerste van een
+    // maand springt "Verschuldigd" dus met een volledige bijdrage omhoog, voor een maand waarin
+    // nog geen dag verstreken is. Nagerekend: een regeling van 15 juni 2024 geeft op 30 juni
+    // 2026 "25 maanden" en op 1 juli 2026 "26 maanden", terwijl er tussen die twee datums
+    // 24 volle maanden liggen. De telling zelf is een bewuste, geteste keuze (onderhoudsgeld is
+    // doorgaans op de eerste verschuldigd) — alleen de uitleg dekte maar de helft.
+    'Per maand geteld vanaf de maand van de regeling, telkens met het bedrag dat op de eerste van die maand gold. Drie gevolgen die je moet kennen voor je dit cijfer gebruikt: de maand van de regeling telt volledig mee, ook als ze halverwege begon; de lopende maand telt vanaf de eerste dag volledig mee, ook als ze nog moet verstrijken; en de maand waarin er geïndexeerd wordt telt nog aan het oude, lagere bedrag. Klopt dat niet met jouw afspraak, corrigeer het dan met een betaling.',
   )
 }
 

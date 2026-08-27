@@ -50,11 +50,22 @@ hetzelfde aanvoelt en een latere designwijziging op één plek gebeurt.
 | Klasse | Waarvoor |
 | --- | --- |
 | `lijst` | `<ul>`-container (rand + radius; binnen een kaart automatisch kaal) |
-| `rij` | één regel: flex, 14/16 padding, dunne onderlijn, laatste zonder |
-| `rij-midden` | tekstkolom die de rest opvult (titel + meta onder elkaar) |
-| `rij-titel`, `rij-meta` | 15 px halfvet / 12 px grijs |
-| `rij-acties` | knoppen rechts in de rij |
+| `rij` | één regel: flex, 14/16 padding, dunne onderlijn, laatste zonder. **Breekt af** zodra de tekstkolom minder dan 6rem overhoudt |
+| `rij-kolom` | een rij die zelf een KOLOM is (naam boven, blokken eronder). Zet `flex-wrap: nowrap` — in een kolom rekt `wrap` de kinderen uit tot het breedste kind en knipt `.lijst` de rest weg |
+| `rij-kop` | de bovenste regel ván zo'n kolomrij: naam links, badges en knoppen rechts, breekt af |
+| `rij-midden` | tekstkolom die de rest opvult (titel + meta onder elkaar); `flex: 1 1 6rem` |
+| `rij-titel`, `rij-meta` | 15 px halfvet / 12 px grijs; breken een woord dat niet past met `break-word` |
+| `rij-acties` | knoppen rechts in de rij; blijven rechts wanneer de rij afbreekt |
 | `rij-teken` | vierkant initiaal/icoonvlakje links (34 px) |
+
+⚠ **Bouw een rij nooit met de hand na in een `style={{ display: 'flex' }}`.** Drie plekken
+deden dat, en die misten daardoor het afbreken dat `.rij` wél heeft — met een naamkolom van
+9 px als gevolg. Gebruik `rij-kop`, of `rij` zelf.
+
+⚠ **`overflow-wrap: anywhere` hoort niet op een flexkind in een rij.** Die waarde verandert
+ook de min-content-breedte, dus flexbox mag de kolom daarna tot bijna nul persen en de tekst
+breekt per LETTER af (gemeten: één rij van 539 naar 1800 px hoog). `break-word` doet wat je
+wil zonder dat neveneffect.
 
 ### Knoppen
 

@@ -198,3 +198,25 @@ describe('downloadBlob', () => {
     }
   })
 })
+
+describe('veiligeBestandsnaam — een naam die niets overhoudt (ronde 108)', () => {
+  it('valt terug wanneer er geen letter of cijfer overblijft', () => {
+    // ⚠ RONDE 108. Twee dossiers die "🏠" en "🚗" heten, gaven op dezelfde dag allebei
+    // `afrekening--2026-04-01.pdf`: hetzelfde bestand, dus het tweede overschrijft het
+    // eerste in je downloadmap.
+    expect(veiligeBestandsnaam('🏠', 60, 'dossier')).toBe('dossier')
+    expect(veiligeBestandsnaam('   ', 60, 'dossier')).toBe('dossier')
+    expect(veiligeBestandsnaam('···', 60, 'dossier')).toBe('dossier')
+  })
+
+  it('blijft leeg wanneer er geen terugval meegegeven is', () => {
+    // De aanroepers die geen naam van een gebruiker gebruiken (het fiscale blad, het
+    // maandrapport) kunnen niet leeg uitkomen, dus die hoeven er geen mee te geven.
+    expect(veiligeBestandsnaam('🏠')).toBe('')
+  })
+
+  it('laat een gewone naam met rust', () => {
+    expect(veiligeBestandsnaam('🏠 Huis', 60, 'dossier')).toBe('huis')
+    expect(veiligeBestandsnaam('Kinderen 2026', 60, 'dossier')).toBe('kinderen-2026')
+  })
+})

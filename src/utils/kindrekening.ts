@@ -75,11 +75,25 @@ export function verwachtTotaal(kr: Kindrekening, basis: number | undefined, term
   return basis * (termijnen - 1) + geindexeerdeBijdrage(kr, basis)
 }
 
+/**
+ * Is er op deze kindrekening werkelijk geïndexeerd? (ronde 110)
+ *
+ * ⚠ TWEE ANTWOORDEN OP ÉÉN VRAAG, OP ÉÉN SCHERM. Het scherm zette het woord "geïndexeerd"
+ * achter de maandbijdrage zodra er twee indexcijfers ingevuld stonden — óók wanneer ze
+ * hetzelfde getal waren en het bedrag dus geen cent veranderd was. De uitlegregel eronder deed
+ * de strengere toets wél, en verscheen dan terecht niet. Zelfde feit, twee antwoorden.
+ *
+ * De regel staat nu hier, zodat beide plekken hem uit dezelfde bron halen.
+ */
+export function isGeindexeerd(kr: Kindrekening): boolean {
+  return !!(kr.aanvangsindex && kr.huidigeIndex && kr.huidigeIndex !== kr.aanvangsindex)
+}
+
 // Waar wanneer het verwachte bedrag deels met de niet-geïndexeerde basisbijdrage
 // geteld wordt: er is een indexatie ingesteld én er zijn eerdere termijnen dan de
 // lopende. Het scherm zet er dan één regel bij die dat uitlegt.
 export function teltVerledenZonderIndex(kr: Kindrekening, vandaagISO: string): boolean {
-  const heeftIndex = !!(kr.aanvangsindex && kr.huidigeIndex && kr.huidigeIndex !== kr.aanvangsindex)
+  const heeftIndex = isGeindexeerd(kr)
   const heeftBijdrage = !!(kr.maandbijdrageJij || kr.maandbijdragePartner)
   const termijnen = kr.bijdrageStart ? aantalTermijnen(kr.bijdrageStart, vandaagISO) : 0
   return heeftIndex && heeftBijdrage && termijnen > 1

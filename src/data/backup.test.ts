@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { db } from './db'
 import {
   bewaarDossier,
@@ -247,3 +247,47 @@ describe('backup — een bestand van een nieuwere versie', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// Ronde 109 — een herstel dat halverwege afbreekt, mag niet onherstelbaar zijn
+// ---------------------------------------------------------------------------
+
+describe('importeerBackup — het schrijven en het herbouwen horen samen', () => {
+  it('houdt de regels NIET wanneer het toepassen stukloopt', async () => {
+    // ⚠ RONDE 109. Hier stonden een `bulkPut` en een `herbouwStaat()` als twee losse stappen.
+    // Brak de tweede af, dan stonden je regels wél in het logboek maar niet in je lijsten — en
+    // dat herstelde zich nooit meer: een tweede herstel met hetzelfde bestand slaat elke regel
+    // over als "al aanwezig", en niets bouwt de staat daarna nog op. Je gegevens waren dan
+    // voorgoed onbereikbaar terwijl ze er gewoon stonden.
+    await bewaarTransactie({ id: 't1', datum: '2026-07-01', omschrijving: 'Colruyt', bedrag: -4200, rekeningId: 'r1' })
+    const bestand = await exporteerBackup()
+    await db.transacties.clear()
+    await db.events.clear()
+
+    const stuk = vi.spyOn(db.transacties, 'bulkPut').mockImplementation(() => {
+      throw new Error('opslag vol')
+    })
+    await expect(importeerBackup(bestand)).rejects.toThrow()
+    stuk.mockRestore()
+
+    expect(await db.events.get(JSON.parse(bestand).events[0].id)).toBeUndefined()
+  })
+
+  it('brengt bij een tweede poging alles gewoon terug', async () => {
+    // De tegencontrole: na de mislukte poging hierboven hoort hetzelfde bestand het gewoon te
+    // doen. Vóór deze ronde gaf die tweede poging "0 toegevoegd, 1 overgeslagen".
+    await bewaarTransactie({ id: 't1', datum: '2026-07-01', omschrijving: 'Colruyt', bedrag: -4200, rekeningId: 'r1' })
+    const bestand = await exporteerBackup()
+    await db.transacties.clear()
+    await db.events.clear()
+
+    const stuk = vi.spyOn(db.transacties, 'bulkPut').mockImplementation(() => {
+      throw new Error('opslag vol')
+    })
+    await expect(importeerBackup(bestand)).rejects.toThrow()
+    stuk.mockRestore()
+
+    const r = await importeerBackup(bestand)
+    expect(r.toegevoegd).toBe(1)
+    expect((await laadTransacties()).geldig.map((t) => t.id)).toContain('t1')
+  })
+})

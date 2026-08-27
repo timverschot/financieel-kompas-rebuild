@@ -179,3 +179,66 @@ describe('KindrekeningSectie — de indexcijfers', () => {
     )
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 110 — "geïndexeerd" alleen wanneer er werkelijk geïndexeerd is
+// ---------------------------------------------------------------------------
+
+describe('het woord "geïndexeerd" achter de maandbijdrage', () => {
+  const basis: Kindrekening = {
+    id: 'kr1',
+    dossierId: 'd1',
+    naam: 'Pot',
+    beginsaldo: 0,
+    maandbijdrageJij: 25000,
+    maandbijdragePartner: 25000,
+  }
+
+  it('zwijgt wanneer de aanvangsindex en de huidige index gelijk zijn', () => {
+    // ⚠ RONDE 110. Het scherm zette het woord er zodra er twee indexcijfers ingevuld stonden —
+    // óók wanneer ze hetzelfde getal waren en het bedrag dus geen cent veranderd was. De
+    // uitlegregel eronder doet de strengere toets wél, en zweeg dan terecht. Twee antwoorden op
+    // hetzelfde feit, op één scherm.
+    toon({ ...basis, aanvangsindex: 130, huidigeIndex: 130 })
+    expect(screen.getByText(/^Maandbijdrage: /)).not.toHaveTextContent('geïndexeerd')
+  })
+
+  it('zegt het wél zodra de index verschoven is', () => {
+    toon({ ...basis, aanvangsindex: 130, huidigeIndex: 140 })
+    expect(screen.getByText(/^Maandbijdrage: /)).toHaveTextContent('geïndexeerd')
+  })
+
+  it('zwijgt zonder indexcijfers', () => {
+    toon(basis)
+    expect(screen.getByText(/^Maandbijdrage: /)).not.toHaveTextContent('geïndexeerd')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 112 — de achterstand zegt over hoeveel termijnen ze geteld is
+// ---------------------------------------------------------------------------
+
+describe('de telwijze onder de achterstand', () => {
+  it('noemt het aantal termijnen en de twee eigenaardigheden', () => {
+    // ⚠ RONDE 112. Er stond "loopt € 2.000,00 achter" zonder één woord over de telling —
+    // terwijl die telling twee eigenaardigheden heeft: de maand waarin de bijdrage begon telt
+    // volledig mee, ook als ze halverwege begon, en de lopende maand telt vanaf dag 1 mee. Op
+    // de eerste van een maand springt het bedrag dus met een volledige bijdrage omhoog.
+    toon({
+      id: 'kr1',
+      dossierId: 'd1',
+      naam: 'Pot',
+      beginsaldo: 0,
+      maandbijdrageJij: 25000,
+      bijdrageStart: '2026-01-20',
+    })
+    expect(screen.getByText(/Geteld over \d+ maand\(en\)/)).toBeInTheDocument()
+    expect(screen.getByText(/Geteld over/)).toHaveTextContent('de lopende maand telt vanaf de eerste dag mee')
+  })
+
+  it('zwijgt zonder maandbijdrage of startdatum', () => {
+    // De tegencontrole: zonder afspraak valt er niets te tellen en hoort de zin er niet te staan.
+    toon({ id: 'kr1', dossierId: 'd1', naam: 'Pot', beginsaldo: 0 })
+    expect(screen.queryByText(/Geteld over/)).toBeNull()
+  })
+})

@@ -1,4 +1,5 @@
 import type { Categorie, Gezinslid, Rekening, Transactie } from '../data/schema'
+import { categorienaam } from './categorienaam'
 import { groepVanCategorie, labelVanCategorie } from '../data/categorieen/resolve'
 import type { Vertaler } from '../i18n'
 import { maakCsv, metBom, veiligeCsvTekst } from './csv'
@@ -115,8 +116,8 @@ export function transactieCsvRijen(
         tx.datum,
         veiligeCsvTekst(tx.omschrijving),
         veiligeCsvTekst(toelichting),
-        veiligeCsvTekst(groep.naam),
-        veiligeCsvTekst(labelVanCategorie(regel.categorieId, categorieen) ?? ''),
+        veiligeCsvTekst(categorienaam(t, groep.naam)),
+        veiligeCsvTekst(categorienaam(t, labelVanCategorie(regel.categorieId, categorieen) ?? '')),
         veiligeCsvTekst(rekeningNaam.get(tx.rekeningId) ?? ''),
         veiligeCsvTekst(gezinsledenTekst(t, tx, gezinsleden)),
         centenNaarInvoer(regel.bedrag),

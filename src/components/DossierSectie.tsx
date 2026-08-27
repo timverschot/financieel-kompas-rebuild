@@ -26,7 +26,7 @@ import {
   volgendeVerborgenLijst,
   type DossierOnderdeel,
 } from '../utils/dossieronderdelen'
-import { saldoVerrekeningDossier } from '../utils/dossier'
+import { saldoVerrekeningDossier, standaardWordtNogGebruikt } from '../utils/dossier'
 import { exportFoutmelding } from '../utils/appVersie'
 import { isOpenKost, kostenVoorAfrekening, type AfrekeningFilter } from '../utils/afrekening'
 import { reactieVervallen } from '../utils/uitwisseling'
@@ -41,6 +41,7 @@ import {
   saldoLegende,
   totaalRegels,
   regelMeta,
+  voorbehoudNaBewerking,
 } from '../utils/afrekeningTekst'
 import { bouwAfrekeningOverzicht, type AfrekeningGroep } from '../utils/afrekeningOverzicht'
 import { exporteerAfrekeningPDF } from '../utils/afrekeningPdf'
@@ -55,19 +56,9 @@ import { gesorteerdNieuwsteEerst } from '../utils/sorteer'
 import { Bonknop } from '../ui/Bonknop'
 import { Opslagfout } from '../ui/Opslagfout'
 import { useOpslagpoging } from '../ui/opslagpoging'
-import { formatEuro } from '../utils/format'
+import { formatEuro, leesPercentage } from '../utils/format'
 import { dagJaar } from '../utils/datum'
 import type { NieuweTak } from '../utils/categorietak'
-
-// Leest een percentageveld: leeg betekent 'niet ingesteld', een getal van 0 tot en
-// met 100 is geldig, al de rest is ongeldig (dan blijft de knop uit).
-function leesPercentage(waarde: string): number | 'leeg' | null {
-  const tekst = waarde.trim()
-  if (!tekst) return 'leeg'
-  const getal = Number.parseFloat(tekst.replace(',', '.'))
-  if (!Number.isFinite(getal) || getal < 0 || getal > 100) return null
-  return getal
-}
 
 // De volledige Dossiers-sectie: kies/maak/verwijder een dossier, stel de verdeling
 // per categorie en per kostensoort in, beheer de open kosten, en genereer
@@ -551,7 +542,10 @@ export function DossierSectie({
               <select id="dossierkeuze" style={{ flex: 1, minWidth: 0 }} value={dossierId} onChange={(e) => setGeselecteerd(e.target.value)}>
                 {dossiers.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.naam} {t('(jij {p}%)', { p: d.aandeelJij })}
+                    {/* ⚠ RONDE 107 — GEEN PERCENTAGE DAT NIET GEBRUIKT WORDT. Vul je beide
+                        velden van "Verdeling per kostensoort" in, dan rekent de app daarmee
+                        en niet meer met dit getal. */}
+                    {d.naam} {standaardWordtNogGebruikt(d) ? t('(jij {p}%)', { p: d.aandeelJij }) : t('(verdeling per kostensoort)')}
                   </option>
                 ))}
               </select>
@@ -661,6 +655,7 @@ export function DossierSectie({
           documenten: dossierDocumenten,
             categorieAandelen: dossier.categorieAandelen,
             typeAandelen: dossier.typeAandelen,
+            kosten,
           }).map((id) => {
             const naam = t(DOSSIER_ONDERDELEN.find((o) => o.id === id)?.label ?? id)
             return (
@@ -748,7 +743,11 @@ export function DossierSectie({
           {toont('verdeling-categorie') && (
           <Kaart
             titel={t('Verdeling per categorie')}
-            bijschrift={t('Standaard draag jij {p}%. Stel hier per categorie een afwijkend percentage in.', { p: dossier.aandeelJij })}
+            bijschrift={
+              standaardWordtNogGebruikt(dossier)
+                ? t('Standaard draag jij {p}%. Stel hier per categorie een afwijkend percentage in.', { p: dossier.aandeelJij })
+                : t('Je verdeling per kostensoort geldt voor élke kost, dus de standaard van dit dossier wordt niet meer gebruikt. Stel hier per categorie een afwijkend percentage in.')
+            }
           >
             {dossier.categorieAandelen && Object.keys(dossier.categorieAandelen).length > 0 && (
               <ul className="lijst">
@@ -1371,7 +1370,7 @@ function AfrekeningOpbouw({
         <span className="label-caps">{titel}</span>
         <ul className="lijst">
           {groepen.map((g) => (
-            <li key={g.sleutel} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 4 }}>
+            <li key={g.sleutel} className="rij rij-kolom" style={{ gap: 4 }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <span className="rij-midden">
                   <span className="rij-titel">{groepLabel(t, g)}</span>
@@ -1429,16 +1428,14 @@ function AfrekeningOpbouw({
             ))}
           </ul>
           <span className="rij-titel">{verrekenTekst(t, o.netto)}</span>
-          {/* Dezelfde waarschuwing als in de PDF: is de verdeling van het dossier
-              sinds het genereren gewijzigd, dan klopt het bewaarde bedrag niet meer
-              met wat je hier ziet. Dat hoort er te staan, niet stil weggerekend. */}
-          {o.wijktAf && (
-            <span className="rij-meta" style={{ color: 'var(--warn-tekst)' }}>
-              {t('Let op: bij het genereren stond hier {bedrag}; de verdeling van het dossier is sindsdien gewijzigd.', {
-                bedrag: formatEuro(o.bewaardNetto),
-              })}
+          {/* Dezelfde zinnen als in de PDF, uit dezelfde functie — zie
+              `voorbehoudNaBewerking`. Verandert er iets aan de kosten ná het genereren, dan
+              hoort dat er te staan en niet stil weggerekend te worden. */}
+          {voorbehoudNaBewerking(t, o).map((zin) => (
+            <span key={zin} className="rij-meta" style={{ color: 'var(--warn-tekst)' }}>
+              {zin}
             </span>
-          )}
+          ))}
           <span className="rij-meta">{saldoLegende(t)}</span>
         </div>
 
@@ -1455,7 +1452,7 @@ function AfrekeningOpbouw({
               {o.regels.map((r) => {
                 const meta = regelMeta(t, r)
                 return (
-                  <li key={r.kostId} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 4 }}>
+                  <li key={r.kostId} className="rij rij-kolom" style={{ gap: 4 }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       <span className="rij-midden">
                         <span className="rij-titel">{r.omschrijving || t('Zonder omschrijving')}</span>

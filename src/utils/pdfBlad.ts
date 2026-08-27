@@ -16,6 +16,10 @@ import { laadOnderdeel } from './appVersie'
 // een leeg vlakje of een verkeerd teken.
 
 // Maatvoering van het blad, in mm. Alles op één plek.
+// De regelhoogte van een titel van 16 punten. Even ruim als de oude `verschuif(8)` na een
+// titel van één regel, zodat een blad met een korte naam er precies hetzelfde uitziet.
+const TITELREGEL = 8
+
 export const LINKS = 20
 export const RECHTS = 190
 export const BOVEN = 20
@@ -63,6 +67,17 @@ export type Blad = {
   /** Zorgt dat er nog 'hoogte' mm plaats is; anders begint een nieuw blad. */
   ruimte: (hoogte: number) => void
   /** Een sectiekop met een dunne lijn eronder. */
+  /**
+   * De titel bovenaan een blad (16 pt vet), afbrekend over meerdere regels (ronde 108).
+   *
+   * ⚠ WAAROM DIT ER IS. De afrekening, de bewijsmap en de indexatiebrief zetten hun titel met
+   * een kale `doc.text`, en die breekt niet af en klemt niet: jsPDF meldt niets, de tekst
+   * verdwijnt gewoon van het blad. Een dossier dat "Kosten kinderen Sofie, Jonas, Marie en
+   * Elise (regeling 2024)" heet, gaf een titel van 198,7 mm op een blad van 210 mm met een
+   * rechtermarge op 190. De indexatiebrief loste dat al op voor haar ONDERWERPregel, met
+   * precies deze motivering erbij; de drie titelregels bleven achter.
+   */
+  titel: (tekst: string) => void
   kop: (tekst: string) => void
   /** Eén regel met een label links en een waarde rechts uitgelijnd. */
   labelWaarde: (label: string, waarde: string, vet?: boolean) => void
@@ -236,6 +251,22 @@ export function maakBlad(doc: Doc): Blad {
     nieuwBlad: () => {
       doc.addPage()
       y = BOVEN
+    },
+    titel: (tekst) => {
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(16)
+      // Meten in de MAAT WAARIN GESCHREVEN WORDT: vette 16-punts letters zijn breder dan de
+      // gewone maat, dus met de standaardmaat gemeten past de laatste regel net niet meer.
+      const delen = stukken(tekst, RECHTS - LINKS)
+      ruimte(delen.length * TITELREGEL)
+      for (const deel of delen) {
+        doc.text(deel, LINKS, y)
+        y += TITELREGEL
+      }
+      // De schrijfpositie stond bij de oude `doc.text` nog OP de titelregel; die werd daarna
+      // met een `verschuif(8)` verzet. Hier is de positie al door, dus de aanroepers
+      // verschuiven niet meer zelf.
+      normaal()
     },
     kop: (tekst) => {
       ruimte(14)

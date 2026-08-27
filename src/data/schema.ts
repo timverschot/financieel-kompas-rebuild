@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { isDagstempel } from '../utils/datum'
 import { CONTRACTSOORTEN } from './opzegregels'
 import { INDEXREEKSEN } from './indexreeksen'
 
@@ -15,6 +16,53 @@ import { INDEXREEKSEN } from './indexreeksen'
 // worden pas bij weergave vertaald; de opgeslagen waarde blijft altijd de sleutel.
 export const REKENING_TYPES = ['betaal', 'spaar', 'termijn', 'effecten', 'cash', 'krediet'] as const
 export type RekeningType = (typeof REKENING_TYPES)[number]
+
+/**
+ * Een echte kalenderdag ('JJJJ-MM-DD'), en niet alleen iets van de juiste VORM (ronde 109).
+ *
+ * ⚠ WAAROM DIT MOEST. Elk datumveld stond op `/^\d{4}-\d{2}-\d{2}$/`. Daar komt `2026-02-30`
+ * gewoon door, en `2026-13-45` ook. Zo'n boeking telt daarna mee in februari (de maandtotalen
+ * kijken naar `datum.startsWith('2026-02')`) en leest op het scherm als "02 mrt" — hetzelfde
+ * bedrag op twee plaatsen. De app had de juiste keuring al in huis (`isDagstempel` in
+ * `utils/datum.ts`, met precies dit voorbeeld in zijn commentaar) en de bankimport gebruikte
+ * hem al; de poortwachter zelf niet.
+ *
+ * ⚠ Via de formulieren is dit niet te bereiken (`<input type="date">` laat het niet toe). De weg
+ * erheen is een teruggezette back-up of een logboek van een ánder toestel — en dat is precies de
+ * weg waar een poortwachter voor bestaat.
+ */
+const dagstempel = () => z.string().refine(isDagstempel, 'datum moet een echte dag zijn (JJJJ-MM-DD)')
+
+/**
+ * Een echte maand ('JJJJ-MM'), dus 01 tot en met 12 (ronde 109).
+ *
+ * ⚠ `startMaand` en `eindMaand` stonden op de losse vorm, terwijl het zusterveld `Budget.maand`
+ * de strenge versie al gebruikte. Een `startMaand: '2026-13'` werd door de rekenkernen stil naar
+ * januari 2027 genormaliseerd, maar `volgendeVervaldag` geeft dan de TEKST `2026-13-05` terug —
+ * en `'2027-01-01' > '2026-13-05'` is als tekst waar, terwijl 1 januari 2027 in werkelijkheid
+ * vóór 5 januari 2027 ligt. Dan zegt de app dat je spaardoel te laat klaar is terwijl dat niet
+ * zo is.
+ */
+const maandstempel = () => z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'maand moet JJJJ-MM zijn')
+
+
+/**
+ * ⚠ RONDE 109 — ELK RECORDSCHEMA STAAT OP `.passthrough()`, EN DAT IS GEEN DETAIL.
+ *
+ * Zod knipt standaard weg wat het niet kent. Draait er in huis één toestel met een oudere
+ * app-versie, dan gebeurde dit: je vult op je pc een nieuw veld in bij een boeking; je telefoon
+ * (nog niet bijgewerkt) leest die boeking, verliest het veld bij het inlezen, jij corrigeert
+ * daar de omschrijving — en de verminkte versie gaat naar Drive. Het veld is dan op ÉLK toestel
+ * weg, ook op de pc die het kende. Nagespeeld en gemeten in ronde 109.
+ *
+ * Het LOGBOEK was al beschermd: `sync/sync.ts` en `data/backup.ts` bewaren met zoveel woorden de
+ * RUWE regel in plaats van het geknipte resultaat, met precies deze motivering erbij. Het
+ * RECORD was dat niet — en dat is de kant die op het scherm terechtkomt en teruggeschreven
+ * wordt.
+ *
+ * ⚠ Wat `.passthrough()` NIET verandert: een veld dat het schema wél kent maar dat een
+ * verkeerde vorm heeft, wordt nog altijd geweigerd. Alleen ONBEKENDE velden blijven staan.
+ */
 
 export const RekeningSchema = z.object({
   id: z.string().min(1),
@@ -48,7 +96,7 @@ export const RekeningSchema = z.object({
   // terwijl het afgesloten bedrag nog niet betaald is en dus nog steeds op je limiet
   // weegt. Met alleen een afsluitdag kan de app dat tussenstuk niet benoemen.
   afboekdag: z.number().int().min(1).max(28).optional(),
-})
+}).passthrough()
 export type Rekening = z.infer<typeof RekeningSchema>
 
 export const CategorieSchema = z.object({
@@ -73,7 +121,7 @@ export const CategorieSchema = z.object({
   // hangen (SubcategorieSchema), en dan is de boom hoofd → categorie → item ook
   // voor je eigen categorieën compleet.
   ouderId: z.string().min(1).optional(),
-})
+}).passthrough()
 export type Categorie = z.infer<typeof CategorieSchema>
 
 // Eén deelregel (kassaticketlijn): een product/omschrijving met zijn bedrag en
@@ -85,12 +133,12 @@ export const TransactieRegelSchema = z.object({
   categorieId: z.string().min(1).optional(),
   omschrijving: z.string().optional(),
   bedrag: z.number().int(),
-})
+}).passthrough()
 export type TransactieRegel = z.infer<typeof TransactieRegelSchema>
 
 export const TransactieSchema = z.object({
   id: z.string().min(1),
-  datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  datum: dagstempel(),
   omschrijving: z.string(), // handelaar/winkel
   bedrag: z.number().int(), // in centen; positief = inkomst, negatief = uitgave (totaal)
   rekeningId: z.string().min(1),
@@ -128,7 +176,7 @@ export const TransactieSchema = z.object({
   // ándere post af. Optioneel, dus geen migratie: elke bestaande boeking blijft
   // geldig en gedraagt zich zoals voorheen.
   vasteLastId: z.string().min(1).optional(),
-})
+}).passthrough()
 export type Transactie = z.infer<typeof TransactieSchema>
 
 export const BudgetSchema = z.object({
@@ -158,7 +206,7 @@ export const BudgetSchema = z.object({
     .string()
     .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'maand moet JJJJ-MM zijn')
     .optional(),
-})
+}).passthrough()
 export type Budget = z.infer<typeof BudgetSchema>
 
 // Een kind (of algemener: een partij) waaraan gedeelde kosten toegewezen kunnen
@@ -180,7 +228,7 @@ export const KindSchema = z.object({
   naam: z.string().min(1),
   rol: z.enum(GEZINSROLLEN).optional(),
   gearchiveerd: z.boolean().optional(),
-})
+}).passthrough()
 export type Kind = z.infer<typeof KindSchema>
 /** Nieuwe naam voor hetzelfde ding; gebruik deze in nieuwe code. */
 export type Gezinslid = Kind
@@ -242,7 +290,7 @@ export const DossierSchema = z.object({
   // het dossier zich alsof er niets aangeduid is. Zelfde regel als bij
   // `categorieAandelen` met een verwijderde categorie en bij `OrdeningSchema`.
   grondslagDocumentId: z.string().min(1).optional(),
-})
+}).passthrough()
 export type Dossier = z.infer<typeof DossierSchema>
 
 export const GedeeldeKostSchema = z.object({
@@ -251,7 +299,7 @@ export const GedeeldeKostSchema = z.object({
   omschrijving: z.string(),
   bedrag: z.number().int().positive(), // in centen
   betaaldDoor: z.enum(['jij', 'partner']),
-  datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  datum: dagstempel(),
   // Zodra een kost in een afrekening is vastgelegd, verwijst dit naar die
   // afrekening. Open (nog niet afgerekende) kosten hebben dit veld niet.
   verrekeningId: z.string().min(1).optional(),
@@ -313,10 +361,10 @@ export const GedeeldeKostSchema = z.object({
   reactie: z
     .object({
       soort: z.enum(['akkoord', 'betwist']),
-      op: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      op: dagstempel(),
       reden: z.string().optional(),
       bedrag: z.number().int().optional(),
-      datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      datum: dagstempel().optional(),
     })
     .optional(),
   // De andere ouder heeft deze kost ingetrokken. Bewust GEEN verwijdering: een
@@ -324,7 +372,7 @@ export const GedeeldeKostSchema = z.object({
   // een saldo laten vallen is erger dan het zichtbaar doorstrepen. Een
   // ingetrokken kost telt niet meer mee (zie isOpenKost).
   ingetrokken: z.boolean().optional(),
-})
+}).passthrough()
 export type GedeeldeKost = z.infer<typeof GedeeldeKostSchema>
 
 // Een afrekening: een momentopname van het te verrekenen bedrag over een gekozen
@@ -336,14 +384,14 @@ export type GedeeldeKost = z.infer<typeof GedeeldeKostSchema>
 export const VerrekeningSchema = z.object({
   id: z.string().min(1),
   dossierId: z.string().min(1),
-  datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  datum: dagstempel(),
   bedrag: z.number().int(), // in centen; positief = partner was jou verschuldigd
-  periodeVan: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  periodeTot: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  periodeVan: dagstempel().optional(),
+  periodeTot: dagstempel().optional(),
   kindIds: z.array(z.string()).optional(),
   kostIds: z.array(z.string()).optional(),
   overgemaakt: z.boolean().optional(),
-})
+}).passthrough()
 export type Verrekening = z.infer<typeof VerrekeningSchema>
 
 // Hoe vaak een vaste last terugkomt. De sleutels zijn taal-onafhankelijk; het
@@ -372,7 +420,7 @@ export const TerugkerendePostSchema = z.object({
   // valt in februari en augustus — niet in januari en juli. Ontbreekt dit veld bij
   // een niet-maandelijkse post, dan valt ze terug op de maand waarin je haar
   // aanmaakt (het formulier vult dat in).
-  startMaand: z.string().regex(/^\d{4}-\d{2}$/, 'maand moet JJJJ-MM zijn').optional(),
+  startMaand: maandstempel().optional(),
   // De maand waarin de post STOPT ('JJJJ-MM'), bijvoorbeeld omdat je het
   // abonnement opzegt of de lening afloopt. Vanaf DEZE maand telt hij niet meer
   // mee — de laatste betaling is dus de maand ervóór.
@@ -382,7 +430,7 @@ export const TerugkerendePostSchema = z.object({
   // jaar wél betaalde. Nu blijft het record bestaan en verandert alleen de
   // toekomst. Ontbreekt het veld, dan loopt de post gewoon door — precies zoals
   // elke bestaande post, dus geen migratie.
-  eindMaand: z.string().regex(/^\d{4}-\d{2}$/, 'maand moet JJJJ-MM zijn').optional(),
+  eindMaand: maandstempel().optional(),
   // Wil je het bedrag maandelijks opzijzetten in plaats van het in één keer te
   // dragen? Puur informatief: de app houdt geen echte pot bij, ze rekent uit
   // hoeveel je per maand opzij moet leggen en toont dat in je plan.
@@ -400,7 +448,7 @@ export const TerugkerendePostSchema = z.object({
   // onderhoudt — voor drie velden.
   contractsoort: z.enum(CONTRACTSOORTEN).optional(),
   // De eerstvolgende dag waarop dit contract verlengt of afloopt ('JJJJ-MM-DD').
-  verlengtOp: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn').optional(),
+  verlengtOp: dagstempel().optional(),
   // Om de hoeveel maanden het contract verlengt. Ontbreekt dit, dan rolt de app de
   // datum NIET zelf door: ze zegt dat de datum voorbij is en vraagt de nieuwe.
   // Bewust zo — of een verlopen contract voor één, twee of drie jaar verlengd is,
@@ -437,7 +485,7 @@ export const TerugkerendePostSchema = z.object({
   // Ontbreekt het veld (alles van vóór ronde 73), dan valt de lijst terug op de oude
   // herkenning op naam.
   bronVoorstel: z.string().min(1).optional(),
-})
+}).passthrough()
 export type TerugkerendePost = z.infer<typeof TerugkerendePostSchema>
 
 // Een door de gebruiker toegevoegde of gewijzigde subcategorie (item) bovenop de
@@ -449,7 +497,7 @@ export const SubcategorieSchema = z.object({
   naam: z.string().min(1),
   categorieId: z.string().min(1),
   synoniemen: z.array(z.string()).optional(),
-})
+}).passthrough()
 export type Subcategorie = z.infer<typeof SubcategorieSchema>
 
 // Een spaardoel: een langetermijndoel met een doelbedrag. Het huidige bedrag
@@ -460,7 +508,7 @@ export const SpaardoelSchema = z.object({
   naam: z.string().min(1),
   doelbedrag: z.number().int().positive(),
   huidigBedrag: z.number().int(), // manueel bijgehouden bedrag
-  doeldatum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn').optional(),
+  doeldatum: dagstempel().optional(),
   gekoppeldeRekeningId: z.string().min(1).optional(),
   maandbedrag: z.number().int().positive().optional(), // maandelijks streefbedrag
   kleur: z.string().optional(),
@@ -482,7 +530,7 @@ export const SpaardoelSchema = z.object({
    * uit elkaar lopen, en jij beslist.
    */
   vasteLastId: z.string().min(1).optional(),
-})
+}).passthrough()
 export type Spaardoel = z.infer<typeof SpaardoelSchema>
 
 // Een interne overboeking tussen twee EIGEN rekeningen. Dit is geen inkomst of
@@ -491,12 +539,12 @@ export type Spaardoel = z.infer<typeof SpaardoelSchema>
 // 'bedrag' is altijd positief (in centen); de richting zit in van/naar.
 export const OverboekingSchema = z.object({
   id: z.string().min(1),
-  datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  datum: dagstempel(),
   vanRekeningId: z.string().min(1),
   naarRekeningId: z.string().min(1),
   bedrag: z.number().int().positive(),
   omschrijving: z.string().optional(),
-})
+}).passthrough()
 export type Overboeking = z.infer<typeof OverboekingSchema>
 
 // Een WAARDERING: "op deze dag stond er dit op deze rekening" (ronde 38).
@@ -522,10 +570,10 @@ export type Overboeking = z.infer<typeof OverboekingSchema>
 export const WaarderingSchema = z.object({
   id: z.string().min(1),
   rekeningId: z.string().min(1),
-  datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  datum: dagstempel(),
   saldo: z.number().int(), // de STAND op die dag, in centen
   notitie: z.string().optional(),
-})
+}).passthrough()
 export type Waardering = z.infer<typeof WaarderingSchema>
 
 // Een kindrekening: een gezamenlijke pot bij een dossier waar beide ouders
@@ -543,10 +591,10 @@ export const KindrekeningSchema = z.object({
   beginsaldo: z.number().int(), // in centen
   maandbijdrageJij: z.number().int().nonnegative().optional(),
   maandbijdragePartner: z.number().int().nonnegative().optional(),
-  bijdrageStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  bijdrageStart: dagstempel().optional(),
   aanvangsindex: z.number().positive().optional(),
   huidigeIndex: z.number().positive().optional(),
-})
+}).passthrough()
 export type Kindrekening = z.infer<typeof KindrekeningSchema>
 
 // Eén beweging op de kindrekening: een storting (door een ouder) of een uitgave
@@ -557,7 +605,7 @@ export type Kindrekening = z.infer<typeof KindrekeningSchema>
 export const KindrekeningpostSchema = z.object({
   id: z.string().min(1),
   kindrekeningId: z.string().min(1),
-  datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  datum: dagstempel(),
   soort: z.enum(['storting', 'uitgave']),
   bedrag: z.number().int().positive(), // in centen
   door: z.enum(['jij', 'partner']).optional(),
@@ -565,7 +613,7 @@ export const KindrekeningpostSchema = z.object({
   kindIds: z.array(z.string()).optional(),
   categorieId: z.string().min(1).optional(),
   bonnetje: z.string().optional(),
-})
+}).passthrough()
 export type Kindrekeningpost = z.infer<typeof KindrekeningpostSchema>
 
 // De richting van een lening/krediet. Taal-onafhankelijke sleutels:
@@ -584,16 +632,16 @@ export const LeningSchema = z.object({
   naam: z.string().min(1),
   richting: z.enum(LENING_RICHTINGEN),
   hoofdsom: z.number().int().positive(), // in centen
-  startdatum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  startdatum: dagstempel(),
   tegenpartij: z.string().optional(), // wie: persoon of kredietgever
   rentevoet: z.number().nonnegative().optional(), // jaarlijkse % (informatief)
   maandbedrag: z.number().int().positive().optional(), // afgesproken maandaflossing (centen)
-  einddatum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // afgesproken termijn
+  einddatum: dagstempel().optional(), // afgesproken termijn
   omschrijving: z.string().optional(),
   afgesloten: z.boolean().optional(), // manueel afgesloten/gearchiveerd
   bonnetje: z.string().optional(), // contract/bewijs als (verkleinde) data-URL
   persoonId: z.string().min(1).optional(), // optioneel: aan/van welk gezinslid
-})
+}).passthrough()
 export type Lening = z.infer<typeof LeningSchema>
 
 // Eén aflossing (terugbetaling) op een lening/krediet. Bedrag altijd positief in
@@ -601,7 +649,7 @@ export type Lening = z.infer<typeof LeningSchema>
 export const AflossingSchema = z.object({
   id: z.string().min(1),
   leningId: z.string().min(1),
-  datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  datum: dagstempel(),
   bedrag: z.number().int().positive(), // in centen
   omschrijving: z.string().optional(),
   // De boeking waarmee deze aflossing betaald is (ronde 38). Optioneel, want een
@@ -613,7 +661,7 @@ export const AflossingSchema = z.object({
   // staat al een boeking van hetzelfde bedrag op dezelfde dag; is dit dezelfde?"
   // Hetzelfde patroon als `Garantie.transactieId` en `GedeeldeKost.transactieId`.
   transactieId: z.string().min(1).optional(),
-})
+}).passthrough()
 export type Aflossing = z.infer<typeof AflossingSchema>
 
 // Een aankoop met garantie. 'garantieMaanden' is de garantieperiode in maanden
@@ -624,7 +672,7 @@ export type Aflossing = z.infer<typeof AflossingSchema>
 export const GarantieSchema = z.object({
   id: z.string().min(1),
   product: z.string().min(1),
-  aankoopdatum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  aankoopdatum: dagstempel(),
   garantieMaanden: z.number().int().positive(),
   winkel: z.string().optional(),
   prijs: z.number().int().nonnegative().optional(), // in centen
@@ -632,7 +680,7 @@ export const GarantieSchema = z.object({
   notitie: z.string().optional(),
   bonnetje: z.string().optional(), // bon/factuur als (verkleinde) data-URL
   persoonId: z.string().min(1).optional(), // optioneel: van welk gezinslid is dit
-})
+}).passthrough()
 export type Garantie = z.infer<typeof GarantieSchema>
 
 // Een onthouden streepjescode: koppelt een barcode aan een productnaam (en
@@ -645,7 +693,7 @@ export const StreepjescodeSchema = z.object({
   naam: z.string().min(1),
   categorieId: z.string().min(1).optional(),
   nutriScore: z.string().optional(), // 'a'..'e' (Open Food Facts)
-})
+}).passthrough()
 export type Streepjescode = z.infer<typeof StreepjescodeSchema>
 
 // De sleutel van de enige ordening die vandaag bestaat: de volgorde van de
@@ -674,7 +722,7 @@ export const ORDENING_HOOFDCATEGORIEEN = 'hoofdcategorieen'
 export const OrdeningSchema = z.object({
   id: z.string().min(1),
   ids: z.array(z.string()),
-})
+}).passthrough()
 export type Ordening = z.infer<typeof OrdeningSchema>
 
 // De soorten documenten die in een documentkluis passen. Deze waarden worden
@@ -708,9 +756,9 @@ export const DossierDocumentSchema = z.object({
   soort: z.enum(DOCUMENTSOORTEN),
   bestand: z.string().min(1), // data-URL
   bestandsnaam: z.string().optional(),
-  toegevoegdOp: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  toegevoegdOp: dagstempel(),
   notitie: z.string().optional(),
-})
+}).passthrough()
 export type DossierDocument = z.infer<typeof DossierDocumentSchema>
 
 // ---------------------------------------------------------------------------
@@ -747,7 +795,7 @@ export const OnderhoudsbijdrageSchema = z.object({
   basisbedrag: z.number().int().positive(),
   // De datum van het vonnis of de ouderschapsovereenkomst. Bepaalt twee dingen: de
   // aanvangsindex (de maand ervóór) en de verjaardag waarop er geïndexeerd wordt.
-  datumRegeling: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  datumRegeling: dagstempel(),
   // Wordt er geïndexeerd? Standaard ja — dat is de wettelijke regel. Een akte mag
   // het uitsluiten, en dan hoort de app dat te volgen in plaats van te corrigeren.
   geindexeerd: z.boolean().optional(),
@@ -793,9 +841,9 @@ export const OnderhoudsbijdrageSchema = z.object({
   kindIds: z.array(z.string()).optional(),
   // Loopt de regeling af (bv. bij het einde van de studies)? Dan telt er na deze
   // maand niets meer mee.
-  eindDatum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn').optional(),
+  eindDatum: dagstempel().optional(),
   notitie: z.string().optional(),
-})
+}).passthrough()
 export type Onderhoudsbijdrage = z.infer<typeof OnderhoudsbijdrageSchema>
 
 // Eén betaling van de onderhoudsbijdrage: ontvangen of gedaan.
@@ -807,14 +855,14 @@ export type Onderhoudsbijdrage = z.infer<typeof OnderhoudsbijdrageSchema>
 export const OnderhoudsbetalingSchema = z.object({
   id: z.string().min(1),
   bijdrageId: z.string().min(1),
-  datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  datum: dagstempel(),
   bedrag: z.number().int().positive(), // in centen
   // Over welke maand deze betaling gaat ('JJJJ-MM'). Optioneel: wie stipt betaalt
   // heeft het niet nodig, wie een achterstand inhaalt wel — dan wordt één
   // overschrijving aan een oudere maand toegewezen.
-  voorMaand: z.string().regex(/^\d{4}-\d{2}$/, 'maand moet JJJJ-MM zijn').optional(),
+  voorMaand: maandstempel().optional(),
   notitie: z.string().optional(),
-})
+}).passthrough()
 export type Onderhoudsbetaling = z.infer<typeof OnderhoudsbetalingSchema>
 
 // ---------------------------------------------------------------------------
@@ -835,9 +883,9 @@ export type Onderhoudsbetaling = z.infer<typeof OnderhoudsbetalingSchema>
 // ---------------------------------------------------------------------------
 export const MaandafsluitingSchema = z.object({
   /** De maand zelf, 'JJJJ-MM'. Tegelijk de sleutel. */
-  id: z.string().regex(/^\d{4}-\d{2}$/, 'maand moet JJJJ-MM zijn'),
+  id: maandstempel(),
   /** Wanneer je ze afgesloten hebt. Puur informatief. */
-  afgeslotenOp: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'datum moet JJJJ-MM-DD zijn'),
+  afgeslotenOp: dagstempel(),
   /**
    * Hoeveel boekingen er op dat moment nog zonder categorie stonden.
    *
@@ -847,5 +895,5 @@ export const MaandafsluitingSchema = z.object({
    */
   zonderCategorie: z.number().int().nonnegative().optional(),
   notitie: z.string().optional(),
-})
+}).passthrough()
 export type Maandafsluiting = z.infer<typeof MaandafsluitingSchema>

@@ -394,6 +394,17 @@ function KaartAfrekening({
                   datum: dagJaar(stand.volgendeAfsluitdatum ?? ''),
                 })}
           </p>
+          {/* ⚠ RONDE 105. Betaal je je afschrift met een afgerond bedrag dat iets te hoog
+              ligt, dan zit dat teveel verrekend in de regel hierboven — anders telt dit
+              blok niet meer op. Zonder deze zin lijkt het alsof er minder op de kaart
+              bijkwam dan je werkelijk uitgaf. */}
+          {stand.teVeelBetaald > 0 && (
+            <p className="kaart-bijschrift" style={{ margin: 0 }}>
+              {t('Je betaalde {bedrag} meer dan het afschrift vroeg; dat is hierboven al verrekend.', {
+                bedrag: formatEuro(stand.teVeelBetaald),
+              })}
+            </p>
+          )}
           {/* Een afrekening die je al geboekt hebt met de datum van de afboeking
               staat in de toekomst en telt dus nog nergens mee. Zonder deze regel
               bleef de knop staan en boekte je ze een tweede keer. */}

@@ -9,6 +9,8 @@ import { knopnaamVoorPost } from '../utils/postkenmerk'
 import { Opslagfout } from '../ui/Opslagfout'
 import { useOpslagpoging } from '../ui/opslagpoging'
 import { huidigeMaand, vandaag, maandVoluit } from '../utils/datum'
+import { isGestopt, isNogNietBegonnen } from '../utils/vastelast'
+import { percentageZinvol } from '../utils/verhouding'
 
 function kleurVanSaldo(saldo: number): string {
   return saldo >= 0 ? 'var(--positive)' : 'var(--negative)'
@@ -179,6 +181,17 @@ export function VooruitblikSectie({
   // Balkje toont het overgehouden deel van de inkomsten (0–100%); negatief = leeg.
   const vulling = sq.quote === null ? 0 : Math.max(0, Math.min(100, sq.quote))
 
+  // ⚠ RONDE 106 — WEET DE APP WAAROP DIT CIJFER RUST? Hetzelfde oordeel als op de kaart
+  // "Wat ligt vast, wat blijft over" (zie `PlanRegels`), want het is dezelfde vraag: een
+  // groot GEKLEURD bedrag leest als een oordeel over je maand. Op een lege app stond hier
+  // een groen "+ € 0,00 verwacht in augustus", en bij wie alleen zijn huur invulde een rood
+  // "−€ 900,00" — terwijl de app zijn loon gewoon niet kende. Het cijfer zelf blijft staan
+  // (het klopt met wat er ingevoerd is); alleen de kleur en de zin eronder veranderen.
+  const heeftVasteInkomst = terugkerendePosten.some(
+    (p) => p.bedrag > 0 && !isGestopt(p, maand) && !isNogNietBegonnen(p, maand),
+  )
+  const kentInkomsten = heeftVasteInkomst || percentageZinvol(vb.verwachteInkomsten, vb.verwachteUitgaven)
+
   const postPerId = new Map(terugkerendePosten.map((p) => [p.id, p]))
   const postenVan = (ids: string[]): TerugkerendePost[] =>
     ids.map((id) => postPerId.get(id)).filter((p): p is TerugkerendePost => Boolean(p))
@@ -190,8 +203,16 @@ export function VooruitblikSectie({
         <p className="kaart-bijschrift" style={{ margin: 0 }}>
           {t('Spaarquote')} · {periodeLabel}
         </p>
-        {sq.inkomsten === 0 ? (
-          <Leeg>{t('Nog geen inkomsten in deze periode')}</Leeg>
+        {/* ⚠ RONDE 104 — OP `quote === null` EN NIET OP `inkomsten === 0`. Die tweede viel
+            om bij één regel statiegeld van € 0,25 binnen een boodschappenticket: dan stond
+            hier "−496000%" met een balk, en de zin "€ -1.240,00 van € 0,25 inkomsten
+            overgehouden". `heeftQuote` in `utils/vooruitblik.ts` legt de ondergrens uit. */}
+        {sq.quote === null ? (
+          <Leeg>
+            {sq.inkomsten === 0
+              ? t('Nog geen inkomsten in deze periode')
+              : t('Te weinig inkomsten in deze periode om een spaarquote te berekenen')}
+          </Leeg>
         ) : (
           <>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
@@ -205,11 +226,21 @@ export function VooruitblikSectie({
             <div className="balk">
               <div className="balk-vulling" style={{ width: `${vulling}%`, background: kleurVanSaldo(sq.saldo) }} />
             </div>
-            <ul className="lijst">
-              <Regel label={t('Inkomsten')} bedrag={sq.inkomsten} teken="+" />
-              <Regel label={t('Uitgaven')} bedrag={sq.uitgaven} teken="−" />
-            </ul>
           </>
+        )}
+        {/* ⚠ RONDE 104 — DEZE TWEE BEDRAGEN STAAN BUITEN DE VOORWAARDE, en dat is de
+            correctie op mijn eigen correctie. Ze stonden binnen de tak die alleen bij een
+            zinvolle quote getekend wordt. Toen die tak strenger werd (niet meer alleen bij
+            exact nul inkomsten), verdween met het zinloze percentage óók het antwoord op
+            "hoeveel ging er deze periode uit" — en dat is juist het cijfer dat klopt.
+            Dat raakt wie een tijd van zijn spaargeld leeft: tussen twee banen, een
+            loopbaanonderbreking. Kies je daar een andere periode dan de lopende maand, dan
+            stond het bedrag nergens meer op het scherm. */}
+        {sq.inkomsten + sq.uitgaven > 0 && (
+          <ul className="lijst">
+            <Regel label={t('Inkomsten')} bedrag={sq.inkomsten} teken="+" />
+            <Regel label={t('Uitgaven')} bedrag={sq.uitgaven} teken="−" />
+          </ul>
         )}
       </div>
 
@@ -219,7 +250,7 @@ export function VooruitblikSectie({
           {t('Vooruitblik — {maand}', { maand: maandNaam })}
         </p>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-          <span className="bedrag-groot" style={{ color: kleurVanSaldo(vb.verwachtSaldo) }}>
+          <span className="bedrag-groot" style={{ color: kentInkomsten ? kleurVanSaldo(vb.verwachtSaldo) : 'var(--text)' }}>
             {vb.verwachtSaldo >= 0 ? '+' : '−'}
             {formatEuro(Math.abs(vb.verwachtSaldo))}
           </span>
@@ -228,6 +259,12 @@ export function VooruitblikSectie({
             {vb.verwachteQuote !== null ? ` · ${procent(vb.verwachteQuote)} ${t('spaarquote')}` : ''}
           </span>
         </div>
+
+        {!kentInkomsten && (
+          <p className="rij-meta" data-geen-inkomsten style={{ margin: 0 }}>
+            {t('De app kent je inkomsten voor deze maand nog niet, dus dit is geen oordeel over je maand — alleen een optelling van wat je invoerde.')}
+          </p>
+        )}
 
         {/* RONDE 69 — waar dit cijfer vandaan komt.
             `bepaalVooruitblik` telt: wat er deze maand al geboekt is, plus de

@@ -107,16 +107,14 @@ export function GarantieSectie({
             return (
               <li
                 key={g.id}
-                className="rij"
+                className="rij rij-kolom"
                 style={{
-                  flexDirection: 'column',
-                  alignItems: 'stretch',
                   gap: 8,
                   opacity: s.verlopen ? 0.7 : 1,
                   ...(s.bijnaVerlopen ? { borderLeft: '3px solid var(--warn)', paddingLeft: 10 } : {}),
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div className="rij-kop">
                   <div className="rij-midden">
                     <span className="rij-titel">{g.product}</span>
                   </div>

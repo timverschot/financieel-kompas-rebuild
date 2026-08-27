@@ -138,6 +138,30 @@ export function geldendeBudgetten(budgetten: readonly Budget[], maand: string): 
 }
 
 /**
+ * De budgetten die niet BINNEN een ander geldend budget vallen (ronde 106).
+ *
+ * ⚠ WAAROM DIT BESTAAT. `geldendeBudgetten` ontdubbelt op dezelfde categorie — één budget per
+ * categorie. Maar budgetten kunnen ook in elkáár zitten: € 900 op "Woning en vaste lasten" en
+ * € 120 op "Energie en nutsvoorzieningen", een middencategorie daaronder. Dan telde de kaart
+ * "Wat ligt vast, wat blijft over" ze allebei op — *"je budgetten vragen samen € 1.020,00"* —
+ * terwijl er hoogstens € 900 vastligt. De badge "nog nergens ondergebracht" stond dus € 120 te
+ * laag, en dat is precies het getal waarop je stuurt.
+ *
+ * ⚠ ALLEEN VOOR HET OPTELLEN. De twee balken op de Budget-pagina blijven allebei staan: het
+ * is een geldige manier om te budgetteren ("van mijn € 900 woonlasten mag hoogstens € 120 naar
+ * energie"), en die € 100 elektriciteit hoort dan ook in allebei mee te tellen. Alleen de SOM
+ * mag ze niet twee keer vragen.
+ *
+ * Het buitenste budget wint, ook wanneer het binnenste hoger staat: dat is een opstelling die
+ * zichzelf tegenspreekt, en dan is het plafond nog altijd het plafond.
+ */
+export function budgettenZonderOverlap(geldend: readonly Budget[]): Budget[] {
+  return geldend.filter(
+    (b) => !geldend.some((ander) => ander !== b && regelHoortBijBudget(b.categorieId, ander.categorieId)),
+  )
+}
+
+/**
  * De maanden waarvoor er een apart budget klaarstaat, van vroeg naar laat.
  *
  * Waarvoor: een budget voor september zie je in augustus nergens — het hoort ook

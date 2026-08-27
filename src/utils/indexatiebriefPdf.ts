@@ -88,10 +88,8 @@ export async function exporteerIndexatiebriefPDF(
   blad.nieuwBlad()
 
   // ---- Kop -----------------------------------------------------------------
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(16)
-  doc.text(t('Onderhoudsbijdrage — {naam}', { naam: dossier.naam }), LINKS, blad.positie())
-  blad.verschuif(8)
+  // Afbrekend (ronde 108) — dezelfde les die deze brief voor haar ONDERWERPregel al leerde.
+  blad.titel(t('Onderhoudsbijdrage — {naam}', { naam: dossier.naam }))
   for (const regel of [
     `${t('Regeling van')}: ${bijdrage.datumRegeling}`,
     `${t('Bedrag in de regeling')}: ${formatEuro(bijdrage.basisbedrag)}`,
@@ -100,7 +98,10 @@ export async function exporteerIndexatiebriefPDF(
     ...(bijdrage.eindDatum ? [`${t('Loopt tot')}: ${bijdrage.eindDatum}`] : []),
     `${t('Opgemaakt op')}: ${nuISO}`,
   ]) {
-    blad.regel(regel)
+    // ⚠ RONDE 108 — `alinea` EN NIET `regel`. De namenlijst achter "Kinderen:" liep bij vier
+    // namen voorbij de rechtermarge en verdween van het blad; `regel` breekt niet af. Voor de
+    // korte regels ernaast verandert er niets: bij één regel doen ze precies hetzelfde.
+    blad.alinea(regel)
   }
 
   // ---- De uitkomst, meteen ------------------------------------------------
@@ -185,5 +186,5 @@ export async function exporteerIndexatiebriefPDF(
   for (const regel of bijdrageVoorbehoud(t, opbouw.reeks)) blad.alinea(`• ${regel}`)
 
   blad.voettekst(t, `${t('Onderhoudsbijdrage')} — ${dossier.naam} — ${nuISO}`)
-  doc.save(`onderhoudsbijdrage-${veiligeBestandsnaam(dossier.naam)}-${nuISO}.pdf`)
+  doc.save(`onderhoudsbijdrage-${veiligeBestandsnaam(dossier.naam, 60, 'dossier')}-${nuISO}.pdf`)
 }

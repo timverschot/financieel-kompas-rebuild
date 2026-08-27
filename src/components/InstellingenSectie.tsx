@@ -343,11 +343,23 @@ export function InstellingenSectie({
           bijschrift={t('Wist al je gegevens op dit toestel en begint met een schone lei.')}
         >
           {verbonden ? (
-            <p style={statusRegel}>
-              {t(
-                'Ook de logbestanden in je Google Drive-back-up worden opgeruimd, anders komt alles bij de volgende synchronisatie gewoon terug. Ze gaan naar de prullenbak van Drive, dus je kan ze daar nog terughalen.',
-              )}
-            </p>
+            <>
+              <p style={statusRegel}>
+                {t(
+                  'Ook de logbestanden in je Google Drive-back-up worden opgeruimd, anders komt alles bij de volgende synchronisatie gewoon terug. Ze gaan naar de prullenbak van Drive, dus je kan ze daar nog terughalen.',
+                )}
+              </p>
+              {/* ⚠ RONDE 109 — ÓÓK DIE VAN JE ANDERE TOESTELLEN. De opruiming leegt de hele map,
+                  en elk toestel schrijft daar zijn eigen bestand in. De zin hierboven zegt "op dit
+                  toestel", en dat las als "alleen dit toestel". Ze komen pas terug wanneer dat
+                  andere toestel zelf opnieuw synchroniseert — en gebeurt dat niet binnen dertig
+                  dagen, dan leegt Google de prullenbak. */}
+              <p style={statusRegel}>
+                {t(
+                  'Let op: dat geldt voor het logbestand van élk toestel, ook die van je andere toestellen. Open daarna elk van die toestellen en laat ze synchroniseren, dan staat hun back-up er weer.',
+                )}
+              </p>
+            </>
           ) : (
             <p style={statusRegel}>
               {t(

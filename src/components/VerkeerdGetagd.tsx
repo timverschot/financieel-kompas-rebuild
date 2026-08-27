@@ -119,10 +119,13 @@ export function VerkeerdGetagd({
                 // hij op een eigen regel, net zoals "opnieuw kiezen" op een ticketregel
                 // (ronde 78). Op 393 px staan ze weer naast elkaar.
                 <li key={sleutel} className="rij" style={{ flexWrap: 'wrap' }}>
-                  {/* ⚠ `overflow-wrap` erop: `.lijst` heeft `overflow: hidden`, en een lange
-                      subcategorienaam wordt daar op 320 px stil afgeknipt in plaats van af
-                      te breken — de val die ronde 82 op de vensterkop vond. */}
-                  <span className="rij-midden" style={{ overflowWrap: 'anywhere', minWidth: 200 }}>
+                  {/* ⚠ Hier stond óók `overflowWrap: 'anywhere'`, omdat een lange
+                      subcategorienaam door `.lijst` (`overflow: hidden`) stil afgeknipt werd.
+                      Sinds ronde 103 zetten `.rij-titel` en `.rij-meta` zélf
+                      `overflow-wrap: break-word`, en een eigen waarde wint van een geërfde —
+                      deze inline regel deed dus niets meer. `minWidth: 200` blijft: die
+                      verhindert dat de kolom überhaupt wordt samengeperst. */}
+                  <span className="rij-midden" style={{ minWidth: 200 }}>
                     <span className="rij-titel">{v.omschrijving}</span>
                     <span className="rij-meta">
                       {v.isMiddenlaag

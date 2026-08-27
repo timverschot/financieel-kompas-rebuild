@@ -3,6 +3,7 @@ import { categorieBedragen } from './transactie'
 import { inPeriode, type Periode } from './analyse'
 import { vandaag } from './datum'
 import { valtInMaand } from './vastelast'
+import { percentageZinvol } from './verhouding'
 
 // Rekenkern voor het blok "Vooruitblik & spaarquote" op de Analyse-pagina.
 // Zuiver en los testbaar (geen datum/klok binnenin). Inkomsten en uitgaven worden
@@ -32,13 +33,36 @@ export type Spaarquote = {
   inkomsten: number // centen, positief
   uitgaven: number // centen, positief (absoluut)
   saldo: number // inkomsten − uitgaven (kan negatief zijn)
-  quote: number | null // percentage overgehouden; null als er geen inkomsten zijn
+  /** Percentage overgehouden; `null` wanneer er te weinig inkomsten zijn. Zie `heeftQuote`. */
+  quote: number | null
+}
+
+/**
+ * Is een spaarquote hier zinvol? (ronde 104)
+ *
+ * ⚠ DE VRAAG WAS `inkomsten > 0`, EN DAT VALT OM BIJ ÉÉN CENT. Deze som telt per REGEL —
+ * zoals het hoort, want een gesplitst kassaticket telt overal per regel mee. Maar één regel
+ * statiegeld van € 0,25 binnen een boodschappenticket van € 1.240 maakte die controle waar,
+ * en dan stond er op het scherm **"−496000%"**, met een balk erbij en de zin
+ * "€ -1.240,00 van € 0,25 inkomsten overgehouden".
+ *
+ * De grens zelf staat in `utils/verhouding.ts`, samen met de twee andere schermen die
+ * dezelfde fout maakten. `PlanRegels` gebruikt dezelfde VERHOUDING, maar op een andere
+ * noemer: daar gaat het om de vaste lasten van één maand, hier om alle uitgaven van de
+ * gekozen periode.
+ */
+export function heeftQuote(inkomsten: number, uitgaven: number): boolean {
+  // ⚠ RONDE 106 — EN ER MOET OOK IETS UITGEGEVEN ZIJN. Boek je op 1 augustus je loon en
+  // verder nog niets, dan was de quote 100%: "je hield je hele loon over", op de dag dat de
+  // maand begint. Het getal klopte met de gegevens en zei niets over je maand. Zolang er
+  // niets uitgegeven is, is er geen quote — de bedragen eronder blijven wél staan.
+  return uitgaven > 0 && percentageZinvol(inkomsten, uitgaven)
 }
 
 export function spaarquote(transacties: Transactie[], periode: Periode): Spaarquote {
   const { inkomsten, uitgaven } = telInUit(transacties, (d) => inPeriode(d, periode))
   const saldo = inkomsten - uitgaven
-  const quote = inkomsten > 0 ? (saldo / inkomsten) * 100 : null
+  const quote = heeftQuote(inkomsten, uitgaven) ? (saldo / inkomsten) * 100 : null
   return { inkomsten, uitgaven, saldo, quote }
 }
 
@@ -338,7 +362,10 @@ export function maandVooruitblik(
   const verwachteInkomsten = geboekt.inkomsten + komendeInkomsten + achterstalligeInkomsten
   const verwachteUitgaven = geboekt.uitgaven + komendeUitgaven + achterstalligeUitgaven
   const verwachtSaldo = verwachteInkomsten - verwachteUitgaven
-  const verwachteQuote = verwachteInkomsten > 0 ? (verwachtSaldo / verwachteInkomsten) * 100 : null
+  // Dezelfde ondergrens als bij `spaarquote` hierboven, en om dezelfde reden.
+  const verwachteQuote = heeftQuote(verwachteInkomsten, verwachteUitgaven)
+    ? (verwachtSaldo / verwachteInkomsten) * 100
+    : null
 
   return {
     maand,

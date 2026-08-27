@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { zetOpmaaktaal } from './opmaaktaal'
 import {
+  verschuifDagen,
   dagKort,
   huidigeMaand,
   maandJaarLabel,
@@ -313,5 +314,27 @@ describe('verschuifDatumMaanden', () => {
 
   it('geeft null in plaats van een jaartal vóór het jaar 0', () => {
     expect(verschuifDatumMaanden('0001-01-15', -24)).toBeNull()
+  })
+})
+
+describe('verschuifDagen (ronde 110)', () => {
+  it('telt dagen op en af, ook over een maand- en jaargrens', () => {
+    expect(verschuifDagen('2026-08-01', -1)).toBe('2026-07-31')
+    expect(verschuifDagen('2026-07-31', -30)).toBe('2026-07-01')
+    expect(verschuifDagen('2026-12-31', 1)).toBe('2027-01-01')
+    expect(verschuifDagen('2028-02-28', 1)).toBe('2028-02-29')
+  })
+
+  it('rekent in wereldtijd, dus de zomertijdwissel verschuift niets', () => {
+    // ⚠ RONDE 110. De vorige periode op Analyse rekende met `new Date('2026-08-01')` — dat leest
+    // de tekst als middernacht in WERELDtijd — en schreef het resultaat weg in LOKALE tijd. Op
+    // een gsm die van tijdzone wisselt lag het bereik er daardoor een dag naast.
+    expect(verschuifDagen('2027-03-27', 1)).toBe('2027-03-28')
+    expect(verschuifDagen('2026-10-24', 1)).toBe('2026-10-25')
+  })
+
+  it('geeft null bij een dag die niet bestaat', () => {
+    expect(verschuifDagen('2026-02-30', 1)).toBeNull()
+    expect(verschuifDagen('gisteren', 1)).toBeNull()
   })
 })

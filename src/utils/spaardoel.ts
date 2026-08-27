@@ -148,6 +148,20 @@ export function spaardoelTempo(
     return { perMaand: null, gemetenMaanden: 0 }
   }
 
+  // ⚠ RONDE 106 — ÉÉN BEWEGING IS GEEN TEMPO. Dezelfde redenering als bij de waardering
+  // hierboven, maar voor gewoon geld: verkocht je in juni je auto en stortte je € 3.000 op je
+  // spaarrekening, dan las je "je tempo: € 1.000,00 per maand (gemiddeld over 3 maanden)" en
+  // "zo klaar rond februari 2027". Dat cijfer beschrijft geen gedrag dat zich herhaalt, en het
+  // is precies het soort cijfer waarop iemand een plan bouwt.
+  //
+  // ⚠ NUL bewegingen blijft WÉL een antwoord: dan spaarde je in dit venster aantoonbaar
+  // niets, en "€ 0,00 per maand" is dan waar. Alleen bij precies één beweging weten we het
+  // niet.
+  const bewegingen =
+    transacties.filter((t) => t.rekeningId === rekeningId && t.datum > begin && t.datum <= eind).length +
+    overboekingen.filter((o) => raaktRekening(o) && o.datum > begin && o.datum <= eind).length
+  if (bewegingen === 1) return { perMaand: null, gemetenMaanden: 0 }
+
   const beginsaldo = rekeningen.find((r) => r.id === rekeningId)?.beginsaldo ?? 0
   const toen = saldoOpDatum(rekeningId, beginsaldo, transacties, overboekingen, waarderingen, begin)
   const nu = saldoOpDatum(rekeningId, beginsaldo, transacties, overboekingen, waarderingen, eind)

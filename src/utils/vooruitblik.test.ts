@@ -76,6 +76,93 @@ describe('vooruitblik — maandVooruitblik', () => {
     expect(r.verwachteQuote).toBeCloseTo((5000 / 105000) * 100, 5)
   })
 
+  it('geeft geen spaarquote van −496.000 % bij één cent statiegeld (ronde 104)', () => {
+    // ⚠ DE ZICHTBAARSTE VAN DE DRIE. De lege staat hing aan `inkomsten === 0`. Eén regel
+    // statiegeld van € 0,25 binnen een boodschappenticket van € 1.240 maakte dat vals, en
+    // dan stond er op het scherm een groot gekleurd "−496000%" met een balk eronder en de
+    // zin "€ -1.240,00 van € 0,25 inkomsten overgehouden".
+    const ticket = tx('boodschappen', '2026-07-04', -124000, [
+      { omschrijving: 'Boodschappen', bedrag: -124025 },
+      { omschrijving: 'Statiegeld', bedrag: 25 },
+    ])
+    const sq = spaarquote([ticket], JULI)
+    expect(sq.inkomsten).toBe(25)
+    expect(sq.quote).toBeNull()
+  })
+
+  it('geeft wél een quote zodra de inkomsten in verhouding staan', () => {
+    // De positieve tegencontrole: zonder haar slaagt de test hierboven ook wanneer de
+    // quote nooit meer berekend wordt.
+    const sq = spaarquote([tx('loon', '2026-07-01', 50000), tx('huur', '2026-07-03', -40000)], JULI)
+    expect(sq.quote).toBeCloseTo(20, 5)
+  })
+
+  it('zwijgt ook bij klein tegenover klein (ronde 106)', () => {
+    // Eén bakkersbon van € 2,00 met een statiegeldregel van € 0,25 erin: verhouding 9, dus
+    // de verhoudingsgrens liet het door en er stond "−800%".
+    const bon = tx('bakker', '2026-07-05', -200, [
+      { omschrijving: 'Brood', bedrag: -225 },
+      { omschrijving: 'Statiegeld', bedrag: 25 },
+    ])
+    const sq = spaarquote([bon], JULI)
+    expect(sq.inkomsten).toBe(25)
+    expect(sq.uitgaven).toBe(225)
+    expect(sq.quote).toBeNull()
+  })
+
+  it('geeft geen quote van 100% op de dag dat je je loon boekt (ronde 106)', () => {
+    // Eén boeking, 1 juli, + € 2.500. Er stond "100%" met een volle balk en "€ 2.500,00 van
+    // € 2.500,00 inkomsten overgehouden" — op de dag dat de maand begint.
+    const sq = spaarquote([tx('loon', '2026-07-01', 250000)], JULI)
+    expect(sq.inkomsten).toBe(250000)
+    expect(sq.uitgaven).toBe(0)
+    expect(sq.quote).toBeNull()
+    // De bedragen zelf blijven wél kloppen; alleen het percentage zwijgt.
+    expect(sq.saldo).toBe(250000)
+  })
+
+  it('geeft de quote terug zodra er iets uitgegeven is', () => {
+    // De tegencontrole bij de test hierboven: één cent uitgave is genoeg om te mogen rekenen.
+    const sq = spaarquote([tx('loon', '2026-07-01', 250000), tx('brood', '2026-07-02', -25000)], JULI)
+    expect(sq.quote).toBeCloseTo(90, 5)
+  })
+
+  it('legt de ondergrens vast op één cent nauwkeurig', () => {
+    // ⚠ OP DE GRENS ZELF, aan beide kanten. De eerste versie van deze reeks gebruikte
+    // € 500 tegenover € 400 — twaalf keer boven de grens — en een doorlichting toonde met
+    // een mutatie aan dat de factor daardoor van 10 naar 1000 kon zonder dat één test
+    // knipperde. Met de uitgaven van het statiegeldticket (€ 1.240,25) ligt de grens op
+    // € 124,025, dus op 12403 centen.
+    const uit = tx('uit', '2026-07-02', -124025)
+    expect(spaarquote([uit, tx('in', '2026-07-01', 12403)], JULI).quote).not.toBeNull()
+    expect(spaarquote([uit, tx('in', '2026-07-01', 12402)], JULI).quote).toBeNull()
+  })
+
+  it('houdt dezelfde ondergrens aan voor de VERWACHTE quote', () => {
+    const ticket = tx('boodschappen', '2026-07-04', -124000, [
+      { omschrijving: 'Boodschappen', bedrag: -124025 },
+      { omschrijving: 'Statiegeld', bedrag: 25 },
+    ])
+    const r = maandVooruitblik([ticket], [], '2026-07', EERSTE_JULI)
+    expect(r.verwachteInkomsten).toBe(25)
+    expect(r.verwachteQuote).toBeNull()
+  })
+
+  it('telt een regel statiegeld wél mee in het BEDRAG (ronde 104)', () => {
+    // ⚠ Dit hoort zo, en het is de reden dat het oordeel "kent de app je inkomsten"
+    // NIET aan dit bedrag mag hangen. Een gesplitst kassaticket telt overal per regel
+    // mee — dat is een huisregel sinds ronde 69 — dus die € 0,25 statiegeld staat
+    // terecht in `verwachteInkomsten`. Wat er niet mag gebeuren, is dat Budget daaruit
+    // afleidt dat je inkomsten kent; zie `PlanRegels.tsx` en zijn test.
+    const ticket = tx('boodschappen', '2026-07-04', -124000, [
+      { omschrijving: 'Boodschappen', bedrag: -124025 },
+      { omschrijving: 'Statiegeld', bedrag: 25 },
+    ])
+    const r = maandVooruitblik([ticket], [], '2026-07', EERSTE_JULI)
+    expect(r.verwachteInkomsten).toBe(25)
+    expect(r.verwachteUitgaven).toBe(124025)
+  })
+
   it('geeft alleen het geboekte terug wanneer alle vaste lasten al ingeboekt zijn', () => {
     const txs = [
       tx('inkomen', '2026-07-01', 100000),

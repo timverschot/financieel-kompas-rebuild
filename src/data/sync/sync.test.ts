@@ -407,3 +407,55 @@ describe('synchroniseer — de dag van de laatste geslaagde ronde', () => {
     expect(await db.meta.get('laatsteSyncOp')).toBeUndefined()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ronde 109 — een onleesbare regel verdwijnt niet meer zonder een woord
+// ---------------------------------------------------------------------------
+
+describe('een regel die de schemacontrole niet haalt', () => {
+  it('komt in `geweigerd` en niet alleen in een teller', async () => {
+    // ⚠ RONDE 109. `ongeldig` ging alleen naar de vluchtige statuszin, en de STILLE
+    // synchronisatie (elke 45 seconden) toont die zin nooit. Een regel van je andere toestel
+    // die deze app niet kan lezen, verdween zo zonder één woord — ronde na ronde opnieuw,
+    // want een geweigerde regel wordt nooit aan je eigen logboek toegevoegd.
+    await db.events.clear()
+    await db.meta.clear()
+
+    const backend = new GeheugenBackend()
+    await backend.stuur('B', [
+      { id: 'ev-stuk', toestelId: 'B', volgnummer: 1, tijdstip: 1000, gebeurtenis: { type: 'iets.onbekends' } } as never,
+    ])
+
+    const r = await synchroniseer(backend)
+    expect(r.ongeldig).toBe(1)
+    expect(r.geweigerd).toEqual([{ id: 'ev-stuk', tijdstip: 1000, reden: 'onleesbaar' }])
+  })
+
+  it('meldt niets wanneer alles gewoon leesbaar is', async () => {
+    // De tegencontrole: zonder haar slaagt de test hierboven ook wanneer élke regel als
+    // geweigerd gemeld wordt.
+    await db.events.clear()
+    await db.meta.clear()
+
+    const backend = new GeheugenBackend()
+    await backend.stuur('B', [
+      {
+        id: 'ev-ok',
+        toestelId: 'B',
+        volgnummer: 1,
+        tijdstip: 1000,
+        hlcL: 1000,
+        hlcC: 0,
+        formaat: LOG_FORMAAT,
+        gebeurtenis: {
+          type: 'transactie.bewaard' as const,
+          payload: { id: 't-ok', datum: '2026-07-02', omschrijving: 'Colruyt', bedrag: -4200, rekeningId: 'r1' },
+        },
+      },
+    ])
+
+    const r = await synchroniseer(backend)
+    expect(r.ongeldig).toBe(0)
+    expect(r.geweigerd).toEqual([])
+  })
+})

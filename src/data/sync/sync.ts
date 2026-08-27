@@ -71,6 +71,17 @@ export async function synchroniseer(backend: SyncBackend, dagISO: string = vanda
     // Dus: valideren met het schema, bewaren wat er stond.
     if (!check.success) {
       ongeldig++
+      // ⚠ RONDE 109 — ÓÓK IN `geweigerd`. Dit getal ging alleen naar de vluchtige statuszin, en
+      // de stille synchronisatie toont die niet: een regel van je andere toestel die deze app
+      // niet kan lezen, verdween zo zonder één woord, elke 45 seconden opnieuw. De twee andere
+      // redenen komen wél in de blijvende melding op het Overzicht.
+      //
+      // ⚠ Het kenmerk komt hier uit de RUWE regel en niet uit `check.data` — dat bestaat niet,
+      // want de controle is juist mislukt. `id` en `tijdstip` worden apart nagekeken: van een
+      // onleesbare regel is niets te vertrouwen, ook die twee velden niet.
+      const id = typeof regel.id === 'string' && regel.id.length > 0 ? regel.id : `onleesbaar-${ongeldig}`
+      const tijdstip = typeof regel.tijdstip === 'number' && Number.isFinite(regel.tijdstip) ? regel.tijdstip : 0
+      geweigerd.push({ id, tijdstip, reden: 'onleesbaar' })
       continue
     }
     // Een regel uit de euro-tijd draagt geen eenheid. Zo'n regel toepassen zou haar

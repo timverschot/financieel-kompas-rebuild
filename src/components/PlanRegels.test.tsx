@@ -121,6 +121,117 @@ describe('PlanRegels', () => {
     expect(screen.getByText(/gemiddeld.*1[.\s]?050/)).toBeInTheDocument()
   })
 
+  it('laat zich niet foppen door één regel statiegeld (ronde 104)', () => {
+    // ⚠ DE KLACHT. `verwachteInkomsten` telt per REGEL — zoals het hoort, want een
+    // gesplitst kassaticket telt overal per regel mee. Maar één regel statiegeld van
+    // € 0,25 binnen een boodschappenticket maakte dat bedrag positief, en Budget las dat
+    // als "de app kent je inkomsten". Wat je dan zag was een groot rood "Te verdelen"
+    // terwijl je nog geen enkele inkomst had ingevuld — een oordeel over een plan dat er
+    // niet is, precies wat het commentaar in dit onderdeel zegt te willen vermijden.
+    //
+    // ⚠ Een eerste versie van dit herstel hing het aan het AANTAL inkomstenboekingen, en
+    // een doorlichting toonde aan dat dat het gat alleen versmalde: boek diezelfde € 0,25
+    // als een LOSSE teruggave — van de mutualiteit, een retour — en het rode oordeel stond
+    // er weer. Het gaat om de verhouding, niet om het aantal.
+    toon([huur], [], '2026-07', 25)
+    expect(document.querySelector('[data-te-verdelen]')).toBeNull()
+    expect(document.querySelector('[data-geen-inkomsten]')).not.toBeNull()
+  })
+
+  it('toont het plan wél zodra de inkomsten in verhouding staan tot de vaste lasten', () => {
+    // De positieve tegencontrole: zonder haar slaagt de test hierboven ook wanneer het
+    // plan nooit meer verschijnt.
+    //
+    // ⚠ OP DE GRENS ZELF, en aan beide kanten. Een doorlichting toonde met een mutatie aan
+    // dat de eerste versie hier € 950 meegaf — tien keer de grens — en dat de factor
+    // daardoor alles tussen 2 en 3800 mocht zijn zonder dat één test knipperde. Huur is
+    // € 950, dus de grens ligt op € 95: één cent erboven hoort het plan te tonen, één cent
+    // eronder niet.
+    toon([huur], [], '2026-07', 9500)
+    expect(document.querySelector('[data-te-verdelen]')).not.toBeNull()
+  })
+
+  it('zwijgt één cent ónder die grens', () => {
+    toon([huur], [], '2026-07', 9499)
+    expect(document.querySelector('[data-te-verdelen]')).toBeNull()
+    expect(document.querySelector('[data-geen-inkomsten]')).not.toBeNull()
+  })
+
+  it('telt "opzij voor later" mee in wat er tegenover moet staan', () => {
+    // ⚠ `vastMoetenBetalen` is `vastDezeMaand + opzij`. Zonder deze test mag die tweede
+    // term weg, en dan is de grens te laag zodra je ook geld apart zet — precies het geval
+    // waarin het plan het meeste betekent. Huur € 950 + € 500 opzij = € 1.450; de grens
+    // ligt dan op € 145, niet op € 95.
+    const doelpost: TerugkerendePost = {
+      id: 'prem2',
+      omschrijving: 'Autoverzekering',
+      bedrag: -600000,
+      rekeningId: 'r1',
+      dag: 5,
+      frequentie: 'jaar',
+      startMaand: '2026-01',
+      opbouwen: true,
+    }
+    // € 6.000 per jaar = € 500 per maand opzij. € 100 inkomsten is boven de grens van € 95
+    // (alleen huur) maar onder die van € 145 (huur + opzij).
+    toon([huur, doelpost], [], '2026-07', 10000)
+    expect(document.querySelector('[data-te-verdelen]')).toBeNull()
+  })
+
+  it('meent nog niet dat het je plan kent bij een inkomst die pas later begint', () => {
+    // ⚠ HET LEK AAN DE ANDERE KANT. `heeftVasteInkomst` keek eerst alleen naar `isGestopt`.
+    // Vul je een nieuw loon in dat pas volgend jaar start, dan meende de app vandaag al dat
+    // ze je plan kende — en stond er wéér een groot rood bedrag dat volledig door 25 cent
+    // statiegeld bepaald werd.
+    const laterLoon: TerugkerendePost = {
+      id: 'nieuwloon',
+      omschrijving: 'Nieuw loon',
+      bedrag: 300000,
+      rekeningId: 'r1',
+      dag: 25,
+      frequentie: 'jaar',
+      startMaand: '2029-01',
+    }
+    toon([huur, laterLoon], [], '2026-07', 25)
+    expect(document.querySelector('[data-te-verdelen]')).toBeNull()
+    expect(document.querySelector('[data-geen-inkomsten]')).not.toBeNull()
+  })
+
+  it('kent je inkomsten ook in een maand waarin je vaste inkomst niet vervalt', () => {
+    // ⚠ DE TWEEDE FOUT IN DEZELFDE REGEL, en ze wees de andere kant op. `vasteInkomsten`
+    // telt alleen de posten die DEZE maand vervallen. Een zelfstandige die per kwartaal
+    // factureert, kreeg in twee van de drie maanden "Vul je vaste inkomsten in" — met een
+    // knop naar een scherm waar zijn inkomst gewoon staat ingevuld.
+    const perKwartaal: TerugkerendePost = {
+      id: 'fact',
+      omschrijving: 'Facturatie',
+      bedrag: 900000,
+      rekeningId: 'r1',
+      dag: 5,
+      frequentie: 'kwartaal',
+      startMaand: '2026-07',
+    }
+    // Augustus: de post vervalt niet, er komt niets binnen — en tóch kent de app je plan.
+    toon([huur, perKwartaal], [], '2026-08', 0)
+    expect(document.querySelector('[data-te-verdelen]')).not.toBeNull()
+    expect(document.querySelector('[data-geen-inkomsten]')).toBeNull()
+  })
+
+  it('zwijgt wél wanneer je vaste inkomst is opgezegd', () => {
+    // De tegencontrole bij de test hierboven: "je hebt ooit een inkomst ingevuld" is niet
+    // hetzelfde als "je hebt er nog een".
+    const gestopt: TerugkerendePost = {
+      id: 'oud',
+      omschrijving: 'Oud loon',
+      bedrag: 240000,
+      rekeningId: 'r1',
+      dag: 25,
+      eindMaand: '2026-01',
+    }
+    toon([huur, gestopt], [], '2026-08', 0)
+    expect(document.querySelector('[data-geen-inkomsten]')).not.toBeNull()
+  })
+
   it('toont niets op een lege app', () => {
     const { container } = render(
       <PlanRegels posten={[]} budgetten={[]} maand="2026-07" verwachteInkomsten={0} geboekteInkomsten={0} />,
@@ -303,6 +414,20 @@ describe('PlanRegels — wat er nog nergens in zit (ronde 80)', () => {
     toon([huur], [{ id: 'b1', categorieId: 'ov-voeding', bedrag: 40000 }])
     expect(badge()).toMatch(/1[.\s]?050/)
     expect(badge()).toMatch(/nog nergens ondergebracht/)
+  })
+
+  it('vraagt een budget binnen een ander budget maar één keer (ronde 106)', () => {
+    // € 900 op "Woning en vaste lasten" en € 120 op "Energie" — een middencategorie daaronder.
+    // De zin zei "je budgetten vragen samen € 1.020,00" terwijl er hoogstens € 900 vastligt,
+    // en de badge stond dus € 120 te laag.
+    toon([huur], [
+      { id: 'b1', categorieId: 'ov-woning-en-vaste-lasten', bedrag: 90000 },
+      { id: 'b2', categorieId: 'cat-energie-en-nutsvoorzieningen', bedrag: 12000 },
+    ])
+    // € 2.400 − € 950 huur = € 1.450 te verdelen, min € 900 = € 550.
+    expect(zin()).toMatch(/900,00/)
+    expect(zin()).not.toMatch(/1[.\s]?020/)
+    expect(badge()).toMatch(/550,00/)
   })
 
   it('zegt erbij dat nul geen doel is', () => {

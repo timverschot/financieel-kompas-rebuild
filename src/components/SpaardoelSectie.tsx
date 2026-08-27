@@ -520,15 +520,13 @@ export function SpaardoelSectie({
               return (
                 <li
                   key={d.id}
-                  className="rij"
+                  className="rij rij-kolom"
                   style={{
-                    flexDirection: 'column',
-                    alignItems: 'stretch',
                     gap: 8,
                     background: gekozen ? 'var(--accent-soft)' : undefined,
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div className="rij-kop">
                     {/* Hetzelfde gekleurde vlakje als in de transactielijst: het
                         gekozen icoon, of anders de beginletter van het doel. */}
                     <span className="rij-teken" aria-hidden="true" style={{ backgroundColor: zachteAchtergrond(d.kleur ?? null) }}>

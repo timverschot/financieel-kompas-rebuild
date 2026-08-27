@@ -1,7 +1,7 @@
 import { db } from './db'
 import { LOG_FORMAAT, LogregelSchema, formaatOordeel, type Logregel } from './sync/events'
 import type { GeweigerdeRegel, Weigering } from '../utils/geweigerdeRegels'
-import { herbouwStaat, verwerkOntvangenHlc } from './sync/lokaal'
+import { verwerkOntvangenHlc, voegRegelsToeEnHerbouw } from './sync/lokaal'
 
 // Een onafhankelijk vangnet, los van Google Drive: de volledige geschiedenis
 // (het append-only logboek) als één JSON-bestand dat de gebruiker zelf kan
@@ -75,6 +75,15 @@ export async function importeerBackup(json: string): Promise<ImportResultaat> {
     const check = LogregelSchema.safeParse(ruw)
     if (!check.success) {
       ongeldig++
+      // ⚠ RONDE 109 — zelfde reden als in `sync/sync.ts`: een regel die de schemacontrole niet
+      // haalt, hoort in de blijvende melding en niet alleen in een teller.
+      const id = typeof (ruw as { id?: unknown }).id === 'string' && (ruw as { id: string }).id.length > 0
+        ? (ruw as { id: string }).id
+        : `onleesbaar-${ongeldig}`
+      const tijdstip = typeof (ruw as { tijdstip?: unknown }).tijdstip === 'number' && Number.isFinite((ruw as { tijdstip: number }).tijdstip)
+        ? (ruw as { tijdstip: number }).tijdstip
+        : 0
+      geweigerd.push({ id, tijdstip, reden: 'onleesbaar' })
       continue
     }
     if (bestaandeIds.has(check.data.id)) {
@@ -105,12 +114,22 @@ export async function importeerBackup(json: string): Promise<ImportResultaat> {
   }
 
   if (nieuw.length > 0) {
-    await db.events.bulkPut(nieuw)
     // Werk de eigen logische klok bij op basis van de herstelde gebeurtenissen,
     // net zoals bij een sync. Anders kan een wijziging ná het herstel een lager
     // klokstempel krijgen en vóór de herstelde data geordend worden.
     await verwerkOntvangenHlc(nieuw.map((r) => ({ l: r.hlcL ?? r.tijdstip, c: r.hlcC ?? 0 })))
-    await herbouwStaat()
+    // ⚠ RONDE 109 — SCHRIJVEN EN HERBOUWEN IN ÉÉN TRANSACTIE. Hier stonden een
+    // `db.events.bulkPut` en een `herbouwStaat()` als twee losse stappen. Brak de tweede af —
+    // een volle opslag, een tabblad dat dichtgaat — dan stonden je regels wél in het logboek
+    // maar niet in je lijsten. En dat herstelde zich NOOIT meer: een tweede herstel met
+    // hetzelfde bestand slaat elke regel over als "al aanwezig" ("0 toegevoegd, 1
+    // overgeslagen"), en `herbouwStaat` draait alleen na een sync-ronde die iets ophaalt,
+    // nooit bij het opstarten. Je gegevens waren dan voorgoed onbereikbaar terwijl ze er
+    // gewoon stonden.
+    //
+    // Ronde 35 heeft precies deze fout uit de SYNC-weg gehaald, met `voegRegelsToeEnHerbouw`
+    // en een test erop. De herstel-weg is toen niet meegegaan.
+    await voegRegelsToeEnHerbouw(nieuw)
   }
   return { toegevoegd: nieuw.length, overgeslagen, ongeldig, verouderd, teNieuw, geweigerd }
 }

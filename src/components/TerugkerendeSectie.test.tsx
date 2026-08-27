@@ -66,6 +66,62 @@ function openNieuw(naam = '+ Een vaste last') {
 }
 
 describe('TerugkerendeSectie — andere termijnen', () => {
+  it('belooft geen maandbedrag voor een post die nog niet begonnen is (ronde 104)', () => {
+    // ⚠ DE KLACHT. De rij zei "· € 100,00 per maand omgerekend" voor een jaarpost die pas
+    // in 2029 voor het eerst vervalt — terwijl het TOTAAL onder de groep hem
+    // sinds ronde 98 uit de som laat (`maandTotaal` filtert `isNogNietBegonnen`). Twee
+    // getallen over hetzelfde ding op één scherm, en ze spraken elkaar tegen.
+    const later: TerugkerendePost = {
+      id: 'later',
+      omschrijving: 'Domeinnaam',
+      bedrag: -12000,
+      rekeningId: 'r1',
+      dag: 5,
+      frequentie: 'jaar',
+      startMaand: '2029-03',
+    }
+    toon([later])
+    const rij = screen.getByText('Domeinnaam').closest('li')
+    expect(rij).not.toBeNull()
+    // ⚠ "omgerekend" BLIJFT in de zin staan, en dat is het punt: het bedrag is het
+    // omgerekende maandbedrag. Bij deze jaarpost gaat er in maart 2029 € 120,00 af en
+    // daarna een jaar niets — er gaat nooit € 10,00 per maand af. Wat de zin toevoegt is
+    // "vanaf dan": vandaag kost deze post je nog niets, en dat is wat het totaal bovenaan
+    // de kaart ook zegt.
+    expect(rij).toHaveTextContent(/vanaf dan .* per maand omgerekend/)
+  })
+
+  it('zegt "omgerekend" ZONDER "vanaf dan" zodra de post gewoon loopt', () => {
+    // ⚠ De positieve tegencontrole, en ze moet de twee takken uit elkaar houden. De eerste
+    // versie zocht alleen `/per maand omgerekend/` — en die uitdrukking staat óók in de
+    // nieuwe tak "vanaf dan € X per maand omgerekend". Een doorlichting zette
+    // `nogNietBegonnen = true` voor élke post en de hele reeks bleef groen.
+    toon([premie], '2026-09')
+    const rij = screen.getByText('Autoverzekering').closest('li')
+    expect(rij).toHaveTextContent(/per maand omgerekend/)
+    expect(rij).not.toHaveTextContent(/vanaf dan/)
+  })
+
+  it('zegt geen "vanaf dan" wanneer er geen volgende keer is', () => {
+    // ⚠ "vanaf dan" verwijst naar de datum die ervóór staat ("volgende keer 3 maart 2029").
+    // Bij een post met een einddatum vóór haar startdatum is er geen volgende keer, en dan
+    // zou "dan" nergens naar wijzen. Onmogelijke invoer die de app vandaag niet verhindert
+    // — vandaar een vangregel, en vandaar deze test, want zonder haar is die regel dood.
+    const onmogelijk: TerugkerendePost = {
+      id: 'raar',
+      omschrijving: 'Rare post',
+      bedrag: -12000,
+      rekeningId: 'r1',
+      dag: 5,
+      frequentie: 'jaar',
+      startMaand: '2029-03',
+      eindMaand: '2028-01',
+    }
+    toon([onmogelijk])
+    const rij = screen.getByText('Rare post').closest('li')
+    expect(rij).not.toHaveTextContent(/vanaf dan/)
+  })
+
   it('biedt "Boek in" aan voor een maandelijkse post', () => {
     toon([huur])
     expect(screen.getByRole('button', { name: /^Boek in/ })).toBeInTheDocument()

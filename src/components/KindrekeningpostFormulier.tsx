@@ -5,7 +5,7 @@ import { nieuwId } from '../data/sync/id'
 import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
 import { CategorieKiezer } from './CategorieKiezer'
 import { GezinsledenKiezer } from './GezinslidKiezer'
-import { verkleinAfbeelding } from '../utils/afbeelding'
+import { bonTeGroot, verkleinAfbeelding } from '../utils/afbeelding'
 import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
 import { Opslagfout } from '../ui/Opslagfout'
@@ -71,6 +71,11 @@ export function KindrekeningpostFormulier({
   const [categorieId, setCategorieId] = useState(() => beginwaarden().categorieId)
   const [bonnetje, setBonnetje] = useState(() => beginwaarden().bonnetje)
   const [bezigBon, setBezigBon] = useState(false)
+  // ⚠ RONDE 111 — EEN GROOTTEGRENS MÉT EEN ZIN ERBIJ. Deze kiezer had er geen, terwijl hij
+  // `image/*,application/pdf` aanvaardt en een PDF met opzet ONVERKLEIND bewaard wordt: die kan
+  // dus tientallen megabytes in je database en in élke synchronisatie zetten. En de `catch`
+  // hieronder zweeg volledig, dus een mislukte bon zag je nergens.
+  const [bonFout, setBonFout] = useState('')
 
   // Zet alle velden terug op hun beginwaarde.
   const leegmaken = useCallback(() => {
@@ -121,10 +126,16 @@ export function KindrekeningpostFormulier({
 
   async function kiesBonnetje(bestand: File) {
     setBezigBon(true)
+    setBonFout('')
     try {
-      setBonnetje(await verkleinAfbeelding(bestand))
+      const data = await verkleinAfbeelding(bestand)
+      if (bonTeGroot(data)) {
+        setBonFout(t('Dit bestand is te groot (max. 4 MB). Kies een kleinere scan of foto.'))
+        return
+      }
+      setBonnetje(data)
     } catch {
-      // stil: een mislukte bon mag het toevoegen niet blokkeren.
+      setBonFout(t('Dit bestand kon niet gelezen worden. Probeer een andere scan of foto.'))
     } finally {
       setBezigBon(false)
     }
@@ -255,6 +266,11 @@ export function KindrekeningpostFormulier({
               />
             )}
             {bezigBon && <span className="rij-meta"> {t('bezig…')}</span>}
+        {bonFout && (
+          <p className="rij-meta" role="alert" style={{ margin: '4px 0 0', color: 'var(--negative)' }}>
+            {bonFout}
+          </p>
+        )}
           </div>
         </>
       )}

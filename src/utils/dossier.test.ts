@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { saldoVerrekening, saldoVerrekeningDossier, effectiefAandeel } from './dossier'
+import { saldoVerrekening, saldoVerrekeningDossier, effectiefAandeel, standaardWordtNogGebruikt } from './dossier'
 import type { Dossier, GedeeldeKost } from '../data/schema'
 
 const kost = (over: Partial<GedeeldeKost>): GedeeldeKost => ({
@@ -54,6 +54,32 @@ describe('effectiefAandeel (verdeel-hiërarchie)', () => {
 
   it('laat een eigen percentage op de kost alles overschrijven', () => {
     expect(effectiefAandeel(dossier, kost({ categorieId: 'ov-kleding', aandeelJijOverride: 40 }))).toBe(40)
+  })
+
+  it('past een afspraak op de MIDDENcategorie toe op de items eronder (ronde 107)', () => {
+    // ⚠ RONDE 107. De kiezer laat je "Kinderen en Gezin › Kinderen school" kiezen, en die
+    // afspraak stond netjes in de lijst — maar een kost op *Schoolfactuur Kind 1* rolde in
+    // één sprong door naar de hoofdcategorie en vond ze nooit. Je stelde 100% in, de app
+    // rekende de standaard, en de PDF noemde als reden "standaardverdeling van het dossier".
+    const d: Dossier = { id: 'd1', naam: 'K', aandeelJij: 50, categorieAandelen: { 'cat-kinderen-school': 100 } }
+    expect(effectiefAandeel(d, kost({ categorieId: 'cat-kinderen-school' }))).toBe(100)
+    expect(effectiefAandeel(d, kost({ categorieId: 'i-schoolfactuur-jasper-95' }))).toBe(100)
+  })
+
+  it('laat de middencategorie voorgaan op de hoofdcategorie', () => {
+    // Staan er allebei, dan wint de fijnste afspraak — zoals overal in dit huis.
+    const d: Dossier = {
+      id: 'd1',
+      naam: 'K',
+      aandeelJij: 50,
+      categorieAandelen: { 'ov-kinderen-en-gezin': 60, 'cat-kinderen-school': 100 },
+    }
+    expect(effectiefAandeel(d, kost({ categorieId: 'i-schoolfactuur-jasper-95' }))).toBe(100)
+  })
+
+  it('valt terug op de hoofdcategorie wanneer er voor de middenlaag niets staat', () => {
+    const d: Dossier = { id: 'd1', naam: 'K', aandeelJij: 50, categorieAandelen: { 'ov-kinderen-en-gezin': 60 } }
+    expect(effectiefAandeel(d, kost({ categorieId: 'i-schoolfactuur-jasper-95' }))).toBe(60)
   })
 
   it('rolt een kost op een item op naar de hoofdcategorie-verdeling', () => {
@@ -181,5 +207,26 @@ describe('afronding sluit aan bij het overzicht', () => {
     const dossier: Dossier = { id: 'd1', naam: 'Co-ouderschap', aandeelJij: 50 }
     // Jij bent nu jouw eigen aandeel verschuldigd, dus negatief.
     expect(saldoVerrekeningDossier(dossier, kosten)).toBe(-Math.round(12345 * 0.5))
+  })
+})
+
+describe('standaardWordtNogGebruikt (ronde 107)', () => {
+  it('zegt nee zodra beide kostensoorten een eigen percentage hebben', () => {
+    // Dan is élke kost ofwel gewoon ofwel buitengewoon, en komt `aandeelJij` nooit meer aan
+    // bod — terwijl drie schermen hem bleven tonen als "Standaard draag jij 50%".
+    const d: Dossier = { id: 'd1', naam: 'K', aandeelJij: 50, typeAandelen: { gewoon: 60, buitengewoon: 60 } }
+    expect(standaardWordtNogGebruikt(d)).toBe(false)
+    expect(effectiefAandeel(d, kost({}))).toBe(60)
+    expect(effectiefAandeel(d, kost({ kostenType: 'buitengewoon' }))).toBe(60)
+  })
+
+  it('zegt ja wanneer er maar één kostensoort ingevuld is', () => {
+    const d: Dossier = { id: 'd1', naam: 'K', aandeelJij: 50, typeAandelen: { gewoon: 60 } }
+    expect(standaardWordtNogGebruikt(d)).toBe(true)
+    expect(effectiefAandeel(d, kost({ kostenType: 'buitengewoon' }))).toBe(50)
+  })
+
+  it('zegt ja zonder verdeling per kostensoort', () => {
+    expect(standaardWordtNogGebruikt({ id: 'd1', naam: 'K', aandeelJij: 50 })).toBe(true)
   })
 })

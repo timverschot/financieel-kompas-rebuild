@@ -92,6 +92,15 @@ const WOORDEN: { rol: Kolomrol; woorden: string[] }[] = [
     woorden: [
       'omschrijving', 'detail', 'details', 'beschrijving', 'transactie', 'verrichting',
       'description', 'libelle', 'nature', 'narrative', 'transactiondetails',
+      // ⚠ RONDE 108 — ONS EIGEN BESTAND STOND HIER NIET IN. De boekingenexport schrijft de
+      // kolomkop "Handelaar / winkel", en die valt na `normaliseer` uiteen tot
+      // `handelaarwinkel` — een woord dat in geen enkele lijst voorkwam. De kolom viel dus
+      // door naar de lengte-heuristiek verderop, en die verloor van "Hoofdcategorie": lees je
+      // je eigen boekingenbestand opnieuw in, dan heette elke boeking "Zonder categorie" of
+      // "Onbekend" en was Colruyt nergens meer te bekennen. Verzwarend, want deze module zegt
+      // zelf een paar honderd regels lager dat een verkeerde winkelnaam de handelaarsindex
+      // vervuilt en dat je dat in het append-only logboek niet meer weg krijgt.
+      'handelaarwinkel', 'handelaar', 'winkel', 'merchant', 'commercant',
     ],
   },
 ]

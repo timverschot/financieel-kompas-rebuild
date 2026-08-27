@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  budgettenZonderOverlap,
   budgetId,
   budgetKleur,
   geldendeBudgetten,
@@ -256,6 +257,30 @@ describe('geldendeBudgetten', () => {
 })
 
 describe('maandenMetEigenBudget', () => {
+  it('telt een budget dat binnen een ander budget valt maar één keer (ronde 106)', () => {
+    // € 900 op "Woning en vaste lasten" en € 120 op "Energie", een middencategorie daaronder.
+    // De optelling vroeg samen € 1.020 terwijl er hoogstens € 900 vastligt.
+    const woning = bud({ id: 'b1', categorieId: 'ov-woning-en-vaste-lasten', bedrag: 90000 })
+    const energie = bud({ id: 'b2', categorieId: 'cat-energie-en-nutsvoorzieningen', bedrag: 12000 })
+    const over = budgettenZonderOverlap([woning, energie])
+    expect(over.map((b) => b.id)).toEqual(['b1'])
+    expect(over.reduce((som, b) => som + b.bedrag, 0)).toBe(90000)
+  })
+
+  it('laat budgetten die naast elkaar staan allebei staan', () => {
+    // De tegencontrole: Voeding en Vervoer overlappen niet, dus tellen ze allebei mee.
+    const voeding = bud({ id: 'b1', categorieId: 'ov-voeding', bedrag: 40000 })
+    const vervoer = bud({ id: 'b2', categorieId: 'ov-vervoer-en-mobiliteit', bedrag: 25000 })
+    expect(budgettenZonderOverlap([voeding, vervoer]).map((b) => b.id)).toEqual(['b1', 'b2'])
+  })
+
+  it('houdt het buitenste budget aan, ook wanneer het binnenste hoger staat', () => {
+    // Een opstelling die zichzelf tegenspreekt; het plafond blijft het plafond.
+    const voeding = bud({ id: 'b1', categorieId: 'ov-voeding', bedrag: 10000 })
+    const brood = bud({ id: 'b2', categorieId: 'i-brood--wit-9238', bedrag: 50000 })
+    expect(budgettenZonderOverlap([voeding, brood]).map((b) => b.id)).toEqual(['b1'])
+  })
+
   it('noemt de maanden waarvoor er iets apart klaarstaat, van vroeg naar laat', () => {
     const lijst = [
       bud({ id: 'a', bedrag: 40000 }),

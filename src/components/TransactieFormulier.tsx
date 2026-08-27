@@ -588,7 +588,18 @@ export function TransactieFormulier({
     }
     if (persoonIds.length > 0) kost.kindIds = persoonIds
     else delete kost.kindIds
-    if (categorieId) kost.categorieId = categorieId
+    // ⚠ RONDE 105 — EEN GESPLITST TICKET HEEFT GEEN KOPCATEGORIE, DUS DE GEDEELDE KOST OOK
+    // NIET. `setGesplitst` wist `categorieId` niet, en de transactie zelf wordt bij een
+    // splitsing bewust zónder categorie weggeschreven (de categorieën zitten in de regels).
+    // Zo kreeg de gedeelde kost de categorie die je vóór het aanvinken had aangetikt — en
+    // daarmee het VERDEELPERCENTAGE dat bij die categorie hoort. Boekte je Colruyt € 90
+    // eerst op Voeding (waar 30% voor jou is afgesproken), dan aangevinkt, en de regel op
+    // Huishouden gezet, dan rekende het dossier € 27,00 waar het € 45,00 moest zijn — in het
+    // document dat naar de andere ouder gaat.
+    //
+    // De keuze blijft wél in het formulier staan: vink je het splitsen weer uit, dan is je
+    // categorie er nog. Alleen bij het WEGSCHRIJVEN telt ze niet mee.
+    if (!gesplitst && categorieId) kost.categorieId = categorieId
     else delete kost.categorieId
     await onDossierKost(kost)
   }

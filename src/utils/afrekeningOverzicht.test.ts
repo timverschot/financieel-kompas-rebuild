@@ -337,3 +337,19 @@ describe('bouwAfrekeningOverzicht — kop en detail', () => {
     expect(leeg.regels).toEqual([])
   })
 })
+
+describe('centenVerdelen — geen min-nul (ronde 108)', () => {
+  it('geeft nul terug als gewone nul, niet als −0', () => {
+    // ⚠ RONDE 108. `Math.round(-0.2)` is in JavaScript `-0`, en `formatEuro(-0)` schrijft
+    // "€ -0,00" — in de kolom "Te verrekenen" van een afrekening die naar de andere ouder
+    // gaat. `utils/transactie.ts` beschermt zich al zo; deze functie deed het niet.
+    const uit = centenVerdelen([-0.2, -0.2])
+    expect(uit).toEqual([0, 0])
+    // ⚠ `toEqual` ziet het verschil tussen 0 en −0 NIET; `Object.is` wel.
+    for (const c of uit) expect(Object.is(c, -0)).toBe(false)
+  })
+
+  it('laat een echt negatief bedrag gewoon negatief', () => {
+    expect(centenVerdelen([-120.4, -80.6])).toEqual([-120, -81])
+  })
+})

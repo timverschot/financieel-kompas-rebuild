@@ -105,6 +105,38 @@ describe('OpstellingSectie — het slotscherm staat bovenaan en groeit mee', () 
     expect(tegel('Waarvan sluipend')).toBe('—')
   })
 
+  it('houdt maandbedrag en jaarbedrag in ÉÉN zin met elkaar in overeenstemming (ronde 104)', () => {
+    // ⚠ De zin zegt "{maand} per maand, oftewel {jaar} per jaar", en die twee horen
+    // hetzelfde te tellen. Het maandbedrag laat sinds ronde 98 de opgezegde en de nog niet
+    // begonnen posten weg (`maandTotaal`); het jaarbedrag rekent over `sluipend`, en dat
+    // komt uit dezelfde gefilterde lijst.
+    //
+    // ⚠ DEZE TEST IS EEN SLOT, GEEN HERSTEL. De open lijst noemde dit een fout; nagerekend
+    // was het er geen — de filter zit al in `lasten`. Maar niets bond de twee getallen aan
+    // elkaar, en zo'n zin is precies waar ze uit elkaar gaan lopen.
+    const loopt: TerugkerendePost = {
+      id: 'p1',
+      omschrijving: 'Netflix',
+      bedrag: -1399,
+      rekeningId: 'r1',
+      dag: 1,
+      categorieId: 'i-streaming-video-5157',
+    }
+    const nogNiet: TerugkerendePost = {
+      ...loopt,
+      id: 'p2',
+      omschrijving: 'Domeinnaam',
+      bedrag: -12000,
+      frequentie: 'jaar',
+      startMaand: '2029-03',
+    }
+    toon({ rekeningen: [rekening], terugkerendePosten: [loopt, nogNiet] })
+    expect(tegel('Waarvan sluipend')).toBe(formatEuro(1399))
+    // 13,99 × 12 = 167,88 — de post die pas in 2029 begint, telt in geen van beide mee.
+    expect(screen.getByText(/oftewel/)).toHaveTextContent('167,88')
+    expect(screen.getByText(/oftewel/)).not.toHaveTextContent('287,88')
+  })
+
   it('rekent het jaarbedrag uit de originele bedragen, niet uit het afgeronde maandbedrag', () => {
     // Een jaarabonnement van € 100 werd € 8,33 × 12 = € 99,96 — vier cent te weinig.
     const jaarpost: TerugkerendePost = {
@@ -788,6 +820,23 @@ describe('OpstellingSectie — de blokken', () => {
 
     expect(screen.queryByText(/spaarrekening of cash nodig/)).not.toBeInTheDocument()
     expect(tegel('Zo lang kom je toe')).not.toBe('—')
+  })
+
+  it('zegt hetzelfde als de bufferbadge boven het plafond', () => {
+    // Ronde 105: één abonnement van € 0,99 naast € 12.000 spaargeld gaf hier
+    // "12.121,2 maanden" terwijl het Overzicht "meer dan 24 maanden buffer" zei.
+    const abo: TerugkerendePost = { id: 'p1', omschrijving: 'Netflix', bedrag: -99, rekeningId: 'r1', dag: 1 }
+    toon({ rekeningen: [spaar], terugkerendePosten: [abo] })
+
+    expect(tegel('Zo lang kom je toe')).toBe('meer dan 24 maanden')
+  })
+
+  it('noemt het getal nog gewoon onder het plafond', () => {
+    // € 12.000 tegenover € 950 per maand = 12,6 maanden: ruim onder de grens.
+    const huur: TerugkerendePost = { id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 1 }
+    toon({ rekeningen: [spaar], terugkerendePosten: [huur] })
+
+    expect(tegel('Zo lang kom je toe')).toBe('12,6 maanden')
   })
 
   it('toont in de lijstjes wat er NU staat, niet wat er ooit begon', async () => {

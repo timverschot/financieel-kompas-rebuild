@@ -501,8 +501,29 @@ h4 {
   background: transparent;
 }
 
+/* ⚠ RONDE 103 — `flex-wrap`, EN WAAROM DAT GEEN OPSMUK IS.
+   Gemeten in een echte browser, met echte gegevens erin: in een rij van 246 px op een
+   scherm van 320 px kreeg de NAAMkolom nog 27 tot 54 pixels. De badge, het bedrag en de
+   knoppen ernaast krimpen namelijk niet (`.rij-acties` staat op `flex-shrink: 0`), dus
+   alles wat er te weinig is, wordt van de naam afgehaald. "Marie-Louise Vandenbroucke"
+   heeft 109 px nodig en kreeg er 27 — de tekst schilderde daardoor 82 px dwars over de
+   badge "Kind" heen. Op Rekeningen liep een rekeningnaam 99 px over het bedrag, op
+   Dossiers 54 px over de knoppen.
+   ⚠ En de PAGINA werd daar niet breder van: `.lijst` heeft `overflow: hidden`, dus de
+   gebruikelijke controle op `scrollWidth` van het document ziet hier niets van. Meet per
+   naam of `scrollWidth <= clientWidth` — dezelfde waarschuwing staat bij `.rij-kost`.
+
+   ⚠ WAAR HET AFBREEKPUNT LIGT: de rij breekt af zodra `de flex-basis van .rij-midden
+   + 12 px tussenruimte + het niet-krimpende blok rechts` niet meer past. Die basis staat
+   hieronder op 6rem, en waarom juist dat getal staat daar uitgeschreven, met de metingen
+   erbij. Kies het naar de KLACHT (een naamkolom van 8 tot 27 px) en niet naar de wens: een
+   eerdere poging zette 12rem, en toen brak de rij óók af op een tablet en zelfs op 1568 px,
+   op schermen waar niets mis was.
+
+   ⚠ EN NIET VOOR EEN RIJ DIE ZELF EEN KOLOM IS: zie `.rij-kolom` hieronder. */
 .rij {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
@@ -515,6 +536,35 @@ h4 {
 
 .rij:last-child {
   border-bottom: none;
+}
+
+/* ⚠ RONDE 103 — EEN RIJ DIE ZELF EEN KOLOM IS, MAG NOOIT AFBREKEN.
+   Acht plaatsen zetten `.rij` op `flex-direction: column` met `align-items: stretch`: een
+   spaardoel, een lening, een garantie, twee lijsten in Dossiers, de uitsplitsing per
+   subcategorie in Analyse, de besparingskaart en de budgetlijst. In een KOLOM is `wrap` niet onschuldig:
+   de doos wordt meerregelig, en dan rekt `stretch` de kinderen niet meer uit tot de
+   breedte van de rij maar tot die van het BREEDSTE kind.
+   Gemeten (Spaardoelen, 320 px): de rij werd 312 px breed in een lijst van 246, en omdat
+   `.lijst` op `overflow: hidden` staat werd dat niet zichtbaar breed maar WEGGEKNIPT — de
+   × om een doel te verwijderen stond op x = 268 en was dus onbereikbaar, en de
+   voortgangsbalk las 27 % waar ze 21 % moest zijn.
+   Deze klasse vervangt tegelijk acht keer dezelfde inline stijl. */
+.rij-kolom {
+  flex-direction: column;
+  align-items: stretch;
+  flex-wrap: nowrap;
+}
+
+/* De bovenste regel van zo'n kolomrij: de naam links, badges en knoppen rechts.
+ * ⚠ RONDE 103. Dit was op drie plaatsen een met de hand nagebouwde `.rij` in een inline
+ * stijl — en dus zonder het afbreken dat `.rij` sinds deze ronde wél heeft. Gemeten op
+ * 320 px kreeg de naamkolom van een lening daardoor 9 pixels, naast een blok met twee
+ * badges en drie knoppen dat niet krimpt. Eén naam, één klasse, één gedrag. */
+.rij-kop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
 }
 
 /* De aanvinklijst van De Opstelling (ronde 39).
@@ -626,10 +676,6 @@ h4 {
   flex: 1 1 200px;
 }
 
-.kost-eigen > .rij > .rij-acties {
-  margin-left: auto;
-}
-
 /* ⚠ De focusring van "Bewerken" en "Verwijderen" in die uitklap. `.kost-eigen` is óók
    een `.lijst`, en die staat op `overflow: hidden`. De ring die `.rij button:focus-visible`
    geeft is een box-shadow van 4 px naar BUITEN, dus aan de rechterrand knipt de lijst hem
@@ -668,22 +714,42 @@ h4 {
   }
 }
 
+/* ⚠ `1 1 6rem` en niet `1`: de flex-BASIS beslist of deze kolom nog op dezelfde regel
+   past. Blijft er minder dan 6rem over, dan zakt ze naar haar eigen regel in plaats van
+   samengeperst te worden tot een sliert van 8 tot 27 px. Krimpen mag daarna nog gewoon.
+
+   ⚠ ZES EN NIET MEER, EN DAT IS UITGEMETEN. Elke rem erbij laat rijen afbreken die het
+   niet nodig hadden. Bij 12rem brak het Overzicht af tot en met een venster van 1568 px;
+   bij 8rem werd élke rij in de boekingenlijst 40 px hoger (124 → 164 px op 390 px)
+   terwijl daar niets mis was — de naam had er 102 tot 120 px en brak gewoon netjes af.
+   Bij 6rem blijven die rijen zoals ze waren, en de starve-gevallen (8 px voor "Zonder
+   categorie" op het Overzicht, 27 px voor een gezinslid) worden wél opgelost. */
 .rij-midden {
-  flex: 1;
+  flex: 1 1 6rem;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
+/* ⚠ `break-word` EN UITDRUKKELIJK NIET `anywhere`, en dat verschil is hier gemeten.
+   `anywhere` verandert óók de MIN-CONTENT-breedte van een element: flexbox mag de kolom
+   daarna tot bijna nul persen, en dan breekt de tekst per LETTER af. Met die waarde ging
+   de kop van een lening op 320 px van 539 naar 1800 pixels hoog ("W-a-s-m-a-c-h-i-n-e"
+   onder elkaar) en las de strook "wat komt eraan" op het Overzicht "au/g" en "no/v".
+   `break-word` laat de min-content-breedte met rust en breekt alleen een woord dat écht
+   niet past — precies het overblijvende geval: "Zichtrekening gemeenschappelijk KBC" heeft
+   één woord van 135 px en de kolom is er 124. */
 .rij-titel {
   font-size: var(--tekst-m);
   font-weight: 600;
+  overflow-wrap: break-word;
 }
 
 .rij-meta {
   font-size: var(--tekst-s);
   color: var(--text-subtle);
+  overflow-wrap: break-word;
 }
 
 .rij-acties {
@@ -693,6 +759,11 @@ h4 {
      meteen. Zes pixels tussen "bewerken" en "weg" is te weinig voor een duim. */
   gap: 10px;
   flex-shrink: 0;
+  /* ⚠ Zodra de rij afbreekt (zie `.rij`), begint de tweede regel LINKS. Zonder deze regel
+     landde de rode × waarmee je een boeking verwijdert op x = 0, recht onder het
+     aanvinkvakje — dus precies waar je daarvoor "rij openen" aantikte. `.rij-kost` heeft
+     hetzelfde probleem in ronde 39 met `justify-content: flex-end` opgelost. */
+  margin-left: auto;
 }
 
 /* Rond initiaal/icoonvlak links in een rij. */
@@ -2647,6 +2718,14 @@ a {
 .tx-lijst .rij > .rij-acties {
   position: relative;
   z-index: 1;
+  /* ⚠ RONDE 103 — DE AUTOMATISCHE MARGE HOORT HIER NIET.
+     `.rij-acties` kreeg deze ronde `margin-left: auto`, zodat een AFGEBROKEN rij haar
+     knoppen rechts houdt in plaats van links onder het aanvinkvakje. Vanaf 1024 px is deze
+     rij echter geen flexrij maar een RASTER, en daar zet een automatische marge het
+     uitrekken uit: de cel kromp van 54 naar 44 px en het kruisje schoof 10 px naar rechts,
+     tot tegen de rand van de rij. Gemeten op 1024, 1280 en 1440 px. Hier dus terug op nul;
+     in de rasterstand breekt er niets af en is de marge overbodig. */
+  margin-left: 0;
 }
 
 /* Het vakje zelf is 18 px. Nu er een knop ONDER ligt die de hele rij opent,
@@ -2712,14 +2791,26 @@ a {
 }
 
 /* Een sorteerbare kolomkop is een knop, maar mag er niet als knop uitzien: ze
-   staat in de kop van een tabel. */
+   staat in de kop van een tabel.
+
+   ⚠ RONDE 103 — EIGEN MATEN, WANT DE GELEENDE KLASSE PAST NIET. Deze knop draagt naast
+   `.tx-kolomkop` ook `.knop-kaal`, en die zet `width: 44px; height: 44px` — bedoeld voor
+   het ✎- en ×-icoon in een lijstrij, dus voor één teken. Hier staat TEKST in: gemeten op
+   1024, 1280 en 1440 px is "Handelaar / winkel" 80 px breed in een knop van 44. Gevolgen:
+   het etiket schilderde 36 px buiten de knop, over de volgende kolomkop heen, en het
+   sorteerpijltje stond VOLLEDIG buiten de knop — dat deel klikte dus niet, terwijl het er
+   als de bediening uitziet.
+   De hoogte blijft 44 px: dat is het raakvlak, en dat was het enige wat de geleende
+   klasse hier goed deed. */
 .tx-kolomkop {
   font: inherit;
   letter-spacing: inherit;
   text-transform: inherit;
   color: inherit;
+  width: auto;
+  height: auto;
+  min-height: 44px;
   padding: 0;
-  min-height: 0;
   justify-content: flex-start;
 }
 
@@ -2736,7 +2827,14 @@ a {
      44 px; met de oude 68 px werd ze tot een smal staafje geperst — precies het
      tegenovergestelde van wat de vergroting moest bereiken. Sinds ronde 45 staat
      het potlood er niet meer bij (de hele rij opent de boeking), dus 98 werd 54. */
-  grid-template-columns: 34px minmax(120px, 1.6fr) 104px minmax(120px, 1.6fr) minmax(90px, 1fr) 120px 54px;
+  /* ⚠ RONDE 103 — DE MINIMA MOETEN SAMEN IN DE KOLOM PASSEN, en dat deden ze niet.
+     Uitgeteld: 34 + 120 + 104 + 120 + 90 + 120 + 54 = 642, plus zes tussenruimtes van
+     12 px = 714. Op een venster van precies 1024 px is de inhoudskolom 694 px breed — dus
+     élke boekingsrij werd daar 20 px weggeknipt door `.lijst { overflow: hidden }`.
+     Gemeten in een echte browser, en het stond er al vóór deze ronde: 6 rijen, 20 px elk.
+     De twee brede kolommen van 120 naar 100: 602 + 72 = 674, en dat past. Ze mogen daarna
+     nog gewoon groeien (`1.6fr`), dus op 1280 en 1440 px verandert er niets. */
+  grid-template-columns: 34px minmax(100px, 1.6fr) 104px minmax(100px, 1.6fr) minmax(90px, 1fr) 120px 54px;
     align-items: center;
     gap: 12px;
   }
@@ -3295,7 +3393,12 @@ a {
 }
 
 /* Een lange tabnaam mag over twee regels: liever twee regels dan een strook die
-   buiten het scherm loopt. */
+   buiten het scherm loopt.
+   ⚠ RONDE 103 — HIER IS BEWUST NIETS VERANDERD. "Facturen & garantiebewijzen" schildert op
+   768 px 39 px buiten zijn pil, en `overflow-wrap: anywhere` neemt dat weg — maar het
+   breekt dan óók "Openstaand" middenin ("Openstaa/nd"), een woord dat met 11 px meer
+   ruimte gewoon past. Dat is de klacht ruilen voor een andere. De echte oplossing zit in
+   de breedte van de pil (het aantal rechts heeft een vaste kolom); dat is een eigen ronde. */
 .subtab-label {
   min-width: 0;
 }

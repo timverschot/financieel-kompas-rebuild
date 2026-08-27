@@ -245,8 +245,8 @@ export function LeningSectie({
             const openLabel = l.richting === 'uitgeleend' ? t('nog te ontvangen') : t('nog te betalen')
             const balkKleur = l.richting === 'uitgeleend' ? 'var(--positive)' : 'var(--warn)'
             return (
-              <li key={l.id} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8, opacity: klaar ? 0.7 : 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <li key={l.id} className="rij rij-kolom" style={{ gap: 8, opacity: klaar ? 0.7 : 1 }}>
+                <div className="rij-kop">
                   <div className="rij-midden">
                     <span className="rij-titel">{l.naam}</span>
                     {l.tegenpartij && <span className="rij-meta">{l.tegenpartij}</span>}

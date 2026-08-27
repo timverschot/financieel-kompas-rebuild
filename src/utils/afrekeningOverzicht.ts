@@ -166,7 +166,18 @@ export type AfrekeningOverzicht = {
   partnerAandeel: number
   netto: number // herberekend met de verdeelsleutels van vandaag
   bewaardNetto: number // wat er bij het genereren werd vastgelegd
-  wijktAf: boolean // true als beide verschillen (dossierverdeling is sindsdien gewijzigd)
+  wijktAf: boolean // true als het herberekende saldo verschilt van wat er bij het genereren stond
+  /**
+   * Hoeveel kosten uit de momentopname er niet meer bestaan (ronde 107).
+   *
+   * ⚠ WAAROM DIT APART STAAT. Een afrekening bewaart alleen `kostIds` en het saldo; alles
+   * eronder wordt live herrekend uit de kosten die er NU nog zijn. Verwijder je nadien een
+   * kost — of verwijder je de boeking eronder, wat de gedeelde kost meeneemt — dan verandert
+   * dezelfde afrekening stil van inhoud. Erger nog: bij een kost die je zelf voor 100%
+   * droeg, blijft het SALDO gelijk en zegt `wijktAf` dus niets, terwijl "Totaal kosten"
+   * € 400 lager staat dan in de PDF die de andere ouder in handen heeft.
+   */
+  ontbrekendeKosten: number
   verdeelsleutels: Verdeelsleutel[]
   perKind: AfrekeningGroep[]
   perCategorie: AfrekeningGroep[]
@@ -191,7 +202,13 @@ export function centenVerdelen(waarden: number[], doel?: number): number[] {
   for (const w of waarden) {
     lopend += w
     const tot = Math.round(lopend)
-    uit.push(tot - gegeven)
+    // ⚠ RONDE 108 — `+ 0` OM MIN-NUL WEG TE KRIJGEN. `Math.round(-0.2)` is in JavaScript
+    // `-0`, en `formatEuro(-0)` schrijft "€ -0,00". Dat is geen bedrag dat iemand hoort te
+    // zien, en al zeker niet in de kolom "Te verrekenen" van een afrekening die naar de
+    // andere ouder gaat. `utils/transactie.ts` beschermt zich al zo en legt daar uit waarom;
+    // deze functie deed het niet. Met gewone bedragen is het niet te bereiken — met een kost
+    // van één cent en een percentage van 51 wel.
+    uit.push(tot - gegeven + 0)
     gegeven = tot
   }
   if (typeof doel === 'number' && uit.length > 0 && gegeven !== doel) {
@@ -442,6 +459,7 @@ export function bouwAfrekeningOverzicht(
     netto: doelen.netto,
     bewaardNetto: afrekening.bedrag,
     wijktAf: afrekening.bedrag !== doelen.netto,
+    ontbrekendeKosten: (afrekening.kostIds ?? []).length - regelKosten.length,
     verdeelsleutels,
     perKind,
     perCategorie,

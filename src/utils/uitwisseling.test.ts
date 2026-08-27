@@ -13,12 +13,12 @@ import {
   metKoppeling,
   uitwisselIdVan,
   reactieVervallen,
-  rondPercentage,
   uitwisselBestandsnaam,
   MAX_BON,
   UITWISSEL_VERSIE,
   type UitwisselBestand,
 } from './uitwisseling'
+import { rondPercentage } from './format'
 import type { Vergelijking } from './uitwisseling'
 import type { UitwisselKost } from './uitwisseling'
 import type { Dossier, GedeeldeKost, Kind } from '../data/schema'

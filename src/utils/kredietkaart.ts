@@ -140,6 +140,16 @@ export type KaartStand = {
    * som niet meer zodra er iets teruggestort werd.
    */
   lopend: number
+  /**
+   * Hoeveel je méér naar de kaart overschreef dan het afgesloten afschrift vroeg, positief
+   * (ronde 105).
+   *
+   * Wie zijn afschrift met een afgerond bedrag betaalt, zet er soms een paar euro bovenop.
+   * Dat teveel is in `lopend` verrekend — anders klopte de som van dit blok niet — maar dan
+   * lijkt het alsof er minder op de kaart bijkwam dan je werkelijk uitgaf. Is dit getal
+   * groter dan nul, dan hoort het scherm dat te zeggen.
+   */
+  teVeelBetaald: number
   /** Wanneer 'nogTeBetalen' van de betaalrekening gaat, of null. */
   afboekdatum: string | null
   /** De eerstvolgende afsluitdatum, of null. */
@@ -181,6 +191,7 @@ export function kaartStand(
       geplandeBetaling: 0,
       nogTeBetalen: 0,
       lopend: 0,
+      teVeelBetaald: 0,
       afboekdatum: null,
       volgendeAfsluitdatum: null,
       teLaat: false,
@@ -208,10 +219,21 @@ export function kaartStand(
   }
   const nogTeBetalen = Math.max(0, afgesloten - betaaldSindsdien)
 
-  // Wat er sinds de afsluiting bij kwam. Uitgerekend als het verschil tussen wat er
-  // vandaag openstaat en wat er afgesloten was, min de betalingen — zo tellen de
-  // cijfers van dit blok op in plaats van naast elkaar te staan.
-  const lopend = openstaand - afgesloten + betaaldSindsdien
+  // Wat er sinds de afsluiting bij kwam. Wat er vandaag openstaat, min wat er van het
+  // afschrift nog te betalen is — zo tellen de cijfers van dit blok op in plaats van
+  // naast elkaar te staan.
+  //
+  // ⚠ RONDE 105 — DIT REKENDE MET `afgesloten - betaaldSindsdien`, EN DAT IS NIET
+  // HETZELFDE. `nogTeBetalen` kapt dat verschil af op nul; `lopend` deed dat niet. Betaalde
+  // je je afschrift van € 200 met een afgerond bedrag van € 250, dan verdween die € 50 uit
+  // de ene term en bleef ze in de andere zitten: er stond "nog te betalen € 0,00" en "sinds
+  // de afsluiting kwam er € 80,00 bij" terwijl er € 30,00 openstond. De belofte in het type
+  // hierboven — nog te betalen plus dit is wat er vandaag openstaat — klopte dan niet meer.
+  const lopend = openstaand - nogTeBetalen
+
+  // Wat je méér betaalde dan het afschrift vroeg. Dat bedrag zit in `lopend` verrekend, en
+  // zonder deze zin lijkt het alsof er minder op de kaart bijkwam dan je uitgaf.
+  const teVeelBetaald = Math.max(0, betaaldSindsdien - afgesloten)
 
   const afboekdatum = rekening.afboekdag === undefined ? null : afboekdatumVan(afsluitdatum, rekening.afboekdag)
   const teLaat = afboekdatum !== null && afboekdatum < vandaagISO && nogTeBetalen > 0
@@ -227,6 +249,7 @@ export function kaartStand(
     geplandeBetaling,
     nogTeBetalen,
     lopend,
+    teVeelBetaald,
     afboekdatum,
     volgendeAfsluitdatum,
     teLaat,

@@ -1,5 +1,5 @@
 import type { Overboeking, Rekening, TerugkerendePost, Transactie, Waardering } from '../data/schema'
-import { bepaalBuffer } from '../utils/buffer'
+import { BUFFER_PLAFOND, bepaalBuffer } from '../utils/buffer'
 import { opmaakLocale } from '../utils/opmaaktaal'
 import { formatEuro } from '../utils/format'
 import { Herkomstregel } from '../ui/Herkomstregel'
@@ -37,12 +37,25 @@ export function BufferRegel({
   // optimistisch over hoelang je toekomt.
   const maanden = Math.floor(b.maanden * 10) / 10
   const krap = maanden < 3
+  // ⚠ RONDE 104 — EEN PLAFOND, WANT ÉÉN RECORD KANTELDE DIT OORDEEL.
+  // De badge verschijnt zodra er één vaste last staat. Wie zijn app net opzet, als eerste
+  // ding Netflix invult en € 5.000 op zijn spaarrekening heeft, kreeg te lezen:
+  // **"5.050,5 maanden buffer"** — ruim vierhonderd jaar. Het cijfer is niet fout gerekend,
+  // maar het is geen oordeel meer: het zegt alleen dat de opstelling nog niet af is.
+  // Boven de grens noemt de app geen getal meer maar zegt ze "meer dan 24 maanden". Dat is
+  // ook eerlijker over wat dit cijfer kán: eten en tanken zitten er niet in, en dat staat
+  // in de zin ernaast met zoveel woorden.
+  const boven = maanden > BUFFER_PLAFOND
 
   return (
     <Herkomstregel
       badge={
         // Exact één maand krijgt het enkelvoud; "1 maanden buffer" zou fout staan.
-        maanden === 1 ? t('1 maand buffer') : t('{n} maanden buffer', { n: maanden.toLocaleString(opmaakLocale()) })
+        boven
+          ? t('meer dan {n} maanden buffer', { n: BUFFER_PLAFOND })
+          : maanden === 1
+            ? t('1 maand buffer')
+            : t('{n} maanden buffer', { n: maanden.toLocaleString(opmaakLocale()) })
       }
       toon={krap ? 'let-op' : 'info'}
       kaal={kaal}

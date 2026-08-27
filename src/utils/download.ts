@@ -101,7 +101,7 @@ export function dataUrlNaarBlob(dataUrl: string): { blob: Blob; soort: string } 
  * streep of een dubbelpunt erin wordt op Windows geweigerd, en dan krijg je geen
  * bestand maar een foutmelding.
  */
-export function veiligeBestandsnaam(tekst: string, maxLengte = 60): string {
+export function veiligeBestandsnaam(tekst: string, maxLengte = 60, terugval = ''): string {
   const kaal = tekst
     .normalize('NFD')
     // De losse accenttekens die NFD achterlaat: "é" wordt "e" in plaats van "e-".
@@ -109,5 +109,9 @@ export function veiligeBestandsnaam(tekst: string, maxLengte = 60): string {
     .replace(/[^a-z0-9]+/gi, '-')
     .replace(/^-+|-+$/g, '')
     .toLowerCase()
-  return kaal.slice(0, maxLengte).replace(/-+$/, '')
+  // ⚠ RONDE 108 — EEN TERUGVAL VOOR EEN NAAM DIE NIETS OVERHOUDT. Twee dossiers die "🏠" en
+  // "🚗" heten, gaven op dezelfde dag allebei `afrekening--2026-04-01.pdf`: hetzelfde
+  // bestand, dus het tweede overschrijft het eerste in je downloadmap. `winAnsiVeilig` in
+  // pdfBlad lost het omgekeerde geval al zo op; deze functie deed niets.
+  return kaal.slice(0, maxLengte).replace(/-+$/, '') || terugval
 }

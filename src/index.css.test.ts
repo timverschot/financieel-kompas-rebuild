@@ -339,6 +339,13 @@ function klassenInCode(): Map<string, string> {
 const CSS_KLASSEN = klassenInCss()
 const CODE_KLASSEN = klassenInCode()
 
+/** Hoeveel keer een stukje tekst in de BRONCODE voorkomt (alle .ts/.tsx onder src/). */
+function telInCode(naald: string): number {
+  let n = 0
+  for (const [, inhoud] of BRONBESTANDEN) n += inhoud.split(naald).length - 1
+  return n
+}
+
 /**
  * RONDE 86 — ROOD IS DE KLEUR VAN WEGGOOIEN.
  *
@@ -440,6 +447,162 @@ describe('een knop die iets RECHTZET draagt niet de kleur van weggooien', () => 
       expect(index(eerder)).toBeGreaterThan(-1)
       expect(terzijde).toBeGreaterThan(index(eerder))
     }
+  })
+})
+
+describe('een lijstrij perst de naam niet plat (ronde 103)', () => {
+  // ⚠ IN EEN ECHTE BROWSER GEMETEN, met gegevens erin. In een rij van 246 px op een
+  // scherm van 320 px kreeg de NAAMkolom nog 27 tot 54 pixels: alles wat er te weinig is,
+  // werd van de naam afgehaald, want de badge, het bedrag en de knoppen ernaast krimpen
+  // niet. "Marie-Louise Vandenbroucke" heeft 109 px nodig en kreeg er 27, en schilderde
+  // 82 px dwars over de badge "Kind". Op Rekeningen liep een rekeningnaam 99 px over het
+  // bedrag heen, op Dossiers 54 px over de knoppen.
+  //
+  // ⚠ WAT DEZE TEST WÉL EN NIET DOET. jsdom rekent geen opmaak uit, dus ze kan die
+  // overlap niet meten. Ze bewaakt alleen dat de drie eigenschappen die het oplossen er
+  // nog staan. De échte meting staat in de nota van ronde 103.
+  const regel = (sel: string) => REGELS.find((r) => r.selector.trim() === sel)
+
+  it('laat de rij afbreken in plaats van de naam samen te persen', () => {
+    const r = regel('.rij')
+    expect(r).toBeDefined()
+    expect(r?.body).toMatch(/flex-wrap\s*:\s*wrap\s*[;}]/)
+  })
+
+  it('geeft de naamkolom een flex-BASIS die ook écht iets voorstelt', () => {
+    // ⚠ Een kale `flex: 1` (basis 0) past altijd op de regel en wordt dus altijd
+    // samengeperst — dan doet `flex-wrap` hierboven niets. De basis is wat de rij laat
+    // afbreken zodra er minder dan die breedte overblijft.
+    //
+    // ⚠ EN DE WAARDE WORDT UITGELEZEN, niet alleen de vorm. Een doorlichting zette
+    // `flex: 1 1 0rem` — functioneel identiek aan de kapotte oude `flex: 1` — en de test
+    // bleef groen. Dat is precies het stille slagen waar de kop van dit bestand voor
+    // waarschuwt.
+    const r = regel('.rij-midden')
+    expect(r).toBeDefined()
+    const m = r?.body.match(/flex\s*:\s*1\s+1\s+(\d+(?:\.\d+)?)rem\s*[;}]/)
+    expect(m, 'geen `flex: 1 1 <n>rem` gevonden').not.toBeNull()
+    // ⚠ EEN ONDERGRENS ÉN EEN BOVENGRENS. Het commentaar bij deze regel schrijft twee
+    // metingen op: onder ~6rem blijft de naamkolom te smal, en boven 6rem breken rijen af
+    // die het niet nodig hadden (bij 8rem werd élke boekingsrij 40 px hoger, bij 12rem brak
+    // het Overzicht af tot 1568 px). Een test die alleen de ondergrens bewaakt, laat juist
+    // de waarde toe die dat commentaar afkeurt — een doorlichting zette 12rem en de reeks
+    // bleef groen.
+    expect(Number(m?.[1])).toBe(6)
+  })
+
+  it('laat een woord dat niet past afbreken — met `break-word`, niet met `anywhere`', () => {
+    // ⚠ HET VERSCHIL IS HIER GEMETEN EN HET IS GROOT. `anywhere` verandert óók de
+    // MIN-CONTENT-breedte, dus flexbox mag de kolom daarna tot bijna nul persen en dan
+    // breekt de tekst per LETTER af: de kop van een lening ging op 320 px van 539 naar
+    // 1800 px hoog. `break-word` laat de min-content-breedte met rust.
+    for (const sel of ['.rij-titel', '.rij-meta']) {
+      const r = regel(sel)
+      expect(r, sel).toBeDefined()
+      expect(r?.body, sel).toMatch(/overflow-wrap\s*:\s*break-word\s*[;}]/)
+      expect(r?.body, sel).not.toMatch(/overflow-wrap\s*:\s*anywhere/)
+    }
+  })
+
+  it('laat een rij die zélf een kolom is NIET afbreken', () => {
+    // ⚠ In een kolom-flexbox is `wrap` niet onschuldig: de doos wordt meerregelig, en dan
+    // rekt `align-items: stretch` de kinderen uit tot het BREEDSTE kind in plaats van tot
+    // de rij. Gemeten op Spaardoelen (320 px): de rij werd 312 px breed in een lijst van
+    // 246, en omdat `.lijst` op `overflow: hidden` staat werd de × om een doel te
+    // verwijderen weggeknipt — die stond op x = 268 en was dus onbereikbaar.
+    const r = regel('.rij-kolom')
+    expect(r).toBeDefined()
+    expect(r?.body).toMatch(/flex-wrap\s*:\s*nowrap\s*[;}]/)
+    expect(r?.body).toMatch(/flex-direction\s*:\s*column\s*[;}]/)
+    // ⚠ TEL DE PLEKKEN, want `CODE_KLASSEN.has(...)` is al tevreden met ÉÉN. Een
+    // doorlichting haalde de klasse uit zeven van de acht bestanden en de hele reeks bleef
+    // groen — terwijl dat precies de fout terugbrengt waarmee deze ronde begon (een × op
+    // Spaardoelen die buiten de lijst viel en dus niet aan te klikken was).
+    expect(CODE_KLASSEN.has('rij-kolom')).toBe(true)
+    expect(telInCode('rij rij-kolom')).toBe(8)
+  })
+
+  it('geeft de kop van zo\'n kolomrij dezelfde behandeling', () => {
+    // ⚠ Drie plekken bouwden die kop met de hand na in een inline stijl, en misten daardoor
+    // het afbreken. Zonder deze telling mag er morgen weer eentje met de hand bijkomen.
+    const r = regel('.rij-kop')
+    expect(r).toBeDefined()
+    expect(r?.body).toMatch(/display\s*:\s*flex\s*[;}]/)
+    expect(r?.body).toMatch(/flex-wrap\s*:\s*wrap\s*[;}]/)
+    expect(r?.body).toMatch(/align-items\s*:\s*center\s*[;}]/)
+    expect(telInCode('rij-kop')).toBe(3)
+  })
+
+  it('houdt de knoppen rechts wanneer de rij afbreekt', () => {
+    // ⚠ Zonder dit begint de tweede regel LINKS: de rode × waarmee je een boeking
+    // verwijdert landde op x = 0, recht onder het aanvinkvakje — dus precies waar je
+    // daarvoor "rij openen" aantikte.
+    const r = regel('.rij-acties')
+    expect(r).toBeDefined()
+    expect(r?.body).toMatch(/margin-left\s*:\s*auto\s*[;}]/)
+  })
+})
+
+describe('de boekingentabel past in haar eigen kolom (ronde 103)', () => {
+  it('houdt de som van de kolomminima onder de breedte die er op 1024 px is', () => {
+    // ⚠ UITGETELD EN DAARNA GEMETEN. De minima plus de tussenruimtes moeten passen in de
+    // inhoudskolom, anders knipt `.lijst { overflow: hidden }` élke rij af. Op een venster
+    // van 1024 px is die kolom 694 px; met de oude minima was de som 714 px, en elke rij
+    // verloor 20 px. Dat stond er al vóór deze ronde.
+    // ⚠ VERANKERD AAN HET JUISTE BLOK. Een `find` pakt de EERSTE regel die past; een
+    // doorlichting plakte er een tweede `.tx-lijst .rij` met een raster in (in een
+    // `@media (min-width: 1600px)`), zette de échte regel terug op kapot, en de test bleef
+    // groen. Daarom filteren op de mediacontext én eisen dat er precies één is — zo valt de
+    // test ook om wanneer iemand het breekpunt van 1024 px verzet zonder dit na te rekenen.
+    const kandidaten = REGELS.filter(
+      (r) =>
+        r.context.includes('min-width: 1024px') &&
+        r.selector.includes('.tx-lijst .rij') &&
+        r.body.includes('grid-template-columns'),
+    )
+    expect(kandidaten.length, 'precies één rasterregel in het 1024px-blok verwacht').toBe(1)
+    const regel = kandidaten[0]
+    const kolommen = regel!.body.match(/grid-template-columns:([^;]+);/)?.[1] ?? ''
+    const minima = [...kolommen.matchAll(/(?:minmax\(\s*)?(\d+)px/g)].map((m) => Number(m[1]))
+    expect(minima.length).toBe(7)
+    const gat = Number(regel!.body.match(/gap:\s*(\d+)px/)?.[1] ?? 0)
+    expect(gat).toBeGreaterThan(0)
+    const som = minima.reduce((a, b) => a + b, 0) + gat * (minima.length - 1)
+    expect(som).toBeLessThanOrEqual(694)
+  })
+})
+
+describe('een sorteerkop draagt tekst, geen icoon (ronde 103)', () => {
+  // ⚠ De knop draagt `.knop-kaal`, en die zet `width: 44px; height: 44px` — bedoeld voor
+  // het ✎- en ×-icoon in een lijstrij, dus voor één teken. Gemeten op 1024, 1280 en
+  // 1440 px: "Handelaar / winkel" is 80 px breed in een knop van 44. Het etiket
+  // schilderde 36 px buiten de knop, en het sorteerpijltje stond VOLLEDIG buiten de knop
+  // — dat deel klikte dus niet, terwijl het er als de bediening uitziet.
+  const index = (sel: string) => REGELS.findIndex((r) => r.selector.trim() === sel)
+
+  it('zet zijn eigen breedte en hoogte, en houdt 44 px raakvlak', () => {
+    const r = REGELS.find((x) => x.selector.trim() === '.tx-kolomkop')
+    expect(r).toBeDefined()
+    expect(r?.body).toMatch(/width\s*:\s*auto\s*[;}]/)
+    expect(r?.body).toMatch(/height\s*:\s*auto\s*[;}]/)
+    expect(r?.body).toMatch(/min-height\s*:\s*44px\s*[;}]/)
+  })
+
+  it('staat ná `.knop-kaal`, anders wint dat vierkant van 44 px weer', () => {
+    // ⚠ Bij gelijke specificiteit wint de LATERE regel — de bekendste oorzaak van "mijn
+    // CSS doet niets" in dit project (rondes 70, 71 en 86). Verhuist dit blok ooit naar
+    // boven, dan is de fout er stil weer, en geen enkele andere test merkt het.
+    expect(index('.knop-kaal')).toBeGreaterThan(-1)
+    expect(index('.tx-kolomkop')).toBeGreaterThan(index('.knop-kaal'))
+  })
+
+  it('houdt de knop die de klasse draagt in beeld', () => {
+    // Positieve tegencontrole: zonder haar slaagt dit blok ook wanneer niemand de klasse
+    // nog gebruikt en de hele regel dus dode letter is.
+    // ⚠ `CODE_KLASSEN` en niet `CSS_KLASSEN`: dat laatste zijn de klassen uit index.css
+    // zélf, en dat de klasse dáár staat bewijzen de twee controles hierboven al. Een
+    // doorlichting haalde `tx-kolomkop` uit de JSX en deze test bleef groen.
+    expect(CODE_KLASSEN.has('tx-kolomkop')).toBe(true)
   })
 })
 

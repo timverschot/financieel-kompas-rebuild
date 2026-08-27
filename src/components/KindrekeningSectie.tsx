@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Categorie, Dossier, Kind, Kindrekening, Kindrekeningpost } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
 import { formatEuro, invoerNaarCenten, centenNaarInvoer } from '../utils/format'
-import { potSaldo, standPerOuder, geindexeerdeBijdrage, teltVerledenZonderIndex, type OuderStand } from '../utils/kindrekening'
+import { aantalTermijnen, potSaldo, standPerOuder, geindexeerdeBijdrage, isGeindexeerd, teltVerledenZonderIndex, type OuderStand } from '../utils/kindrekening'
 import { labelVanCategorie } from '../data/categorieen/resolve'
 import { KindrekeningpostFormulier } from './KindrekeningpostFormulier'
 import { Bedrag, Kaart, Leeg } from '../ui/basis'
@@ -158,7 +158,11 @@ export function KindrekeningSectie({
   const bewegingen = gesorteerdNieuwsteEerst(posten)
   const geindexeerdJij = geindexeerdeBijdrage(kindrekening, kindrekening.maandbijdrageJij)
   const geindexeerdPartner = geindexeerdeBijdrage(kindrekening, kindrekening.maandbijdragePartner)
-  const heeftIndex = !!(kindrekening.aanvangsindex && kindrekening.huidigeIndex)
+  // ⚠ RONDE 110 — DEZELFDE TOETS ALS DE REKENKERN. Hier stond `aanvangsindex && huidigeIndex`,
+  // dus twee gelijke indexcijfers (130 en 130) zetten het woord "geïndexeerd" achter een bedrag
+  // dat geen cent veranderd was — terwijl de uitlegregel eronder, die de strengere toets wél
+  // doet, dan zweeg. Twee antwoorden op hetzelfde feit, op één scherm.
+  const heeftIndex = isGeindexeerd(kindrekening)
 
   // De opmerking bij het huidige cijfer, live terwijl je typt.
   const opmerking = indexOpmerking(t, keurIndexcijfer(t, huidig))
@@ -209,6 +213,21 @@ export function KindrekeningSectie({
           </span>
         </li>
       </ul>
+
+      {/* ⚠ RONDE 112 — HOEVEEL TERMIJNEN ER GETELD ZIJN. "Loopt € 2.000,00 achter" stond er
+          zonder één woord over de telling, terwijl die telling twee eigenaardigheden heeft: de
+          maand waarin de bijdrage begon telt volledig mee, ook als ze halverwege begon, en de
+          lopende maand telt vanaf dag 1 volledig mee. Op de eerste van een maand springt het
+          bedrag dus met een volledige bijdrage omhoog voor een maand die nog moet verstrijken.
+          De onderhoudsbijdrage zegt dat al met zoveel woorden; deze kaart deed het niet. */}
+      {kindrekening.bijdrageStart && (kindrekening.maandbijdrageJij || kindrekening.maandbijdragePartner) ? (
+        <p className="rij-meta" style={{ margin: 0 }}>
+          {t(
+            'Geteld over {n} maand(en), vanaf de maand waarin de bijdrage begon. Die maand telt volledig mee, ook als ze halverwege begon, en de lopende maand telt vanaf de eerste dag mee.',
+            { n: aantalTermijnen(kindrekening.bijdrageStart, vandaag()) },
+          )}
+        </p>
+      ) : null}
 
       {/* Eén regel die zegt hoe de achterstand geteld wordt zodra er geïndexeerd
           wordt. De app weet niet vanaf welke maand de huidige index gold, dus

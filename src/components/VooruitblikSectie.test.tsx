@@ -53,6 +53,109 @@ function toon(props: Partial<Parameters<typeof VooruitblikSectie>[0]> = {}) {
   return { onBoekVasteLast }
 }
 
+describe('VooruitblikSectie — geen oordeel zonder inkomsten (ronde 106)', () => {
+  const bedragGroot = () => document.querySelector('.bedrag-groot') as HTMLElement
+
+  it('kleurt het verwachte saldo niet wanneer de app je inkomsten niet kent', () => {
+    // Alleen een huur ingevuld, geen loon: er stond een groot ROOD "−€ 900,00 verwacht in
+    // <maand>", terwijl de app zijn inkomsten gewoon niet kende.
+    toon({ transacties: [], terugkerendePosten: [huur] })
+
+    expect(bedragGroot().style.color).toBe('var(--text)')
+    expect(screen.getByText(/dit is geen oordeel over je maand/)).toBeInTheDocument()
+  })
+
+  it('kleurt het wél zodra er een vaste inkomst staat', () => {
+    const loon = post({ id: 'Loon', dag: 1, bedrag: 250000 })
+    toon({ transacties: [], terugkerendePosten: [huur, loon] })
+
+    expect(bedragGroot().style.color).toBe('var(--positive)')
+    expect(screen.queryByText(/dit is geen oordeel over je maand/)).toBeNull()
+  })
+
+  it('kent de inkomsten ook wanneer die pas volgend kwartaal vervallen', () => {
+    // ⚠ DE REDEN DAT `heeftVasteInkomst` NAAST DE VERHOUDING STAAT. Een zelfstandige die per
+    // kwartaal factureert, heeft in twee van de drie maanden geen verwachte inkomst — en
+    // kreeg dan een groot rood bedrag te zien terwijl zijn inkomst gewoon ingevuld staat.
+    const perKwartaal = post({
+      id: 'Facturatie',
+      dag: 1,
+      bedrag: 600000,
+      frequentie: 'kwartaal',
+      startMaand: dezeMaand,
+    })
+    toon({ transacties: [], terugkerendePosten: [huur, perKwartaal] })
+
+    // Deze maand valt de facturatie niet, dus het verwachte saldo is negatief ...
+    expect(bedragGroot().textContent).toContain('900,00')
+    // ... maar de app kent zijn opstelling, dus dit is wél een oordeel.
+    expect(screen.queryByText(/dit is geen oordeel over je maand/)).toBeNull()
+  })
+
+  it('kleurt het ook zonder vaste inkomst, zolang wat er binnenkwam in verhouding staat', () => {
+    // Wie zijn loon niet als vaste last invult maar gewoon inboekt: € 2.000 binnen tegenover
+    // € 900 huur. Dan kent de app het plan wel degelijk.
+    const geboekt: Transactie = {
+      id: 'loon-los',
+      datum: `${volgendeMaand}-01`,
+      omschrijving: 'Loon',
+      bedrag: 200000,
+      rekeningId: 'r1',
+    }
+    toon({ transacties: [geboekt], terugkerendePosten: [huur] })
+
+    expect(screen.queryByText(/dit is geen oordeel over je maand/)).toBeNull()
+  })
+
+  it('rekent een inkomst die pas volgend jaar begint nog niet mee', () => {
+    // ⚠ HET LEK AAN DE ANDERE KANT (les van ronde 104). Vul je een nieuw loon in dat pas
+    // later begint, dan zou de app vandaag al menen dat ze je plan kent — en stond er weer
+    // een groot rood bedrag dat nergens op rust.
+    // Een KWARTAALpost, want `isNogNietBegonnen` geldt bewust niet voor maandelijkse posten:
+    // daar is de startmaand geen begindatum maar een administratief veld (zie `vastelast.ts`).
+    const toekomstigLoon = post({
+      id: 'Nieuw loon',
+      dag: 1,
+      bedrag: 750000,
+      frequentie: 'kwartaal',
+      startMaand: verschuifMaandVoorTest(volgendeMaand, 12),
+    })
+    toon({ transacties: [], terugkerendePosten: [huur, toekomstigLoon] })
+
+    expect(bedragGroot().style.color).toBe('var(--text)')
+    expect(screen.getByText(/dit is geen oordeel over je maand/)).toBeInTheDocument()
+  })
+
+  it('rekent een inkomst die je hebt stopgezet niet meer mee', () => {
+    // De spiegel van de test hierboven: een loon dat vorige maand ophield, mag het oordeel
+    // vandaag niet aanhouden.
+    const gestoptLoon = post({
+      id: 'Oud loon',
+      dag: 1,
+      bedrag: 250000,
+      eindMaand: dezeMaand,
+    })
+    toon({ transacties: [], terugkerendePosten: [huur, gestoptLoon] })
+
+    expect(bedragGroot().style.color).toBe('var(--text)')
+    expect(screen.getByText(/dit is geen oordeel over je maand/)).toBeInTheDocument()
+  })
+
+  it('laat een teruggave van 25 cent het oordeel niet aanzetten', () => {
+    const statiegeld: Transactie = {
+      id: 'statiegeld',
+      datum: `${volgendeMaand}-02`,
+      omschrijving: 'Statiegeld',
+      bedrag: 25,
+      rekeningId: 'r1',
+    }
+    toon({ transacties: [statiegeld], terugkerendePosten: [huur] })
+
+    expect(bedragGroot().style.color).toBe('var(--text)')
+    expect(screen.getByText(/dit is geen oordeel over je maand/)).toBeInTheDocument()
+  })
+})
+
 describe('VooruitblikSectie — een vaste last meteen inboeken', () => {
   const telregel = () => screen.getByRole('button', { name: /nog in te boeken in/ })
 

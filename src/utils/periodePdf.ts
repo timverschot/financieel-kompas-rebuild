@@ -2,6 +2,7 @@ import type { Categorie, Overboeking, Rekening, Transactie, Waardering } from '.
 import type { Vertaler } from '../i18n'
 import { vandaag } from './datum'
 import { veiligeBestandsnaam } from './download'
+import { categorienaam } from './categorienaam'
 import { formatEuro } from './format'
 import { bouwPeriodeOverzicht } from './periodeOverzicht'
 import { laadJsPdf, LINKS, maakBlad, RECHTS } from './pdfBlad'
@@ -54,15 +55,10 @@ export async function exporteerPeriodePDF(
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const blad = maakBlad(doc)
 
-  // Kop van het blad
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(16)
-  doc.text(
+  // Kop van het blad, afbrekend (ronde 108) — zie de uitleg bij `blad.titel`.
+  blad.titel(
     o.soort === 'jaar' ? t('Jaarrapport {periode}', { periode: o.label }) : t('Maandrapport {periode}', { periode: o.label }),
-    LINKS,
-    blad.positie(),
   )
-  blad.verschuif(8)
   blad.regel(`${t('Opgemaakt op')}: ${vandaag(nu)}`)
   blad.regel(t('{n} boeking(en) in deze periode', { n: o.aantal }))
 
@@ -95,7 +91,7 @@ export async function exporteerPeriodePDF(
       // De naam mag doorlopen over meerdere regels in plaats van afgekapt te worden:
       // een lange eigen categorie verloor anders stil haar staart, en dan lijkt er
       // een woord te ontbreken in plaats van een regel.
-      const naamDelen = doc.splitTextToSize(p.naam, KOL_AANDEEL - LINKS - 8) as string[]
+      const naamDelen = doc.splitTextToSize(categorienaam(t, p.naam), KOL_AANDEEL - LINKS - 8) as string[]
       blad.ruimte(naamDelen.length * 5)
       const y = blad.positie()
       doc.text(aandeelTekst(p.bedrag, totaal), KOL_AANDEEL, y, { align: 'right' })
@@ -145,7 +141,7 @@ export async function exporteerPeriodePDF(
   for (const r of o.regels) {
     // De meta-regel eronder: rekening, categorie, en bij een gesplitst ticket de
     // volledige uitsplitsing. Die uitsplitsing kan lang zijn, dus ze mag afbreken.
-    const meta = [r.rekening, r.categorie].filter(Boolean).join(' · ')
+    const meta = [r.rekening, r.categorie ? categorienaam(t, r.categorie) : ''].filter(Boolean).join(' · ')
     const metaDelen = [
       ...(meta ? (doc.splitTextToSize(meta, RECHTS - KOL_TEKST) as string[]) : []),
       ...(r.uitsplitsing ? (doc.splitTextToSize(r.uitsplitsing, RECHTS - KOL_TEKST) as string[]) : []),

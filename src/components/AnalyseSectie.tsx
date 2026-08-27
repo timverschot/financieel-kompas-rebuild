@@ -29,7 +29,7 @@ import { type AnalyseTab } from '../utils/analysetab'
 import { useT } from '../i18n'
 import { useInstellingen } from '../instellingen'
 import { ANALYSE_KAART_IDS, kaartLabel, kiesbareKaarten, toontKaart, wisselKaart } from '../utils/analysekaarten'
-import { naarDatumTekst, huidigeMaand, maandJaarLabel } from '../utils/datum'
+import { huidigeMaand, maandJaarLabel, dagenVerschil, verschuifDagen } from '../utils/datum'
 import { verschuifMaand } from '../utils/maandverloop'
 import { isOmgekeerdBereik, filterVoorCategorie, type TxFilter } from '../utils/transactieFilter'
 import { GEZIN_KLEUR, kleurVoor, OVERIGE_KLEUR } from '../ui/palet'
@@ -180,6 +180,14 @@ function DonutKaart({
   // Percentages over de VOLLEDIGE lijst berekenen (niet enkel de zichtbare rijen),
   // zodat een rij hetzelfde percentage houdt als je de lijst uitklapt.
   const percentages = afgerondePercentages(posten.map((p) => p.bedrag))
+  // ⚠ RONDE 105 — EN DE RING KRIJGT DIE PERCENTAGES MEE. Rekende de donut ze zelf uit, dan
+  // deed ze dat over elf ringitems terwijl de lijst er twaalf telt, en verdeelt de
+  // grootste-restmethode de restprocenten anders: de tiende rij stond op 7% en haar schijf
+  // zei 6%. De restschijf krijgt wat er overblijft, zodat de ring nog altijd op 100 sluit.
+  const ringPercentages: number[] = inDeRing.map((i) => percentages[i])
+  if (restTotaal > 0) {
+    ringPercentages.push(Math.max(0, 100 - ringPercentages.reduce((som, p) => som + p, 0)))
+  }
 
   return (
     <Kaart titel={titel} bijschrift={subtitel}>
@@ -194,6 +202,7 @@ function DonutKaart({
             andere helft niets — en niets op het scherm zei welke helft. */}
         <Donut
           items={ring}
+          percentages={ringPercentages}
           toonLegende={false}
           grootte={DONUT_GROOTTE}
           interactief
@@ -429,7 +438,6 @@ export function AnalyseSectie({
   // De vorige, vergelijkbare periode (voor stijgers/dalers). 'Alles' en een
   // onvolledig aangepast bereik hebben geen zinvolle vorige periode.
   const vorige: Periode | null = useMemo(() => {
-    const iso = naarDatumTekst
     if (keuze === 'maand') {
       const m = verschuifMaand(anker, -1)
       return { van: `${m}-01`, tot: `${m}-31` }
@@ -444,12 +452,17 @@ export function AnalyseSectie({
     }
     if (keuze === 'aangepast') {
       if (!van || !tot || isOmgekeerdBereik(van, tot)) return null
-      const vd = new Date(van)
-      const td = new Date(tot)
-      const dagen = Math.round((td.getTime() - vd.getTime()) / 86400000)
-      const prevTot = new Date(vd.getTime() - 86400000)
-      const prevVan = new Date(prevTot.getTime() - dagen * 86400000)
-      return { van: iso(prevVan), tot: iso(prevTot) }
+      // ⚠ RONDE 110 — ÉÉN KLOK VOOR DE HELE SOM. Hier stond `new Date(van)` (dat leest de tekst
+      // als middernacht in WERELDtijd) met een omzetting terug die in LOKALE tijd rekende. Op
+      // een Belgisch toestel valt dat samen; op een gsm die tijdens een reis van tijdzone
+      // wisselt lag het bereik er een dag naast — nagemeten: in `America/New_York` gaf een
+      // bereik van 1 t/m 31 juli als vorige periode 30 juni t/m 30 juli.
+      const dagen = dagenVerschil(van, tot)
+      if (dagen === null) return null
+      const prevTot = verschuifDagen(van, -1)
+      const prevVan = prevTot === null ? null : verschuifDagen(prevTot, -dagen)
+      if (prevVan === null || prevTot === null) return null
+      return { van: prevVan, tot: prevTot }
     }
     return null // alles
   }, [keuze, van, tot, anker])
@@ -526,6 +539,13 @@ export function AnalyseSectie({
 
   // Percentages per rij: in één keer berekend zodat elke kolom op exact 100% sluit.
   const ovPercentages = afgerondePercentages(byOv.map((g) => g.bedrag))
+  // ⚠ RONDE 105 — HETZELFDE PERCENTAGE ALS DE RIJ WAAROP JE TIKTE. Het detailscherm
+  // rekende zijn eigen `Math.round(deel / totaal * 100)`. `afgerondePercentages` gebruikt
+  // de grootste-restmethode (zodat de kolom op 100% sluit) en die kiest bij een half
+  // procent anders: bij Voeding € 8,10 / Drank € 5,95 / Vervoer € 5,95 stond er in de lijst
+  // "40%" en in het detailscherm van diezelfde rij "41%". Hetzelfde bedrag, hetzelfde
+  // totaal, twee antwoorden. Het detail neemt nu het getal van de rij over.
+  const drillIndex = drill ? byOv.findIndex((g) => g.sleutel === drill.sleutel) : -1
   const drillSubPercentages = afgerondePercentages(drillSub.map((p) => p.bedrag))
 
   // De namen van de periodekaartjes. Sta je op de huidige maand, dan blijven het
@@ -1119,9 +1139,9 @@ export function AnalyseSectie({
               </span>
               <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
                 <Bedrag centen={drillTotaal} groot />
-                {totaal > 0 && (
+                {drillIndex >= 0 && (
                   <span className="rij-meta">
-                    {Math.round((drillTotaal / totaal) * 100)}% {t('van het totaal')}
+                    {ovPercentages[drillIndex]}% {t('van het totaal')}
                   </span>
                 )}
               </span>
@@ -1173,7 +1193,7 @@ export function AnalyseSectie({
                   {drillSub.map((p, i) => {
                     const fractie = drillTotaal > 0 ? p.bedrag / drillTotaal : 0
                     return (
-                      <li key={`${i}-${p.naam}`} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+                      <li key={`${i}-${p.naam}`} className="rij rij-kolom" style={{ gap: 8 }}>
                         {(() => {
                           // Alleen een ITEM: zie de uitleg bij `naarItem`. Voor een
                           // rij die een hoofd- of middencategorie is, zou het filter

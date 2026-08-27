@@ -257,6 +257,24 @@ describe('AnalyseSectie — doorklikken naar de transacties', () => {
     })
   })
 
+  it('zegt in het detailscherm hetzelfde percentage als de rij waarop je tikte', async () => {
+    // Ronde 105. € 8,10 van € 20,00 is 40,5%. De lijst gebruikt de grootste-restmethode
+    // (zodat de kolom op 100 sluit) en komt op 40; het detailscherm rondde apart af en
+    // kwam op 41. Hetzelfde bedrag, hetzelfde totaal, twee antwoorden.
+    const user = userEvent.setup()
+    toon([
+      tx('v', 'ov-voeding', -810, 'Bakker'),
+      tx('d', 'ov-drank', -595, 'Slijter'),
+      tx('m', 'ov-vervoer-en-mobiliteit', -595, 'Q8'),
+    ])
+    const rij = within(kaart('Verdeling uitgaven')).getByRole('button', { name: 'Toon details van Voeding' })
+    expect(rij).toHaveTextContent('40%')
+
+    await user.click(rij)
+    expect(await screen.findByText(/40% van het totaal/)).toBeInTheDocument()
+    expect(screen.queryByText(/41% van het totaal/)).toBeNull()
+  })
+
   it('laat een subcategorie in de drilldown doorklikken op haar eigen niveau', async () => {
     const user = userEvent.setup()
     const onGaNaarTransacties = vi.fn()
@@ -492,6 +510,27 @@ describe('AnalyseSectie — uitklappen zonder de donut te verbouwen', () => {
     expect(schijven()).toBe(11)
     await gebruiker.click(within(kaartje).getByRole('button', { name: /Toon alle 15/ }))
     expect(schijven()).toBe(11)
+  })
+
+  it('geeft een schijf hetzelfde percentage als haar rij ernaast', () => {
+    // Ronde 105. De ring toont tien schijven plus "Overige", de lijst ernaast twaalf rijen.
+    // Rekende de donut haar percentages zelf uit, dan verdeelde de grootste-restmethode de
+    // restprocenten over elf items in plaats van twaalf: de tiende rij stond op 7% en haar
+    // schijf zei 6%.
+    const centen = [6000, 5100, 4900, 4200, 3600, 3100, 2900, 2700, 2700, 2500, 500, 100]
+    toon(centen.map((c, i) => tx(`w${i}`, '', -c * 100, `Winkel ${i}`)))
+    const kaartje = screen.getByText('Uitgaven per winkel').closest('section.kaart') as HTMLElement
+
+    const rij = within(kaartje).getByText('Winkel 9').closest('li') as HTMLElement
+    expect(rij.querySelector('.rij-pct')?.textContent).toBe('7%')
+
+    const ring = within(kaartje).getByRole('img')
+    expect(ring.getAttribute('aria-label')).toContain('Winkel 9 7%')
+    expect(ring.getAttribute('aria-label')).not.toContain('Winkel 9 6%')
+
+    // En de restschijf krijgt wat er overblijft, zodat de ring nog altijd op 100 sluit: de
+    // tien zichtbare schijven staan samen op 99, dus de twee samengevoegde rijen op 1.
+    expect(ring.getAttribute('aria-label')).toContain('Overige (2) 1%')
   })
 
   it('laat je weer inklappen', async () => {

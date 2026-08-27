@@ -53,9 +53,27 @@ export function inkomstenUitgavenPerMaand(transacties: Transactie[], eindMaand: 
  * Die maand is nog niet af, dus haar bedrag is per definitie te laag; ze in het
  * gemiddelde meetellen zou de lat elke maand opnieuw verlagen. Is de lopende maand
  * de enige die je hebt, dan is er geen zinvol gemiddelde en geven we null terug.
+ *
+ * ⚠ RONDE 110 — EN ALLES NÁ DE LOPENDE MAAND EVENMIN. Hier stond `m.maand !== lopendeMaand`,
+ * dus alleen díé ene maand viel weg. Blader je op het Overzicht met "›" naar een maand die nog
+ * moet komen, dan schuift het venster van zes maanden mee de toekomst in — en die lege maanden
+ * telden als volwaardige maanden. Eén keer duwen maakte van "gemiddeld € 2.000 uitgaven"
+ * € 1.333, drie keer duwen € 800, terwijl het bijschrift eronder gewoon "met je gemiddelde als
+ * lijn" bleef zeggen. Dezelfde redenering als de zin hierboven: een maand die niet af is, hoort
+ * er niet in — en een maand die nog niet eens begonnen is al helemaal niet.
  */
 export function gemiddeldeVolleMaanden(reeks: MaandPaar[], lopendeMaand: string): { inkomsten: number; uitgaven: number } | null {
-  const vol = reeks.filter((m) => m.maand !== lopendeMaand)
+  const zonderLopende = reeks.filter((m) => m.maand < lopendeMaand)
+  // ⚠ RONDE 106 — DE MAANDEN VÓÓR JE EERSTE BOEKING TELLEN NIET MEE. Het venster is altijd
+  // zes maanden breed, ook wanneer de app twee weken oud is. Eén boeking van € 1.800 in juli,
+  // bekeken in augustus, werd dan gedeeld door maart t/m juli: "Gemiddeld € 360,00 per maand"
+  // onder een maand waarin je € 1.800 uitgaf. De stippellijn lag op een vijfde van de enige
+  // echte maand, dus élke maand met cijfers zag er ver boven gemiddeld uit.
+  //
+  // Alleen de LEIDENDE lege maanden vallen weg. Een lege maand middenin je historiek is een
+  // maand waarin je werkelijk niets boekte, en die hoort het gemiddelde wél te drukken.
+  const eerste = zonderLopende.findIndex((m) => m.inkomsten !== 0 || m.uitgaven !== 0)
+  const vol = eerste === -1 ? [] : zonderLopende.slice(eerste)
   if (vol.length === 0) return null
   const som = vol.reduce((s, m) => ({ inkomsten: s.inkomsten + m.inkomsten, uitgaven: s.uitgaven + m.uitgaven }), {
     inkomsten: 0,

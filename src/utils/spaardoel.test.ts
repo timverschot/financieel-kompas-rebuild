@@ -122,6 +122,33 @@ describe('spaardoelTempo', () => {
     expect(spaardoelTempo(doel, spaarRekeningen, tx, ob, [], '2026-07-15').perMaand).toBe(15000)
   })
 
+  it('maakt van één eenmalige storting geen spaartempo (ronde 106)', () => {
+    // Verkocht je in mei je auto en stortte je € 3.000 op de spaarrekening, dan las je
+    // "je tempo: € 1.000,00 per maand (gemiddeld over 3 maanden)" met een einddatum erbij —
+    // een cijfer waarop je een plan bouwt en dat geen gedrag beschrijft.
+    const tx: Transactie[] = [
+      { id: 't0', datum: '2026-01-05', omschrijving: 'start', bedrag: 100, rekeningId: 'sp' },
+      { id: 't1', datum: '2026-05-15', omschrijving: 'auto verkocht', bedrag: 300000, rekeningId: 'sp' },
+    ]
+    expect(spaardoelTempo(doel, spaarRekeningen, tx, [], [], '2026-07-15')).toEqual({
+      perMaand: null,
+      gemetenMaanden: 0,
+    })
+  })
+
+  it('meet wél zodra er twee bewegingen in het venster staan', () => {
+    // De tegencontrole: twee stortingen is een patroon, en dan mag het gemiddelde er staan.
+    const tx: Transactie[] = [
+      { id: 't0', datum: '2026-01-05', omschrijving: 'start', bedrag: 100, rekeningId: 'sp' },
+      { id: 't1', datum: '2026-04-15', omschrijving: 'storting', bedrag: 150000, rekeningId: 'sp' },
+      { id: 't2', datum: '2026-05-15', omschrijving: 'storting', bedrag: 150000, rekeningId: 'sp' },
+    ]
+    expect(spaardoelTempo(doel, spaarRekeningen, tx, [], [], '2026-07-15')).toEqual({
+      perMaand: 100000,
+      gemetenMaanden: 3,
+    })
+  })
+
   it('laat de aangebroken maand buiten het gemiddelde', () => {
     const tx: Transactie[] = [
       { id: 't0', datum: '2026-01-05', omschrijving: 'start', bedrag: 100000, rekeningId: 'sp' },

@@ -52,3 +52,37 @@ export function invoerNaarCenten(tekst: string): number {
 export function centenNaarInvoer(centen: number): string {
   return (centen / 100).toFixed(2).replace('.', ',')
 }
+
+// Een percentage afgerond op twee decimalen.
+//
+// ⚠ WAAROM DIT BESTAAT. Percentages worden in dit huis als gewone getallen bewaard, en
+// `100 - 66.6` is in drijvendekommagetallen niet 33,4 maar 33.400000000000006. Zonder deze
+// afronding komt een percentage na één keer heen en weer zo terug uit een uitwisseling, en
+// toont de bewijsmap twee aparte verdeelsleutel-regels voor één afspraak.
+//
+// ⚠ RONDE 107 — VERHUISD UIT `uitwisseling.ts`. Daar loste hij het probleem op voor de
+// OPGESLAGEN waarde, maar het complement dat de afrekeningtekst zelf uitrekent viel erbuiten
+// en zette "partner 33.400000000000006%" in het document dat naar de andere ouder gaat. Een
+// regel die op twee plaatsen moet gelden, hoort niet in één van de twee te wonen.
+export function rondPercentage(p: number): number {
+  return Math.round(p * 100) / 100
+}
+
+/**
+ * Leest een percentageveld: leeg betekent 'niet ingesteld', een getal van 0 tot en met 100 is
+ * geldig, al de rest is ongeldig (`null`) en hoort de bewaarknop uit te zetten.
+ *
+ * ⚠ RONDE 107 — VERHUISD UIT `DossierSectie.tsx`, WANT ÉÉN VELD DEED HET ANDERS. Het veld
+ * "Eigen verdeling" op een gedeelde kost had zijn eigen regeltje: ongeldige invoer werd daar
+ * stil GEWIST in plaats van geweigerd. Wie bij een kost van € 400 met 100% eigen verdeling
+ * per ongeluk "110" tikte, bewaarde die kost terug op de standaardverdeling — € 200 verschil
+ * in het saldo naar de andere ouder, zonder één woord op het scherm. Twee velden die
+ * hetzelfde vragen, horen hetzelfde antwoord te geven.
+ */
+export function leesPercentage(waarde: string): number | 'leeg' | null {
+  const tekst = waarde.trim()
+  if (!tekst) return 'leeg'
+  const getal = Number.parseFloat(tekst.replace(',', '.'))
+  if (!Number.isFinite(getal) || getal < 0 || getal > 100) return null
+  return getal
+}

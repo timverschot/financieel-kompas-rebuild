@@ -2,6 +2,23 @@ import type { Overboeking, Rekening, RekeningType, TerugkerendePost, Transactie,
 import { saldoVanRekening } from './saldo'
 import { isGestopt, isNogNietBegonnen, maandbedrag } from './vastelast'
 
+/**
+ * Boven hoeveel maanden buffer de app geen exact getal meer noemt (ronde 104).
+ *
+ * ⚠ Een KEUZE, geen feit. Twee jaar vaste lasten opzij is in elk advies dat ik ken ruim
+ * boven wat een noodbuffer moet zijn; wat erboven staat, zegt vooral iets over hoe volledig
+ * je opstelling is. Wie zijn app net opzet, als eerste ding Netflix invult en € 5.000 op
+ * zijn spaarrekening heeft, kreeg te lezen: **"5.050,5 maanden buffer"** — ruim vierhonderd
+ * jaar. Het cijfer is niet fout gerekend, maar het is geen oordeel meer.
+ *
+ * ⚠ RONDE 105 — DAAROM STAAT HET HIER EN NIET IN EEN COMPONENT. Het plafond stond in
+ * `BufferRegel.tsx` en werd daardoor maar op één van de twee plaatsen toegepast: het
+ * Overzicht zei "meer dan 24 maanden", Je situatie zei over dezelfde cijfers "5.050,5
+ * maanden". Eén getal, twee schermen, twee antwoorden. Wie dit cijfer toont, haalt de
+ * grens hier.
+ */
+export const BUFFER_PLAFOND = 24
+
 // "Hoelang kom ik toe als er even niets binnenkomt?"
 //
 // Dit is het enige vooruitziende cijfer dat verder kijkt dan de huidige maand.

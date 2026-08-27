@@ -209,3 +209,26 @@ describe('exporteerPeriodePDF — grensgevallen', () => {
     expect(alleTekst(nep)).toContain('zonder omschrijving')
   })
 })
+
+describe('exporteerPeriodePDF — de twee woorden van de app zelf (ronde 108)', () => {
+  const fr = (s: string, p?: Record<string, string | number>) => vertaal('fr', s, p)
+
+  it('vertaalt "Zonder categorie" mee in een Frans rapport', async () => {
+    // ⚠ RONDE 108. Het rapport toonde Franse kolomkoppen en Franse bedragen met daartussen
+    // de Nederlandse woorden "Zonder categorie" en "Onbekend" — terwijl allebei gewoon in de
+    // vertaaltabel staan en de Analyse-pagina ze wél gebruikt.
+    wisNepPdf(nep)
+    await exporteerPeriodePDF(fr, '2026-03', transacties, categorieen, rekeningen, [], [], NU)
+    const tekst = alleTekst(nep)
+    expect(tekst).toContain('Sans catégorie')
+    expect(tekst).not.toContain('Zonder categorie')
+  })
+
+  it('laat een echte categorienaam onvertaald', async () => {
+    // De tegencontrole: de ingebouwde categorienamen zijn app-breed Nederlands, ook op het
+    // scherm, en horen dus in élke taal hetzelfde te heten.
+    wisNepPdf(nep)
+    await exporteerPeriodePDF(fr, '2026-03', transacties, categorieen, rekeningen, [], [], NU)
+    expect(alleTekst(nep)).toContain('Voeding')
+  })
+})

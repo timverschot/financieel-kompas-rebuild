@@ -38,6 +38,60 @@ describe('GedeeldeKostFormulier', () => {
     )
   })
 
+  it('weigert een ongeldig eigen percentage in plaats van het stil te wissen (ronde 107)', async () => {
+    // ⚠ RONDE 107. Wie bij een kost van € 400 met 100% eigen verdeling per ongeluk "110"
+    // tikte, bewaarde die kost terug op de standaardverdeling van het dossier — € 200
+    // verschil in het saldo naar de andere ouder, zonder één woord op het scherm.
+    const user = userEvent.setup()
+    const bestaand: GedeeldeKost = {
+      id: 'k1',
+      dossierId: 'd1',
+      omschrijving: 'Fiets',
+      bedrag: 40000,
+      betaaldDoor: 'jij',
+      datum: '2026-03-04',
+      kostenType: 'gewoon',
+      aandeelJijOverride: 100,
+    }
+    const onOpslaan = toon(kinderen, bestaand)
+
+    const veld = screen.getByLabelText('Eigen verdeling (% jij, optioneel)')
+    await user.clear(veld)
+    await user.type(veld, '110')
+
+    const knop = screen.getByRole('button', { name: 'Kost wijzigen' })
+    expect(knop).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText('Geef een percentage van 0 tot 100, of laat het veld leeg.')).toBeInTheDocument()
+
+    await user.click(knop)
+    expect(onOpslaan).not.toHaveBeenCalled()
+  })
+
+  it('bewaart een geldig eigen percentage gewoon', async () => {
+    // De tegencontrole: 80 hoort er wél door.
+    const user = userEvent.setup()
+    const onOpslaan = toon()
+
+    await user.type(screen.getByLabelText('Omschrijving'), 'Fiets')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '400')
+    await user.type(screen.getByLabelText('Eigen verdeling (% jij, optioneel)'), '80')
+    await user.click(screen.getByRole('button', { name: 'Kost toevoegen' }))
+
+    expect(onOpslaan).toHaveBeenCalledWith(expect.objectContaining({ aandeelJijOverride: 80 }))
+  })
+
+  it('leest een eigen percentage met een komma', async () => {
+    const user = userEvent.setup()
+    const onOpslaan = toon()
+
+    await user.type(screen.getByLabelText('Omschrijving'), 'Fiets')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '400')
+    await user.type(screen.getByLabelText('Eigen verdeling (% jij, optioneel)'), '66,6')
+    await user.click(screen.getByRole('button', { name: 'Kost toevoegen' }))
+
+    expect(onOpslaan).toHaveBeenCalledWith(expect.objectContaining({ aandeelJijOverride: 66.6 }))
+  })
+
   it('toont gearchiveerde gezinsleden niet, tenzij ze al gekoppeld zijn', async () => {
     toon()
     expect(screen.getByRole('button', { name: 'Kind 1 (gedeelde kost)' })).toBeInTheDocument()
@@ -169,3 +223,31 @@ describe('GedeeldeKostFormulier — velden die het formulier niet kent (ronde 44
   })
 })
 
+// ---------------------------------------------------------------------------
+// Ronde 111 — een bon heeft een grootte-grens, en die zegt het
+// ---------------------------------------------------------------------------
+
+describe('de bon bij een gedeelde kost', () => {
+  function groteFile(bytes: number) {
+    // Een PDF wordt met opzet ONVERKLEIND bewaard, dus de data-URL is ruwweg 4/3 van het
+    // bestand. Hier maken we hem gewoon zelf groot genoeg.
+    return new File(['%PDF-1.4 ' + 'x'.repeat(bytes)], 'vonnis.pdf', { type: 'application/pdf' })
+  }
+
+  it('weigert een bestand boven 4 MB en zegt waarom', async () => {
+    // ⚠ RONDE 111. Deze kiezer had geen enkele grens, terwijl hij PDF's aanvaardt die
+    // onverkleind bewaard worden — die belanden dan in je database én in élke synchronisatie.
+    // En de `catch` zweeg volledig, dus een mislukte bon zag je nergens.
+    const user = userEvent.setup()
+    toon()
+    await user.upload(screen.getByLabelText('Bon/factuur (optioneel)'), groteFile(5_000_000))
+    expect(await screen.findByRole('alert')).toHaveTextContent('te groot')
+  })
+
+  it('laat een gewone bon gewoon door', async () => {
+    const user = userEvent.setup()
+    toon()
+    await user.upload(screen.getByLabelText('Bon/factuur (optioneel)'), groteFile(100))
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+})

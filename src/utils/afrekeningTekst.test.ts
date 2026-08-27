@@ -3,6 +3,7 @@ import {
   afrekeningKosten,
   afrekeningSamenvatting,
   berekeningTekst,
+  sleutelPercentages,
   groepLabel,
   sleutelHerkomst,
   sleutelVanRegel,
@@ -167,6 +168,16 @@ describe('gedeelde bewoordingen', () => {
     const basis = { sleutel: 'x', aantal: 1, totaal: 0, jouwAandeel: 0, partnerAandeel: 0, betaaldDoorJou: 0, betaaldDoorPartner: 0, netto: 0 }
     expect(groepLabel(t, { ...basis, naam: 'Gewone kosten', vertaalbaar: true })).toBe('Gewone kosten')
     expect(groepLabel(t, { ...basis, naam: 'Emma', vertaalbaar: false })).toBe('Emma')
+  })
+
+  it('houdt het percentage van de partner leesbaar bij een decimaal (ronde 107)', () => {
+    // ⚠ `100 - 66.6` is in drijvendekommagetallen 33.400000000000006. Zo stond het in de
+    // klembordtekst, de afrekening-PDF en de bewijsmap: het blad dat naar de andere ouder of
+    // naar een advocaat gaat. Van de 1001 percentages met één decimaal brak dit er 272.
+    expect(sleutelPercentages(t, 66.6)).toBe('jij 66.6% / partner 33.4%')
+    expect(sleutelPercentages(t, 68.2)).toBe('jij 68.2% / partner 31.8%')
+    // En hele percentages blijven er precies zo staan als voorheen.
+    expect(sleutelPercentages(t, 60)).toBe('jij 60% / partner 40%')
   })
 
   it('noemt bij een eigen percentage op de kost geen categorie of dossier', () => {

@@ -11,6 +11,7 @@ import {
   totaalRegels,
   verdeelsleutelTekst,
   verrekenTekst,
+  voorbehoudNaBewerking,
 } from './afrekeningTekst'
 import { formatEuro } from './format'
 import { vandaag } from './datum'
@@ -53,17 +54,18 @@ export async function exporteerAfrekeningPDF(
   )
   const opmaakdatum = vandaag(nu)
 
-  // Kop van het blad
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(16)
-  doc.text(t('Afrekening — {naam}', { naam: o.dossierNaam }), LINKS, blad.positie())
-  blad.verschuif(8)
+  // Kop van het blad. Afbrekend (ronde 108): een dossiernaam van vier woorden liep hier
+  // voorbij de rechtermarge en verdween van het blad, zonder dat jsPDF iets meldt.
+  blad.titel(t('Afrekening — {naam}', { naam: o.dossierNaam }))
   for (const regel of [
     `${t('Periode')}: ${periodeTekst(t, o)}`,
     `${t('Kinderen')}: ${kinderenTekst(t, o)}`,
     `${t('Datum')}: ${o.datum}`,
   ]) {
-    blad.regel(regel)
+    // ⚠ RONDE 108 — `alinea` EN NIET `regel`. De namenlijst achter "Kinderen:" liep bij vier
+    // namen voorbij de rechtermarge en verdween van het blad; `regel` breekt niet af. Voor de
+    // korte regels ernaast verandert er niets: bij één regel doen ze precies hetzelfde.
+    blad.alinea(regel)
   }
 
   // Verdeelsleutels
@@ -76,13 +78,7 @@ export async function exporteerAfrekeningPDF(
   blad.kop(t('Totalen'))
   for (const { label, waarde } of totaalRegels(t, o)) blad.labelWaarde(label, waarde)
   blad.besluit(verrekenTekst(t, o.netto))
-  if (o.wijktAf) {
-    blad.alinea(
-      t('Let op: bij het genereren stond hier {bedrag}; de verdeling van het dossier is sindsdien gewijzigd.', {
-        bedrag: formatEuro(o.bewaardNetto),
-      }),
-    )
-  }
+  for (const zin of voorbehoudNaBewerking(t, o)) blad.alinea(zin)
 
   // Eén uitsplitsing als tabel met rechts uitgelijnde bedragen.
   let eersteTabel = true
@@ -152,5 +148,5 @@ export async function exporteerAfrekeningPDF(
   }
 
   blad.voettekst(t, `${o.dossierNaam} — ${t('Opgemaakt op')}: ${opmaakdatum}`)
-  doc.save(`afrekening-${veiligeBestandsnaam(o.dossierNaam)}-${o.datum}.pdf`)
+  doc.save(`afrekening-${veiligeBestandsnaam(o.dossierNaam, 60, 'dossier')}-${o.datum}.pdf`)
 }

@@ -197,6 +197,55 @@ describe('exporteerFiscaalPDF — posten die niet meer bestaan', () => {
     expect(tekst).toContain('Dienstencheques — Vervallen')
     expect(tekst).not.toContain('3364')
   })
+
+  it('zegt niet "Niets gevonden" boven een post die wél een bedrag draagt (ronde 108)', async () => {
+    // ⚠ RONDE 108. `overzicht.vervallen` is een APARTE lijst, dus met alleen boekingen onder
+    // een vervallen post was `metIets` leeg: het blad drukte de ontkenning én drie regels
+    // lager "Dienstencheques — Vervallen ... € 90,00 ... 1 boeking(en)".
+    const tekst = await maak({ inkomstenjaar: 2026, transacties: [dienstencheque] })
+    expect(tekst).not.toContain('Niets gevonden')
+    expect(tekst).toContain(formatEuro(9000))
+  })
+
+  it('draagt de zin van het scherm mee', async () => {
+    // Op het scherm staat boven dit blok waaróm er niets meer in te vullen valt; in de PDF
+    // volgde "Dienstencheques — Vervallen" kaal op de vorige post.
+    const tekst = await maak({ inkomstenjaar: 2026, transacties: [dienstencheque] })
+    expect(tekst).toContain('Dit bestaat niet meer')
+    expect(tekst).toContain('voor aanslagjaar 2027 valt er niets meer in te vullen')
+  })
+
+  it('blijft "Niets gevonden" zeggen wanneer er werkelijk niets is', async () => {
+    // De tegencontrole: zonder boekingen hoort de zin er gewoon te staan.
+    const tekst = await maak({ inkomstenjaar: 2026, transacties: [] })
+    expect(tekst).toContain('Niets gevonden')
+  })
+})
+
+describe('exporteerFiscaalPDF — de bonteller (ronde 108)', () => {
+  it('zet de bonteller achter het aantal, net als op het scherm', async () => {
+    // Het scherm zegt "1 boeking(en) · 1 met bon" en de CSV heeft er een kolom voor; van de
+    // drie weergaven liet uitgerekend de PDF het weg — terwijl bewijs bij één van deze posten
+    // een wettelijke voorwaarde is, en dit het blad is dat naar de boekhouder gaat.
+    const documenten: DossierDocument[] = [
+      {
+        id: 'doc1',
+        transactieId: 'a',
+        naam: 'Bon crèche',
+        soort: 'bon',
+        bestand: 'data:application/pdf;base64,AA==',
+        toegevoegdOp: '2026-03-10',
+      },
+    ]
+    const tekst = await maak({ inkomstenjaar: 2026, transacties: [tx({ id: 'a' })], documenten })
+    expect(tekst).toContain('1 boeking(en) · 1 met bon')
+  })
+
+  it('laat de bonteller weg wanneer er geen bon is', async () => {
+    const tekst = await maak({ inkomstenjaar: 2026, transacties: [tx({ id: 'a' })] })
+    expect(tekst).toContain('1 boeking(en)')
+    expect(tekst).not.toContain('met bon')
+  })
 })
 
 describe('exporteerFiscaalPDF — waar de app nog gekeken heeft', () => {

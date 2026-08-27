@@ -312,6 +312,10 @@ export function App() {
   // allebei geteld in de melding.
   const teOude = geweigerd.filter((g) => g.reden === 'te-oud')
   const teNieuwe = geweigerd.filter((g) => g.reden === 'te-nieuw')
+  // ⚠ RONDE 109 — DE DERDE SOORT. Een regel die de schemacontrole niet haalt, ging alleen naar
+  // een vluchtige statuszin, en de stille synchronisatie toont die nooit. Ze verdween dus zonder
+  // één woord, elke 45 seconden opnieuw.
+  const onleesbare = geweigerd.filter((g) => g.reden === 'onleesbaar')
   const oudsteGeweigerd = geweigerd
     .map((g) => g.tijdstip)
     // ⚠ `t > 0 && t <= 8.64e15` volstaat: dat wijst `Infinity` én `NaN` allebei al af (elke
@@ -2841,6 +2845,12 @@ export function App() {
                   'Let op: van {n} regel(s) kan de app niet zien in welke eenheid de bedragen staan. Ze zijn daarom NIET ingelezen: als centen gelezen zou € 2.400 er als € 24 komen te staan. Er is niets van je huidige gegevens veranderd.',
                   { n: teOude.length },
                 )}{' '}
+              {/* ⚠ Een DERDE zin, en weer naast de andere twee in plaats van in hun plaats. */}
+              {onleesbare.length > 0 &&
+                t(
+                  'Let op: {n} regel(s) uit je back-up of van een ander toestel zijn niet te lezen. Ze zijn daarom NIET ingelezen. Er is niets van je huidige gegevens veranderd.',
+                  { n: onleesbare.length },
+                )}{' '}
               {/* ⚠ WELKE regel, en niet alleen hoeveel. De datum komt uit de regel zelf;
                   wat er níét te vertrouwen is, zijn haar BEDRAGEN.
 
@@ -3518,7 +3528,7 @@ export function App() {
                             // stond die op 95 %, dan kleurde de balk toch al oranje bij 80 %.
                             const kleur = budgetKleur(uitgegeven, b.bedrag, budgetDrempel)
                             return (
-                              <li key={b.id} className="rij" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+                              <li key={b.id} className="rij rij-kolom" style={{ gap: 8 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
                                   {/* De naam is sinds ronde 40 een knop: een budgetregel
                                       zegt "€ 212 van € 300 verbruikt" en daar bleef het

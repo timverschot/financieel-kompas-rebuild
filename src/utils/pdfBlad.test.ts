@@ -53,6 +53,30 @@ describe('maakBlad — waar de tekst landt', () => {
   })
 })
 
+describe('maakBlad — de titel (ronde 108)', () => {
+  it('breekt een lange titel af in plaats van hem van het blad te laten lopen', () => {
+    // ⚠ RONDE 108. De drie dossier-PDF's zetten hun titel met een kale `doc.text`, en die
+    // breekt niet af en klemt niet: jsPDF meldt niets, de tekst verdwijnt gewoon voorbij de
+    // rechtermarge. Een dossier dat "Kosten kinderen Sofie, Jonas, Marie en Elise (regeling
+    // 2024)" heet, gaf een titel van 198,7 mm op een blad met de marge op 190.
+    const blad = maakBlad(doc)
+    blad.titel('Afrekening — Kosten kinderen Sofie, Jonas, Marie en Elise (regeling 2024)')
+    expect(nep.teksten.length).toBeGreaterThan(1)
+    for (const r of nep.teksten) expect(r.x).toBe(LINKS)
+  })
+
+  it('houdt een korte titel op één regel, op dezelfde hoogte als voorheen', () => {
+    // De tegencontrole: een blad met een korte naam hoort er precies hetzelfde uit te zien
+    // als vóór deze ronde — één regel, en daarna staat de schrijfpositie 8 mm lager.
+    const blad = maakBlad(doc)
+    const voor = blad.positie()
+    blad.titel('Afrekening — Kinderen')
+    expect(nep.teksten).toHaveLength(1)
+    expect(nep.teksten[0].y).toBe(voor)
+    expect(blad.positie()).toBe(voor + 8)
+  })
+})
+
 describe('maakBlad — de paginabreuk', () => {
   it('blijft op één blad zolang er plaats is', () => {
     const blad = maakBlad(doc)

@@ -25,6 +25,11 @@ const MAX_TREFFERS = 2000
 const takKnop: CSSProperties = {
   width: '100%',
   height: 'auto',
+  // ⚠ RONDE 103 — `flexWrap`, om dezelfde reden als bij `.rij`. Deze knop is met de hand
+  // nagebouwd als een rij: driehoekje, icoon, naam, en rechts twee tellingen die niet
+  // krimpen. Gemeten op 320 px hield de naam daardoor 64 pixels over, en "Huishouden en
+  // Verzorging" schilderde 20 px over die tellingen heen.
+  flexWrap: 'wrap',
   justifyContent: 'flex-start',
   textAlign: 'left',
   gap: 10,

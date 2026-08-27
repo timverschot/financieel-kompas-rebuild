@@ -69,6 +69,60 @@ describe('gemiddeldeVolleMaanden', () => {
     expect(gemiddeldeVolleMaanden(reeks, '2026-07')).toEqual({ inkomsten: 200000, uitgaven: 120000 })
   })
 
+  it('deelt niet door maanden waarin de app nog niet bestond (ronde 106)', () => {
+    // Het venster is altijd zes maanden breed. Eén boeking van € 1.800 in juli, bekeken in
+    // augustus: het gemiddelde deelde door maart t/m juli en gaf € 360,00 — een stippellijn
+    // op een vijfde van de enige echte maand.
+    const nieuw = [
+      { maand: '2026-03', inkomsten: 0, uitgaven: 0 },
+      { maand: '2026-04', inkomsten: 0, uitgaven: 0 },
+      { maand: '2026-05', inkomsten: 0, uitgaven: 0 },
+      { maand: '2026-06', inkomsten: 0, uitgaven: 0 },
+      { maand: '2026-07', inkomsten: 0, uitgaven: 180000 },
+      { maand: '2026-08', inkomsten: 0, uitgaven: 5000 },
+    ]
+    expect(gemiddeldeVolleMaanden(nieuw, '2026-08')).toEqual({ inkomsten: 0, uitgaven: 180000 })
+  })
+
+  it('telt een lege maand MIDDENIN je historiek wel gewoon mee', () => {
+    // De tegencontrole: augustus zonder boekingen is een maand waarin je werkelijk niets
+    // uitgaf, en die hoort het gemiddelde te drukken. Alleen de maanden vóór je eerste
+    // boeking vallen weg.
+    const metGat = [
+      { maand: '2026-05', inkomsten: 0, uitgaven: 0 },
+      { maand: '2026-06', inkomsten: 0, uitgaven: 120000 },
+      { maand: '2026-07', inkomsten: 0, uitgaven: 0 },
+      { maand: '2026-08', inkomsten: 0, uitgaven: 60000 },
+      { maand: '2026-09', inkomsten: 0, uitgaven: 3000 },
+    ]
+    // juni, juli en augustus: (120000 + 0 + 60000) / 3.
+    expect(gemiddeldeVolleMaanden(metGat, '2026-09')).toEqual({ inkomsten: 0, uitgaven: 60000 })
+  })
+
+  it('geeft null wanneer er buiten de lopende maand nog niets geboekt is', () => {
+    const alleenNu = [
+      { maand: '2026-07', inkomsten: 0, uitgaven: 0 },
+      { maand: '2026-08', inkomsten: 0, uitgaven: 5000 },
+    ]
+    expect(gemiddeldeVolleMaanden(alleenNu, '2026-08')).toBeNull()
+  })
+
+  it('telt maanden die nog moeten komen niet mee (ronde 110)', () => {
+    // ⚠ RONDE 110. Blader je met "›" naar een maand die nog moet komen, dan schuift het venster
+    // van zes maanden mee de toekomst in. Die lege maanden telden als volwaardige maanden: één
+    // keer duwen maakte van "gemiddeld € 2.000 uitgaven" € 1.333.
+    const vooruit = [
+      { maand: '2026-06', inkomsten: 300000, uitgaven: 200000 },
+      { maand: '2026-07', inkomsten: 300000, uitgaven: 200000 },
+      { maand: '2026-08', inkomsten: 300000, uitgaven: 200000 },
+      { maand: '2026-09', inkomsten: 0, uitgaven: 0 },
+      { maand: '2026-10', inkomsten: 0, uitgaven: 0 },
+    ]
+    // Vandaag is augustus 2026: juni en juli tellen, augustus is nog niet af, en september en
+    // oktober bestaan nog niet.
+    expect(gemiddeldeVolleMaanden(vooruit, '2026-08')).toEqual({ inkomsten: 300000, uitgaven: 200000 })
+  })
+
   it('rondt af op hele centen', () => {
     const r = [
       { maand: '2026-05', inkomsten: 0, uitgaven: 100 },

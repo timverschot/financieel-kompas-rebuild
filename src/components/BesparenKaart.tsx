@@ -97,8 +97,8 @@ export function BesparenKaart({
             return (
               <li
                 key={d.sleutel}
-                className="rij"
-                style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6, ...(i === domeinen.length - 1 ? { borderBottom: 'none' } : {}) }}
+                className="rij rij-kolom"
+                style={{ gap: 6, ...(i === domeinen.length - 1 ? { borderBottom: 'none' } : {}) }}
               >
                 {/* De bovenste regel is een knop zodra doorklikken kan. Een echte
                     <button> en geen span met role: alleen zo werkt het toetsenbord

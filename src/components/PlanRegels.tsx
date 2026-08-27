@@ -1,9 +1,10 @@
 import type { Budget, Spaardoel, TerugkerendePost } from '../data/schema'
 import { formatEuro } from '../utils/format'
-import { isGestopt, opzijPerMaand, plancijfers, valtInMaand } from '../utils/vastelast'
+import { isGestopt, isNogNietBegonnen, opzijPerMaand, plancijfers, valtInMaand } from '../utils/vastelast'
 import { opzijVolgensSpaardoelen } from '../utils/spaardoel'
-import { geldendeBudgetten } from '../utils/budget'
+import { budgettenZonderOverlap, geldendeBudgetten } from '../utils/budget'
 import { vasteLastenInEenBudget } from '../utils/teverdelen'
+import { percentageZinvol } from '../utils/verhouding'
 import { EersteStapKnop, Kaart, Leeg } from '../ui/basis'
 import { Herkomstregel } from '../ui/Herkomstregel'
 import { namenlijst } from '../utils/namenlijst'
@@ -109,8 +110,13 @@ export function PlanRegels({
   // met zowel een standaardbudget als een uitzondering hier tweemaal meetellen — en
   // dan staat er gewoon een te hoog getal in "je budgetten vragen samen …", zonder
   // dubbele regel die je erop wijst. Precies het soort fout dat maanden meegaat.
+  //
+  // ⚠ RONDE 106 — EN DAARNAAST KUNNEN BUDGETTEN IN ELKAAR ZITTEN. `geldendeBudgetten`
+  // ontdubbelt op dezelfde categorie, maar niet op een categorie die ONDER een andere hangt:
+  // € 900 op "Woning en vaste lasten" plus € 120 op "Energie" vroeg hier samen € 1.020,
+  // terwijl er hoogstens € 900 vastligt. Zie `budgettenZonderOverlap`.
   const geldend = geldendeBudgetten(budgetten, maand)
-  const gebudgetteerd = geldend.reduce((som, b) => som + b.bedrag, 0)
+  const gebudgetteerd = budgettenZonderOverlap(geldend).reduce((som, b) => som + b.bedrag, 0)
   // ⚠ RONDE 80 — het getal waar je op stuurt, en dat nergens stond.
   // De kaart zei wat er te verdelen viel, en zei daarna los daarvan dat je budgetten
   // er samen zoveel van vroegen. De aftrekking daartussen — wat er van je inkomen
@@ -127,7 +133,41 @@ export function PlanRegels({
   // Zonder vaste inkomst weet de app niet waarop je plan gebaseerd is. Dan een
   // groot rood negatief bedrag tonen is erger dan niets: het lijkt een oordeel
   // over je situatie, terwijl het gewoon betekent dat er nog niets ingevuld is.
-  const kentInkomsten = cijfers.vasteInkomsten > 0 || verwachteInkomsten > 0
+  //
+  // ⚠ RONDE 104 — TWEE FOUTEN IN ÉÉN REGEL, en ze wijzen in tegengestelde richting.
+  //
+  // Hier stond `cijfers.vasteInkomsten > 0 || verwachteInkomsten > 0`.
+  //
+  //  1. **Eén cent zette het oordeel aan.** `verwachteInkomsten` telt per REGEL — zoals
+  //     het hoort, want een gesplitst kassaticket telt overal per regel mee. Maar één
+  //     regel statiegeld van € 0,25 binnen een boodschappenticket volstond, en dan stond
+  //     er een groot rood "Te verdelen − € 1.239,75" bij iemand die nog geen enkele
+  //     inkomst had ingevuld. Een losse teruggave van de mutualiteit doet hetzelfde.
+  //  2. **Wie per kwartaal betaald wordt, kreeg het oordeel NIET.** `vasteInkomsten` telt
+  //     alleen de posten die DEZE maand vervallen. Een zelfstandige die per kwartaal
+  //     factureert, kreeg in twee van de drie maanden "Vul je vaste inkomsten in" — met
+  //     een knop naar een scherm waar zijn inkomst gewoon staat ingevuld.
+  //
+  // De vraag is dan ook niet "kwam er deze maand geld binnen" maar **"weet de app waarop
+  // je plan gebaseerd is"**, en dat is een vraag over je OPSTELLING. Vandaar de eerste
+  // tak: draagt één van je vaste posten een inkomst, in welke maand ze ook valt.
+  //
+  // ⚠ De tweede tak is er voor wie zijn loon niet als vaste inkomst invult maar gewoon
+  // elke maand inboekt. Die telt met een ONDERGRENS, en dat is een keuze: dit cijfer wordt
+  // afgetrokken van je vaste lasten, dus het is pas een plan waard als het in dezelfde
+  // orde van grootte ligt. Die grens staat NIET hier maar in `utils/verhouding.ts`, samen
+  // met de spaarquote en de besparingskaart — het is dezelfde vraag, en drie schermen die
+  // hem elk anders beantwoorden is precies hoe deze fout is ontstaan.
+  const vastMoetenBetalen = cijfers.vastDezeMaand + cijfers.opzij
+  // ⚠ EN OOK `isNogNietBegonnen`, want anders staat het lek aan de andere kant open: vul je
+  // een nieuw loon in dat pas volgend jaar begint, dan meende de app vandaag al dat ze je
+  // plan kende — en dan stond er weer een groot rood bedrag dat volledig door 25 cent
+  // statiegeld bepaald werd. Een doorlichting toonde dat met een gerenderd scherm.
+  const heeftVasteInkomst = posten.some(
+    (p) => p.bedrag > 0 && !isGestopt(p, maand) && !isNogNietBegonnen(p, maand),
+  )
+  const inkomstenTellenMee = percentageZinvol(verwachteInkomsten, vastMoetenBetalen)
+  const kentInkomsten = heeftVasteInkomst || inkomstenTellenMee
 
   // Zonder inkomsten én zonder vaste lasten valt er niets te plannen; dan is een
   // rij nullen alleen maar ruis op een lege app.

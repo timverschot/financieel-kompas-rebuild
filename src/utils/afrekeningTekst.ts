@@ -1,6 +1,6 @@
 import type { Categorie, Dossier, DossierDocument, GedeeldeKost, Kind, Verrekening } from '../data/schema'
 import type { Vertaler } from '../i18n'
-import { formatEuro } from './format'
+import { formatEuro, rondPercentage } from './format'
 import { vandaag } from './datum'
 import { bonnenVanKost } from './kluis'
 import {
@@ -59,8 +59,17 @@ export function groepLabel(t: Vertaler, groep: AfrekeningGroep): string {
 }
 
 // 'jij 60% / partner 40%'
+//
+// ⚠ RONDE 107 — HET COMPLEMENT MOET DOOR DEZELFDE AFRONDING. `100 - 66.6` is in
+// drijvendekommagetallen niet 33,4 maar 33.400000000000006, en dat stond zo in de
+// klembordtekst, de afrekening-PDF, de bewijsmap én op het scherm: *"jij 66.6% / partner
+// 33.400000000000006%"* — in het document dat naar de andere ouder of naar een advocaat
+// gaat. Van de 1001 percentages met één decimaal brak dit er 272.
+//
+// `uitwisseling.ts` noemt deze fout al bij naam en lost hem daar op voor de OPGESLAGEN
+// waarde; het complement dat hier berekend wordt, viel buiten die oplossing.
 export function sleutelPercentages(t: Vertaler, percentageJij: number): string {
-  return t('jij {p}% / partner {q}%', { p: percentageJij, q: 100 - percentageJij })
+  return t('jij {p}% / partner {q}%', { p: percentageJij, q: rondPercentage(100 - percentageJij) })
 }
 
 // Waarom dit percentage gold, in klare taal.
@@ -82,6 +91,39 @@ export function sleutelHerkomst(t: Vertaler, s: Verdeelsleutel): string {
 export function verdeelsleutelTekst(t: Vertaler, s: Verdeelsleutel): string {
   const wat = t('{n} kost(en), {bedrag}', { n: s.aantalKosten, bedrag: formatEuro(s.totaal) })
   return `${sleutelPercentages(t, s.percentageJij)} — ${sleutelHerkomst(t, s)} (${wat})`
+}
+
+/**
+ * Het voorbehoud onder de totalen: nul, één of twee zinnen (ronde 107).
+ *
+ * ⚠ TWEE ONAFHANKELIJKE ZINNEN, EN DAT IS HET HELE PUNT. Er stond er één, en die noemde
+ * altijd dezelfde oorzaak: *"de verdeling van het dossier is sindsdien gewijzigd"*. Verwijder
+ * je nadien een kost uit een afrekening — of verwijder je de boeking eronder, wat de gedeelde
+ * kost meeneemt — dan verandert dezelfde afrekening stil van inhoud, en beweerde die zin een
+ * oorzaak die niet klopte. Erger: bij een kost die je zelf voor 100% droeg, blijft het SALDO
+ * gelijk en zei de afrekening dus HELEMAAL niets, terwijl "Totaal kosten" honderden euro's
+ * lager stond dan in de PDF die de andere ouder in handen heeft.
+ *
+ * De ene zin gaat nu over het BEDRAG en noemt geen oorzaak meer die de app niet kent; de
+ * andere gaat over ONTBREKENDE KOSTEN en noemt er wél een, want die weet ze zeker.
+ */
+export function voorbehoudNaBewerking(t: Vertaler, o: AfrekeningOverzicht): string[] {
+  const zinnen: string[] = []
+  if (o.ontbrekendeKosten > 0) {
+    zinnen.push(
+      t('Let op: {n} kost(en) uit deze afrekening bestaan niet meer. De bedragen hieronder zijn opnieuw berekend zonder die kosten.', {
+        n: o.ontbrekendeKosten,
+      }),
+    )
+  }
+  if (o.wijktAf) {
+    zinnen.push(
+      t('Let op: bij het genereren stond hier {bedrag}. De bedragen hieronder zijn opnieuw berekend uit de kosten zoals ze nu zijn.', {
+        bedrag: formatEuro(o.bewaardNetto),
+      }),
+    )
+  }
+  return zinnen
 }
 
 // De kop-cijfers als label/waarde-paren, zodat de PDF en de tekst gegarandeerd
@@ -192,11 +234,7 @@ export function afrekeningSamenvatting(
   r.push(t('Totalen').toUpperCase())
   for (const { label, waarde } of totaalRegels(t, o)) r.push(`• ${label}: ${waarde}`)
   r.push(`>> ${verrekenTekst(t, o.netto)}`)
-  if (o.wijktAf) {
-    r.push(t('Let op: bij het genereren stond hier {bedrag}; de verdeling van het dossier is sindsdien gewijzigd.', {
-      bedrag: formatEuro(o.bewaardNetto),
-    }))
-  }
+  for (const zin of voorbehoudNaBewerking(t, o)) r.push(zin)
 
   let eersteUitsplitsing = true
   const blok = (titel: string, groepen: AfrekeningGroep[]) => {

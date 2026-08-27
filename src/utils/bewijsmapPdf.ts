@@ -19,6 +19,7 @@ import {
   totaalRegels,
   verdeelsleutelTekst,
   verrekenTekst,
+  voorbehoudNaBewerking,
   voorbehoudRegels,
 } from './afrekeningTekst'
 import { vandaag } from './datum'
@@ -260,10 +261,8 @@ export async function exporteerBewijsmapPDF(
   const blad = maakBlad(doc)
 
   // ---- Kop -----------------------------------------------------------------
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(16)
-  doc.text(t('Bewijsmap — {naam}', { naam: o.dossierNaam }), LINKS, blad.positie())
-  blad.verschuif(8)
+  // Afbrekend (ronde 108): zie de uitleg bij `blad.titel`.
+  blad.titel(t('Bewijsmap — {naam}', { naam: o.dossierNaam }))
   for (const regel of [
     `${t('Periode')}: ${periodeTekst(t, o)}`,
     `${t('Kinderen')}: ${kinderenTekst(t, o)}`,
@@ -271,7 +270,10 @@ export async function exporteerBewijsmapPDF(
     `${t('Opgemaakt op')}: ${opmaakdatum}`,
     t('{n} kost(en), {m} bijlage(n)', { n: o.aantalKosten, m: bijlagen.length }),
   ]) {
-    blad.regel(regel)
+    // ⚠ RONDE 108 — `alinea` EN NIET `regel`. De namenlijst achter "Kinderen:" liep bij vier
+    // namen voorbij de rechtermarge en verdween van het blad; `regel` breekt niet af. Voor de
+    // korte regels ernaast verandert er niets: bij één regel doen ze precies hetzelfde.
+    blad.alinea(regel)
   }
 
   // ---- De grens die we bewaken --------------------------------------------
@@ -330,13 +332,7 @@ export async function exporteerBewijsmapPDF(
   blad.kop(t('Totalen'))
   for (const { label, waarde } of totaalRegels(t, o)) blad.labelWaarde(label, waarde)
   blad.besluit(verrekenTekst(t, o.netto))
-  if (o.wijktAf) {
-    blad.alinea(
-      t('Let op: bij het genereren stond hier {bedrag}; de verdeling van het dossier is sindsdien gewijzigd.', {
-        bedrag: formatEuro(o.bewaardNetto),
-      }),
-    )
-  }
+  for (const zin of voorbehoudNaBewerking(t, o)) blad.alinea(zin)
 
   // ---- Uitsplitsingen -----------------------------------------------------
   let eersteTabel = true
@@ -485,5 +481,5 @@ export async function exporteerBewijsmapPDF(
   }
 
   blad.voettekst(t, `${t('Bewijsmap')} — ${o.dossierNaam} — ${opmaakdatum}`)
-  doc.save(`bewijsmap-${veiligeBestandsnaam(o.dossierNaam)}-${o.datum}.pdf`)
+  doc.save(`bewijsmap-${veiligeBestandsnaam(o.dossierNaam, 60, 'dossier')}-${o.datum}.pdf`)
 }

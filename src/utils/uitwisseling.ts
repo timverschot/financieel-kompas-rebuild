@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { Dossier, GedeeldeKost, Kind } from '../data/schema'
 import { effectiefAandeel } from './dossier'
+import { rondPercentage } from './format'
 import { isOpenKost } from './afrekening'
 import { labelVanCategorie, type EigenCategorie } from '../data/categorieen/resolve'
 
@@ -84,8 +85,20 @@ export const UitwisselKostSchema = z.object({
   betaaldDoorAfzender: z.boolean(),
   // Het effectieve percentage dat de AFZENDER van deze kost draagt (0-100).
   aandeelAfzender: z.number().min(0).max(100),
-  // Wat de afzender zelf voor deze kost berekende, in centen. Puur ter controle:
-  // de ontvanger rekent zelf en meldt het wanneer de twee uitkomsten verschillen.
+  /**
+   * Wat de afzender zelf voor deze kost berekende, in centen.
+   *
+   * ⚠ RONDE 107 — DIT COMMENTAAR BELOOFDE IETS WAT DE CODE NIET DOET. Er stond: *"Puur ter
+   * controle: de ontvanger rekent zelf en meldt het wanneer de twee uitkomsten verschillen."*
+   * Dat gebeurt niet per kost: alleen het TOTAALsaldo (`saldoAfzender`) wordt vergeleken, en
+   * dat veld wordt apart geschreven. Het veld hier wordt nergens gelezen.
+   *
+   * Het blijft wél in het bestand staan, en met opzet: het reist mee zodat een latere versie
+   * — of een mens die het bestand opent — per kost kan nakijken waar een verschil zit dat het
+   * totaal niet toont (twee fouten die elkaar opheffen). Een veld weghalen uit een formaat
+   * dat al bij de andere ouder op de schijf staat, kost een versiesprong; het laten staan
+   * niet. Wat niet mocht blijven, is de zin die beweerde dat er iets mee gebeurde.
+   */
   aandeelAfzenderCenten: z.number().int().min(0).optional(),
   // NAMEN, geen id's: gezinsleden krijgen in elke installatie een eigen
   // willekeurige id, dus daar valt niets op te matchen.
@@ -148,12 +161,6 @@ export function uitwisselIdVan(kost: GedeeldeKost): string {
   return kost.uitwisselId ?? kost.id
 }
 
-// Percentages worden afgerond op twee decimalen. Zonder dat komt 33,4 na één keer
-// heen en weer terug als 33.400000000000006 (100 - 66.6), en dan toont de
-// bewijsmap twee aparte verdeelsleutel-regels voor één afspraak.
-export function rondPercentage(p: number): number {
-  return Math.round(p * 100) / 100
-}
 
 // Is dit een categorie die de ontvanger sowieso kent? Alleen de ingebouwde boom
 // heeft in elke installatie dezelfde id's; een eigen categorie is een uuid en

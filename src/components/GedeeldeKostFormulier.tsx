@@ -2,10 +2,10 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Categorie, GedeeldeKost, Kind } from '../data/schema'
 import { nieuwId } from '../data/sync/id'
-import { invoerNaarCenten, centenNaarInvoer } from '../utils/format'
+import { invoerNaarCenten, centenNaarInvoer, leesPercentage } from '../utils/format'
 import { CategorieKiezer } from './CategorieKiezer'
 import { GezinsledenKiezer } from './GezinslidKiezer'
-import { verkleinAfbeelding } from '../utils/afbeelding'
+import { bonTeGroot, verkleinAfbeelding } from '../utils/afbeelding'
 import { vandaag } from '../utils/datum'
 import { useT } from '../i18n'
 import { Opslagfout } from '../ui/Opslagfout'
@@ -63,6 +63,11 @@ export function GedeeldeKostFormulier({
   const [aandeelOverride, setAandeelOverride] = useState(() => beginwaarden().aandeelOverride)
   const [bonnetje, setBonnetje] = useState(() => beginwaarden().bonnetje)
   const [bezigBon, setBezigBon] = useState(false)
+  // ⚠ RONDE 111 — EEN GROOTTEGRENS MÉT EEN ZIN ERBIJ. Deze kiezer had er geen, terwijl hij
+  // `image/*,application/pdf` aanvaardt en een PDF met opzet ONVERKLEIND bewaard wordt: die kan
+  // dus tientallen megabytes in je database en in élke synchronisatie zetten. En de `catch`
+  // hieronder zweeg volledig, dus een mislukte bon zag je nergens.
+  const [bonFout, setBonFout] = useState('')
   // Vangt een mislukte opslag op en zegt het (ronde 68).
   const opslag = useOpslagpoging()
   // ⚠ Eén vast id per invulbeurt; zie de andere formulieren.
@@ -156,13 +161,22 @@ export function GedeeldeKostFormulier({
   // blijft een echt `<label htmlFor>`, zodat een klik erop het veld nog focust.
   const soortId = `${veldId}-soort`
   const formuliernaam = bewerken ? t('Deze gedeelde kost') : t('Nieuwe gedeelde kost')
-  const geldig = omschrijving.trim().length > 0 && Number.isFinite(bedragCenten) && bedragCenten > 0
+  // ⚠ RONDE 107 — HET PERCENTAGEVELD TELT MEE VOOR "GELDIG". Het stond hier niet in, en de
+  // verzendfunctie eronder wiste een ongeldig percentage gewoon: wie bij een kost van € 400
+  // met 100% eigen verdeling per ongeluk "110" tikte, bewaarde die kost terug op de
+  // standaardverdeling. € 200 verschil in het saldo naar de andere ouder, zonder één woord op
+  // het scherm. Dezelfde `leesPercentage` als de twee verdeelvelden op de Dossiers-pagina.
+  const gelezenOverride = leesPercentage(aandeelOverride)
+  const geldig =
+    omschrijving.trim().length > 0 &&
+    Number.isFinite(bedragCenten) &&
+    bedragCenten > 0 &&
+    gelezenOverride !== null
 
   async function verzend(e: FormEvent) {
     e.preventDefault()
     if (!geldig) return
-    const override = Number.parseFloat(aandeelOverride.replace(',', '.'))
-    const heeftOverride = Number.isFinite(override) && override >= 0 && override <= 100
+    const heeftOverride = gelezenOverride !== 'leeg' && gelezenOverride !== null
 
     // We beginnen van de BESTAANDE kost en overschrijven wat dit formulier kent.
     // Vroeger stond hier een witte lijst van velden, en dan verdween alles wat het
@@ -189,7 +203,7 @@ export function GedeeldeKostFormulier({
     else delete kost.kindIds
     if (categorieId) kost.categorieId = categorieId
     else delete kost.categorieId
-    if (heeftOverride) kost.aandeelJijOverride = override
+    if (heeftOverride) kost.aandeelJijOverride = gelezenOverride
     else delete kost.aandeelJijOverride
     if (bonnetje) kost.bonnetje = bonnetje
     else delete kost.bonnetje
@@ -205,10 +219,16 @@ export function GedeeldeKostFormulier({
 
   async function kiesBonnetje(bestand: File) {
     setBezigBon(true)
+    setBonFout('')
     try {
-      setBonnetje(await verkleinAfbeelding(bestand))
+      const data = await verkleinAfbeelding(bestand)
+      if (bonTeGroot(data)) {
+        setBonFout(t('Dit bestand is te groot (max. 4 MB). Kies een kleinere scan of foto.'))
+        return
+      }
+      setBonnetje(data)
     } catch {
-      // stil: een mislukte bon mag het toevoegen niet blokkeren.
+      setBonFout(t('Dit bestand kon niet gelezen worden. Probeer een andere scan of foto.'))
     } finally {
       setBezigBon(false)
     }
@@ -343,7 +363,20 @@ export function GedeeldeKostFormulier({
       </div>
       <div className="veldgroep">
         <label className="label-caps" htmlFor="kost-override">{t('Eigen verdeling (% jij, optioneel)')}</label>
-        <input id="kost-override" inputMode="decimal" placeholder={t('leeg = standaard van het dossier')} value={aandeelOverride} onChange={(e) => setAandeelOverride(e.target.value)} />
+        <input
+          id="kost-override"
+          inputMode="decimal"
+          placeholder={t('leeg = standaard van het dossier')}
+          value={aandeelOverride}
+          onChange={(e) => setAandeelOverride(e.target.value)}
+          aria-describedby={gelezenOverride === null ? `${veldId}-override-reden` : undefined}
+        />
+        {/* ⚠ Altijd aanwezig, leeg wanneer er niets te melden is — hetzelfde patroon als de
+            twee verdeelvelden op de Dossiers-pagina (ronde 61): een `role="status"` die pas
+            MÉT zijn tekst verschijnt, wordt door sommige schermlezers overgeslagen. */}
+        <p id={`${veldId}-override-reden`} className="leeg" role="status" style={{ padding: '4px 0 0', textAlign: 'left' }}>
+          {gelezenOverride === null ? t('Geef een percentage van 0 tot 100, of laat het veld leeg.') : ''}
+        </p>
       </div>
       <div className="veldgroep">
         <label className="label-caps" id={`${veldId}-bon-label`} htmlFor="kost-bon">{t('Bon/factuur (optioneel)')}</label>
@@ -371,6 +404,11 @@ export function GedeeldeKostFormulier({
           />
         )}
         {bezigBon && <span className="rij-meta"> {t('bezig…')}</span>}
+        {bonFout && (
+          <p className="rij-meta" role="alert" style={{ margin: '4px 0 0', color: 'var(--negative)' }}>
+            {bonFout}
+          </p>
+        )}
       </div>
       <div className="knoprij">
         <button

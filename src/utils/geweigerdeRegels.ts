@@ -20,8 +20,16 @@
 // melding na één keer wegklikken, en komt ze terug zodra er een NIEUWE geweigerde regel
 // bij komt — want dan is er weer iets nieuws te zeggen.
 
-/** Waarom een regel niet ingelezen is. */
-export type Weigering = 'te-oud' | 'te-nieuw'
+/**
+ * Waarom een regel niet ingelezen is.
+ *
+ * ⚠ RONDE 109 — `onleesbaar` KWAM ERBIJ. Een logregel die de schemacontrole niet haalt, werd
+ * alleen geteld in een vluchtige statuszin — en de STILLE synchronisatie (elke 45 seconden)
+ * toont die zin nooit. Kwam er van je andere toestel een regel binnen die deze app niet kan
+ * lezen, dan verdween ze zonder één woord, ronde na ronde. De twee andere redenen belanden wél
+ * in de blijvende melding op het Overzicht; deze niet.
+ */
+export type Weigering = 'te-oud' | 'te-nieuw' | 'onleesbaar'
 
 /**
  * Eén geweigerde regel, met net genoeg erbij om te kunnen zeggen wélke het is.

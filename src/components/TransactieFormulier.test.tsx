@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { TransactieFormulier } from './TransactieFormulier'
 import { bouwHandelaarIndex } from '../utils/categorieVoorstel'
-import type { Dossier, Garantie, Transactie } from '../data/schema'
+import type { Dossier, Garantie, GedeeldeKost, Transactie } from '../data/schema'
 
 const rekeningen = [{ id: 'r1', naam: 'Betaalrekening', beginsaldo: 0 }]
 
@@ -363,6 +363,69 @@ describe('TransactieFormulier — dossierkoppeling', () => {
         }),
       ),
     )
+  })
+
+  it('geeft een gesplitst ticket geen kopcategorie mee naar het dossier', async () => {
+    // Ronde 105. Koos je eerst een categorie en vinkte je dán "Kassaticket splitsen" aan,
+    // dan bleef die keuze in het formulier staan en reisde ze mee naar de gedeelde kost —
+    // terwijl de transactie zelf bewust zonder categorie wordt weggeschreven. Het dossier
+    // rekende dan met het verdeelpercentage van een categorie die op de boeking niet
+    // bestaat, en dat verandert het bedrag dat naar de andere ouder gaat.
+    const user = userEvent.setup()
+    const { onOpslaan, onDossierKost } = toonUitgebreid({
+      handelaars: ['Colruyt'],
+      handelaarIndex: bouwHandelaarIndex([
+        { id: 'oud', datum: '2026-06-01', omschrijving: 'Colruyt', bedrag: -3200, rekeningId: 'r1', categorieId: 'ov-voeding' },
+      ]),
+    })
+
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Colruyt')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '90')
+
+    // Eerst een gewone categorie kiezen ...
+    await user.click(await screen.findByRole('button', { name: 'Gebruik Voeding, zoals de vorige keer' }))
+
+    // ... en pas dan splitsen, met een regel op een ANDERE categorie.
+    await user.click(screen.getByLabelText(/Kassaticket splitsen/))
+    await user.type(screen.getAllByLabelText('Subcategorie zoeken')[0], 'wasmiddel')
+    await user.type(screen.getAllByLabelText(/^Deelbedrag /)[0], '90')
+
+    await user.click(screen.getByRole('button', { name: 'Meer opties' }))
+    await user.selectOptions(screen.getByLabelText('Delen in een dossier (optioneel)'), 'dos-1')
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+
+    // De transactie zelf draagt geen kopcategorie — dat was al zo.
+    const transactie = onOpslaan.mock.calls[0][0] as Transactie
+    expect(transactie.categorieId).toBeUndefined()
+
+    await waitFor(() => expect(onDossierKost).toHaveBeenCalled())
+    const kost = onDossierKost.mock.calls[0][0] as GedeeldeKost
+    expect(kost.bedrag).toBe(9000)
+    expect(kost.categorieId).toBeUndefined()
+  })
+
+  it('geeft een ONgesplitst ticket zijn categorie wél mee naar het dossier', async () => {
+    // De tegenproef bij de test hierboven: zonder splitsing hoort de categorie er te staan,
+    // want daar hangt het verdeelpercentage van het dossier aan.
+    const user = userEvent.setup()
+    const { onDossierKost } = toonUitgebreid({
+      handelaars: ['Colruyt'],
+      handelaarIndex: bouwHandelaarIndex([
+        { id: 'oud', datum: '2026-06-01', omschrijving: 'Colruyt', bedrag: -3200, rekeningId: 'r1', categorieId: 'ov-voeding' },
+      ]),
+    })
+
+    await user.type(screen.getByLabelText('Handelaar / winkel'), 'Colruyt')
+    await user.type(screen.getByLabelText('Bedrag (€)'), '90')
+    await user.click(await screen.findByRole('button', { name: 'Gebruik Voeding, zoals de vorige keer' }))
+
+    await user.click(screen.getByRole('button', { name: 'Meer opties' }))
+    await user.selectOptions(screen.getByLabelText('Delen in een dossier (optioneel)'), 'dos-1')
+    await user.click(screen.getByRole('button', { name: 'Toevoegen' }))
+
+    await waitFor(() => expect(onDossierKost).toHaveBeenCalled())
+    const kost = onDossierKost.mock.calls[0][0] as GedeeldeKost
+    expect(kost.categorieId).toBe('ov-voeding')
   })
 
   it('maakt geen gedeelde kost wanneer je geen dossier kiest', async () => {

@@ -351,6 +351,12 @@ export function TerugkerendeSectie({
             // rest van de app hem al herkende — één klik en je huur stond dubbel.
             const geboekt = geboekteIds.has(p.id)
             const gestopt = isGestopt(p, maand)
+            // ⚠ RONDE 104 — EEN POST DIE NOG NIET BEGONNEN IS, KOST NOG NIETS. De regel
+            // hieronder zei "· € 8,33 per maand omgerekend" voor een jaarpost die pas in
+            // 2029 vervalt, terwijl het totaal ONDER de groep hem sinds ronde 98
+            // uit de som laat (`maandTotaal` filtert `isNogNietBegonnen`). Twee getallen
+            // over hetzelfde ding op één scherm, en ze spraken elkaar tegen.
+            const nogNietBegonnen = isNogNietBegonnen(p, maand)
             const dezeMaand = valtInMaand(p, maand)
             const periodiek = frequentieVan(p) !== 'maand'
             const volgende = periodiek && !gestopt ? volgendeVervaldag(p, vandaagISO) : null
@@ -396,9 +402,20 @@ export function TerugkerendeSectie({
                           vinkje "opzijzetten" verdween het omgerekende maandbedrag zonder
                           dat er iets voor in de plaats kwam. Dat cijfer gaat niet over
                           reserveren maar over wat de kost je gemiddeld kost. */}
+                      {/* ⚠ HET WOORD "OMGEREKEND" BLIJFT STAAN, ook in de "vanaf dan"-tak.
+                          Het bedrag is het OMGEREKENDE maandbedrag: bij een jaarpost van
+                          € 100 gaat er in maart 2029 honderd euro af en daarna een jaar
+                          niets — er gaat nooit € 8,33 per maand af. Een eerdere versie van
+                          deze ronde liet dat woord weg ("vanaf dan € 8,33 per maand") en
+                          ruilde daarmee een tegenspraak in voor een onwaarheid.
+                          ⚠ En de tak hangt aan `volgende`: zonder die datum heeft "vanaf
+                          dan" geen antecedent. Dat kan bij een post met een einddatum vóór
+                          haar startdatum — onmogelijke invoer die de app niet verhindert. */}
                       {opzij > 0 || doel
                         ? t(' · {bedrag} per maand opzij', { bedrag: formatEuro(opzijNu) })
-                        : t(' · {bedrag} per maand omgerekend', { bedrag: formatEuro(-maandbedrag(p)) })}
+                        : nogNietBegonnen && volgende
+                          ? t(' · vanaf dan {bedrag} per maand omgerekend', { bedrag: formatEuro(-maandbedrag(p)) })
+                          : t(' · {bedrag} per maand omgerekend', { bedrag: formatEuro(-maandbedrag(p)) })}
                       {doel && t(' · via je spaardoel {doel}', { doel: doel.naam })}
                     </span>
                   )}

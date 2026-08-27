@@ -205,7 +205,12 @@ export function Documentkluis({
                     documentnaam werd op een telefoon stil weggeknipt — zonder
                     weglatingsteken, dus je zag niet dát er iets ontbrak. Juist bij een
                     bewijsstuk is de naam wat het document identificeert. */}
-                <span className="rij-titel" style={{ overflowWrap: 'anywhere' }}>
+                {/* ⚠ Hier stond `overflowWrap: 'anywhere'`. Sinds ronde 103 draagt `.rij-titel`
+                    zelf `break-word`, dat hetzelfde doet voor een woord dat niet past — en
+                    zónder de min-content-breedte te veranderen, wat op andere schermen tekst
+                    per letter liet afbreken. Eén regel voor de hele app in plaats van een
+                    uitzondering hier. */}
+                <span className="rij-titel">
                   {d.naam}
                 </span>
                 <span className="rij-meta">

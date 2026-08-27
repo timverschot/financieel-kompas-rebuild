@@ -30,3 +30,20 @@ export async function verkleinAfbeelding(bestand: File, maxZijde = 1200, kwalite
   ctx.drawImage(img, 0, 0, w, h)
   return canvas.toDataURL('image/jpeg', kwaliteit)
 }
+
+/**
+ * Hoe groot een bewaarde bon hoogstens mag zijn, als data-URL (ronde 111).
+ *
+ * ⚠ WAAROM DIT HIER STAAT EN NIET IN ELK FORMULIER APART. Twee van de zes bestandskiezers
+ * hadden deze grens (het boekingsformulier en de documentkluis), en de vier andere niet — de
+ * gedeelde kost, de garantie, de lening en de kindrekeningpost. Alle vier accepteren ze
+ * `image/*,application/pdf`, en een PDF wordt hierboven met opzet ONVERKLEIND bewaard: die kan
+ * dus tientallen megabytes in je database en in élke synchronisatie zetten. Het schema van een
+ * gedeelde kost zegt letterlijk dat dit veld "klein gehouden" wordt; niets hield dat tegen.
+ */
+export const MAX_BON_BYTES = 4_000_000
+
+/** Is deze bon te groot om te bewaren? */
+export function bonTeGroot(dataUrl: string): boolean {
+  return dataUrl.length > MAX_BON_BYTES
+}

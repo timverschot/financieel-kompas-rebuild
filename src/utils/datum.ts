@@ -236,6 +236,22 @@ function alsDagstempel(datum: string): number {
   return new Date(t).toISOString().slice(0, 10) === datum ? t : Number.NaN
 }
 
+/**
+ * Een datum ('JJJJ-MM-DD') een aantal DAGEN verschuiven, of null bij een onmogelijke dag.
+ *
+ * ⚠ RONDE 110 — VOLLEDIG IN WERELDTIJD, van begin tot eind. `AnalyseSectie` rekende de vorige
+ * periode uit met `new Date('2026-08-01')` — dat leest de tekst als middernacht in WERELDtijd —
+ * en schreef het resultaat weg met een functie die in LOKALE tijd rekent. Op een Belgisch
+ * toestel valt dat samen; op een gsm die tijdens een reis van tijdzone wisselt, lag het bereik
+ * er een dag naast (nagemeten: `America/New_York` gaf 30 juni t/m 30 juli in plaats van 1 t/m
+ * 31 juli). Dezelfde keuze als `dagenVerschil` hierboven: één klok voor de hele som.
+ */
+export function verschuifDagen(datumISO: string, dagen: number): string | null {
+  const t = alsDagstempel(datumISO)
+  if (Number.isNaN(t)) return null
+  return new Date(t + dagen * 86400000).toISOString().slice(0, 10)
+}
+
 /** De twaalf maanden van een jaar, als 'JJJJ-MM'. */
 export function maandenVanJaar(jaar: string): string[] {
   return Array.from({ length: 12 }, (_, i) => `${jaar}-${String(i + 1).padStart(2, '0')}`)

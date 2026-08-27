@@ -35,7 +35,8 @@ import type { OpslagToestand } from '../data/opslag'
 import { versVangnet } from '../utils/backupherinnering'
 import type { BudgetTab } from '../utils/budgettab'
 import { bedragMetPeriode, knopnaamVoorPost, postNaamMetKenmerk } from '../utils/postkenmerk'
-import { bepaalBuffer } from '../utils/buffer'
+import { standaardWordtNogGebruikt } from '../utils/dossier'
+import { BUFFER_PLAFOND, bepaalBuffer } from '../utils/buffer'
 import { nettoVermogen } from '../utils/vermogen'
 import { openstaandKapitaal } from '../utils/lening'
 import { saldoVanRekening, totaalSaldoVan } from '../utils/saldo'
@@ -801,6 +802,15 @@ export function OpstellingSectie({
   // Het jaarbedrag uit de ORIGINELE bedragen, niet uit het afgeronde maandbedrag.
   // Een jaarabonnement van € 100 werd anders € 8,33 × 12 = € 99,96 — vier cent te
   // weinig, en dat is precies het soort cijfer dat nageteld wordt.
+  //
+  // ⚠ RONDE 104 — NAGEKEKEN EN GEEN FOUT. De open lijst noemde dit een vondst: "deze som
+  // deelt door het interval, niet door de werkelijke looptijd", dus een opgezegde of een
+  // nog niet begonnen post zou hier meetellen terwijl `sluipendPerMaand` ze weglaat — twee
+  // getallen in ÉÉN zin die elkaar tegenspreken. Nagerekend klopt dat niet (meer):
+  // `sluipend` komt uit `lasten`, en dat is `ingevuld` (zonder de gestopte) mínus de nog
+  // niet begonnen posten. De filter zit dus al twee stappen eerder. Ik heb hem hier eerst
+  // nóg eens gezet; een mutatietest beet niet, en dat was terecht — dode code.
+  // De test die de twee getallen aan elkaar bindt, staat wél in `OpstellingSectie.test.tsx`.
   const sluipendPerJaar = sluipend.reduce((som, p) => som + (-p.bedrag * 12) / intervalVan(p), 0)
 
   // Hoeveel vangnetten zijn er, en werken ze nog?
@@ -1094,6 +1104,13 @@ export function OpstellingSectie({
             {buffer.bruikbaar && buffer.maanden !== null
               ? (() => {
                   const m = Math.floor(buffer.maanden * 10) / 10
+                  // ⚠ RONDE 105 — HETZELFDE PLAFOND ALS DE BADGE. Ronde 104 gaf `BufferRegel`
+                  // een grens omdat één abonnement van € 0,99 naast € 5.000 spaargeld
+                  // "5.050,5 maanden buffer" opleverde. Deze tegel bleef staan met dat getal,
+                  // en dan zei het Overzicht "meer dan 24 maanden" terwijl Je situatie over
+                  // exact dezelfde cijfers "5.050,5 maanden" zei. Precies de fout die de
+                  // opmerking hierboven al één keer heeft moeten herstellen.
+                  if (m > BUFFER_PLAFOND) return t('meer dan {n} maanden', { n: BUFFER_PLAFOND })
                   return m === 1 ? t('1 maand') : t('{n} maanden', { n: m.toLocaleString(opmaakLocale()) })
                 })()
               : '—'}
@@ -1340,7 +1357,9 @@ export function OpstellingSectie({
                 {dossiers.map((d) => (
                   <li key={d.id} className="rij">
                     <span className="rij-midden rij-titel">{d.naam}</span>
-                    <span className="rij-acties">{t('{n}% voor jou', { n: d.aandeelJij })}</span>
+                    <span className="rij-acties">
+                      {standaardWordtNogGebruikt(d) ? t('{n}% voor jou', { n: d.aandeelJij }) : t('verdeling per kostensoort')}
+                    </span>
                   </li>
                 ))}
               </ul>
