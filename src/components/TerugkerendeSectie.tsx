@@ -1,10 +1,12 @@
-import { useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { Categorie, Rekening, Spaardoel, TerugkerendePost, Transactie } from '../data/schema'
 import { TerugkerendePostFormulier, frequentieNaam } from './TerugkerendePostFormulier'
 import { formatEuro } from '../utils/format'
 import { opzijVolgensSpaardoelen, spaardoelVoorVasteLast } from '../utils/spaardoel'
 import { dagJaar, maandJaarLabel, vandaag } from '../utils/datum'
-import { frequentieVan, isGestopt, maandbedrag, opzijPerMaand, valtInMaand, verschuifMaand, volgendeVervaldag } from '../utils/vastelast'
+import { frequentieVan, isGestopt, isNogNietBegonnen, maandbedrag, maandTotaal, opzijPerMaand, valtInMaand, verschuifMaand, volgendeVervaldag } from '../utils/vastelast'
+import { isSluipendeLast } from '../utils/sluipend'
+import { Dialoog } from '../ui/Dialoog'
 import { contractstand, contractTeltNog, type Contractstand } from '../utils/contract'
 import { geboekteVasteLasten, vasteLastTransactieId } from '../utils/vooruitblik'
 import { Kaart, Leeg } from '../ui/basis'
@@ -84,7 +86,19 @@ export function TerugkerendeSectie({
   const { t } = useT()
   // Invullen en bewerken kan pas zodra er een rekening bestaat om het aan te hangen.
   const kanBewerken = rekeningen.length > 0
-  const [bewerken, setBewerken] = useState<TerugkerendePost | null>(null)
+  // ⚠ RONDE 98 — HET FORMULIER STAAT IN EEN VENSTER, NIET MEER OPEN OP DE PAGINA.
+  //
+  // Tot deze ronde stond onder deze lijst een altijd-open invulformulier, en op
+  // Budget → Vast stonden er dus twee onder elkaar (één voor de inkomsten, één voor de
+  // lasten) — samen negen tot veertien paren velden die exact hetzelfde heetten. Dat
+  // was Timothy's tweede struikelblok ("er staat te veel tegelijk") én de eigenlijke
+  // oorzaak van de dubbele namen die de rondes 83, 88 en 92 stuk voor stuk moesten
+  // omzeilen. De Boekingen-pagina zette deze stap al eerder; hier stond ze nog open.
+  //
+  // ⚠ EEN ID EN GEEN KOPIE, om precies dezelfde reden als bij `wegPostId` hieronder:
+  // de app haalt elke 45 seconden stil nieuwe gegevens op, dus een venster dat een
+  // halve minuut openstaat, mag niet over een bevroren momentopname hangen.
+  const [venster, setVenster] = useState<{ soort: 'nieuw' } | { soort: 'bewerk'; id: string } | null>(null)
   // De post waarover de verwijdervraag gaat (ronde 76), of null zolang er geen
   // vraag openstaat.
   //
@@ -99,6 +113,9 @@ export function TerugkerendeSectie({
   const [wegPostId, setWegPostId] = useState<string | null>(null)
   // Verhoog om de cursor in "Loopt tot en met" te zetten; zie `focusEindeNa`.
   const [naarEinde, setNaarEinde] = useState(0)
+  // Staat er nog een verzoek open om de cursor daarheen te brengen? Zie het effect
+  // hieronder; sinds ronde 98 kan dat pas nadat het venster open is.
+  const [wilEinde, setWilEinde] = useState(false)
   // ⚠ Waar de focus heen gaat vóór een rij verdwijnt (huisregel sinds ronde 73). De
   // titel van de kaart is het enige dat er in élke toestand staat: de lijst zelf
   // verdwijnt zodra je de laatste post wist, en het formulier eronder staat er niet
@@ -109,6 +126,9 @@ export function TerugkerendeSectie({
   // onthoudt bij het openen waar de focus stond, en dat is hierdoor niet het kruisje
   // dat straks weg is.
   const ankerRef = useRef<HTMLSpanElement>(null)
+  // Eén voorvoegsel voor de id's van de groepskoppen. Vaste id's zouden dubbel voorkomen
+  // zodra deze sectie twee keer op één scherm staat — en dat doet ze op Budget → Vast.
+  const groepId = useId()
   // Vangt een mislukte opslag op en zegt het (ronde 68).
   const opslag = useOpslagpoging()
   // Elke sectie toont enkel haar eigen soort.
@@ -130,6 +150,66 @@ export function TerugkerendeSectie({
   const wegPost = eigen.find((p) => p.id === wegPostId) ?? null
   const opzijViaDoel = opzijVolgensSpaardoelen(spaardoelen, posten)
   const isInkomst = soort === 'inkomst'
+  // De post die het venster bewerkt, uit de HUIDIGE lijst.
+  //
+  // ⚠ DOORLICHTING RONDE 98 — EEN OPEN FORMULIER MAG NOOIT ZOMAAR VERDWIJNEN.
+  //
+  // De eerste opzet las hem elke render opnieuw op uit `eigen` en sloot het venster zodra
+  // hij daar niet meer in stond — precies wat `wegPostId` hierboven doet. Voor de
+  // verwijdervraag klopt dat: verdwijnt het record, dan valt er niets meer te beslissen.
+  // Voor een formulier waarin je TYPT is het iets heel anders. De app haalt elke 45
+  // seconden stil nieuwe gegevens op; wist een ander toestel die post terwijl jij zit te
+  // schrijven, dan viel het venster weg mét je halve zin, zonder één woord. Gemeten door
+  // een doorlichting, en het is de huisregel recht in het gezicht: een mislukte opslag mag
+  // de gebruiker nooit zijn invoer kosten.
+  //
+  // Nu onthoudt een ref de laatst bekende versie zolang het venster openstaat. Je blijft
+  // dus schrijven, en wat je opslaat is wat JIJ intikte — geen bevroren momentopname van
+  // vóór het venster openging (de fout van ronde 76), want elk veld staat in het formulier
+  // zelf. Verdwijnt de post écht, dan maakt het opslaan hem opnieuw aan: zichtbaar in de
+  // lijst, en met één tik weer weg. Dat is te verkiezen boven werk dat stil verdampt.
+  //
+  // ⚠ En het lost meteen een tweede vondst op: het venster sprong vanzelf weer open zodra
+  // de post terugkwam (een ongedaan-balk, of een synchronisatie). Het is nooit dicht
+  // gegaan, dus dat kan niet meer.
+  const laatsteBewerk = useRef<TerugkerendePost | null>(null)
+  const bewerkUitLijst = venster?.soort === 'bewerk' ? (eigen.find((p) => p.id === venster.id) ?? null) : null
+  if (venster?.soort === 'bewerk') {
+    if (bewerkUitLijst) laatsteBewerk.current = bewerkUitLijst
+  } else {
+    laatsteBewerk.current = null
+  }
+  const bewerkPost = venster?.soort === 'bewerk' ? laatsteBewerk.current : null
+  const vensterOpen = venster?.soort === 'nieuw' || bewerkPost !== null
+  // ⚠ RONDE 98 — TWEE GROEPEN IN ÉÉN LIJST, MAAR ÉÉN SOORT RECORD.
+  //
+  // Een "sluipende last" is in deze app géén apart soort: het is een vaste last die op
+  // een abonnementscategorie staat, of die je via een sluipend voorstel toevoegde (zie
+  // `isSluipendeLast`). Daarom is er hierboven ook maar ÉÉN knop — twee knoppen zouden
+  // allebei precies hetzelfde record maken. Wat de twee groepen doen is uitsluitend
+  // TONEN: ze zetten de kleine abonnementen bij elkaar met hun eigen totaal eronder,
+  // want dat is het cijfer waar je van schrikt.
+  //
+  // Dezelfde functie als "Waarvan sluipend" op Je situatie en als de verdeling over de
+  // twee aanvinklijsten daar. Eén regel, drie plaatsen.
+  //
+  // ⚠ Alleen bij de LASTEN. Een vaste inkomst kan niet sluipend zijn, en een groepskop
+  // boven één groep is een kop die niets onderscheidt.
+  const sluipendeLasten = isInkomst ? [] : eigen.filter(isSluipendeLast)
+  const gewoneLasten = isInkomst ? eigen : eigen.filter((p) => !isSluipendeLast(p))
+  // ⚠ EEN KOP ALLEEN WANNEER ER ÉCHT TWEE GROEPEN STAAN, en dat geldt voor ALLEBEI de
+  // groepen (doorlichting). Mijn eerste opzet hing die voorwaarde alleen aan de eerste;
+  // wie uitsluitend abonnementen heeft, kreeg dan in een kaart met de titel "Vaste lasten"
+  // één lijst met de kop "JE SLUIPENDE LASTEN" erboven — een kop die niets onderscheidt.
+  // Precies wat ik bij de inkomsten uitdrukkelijk wilde vermijden, één geval verder.
+  const gevuld = [
+    { sleutel: 'gewoon', kop: t('De grote posten'), posten: gewoneLasten },
+    { sleutel: 'sluipend', kop: t('Je sluipende lasten'), posten: sluipendeLasten },
+  ].filter((g) => g.posten.length > 0)
+  const groepen: { sleutel: string; kop: string | null; posten: TerugkerendePost[] }[] = gevuld.map((g) => ({
+    ...g,
+    kop: gevuld.length > 1 ? g.kop : null,
+  }))
   // Welke posten deze maand al geboekt zijn. Bewust uit de gedeelde kern, want dit
   // moet exact hetzelfde antwoord geven als het belletje en de Vooruitblik.
   // LET OP het filter: `maandVooruitblik` kijkt alleen naar posten die déze maand
@@ -168,8 +248,35 @@ export function TerugkerendeSectie({
     // zag het formulier "gelukt", maakte het zichzelf leeg, en was je tekst tóch weg —
     // mét een melding erbij. Precies de fout die deze ronde moest uitroeien.
     await onOpslaan(p)
-    setBewerken(null)
   }
+
+  // Hoe vaak er in dit venster met succes bewaard is. `Dialoog` telt het formulier
+  // daarna weer als leeg; zonder dit zou "Opslaan + volgende" je bij het sluiten laten
+  // bevestigen dat je een LEEG formulier mag weggooien (zie `schoonNa`).
+  const [opgeslagen, setOpgeslagen] = useState(0)
+  // Na het opslaan sluiten, tenzij je op "Opslaan + volgende" duwde — dan blijf je
+  // staan met een leeg formulier, voor de volgende van dezelfde soort.
+  function naOpslaan({ blijfOpen }: { blijfOpen: boolean }) {
+    setOpgeslagen((n) => n + 1)
+    if (!blijfOpen) setVenster(null)
+  }
+
+  // ⚠ RONDE 98 — DE CURSOR NAAR "LOOPT TOT EN MET" KAN PAS NÁDAT HET VENSTER OPEN IS.
+  //
+  // `Dialoog` zet bij het openen zelf de focus in het eerste invoerveld van zijn
+  // inhoud, en effecten van een KIND draaien vóór die van de ouder. Bumpten we
+  // `naarEinde` in dezelfde beurt als het openen, dan zette het formulier de cursor
+  // netjes in het einde-veld en haalde het venster hem daar meteen weer weg. Wat je
+  // dan zag: "Liever opzeggen" opent een venster dat op "Omschrijving" staat — precies
+  // de stille mislukking die ronde 76 hier kwam repareren, terug in een andere vorm.
+  //
+  // Dit effect zit op de OUDER en draait dus ná dat van `Dialoog`. Het bumpt `naarEinde`
+  // één beurt later; het formulier ziet die verandering en verzet de cursor alsnog.
+  useEffect(() => {
+    if (!wilEinde || venster?.soort !== 'bewerk') return
+    setWilEinde(false)
+    setNaarEinde((n) => n + 1)
+  }, [wilEinde, venster])
 
   return (
     <Kaart
@@ -184,23 +291,60 @@ export function TerugkerendeSectie({
           : t('Inboeken voor {maand}', { maand: maandLabel })
       }
     >
+      {/* ⚠ RONDE 98 — ÉÉN KNOP, EN HIJ STAAT HELEMAAL BOVENAAN.
+          Boven de lijst en niet eronder: met twaalf vaste lasten stond hij anders een
+          scherm lager dan de plek waar je hem zoekt.
+
+          ⚠ EN BOVEN DE LEGE TEKST, niet eronder (doorlichting). Die tekst zegt "voeg je
+          loon toe met de knop hierboven", en in mijn eerste opzet stond de knop eróndér.
+          Dat is letterlijk de fout die ronde 66 hier kwam weghalen ("vul hieronder in"
+          wees naar een leegte), nu omgekeerd — en het is het állereerste scherm van een
+          verse app. Een wegwijzer moet naar een plek wijzen die er is. */}
+      {kanBewerken && (
+        <div className="knoprij">
+          <button
+            type="button"
+            className="knop knop-secundair"
+            onClick={() => {
+              // Een oude foutmelding hoort niet achter het venster te blijven staan
+              // (regel uit de tweede doorlichting van ronde 68).
+              opslag.wis()
+              setVenster({ soort: 'nieuw' })
+            }}
+          >
+            {isInkomst ? t('+ Een vaste inkomst') : t('+ Een vaste last')}
+          </button>
+        </div>
+      )}
+
       {eigen.length === 0 && (
         <Leeg>
-          {/* ⚠ "Vul hieronder in" mag alleen wanneer daar ook écht een formulier staat.
-              Zonder rekening is dat er niet (zie `kanBewerken` verderop), en dan wees
-              deze zin naar een leegte. */}
+          {/* ⚠ Een wegwijzer moet naar een PLEK wijzen die er ook is (ronde 66). Zonder
+              rekening staat er geen knop (zie `kanBewerken`), en dan mag deze zin er ook
+              niet naar verwijzen. ⚠ En sinds ronde 98 staat de invulweg BOVEN de lijst
+              in plaats van eronder: "hieronder" wees na die verbouwing naar een leegte. */}
           {isInkomst
             ? kanBewerken
-              ? t('Nog geen vaste inkomsten. Vul hieronder je loon in, anders weet je plan niet wat er te verdelen valt.')
+              ? t('Nog geen vaste inkomsten. Voeg je loon toe met de knop hierboven, anders weet je plan niet wat er te verdelen valt.')
               : t('Nog geen vaste inkomsten. Zodra je een rekening hebt, vul je hier je loon in.')
             : t('Nog geen vaste lasten.')}
         </Leeg>
       )}
       <Opslagfout fout={opslag.fout} zin={t('Dat is niet gelukt. Er is niets veranderd.')} />
 
-      {eigen.length > 0 && (
-        <ul className="lijst">
-          {eigen.map((p) => {
+      {groepen.map((groep) => (
+        <div key={groep.sleutel} className="stapel" style={{ gap: 6 }}>
+          {/* ⚠ `aria-labelledby` EN GEEN KOPIE VAN DE TEKST (doorlichting). Met een
+              `aria-label` las een schermlezer eerst de zichtbare kop en meteen daarna
+              "De grote posten, lijst" — twee keer hetzelfde. En twee plaatsen die dezelfde
+              woorden dragen, lopen ooit uit elkaar. `RekeningDetail` doet het al zo. */}
+          {groep.kop && (
+            <p className="label-caps" style={{ margin: 0 }} id={`${groepId}-${groep.sleutel}`}>
+              {groep.kop}
+            </p>
+          )}
+        <ul className="lijst" aria-labelledby={groep.kop ? `${groepId}-${groep.sleutel}` : undefined}>
+          {groep.posten.map((p) => {
             // Uit dezelfde kern als het belletje en de Vooruitblik. Deze lijst
             // keek vroeger alleen naar het vaste id van "Boek in", waardoor een
             // handmatig ingetikte huur hier als "nog niet geboekt" stond terwijl de
@@ -360,7 +504,10 @@ export function TerugkerendeSectie({
                     <button
                       className="knop knop-kaal"
                       aria-label={knopnaamVoorPost(t, t('Bewerken'), p, posten)}
-                      onClick={() => setBewerken(p)}
+                      onClick={() => {
+                        opslag.wis()
+                        setVenster({ soort: 'bewerk', id: p.id })
+                      }}
                     >
                       ✎
                     </button>
@@ -401,8 +548,37 @@ export function TerugkerendeSectie({
               </li>
             )
           })}
-        </ul>
-      )}
+          </ul>
+          {/* ⚠ RONDE 98 — HET TOTAAL VAN DEZE GROEP, EN HET VERANTWOORDT ZICH.
+              De regel eronder zegt wat er NIET in zit, want zonder die zin lijkt het
+              cijfer te laag zodra er een opgezegde post in de lijst staat (regel sinds
+              ronde 69: elk getal zegt over welke verzameling het gaat). */}
+          {(() => {
+            // ⚠ ALLEEN DE UITZONDERING DIE ER ÉCHT IS (doorlichting). Mijn eerste opzet
+            // noemde er twee zodra er één van toepassing was: wie alleen een opgezegd
+            // abonnement in de lijst had, las tóch iets over "posten die nog niet begonnen
+            // zijn". Een voorbehoud noemen zonder geval is ruis — precies de fout die
+            // ronde 81 opschreef, en die ik in mijn eigen test aanhaalde terwijl ik ze
+            // twintig regels verderop maakte.
+            const gestopte = groep.posten.filter((p) => isGestopt(p, maand)).length
+            const nogNiet = groep.posten.filter((p) => isNogNietBegonnen(p, maand)).length
+            const voorbehoud =
+              gestopte > 0 && nogNiet > 0
+                ? t('gestopte posten en posten die nog niet begonnen zijn, tellen niet mee')
+                : gestopte > 0
+                  ? t('gestopte posten tellen niet mee')
+                  : nogNiet > 0
+                    ? t('posten die nog niet begonnen zijn, tellen niet mee')
+                    : null
+            return (
+              <p className="rij-meta" style={{ margin: 0, textAlign: 'right' }}>
+                {t('Samen {bedrag} per maand', { bedrag: formatEuro(maandTotaal(groep.posten, maand)) })}
+                {voorbehoud && <> · {voorbehoud}</>}
+              </p>
+            )
+          })()}
+        </div>
+      ))}
 
       {/* ⚠ RONDE 66, slotronde — GEEN FORMULIER ZONDER REKENING, MAAR WÉL DE LIJST.
           Een vaste last moet ergens vanaf gaan; zonder rekening bleef de opslaanknop
@@ -412,26 +588,65 @@ export function TerugkerendeSectie({
           een nieuwe rekening staat één keer bovenaan dit tabblad, niet twee keer hier
           — twee knoppen met exact dezelfde naam op één scherm is voor een schermlezer
           niet uit elkaar te houden. */}
+      {/* ⚠ RONDE 98 — HET FORMULIER ZIT IN EEN VENSTER, ZOALS BIJ EEN BOEKING.
+          Bij het TOEVOEGEN zegt de vensterkop al wat je maakt, dus de knop eronder heet
+          gewoon "Toevoegen" (regel van ronde 83: een knop herhaalt de vensterkop niet).
+          Dat gebeurt vanzelf doordat `onOpgeslagen` meegegeven wordt.
+
+          ⚠ Bij het BEWERKEN geldt dat niet, en dat is bewust: daar staat er "Vaste last
+          bewerken" boven en "Vaste last wijzigen" onder. Dat is de huisvorm van de hele
+          app (Lening bewerken/wijzigen, Doel bewerken/wijzigen, Rekening bewerken/…) en
+          het is geen herhaling maar het onderscheid van ronde 89: "bewerken" is het
+          werkwoord van de knop die OPENT, "wijzigen" dat van de knop die OPSLAAT.
+
+          ⚠ GEEN `onAnnuleer`. Een venster heeft al twee wegen naar buiten — het kruisje
+          en Escape — en allebei vragen ze eerst of je je invoer mag weggooien
+          (`bewaakInvoer`). Een derde knop met dezelfde uitwerking is precies de fout die
+          ronde 84 opschreef: twee knoppen naast elkaar die hetzelfde doen. */}
       {kanBewerken && (
-        <TerugkerendePostFormulier
-          rekeningen={rekeningen}
-          categorieen={categorieen}
-          onOpslaan={opslaan}
-          onAnnuleer={() => setBewerken(null)}
-          bewerken={bewerken}
-          focusEindeNa={naarEinde}
-          soort={soort}
-          // Waarschuwt bij een naam die er al staat (ronde 73). `eigen` en niet `posten`:
-          // een vaste ínkomst "Huur" (kotgeld) mag geen waarschuwing geven boven een
-          // vaste LAST die ook "Huur" heet — dat zijn twee verschillende dingen.
-          bestaande={eigen}
-          gedektDoorDoel={(() => {
-            // Alleen bij het BEWERKEN van een post die een doel draagt; bij een nieuwe
-            // post bestaat er nog geen koppeling.
-            const d = bewerken ? spaardoelVoorVasteLast(bewerken.id, spaardoelen) : null
-            return d ? { naam: d.naam, perMaand: opzijViaDoel.get(bewerken!.id) ?? 0 } : undefined
-          })()}
-        />
+        <Dialoog
+          titel={
+            bewerkPost
+              ? isInkomst
+                ? t('Vaste inkomst bewerken')
+                : t('Vaste last bewerken')
+              : isInkomst
+                ? t('Vaste inkomst toevoegen')
+                : t('Vaste last toevoegen')
+          }
+          open={vensterOpen}
+          onSluiten={() => setVenster(null)}
+          bewaakInvoer
+          schoonNa={opgeslagen}
+        >
+          {/* ⚠ HIER STOND EEN `key` PER VENSTEROPENING, MET EEN REDEN DIE NIET KLOPTE.
+              Ik schreef dat het venster in de boom blijft staan en dat het formulier
+              daardoor de velden van de vorige post zou vasthouden. Dat is niet zo:
+              `Dialoog` doet `if (!open) return null`, dus bij het sluiten wordt het
+              formulier gewoon ontkoppeld en begint de volgende opening hoe dan ook schoon.
+              De sleutel bewees niets, en ze sprak bovendien het formulier zelf tegen, dat
+              in zijn eigen kopregels uitlegt waarom het BEWUST geen `key` krijgt: dat gooit
+              je halve invoer weg (ronde 66). Weggehaald. */}
+          <TerugkerendePostFormulier
+            rekeningen={rekeningen}
+            categorieen={categorieen}
+            onOpslaan={opslaan}
+            onOpgeslagen={naOpslaan}
+            bewerken={bewerkPost}
+            focusEindeNa={naarEinde}
+            soort={soort}
+            // Waarschuwt bij een naam die er al staat (ronde 73). `eigen` en niet `posten`:
+            // een vaste ínkomst "Huur" (kotgeld) mag geen waarschuwing geven boven een
+            // vaste LAST die ook "Huur" heet — dat zijn twee verschillende dingen.
+            bestaande={eigen}
+            gedektDoorDoel={(() => {
+              // Alleen bij het BEWERKEN van een post die een doel draagt; bij een nieuwe
+              // post bestaat er nog geen koppeling.
+              const d = bewerkPost ? spaardoelVoorVasteLast(bewerkPost.id, spaardoelen) : null
+              return d ? { naam: d.naam, perMaand: opzijViaDoel.get(bewerkPost!.id) ?? 0 } : undefined
+            })()}
+          />
+        </Dialoog>
       )}
 
       {/* De vraag vóór het kruisje wist (ronde 76). Ze gaat alleen open wanneer er
@@ -452,11 +667,11 @@ export function TerugkerendeSectie({
           kanBewerken
             ? (p) => {
                 setWegPostId(null)
-                setBewerken(p)
+                setVenster({ soort: 'bewerk', id: p.id })
                 // ⚠ En de cursor mee naar het veld dat je moet invullen (doorlichting
-                // ronde 76). Het formulier staat hier gewoon op de pagina, soms tien
-                // vaste lasten naar beneden; zonder dit gebeurde er zichtbaar niets.
-                setNaarEinde((n) => n + 1)
+                // ronde 76). Sinds ronde 98 kan dat pas nadat het venster open is —
+                // zie het effect bovenaan waarom.
+                setWilEinde(true)
               }
             : undefined
         }

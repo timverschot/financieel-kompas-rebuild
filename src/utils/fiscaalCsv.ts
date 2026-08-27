@@ -86,7 +86,11 @@ function totaalRij(t: Vertaler, regel: FiscaleRegel, vervallen: boolean): string
 
 function boekingRijen(t: Vertaler, regel: FiscaleRegel, vervallen: boolean): string[][] {
   return regel.boekingen.map((b) => [
-    t('Boeking'),
+    // ⚠ RONDE 101 — HET ETIKET VOLGT WAT HET DING IS. Bij de post "betaalde
+    // onderhoudsuitkeringen" komen deze rijen uit je betalingen in Dossiers, niet uit je
+    // boekingen. Het bestand wíst dat al (zie de bon-kolom hieronder); alleen dit woord
+    // volgde niet mee, en dan zoek je in je boekingenlijst naar iets wat daar niet staat.
+    regel.post.uitOnderhoudsbetalingen ? t('Betaling') : t('Boeking'),
     t(regel.post.naam),
     t(regel.post.vak),
     codes(regel, vervallen),

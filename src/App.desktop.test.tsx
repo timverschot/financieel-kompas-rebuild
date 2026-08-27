@@ -391,3 +391,22 @@ describe('het adres van de Budget-tabbladen', () => {
     await waitFor(() => expect(window.location.hash).toBe('#/budget/vast'))
   })
 })
+
+describe('de voorleesvakken op een breed scherm (ronde 101)', () => {
+  it('zet elke aankondiging maar één keer in de pagina', async () => {
+    // ⚠ HIER ZAT EEN ECHTE FOUT, en geen enkele test zag hem. De aankondiging over
+    // geweigerde regels (ronde 100) stond in de BREDE weergave twee keer in de pagina —
+    // twee live regions met dezelfde tekst, dus een schermlezer leest alles dubbel voor.
+    // De tests draaien standaard op een smal scherm (390 px), en daar was er niets aan de
+    // hand; de smalle en de brede weergave zijn twee aparte stukken JSX.
+    render(
+      <InstellingenProvider>
+        <App />
+      </InstellingenProvider>,
+    )
+    await screen.findByText('Saldo')
+    const vakken = document.querySelectorAll('p.alleen-voorlezen[role="status"]')
+    expect(vakken).toHaveLength(2)
+  })
+})
+

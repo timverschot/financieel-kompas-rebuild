@@ -4,6 +4,7 @@ import { LogregelSchema, formaatOordeel, type Logregel } from './events'
 import { haalToestelId, leesMeta, schrijfMeta, verwerkOntvangenHlc, voegRegelsToeEnHerbouw } from './lokaal'
 import { SLEUTEL_LAATSTE_SYNC } from '../backupmoment'
 import { vandaag } from '../../utils/datum'
+import type { GeweigerdeRegel, Weigering } from '../../utils/geweigerdeRegels'
 
 export type SyncResultaat = {
   gepusht: number
@@ -14,6 +15,19 @@ export type SyncResultaat = {
   verouderd: number
   /** Regels uit een NIEUWERE versie dan deze app. Dan draait dit toestel achter. */
   teNieuw: number
+  /**
+   * WELKE regels geweigerd zijn — niet alleen hoeveel (ronde 100).
+   *
+   * ⚠ WAAROM DIT ERBIJ MOEST. Een geweigerde regel wordt nooit aan het eigen logboek
+   * toegevoegd (terecht: ze is niet te vertrouwen), dus de volgende ronde ziet haar
+   * opnieuw als onbekend en telt haar opnieuw. Met alleen een TELLER kan het scherm niet
+   * zien of het om dezelfde regel gaat of om een nieuwe — en dan komt dezelfde melding na
+   * elke herlaadbeurt terug, voor altijd. Dat is precies wat Timothy meemaakte.
+   *
+   * Met de id's erbij kan het scherm onthouden wat het al gezegd heeft, en zwijgen tot er
+   * écht iets nieuws is. Zie `utils/geweigerdeRegels.ts`.
+   */
+  geweigerd: GeweigerdeRegel[]
 }
 
 // Eén synchronisatieronde: eerst eigen nieuwe wijzigingen versturen, dan
@@ -40,6 +54,7 @@ export async function synchroniseer(backend: SyncBackend, dagISO: string = vanda
   let ongeldig = 0
   let verouderd = 0
   let teNieuw = 0
+  const geweigerd: GeweigerdeRegel[] = []
   const nieuw: Logregel[] = []
   for (const regel of alle) {
     if (bestaandeIds.has(regel.id)) continue
@@ -66,10 +81,12 @@ export async function synchroniseer(backend: SyncBackend, dagISO: string = vanda
     const oordeel = formaatOordeel(check.data)
     if (oordeel === 'te-oud') {
       verouderd++
+      geweigerd.push(kenmerk(check.data, 'te-oud'))
       continue
     }
     if (oordeel === 'te-nieuw') {
       teNieuw++
+      geweigerd.push(kenmerk(check.data, 'te-nieuw'))
       continue
     }
     nieuw.push(regel)
@@ -132,5 +149,16 @@ export async function synchroniseer(backend: SyncBackend, dagISO: string = vanda
     await schrijfMeta('laatstGepushtVolgnummer', 0)
   }
 
-  return { gepusht: nieuwEigen.length, opgehaald: nieuw.length, ongeldig, verouderd, teNieuw }
+  return { gepusht: nieuwEigen.length, opgehaald: nieuw.length, ongeldig, verouderd, teNieuw, geweigerd }
+}
+
+/**
+ * Net genoeg van een geweigerde regel om te kunnen zeggen wélke het is (ronde 100).
+ *
+ * ⚠ BEWUST NIET DE HELE REGEL. Wat erin staat is niet te vertrouwen — dat is de reden dat
+ * ze geweigerd wordt — dus we nemen alleen wat de app zeker weet: haar id en wanneer ze
+ * geschreven is. Geen bedragen, geen omschrijvingen.
+ */
+function kenmerk(regel: Logregel, reden: Weigering): GeweigerdeRegel {
+  return { id: regel.id, tijdstip: regel.tijdstip, reden }
 }

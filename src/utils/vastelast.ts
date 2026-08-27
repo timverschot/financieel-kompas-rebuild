@@ -162,6 +162,44 @@ export function maandbedrag(post: TerugkerendePost): number {
 }
 
 /**
+ * Wat een groep posten samen per maand kost of opbrengt, omgerekend (ronde 98).
+ *
+ * Voor het totaal onder een groep op Budget → Vast. Het teken blijft dat van de
+ * records zelf: een groep vaste lasten geeft een negatief bedrag, net als de regels
+ * erboven ("€ -15,99 · dag 8").
+ *
+ * ⚠ WAT ER BEWUST NIET IN ZIT, en dat hoort de app er ook bij te zeggen (ronde 69):
+ *
+ *  - **Een gestopte post.** Een opgezegd abonnement kost je niets meer; het zou het
+ *    totaal alleen maar te hoog zetten. De rij blijft wél in de lijst staan, met haar
+ *    badge "Gestopt" — anders zou je je historiek niet meer terugvinden.
+ *  - **Een post die nog niet begonnen is.** Zelfde redenering, andere kant van de
+ *    tijdlijn: een premie waarvan de eerste betaling pas volgend jaar valt, kost je
+ *    vandaag niets.
+ *
+ * ⚠ WAT ER WÉL IN ZIT: een post die deze maand niet vervalt. Een jaarpremie van € 600
+ * telt hier elke maand voor € 50 mee — dat is precies wat "omgerekend per maand"
+ * betekent, en het is de reden dat dit cijfer bestaat.
+ *
+ * ⚠ EERLIJK OVER WAT DIT WÉL EN NIET OPLOST (doorlichting ronde 98). Ik schreef hier
+ * eerst dat dit "bewust géén vierde definitie" is. Dat was een belofte, geen feit:
+ * dezelfde som staat ook in `utils/buffer.ts`, in `plancijfers` hieronder, en stond in
+ * `OpstellingSectie`. Ronde 98 heeft die laatste erlangs gestuurd (`sluipendPerMaand`
+ * roept nu deze functie aan), dus het zijn er drie in plaats van vier. De twee andere
+ * beantwoorden een net andere vraag en zijn níét zomaar te vervangen — dat blijft staan
+ * als open punt, precies zoals ronde 72 het al aanwees.
+ *
+ * ⚠ En het teken: deze functie geeft terug wat de records zeggen, dus een groep vaste
+ * lasten komt er NEGATIEF uit. De tegel "Vaste lasten per maand" op Je situatie toont
+ * hetzelfde bedrag positief; dezelfde vraag, een andere presentatie.
+ */
+export function maandTotaal(posten: readonly TerugkerendePost[], maand: string): number {
+  return posten
+    .filter((p) => !isGestopt(p, maand) && !isNogNietBegonnen(p, maand))
+    .reduce((som, p) => som + maandbedrag(p), 0)
+}
+
+/**
  * Hoeveel je deze maand voor deze post opzij hoort te zetten, als positief bedrag.
  * Nul wanneer de post maandelijks is (dan zet je niets opzij, je betaalt gewoon),
  * wanneer je niet gekozen hebt om op te bouwen, of wanneer het geen uitgave is.

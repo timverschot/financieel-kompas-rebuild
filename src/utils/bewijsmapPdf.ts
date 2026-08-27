@@ -178,6 +178,22 @@ export function uitAfspraak(herkomst: AandeelHerkomst): boolean {
   return herkomst === 'dossier' || herkomst === 'categorie' || herkomst === 'kostensoort'
 }
 
+/**
+ * "zie bijlage 3" of "zie bijlagen 3, 4" — of niets wanneer er geen bon bij die kost hoort.
+ *
+ * ⚠ RONDE 101. Hier stond altijd het enkelvoud met de nummers achter elkaar: bij twee bonnen
+ * bij één kost las de bewijsmap *"zie bijlage 3, 4"*. Dit is het document dat naar de andere
+ * ouder, een bemiddelaar of een rechter gaat; daar telt de taal.
+ *
+ * Twee sleutels en geen slim samengestelde zin, want het woord verandert in elke taal mee:
+ * bijlage/bijlagen, attachment/attachments, annexe/annexes.
+ */
+export function bijlageVerwijzing(t: Vertaler, nummers: readonly number[]): string | undefined {
+  if (nummers.length === 0) return undefined
+  if (nummers.length === 1) return t('zie bijlage {n}', { n: nummers[0] })
+  return t('zie bijlagen {n}', { n: nummers.join(', ') })
+}
+
 export function grondslagVerwijzing(t: Vertaler, herkomst: AandeelHerkomst, bijlage: number | undefined): string {
   if (bijlage === undefined || !uitAfspraak(herkomst)) return ''
   return ` (${t('zie bijlage {n}', { n: bijlage })})`
@@ -382,7 +398,7 @@ export async function exporteerBewijsmapPDF(
         // bemiddelaar gaat. Zonder deze regel verzwijgt het document precies het
         // enige waarover partijen het oneens zijn.
         ...(antwoord ? [antwoord] : []),
-        ...regelMeta(t, r, nummers.length > 0 ? t('zie bijlage {n}', { n: nummers.join(', ') }) : undefined),
+        ...regelMeta(t, r, bijlageVerwijzing(t, nummers)),
       ]
       const titelDelen = doc.splitTextToSize(`${r.datum}  ${r.omschrijving}`, KOL_TOTAAL - LINKS) as string[]
       const uitlegDelen = uitleg.flatMap((deel) => doc.splitTextToSize(deel, RECHTS - LINKS - 4) as string[])

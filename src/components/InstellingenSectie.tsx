@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import type { Gezinsrol, Kind } from '../data/schema'
 import { KinderenSectie } from './KinderenSectie'
 import { Kaart, PaginaKop } from '../ui/basis'
@@ -13,6 +13,8 @@ import type { Pagina } from './navigatie'
 import { DriveKaart } from './DriveKaart'
 import { BackupKaart } from './BackupKaart'
 import type { OpslagToestand } from '../data/opslag'
+import { bouwdatumTekst, haalBouwdatum } from '../utils/appVersie'
+import { opmaakLocale } from '../utils/opmaaktaal'
 
 // Keuzelijsten blijven smal: ze staan alleen, zonder zichtbaar label ernaast.
 const keuzelijst: CSSProperties = { maxWidth: 260, alignSelf: 'flex-start' }
@@ -82,6 +84,19 @@ export function InstellingenSectie({
   onderdeelInhoud?: Partial<Record<Pagina, number>>
 }) {
   const { t } = useT()
+  // ⚠ RONDE 99 — de bouwdatum komt uit `versie.json` en niet uit de code zelf; zie
+  // `haalBouwdatum`. `null` zolang ze niet binnen is, en `null` blijft ze wanneer het
+  // bestand er niet is (de ontwikkelserver, de testomgeving) — dan blijft de kaart weg.
+  const [bouwdatum, setBouwdatum] = useState<string | null>(null)
+  useEffect(() => {
+    let levend = true
+    void haalBouwdatum().then((d) => {
+      if (levend) setBouwdatum(d)
+    })
+    return () => {
+      levend = false
+    }
+  }, [])
   const { keuze, zetKeuze } = useThema()
   const { budgetDrempel, zetBudgetDrempel, verborgenPaginas, zetVerborgenPaginas } = useInstellingen()
 
@@ -144,7 +159,7 @@ export function InstellingenSectie({
         // je zien?") die bewust vooraan gezet is — precies de kaart die de rest van de
         // app rustiger maakt, en ze stond niet in de wegwijzer. Dezelfde fout, negen
         // rondes later. Wie hier een kaart bijzet, hoort deze zin mee te lezen.
-        bijschrift={t('Bovenaan kies je wat je in de app wil zien, en zet je de app op je beginscherm. Daarna kleuren, taal en meldingen; dan alles rond het bewaren van je gegevens, je gezinsleden, en helemaal onderaan de knop die alles wist.')}
+        bijschrift={t('Bovenaan kies je wat je in de app wil zien, en zet je de app op je beginscherm. Daarna kleuren, taal en meldingen; dan alles rond het bewaren van je gegevens, je gezinsleden, welke versie je draait, en helemaal onderaan de knop die alles wist.')}
       />
 
       {/* Op het beginscherm zetten. Staat vooraan, want zolang de app in een
@@ -298,6 +313,28 @@ export function InstellingenSectie({
         onVerwijderen={onKindVerwijderen}
         telGebruik={telGezinslidGebruik}
       />
+
+      {/* ⚠ RONDE 99 — WELKE VERSIE DRAAI JE?
+          Timothy zag na een publicatie nog de oude app en had geen enkele manier om na te
+          kijken waar hij stond. Een balk die zegt "er is een nieuwe versie" is pas te
+          vertrouwen wanneer je ook kan zien wélke je nu hebt.
+
+          ⚠ Bewust NIET helemaal onderaan: de zin boven deze pagina belooft dat de knop die
+          alles wist daar staat (ronde 66, en ronde 75 liep tegen precies die belofte aan).
+          Diezelfde zin noemt deze kaart nu ook — een wegwijzer die een kaart overslaat is
+          dezelfde fout, één stap verder.
+
+          ⚠ De kaart blijft wég zonder datum. In de ontwikkelserver en in de testomgeving
+          draait de bouwstap niet, dus is er geen `versie.json` — en dan is niets tonen
+          eerlijker dan een lege of verzonnen datum. */}
+      {bouwdatum !== null && (
+        <Kaart titel={t('Deze versie')}>
+          <p style={statusRegel}>{t('Deze versie is van {datum}.', { datum: bouwdatumTekst(bouwdatum, opmaakLocale()) })}</p>
+          <p style={statusRegel}>
+            {t('Staat er een nieuwe versie klaar, dan verschijnt bovenaan deze pagina een balk. Herlaad om ze te gebruiken — je gegevens blijven staan.')}
+          </p>
+        </Kaart>
+      )}
 
       {/* Begin opnieuw — helemaal onderaan, want het is de zwaarste actie. */}
       {onBeginOpnieuw && (

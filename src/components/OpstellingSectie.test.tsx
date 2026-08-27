@@ -1351,10 +1351,30 @@ describe('OpstellingSectie — een andere sluipende last (ronde 84)', () => {
     return gebruiker
   }
 
-  it('zet de rij onderaan de lijst', async () => {
+  it('zet de rij BOVENAAN de lijst (ronde 98)', async () => {
+    // ⚠ RONDE 98 — ze stond onderaan, ná achttien voorstellen. Timothy: *"deze valt niet
+    // echt op zo helemaal onderaan. kan dit niet apart bovenaan gezet worden?"* Juist wie
+    // hier iets zoekt dat NIET in de lijst staat, heeft die rij nodig.
     toon({ rekeningen: [rekening] })
     await naarSluipend()
-    expect(screen.getByRole('button', { name: /^Een andere sluipende last/ })).toBeInTheDocument()
+    const rij = screen.getByRole('button', { name: /^Een andere sluipende last/ })
+    expect(rij).toBeInTheDocument()
+
+    // ⚠ Gemeten op de VOLGORDE in het document, niet op "hij bestaat". Een test die
+    // alleen zijn bestaan meet, blijft groen wanneer hij morgen weer onderaan staat —
+    // en dat is precies de wijziging van deze ronde.
+    const rijen = screen.getAllByRole('button', { name: /^(Een andere sluipende last|Netflix|Spotify)/ })
+    expect(rijen[0]).toBe(rij)
+  })
+
+  it('telt de vrije rij nog altijd NIET mee in "je vulde er … van de … in"', async () => {
+    // ⚠ De volgorde mag de teller niet raken: die leest `voorstellen.filter((v) =>
+    // !v.vrijeNaam)`, en dat is dezelfde verzameling als toen de rij onderaan stond.
+    // Zonder deze test kon een latere hand de filter vervangen door "alles behalve de
+    // laatste" en bleef alles groen.
+    toon({ rekeningen: [rekening] })
+    await naarSluipend()
+    expect(screen.getByText(/Je vulde er 0 van de 18 in/)).toBeInTheDocument()
   })
 
   it('zegt bij het openklappen wat die rij is, en niet dat je iets vergat', async () => {

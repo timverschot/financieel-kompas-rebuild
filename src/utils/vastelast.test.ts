@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { TerugkerendePost } from '../data/schema'
-import { frequentieVan, intervalVan, maandVerschil, maandbedrag, opzijPerMaand, plancijfers, valtInMaand, volgendeVervaldag, isGestopt, verschuifMaand } from './vastelast'
+import { frequentieVan, intervalVan, maandTotaal, maandVerschil, maandbedrag, opzijPerMaand, plancijfers, valtInMaand, volgendeVervaldag, isGestopt, verschuifMaand } from './vastelast'
 
 function post(over: Partial<TerugkerendePost> = {}): TerugkerendePost {
   return { id: 'p1', omschrijving: 'Huur', bedrag: -95000, rekeningId: 'r1', dag: 5, ...over }
@@ -331,5 +331,52 @@ describe('volgendeVervaldag springt niet over de eindmaand heen', () => {
     // vorm van een scherm te verlaten.
     const raar = post({ frequentie: 'kwartaal', startMaand: '2026-11', eindMaand: '2026-09', dag: 5 })
     expect(volgendeVervaldag(raar, '2026-07-01')).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 98 — het totaal onder een groep op Budget → Vast
+// ---------------------------------------------------------------------------
+
+describe('maandTotaal', () => {
+  it('telt maandelijkse posten gewoon op, met hun eigen teken', () => {
+    expect(maandTotaal([post({ bedrag: -95000 }), post({ id: 'p2', bedrag: -1599 })], '2026-08')).toBe(-96599)
+  })
+
+  it('rekent een niet-maandelijkse post om naar één maand', () => {
+    // ⚠ En ze telt WÉL mee in een maand waarin ze niet VERVALT: dat is precies wat
+    // "omgerekend per maand" betekent. De premie valt in augustus en in februari; in
+    // september kost ze je nog altijd gemiddeld € 100 per maand.
+    expect(maandTotaal([premie], '2026-08')).toBe(-10000)
+    expect(maandTotaal([premie], '2026-09')).toBe(-10000)
+    // ⚠ In JULI staat er nul — niet omdat ze dan niet vervalt, maar omdat ze dan nog
+    // niet begonnen is. Twee verschillende redenen, en alleen de tweede sluit uit.
+    // (Mijn eerste versie van deze test verwachtte hier -10000; de code had gelijk.)
+    expect(maandTotaal([premie], '2026-07')).toBe(0)
+  })
+
+  it('laat een GESTOPTE post buiten het totaal', () => {
+    // Een opgezegd abonnement kost je niets meer. De rij blijft wél in de lijst staan,
+    // met haar badge "Gestopt" — anders zou je je historiek niet meer terugvinden.
+    const opgezegd = post({ id: 'weg', bedrag: -1599, eindMaand: '2026-07' })
+    expect(maandTotaal([opgezegd], '2026-08')).toBe(0)
+    // …en in de maand vóór de eindmaand telt ze nog gewoon mee.
+    expect(maandTotaal([opgezegd], '2026-06')).toBe(-1599)
+  })
+
+  it('laat een post die nog niet begonnen is buiten het totaal', () => {
+    const later = post({ id: 'later', bedrag: -60000, frequentie: 'jaar', startMaand: '2027-03' })
+    expect(maandTotaal([later], '2026-08')).toBe(0)
+    expect(maandTotaal([later], '2027-03')).toBe(-5000)
+  })
+
+  it('geeft nul terug voor een lege lijst', () => {
+    // ⚠ Geen speciale tak, maar wel het geval dat élk scherm als eerste tegenkomt.
+    expect(maandTotaal([], '2026-08')).toBe(0)
+  })
+
+  it('werkt net zo goed voor INKOMSTEN, met een positief teken', () => {
+    // Het teken komt uit de records zelf; deze functie kent geen soort.
+    expect(maandTotaal([post({ id: 'loon', bedrag: 240000 })], '2026-08')).toBe(240000)
   })
 })

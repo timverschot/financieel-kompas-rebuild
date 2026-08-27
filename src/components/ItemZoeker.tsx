@@ -189,7 +189,7 @@ export function ItemZoeker({
     // De naam komt uit het plan en niet uit de boom: die boom wordt pas bij de
     // volgende tekening herbouwd, dus `itemPerId(id)` geeft hier nog niets terug.
     kies({ id, naam: plan.subnaam.trim() })
-    setMelding(t('“{naam}” is toegevoegd en staat nu op deze boeking.', { naam: plan.subnaam.trim() }))
+    setMelding(t('“{naam}” is toegevoegd en staat nu ingevuld.', { naam: plan.subnaam.trim() }))
     // ⚠ De focus terugzetten mag de voorstellenlijst NIET heropenen. Dit veld houdt
     // zijn tekst (het is tegelijk de omschrijving van de ticketregel), dus je kreeg
     // meteen weer "+ … toevoegen aan …" te zien voor de naam die je zonet had

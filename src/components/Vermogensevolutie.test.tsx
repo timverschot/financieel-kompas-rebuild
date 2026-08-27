@@ -137,7 +137,7 @@ describe('Vermogensevolutie — het verschil met de saldotegel', () => {
       transacties: [{ id: 'huur', datum: '2026-06-28', omschrijving: 'Huur', bedrag: -90000, rekeningId: 'r1' }],
     })
     expect(bron()?.textContent).toBe(
-      'Het laatste punt is de stand aan het einde van de maand. Eén boeking of overboeking van later deze maand telt er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.',
+      'Het laatste punt is de stand aan het einde van de maand. Eén boeking, overboeking of waardering van later deze maand telt er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.',
     )
   })
 
@@ -157,7 +157,19 @@ describe('Vermogensevolutie — het verschil met de saldotegel', () => {
     toonOp(new Date(2026, 5, 15), {
       overboekingen: [{ id: 'o1', datum: '2026-06-28', vanRekeningId: 'r1', naarRekeningId: 'r2', bedrag: 50000 }],
     })
-    expect(bron()?.textContent).toContain('Eén boeking of overboeking van later deze maand')
+    expect(bron()?.textContent).toContain('Eén boeking, overboeking of waardering van later deze maand')
+  })
+
+  it('telt ook een waardering mee die nog moet vallen (ronde 101)', () => {
+    // ⚠ Dit gat vond een doorlichting. Het datumveld van een waardering kent geen
+    // bovengrens: je kan er vandaag één vastleggen met de datum van de 31ste. Het laatste
+    // punt van de lijn verspringt dan — `saldoOpEinde` neemt de geldende waardering tot en
+    // met die dag — terwijl het saldo op je Overzicht niet meebeweegt en deze zin zweeg.
+    // Twee cijfers over hetzelfde geld, zonder één woord erbij.
+    toonOp(new Date(2026, 5, 15), {
+      waarderingen: [{ id: 'w1', rekeningId: 'r1', datum: '2026-06-28', saldo: 500000 }],
+    })
+    expect(bron()?.textContent).toContain('Eén boeking, overboeking of waardering van later deze maand')
   })
 
   it('telt hoeveel boekingen er nog komen wanneer het er meer dan één zijn', () => {
@@ -168,7 +180,7 @@ describe('Vermogensevolutie — het verschil met de saldotegel', () => {
       ],
     })
     expect(bron()?.textContent).toBe(
-      'Het laatste punt is de stand aan het einde van de maand. 2 boekingen en overboekingen van later deze maand tellen er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.',
+      'Het laatste punt is de stand aan het einde van de maand. 2 boekingen, overboekingen of waarderingen van later deze maand tellen er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.',
     )
   })
 

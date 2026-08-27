@@ -976,7 +976,7 @@ export function TransactieFormulier({
                             </select>
                           </div>
                           <p className="leeg" style={{ padding: 0, textAlign: 'left' }}>
-                            {t('Je betaalde deze uitgave zelf. De verdeling volgt de afspraak van het dossier; op de Dossiers-pagina kan je ze voor deze kost nog aanpassen.')}
+                            {t('Je betaalde deze uitgave zelf. De verdeling volgt de afspraak van het dossier; op de Dossiers-pagina kan je ze voor deze uitgave nog aanpassen.')}
                           </p>
                         </>
                       )}

@@ -1135,7 +1135,7 @@ describe('CategorieKiezer — het toevoegpaneeltje in een echt formulier', () =>
     // ⚠ Op tekst en niet op `findByRole('status')`: zolang het paneeltje openstaat
     // zijn er twee status-gebieden (de reden-regel en deze melding), en dan zou de
     // test op "meerdere gevonden" breken in plaats van op de echte reden.
-    const melding = await screen.findByText(/is toegevoegd en staat nu op deze boeking/)
+    const melding = await screen.findByText(/is toegevoegd en staat nu ingevuld/)
     expect(melding).toHaveAttribute('role', 'status')
     expect(melding).toHaveTextContent('“kefir” is toegevoegd')
   })

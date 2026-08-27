@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { vertaalSleutels } from './i18n'
+import { vertaal, vertaalSleutels } from './i18n'
 
 // Eén woord per ding (ronde 66).
 //
@@ -37,6 +37,153 @@ function met(patroon: RegExp): string[] {
 }
 
 describe('woordenschat — één woord per ding', () => {
+  it('gebruikt nergens een synoniem voor geld-eruit (ronde 101)', () => {
+    // ⚠ De begrippentest hierboven kijkt alleen naar KORTE sleutels, en dat is met reden —
+    // maar het gevolg is dat het grootste deel van de tabel er niet door gezien wordt. Deze
+    // test is de goedkope aanvulling: geen begrip-per-begrip-controle, maar een zwarte
+    // lijst van woorden die in deze app niets te zoeken hebben, ongeacht de zinslengte.
+    const verboden: { woord: RegExp; waarom: string }[] = [
+      { woord: /\boutgoings\b/i, waarom: 'de app zegt "expenses"' },
+      { woord: /\bexpenditure\b/i, waarom: 'de app zegt "expenses"' },
+      { woord: /\boutlays?\b/i, waarom: 'de app zegt "expenses"' },
+      { woord: /\btransactions?\b/i, waarom: 'de app zegt "entry/entries" (ronde 66)' },
+    ]
+    const fout: string[] = []
+    for (const taal of ['en', 'fr'] as const) {
+      for (const sleutel of vertaalSleutels(taal)) {
+        const waarde = vertaal(taal, sleutel)
+        for (const v of verboden) if (v.woord.test(waarde)) fout.push(`${taal}: "${waarde}" — ${v.waarom}`)
+      }
+    }
+    expect(fout).toEqual([])
+    // Positieve tegencontrole: het woord dat er WEL hoort te staan.
+    expect(vertaalSleutels('en').map((k) => vertaal('en', k))).toContain('Expenses by category')
+  })
+
+  it('geeft elk begrip in EN en FR precies één woord (ronde 101)', () => {
+    // ⚠ RONDE 101. De regel "één woord per ding" toetste alléén het Nederlands: deze test
+    // las de Nederlandse sleutels. Engels en Frans waren ongedekt — en juist daar loopt een
+    // vertaling stil uit de pas, want niemand leest die tabel in zijn geheel.
+    //
+    // De app onderscheidt bewust DRIE dingen, en dat onderscheid hoort in elke taal te
+    // blijven staan:
+    //
+    //   uitgave     — één boeking geld-eruit        → expense   / dépense
+    //   kost        — een kost in een dossier       → cost      / frais
+    //   vaste last  — een terugkerende kost         → fixed cost / charge fixe
+    //
+    // ⚠ Alleen KORTE sleutels (hoogstens zes woorden). Dat zijn de labels: daar ís de
+    // sleutel het begrip. In een lopende zin staan de drie begrippen vaak naast elkaar
+    // ("een vaste last verbruikt je budget zoals elke andere uitgave"), en dan zegt de
+    // aanwezigheid van een woord niets.
+    const begrippen = [
+      { naam: 'uitgave', nl: /\buitgave[n]?\b/i, en: /\bexpenses?\b/i, fr: /\bdépense[s]?\b/i },
+      { naam: 'kost', nl: /\bkost(en)?\b/i, en: /\bcosts?\b/i, fr: /\bfrais\b/i },
+      { naam: 'vaste last', nl: /\bvaste last(en)?\b/i, en: /\bfixed costs?(\(s\))?\b/i, fr: /\bcharges?(\(s\))? fixes?(\(s\))?\b/i },
+    ]
+    // ⚠ Drie uitzonderingen — en elk geldt voor ÉÉN taal en ÉÉN begrip, niet voor alles.
+    // Een doorlichting liet zien waarom dat uitmaakt: met een uitzondering per sleutel mocht
+    // de ENGELSE vertaling van "Uitgaven voor kinderoppas" ongestraft "Childcare costs"
+    // worden — het gereserveerde woord van een ánder begrip — en de test bleef groen.
+    //
+    // Ze worden in twee richtingen bewaakt: verdwijnt zo'n sleutel, dan faalt deze test ook.
+    const uitzonderingen: { sleutel: string; taal: 'en' | 'fr'; begrip: string; reden: string }[] = [
+      {
+        sleutel: 'Uitgaven voor kinderoppas',
+        taal: 'fr',
+        begrip: 'uitgave',
+        reden: 'de fiscale post heet in het Frans officieel "frais de garde d’enfants"',
+      },
+      {
+        sleutel: 'Syndicus of gemeenschappelijke kosten',
+        taal: 'fr',
+        begrip: 'kost',
+        reden: 'de gemeenschappelijke kosten van een gebouw heten in het Frans "charges communes"',
+      },
+      {
+        sleutel: 'Wat kost elk gezinslid?',
+        taal: 'fr',
+        begrip: 'kost',
+        reden: '"kost" is hier een WERKWOORD, geen naam voor een ding — het Frans zegt terecht "Que coûte…"',
+      },
+    ]
+    const uitgezonderd = (sleutel: string, taal: 'en' | 'fr', begrip: string) =>
+      uitzonderingen.some((u) => u.sleutel === sleutel && u.taal === taal && u.begrip === begrip)
+    const sleutels = vertaalSleutels('en')
+    const fout: string[] = []
+    for (const sleutel of sleutels) {
+      if (sleutel.split(' ').length > 6) continue
+      for (const b of begrippen) {
+        if (!b.nl.test(sleutel)) continue
+        // "vaste last" bevat het woord "last", niet "kost" — maar een sleutel die allebei
+        // noemt, hoort bij de vaste last en niet bij de losse kost.
+        if (b.naam === 'kost' && /\bvaste last(en)?\b/i.test(sleutel)) continue
+        if (!uitgezonderd(sleutel, 'en', b.naam) && !b.en.test(vertaal('en', sleutel)))
+          fout.push(`EN ${b.naam}: "${sleutel}" → "${vertaal('en', sleutel)}"`)
+        if (!uitgezonderd(sleutel, 'fr', b.naam) && !b.fr.test(vertaal('fr', sleutel)))
+          fout.push(`FR ${b.naam}: "${sleutel}" → "${vertaal('fr', sleutel)}"`)
+      }
+    }
+    expect(fout).toEqual([])
+    for (const u of uitzonderingen) expect(sleutels).toContain(u.sleutel)
+  })
+
+  it('noemt geld-eruit in het Engels overal een "expense" (ronde 101)', () => {
+    // ⚠ RONDE 101. Op de Engelse startpagina stond binnen één beeld het kengetal
+    // *Expenses*, de chip *Spending by category* en de chip *Income and expenses per
+    // month*: twee woorden voor hetzelfde ding, naast elkaar.
+    //
+    // ⚠ WAAROM "EXPENSES" EN NIET "SPENDING". Het onderzoek naar Engelstalige budgetapps
+    // (26 augustus 2026) vond bij die apps een onderscheid — *expense* het telbare ding,
+    // *spending/spent* het gemeten bedrag over een periode — maar géén eensgezindheid over
+    // waar een grafiektitel valt: Firefly III schrijft `Expenses by category` als label,
+    // Actual Budget `Monthly Spending` als rapportnaam. Beide zijn dus verdedigbaar, en
+    // dan wint de huisregel: het Nederlandse "uitgaven" is één woord, dus het Engelse ook.
+    //
+    // ⚠ Het WERKWOORD blijft gewoon "spend": "you are spending more than comes in" is
+    // Engels, geen naam voor een ding. Vandaar de uitzonderingen hieronder — élke
+    // uitzondering met een reden, en ze worden in twee richtingen bewaakt: valt er een
+    // weg, dan faalt deze test ook.
+    const werkwoord = [
+      'The app does not know your fixed income yet — your salary, for instance. Enter it under "Fixed" and it will work out what is left to spend.',
+      'This month you are spending {bedrag} more than comes in. That comes out of your savings or your account.',
+      'What you spent that year on each family member: your own entries plus your share of the shared costs.',
+      'What you spent that year under an item that appears in your tax return, with the box and code alongside.',
+      'A budget is a limit you set on a category yourself: "this month I do not want to spend more than € 400 on Groceries". Kompal adds up every entry in that category this month and moves the bar along.',
+    ]
+    const engels = vertaalSleutels('en').map((k) => vertaal('en', k))
+    // ⚠ `spen[dt]` en niet `spend`: "spent" begint niet met "spend" en viel dus volledig
+    // buiten deze regel — een label als "Total spent by store" kon er ongezien in sluipen.
+    expect(engels.filter((v) => /\bspen[dt]\w*\b/i.test(v) && !werkwoord.includes(v))).toEqual([])
+    // Twee richtingen: een uitzondering die niet meer bestaat, hoort ook te falen.
+    for (const zin of werkwoord) expect(engels).toContain(zin)
+    // Positieve tegencontrole: zonder haar slaagt dit ook op een lege tabel.
+    expect(engels).toContain('Expenses by category')
+    expect(engels).toContain('Expenses by family member')
+    expect(engels).toContain('Expenses by store')
+  })
+
+  it('noemt een regel uit het logboek overal een "regel" (ronde 100)', () => {
+    // ⚠ RONDE 100. Twee meldingen stonden direct onder elkaar op het Overzicht en gingen
+    // allebei over regels uit het logboek: de ene zei "regel(s)", de andere "record(s)".
+    // "Record" is bovendien geen woord voor wie geen developer is.
+    expect(met(/record\(s\)|\brecords?\b/i)).toEqual([])
+    // En in de andere twee talen, want dáár botsten de twee helften van ÉÉN alinea:
+    // "1 record(s) come from a device…" naast "for 3 line(s) in your backup…".
+    // ⚠ Het ZELFSTANDIG naamwoord, niet het werkwoord: "{n} payment(s) recorded" en
+    // "Record the transfer" zijn gewoon Engels en hebben hier niets mee te maken.
+    expect(vertaalSleutels('en').map((k) => vertaal('en', k)).filter((v) => /record\(s\)|\brecords\b/i.test(v))).toEqual([])
+    // ⚠ En in het Frans alleen de telvorm "enregistrement(s)": "L’enregistrement a
+    // échoué" betekent daar "het opslaan is mislukt" en gaat over iets heel anders.
+    expect(
+      vertaalSleutels('fr')
+        .map((k) => vertaal('fr', k))
+        .filter((v) => /enregistrement\(s\)/i.test(v)),
+    ).toEqual([])
+    // Positieve tegencontrole: zonder haar slaagt dit ook op een lege tabel.
+    expect(schermteksten().some((tekst) => /\bregel\(s\)/.test(tekst))).toBe(true)
+  })
+
   it('noemt een ingevoerde uitgave of inkomst overal een "boeking"', () => {
     expect(met(/transacti/i)).toEqual([])
   })
@@ -201,8 +348,6 @@ describe('woordenschat — één woord per ding', () => {
     'Soort kost': 'het dossierdeel van het boekingsvenster: gewoon of buitengewoon',
     'Gewone kost': 'het dossierdeel van het boekingsvenster: gewoon of buitengewoon',
     'Buitengewone kost': 'het dossierdeel van het boekingsvenster: gewoon of buitengewoon',
-    'Je betaalde deze uitgave zelf. De verdeling volgt de afspraak van het dossier; op de Dossiers-pagina kan je ze voor deze kost nog aanpassen.':
-      'het dossierdeel van het boekingsvenster',
     'Wat kost elk gezinslid?': 'werkwoord',
     'Wat elk gezinslid je per maand kost.': 'werkwoord',
     'Kosten delen met de andere ouder, geld dat je uitleende, en je garantiebewijzen.':

@@ -954,7 +954,11 @@ export function CategorieKiezer({
     const naam = plan.subnaam.trim()
     const id = await onNieuweSubcategorie(plan)
     kies(id)
-    setMelding(t('“{naam}” is toegevoegd en staat nu op deze boeking.', { naam }))
+    // ⚠ RONDE 101 — NIET "OP DEZE BOEKING". Deze kiezer staat óók in het formulier voor een
+    // gedeelde kost en in dat voor een kindrekeningpost (zie `DossierSectie.tsx`), en daar is
+    // er geen boeking. Wie met een schermlezer werkt, hoorde daar een ding genoemd worden dat
+    // op dat scherm niet bestaat.
+    setMelding(t('“{naam}” is toegevoegd en staat nu ingevuld.', { naam }))
     zoekRef.current?.focus()
   }
 

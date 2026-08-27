@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
-import { EersteStapKnop, Kaart, Kengetal, Leeg, Stat } from './basis'
+import { EersteStapKnop, Kaart, Kengetal, Leeg, PaginaKop, Stat } from './basis'
 
 // Ronde 66 — de eerste stap in een lege toestand.
 //
@@ -148,5 +148,32 @@ describe('de merkklasse stat-met-bron', () => {
   it('laat een Kengetal zonder herkomstzin ongemerkt', () => {
     const { container } = render(<Kengetal label="Saldo">€ 10,00</Kengetal>)
     expect(container.querySelector('.kengetal')).not.toHaveClass('stat-met-bron')
+  })
+})
+
+describe('PaginaKop', () => {
+  // ⚠ RONDE 101 — GEMETEN IN EEN ECHTE BROWSER, niet hier. Op een scherm van 360 px liep het
+  // Overzicht 20 pixels breder dan het venster, Budget 34 en Analyse 43: de titel en de
+  // maandnavigatie (‹ augustus 2026 ›, 248 px breed) stonden in één rij die niet mocht
+  // afbreken. Resultaat: een horizontale schuifbalk op élke telefoon.
+  //
+  // ⚠ WAT DEZE TEST WÉL EN NIET DOET. jsdom rekent geen opmaak uit, dus ze kan de overloop
+  // niet meten. Ze bewaakt alleen dat de twee eigenschappen die het oplossen er nog staan —
+  // een vangnet tegen het stil verdwijnen ervan bij een volgende bewerking. De échte meting
+  // gebeurt in de browser, en staat in de nota van ronde 101.
+  it('laat de rij afbreken en de titel krimpen', () => {
+    const { container } = render(<PaginaKop titel="Overzicht" actie={<button>‹ augustus 2026 ›</button>} />)
+    const rij = container.firstElementChild as HTMLElement
+    expect(rij.style.flexWrap).toBe('wrap')
+    const titelblok = rij.firstElementChild as HTMLElement
+    expect(titelblok.style.minWidth).toBe('0')
+  })
+
+  it('toont de titel, het bijschrift en de actie', () => {
+    // De positieve tegencontrole: zonder haar zou een lege component ook groen zijn.
+    render(<PaginaKop titel="Budget" bijschrift="Wat je deze maand van plan bent" actie={<button>Volgende</button>} />)
+    expect(screen.getByRole('heading', { level: 1, name: 'Budget' })).toBeInTheDocument()
+    expect(screen.getByText('Wat je deze maand van plan bent')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Volgende' })).toBeInTheDocument()
   })
 })

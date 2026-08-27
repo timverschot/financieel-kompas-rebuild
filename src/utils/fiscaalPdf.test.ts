@@ -151,6 +151,23 @@ describe('exporteerFiscaalPDF — betaalde onderhoudsuitkeringen', () => {
     expect(tekst).not.toContain('daalt de komende jaren')
   })
 
+  it('noemt ze betalingen en geen boekingen (ronde 101)', async () => {
+    // ⚠ Deze lijst komt niet uit je boekingen maar uit je betalingen op een
+    // onderhoudsbijdrage in Dossiers. Ronde 96 zette dat op het SCHERM recht; dit blad — het
+    // blad dat naar je boekhouder gaat — deed de splitsing niet mee. Daar las je
+    // "1 boeking(en)" en ging je die in je boekingenlijst zoeken, waar er geen enkele van
+    // staat. (De rijen eronder dragen hun eigen omschrijving, en heten "Betaling" alleen
+    // wanneer die leeg is — dus ook dáár stond het woord "boeking" nergens.)
+    const tekst = await maak({
+      inkomstenjaar: 2026,
+      transacties: [],
+      onderhoudsbijdragen: [bijdrage],
+      onderhoudsbetalingen: [betaling],
+    })
+    expect(tekst).toContain('1 betaling(en)')
+    expect(tekst).not.toContain('1 boeking(en)')
+  })
+
   it('zet de co-ouderschapswaarschuwing op het blad', async () => {
     // De zwaarste van allemaal: die kan de aftrek helemaal wegnemen.
     const tekst = await maak({
@@ -160,6 +177,15 @@ describe('exporteerFiscaalPDF — betaalde onderhoudsuitkeringen', () => {
       onderhoudsbetalingen: [betaling],
     })
     expect(tekst).toContain('co-ouderschap')
+  })
+})
+
+describe('exporteerFiscaalPDF — een gewone post', () => {
+  it('noemt zijn regels wél boekingen (ronde 101)', async () => {
+    // ⚠ De positieve tegencontrole bij de test hierboven: zonder haar zou "noem ze overal
+    // betalingen" ook groen zijn, en dan klopt het op elke andere post niet meer.
+    const tekst = await maak({ inkomstenjaar: 2026, transacties: [tx({ id: 'dc', categorieId: 'i-dienstencheques-9094', bedrag: -9000 })] })
+    expect(tekst).toContain('1 boeking(en)')
   })
 })
 

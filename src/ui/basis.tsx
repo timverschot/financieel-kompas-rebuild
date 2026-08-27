@@ -61,8 +61,16 @@ export function Kaart({ titel, bijschrift, actie, compact, className, style, chi
 /** Titel van een pagina, met optionele ondertitel en actie rechts. */
 export function PaginaKop({ titel, bijschrift, actie }: { titel: ReactNode; bijschrift?: ReactNode; actie?: ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-      <div>
+    // ⚠ RONDE 101 — `flexWrap` EN `minWidth: 0`, ALLEBEI NODIG. Gemeten in een echte
+    // browser: op een scherm van 360 px liep het Overzicht 20 pixels breder dan het venster,
+    // Budget en Analyse zelfs 34 en 43. De oorzaak is deze rij: links de titel, rechts de
+    // maandnavigatie (‹ augustus 2026 ›, 248 px breed door de vaste breedte van het label).
+    // Zonder `wrap` blijven die twee naast elkaar staan en duwen ze de pagina open, met een
+    // horizontale schuifbalk op élke telefoon. Met `wrap` zakt de navigatie netjes onder de
+    // titel. `minWidth: 0` erbij, want een flexkind mag standaard niet kleiner worden dan
+    // zijn inhoud: een lange titel zou anders alsnog duwen in plaats van af te breken.
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+      <div style={{ minWidth: 0 }}>
         <h1 className="paginakop">{titel}</h1>
         {bijschrift !== undefined && <p className="paginasub">{bijschrift}</p>}
       </div>

@@ -206,12 +206,15 @@ describe('een mislukte verwerking laat niets half achter', () => {
 describe('synchroniseer — de eenheid van de bedragen', () => {
   // Een regel zoals de app ze vóór deze versie schreef: zonder eenheid, en met
   // een bedrag dat toen euro's betekende.
+  /** Een vast tijdstip, zodat een test de datum in de melding echt kan nakijken. */
+  const OUD_TIJDSTIP = Date.UTC(2025, 2, 12)
+
   function euroTijdRegel(id: string, bedrag: number): Logregel {
     return {
       id,
       toestelId: 'toestel-oud',
       volgnummer: 1,
-      tijdstip: Date.now() + 1000,
+      tijdstip: OUD_TIJDSTIP,
       gebeurtenis: {
         type: 'transactie.bewaard',
         payload: { id: 'oud-1', datum: '2026-01-05', omschrijving: 'Loon', bedrag, rekeningId: 'r1' },
@@ -228,6 +231,52 @@ describe('synchroniseer — de eenheid van de bedragen', () => {
     expect(uit.verouderd).toBe(1)
     expect(uit.opgehaald).toBe(0)
     expect((await laadTransacties()).geldig).toEqual([])
+  })
+
+  it('zegt WELKE regel geweigerd is, niet alleen hoeveel (ronde 100)', async () => {
+    // ⚠ Zonder de id's kan het scherm niet zien of het om dezelfde regel gaat als de
+    // vorige keer. En dat is niet theoretisch: een geweigerde regel komt nooit in het
+    // eigen logboek, dus élke volgende ronde ziet haar opnieuw als onbekend — en dan
+    // komt dezelfde melding na elke herlaadbeurt terug, voor altijd. Precies wat
+    // Timothy meemaakte.
+    const backend = new GeheugenBackend()
+    await backend.stuur('toestel-oud', [euroTijdRegel('oud-r1', 2400)])
+
+    const uit = await synchroniseer(backend)
+    expect(uit.geweigerd).toHaveLength(1)
+    expect(uit.geweigerd[0].id).toBe('oud-r1')
+    // ⚠ Vier velden, en het tijdstip met zijn échte waarde. `typeof … === 'number'` stond
+    // hier eerst, en een mutatietest liet zien wat dat waard was: zet het tijdstip op 0 en
+    // de test bleef groen — terwijl het scherm dan "1 januari 1970" toont.
+    expect(uit.geweigerd[0]).toEqual({ id: 'oud-r1', tijdstip: OUD_TIJDSTIP, reden: 'te-oud' })
+  })
+
+  it('zegt ook WELKE regel uit een te nieuwe versie komt (ronde 100)', async () => {
+    // ⚠ De twee redenen leiden tot een ANDERE tekst op het scherm: bij een te nieuwe regel
+    // helpt "werk de app op dat toestel bij", bij een oude regel helpt dat niets. Zonder
+    // deze test kon de reden overal 'te-oud' zeggen zonder dat iets het merkte.
+    const backend = new GeheugenBackend()
+    await backend.stuur('toestel-nieuw', [
+      { ...euroTijdRegel('nieuw-r1', 2400), toestelId: 'toestel-nieuw', formaat: LOG_FORMAAT + 1 } as Logregel,
+    ])
+
+    const uit = await synchroniseer(backend)
+    expect(uit.teNieuw).toBe(1)
+    expect(uit.geweigerd).toEqual([{ id: 'nieuw-r1', tijdstip: OUD_TIJDSTIP, reden: 'te-nieuw' }])
+  })
+
+  it('houdt de geweigerde lijst LEEG wanneer alles gewoon ingelezen wordt', async () => {
+    // ⚠ Een negatieve bewering heeft een positieve naast zich nodig (les van ronde 94):
+    // zonder deze test zou een lijst die altijd leeg blijft, ook groen zijn.
+    const backend = new GeheugenBackend()
+    await backend.stuur('toestel-B', [vreemdeRegel('b1', {
+      type: 'transactie.bewaard',
+      payload: { id: 'tb1', datum: '2026-07-02', omschrijving: 'Boodschappen', bedrag: -1500, rekeningId: 'r1' },
+    })])
+
+    const uit = await synchroniseer(backend)
+    expect(uit.geweigerd).toEqual([])
+    expect(uit.opgehaald).toBe(1)
   })
 
   it('raakt bestaande gegevens niet aan wanneer zo een regel binnenkomt', async () => {

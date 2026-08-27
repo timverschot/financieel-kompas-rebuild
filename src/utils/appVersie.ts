@@ -132,17 +132,113 @@ export function volgNieuweVersie(luisteraar: () => void): () => void {
   }
 }
 
-/** Alleen voor tests: alles terug op nul. */
+/**
+ * Alleen voor tests: alles terug op nul.
+ *
+ * ⚠ ZE ZET OOK DE VERSIEWACHT AF (doorlichting ronde 99). Roep haar dus niet aan vanuit
+ * app-code — bijvoorbeeld vanuit "Begin opnieuw", waar ze op het eerste gezicht past. De
+ * balk zou daarna dood zijn zolang ze gekoppeld blijft: `main.tsx` roept
+ * `startVersiewacht()` maar één keer aan. (Sinds deze ronde start de balk hem óók zelf bij
+ * elke mount, als vangnet — maar ze hermount niet vanzelf, dus dat redt je niet.)
+ */
 export function vergeetNieuweVersie(): void {
   nieuweVersie = false
   luisteraars.clear()
+  stopWacht?.()
+  stopWacht = null
+}
+
+let stopWacht: (() => void) | null = null
+
+/**
+ * Begin te wachten op een nieuwe versie. Twee keer starten doet niets extra.
+ *
+ * ⚠ RONDE 99 — DIT MOET BIJ HET OPSTARTEN GEBEUREN, NIET WANNEER DE BALK GETEKEND WORDT.
+ *
+ * Tot deze ronde riep `NieuweVersieBalk` `volgServiceWorker()` aan in haar eigen effect.
+ * Dat is te laat: `registerSW.js` registreert zich op `window.load`, dus op het moment dat dat
+ * effect draait bestaat de registratie vaak nog niet — en dan komt de app nooit bij
+ * `registration.waiting`/`.installing`, terwijl daar juist de nieuwe versie klaarstaat.
+ * `main.tsx` roept dit nu aan vóór het renderen; de balk luistert alleen nog mee.
+ *
+ * ⚠ De verklaring "bij een F5 heeft de service worker het roer al overgenomen vóór React iets
+ * tekende" stond hier eerst als feit. Ze is NIET reproduceerbaar gebleken — zie de eerlijke
+ * vaststelling verderop in dit bestand. De reden hierboven is wél nagemeten.
+ */
+export function startVersiewacht(nu?: () => number): void {
+  if (stopWacht) return
+  stopWacht = volgServiceWorker(nu)
 }
 
 /** Hoe lang we minstens wachten voor we de service worker opnieuw laten kijken. */
 export const CONTROLE_PAUZE_MS = 15 * 60 * 1000
 
 /**
- * Luistert naar de service worker, en vraagt hem af en toe om te gaan kijken.
+ * Van wanneer deze versie is — opgehaald uit `versie.json`.
+ *
+ * ⚠ Het is de datum van de laatste COMMIT, niet van de build (zie `vite.config.ts`). Met
+ * een bouwtijd verschilde het bestand bij elke build, verschilde de service worker mee, en
+ * riep de app "er is een nieuwe versie" na een CI-run die niets veranderde. Een commit is
+ * bovendien het antwoord waar je iets aan hebt: je kan ernaar wijzen in je geschiedenis.
+ *
+ * ⚠ WAAROM EEN BESTAND EN GEEN `define` (doorlichting ronde 99). Een `define` vervangt de
+ * naam letterlijk in de code, dus de bouwtijd belandde in het JS-brok — en dan kreeg élk
+ * bestand bij élke build een andere naam, ook bij een build van byte-identieke broncode.
+ * Gemeten. Daarmee verloor iedereen die de app open had staan het PDF-brok van 390 kB bij
+ * elke publicatie, en dat is precies wat ronde 56 kwam voorkomen. Een versieregel mag geen
+ * publicatie duurder maken dan ze is.
+ *
+ * ⚠ HET BESTAND KOMT UIT DE CACHE VAN DE SERVICE WORKER, en dat MOET zo. Leest de app het
+ * rechtstreeks van de server, dan zegt de kaart "gebouwd op <vandaag>" terwijl je scherm
+ * nog de app van gisteren draait — precies het misverstand dat deze ronde wegneemt.
+ * Vandaar `json` in `globPatterns` (vite.config.ts) en bewust GEEN `cache: 'no-store'`:
+ * dat laatste zou de cache overslaan en het verkeerde antwoord geven.
+ *
+ * Geeft `null` terug wanneer het bestand er niet is of niet te lezen valt — in de
+ * ontwikkelserver (daar draait de bouwstap niet), in de testomgeving, en offline vóór de
+ * eerste cache. De kaart in Instellingen blijft dan gewoon weg. Liever niets dan een
+ * verzonnen datum.
+ */
+export async function haalBouwdatum(ophalen: typeof fetch = fetch): Promise<string | null> {
+  try {
+    const antwoord = await ophalen('./versie.json')
+    if (!antwoord.ok) return null
+    const inhoud: unknown = await antwoord.json()
+    const gebouwd = (inhoud as { gebouwd?: unknown } | null)?.gebouwd
+    return typeof gebouwd === 'string' && gebouwd !== '' ? gebouwd : null
+  } catch {
+    // Geen bestand, geen netwerk, geen geldige JSON: dan zegt de app hier niets.
+    return null
+  }
+}
+
+/**
+ * De versiedatum in gewone taal, in de opmaaktaal van de gebruiker.
+ *
+ * ⚠ MÉT het uur, en dat is geen detail: dit project publiceert soms drie keer op één
+ * dag. "27 augustus 2026" zou dan bij drie verschillende versies hetzelfde zeggen — en
+ * dan is de regel er wel, maar beantwoordt ze de vraag niet.
+ *
+ * ⚠ Het uur staat in de tijdzone van je TOESTEL. Dat is de juiste kant: je vergelijkt dit
+ * met "wanneer heb ik gecommit", en dat weet je in je eigen klok.
+ *
+ * Is de tekst geen leesbare tijd, dan geeft deze functie hem onveranderd terug. Een
+ * datum verzinnen is erger dan een rare tekst tonen.
+ */
+export function bouwdatumTekst(iso: string, locale: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(d)
+}
+
+/**
+ * Luistert naar de service worker, en vraagt hem te gaan kijken.
  *
  * `controllerchange` is het moment waarop een NIEUWE service worker het overneemt van
  * de oude. De bouwinstelling van deze app (`registerType: 'autoUpdate'`, met
@@ -150,11 +246,38 @@ export const CONTROLE_PAUZE_MS = 15 * 60 * 1000
  * versie gevonden heeft — en op datzelfde moment gooit hij de oude bestanden weg.
  * Vanaf dan draait jouw scherm code die niet meer bij de rest past.
  *
- * ⚠ MAAR HIJ GAAT NIET UIT ZICHZELF KIJKEN. Een tabblad dat uren openstaat, krijgt die
- * melding nooit — en dat is net het geval waarvoor deze balk bedoeld is. Vandaar de
- * tweede helft: telkens wanneer je naar de app terugkeert (`visibilitychange`), vragen
- * we de service worker om te controleren. Hooguit één keer per kwartier, want dit is
- * een verzoek naar de server en van tabblad wisselen doe je vaak.
+ * ⚠ RONDE 99 — DEZE BALK IS BIJ TIMOTHY NOOIT AANGEKOMEN. Er zaten drie dingen onder,
+ * en ze zijn niet alle drie even hard. Ik schrijf er daarom bij wat ik van elk ECHT
+ * gemeten heb (Chromium, twee echte builds, een nagebootste publicatie).
+ *
+ * **1. De app ging alleen kijken bij een TABBLADWISSEL — aantoonbaar.** `visibilitychange`
+ * was de enige aanleiding, met bovendien een ondergrens van een kwartier waarvan de klok
+ * bij het opstarten begint. Nu kijkt ze meteen bij het aankoppelen één keer.
+ * ⚠ Dat lost het geval "tabblad staat acht uur zichtbaar open" NIET op: dan blijft het bij
+ * die ene controle tot je van tabblad wisselt. Een periodieke controle staat op de open
+ * lijst; ze hier stil invoeren zou een verzoek per kwartier naar de server sturen zonder
+ * dat iemand daarom gevraagd heeft.
+ *
+ * **2. Bij een F5 kwam de ontdekking te laat — NIET REPRODUCEERBAAR.** De voortgangsnota
+ * schreef dat een F5 geen balk gaf. Ik heb dat in een echte browser nagespeeld en de balk
+ * verscheen er wél, zowel vóór als ná deze ronde. Sterker: `registerSW.js` registreert de
+ * service worker op `window.load`, en dat is ruim ná de eerste render — een
+ * `controllerchange` uit die registratie kán onze luisteraar niet inhalen. **De bewering
+ * uit de nota is dus niet bewezen, en ik laat ze hier niet als feit staan.**
+ * Wat er wél gebeurd is: we vragen bij het opstarten nu óók rechtstreeks aan de browser
+ * wat er klaarstaat (`registration.waiting` en `.installing`) en luisteren naar
+ * `updatefound`. Dat is een echte extra weg, ook al is de wedloop die hem rechtvaardigde
+ * niet aangetoond.
+ *
+ * **3. `hadAlEenBaas` schakelde de balk een hele sessie uit — AANTOONBAAR, en dit is de
+ * zware.** De vlag werd ÉÉN keer bepaald, bij het aankoppelen, en stond op `const`. Start
+ * een pagina ONgecontroleerd (het allereerste bezoek, of na een harde herlaadbeurt met
+ * Ctrl+Shift+R), dan stond ze op `false` en zweeg de balk de rest van de sessie — ook toen
+ * er wél een nieuwe versie kwam. Gemeten, vóór en ná: vóór geen balk, ná wél.
+ * Nu schuift de vlag mee: de eerste OVERNAME telt niet (er was nog niets), elke volgende
+ * wél. ⚠ Eén randgeval blijft: begint de pagina ongecontroleerd en komt de eerste update
+ * binnen vóór die eerste overname, dan wordt ze nog steeds ingeslikt. Dat is verdedigbaar
+ * (je hebt net verse bestanden van het net gehaald) maar het is een keuze, geen wet.
  *
  * Geeft een opzegfunctie terug, en doet niets in een omgeving zonder service worker
  * (de testomgeving, of een browser die ze niet ondersteunt).
@@ -164,11 +287,86 @@ export function volgServiceWorker(nu: () => number = () => Date.now()): () => vo
   const sw = navigator.serviceWorker
   // Bij het ALLEREERSTE bezoek neemt de service worker ook het roer over, en dan is er
   // niets bijgewerkt: er was gewoon nog niets. Daarom kijken we of er al een baas was.
-  const hadAlEenBaas = sw.controller !== null
+  //
+  // ⚠ EN DEZE VLAG SCHUIFT MEE (fout 3 hierboven). Ze stond op `const`, dus een pagina
+  // die ongecontroleerd startte, kreeg de rest van haar leven geen enkele melding meer.
+  let hadAlEenBaas = sw.controller !== null
   let laatsteControle = nu()
+  let gestopt = false
+  // De `updatefound`-luisteraar hoort er maar één keer op te staan. Zonder deze vlag kwam
+  // er bij elke tabbladwissel een tweede bij. ⚠ De kost daarvan is GEEN dubbele melding —
+  // `meldNieuweVersie` is idempotent — maar een lek van luisteraars die nooit opgeruimd
+  // worden. Die correctie komt uit een doorlichting; ik had het eerst te sterk opgeschreven.
+  let registratieGevolgd = false
+  // Welke installerende workers we al volgen; zie `volgInstallatie`.
+  const gevolgdeInstallaties = new WeakSet<ServiceWorker>()
+
+  /**
+   * Melden, maar alleen wanneer er iets te VERVANGEN viel.
+   *
+   * ⚠ HIER STOND OOK EEN CONTROLE OP `gestopt`, EN DIE WAS DOOD. Een mutatietest beet er
+   * niet op, en dat bleek terecht: élk pad hiernaartoe kijkt zelf al naar `gestopt` (de
+   * `.then` van `kijkNu`, de ingang van `volgInstallatie`, en de `statechange`-luisteraar).
+   * Weggehaald in plaats van bewaakt — een mutatie die niet bijt, is even vaak een dode
+   * tak als een testgat (regel sinds ronde 73).
+   */
+  function meldAlsUpdate() {
+    if (hadAlEenBaas) meldNieuweVersie()
+  }
 
   function opWissel() {
     if (hadAlEenBaas) meldNieuweVersie()
+    // De eerste overname is geen update — maar vanaf nu telt elke volgende er wél een.
+    else hadAlEenBaas = true
+  }
+
+  /**
+   * Volgt een service worker die aan het installeren is tot hij klaarstaat.
+   *
+   * ⚠ `gestopt` wordt hier OOK gelezen (doorlichting ronde 99). Deze luisteraar en die op
+   * `updatefound` worden nooit met `removeEventListener` afgehaald — een service worker
+   * die aan het installeren is, is geen element dat je netjes kan opruimen. Zonder deze
+   * controle kon `meldNieuweVersie()` dus nog afgaan ná het opzeggen. In de app doet dat
+   * niets (er wordt nooit opgezegd), maar het is een val voor elke volgende aanroeper.
+   */
+  function volgInstallatie(wachtende: ServiceWorker | null | undefined) {
+    if (!wachtende || gestopt || gevolgdeInstallaties.has(wachtende)) return
+    if (wachtende.state === 'installed') {
+      meldAlsUpdate()
+      return
+    }
+    // ⚠ En hooguit één luisteraar per worker. `kijkNu` draait bij elke tabbladwissel; drie
+    // wissels tijdens één installatie gaven vier luisteraars op dezelfde worker.
+    gevolgdeInstallaties.add(wachtende)
+    wachtende.addEventListener?.('statechange', () => {
+      if (!gestopt && wachtende.state === 'installed') meldAlsUpdate()
+    })
+  }
+
+  /** Vraag de browser wat er klaarstaat, en laat hem opnieuw kijken. */
+  function kijkNu() {
+    try {
+      const belofte = sw.getRegistration?.()
+      if (!belofte) return
+      void belofte
+        .then((r) => {
+          if (!r || gestopt) return undefined
+          // Staat er al eentje te wachten of te installeren? Dan hoeft niemand op een
+          // gebeurtenis te wachten die misschien al voorbij is.
+          if (r.waiting) meldAlsUpdate()
+          volgInstallatie(r.installing)
+          if (!registratieGevolgd) {
+            registratieGevolgd = true
+            r.addEventListener?.('updatefound', () => {
+              if (!gestopt) volgInstallatie(r.installing)
+            })
+          }
+          return r.update?.()
+        })
+        .catch(() => {})
+    } catch {
+      // Een browser die dit niet kent, laat de rest gewoon werken.
+    }
   }
 
   function opZichtbaar() {
@@ -177,16 +375,15 @@ export function volgServiceWorker(nu: () => number = () => Date.now()): () => vo
     laatsteControle = nu()
     // Stil: lukt het niet, dan verandert er niets en merkt de gebruiker het pas
     // wanneer een onderdeel niet geladen raakt.
-    try {
-      void sw.getRegistration?.().then((r) => r?.update()).catch(() => {})
-    } catch {
-      // Een browser die dit niet kent, laat de rest gewoon werken.
-    }
+    kijkNu()
   }
 
   sw.addEventListener('controllerchange', opWissel)
   if (typeof document !== 'undefined') document.addEventListener('visibilitychange', opZichtbaar)
+  // ⚠ METEEN ÉÉN KEER (fout 1 hierboven). Niet pas na een kwartier én een tabbladwissel.
+  kijkNu()
   return () => {
+    gestopt = true
     sw.removeEventListener('controllerchange', opWissel)
     if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', opZichtbaar)
   }

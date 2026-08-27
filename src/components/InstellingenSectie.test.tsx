@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { ComponentProps } from 'react'
 import { InstellingenSectie } from './InstellingenSectie'
 import { InstellingenProvider } from '../instellingen'
@@ -36,6 +36,12 @@ function toon(props: Partial<ComponentProps<typeof InstellingenSectie>> = {}) {
 
 beforeEach(() => {
   localStorage.clear()
+})
+
+// ⚠ De versiekaart haalt `versie.json` op. Zonder deze opruiming lekt een gestubde
+// `fetch` naar de volgende test — en dan slaagt een test om de verkeerde reden.
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 describe('InstellingenSectie', () => {
@@ -239,6 +245,65 @@ describe('InstellingenSectie — "Wat wil je zien?" (ronde 75)', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Analyse' }))
     expect(screen.getByRole('checkbox', { name: 'Analyse' })).not.toBeChecked()
     expect(JSON.parse(localStorage.getItem('fk_verborgen_paginas') ?? '[]')).toEqual(['analyse'])
+  })
+
+  // --- Ronde 99: welke versie draai je? ------------------------------------
+  //
+  // ⚠ De bouwdatum komt uit `versie.json`, dat de bouwstap maakt. In de testomgeving
+  // draait die stap niet, dus moet een test hem zelf aanreiken. Dat is meteen het bewijs
+  // dat de kaart écht van dat bestand afhangt.
+  function stubVersieBestand(inhoud: unknown | null) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        inhoud === null
+          ? ({ ok: false, json: async () => ({}) } as unknown as Response)
+          : ({ ok: true, json: async () => inhoud } as unknown as Response),
+      ),
+    )
+  }
+
+  it('zegt wanneer deze versie gebouwd is', async () => {
+    // ⚠ Timothy zag na een publicatie nog de oude app en had geen enkele manier om na te
+    // kijken waar hij stond. Een balk die zegt "er is een nieuwe versie" is pas te
+    // vertrouwen wanneer je ook kan zien wélke je nu hebt.
+    stubVersieBestand({ gebouwd: '2026-08-27T01:12:00.000Z' })
+    toon()
+    expect(await screen.findByRole('heading', { name: 'Deze versie' })).toBeInTheDocument()
+    expect(screen.getByText(/^Deze versie is van /)).toHaveTextContent('2026')
+  })
+
+  it('laat de kaart WEG wanneer er geen versiebestand is', async () => {
+    // ⚠ De ontwikkelserver draait de bouwstap niet, en offline is het bestand er vóór de
+    // eerste cache evenmin. Liever niets tonen dan een lege of verzonnen datum.
+    //
+    // ⚠ Deze tak was in mijn eerste opzet ONBEREIKBAAR — de bouwtijd zat toen via een
+    // `define` in de code en was dus altijd ingevuld, ook in de tests. Een doorlichting
+    // wees dat aan: het commentaar verantwoordde een geval dat niet kon voorkomen.
+    stubVersieBestand(null)
+    toon()
+    await screen.findByRole('heading', { name: 'Begin opnieuw' })
+    expect(screen.queryByRole('heading', { name: 'Deze versie' })).toBeNull()
+  })
+
+  it('zet die kaart NIET onder "Begin opnieuw"', async () => {
+    // ⚠ De zin boven deze pagina belooft dat de knop die alles wist helemaal onderaan
+    // staat (ronde 66, en ronde 75 liep tegen precies die belofte aan). Een nieuwe kaart
+    // eronder maakt die zin onwaar — en dat is de fout die deze pagina al twee keer
+    // gemaakt heeft.
+    stubVersieBestand({ gebouwd: '2026-08-27T01:12:00.000Z' })
+    toon()
+    const versie = await screen.findByRole('heading', { name: 'Deze versie' })
+    const opnieuw = screen.getByRole('heading', { name: 'Begin opnieuw' })
+    expect(versie.compareDocumentPosition(opnieuw) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('noemt de nieuwe kaart ook in de wegwijzer bovenaan', async () => {
+    // ⚠ Diezelfde zin is al twee keer onwaar geworden doordat er een kaart bijkwam
+    // (ronde 66 en 75). Een wegwijzer die een kaart overslaat, is dezelfde fout.
+    stubVersieBestand({ gebouwd: '2026-08-27T01:12:00.000Z' })
+    toon()
+    expect(screen.getByText(/welke versie je draait/)).toBeInTheDocument()
   })
 
   it('noemt de kaart in de zin onder de titel', () => {

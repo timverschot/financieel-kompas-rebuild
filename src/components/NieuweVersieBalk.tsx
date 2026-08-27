@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { herlaadApp, isNieuweVersieKlaar, volgNieuweVersie, volgServiceWorker } from '../utils/appVersie'
+import { herlaadApp, isNieuweVersieKlaar, startVersiewacht, volgNieuweVersie } from '../utils/appVersie'
 import { useT } from '../i18n'
 
 /**
@@ -33,15 +33,26 @@ export function NieuweVersieBalk() {
   const [klaar, setKlaar] = useState(isNieuweVersieKlaar)
   const [weggeklikt, setWeggeklikt] = useState(false)
 
+  // ⚠ RONDE 99 — DEZE COMPONENT LUISTERT ALLEEN NOG MEE.
+  //
+  // Tot deze ronde startte ze hier zélf `volgServiceWorker()`. Dat is te laat: `registerSW.js`
+  // registreert zich op `window.load`, dus op het moment dat dit effect draait bestaat de
+  // registratie vaak nog niet — en dan komt de app nooit bij `registration.waiting`. `main.tsx`
+  // start het wachten nu vóór het renderen (`startVersiewacht`). De oudere verklaring ("bij een
+  // F5 heeft de service worker het roer al overgenomen") is niet reproduceerbaar gebleken; zie
+  // `utils/appVersie.ts`.
   useEffect(() => {
+    // ⚠ EN TOCH NOG EEN KEER STARTEN, ALS VANGNET (doorlichting ronde 99). `main.tsx` doet
+    // het vóór het renderen — dat is de bedoeling en dat is waar deze ronde over gaat —
+    // maar géén enkele test raakt `main.tsx`. Haal je die regel daar weg, dan blijven alle
+    // tests groen en is de klacht van Timothy precies terug. `startVersiewacht` is
+    // idempotent, dus deze tweede aanroep kost niets en houdt de app overeind wanneer de
+    // eerste ooit sneuvelt of verdwijnt.
+    startVersiewacht()
     const stopVolgen = volgNieuweVersie(() => setKlaar(true))
-    const stopSw = volgServiceWorker()
     // Was het al zo vóór deze component bestond, dan meteen tonen.
     if (isNieuweVersieKlaar()) setKlaar(true)
-    return () => {
-      stopVolgen()
-      stopSw()
-    }
+    return stopVolgen
   }, [])
 
   const tonen = klaar && !weggeklikt

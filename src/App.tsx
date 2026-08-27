@@ -184,6 +184,8 @@ import { kostenOmTeHeropenen, kostenVanAfrekening } from './utils/afrekeningverw
 import { telGezinslidGebruik } from './utils/gezinslidverwijdering'
 import { telVasteLastVerwijzingen, vasteLastUndoTekst } from './utils/vastelastverwijdering'
 import { postNaamMetKenmerk } from './utils/postkenmerk'
+import { nogNietGemeld, onthoudGemeld, vergeetGemeld, type GeweigerdeRegel } from './utils/geweigerdeRegels'
+import { synczin } from './utils/synczin'
 import { categorieUndoTekst, telCategorieVerwijderen } from './utils/categorieverwijdering'
 import { nieuwId } from './data/sync/id'
 import { inkomstenPerCategorie, maandInkomsten, maandUitgaven, uitgavenPerCategorie, type CategorieUitgave } from './utils/overzicht'
@@ -202,7 +204,7 @@ import { bouwMeldingen } from './utils/meldingen'
 import { isGestopt } from './utils/vastelast'
 import { boekingDieDezePostAfdekt, maandVooruitblik, vasteLastTransactieId } from './utils/vooruitblik'
 import { useInstellingen } from './instellingen'
-import { huidigeMaand, maandJaarLabel, vandaag } from './utils/datum'
+import { dagJaar, huidigeMaand, maandJaarLabel, vandaag, naarDatumTekst } from './utils/datum'
 import { saldoVanRekening, totaalSaldoVan } from './utils/saldo'
 import { Balk, Bedrag, EersteStapKnop, Kaart, Kengetal, Leeg, PaginaKop } from './ui/basis'
 import { useT } from './i18n'
@@ -280,26 +282,62 @@ export function App() {
   const [ordeningen, setOrdeningen] = useState<Ordening[]>([])
   const [waarderingen, setWaarderingen] = useState<Waardering[]>([])
   const [ongeldig, setOngeldig] = useState(0)
-  // Regels uit de euro-tijd die geweigerd zijn. Apart van 'ongeldig', want de
-  // oorzaak én wat je eraan doet zijn anders. Zie LOG_FORMAAT in sync/events.ts.
-  const [verouderd, setVerouderd] = useState(0)
-  // Regels uit een NIEUWERE versie dan deze app: dan draait DIT toestel achter.
-  const [teNieuw, setTeNieuw] = useState(0)
-  // De banner mag weggeklikt worden; anders staat hij de hele sessie op je scherm.
-  const [formaatMeldingWeg, setFormaatMeldingWeg] = useState(false)
+  // ⚠ RONDE 100 — WELKE regels geweigerd zijn, en alleen die we nog niet gemeld hebben.
+  //
+  // Timothy, 26 augustus 2026: hij klikte de melding weg, drukte F5, en ze stond er weer —
+  // *"en verder kan ik ook niets doen."* Allebei klopte het. Een geweigerde regel wordt
+  // nooit aan het eigen logboek toegevoegd (terecht: ze is niet te vertrouwen), dus de
+  // volgende ronde ziet haar opnieuw als onbekend. En het wegklikken leefde in `useState`,
+  // dus het overleefde geen herlaadbeurt. Samen: een melding die eeuwig terugkomt.
+  //
+  // Nu onthoudt de app per regel-ID wat ze al gezegd heeft (`utils/geweigerdeRegels.ts`).
+  // Eén keer wegklikken volstaat, en de melding komt terug zodra er een NIEUWE geweigerde
+  // regel bij komt — want dan is er weer iets te zeggen.
+  const [geweigerd, setGeweigerd] = useState<GeweigerdeRegel[]>([])
+  // De oudste geweigerde regel, om te kunnen zeggen wélke het is. `null` wanneer geen
+  // enkel tijdstip bruikbaar is; dan laat de melding die zin gewoon weg.
+  //
+  // ⚠ "Oudste" betekent hier: de oudste van wat er NU gemeld wordt. Klikte je eerder een
+  // nog oudere regel weg, dan telt die niet meer mee — de melding gaat over wat er nieuw
+  // te zeggen is, niet over de hele geschiedenis.
+  //
+  // ⚠ TWEE VALSTRIKKEN, allebei gevonden bij het doorlichten van deze ronde.
+  //  1. `Math.min(...lijst)` zet elk element als apart argument op de stapel. Bij
+  //     tienduizenden geweigerde regels — een toestel dat een heel oud logboek ophaalt —
+  //     loopt die stapel over. `reduce` doet hetzelfde zonder die grens.
+  //  2. Het schema begrenst `tijdstip` niet: `JSON.parse('1e999')` geeft `Infinity`, en
+  //     `new Date(Infinity).toISOString()` GOOIT. Dat zou het hele Overzicht neerhalen —
+  //     in de enige code die per definitie alleen kapotte gegevens te zien krijgt.
+  // De twee soorten apart: ze vragen een ander antwoord van de gebruiker, en ze worden
+  // allebei geteld in de melding.
+  const teOude = geweigerd.filter((g) => g.reden === 'te-oud')
+  const teNieuwe = geweigerd.filter((g) => g.reden === 'te-nieuw')
+  const oudsteGeweigerd = geweigerd
+    .map((g) => g.tijdstip)
+    // ⚠ `t > 0 && t <= 8.64e15` volstaat: dat wijst `Infinity` én `NaN` allebei al af (elke
+    // vergelijking met NaN is onwaar). Hier stond ook `Number.isFinite(t)`, en een
+    // mutatietest liet zien dat geen enkele test het verschil merkte — een tak die niets
+    // doet, hoort weg.
+    .filter((t) => t > 0 && t <= 8.64e15)
+    .reduce<number | null>((oudste, t) => (oudste === null || t < oudste ? t : oudste), null)
 
   // Onthoudt wat een synchronisatie of herstel niet kon lezen. Bewust op ÉÉN plek:
   // deze tellers werden op vier plaatsen aangeroepen en op één daarvan gelezen, en
   // dat was net de plek waar de fout gemeld werd — "opnieuw verbinden met Drive".
   // Dan zwijgt de app precies wanneer ze zou moeten spreken.
-  function onthoudFormaat(r: { verouderd: number; teNieuw: number }) {
-    if (r.verouderd > 0) {
-      setVerouderd((n) => Math.max(n, r.verouderd))
-      setFormaatMeldingWeg(false)
-    }
-    if (r.teNieuw > 0) {
-      setTeNieuw((n) => Math.max(n, r.teNieuw))
-      setFormaatMeldingWeg(false)
+  // ⚠ RONDE 100 — DE TWEE TELLERS ZIJN HIER WEG. Ze hielden alleen nog een AANTAL bij, en
+  // dat was precies het probleem: een teller kan niet zien of het om dezelfde geweigerde
+  // regel gaat als de vorige keer. Wat de melding stuurt, zijn nu de id's. De tellers in
+  // de losse statuszinnen ("… geweigerd") komen rechtstreeks uit het resultaat van die
+  // ene handeling en blijven staan.
+  function onthoudFormaat(r: { geweigerd: GeweigerdeRegel[] }) {
+    // Alleen wat we nog NIET gemeld hebben.
+    const verse = nogNietGemeld(r.geweigerd)
+    if (verse.length > 0) {
+      setGeweigerd((oud) => {
+        const bekend = new Set(oud.map((g) => g.id))
+        return [...oud, ...verse.filter((g) => !bekend.has(g.id))]
+      })
     }
   }
   // De terugknop (ronde 59).
@@ -900,9 +938,12 @@ export function App() {
         if (!backendRef.current) backendRef.current = new DriveBackend()
         setVerbonden(true)
         const r = await syncEnOnthoud(backendRef.current)
-        await herlaad()
+        // ⚠ ONTHOUDEN VÓÓR HERLADEN. Struikelt `herlaad()`, dan springt de `catch` erin en
+        // waren de geweigerde regels van deze ronde spoorloos — een zwijgpad, en net dat
+        // is wat deze ronde moest wegnemen.
         onthoudFormaat(r)
-        if (actief) meld(t('Automatisch gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald.', { gepusht: r.gepusht, opgehaald: r.opgehaald }))
+        await herlaad()
+        if (actief) meld(synczin(r, true, t))
       } catch {
         // Stil laten mislukken: geen storende melding bij het opstarten.
       }
@@ -998,8 +1039,11 @@ export function App() {
     try {
       const tekst = await bestand.text()
       const r = await importeerBackup(tekst)
-      await herlaad()
+      // ⚠ Onthouden vóór herladen. Struikelt `herlaad()`, dan las je "Herstellen mislukte"
+      // terwijl het herstel wél gelukt was — alleen het scherm liep achter — én waren de
+      // geweigerde regels van dat herstel spoorloos.
       onthoudFormaat(r)
+      await herlaad()
       // ⚠ RONDE 68 — DE MELDING VERZWEEG ÉÉN VAN DE VIJF UITKOMSTEN. `importeerBackup`
       // telt ook regels uit een NIEUWERE versie van de app (`teNieuw`), en die kwamen
       // in geen enkele zin voor. Zet je op je oude telefoon een back-up terug die je
@@ -1011,27 +1055,44 @@ export function App() {
         // ⚠ Alleen wanneer er ook ÉCHT niets bijgekomen is. Een logboek bevat regels
         // van álle toestellen, dus een bestand kan tegelijk regels toevoegen én regels
         // weigeren — en dan zou "Niets hersteld" een tweede onwaarheid zijn.
-        r.teNieuw > 0 && r.toegevoegd === 0
+        // ⚠ RONDE 100 — "NIETS HERSTELD" MAG MAAR ÉÉN REDEN NOEMEN ALS ER MAAR ÉÉN IS.
+        // Een back-up kan tegelijk regels uit de euro-tijd én regels uit een nieuwere
+        // versie bevatten. Stond er dan "dit bestand komt van een nieuwere versie
+        // ({n} regels)", dan werden de oude regels volledig verzwegen. Daarom telt die
+        // zin alleen wanneer er géén oude regels bij zitten, en noemt de zin daaronder
+        // ze allebei.
+        r.teNieuw > 0 && r.verouderd === 0 && r.toegevoegd === 0
           ? t(
               'Niets hersteld: dit bestand komt van een nieuwere versie van de app ({n} regels). Werk deze app eerst bij en probeer het dan opnieuw.',
               { n: r.teNieuw },
             )
-          : r.verouderd > 0
+          : r.verouderd > 0 && r.teNieuw > 0
             ? t(
-                'Hersteld: {toegevoegd} toegevoegd, {overgeslagen} al aanwezig, {ongeldig} ongeldig, {verouderd} uit een te oude versie (niet ingelezen).',
+                'Hersteld: {toegevoegd} toegevoegd, {overgeslagen} al aanwezig, {ongeldig} ongeldig, {verouderd} uit een te oude versie en {teNieuw} uit een nieuwere versie (niet ingelezen).',
                 {
                   toegevoegd: r.toegevoegd,
                   overgeslagen: r.overgeslagen,
                   ongeldig: r.ongeldig,
                   verouderd: r.verouderd,
+                  teNieuw: r.teNieuw,
                 },
               )
-            : t('Hersteld: {toegevoegd} toegevoegd, {overgeslagen} al aanwezig, {ongeldig} ongeldig.', {
-                toegevoegd: r.toegevoegd,
-                overgeslagen: r.overgeslagen,
-                ongeldig: r.ongeldig,
-              }),
-        r.teNieuw > 0 && r.toegevoegd === 0 ? 'fout' : 'ok',
+            : r.verouderd > 0
+              ? t(
+                  'Hersteld: {toegevoegd} toegevoegd, {overgeslagen} al aanwezig, {ongeldig} ongeldig, {verouderd} uit een te oude versie (niet ingelezen).',
+                  {
+                    toegevoegd: r.toegevoegd,
+                    overgeslagen: r.overgeslagen,
+                    ongeldig: r.ongeldig,
+                    verouderd: r.verouderd,
+                  },
+                )
+              : t('Hersteld: {toegevoegd} toegevoegd, {overgeslagen} al aanwezig, {ongeldig} ongeldig.', {
+                  toegevoegd: r.toegevoegd,
+                  overgeslagen: r.overgeslagen,
+                  ongeldig: r.ongeldig,
+                }),
+        r.teNieuw > 0 && r.verouderd === 0 && r.toegevoegd === 0 ? 'fout' : 'ok',
       )
     } catch (e) {
       meldBackup(t('Herstellen mislukte: {fout}', { fout: e instanceof Error ? e.message : t('onbekende fout') }), 'fout')
@@ -2041,19 +2102,12 @@ export function App() {
       setVerbonden(true)
       if (!backendRef.current) backendRef.current = new DriveBackend()
       const r = await syncEnOnthoud(backendRef.current)
-      await herlaad()
+      // ⚠ Onthouden vóór herladen: zie de opstart-synchronisatie hierboven.
       onthoudFormaat(r)
-      // Het aantal geweigerde regels hoort IN de statusregel: "0 opgehaald" terwijl
-      // er honderden regels geweigerd zijn, is misleidend.
-      meld(
-        r.verouderd > 0 || r.teNieuw > 0
-          ? t('Gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald, {geweigerd} niet leesbaar.', {
-              gepusht: r.gepusht,
-              opgehaald: r.opgehaald,
-              geweigerd: r.verouderd + r.teNieuw,
-            })
-          : t('Gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald.', { gepusht: r.gepusht, opgehaald: r.opgehaald }),
-      )
+      await herlaad()
+      // Het aantal niet-ingelezen regels hoort IN de statusregel: "0 opgehaald" terwijl
+      // er honderden regels afgevallen zijn, is misleidend.
+      meld(synczin(r, false, t))
     } catch (e) {
       meld(t('Verbinden mislukte: {fout}', { fout: e instanceof Error ? e.message : t('onbekende fout') }), 'fout')
     } finally {
@@ -2066,19 +2120,12 @@ export function App() {
     setBezig(true)
     try {
       const r = await syncEnOnthoud(backendRef.current)
-      await herlaad()
+      // ⚠ Onthouden vóór herladen: zie de opstart-synchronisatie hierboven.
       onthoudFormaat(r)
-      // Het aantal geweigerde regels hoort IN de statusregel: "0 opgehaald" terwijl
-      // er honderden regels geweigerd zijn, is misleidend.
-      meld(
-        r.verouderd > 0 || r.teNieuw > 0
-          ? t('Gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald, {geweigerd} niet leesbaar.', {
-              gepusht: r.gepusht,
-              opgehaald: r.opgehaald,
-              geweigerd: r.verouderd + r.teNieuw,
-            })
-          : t('Gesynchroniseerd: {gepusht} verstuurd, {opgehaald} opgehaald.', { gepusht: r.gepusht, opgehaald: r.opgehaald }),
-      )
+      await herlaad()
+      // Het aantal niet-ingelezen regels hoort IN de statusregel: "0 opgehaald" terwijl
+      // er honderden regels afgevallen zijn, is misleidend.
+      meld(synczin(r, false, t))
     } catch (e) {
       meld(t('Synchroniseren mislukte: {fout}', { fout: e instanceof Error ? e.message : t('onbekende fout') }), 'fout')
     } finally {
@@ -2113,6 +2160,13 @@ export function App() {
     // zou de app pas bij de volgende herstart weer beginnen te tellen.
     await zorgVoorEersteGebruik(vandaag())
     setBackupMoment(await leesBackupMoment())
+    // ⚠ RONDE 100 — OOK WAT DE APP AL GEMELD HEEFT. Dat staat in `localStorage` en
+    // overleeft `wisAlles` dus. Zonder deze twee regels zwijgt de app na een schone lei
+    // over regels die ze vóór het wissen al eens gemeld had — terwijl je op dat moment
+    // juist opnieuw begint. En de melding die op je scherm stond, bleef staan en praatte
+    // over gegevens die er niet meer zijn.
+    vergeetGemeld()
+    setGeweigerd([])
     return resultaat
     } finally {
       wisLoopt.current = false
@@ -2735,31 +2789,92 @@ export function App() {
       {pagina === 'overzicht' && (
         <>
           {/* Geweigerde regels. Bewust een eigen, uitgeschreven melding: dit gaat
-              over GELD dat anders honderd keer te klein op je scherm zou staan, en
-              de gebruiker moet weten wat hij eraan kan doen.
+              over GELD dat anders honderd keer te klein op je scherm zou staan.
 
               De tekst zegt niet dát die regels uit de euro-tijd komen — dat wéét de
-              app niet, ze weet alleen dat het etiket ontbreekt. Ze zegt wat er aan
-              de hand is en wat je eraan kan doen. */}
-          {(verouderd > 0 || teNieuw > 0) && !formaatMeldingWeg && (
+              app niet, ze weet alleen dat het etiket ontbreekt.
+
+              ⚠ RONDE 100 — DRIE DINGEN WAREN HIER STUK, en Timothy liep tegen alle drie
+              tegelijk aan.
+
+              1. **De melding vergat dat ze het al gezegd had.** Ze hing aan een teller, en
+                 een geweigerde regel wordt nooit aan het logboek toegevoegd — dus telde de
+                 volgende ronde haar opnieuw. Wegklikken leefde bovendien in `useState` en
+                 overleefde geen F5. Samen: een melding die eeuwig terugkomt. Nu onthoudt
+                 de app per regel-ID wat ze gezegd heeft.
+              2. **De raad wees naar het verkeerde toestel.** Er stond *"Komen die regels van
+                 een ander toestel, werk de app daar dan ook bij"*. Dat helpt in geen van
+                 beide gevallen. Bij een TE NIEUWE regel draait dít toestel achter en moet
+                 de app HIER bijgewerkt worden — dat zegt de eigen zin daarover ook (zie
+                 `data/sync/events.ts`). En bij een regel uit de euro-tijd verandert er van
+                 bijwerken niets: ze staat al in het logboek en geen enkel toestel schrijft
+                 haar opnieuw. De app gaf dus een opdracht die niets oploste.
+              3. **Ze zei niet over WELKE regel het ging.** Geen datum, niets waarmee je kon
+                 beoordelen of het erg was. */}
+          {/* ⚠ DEZE MELDING DRAAGT ZELF GEEN ROL. Ze verschijnt na een handeling die tijd
+              kost (synchroniseren, herstellen, of de stille ronde om de 45 seconden), dus
+              wie niet kijkt zou er niets van horen. Het voorlezen gebeurt door
+              `geweigerdAankondiging` — een vak dat er áltijd staat, buiten deze kolom.
+
+              Waarom niet gewoon een `role="status"` hieromheen: een `role="status"` die pas
+              samen met zijn tekst in de pagina verschijnt, wordt door sommige schermlezers
+              overgeslagen (ronde 65). En een vak dat hier altíjd staat, is een extra kind
+              van `.stapel` — dat is een flexkolom met 16px tussenruimte, dus je zou op élk
+              overzicht een gat van 16 pixels krijgen, en de intro-animatie van elk blok
+              eronder zou een plaats opschuiven. */}
+          {geweigerd.length > 0 && (
             <p
               className="kaart kaart-compact"
               style={{ background: 'var(--negative-soft)', borderColor: 'var(--negative)', color: 'var(--text)' }}
             >
-              {teNieuw > 0
-                ? t(
-                    'Let op: {n} regel(s) komen van een toestel met een NIEUWERE versie van de app. Deze app kan ze nog niet lezen, dus ze zijn niet ingelezen. Werk deze app bij (sluit hem helemaal af en open hem opnieuw) en probeer het dan nog eens.',
-                    { n: teNieuw },
-                  )
-                : t(
-                    'Let op: van {n} regel(s) kan de app niet zien in welke eenheid de bedragen staan. Ze zijn daarom NIET ingelezen: als eenheid gelezen zou € 2.400 er als € 24 komen te staan. Er is niets van je huidige gegevens veranderd. Komen die regels van een ander toestel, werk de app daar dan ook bij.',
-                    { n: verouderd },
-                  )}
+              {/* ⚠ TWEE ZINNEN NAAST ELKAAR, geen keuze tussen twee. Hier stond een
+                  `? :`: waren er allebei soorten geweigerde regels, dan hoorde je alleen
+                  over de te nieuwe en verzwegen we de andere volledig. Met 1 te nieuwe en
+                  3 uit de euro-tijd las je "1 regel" en over die 3 geen woord. */}
+              {teNieuwe.length > 0 &&
+                t(
+                  'Let op: {n} regel(s) komen van een toestel met een NIEUWERE versie van de app. Deze app kan ze nog niet lezen, dus ze zijn niet ingelezen. Werk deze app bij (sluit hem helemaal af en open hem opnieuw) en probeer het dan nog eens.',
+                  { n: teNieuwe.length },
+                )}{' '}
+              {teOude.length > 0 &&
+                t(
+                  'Let op: van {n} regel(s) kan de app niet zien in welke eenheid de bedragen staan. Ze zijn daarom NIET ingelezen: als centen gelezen zou € 2.400 er als € 24 komen te staan. Er is niets van je huidige gegevens veranderd.',
+                  { n: teOude.length },
+                )}{' '}
+              {/* ⚠ WELKE regel, en niet alleen hoeveel. De datum komt uit de regel zelf;
+                  wat er níét te vertrouwen is, zijn haar BEDRAGEN.
+
+                  `naarDatumTekst` en niet `toISOString()`: dat laatste rekent in de
+                  WERELDTIJD. Een regel die hier om 01:30 geschreven werd, kwam dan als de
+                  dag ervóór op het scherm — precies waar `utils/datum.ts` in zijn kop
+                  tegen waarschuwt.
+
+                  En enkelvoud bij één regel: "de oudste" doet vermoeden dat er meer zijn. */}
+              {oudsteGeweigerd !== null &&
+                (geweigerd.length === 1
+                  ? t('Die regel is van {datum}.', { datum: dagJaar(naarDatumTekst(new Date(oudsteGeweigerd))) })
+                  : t('De oudste is van {datum}.', { datum: dagJaar(naarDatumTekst(new Date(oudsteGeweigerd))) }))}{' '}
+              {/* ⚠ Alleen wanneer er verder niets aan de hand is. Deze zin stond er zodra
+                  álle geweigerde regels uit de euro-tijd kwamen — óók wanneer de melding
+                  dááronder meldde dat er kapotte regels in je gegevens zitten. Dan las je
+                  "je hoeft hier niets voor te doen" met een tweede rode melding eronder.
+                  En de belofte "de rest van je back-up is gewoon ingelezen" kan deze
+                  melding niet waarmaken — ze weet niet wat er verder gebeurd is; die
+                  halve zin is geschrapt. */}
+              {teOude.length === geweigerd.length &&
+                ongeldig === 0 &&
+                t('Je hoeft hier niets voor te doen: deze regels blijven staan zoals ze zijn.')}
               <button
                 type="button"
                 className="knop knop-ghost knop-klein"
                 style={{ marginLeft: 8 }}
-                onClick={() => setFormaatMeldingWeg(true)}
+                onClick={() => {
+                  // ⚠ Wegklikken is nu blijvend (ronde 100): de id's gaan naar de opslag,
+                  // dus na een herlaadbeurt zwijgt de app over déze regels. Komt er een
+                  // nieuwe geweigerde regel bij, dan verschijnt de melding wél opnieuw.
+                  onthoudGemeld(geweigerd.map((g) => g.id))
+                  setGeweigerd([])
+                }}
               >
                 {t('Verberg')}
               </button>
@@ -2771,7 +2886,7 @@ export function App() {
               className="kaart kaart-compact"
               style={{ background: 'var(--negative-soft)', borderColor: 'var(--negative)', color: 'var(--text)' }}
             >
-              {t('Let op: {n} record(s) werden overgeslagen omdat ze niet aan het schema voldeden.', { n: ongeldig })}
+              {t('Let op: {n} regel(s) werden overgeslagen omdat ze niet aan het schema voldeden.', { n: ongeldig })}
             </p>
           )}
 
@@ -4033,6 +4148,21 @@ export function App() {
   // in de pagina verschijnt, wordt door sommige schermlezers overgeslagen; dan
   // verdwijnt er iets, hoor je niets, en weet je niet dat er een weg terug is. De
   // balk zelf draagt daarom géén rol meer.
+  // ⚠ RONDE 100 — HET VOORLEZEN VAN DE MELDING OVER GEWEIGERDE REGELS.
+  //
+  // Dezelfde aanpak als bij de undo-balk hierboven: een vak dat er ALTIJD staat, leeg
+  // wanneer er niets te melden is, en buiten de kolom met de blokken. Zo hoort ook wie de
+  // pagina niet ziet dat er iets is afgevallen — de melding verschijnt immers ná een
+  // handeling die tijd kost, en soms zelfs zonder dat je iets deed (de stille ronde om de
+  // 45 seconden). De zichtbare melding zelf draagt daarom geen rol.
+  const geweigerdAankondiging = (
+    <p className="alleen-voorlezen" role="status">
+      <span key={geweigerd.map((g) => g.id).join(',')}>
+        {geweigerd.length > 0 ? t('Let op: {n} regel(s) zijn niet ingelezen.', { n: geweigerd.length }) : ''}
+      </span>
+    </p>
+  )
+
   const undoAankondiging = (
     <p className="alleen-voorlezen" role="status">
       <span key={undoTeller}>{undoInfo ? undoInfo.boodschap : ''}</span>
@@ -4201,6 +4331,7 @@ export function App() {
             </div>
           </main>
         </div>
+        {geweigerdAankondiging}
         {undoAankondiging}
         {undoBalk}
         <ErrorBoundary naam="Boeking">{boekingLagen}</ErrorBoundary>
@@ -4273,6 +4404,7 @@ export function App() {
           {paginaInhoud}
         </div>
       </main>
+      {geweigerdAankondiging}
       {undoAankondiging}
       {undoBalk}
       {/* De popup stond buiten elke foutvang: één fout in het invoerformulier

@@ -21,6 +21,7 @@ import {
 import { huidigeMaand, vandaag } from './utils/datum'
 import { vorigeMaand } from './utils/maandafsluiting'
 import { DOSSIER_ONDERDELEN } from './utils/dossieronderdelen'
+import { GEMELD_SLEUTEL } from './utils/geweigerdeRegels'
 
 beforeEach(async () => {
   await Promise.all([
@@ -291,16 +292,33 @@ describe('App', () => {
     return screen.getByText(titel).closest('section, .kaart') as HTMLElement
   }
 
+  /**
+   * ⚠ RONDE 98 — HET INVULFORMULIER ZIT IN EEN VENSTER.
+   *
+   * Tot deze ronde stond onder élke kaart een open formulier, en moest een test met
+   * `within(kaart(…))` zeggen welk van de twee ze bedoelde. Nu opent een knop een venster
+   * en staat er hoogstens één formulier op het scherm — precies het punt van deze ronde.
+   * Het venster hangt buiten de kaart (een portal), dus `within(kaart(…))` vindt het niet.
+   */
+  async function vulVasteLast(
+    user: ReturnType<typeof userEvent.setup>,
+    { knop, formulier, naam, bedrag, opslaan }: { knop: string; formulier: string; naam: string; bedrag: string; opslaan?: string },
+  ): Promise<HTMLElement> {
+    await user.click(screen.getByRole('button', { name: knop }))
+    const form = await screen.findByRole('form', { name: formulier })
+    await user.type(within(form).getByLabelText('Omschrijving'), naam)
+    await user.type(within(form).getByLabelText('Bedrag (€)'), bedrag)
+    if (opslaan !== 'niet') await user.click(within(form).getByRole('button', { name: opslaan ?? 'Toevoegen' }))
+    return form
+  }
+
   it('maakt een vaste post aan en boekt hem in voor de maand', async () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Saldo')
 
     await gaBudget(user, 'Vast')
-    const lasten = kaart('Vaste lasten')
-    await user.type(within(lasten).getByLabelText('Omschrijving'), 'Netflix')
-    await user.type(within(lasten).getByLabelText('Bedrag (€)'), '15')
-    await user.click(within(lasten).getByRole('button', { name: 'Vaste last toevoegen' }))
+    await vulVasteLast(user, { knop: '+ Een vaste last', formulier: 'Nieuwe vaste last', naam: 'Netflix', bedrag: '15' })
 
     await user.click(await screen.findByRole('button', { name: /^Boek in/ }))
 
@@ -317,9 +335,13 @@ describe('App', () => {
     await screen.findByText('Saldo')
 
     await gaBudget(user, 'Vast')
-    const lasten = kaart('Vaste lasten')
-    await user.type(within(lasten).getByLabelText('Omschrijving'), 'Netflix')
-    await user.type(within(lasten).getByLabelText('Bedrag (€)'), '15')
+    const lasten = await vulVasteLast(user, {
+      knop: '+ Een vaste last',
+      formulier: 'Nieuwe vaste last',
+      naam: 'Netflix',
+      bedrag: '15',
+      opslaan: 'niet',
+    })
     // "Loopt tot en met" de maand vóór deze: de post is dus nu al gestopt.
     //
     // Bewust via `vorigeMaand` en NIET via `new Date().setMonth(m - 1)`. Dat laatste
@@ -330,7 +352,7 @@ describe('App', () => {
     // dan plots rood in de CI.
     const maandwaarde = vorigeMaand(huidigeMaand())
     fireEvent.change(within(lasten).getByLabelText('Loopt tot en met'), { target: { value: maandwaarde } })
-    await user.click(within(lasten).getByRole('button', { name: 'Vaste last toevoegen' }))
+    await user.click(within(lasten).getByRole('button', { name: 'Toevoegen' }))
 
     expect(await screen.findByText('Gestopt')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Boek in/ })).not.toBeInTheDocument()
@@ -342,10 +364,7 @@ describe('App', () => {
     await screen.findByText('Saldo')
 
     await gaBudget(user, 'Vast')
-    const lasten = kaart('Vaste lasten')
-    await user.type(within(lasten).getByLabelText('Omschrijving'), 'Netflix')
-    await user.type(within(lasten).getByLabelText('Bedrag (€)'), '15')
-    await user.click(within(lasten).getByRole('button', { name: 'Vaste last toevoegen' }))
+    await vulVasteLast(user, { knop: '+ Een vaste last', formulier: 'Nieuwe vaste last', naam: 'Netflix', bedrag: '15' })
     await user.click(await screen.findByRole('button', { name: /^Boek in/ }))
     await screen.findByText('Geboekt ✓')
 
@@ -360,10 +379,12 @@ describe('App', () => {
     await screen.findByText('Saldo')
 
     await gaBudget(user, 'Vast')
-    const inkomsten = kaart('Vaste inkomsten')
-    await user.type(within(inkomsten).getByLabelText('Omschrijving'), 'Loon')
-    await user.type(within(inkomsten).getByLabelText('Bedrag (€)'), '2400')
-    await user.click(within(inkomsten).getByRole('button', { name: 'Vaste inkomst toevoegen' }))
+    await vulVasteLast(user, {
+      knop: '+ Een vaste inkomst',
+      formulier: 'Nieuwe vaste inkomst',
+      naam: 'Loon',
+      bedrag: '2400',
+    })
 
     // Ze hoort bij de inkomsten te staan — de keuze uitgave/inkomst zit niet meer
     // onderaan het formulier, maar in de kaart waarin je typt.
@@ -659,16 +680,14 @@ describe('App', () => {
     await screen.findByText('Saldo')
 
     await gaBudget(user, 'Vast')
-    const lasten = kaart('Vaste lasten')
-    await user.type(within(lasten).getByLabelText('Omschrijving'), 'Netflix')
-    await user.type(within(lasten).getByLabelText('Bedrag (€)'), '15')
-    await user.click(within(lasten).getByRole('button', { name: 'Vaste last toevoegen' }))
+    await vulVasteLast(user, { knop: '+ Een vaste last', formulier: 'Nieuwe vaste last', naam: 'Netflix', bedrag: '15' })
 
     await user.click(await screen.findByRole('button', { name: new RegExp('^Bewerken — Netflix($|,)') }))
-    const oms = within(kaart('Vaste lasten')).getByLabelText('Omschrijving')
+    const bewerk = await screen.findByRole('form', { name: 'Deze vaste last' })
+    const oms = within(bewerk).getByLabelText('Omschrijving')
     await user.clear(oms)
     await user.type(oms, 'Disney')
-    await user.click(within(kaart('Vaste lasten')).getByRole('button', { name: 'Vaste last wijzigen' }))
+    await user.click(within(bewerk).getByRole('button', { name: 'Vaste last wijzigen' }))
 
     expect(await screen.findByText('Disney')).toBeInTheDocument()
   })
@@ -2017,8 +2036,10 @@ describe('de Budget-pagina na ronde 64', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Budget' })).toBeInTheDocument()
     // Met het formulier van je vaste LASTEN in beeld, niet vijf blokken lager.
+    // ⚠ RONDE 98 — niet meer "het formulier staat in beeld" maar "de knop die het opent
+    // staat in beeld": het invulformulier zit sinds deze ronde in een venster.
     const lasten = (await screen.findByText('Vaste lasten')).closest('section, .kaart') as HTMLElement
-    expect(within(lasten).getByLabelText('Omschrijving')).toBeInTheDocument()
+    expect(within(lasten).getByRole('button', { name: '+ Een vaste last' })).toBeInTheDocument()
     await waitFor(() => expect(window.location.hash).toBe('#/budget/vast'))
   })
 
@@ -2855,133 +2876,105 @@ describe('welke kaarten je op het Overzicht wil zien (ronde 90)', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Ronde 83 — de twee formulieren op Budget → Vast
+// Ronde 98 — er staat nog maar ÉÉN formulier op Budget → Vast
 // ---------------------------------------------------------------------------
-describe('de twee formulieren op Budget → Vast (ronde 83)', () => {
-  it('geeft elk formulier een eigen naam, zodat hun velden uit elkaar te houden zijn', async () => {
-    // ⚠ Negen paren velden met dezelfde labels in de gewone toestand — twee keer "Vaste
-    // omschrijving", twee keer "Bedrag (€)" — en tot veertien met een contract
-    // erbij. Precies de huisregel die ronde 82 in de lijst kwam handhaven, twintig
-    // regels lager geschonden. Een formulier met een naam is een landmark; een
-    // schermlezer kondigt het aan zodra de focus erin komt.
+//
+// ⚠ WAT HIER EERST STOND, EN WAAROM HET WEG IS. De rondes 83, 88 en 92 vochten alle
+// drie tegen hetzelfde: op dit scherm stonden TWEE volledige formulieren onder elkaar
+// (inkomsten en lasten), met negen tot veertien paren velden die exact hetzelfde
+// heetten. Ronde 83 gaf elk formulier een naam (een landmark), ronde 88 haalde het
+// zinloze voorvoegsel "Vaste …" van de labels, en ronde 92 hing achter élke veldnaam een
+// verduidelijking "(vaste last)" / "(vaste inkomst)". Drie rondes rond de oorzaak heen.
+//
+// Ronde 98 haalt de oorzaak weg: het formulier zit nu in een venster, en er kan er maar
+// één tegelijk openstaan. De vijf tests die de omweg bewaakten, konden daardoor niet meer
+// slagen — niet omdat er iets stuk is, maar omdat ze een toestand meten die niet meer
+// bestaat. Wat ervoor in de plaats komt, meet het sterkere feit.
+describe('één formulier tegelijk op Budget → Vast (ronde 98)', () => {
+  it('zet geen enkel formulier op de pagina zelf, alleen twee knoppen', async () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Saldo')
     await gaBudget(user, 'Vast')
 
-    expect(await screen.findByRole('form', { name: 'Nieuwe vaste inkomst' })).toBeInTheDocument()
-    expect(screen.getByRole('form', { name: 'Nieuwe vaste last' })).toBeInTheDocument()
-    // En de twee opslaanknoppen heten niet meer allebei hetzelfde.
-    expect(screen.getByRole('button', { name: 'Vaste inkomst toevoegen' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Vaste last toevoegen' })).toBeInTheDocument()
+    // De twee kaarten staan er nog — met hun lijst, niet met hun formulier.
+    expect(await screen.findByText('Vaste inkomsten')).toBeInTheDocument()
+    expect(screen.getByText('Vaste lasten')).toBeInTheDocument()
+    expect(screen.queryAllByRole('form')).toHaveLength(0)
+    expect(screen.getByRole('button', { name: '+ Een vaste last' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '+ Een vaste inkomst' })).toBeInTheDocument()
   })
 
-  // -------------------------------------------------------------------------------------
-  // Ronde 92 — wat een landmark NIET oploste
-  // -------------------------------------------------------------------------------------
-  //
-  // ⚠ Ronde 83 en ronde 88 schreven allebei eerlijk op wat er bleef staan: een landmark
-  // helpt wie DOORTABT, maar niet wie de app met zijn STEM bedient en niet wie de
-  // veldenlijst van zijn schermlezer opent. Daar heetten deze velden nog altijd allebei
-  // "Omschrijving". Timothy, 26 augustus 2026: "kies de meest logische en
-  // gebruiksvriendelijke oplossing."
-  it('geeft elk VELD een naam die op dit scherm maar één keer voorkomt', async () => {
+  it('geeft geen enkel veld een naamgenoot, want er staat er maar één open', async () => {
+    // ⚠ DIT IS DE TEST DIE DE VIJF VAN RONDE 83/92 VERVANGT. Zij bewezen dat twee velden
+    // met dezelfde zichtbare tekst tóch uit elkaar te houden waren; deze bewijst dat er
+    // geen tweede meer is. Dat is een sterkere garantie, en ze geldt voor élk veld —
+    // ook voor de velden die pas verschijnen zodra je een contract of een ritme kiest.
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Saldo')
     await gaBudget(user, 'Vast')
-    await screen.findByRole('form', { name: 'Nieuwe vaste inkomst' })
 
-    // ⚠ Een hulpje dat de naam UITREKENT zoals een schermlezer dat doet: de teksten van de
-    // elementen waar `aria-labelledby` naar wijst, in die volgorde aan elkaar.
-    const naamVan = (el: HTMLElement) =>
-      (el.getAttribute('aria-labelledby') ?? '')
-        .split(' ')
-        .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
-        .join(' ')
-
-    // De vier paren die vóór deze ronde niet uit elkaar te houden waren.
-    for (const veld of ['Omschrijving', 'Bedrag (€)', 'Rekening', 'Categorie']) {
-      const bedieningen = screen.getAllByLabelText(veld)
-      // Twee velden met dezelfde ZICHTBARE tekst...
-      expect(bedieningen, veld).toHaveLength(2)
-      const namen = bedieningen.map(naamVan)
-      // ...maar met twee verschillende toegankelijke namen, allebei beginnend met het woord
-      // dat er staat.
-      expect(new Set(namen).size, veld).toBe(2)
-      expect([...namen].sort(), veld).toEqual([
-        `${veld} (vaste inkomst)`,
-        `${veld} (vaste last)`,
-      ])
-    }
-  })
-
-  it('houdt de zichtbare tekst vooraan en aaneengesloten (WCAG 2.5.3)', async () => {
-    // ⚠ Wie "Omschrijving" ZEGT, moet het veld raken dat "Omschrijving" heet. Daarom staat
-    // het bestaande label eerst in `aria-labelledby` en de toevoeging erachter — nooit
-    // andersom, en nooit een `aria-label` die de zichtbare tekst vervángt.
-    const user = userEvent.setup()
-    render(<App />)
-    await screen.findByText('Saldo')
-    await gaBudget(user, 'Vast')
-    const formulier = await screen.findByRole('form', { name: 'Nieuwe vaste last' })
-
-    for (const veld of ['Omschrijving', 'Bedrag (€)']) {
-      const bediening = within(formulier).getByLabelText(veld)
-      const ids = (bediening.getAttribute('aria-labelledby') ?? '').split(' ')
-      const naam = ids.map((id) => document.getElementById(id)?.textContent?.trim() ?? '').join(' ')
-      expect(naam, veld).toBe(`${veld} (vaste last)`)
-      // En het label is nog altijd een echt `<label for>`: erop klikken focust het veld.
-      expect(document.getElementById(ids[0])?.tagName, veld).toBe('LABEL')
-      expect(bediening).not.toHaveAttribute('aria-label')
-      // ⚠ De toevoeging staat in een span die BUITEN BEELD hoort te staan, niet in een
-      // `display: none`. jsdom rekent geen CSS uit, dus `textContent` blijft ook bij
-      // `display: none` gewoon staan en zou deze reeks groen houden — terwijl een echte
-      // schermlezer zo'n element overslaat en de naam dan halveert. Gevonden met een
-      // mutatietest; alleen de klasse zelf verraadt het verschil hier.
-      expect(document.getElementById(ids[1])?.className, veld).toContain('alleen-voorlezen')
-    }
-  })
-
-  it('geeft ook het ZOEKVELD van de categoriekiezer een eigen naam', async () => {
-    // ⚠ Die kiezer draagt twee bedieningen: de keuzelijst én het zoekveld erboven. De
-    // eerste opzet van deze ronde gaf alleen de keuzelijst een toevoeging, en dan heette
-    // dat zoekveld nog altijd twee keer "Zoek een categorie" — acht van de negen paren
-    // opgelost, het negende niet.
-    const user = userEvent.setup()
-    render(<App />)
-    await screen.findByText('Saldo')
-    await gaBudget(user, 'Vast')
+    await user.click(screen.getByRole('button', { name: '+ Een vaste last' }))
     await screen.findByRole('form', { name: 'Nieuwe vaste last' })
+    expect(screen.queryAllByRole('form')).toHaveLength(1)
 
-    const velden = screen.getAllByLabelText('Zoek een categorie')
-    expect(velden).toHaveLength(2)
-    const namen = velden.map((el) =>
-      (el.getAttribute('aria-labelledby') ?? '')
-        .split(' ')
-        .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
-        .join(' '),
-    )
-    expect([...namen].sort()).toEqual([
-      'Zoek een categorie (vaste inkomst)',
-      'Zoek een categorie (vaste last)',
-    ])
+    for (const veld of ['Omschrijving', 'Bedrag (€)', 'Rekening', 'Dag van de maand', 'Hoe vaak?', 'Loopt tot en met']) {
+      expect(screen.getAllByLabelText(veld), veld).toHaveLength(1)
+    }
   })
 
-  it('laat een klik op het woord het veld nog altijd focussen', async () => {
-    // ⚠ Het praktische bewijs dat er geen `aria-label` overheen ligt: dan zou de koppeling
-    // tussen het woord en het veld verdwenen zijn, en dat merkt niemand aan de tests die
-    // op de naam zoeken.
+  it('noemt het venster van de lasten anders dan dat van de inkomsten', async () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Saldo')
     await gaBudget(user, 'Vast')
-    const formulier = await screen.findByRole('form', { name: 'Nieuwe vaste last' })
 
+    await user.click(screen.getByRole('button', { name: '+ Een vaste inkomst' }))
+    expect(await screen.findByRole('heading', { name: 'Vaste inkomst toevoegen' })).toBeInTheDocument()
+    expect(await screen.findByRole('form', { name: 'Nieuwe vaste inkomst' })).toBeInTheDocument()
+    expect(screen.queryByRole('form', { name: 'Nieuwe vaste last' })).toBeNull()
+  })
+
+  it('houdt het label een echt <label for> — een klik erop focust het veld', async () => {
+    // ⚠ Deze ene houd ik WEL uit de reeks van ronde 92, en met opzet. Ze meet niet de
+    // omweg maar iets dat blijft gelden: `expect(tagName).toBe('LABEL')` bewijst niet dat
+    // een klik het veld nog focust (les van ronde 95). Alleen een échte klik doet dat.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+
+    await user.click(screen.getByRole('button', { name: '+ Een vaste last' }))
+    const formulier = await screen.findByRole('form', { name: 'Nieuwe vaste last' })
     const veld = within(formulier).getByLabelText('Omschrijving')
     const labelId = (veld.getAttribute('aria-labelledby') ?? '').split(' ')[0]
     await user.click(document.getElementById(labelId) as HTMLElement)
     expect(document.activeElement).toBe(veld)
+  })
+
+  it('houdt de verduidelijking achter elke veldnaam — de ➕-popup legt dit formulier op élk scherm', async () => {
+    // ⚠ De botsing op DÍT scherm is weg, maar de toevoeging van ronde 92 blijft staan, en
+    // dat is geen luiheid. De ➕-popup hangt buiten de pagina-inhoud en kan dit formulier
+    // bovenop élk ander scherm leggen (ronde 88 telde er vier). Daar heet "Rekening" of
+    // "Bedrag (€)" soms al iets anders.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await gaBudget(user, 'Vast')
+
+    await user.click(screen.getByRole('button', { name: '+ Een vaste last' }))
+    const formulier = await screen.findByRole('form', { name: 'Nieuwe vaste last' })
+    const veld = within(formulier).getByLabelText('Omschrijving')
+    const naam = (veld.getAttribute('aria-labelledby') ?? '')
+      .split(' ')
+      .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
+      .join(' ')
+    expect(naam).toBe('Omschrijving (vaste last)')
+    // ⚠ En de toevoeging staat buiten beeld, niet in `display: none` — jsdom rekent geen
+    // CSS uit, dus alleen de klassenaam verraadt het verschil (les van ronde 92).
+    const ids = (veld.getAttribute('aria-labelledby') ?? '').split(' ')
+    expect(document.getElementById(ids[1])?.className).toContain('alleen-voorlezen')
   })
 })
 
@@ -3423,5 +3416,251 @@ describe('elke bediening op de dossierpagina heet maar één keer zo (ronde 95)'
     // En de twee formulieren waar deze ronde over gaat, heten wat ze zijn.
     expect(namen).toContain('Nieuwe gedeelde kost')
     expect(namen).toContain('Nieuwe beweging')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ronde 100 — de melding over geweigerde regels komt niet meer eeuwig terug
+// ---------------------------------------------------------------------------
+//
+// Timothy, 26 augustus 2026: hij synchroniseerde met Google Drive, kreeg de melding over
+// één geweigerde regel, klikte ze weg, drukte F5 — en ze stond er weer. *"En verder kan
+// ik ook niets doen."* Allebei klopte het, en het bleef eeuwig duren: een geweigerde
+// regel komt nooit in je eigen logboek, dus élke ronde ziet haar opnieuw als onbekend.
+
+describe('de melding over geweigerde regels (ronde 100)', () => {
+  // ⚠ Wat de app al gemeld heeft, staat in `localStorage` en overleeft dus een unmount —
+  // dat is precies de bedoeling. Maar het overleeft ook de volgende test in dit bestand:
+  // zonder deze regel begint de tweede test al met "dit is gemeld" en meet ze niets.
+  beforeEach(() => {
+    localStorage.removeItem(GEMELD_SLEUTEL)
+  })
+
+  // Een back-upbestand met regels uit de euro-tijd: die dragen geen `formaat`, dus de app
+  // kan niet zien of `2400` nu € 24,00 of € 2.400,00 betekent en weigert ze.
+  //
+  // ⚠ Een geweigerde regel komt NOOIT in het eigen logboek terecht. Hetzelfde bestand
+  // een tweede keer terugzetten levert dus exact dezelfde weigering op — precies wat er bij
+  // Timothy bij élke synchronisatie opnieuw gebeurde.
+  const oudBestand = (ids: readonly string[]) =>
+    JSON.stringify({
+      app: 'financieel-kompas',
+      soort: 'backup',
+      versie: 2,
+      // ⚠ Een id dat met `nieuw-` begint, krijgt een eenheid die deze app nog niet kent:
+      // zo'n regel wordt geweigerd omdat ze te NIEUW is, niet omdat ze te oud is.
+      events: ids.map((id, i) => ({
+        id,
+        toestelId: 'toestel-oud',
+        volgnummer: i + 1,
+        // ⚠ 23:30 WERELDTIJD, en niet middernacht. In België is dat de dag erná (00:30 op
+        // 13 maart). Bij middernacht UTC valt het verschil tussen de wereldtijd en de
+        // kalender hier weg, en dan zou een `toISOString()` in de melding — precies de
+        // fout die deze ronde herstelde — onzichtbaar blijven. Zie ook de tijdzone-regel
+        // bovenaan `vite.config.ts`.
+        tijdstip: Date.UTC(2025, 2, 12 + i, 23, 30),
+        ...(id.startsWith('nieuw-') ? { formaat: 99 } : {}),
+        // ⚠ Een id dat met `kapot-` begint, krijgt een onmogelijk tijdstip. Het schema
+        // begrenst dat veld niet, en `new Date(1e16).toISOString()` GOOIT.
+        ...(id.startsWith('kapot-') ? { tijdstip: 1e16 } : {}),
+        gebeurtenis: {
+          type: 'transactie.bewaard',
+          payload: { id: `oud-${id}`, datum: '2025-03-12', omschrijving: 'Loon', bedrag: 2400, rekeningId: 'r1' },
+        },
+      })),
+    })
+
+  async function herstelUitOudBestand(
+    user: ReturnType<typeof userEvent.setup>,
+    ids: readonly string[] = ['oud-r1'],
+  ) {
+    const inhoud = oudBestand(ids)
+    await gaMeer(user, 'Instellingen')
+    const veld = document.querySelector('input[type="file"][accept="application/json"]') as HTMLInputElement
+    const bestand = new File([inhoud], 'backup.json', { type: 'application/json' })
+    // ⚠ `File.text()` bestaat niet in jsdom; zonder deze regel mislukt het herstel met
+    // "Herstellen mislukte" en meet de test niets van wat ze belooft.
+    Object.defineProperty(bestand, 'text', { value: async () => inhoud })
+    // ⚠ `fireEvent` en niet `user.upload`: dit veld staat op `display: none` en wordt door
+    // een knop ernaast aangeklikt. userEvent weigert een verborgen element aan te wijzen.
+    Object.defineProperty(veld, 'files', { value: [bestand], configurable: true })
+    fireEvent.change(veld)
+    const statusregel = (await screen.findByText(/Hersteld:/)).textContent ?? ''
+    // ⚠ De melding staat op het OVERZICHT, want dat is de pagina waar je landt. Na een
+    // herstel sta je op Instellingen, dus we gaan er zelf naartoe kijken.
+    await user.click(screen.getByRole('button', { name: 'Overzicht' }))
+    await screen.findByRole('heading', { level: 1, name: 'Overzicht' })
+    return statusregel
+  }
+
+  it('zegt WELKE regel geweigerd is, en geeft geen raad die niet helpt', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    // Twee geweigerde regels met een verschillende datum: 13 en 14 maart 2025 hier.
+    await herstelUitOudBestand(user, ['oud-r1', 'oud-r2'])
+
+    const melding = await screen.findByText(/kan de app niet zien in welke eenheid/)
+    // ⚠ De DATUM van de regel erbij — anders kan je niet beoordelen of het erg is. En het
+    // moet de OUDSTE zijn: die zegt hoe ver terug het probleem loopt. Zonder het tweede
+    // deel van deze controle kon de app net zo goed de jongste noemen.
+    //
+    // ⚠ 13 en niet 12 maart: het tijdstip is 23:30 WERELDTIJD op 12 maart, en dat is hier
+    // al 00:30 op 13 maart. Rekent de melding in wereldtijd, dan staat er een dag te
+    // vroeg — dat is precies de fout die deze ronde herstelde.
+    expect(melding).toHaveTextContent(/De oudste is van 13 \w+ 2025/)
+    expect(melding).not.toHaveTextContent(/14 \w+ 2025/)
+    // ⚠ En het AANTAL. Zonder deze regel mocht de melding "999 regel(s)" zeggen zonder dat
+    // iets het merkte — het enige getal in de zin, en het was onbewaakt.
+    expect(melding).toHaveTextContent(/van 2 regel\(s\)/)
+    // ⚠ En zonder de raad die bij dit geval niets oplost. "Werk de app op dat andere
+    // toestel bij" helpt bij een TE NIEUWE regel; een oude regel staat al in de back-up
+    // en wordt door geen enkel toestel opnieuw geschreven.
+    expect(melding).not.toHaveTextContent(/werk de app daar dan ook bij/i)
+    expect(melding).toHaveTextContent(/niets voor te doen/)
+  })
+
+  it('laat de melding ook voorlezen door wie de pagina niet ziet', async () => {
+    // ⚠ Deze melding verschijnt ná een handeling die tijd kost — en soms zonder dat je
+    // iets deed (de stille ronde om de 45 seconden). Zonder een aankondiging die er
+    // ALTIJD staat, hoort een schermlezer er niets van: een `role="status"` die pas
+    // samen met zijn tekst in de pagina verschijnt, wordt vaak overgeslagen (ronde 65).
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    // Vóór het herstel staat het vak er al, en het is leeg.
+    expect(screen.getAllByRole('status').some((v) => /niet ingelezen/.test(v.textContent ?? ''))).toBe(false)
+
+    await herstelUitOudBestand(user, ['oud-r1', 'oud-r2'])
+    await screen.findByText(/kan de app niet zien in welke eenheid/)
+    await waitFor(() => {
+      // ⚠ HET AANTAL en niet "er is er minstens één". Met `some()` was deze test blind voor
+      // het omgekeerde: de aankondiging stond in de brede weergave per ongeluk TWEE keer in
+      // de pagina, en dan leest een schermlezer alles dubbel voor. Geen enkele test zag dat.
+      const vakken = screen.getAllByRole('status').filter((v) => /zijn niet ingelezen/.test(v.textContent ?? ''))
+      expect(vakken).toHaveLength(1)
+      expect(vakken[0]).toHaveTextContent('2 regel(s) zijn niet ingelezen')
+    })
+  })
+
+  it('verzwijgt de ene soort niet wanneer er twee soorten geweigerd zijn', async () => {
+    // ⚠ Hier stond een `? :`. Waren er allebei soorten, dan las je alleen over de te
+    // nieuwe regel en over de andere geen woord — terwijl de melding juist bedoeld is om
+    // te zeggen wat er níét ingelezen is. En dan mag "je hoeft hier niets voor te doen"
+    // er zeker niet bij staan: voor de te nieuwe regel moet je wél iets doen.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    const statusregel = await herstelUitOudBestand(user, ['oud-r1', 'nieuw-r2'])
+    // ⚠ Dezelfde fout zat in de statusregel na een herstel: die zei "dit bestand komt van
+    // een nieuwere versie (1 regels)" en liet de regel uit de euro-tijd onvermeld.
+    expect(statusregel).toMatch(/1 uit een te oude versie en 1 uit een nieuwere versie/)
+
+    const melding = await screen.findByText(/kan de app niet zien in welke eenheid/)
+    expect(melding).toHaveTextContent(/NIEUWERE versie/)
+    expect(melding).not.toHaveTextContent(/niets voor te doen/)
+    // ⚠ Allebei de aantallen, elk bij zijn eigen zin: één te nieuwe, één uit de euro-tijd.
+    expect(melding).toHaveTextContent(/1 regel\(s\) komen van een toestel/)
+    expect(melding).toHaveTextContent(/van 1 regel\(s\) kan de app niet zien/)
+  })
+
+  it('meldt na "Begin opnieuw" weer alles, ook wat je eerder weggeklikt had', async () => {
+    // ⚠ Wat de app gemeld heeft, staat in `localStorage` en overleeft `wisAlles` dus. Zonder
+    // opruimen zwijgt de app na een schone lei over regels die ze vóór het wissen al eens
+    // gemeld had — terwijl je op dat moment juist opnieuw begint.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await herstelUitOudBestand(user)
+    await screen.findByText(/kan de app niet zien in welke eenheid/)
+    await user.click(screen.getByRole('button', { name: 'Verberg' }))
+
+    await gaMeer(user, 'Instellingen')
+    await user.click(await screen.findByRole('button', { name: 'Begin opnieuw…' }))
+    await user.type(await screen.findByLabelText('Typ WISSEN om te bevestigen'), 'WISSEN')
+    await user.click(screen.getByRole('button', { name: 'Alles wissen' }))
+    await waitFor(async () => {
+      expect((await db.meta.get('eersteGebruikOp'))?.waarde).toBe(vandaag())
+    })
+
+    await herstelUitOudBestand(user)
+    await screen.findByText(/kan de app niet zien in welke eenheid/)
+  })
+
+  it('legt het Overzicht niet plat bij een onmogelijk tijdstip', async () => {
+    // ⚠ Dit is de énige code in de app die per definitie alleen KAPOTTE gegevens te zien
+    // krijgt — en ze rekende met het tijdstip alsof dat altijd deugt. Het schema begrenst
+    // dat veld niet: `JSON.parse('1e999')` geeft `Infinity`, en `new Date(…).toISOString()`
+    // gooit dan een fout, middenin het tekenen van het Overzicht. De melding hoort dan
+    // gewoon zonder datumzin te verschijnen.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await herstelUitOudBestand(user, ['kapot-r1'])
+
+    const melding = await screen.findByText(/kan de app niet zien in welke eenheid/)
+    expect(melding).not.toHaveTextContent(/is van/)
+    // En de pagina staat er nog: geen error boundary.
+    expect(screen.getByRole('heading', { level: 1, name: 'Overzicht' })).toBeInTheDocument()
+  })
+
+  it('telt dezelfde regel niet dubbel wanneer de ronde zich herhaalt', async () => {
+    // ⚠ De stille synchronisatie draait ELKE 45 SECONDEN en meldt telkens hetzelfde
+    // resultaat. Zonder ontdubbeling groeide de teller in de melding mee — "1 regel(s)",
+    // "2", "3" — voor één en dezelfde regel. Dezelfde klacht als deze ronde, in een
+    // andere vorm. Twee keer hetzelfde bestand terugzetten bootst dat na.
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await herstelUitOudBestand(user)
+    await screen.findByText(/kan de app niet zien in welke eenheid/)
+    await herstelUitOudBestand(user)
+
+    const melding = await screen.findByText(/kan de app niet zien in welke eenheid/)
+    expect(melding).toHaveTextContent(/van 1 regel\(s\)/)
+    // Eén regel, dus enkelvoud: "de oudste" doet vermoeden dat er meer zijn.
+    expect(melding).toHaveTextContent(/Die regel is van 13 \w+ 2025/)
+  })
+
+  it('blijft weg na wegklikken, ook na een herlaadbeurt én een nieuwe ronde', async () => {
+    // ⚠ DIT IS DE KLACHT. Het wegklikken leefde in `useState` en overleefde geen F5; en
+    // omdat dezelfde regel bij elke ronde opnieuw geweigerd werd, kwam ze daarna ook
+    // meteen weer terug. De test doet dus béíde: opnieuw opbouwen én opnieuw ophalen.
+    const user = userEvent.setup()
+    const { unmount } = render(<App />)
+    await screen.findByText('Saldo')
+    await herstelUitOudBestand(user)
+    await screen.findByText(/kan de app niet zien in welke eenheid/)
+
+    await user.click(screen.getByRole('button', { name: 'Verberg' }))
+    expect(screen.queryByText(/kan de app niet zien in welke eenheid/)).toBeNull()
+
+    // Een herlaadbeurt nabootsen: de hele app opnieuw opbouwen, en daarna nog eens
+    // hetzelfde bestand terugzetten — net zoals een volgende synchronisatie dezelfde
+    // geweigerde regel opnieuw tegenkomt.
+    unmount()
+    const tweede = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await herstelUitOudBestand(tweede)
+    expect(screen.queryByText(/kan de app niet zien in welke eenheid/)).toBeNull()
+  })
+
+  it('meldt wél opnieuw zodra er een NIEUWE regel geweigerd wordt', async () => {
+    // ⚠ De andere helft: stilvallen mag nooit betekenen "nooit meer iets zeggen". Zonder
+    // deze test zou "meld nooit meer iets" de vorige test ook groen krijgen.
+    const user = userEvent.setup()
+    const { unmount } = render(<App />)
+    await screen.findByText('Saldo')
+    await herstelUitOudBestand(user, ['oud-r1'])
+    await screen.findByText(/kan de app niet zien in welke eenheid/)
+    await user.click(screen.getByRole('button', { name: 'Verberg' }))
+
+    unmount()
+    const tweede = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Saldo')
+    await herstelUitOudBestand(tweede, ['oud-r1', 'oud-r2'])
+    await screen.findByText(/kan de app niet zien in welke eenheid/)
   })
 })

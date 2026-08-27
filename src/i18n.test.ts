@@ -339,7 +339,7 @@ describe('vertaaltabellen — de maandafsluiting', () => {
     expect(vertaal('en', 'Maandafsluiting')).toBe('Month close')
     expect(vertaal('fr', 'Maand afsluiten')).toBe('Clôturer le mois')
     expect(vertaal('en', '{n} boeking(en) in {maand}.', { n: 12, maand: 'June 2026' })).toBe(
-      '12 entr(ies) in June 2026.',
+      '12 entry/entries in June 2026.',
     )
     expect(vertaal('fr', '{maand} is nog niet afgesloten.', { maand: '2026-06' })).toContain('pas encore clôturé')
     // De belofte van het scherm hoort in alle drie de talen te staan.
@@ -455,7 +455,7 @@ describe('vertaaltabellen — de grondslag van de verdeling', () => {
         naam: 'Agreement',
         n: 3,
       }),
-    ).toContain('appendix 3')
+    ).toContain('attachment 3')
     expect(
       vertaal(
         'fr',

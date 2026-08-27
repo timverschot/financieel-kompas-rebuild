@@ -14,7 +14,8 @@ vi.mock('jspdf', async () => {
   return { jsPDF: nepJsPdfKlasse(nep) }
 })
 
-const { bouwBijlagen, exporteerBewijsmapPDF, grondslagVerwijzing, uitAfspraak } = await import('./bewijsmapPdf')
+const { bijlageVerwijzing, bouwBijlagen, exporteerBewijsmapPDF, grondslagVerwijzing, uitAfspraak } =
+  await import('./bewijsmapPdf')
 
 const t = (s: string, p?: Record<string, string | number>) => vertaal('nl', s, p)
 
@@ -499,7 +500,10 @@ describe('twee bewijsstukken voor dezelfde kost', () => {
   })
 
   it('verwijst vanuit de kost naar beide bijlagen', () => {
-    expect(alleTekst(nep)).toContain('zie bijlage 1, 2')
+    // ⚠ RONDE 101 — MEERVOUD. Hier stond 'zie bijlage 1, 2' — en deze test legde dat vast.
+    // Een test kan een taalfout jarenlang in stand houden: ze bewees alleen dat de tekst
+    // niet veranderde, niet dat ze klopte.
+    expect(alleTekst(nep)).toContain('zie bijlagen 1, 2')
   })
 
   it('zegt in de titel welke van de twee het is', () => {
@@ -686,5 +690,35 @@ describe('uitAfspraak', () => {
     expect(uitAfspraak('kost')).toBe(false)
     expect(uitAfspraak('uitwisseling')).toBe(false)
     expect(uitAfspraak('onbekend')).toBe(false)
+  })
+})
+
+describe('bijlageVerwijzing (ronde 101)', () => {
+  // ⚠ De bewijsmap is het document dat naar de andere ouder, een bemiddelaar of een rechter
+  // gaat. Er stond altijd het enkelvoud met de nummers achter elkaar: bij twee bonnen bij
+  // één kost las je "zie bijlage 3, 4".
+  const fr = (sleutel: string, params?: Record<string, string | number>) => vertaal('fr', sleutel, params)
+  const en = (sleutel: string, params?: Record<string, string | number>) => vertaal('en', sleutel, params)
+
+  it('zegt niets wanneer er geen bon bij de kost hoort', () => {
+    expect(bijlageVerwijzing(t, [])).toBeUndefined()
+  })
+
+  it('houdt het enkelvoud bij één bon', () => {
+    expect(bijlageVerwijzing(t, [3])).toBe('zie bijlage 3')
+  })
+
+  it('zet het meervoud bij meer dan één bon', () => {
+    expect(bijlageVerwijzing(t, [3, 4])).toBe('zie bijlagen 3, 4')
+    expect(bijlageVerwijzing(t, [3, 4, 7])).toBe('zie bijlagen 3, 4, 7')
+  })
+
+  it('doet hetzelfde in het Engels en het Frans', () => {
+    // ⚠ Daarom TWEE sleutels en geen slim samengestelde zin: het woord verandert in elke
+    // taal mee (bijlage/bijlagen, attachment/attachments, annexe/annexes).
+    expect(bijlageVerwijzing(en, [3])).toBe('see attachment 3')
+    expect(bijlageVerwijzing(en, [3, 4])).toBe('see attachments 3, 4')
+    expect(bijlageVerwijzing(fr, [3])).toBe('voir annexe 3')
+    expect(bijlageVerwijzing(fr, [3, 4])).toBe('voir annexes 3, 4')
   })
 })

@@ -191,12 +191,30 @@ knop die vóór dat veld staat (dan moet je alsnog tabben voor je kan typen).
 Vorm: op een breed scherm een gecentreerde kaart, op een telefoon een blad dat van
 onderen komt en de volle breedte neemt. Alleen `.dialoog-inhoud` scrollt.
 
-**Invoerformulieren horen in de popup, niet op een pagina.** Toevoegen gaat overal
-via `BoekingDialoog` (de ➕). Een formulier dat óók in de popup moet kunnen hangen,
-krijgt de prop `onOpgeslagen?: (opties: { blijfOpen: boolean }) => void`: zodra die
-meegegeven is, verschijnt de knop "Opslaan + volgende" en weet de popup wanneer ze
-zich mag sluiten. Zo hoeft de popup niets over de invoerlogica te weten en bestaat
-er van elk formulier precies één versie.
+**Invoerformulieren horen in een venster, niet open op een pagina.** Toevoegen gaat
+overal via `BoekingDialoog` (de ➕) of via een eigen `Dialoog`. Een formulier dat in
+een venster moet kunnen hangen, krijgt de prop
+`onOpgeslagen?: (opties: { blijfOpen: boolean }) => void`: zodra die meegegeven is,
+verschijnt de knop "Opslaan + volgende" en weet het venster wanneer het zich mag
+sluiten. Zo hoeft het venster niets over de invoerlogica te weten en bestaat er van
+elk formulier precies één versie.
+
+⚠ **Sinds ronde 98 volgt ook Budget → Vast deze regel** — dat was de laatste pagina met
+een altijd-open formulier, en er stonden er zelfs twee onder elkaar. Wat je nu ziet is een
+lijst met één knop erboven ("+ Een vaste last" / "+ Een vaste inkomst") die een venster
+opent. **Een knop die zo'n venster opent, wist eerst een oude foutmelding** (`opslag.wis()`,
+regel sinds ronde 68) — anders blijft een melding van een vorige poging achter het verse
+venster staan.
+
+⚠ **Zo'n venster heeft GEEN eigen "Annuleer"-knop.** Het kruisje en Escape zijn de weg naar
+buiten, en die vragen met `bewaakInvoer` eerst of je je invoer mag weggooien. Een derde knop
+met dezelfde uitwerking ernaast is de fout van ronde 84 (twee knoppen die hetzelfde doen).
+
+⚠ **Een venster over een record houdt een ID vast, geen kopie** (ronde 76) — maar bij een
+formulier waarin je TYPT hoort dat venster **niet vanzelf te sluiten** wanneer dat record
+elders verdwijnt (ronde 98). De app haalt elke 45 seconden stil gegevens op; sluiten zou je
+halve zin meenemen zonder één woord, en dat is de huisregel recht in het gezicht. Onthoud de
+laatst bekende versie zolang het venster openstaat.
 
 ## Layout-invariant die je niet mag breken
 
@@ -272,6 +290,12 @@ een vraag, nooit een bevel: *"Nieuwe vaste last"*, niet *"Vaste last invullen"*.
 schermlezer somt de bedieningen op zonder hun landmark. Twee velden met dezelfde naam op één
 scherm blijven daar dus twee velden met dezelfde naam.
 
+⚠ **De beste oplossing is er geen tweede laten staan** (ronde 98). Drie rondes werkten om
+deze botsing heen — 83 (het landmark), 88 (de labels weer normaal), 92 (een verduidelijking
+achter élke veldnaam) — tot ronde 98 de oorzaak wegnam door het formulier in een venster te
+zetten. Loop je hier tegenaan: vraag eerst of die twee formulieren wel tegelijk op het scherm
+horen te staan.
+
 `woordenschat.test.ts` bewaakt deze vier namen.
 
 ## `aria-…` op een eigen component doet niets (ronde 92)
@@ -296,9 +320,10 @@ geldige JavaScript-naam is — alles met een koppelteken, dus élke `aria-*` en
 
 ## Een veld dat op één scherm twee keer voorkomt (ronde 92)
 
-Staan er twee exemplaren van hetzelfde formulier op één scherm — zoals op
-Budget → Vast, waar de vaste inkomsten en de vaste lasten onder elkaar staan —
-dan hebben hun velden **allebei dezelfde naam**. Een naam op het `<form>` (een
+Staan er twee exemplaren van hetzelfde formulier op één scherm, dan hebben hun velden
+**allebei dezelfde naam**. (Het voorbeeld waar deze regel uit ontstond — Budget → Vast, met
+de vaste inkomsten en de vaste lasten onder elkaar — bestaat sinds ronde 98 niet meer; wat
+overblijft is de ➕-popup, die een formulier bovenop élk ander scherm kan leggen.) Een naam op het `<form>` (een
 landmark, ronde 83) lost dat op voor wie doortabt, maar **niet** voor wie de app
 met zijn stem bedient en niet voor wie de veldenlijst van zijn schermlezer opent.
 

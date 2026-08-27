@@ -43,6 +43,7 @@ import {
   isGestopt,
   isNogNietBegonnen,
   maandbedrag,
+  maandTotaal,
   opzijPerMaand,
   intervalVan,
   PERIODE_SLEUTELS,
@@ -772,7 +773,14 @@ export function OpstellingSectie({
   const buffer = bepaalBuffer(rekeningen, transacties, overboekingen, terugkerendePosten, waarderingen, vandaag())
   const bezit = totaalSaldoVan(rekeningen, transacties, overboekingen, waarderingen, vandaag())
   const vermogen = nettoVermogen(bezit, leningen, aflossingen)
-  const sluipendPerMaand = sluipend.reduce((som, p) => som + -maandbedrag(p), 0)
+  // ⚠ RONDE 98 — DEZE SOM STAAT NU IN ÉÉN FUNCTIE (`maandTotaal` in utils/vastelast.ts).
+  // Ze stond hier met de hand uitgeschreven, en op Budget → Vast kwam er deze ronde een
+  // tweede plek bij die exact hetzelfde vraagt. Ronde 72 wees dat patroon al aan ("drie
+  // definities van vaste lasten per maand staan naast elkaar"); een vierde erbij zetten
+  // en er in een commentaar bij schrijven dat het er géén is, is geen oplossing.
+  // ⚠ Het minteken staat hier: deze tegel toont een POSITIEF bedrag, `maandTotaal` geeft
+  // het teken van de records zelf terug.
+  const sluipendPerMaand = -maandTotaal(sluipend, dezeMaand)
   // RONDE 71 — wat er nog NIET in de tegel zit. Zonder deze zin lijkt de tegel te laag
   // (of beweegt ze niet wanneer je iets toevoegt) zonder dat iets zegt waarom. Alleen
   // wanneer er ook echt zo'n post is; anders noemt de zin een beperking zonder gevolg.
@@ -1286,10 +1294,19 @@ export function OpstellingSectie({
           <KostenLijst
             titel={t('Je sluipende lasten')}
             uitleg={t('De kleine abonnementen waar je nooit meer naar omkijkt. Samen zijn ze vaak groter dan je denkt.')}
-            // ⚠ RONDE 84 — de rij "Een andere sluipende last" hangt er onderaan bij, en
-            // staat bewust NIET in `SLUIPENDE_KOSTEN` zelf: ze is geen voorstel maar een
-            // uitnodiging, en ze hoort niet mee te tellen in "je vulde er 3 van de 18 in".
-            voorstellen={[...SLUIPENDE_KOSTEN, SLUIPEND_ANDERS]}
+            // ⚠ RONDE 84 — de rij "Een andere sluipende last" staat bewust NIET in
+            // `SLUIPENDE_KOSTEN` zelf: ze is geen voorstel maar een uitnodiging, en ze
+            // hoort niet mee te tellen in "je vulde er 3 van de 18 in".
+            //
+            // ⚠ RONDE 98 — EN ZE STAAT NU BOVENAAN IN PLAATS VAN ONDERAAN. Timothy:
+            // *"deze valt niet echt op zo helemaal onderaan. kan dit niet apart bovenaan
+            // gezet worden?"* Achttien voorstellen boven je enige weg naar een abonnement
+            // dat er niet bij staat, is achttien rijen te veel — en juist wie hier iets
+            // zoekt dat níét in de lijst staat, heeft die rij nodig.
+            //
+            // ⚠ De volgorde raakt de TELLING niet: die leest `voorstellen.filter((v) =>
+            // !v.vrijeNaam)`, en dat is dezelfde verzameling waar ze ook stond.
+            voorstellen={[SLUIPEND_ANDERS, ...SLUIPENDE_KOSTEN]}
             posten={ingevuld}
             t={t}
             onToevoegen={(voorstel, lijst) => openVenster({ voorstel, lijst, bewerken: null })}

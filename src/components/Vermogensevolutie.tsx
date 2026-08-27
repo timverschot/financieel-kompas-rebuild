@@ -104,15 +104,22 @@ export function Vermogensevolutie({
   const eersteTotaal = data[0].totaal
   const verschil = laatsteTotaal - eersteTotaal
 
-  // Hoeveel boekingen er in de LAATSTE maand van de grafiek nog moeten vallen. Zie
-  // de uitleg bij de zin hieronder. Overboekingen tellen mee: ook die verschuiven
-  // het saldo van een rekening, en de grafiek toont saldo's per rekening.
+  // Hoeveel er in de LAATSTE maand van de grafiek nog moet vallen. Zie de uitleg bij de zin
+  // hieronder. Overboekingen tellen mee: ook die verschuiven het saldo van een rekening, en
+  // de grafiek toont saldo's per rekening.
+  //
+  // ⚠ RONDE 101 — WAARDERINGEN TELLEN MEE. Ze stonden hier niet bij, en dat was een gat:
+  // het datumveld van een waardering kent geen bovengrens, dus je kan er vandaag één
+  // vastleggen met de datum van de 31ste. `saldoOpEinde` neemt de geldende waardering tot en
+  // met die dag als vertrekpunt, dus het laatste punt van de lijn verspringt — terwijl het
+  // saldo op je Overzicht niet meebeweegt en deze zin zweeg over de reden.
   const laatsteMaand = maanden[maanden.length - 1]
   const vandaagISO = vandaag()
   const komtNog =
     laatsteMaand === vandaagISO.slice(0, 7)
       ? transacties.filter((tx) => tx.datum > vandaagISO && tx.datum.slice(0, 7) === laatsteMaand).length +
-        overboekingen.filter((o) => o.datum > vandaagISO && o.datum.slice(0, 7) === laatsteMaand).length
+        overboekingen.filter((o) => o.datum > vandaagISO && o.datum.slice(0, 7) === laatsteMaand).length +
+        waarderingen.filter((w) => w.datum > vandaagISO && w.datum.slice(0, 7) === laatsteMaand).length
       : 0
 
   return (
@@ -149,8 +156,8 @@ export function Vermogensevolutie({
       {komtNog > 0 ? (
         <p className="rij-meta" data-evolutiebron style={{ margin: 0 }}>
           {komtNog === 1
-            ? t('Het laatste punt is de stand aan het einde van de maand. Eén boeking of overboeking van later deze maand telt er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.')
-            : t('Het laatste punt is de stand aan het einde van de maand. {n} boekingen en overboekingen van later deze maand tellen er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.', {
+            ? t('Het laatste punt is de stand aan het einde van de maand. Eén boeking, overboeking of waardering van later deze maand telt er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.')
+            : t('Het laatste punt is de stand aan het einde van de maand. {n} boekingen, overboekingen of waarderingen van later deze maand tellen er al in mee, terwijl het saldo op je Overzicht tot vandaag telt.', {
                 n: komtNog,
               })}
         </p>

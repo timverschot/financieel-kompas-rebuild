@@ -80,6 +80,26 @@ describe('NieuweVersieBalk', () => {
     expect(screen.getByRole('button', { name: 'Recharger' })).toBeInTheDocument()
   })
 
+  it('start de versiewacht ook zelf, als vangnet (ronde 99)', () => {
+    // ⚠ `main.tsx` start het wachten vóór het renderen — dat is de bedoeling van deze
+    // ronde. Maar géén enkele test raakt `main.tsx`: haal die regel daar weg en alle
+    // tests blijven groen terwijl de klacht van Timothy precies terug is. Deze component
+    // start hem daarom nog eens; `startVersiewacht` is idempotent, dus dat kost niets.
+    const luisteraars: Record<string, (() => void)[]> = {}
+    vi.stubGlobal('navigator', {
+      serviceWorker: {
+        controller: {},
+        getRegistration: () => Promise.resolve({ update: vi.fn(), addEventListener: () => {} }),
+        addEventListener: (naam: string, cb: () => void) => {
+          luisteraars[naam] = [...(luisteraars[naam] ?? []), cb]
+        },
+        removeEventListener: () => {},
+      },
+    })
+    toon()
+    expect((luisteraars['controllerchange'] ?? []).length).toBe(1)
+  })
+
   it('meldt zichzelf netjes af', () => {
     // Anders blijft er na elke paginawissel een luisteraar hangen die een component
     // wil bijwerken die niet meer bestaat.

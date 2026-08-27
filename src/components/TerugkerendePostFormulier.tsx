@@ -12,7 +12,7 @@ import { useT } from '../i18n'
 import { Opslagfout } from '../ui/Opslagfout'
 import { useOpslagpoging } from '../ui/opslagpoging'
 import type { Vertaler } from '../i18n'
-import { CategorieNiveauKiezer } from './CategorieNiveauKiezer'
+import { CategorieKiezer } from './CategorieKiezer'
 
 // De beginwaarden van een leeg formulier staan op één plek, zodat de begintoestand
 // en het leegmaken na het opslaan niet uit elkaar kunnen lopen. De gekozen rekening
@@ -47,7 +47,6 @@ export function TerugkerendePostFormulier({
   rekeningen,
   categorieen,
   onOpslaan,
-  onAnnuleer,
   bewerken,
   onOpgeslagen,
   soort: soortVanBuiten,
@@ -61,7 +60,6 @@ export function TerugkerendePostFormulier({
   rekeningen: Rekening[]
   categorieen: Categorie[]
   onOpslaan: (p: TerugkerendePost) => Promise<void> | void
-  onAnnuleer?: () => void
   bewerken?: TerugkerendePost | null
   /**
    * Inkomst of uitgave, van buitenaf gezet. De Plan-pagina heeft sinds ronde 25
@@ -478,16 +476,18 @@ export function TerugkerendePostFormulier({
   const isInkomst = soort === 'inkomst'
   // ⚠ RONDE 92 — ELK VELD DRAAGT ERBIJ OVER WELK FORMULIER HET GAAT.
   //
-  // Op Budget → Vast staan dit formulier voor de INKOMSTEN en dat voor de LASTEN onder
-  // elkaar op één scherm. Ronde 83 gaf allebei een naam op het `<form>` (een landmark), en
-  // ronde 88 haalde het voorvoegsel "Vaste …" van de veldlabels omdat het geen Nederlands
-  // was. Allebei die rondes schreven er eerlijk bij wat er NIET mee opgelost was: een
-  // landmark helpt wie doortabt, maar niet wie de app met zijn STEM bedient en niet wie de
-  // veldenlijst van zijn schermlezer opent. Daar stonden negen tot veertien paren velden
-  // met exact dezelfde naam: twee keer "Omschrijving", twee keer "Bedrag (€)".
+  // ⚠ EN RONDE 98 HAALDE DE REDEN WEG WAAROM DAT NODIG WAS. Tot dan stonden op Budget →
+  // Vast dit formulier voor de INKOMSTEN en dat voor de LASTEN onder elkaar op één scherm,
+  // met negen tot veertien paren velden die exact hetzelfde heetten. Ronde 83 gaf allebei
+  // een naam op het `<form>` (een landmark), ronde 88 haalde het zinloze voorvoegsel
+  // "Vaste …" van de labels, en ronde 92 hing achter elke veldnaam een verduidelijking.
+  // Drie rondes rond de oorzaak heen. Sinds ronde 98 zit dit formulier in een VENSTER en
+  // staat er nooit meer een tweede naast; `App.test.tsx` legt dat vast.
   //
-  // De naam van elk veld is nu "Omschrijving (vaste last)" — en in het andere formulier
-  // "… (vaste inkomst)". Uniek, dus in die veldenlijst uit elkaar te houden.
+  // ⚠ WAAROM DE VERDUIDELIJKING TÓCH BLIJFT. De ➕-popup hangt buiten de pagina-inhoud en
+  // kan dit formulier bovenop élk ander scherm leggen — ronde 88 telde er vier waar
+  // "Rekening", "Omschrijving", "Bedrag (€)" of "Categorie" al iets anders benoemt. Daar
+  // is "Omschrijving (vaste last)" nog altijd het verschil.
   //
   // ⚠ TUSSEN HAAKJES, EN NIET "van deze vaste last" (doorlichting). Zes van de dertien
   // labels zijn een VRAAG of eindigen zelf al op een toevoeging: "Hoe vaak?", "Eerste
@@ -518,7 +518,7 @@ export function TerugkerendePostFormulier({
   return (
     <form onSubmit={verzend} className="stapel" aria-label={formuliernaam}>
       {/* De toevoeging waar elk veld hierboven naar wijst. Buiten beeld, want wie kijkt
-          ziet de kaarttitel "Vaste lasten" al boven dit formulier staan. */}
+          ziet de vensterkop ("Vaste last toevoegen") al boven dit formulier staan. */}
       <span id={soortId} className="alleen-voorlezen">
         {isInkomst ? t('(vaste inkomst)') : t('(vaste last)')}
       </span>
@@ -528,19 +528,14 @@ export function TerugkerendePostFormulier({
           is? — en het voorvoegsel stond er alleen om de velden van dit formulier uit
           elkaar te houden van velden elders.
 
-          ⚠ EN HET DEED DAT NOOIT WAAR HET NODIG WAS. Op Budget → Vast staan twee
-          exemplaren van dit formulier onder elkaar (inkomsten en lasten), en die zeiden
-          allebei "Vaste omschrijving": het voorvoegsel hielp daar precies niets. Wat die
-          twee wél uit elkaar houdt, is de naam van het formulier zelf (`aria-label`
-          hierboven, ronde 83): een `<form>` met een naam is een landmark, en een
-          schermlezer kondigt hem aan zodra je erin komt.
+          ⚠ EN HET DEED DAT NOOIT WAAR HET NODIG WAS. Op Budget → Vast stonden tot ronde
+          98 twee exemplaren van dit formulier onder elkaar (inkomsten en lasten), en die
+          zeiden allebei "Vaste omschrijving": het voorvoegsel hielp daar precies niets.
+          Wat die twee toen uit elkaar hield, was de naam van het formulier zelf
+          (`aria-label` hierboven, ronde 83): een `<form>` met een naam is een landmark.
 
-          ⚠ WAT ER NOG ALTIJD NIET DOOR OPGELOST IS, en dat stond al in de nota van ronde
-          83: een landmark helpt wie doortabt, niet wie de app met zijn STEM bedient en
-          niet wie de veldenlijst van zijn schermlezer opent. Daar heten die twee velden
-          nog steeds allebei "Omschrijving" — net zoals ze vóór deze ronde allebei "Vaste
-          omschrijving" heetten. Deze ronde maakt dat dus niet erger; ze maakt alleen de
-          taal weer normaal.
+          ⚠ SINDS RONDE 98 STAAT ER MAAR ÉÉN FORMULIER TEGELIJK, in een venster. De
+          botsing waar deze drie rondes omheen werkten, bestaat niet meer.
 
           ⚠ EN DE ➕-POPUP DAN? (doorlichting ronde 88) Dat venster hangt buiten de
           pagina-inhoud, dus dit formulier kan bovenop élk scherm komen — ook op Boekingen
@@ -855,26 +850,37 @@ export function TerugkerendePostFormulier({
         </select>
       </div>
 
-      <div className="veldgroep">
-        <label className="label-caps" id={`${veldId}-vaste-categorie-label`} htmlFor={`${veldId}-vaste-categorie`}>
-          {t('Categorie')}
-        </label>
-        {/* Alle drie de niveaus, met een zoekveld. Tot ronde 27 kon je hier alleen
-            een hoofdcategorie kiezen, dus stond je huur op "Woning en vaste lasten"
-            en je elektriciteit ook — en dan zegt de analyse niets meer dan dat er
-            geld naar je woning ging. Nu kan je rechtstreeks "Huur" of
-            "Elektriciteit" kiezen, en die tag verhuist mee naar de transactie
-            zodra je de vaste last inboekt. */}
-        <CategorieNiveauKiezer
-          id={`${veldId}-vaste-categorie`}
-          labelledBy={`${veldId}-vaste-categorie-label ${soortId}`}
-          naamToevoegingId={soortId}
-          waarde={categorieId}
-          onKies={setCategorieId}
-          categorieen={categorieen}
-          metGeenKeuze
-        />
-      </div>
+      {/* ⚠ RONDE 98 — DEZELFDE CATEGORIEKIEZER ALS BIJ EEN BOEKING, MET KNOPPEN.
+          Keuze van Timothy, en alleen hier: het budgetformulier houdt voorlopig zijn
+          keuzelijst (`CategorieNiveauKiezer`).
+
+          ⚠ EEN VERALDERDE OPMERKING DIE DEZE RONDE BIJNA TEGENHIELD. In
+          `CategorieNiveauKiezer` stond te lezen waarom dít formulier die kiezer NIET
+          gebruikte: *"die kent de middenlaag niet, geeft altijd een item terug"*. Zou dat
+          waar zijn, dan kon een vaste last niet meer op "Elektriciteit" (middenlaag)
+          staan en viel ze bij het inboeken uit elke analyse — precies de fout die de
+          opmerking wilde voorkomen.
+
+          ⚠ NAGEMETEN, NIET GELEZEN. Het klopt niet meer, en er stónden al twee groene
+          tests die het bewijzen: "kiest een categorie met één tik" geeft `cat-broodwaren`
+          terug (een MIDDENcategorie), en "gaat een laag terug wanneer je de actieve chip
+          nog eens aantikt" geeft `ov-voeding`. Deze ronde zet daar een derde naast die
+          uitdrukkelijk over dít formulier gaat. De opmerking zelf is rechtgezet: elke
+          bewering in een commentaar hoort waar te zijn.
+
+          ⚠ GEEN EIGEN `<label>` MEER. Deze kiezer draagt haar naam zelf ("Categorie:"
+          met de keuze ernaast) en heeft geen `<select>` om een label aan te hangen. Een
+          los label dat naar niets wijst, is erger dan geen label. */}
+      <CategorieKiezer
+        waarde={categorieId || undefined}
+        onKies={(id) => setCategorieId(id ?? '')}
+        gebruikerCategorieen={categorieen}
+        // Zegt bij welk formulier het zoekveld hoort. Sinds deze ronde staat dit
+        // formulier in een venster en is er nooit meer een tweede naast — maar de
+        // ➕-popup kan hem nog altijd bovenop een ánder scherm leggen, en daar heet
+        // "Zoek een categorie of subcategorie" soms al iets.
+        naamToevoeging={isInkomst ? t('(vaste inkomst)') : t('(vaste last)')}
+      />
 
       {/* Deze twee bolletjes stonden zonder enige uitleg onder het formulier. In de
           invoerpopup staat er nu bovenaan een knop "Vaste last", en dan lijkt een
@@ -958,18 +964,14 @@ export function TerugkerendePostFormulier({
             {t('Opslaan + volgende')}
           </button>
         )}
-        {bewerken && onAnnuleer && (
-          <button
-            type="button"
-            className="knop knop-ghost"
-            /* ⚠ Twee open bewerkvensters gaven twee keer "Annuleer". De zichtbare tekst
-               staat vooraan in de naam, zoals WCAG 2.5.3 vraagt. */
-            aria-label={t('{actie} — {formulier}', { actie: t('Annuleer'), formulier: formuliernaam })}
-            onClick={onAnnuleer}
-          >
-            {t('Annuleer')}
-          </button>
-        )}
+        {/* ⚠ RONDE 98 — HIER STOND EEN KNOP "ANNULEER", EN DIE HAD GEEN OPROEPER MEER.
+            Ronde 92 gaf hem een eigen naam per formulier, omdat er met twee open
+            bewerkformulieren twee keer exact "Annuleer" stond. Die toestand kan sinds
+            ronde 98 niet meer bestaan: dit formulier staat altijd in een venster, en dat
+            heeft al twee wegen naar buiten (het kruisje en Escape) die allebei eerst
+            vragen of je je invoer mag weggooien. Alle drie de oproepers gaven `onAnnuleer`
+            dan ook niet meer mee. Weggehaald in plaats van laten staan — wat nergens
+            gebruikt wordt, gaat weg (regel sinds ronde 77). */}
       </div>
       {/* Zolang de knop uitgeschakeld is, zegt deze regel wat er nog ontbreekt.
           Sinds ronde 57 kan het contractblok de knop óók tegenhouden, en dan mag hier

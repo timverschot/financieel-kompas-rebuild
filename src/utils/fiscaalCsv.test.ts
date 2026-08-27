@@ -126,7 +126,13 @@ describe('fiscaalCsvBestand — de bonnen', () => {
         onderhoudsbetalingen: [betaling],
       }),
     )
-    expect(t_.find((r) => r[0] === 'Boeking')![kolom('Bon')]).toBe('')
+    // ⚠ RONDE 101 — DE RIJ HEET "BETALING". Ze heette hier "Boeking", en dat was precies de
+    // fout: deze rijen komen uit je betalingen op een onderhoudsbijdrage in Dossiers, niet
+    // uit je boekingen. Wie het bestand opende, zocht ze in zijn boekingenlijst — waar er
+    // geen enkele van staat. Het bestand wist het zelf al (vandaar de lege bon-kolom
+    // hieronder); alleen het etiket volgde niet mee.
+    expect(t_.find((r) => r[0] === 'Betaling')![kolom('Bon')]).toBe('')
+    expect(t_.find((r) => r[0] === 'Boeking')).toBeUndefined()
     expect(t_.find((r) => r[0] === 'Totaal')![kolom('Aantal met bon')]).toBe('')
   })
 })

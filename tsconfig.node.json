@@ -14,7 +14,13 @@
        geen effect meer — zonder één foutmelding. `.gitignore` hield dat bestand al
        uit de repo (ronde 35), maar niet uit de werkmap: wie na een `npm run build`
        de tests draaide, testte de oude instellingen. */
-    "outDir": "./node_modules/.tmp/tsconfig-node"
+    "outDir": "./node_modules/.tmp/tsconfig-node",
   },
-  "include": ["vite.config.ts"]
+  /* ⚠ RONDE 99 — `vite.config.ts` leest sinds deze ronde de datum van de laatste commit,
+     en daarvoor is `node:child_process` nodig. Dit project heeft géén `@types/node` (en
+     dat hoort zo: het is een browser-app). In plaats van een afhankelijkheid van 2 MB
+     erbij te zetten voor één functie, staat de handtekening die wij echt aanroepen in
+     `types/node-min.d.ts` — niets meer. Dezelfde aanpak als bij `dom-accessibility-api`
+     in `src/vite-env.d.ts`. */
+  "include": ["vite.config.ts", "types/node-min.d.ts"]
 }

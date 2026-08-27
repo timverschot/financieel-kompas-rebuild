@@ -179,7 +179,19 @@ function postBlok(
 
   if (regel.boekingen.length === 0) return
   blad.verschuif(2)
-  blad.regel(t('{n} boeking(en)', { n: regel.boekingen.length }), { klein: true, vet: true })
+  // ⚠ RONDE 101 — BETALINGEN ZIJN GEEN BOEKINGEN. Bij de post "betaalde onderhoudsuitkeringen"
+  // komt deze lijst niet uit je boekingen maar uit je betalingen op een onderhoudsbijdrage in
+  // Dossiers. Ronde 96 zette dat op het SCHERM recht (zie `FiscaalSectie.tsx`), maar dit blad
+  // — het blad dat naar je boekhouder gaat — deed de splitsing niet mee: daar las je
+  // "7 boeking(en)" en ging je die zeven in je boekingenlijst zoeken, waar er geen enkele van
+  // staat. (De rijen eronder dragen hun eigen omschrijving, en heten "Betaling" alleen
+  // wanneer die leeg is — dus ook dáár stond het woord "boeking" nergens.)
+  blad.regel(
+    regel.post.uitOnderhoudsbetalingen
+      ? t('{n} betaling(en)', { n: regel.boekingen.length })
+      : t('{n} boeking(en)', { n: regel.boekingen.length }),
+    { klein: true, vet: true },
+  )
 
   for (const b of regel.boekingen) {
     const titel = b.omschrijving || t('Betaling')

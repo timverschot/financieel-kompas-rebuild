@@ -771,8 +771,14 @@ export function DossierSectie({
                 ))}
               </ul>
             )}
-            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
+            {/* ⚠ RONDE 101 — `flexWrap`, GEMETEN IN EEN ECHTE BROWSER. Zonder afbreken kregen
+                de drie kinderen van deze rij op een scherm van 320 px respectievelijk 34, 76
+                en 116 pixels: de categoriekiezer werd 34 px breed en toonde "Sel / hoo /
+                (op". Op 360 px was hij 74 px. Je kon hier dus feitelijk geen categorie
+                kiezen op een telefoon. Met afbreken neemt de kiezer de volle breedte en
+                zakken het percentage en de knop eronder. */}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
                 <CategorieKiezer
                   waarde={splitCat || undefined}
                   onKies={(id) => setSplitCat(id ?? '')}

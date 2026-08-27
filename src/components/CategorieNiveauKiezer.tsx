@@ -15,52 +15,50 @@ import { useT } from '../i18n'
 // rolt die laag gewoon op naar haar hoofdcategorie, dus mag ze overal gekozen
 // worden.
 //
-// Waarom niet `CategorieKiezer` (de zoeker uit het transactieformulier): die kent
-// de middenlaag niet, geeft altijd een item terug en heeft de horizontaal
-// schuivende chiprij die in ronde 28 hertekend wordt. Deze kiezer blijft klein en
-// doet één ding: een niveau kiezen.
+// Waarom niet `CategorieKiezer` (de zoeker uit het transactieformulier): die is
+// groter — een zoekveld, een chiprij met álle hoofdcategorieën (de ingebouwde plus je
+// eigen) en twee lagen eronder — en dat is meer scherm dan een budgetregel nodig heeft.
+// ⚠ Bewust geen aantal: dat groeit mee met wat de gebruiker zelf aanmaakt. Deze kiezer blijft
+// klein en doet één ding: een niveau kiezen.
+//
+// ⚠ HIER STOND EEN REDEN DIE NIET MEER KLOPTE, en ze had bijna ronde 98 tegengehouden:
+// *"die kent de middenlaag niet, geeft altijd een item terug"*. Dat was ooit waar, maar
+// `CategorieTrap` geeft sinds ronde 28 wel degelijk een MIDDENcategorie terug — en een
+// tik op de actieve chip rolt zelfs terug naar de hoofdcategorie. Twee tests in
+// `CategorieKiezer.test.tsx` leggen dat vast ("kiest een categorie met één tik" →
+// `cat-broodwaren`; "gaat een laag terug …" → `ov-voeding`).
+//
+// ⚠ Waarom dat ertoe deed: kon je hier geen middenlaag meer kiezen, dan stond een vaste
+// last niet meer op "Elektriciteit" en viel ze bij het inboeken uit elke analyse. Precies
+// de fout die deze opmerking wilde voorkomen — maar de opmerking bewaakte niets, ze
+// beweerde alleen iets. Sinds ronde 98 gebruikt het vaste-lastenformulier `CategorieKiezer`;
+// deze kiezer blijft voor het budgetformulier.
 
 const MAX_SUGGESTIES = 20
 
 type Keuze = { id: string; naam: string; pad: string }
 
+// ⚠ RONDE 98 — DRIE PROPS ZIJN HIER WEGGEVALLEN, EN DAT IS EEN GEVOLG, GEEN KEUZE.
+//
+// `labelledBy`, `naamToevoegingId` en `metGeenKeuze` bestonden alle drie voor één
+// oproeper: het vaste-lastenformulier. Dat gebruikt sinds ronde 98 `CategorieKiezer`,
+// en daarmee had geen enkele oproeper ze nog. `BudgetFormulier` — de enige die
+// overblijft — hangt zijn naam met een gewone `<label htmlFor>` aan de keuzelijst.
+//
+// Weggehaald in plaats van laten staan: de huisregel sinds ronde 77 is dat wat nergens
+// gebruikt wordt, weggaat. Een ongebruikte prop is een uitnodiging om ernaar te grijpen
+// zonder na te gaan of ze nog doet wat haar naam belooft. De reden waaróm ze bestonden
+// (twee formulieren met dezelfde veldnamen op één scherm) is met ronde 98 verdwenen.
 export function CategorieNiveauKiezer({
   id,
   waarde,
   onKies,
   categorieen,
-  metGeenKeuze = false,
-  labelledBy,
-  naamToevoegingId,
 }: {
   id: string
   waarde: string
   onKies: (id: string) => void
   categorieen: Categorie[]
-  /** Voegt bovenaan een lege keuze toe, voor velden waar geen categorie mag. */
-  metGeenKeuze?: boolean
-  /**
-   * Waar de keuzelijst haar naam vandaan haalt, als `aria-labelledby` op het `<select>`.
-   *
-   * ⚠ EEN EIGEN PROP IN CAMELCASE, EN GEEN `aria-labelledby` VAN BUITEN (ronde 92).
-   * TypeScript controleert JSX-attributen die geen geldige JS-naam zijn — alles met een
-   * koppelteken, dus élke `aria-*` — NIET op een eigen component. Schrijf je
-   * `<CategorieNiveauKiezer aria-labelledby="…" />`, dan compileert dat schoon, komt het
-   * nergens terecht en merkt niemand er iets van. Precies dat is in deze ronde gebeurd, en
-   * alleen een test die de naam UITREKENDE ving het.
-   */
-  labelledBy?: string
-  /**
-   * Het id van de verduidelijking die achter ELKE naam in deze kiezer hoort — ook achter
-   * die van het zoekveld ernaast.
-   *
-   * ⚠ WAAROM APART VAN `labelledBy` (doorlichting ronde 92). Deze component draagt TWEE
-   * bedieningen: de keuzelijst én het zoekveld erboven. `labelledBy` bedient alleen de
-   * eerste. Staat deze kiezer twee keer op één scherm — en dat doet ze op Budget → Vast —
-   * dan heette dat zoekveld nog altijd twee keer "Zoek een categorie". Acht van de negen
-   * paren waren opgelost, het negende niet.
-   */
-  naamToevoegingId?: string
 }) {
   const { t } = useT()
   const [zoek, setZoek] = useState('')
@@ -108,15 +106,13 @@ export function CategorieNiveauKiezer({
 
   return (
     <div className="stapel" style={{ gap: 6 }}>
-      {/* ⚠ Geen kaal `aria-label` meer (doorlichting ronde 92): dan kan er geen
-          verduidelijking achter, en heette dit veld op Budget → Vast twee keer hetzelfde.
-          De naam komt nu uit een verborgen span, gevolgd door diezelfde toevoeging als bij
-          de keuzelijst eronder. */}
+      {/* ⚠ Geen kaal `aria-label` (doorlichting ronde 92), maar een echt label buiten
+          beeld: alleen zo steunt de koppeling tussen het woord en het veld ergens op. */}
       <span id={`${id}-zoek-label`} className="alleen-voorlezen">
         {t('Zoek een categorie')}
       </span>
       <input
-        aria-labelledby={naamToevoegingId ? `${id}-zoek-label ${naamToevoegingId}` : `${id}-zoek-label`}
+        aria-labelledby={`${id}-zoek-label`}
         placeholder={t('Typ om ook subcategorieën te zoeken…')}
         value={zoek}
         onChange={(e) => setZoek(e.target.value)}
@@ -126,12 +122,10 @@ export function CategorieNiveauKiezer({
           scheelt een extra klik, en je ziet ook of er iets gevonden is. */}
       <select
         id={id}
-        aria-labelledby={labelledBy}
         value={waarde}
         onChange={(e) => onKies(e.target.value)}
-        size={term.length >= ZOEK_VANAF ? Math.min(6, Math.max(2, compleet.length + (metGeenKeuze ? 1 : 0))) : 1}
+        size={term.length >= ZOEK_VANAF ? Math.min(6, Math.max(2, compleet.length)) : 1}
       >
-        {metGeenKeuze && <option value="">{t('Geen categorie')}</option>}
         {compleet.map((k) => (
           <option key={k.id} value={k.id}>
             {k.pad}

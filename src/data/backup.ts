@@ -1,5 +1,6 @@
 import { db } from './db'
 import { LOG_FORMAAT, LogregelSchema, formaatOordeel, type Logregel } from './sync/events'
+import type { GeweigerdeRegel, Weigering } from '../utils/geweigerdeRegels'
 import { herbouwStaat, verwerkOntvangenHlc } from './sync/lokaal'
 
 // Een onafhankelijk vangnet, los van Google Drive: de volledige geschiedenis
@@ -39,6 +40,12 @@ export type ImportResultaat = {
   verouderd: number
   /** Regels uit een NIEUWERE versie dan deze app. Dan draait dit toestel achter. */
   teNieuw: number
+  /**
+   * WELKE regels geweigerd zijn (ronde 100). Zie de uitleg bij `SyncResultaat` in
+   * `sync/sync.ts`: met alleen een teller kan het scherm niet zien of het om dezelfde
+   * regel gaat als de vorige keer, en dan komt dezelfde melding eeuwig terug.
+   */
+  geweigerd: GeweigerdeRegel[]
 }
 
 // Zet een back-up terug. Werkt net als een sync: gebeurtenissen worden
@@ -63,6 +70,7 @@ export async function importeerBackup(json: string): Promise<ImportResultaat> {
   let ongeldig = 0
   let verouderd = 0
   let teNieuw = 0
+  const geweigerd: GeweigerdeRegel[] = []
   for (const ruw of events) {
     const check = LogregelSchema.safeParse(ruw)
     if (!check.success) {
@@ -78,10 +86,12 @@ export async function importeerBackup(json: string): Promise<ImportResultaat> {
     const oordeel = formaatOordeel(check.data)
     if (oordeel === 'te-oud') {
       verouderd++
+      geweigerd.push(kenmerk(check.data, 'te-oud'))
       continue
     }
     if (oordeel === 'te-nieuw') {
       teNieuw++
+      geweigerd.push(kenmerk(check.data, 'te-nieuw'))
       continue
     }
     // BEWUST de ruwe regel, niet `check.data`. Het schema controleert of de regel
@@ -102,5 +112,14 @@ export async function importeerBackup(json: string): Promise<ImportResultaat> {
     await verwerkOntvangenHlc(nieuw.map((r) => ({ l: r.hlcL ?? r.tijdstip, c: r.hlcC ?? 0 })))
     await herbouwStaat()
   }
-  return { toegevoegd: nieuw.length, overgeslagen, ongeldig, verouderd, teNieuw }
+  return { toegevoegd: nieuw.length, overgeslagen, ongeldig, verouderd, teNieuw, geweigerd }
+}
+
+/**
+ * Net genoeg van een geweigerde regel om te kunnen zeggen wélke het is (ronde 100).
+ * Dezelfde vorm als in `sync/sync.ts`, en om dezelfde reden: geen bedragen en geen
+ * omschrijvingen, want juist die zijn hier niet te vertrouwen.
+ */
+function kenmerk(regel: Logregel, reden: Weigering): GeweigerdeRegel {
+  return { id: regel.id, tijdstip: regel.tijdstip, reden }
 }
